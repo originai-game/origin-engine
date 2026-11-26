@@ -1,0 +1,563 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+# The `file-types` guide: File types
+
+Use `og api list --kind file`, `og api show file:terrain` or `og api find erosion --kind file`. An asset starts with `type <name>`, `version <integer>`, `---`. Input paths and field coverage below are per type, not runtime API fields.
+
+<a id="guide-file-types-1"></a>
+### `file-types §1` Cook assets
+
+<a id="file-behaviour"></a>
+### `file:behaviour`
+
+An authored `behaviour` asset, cooked by `behaviour`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-dialogue"></a>
+### `file:dialogue`
+
+An authored `dialogue` asset, cooked by `dialogue`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-district"></a>
+### `file:district`
+
+An authored `district` asset, cooked by `district`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-effect"></a>
+### `file:effect`
+
+An authored `effect` asset, cooked by `effect`. Input: `.ogt` under assets/.
+
+Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `main ["<id>"] [rgba \| red \| green \| blue \| alpha] [{ uv }]` | `` | The main texture and the channel read; left out, the surface's own (an emitter's texture). |
+| `ramp { key <t> <r> <g> <b> <a> ... }` | `` | A gradient map: the texture's value picks the linear colour; at most 8 keys. |
+| `mask ["<id>"] [<channel>] [{ uv }]` | `` | A texture (red by default) multiplied into the alpha. |
+| `noise ["<id>"] [<channel>] [{ uv }]` | `` | The erosion's noise (red by default); left out, value noise. Needs an `erosion` line. |
+| `erosion <value>` | `` | The cut: where the noise is below it the surface is gone (a dissolve over the life). |
+| `erosionSoftness <width>` | `0.05` | How soft the cut's edge is. |
+| `erosionEdge <width> <r> <g> <b> [<a>]` | `` | A glowing border of this width and linear colour along the cut. |
+| `flowMap ["<id>"] [<channel>] [{ uv }]` | `` | Red and green push the main uv (0.5 still). |
+| `flow <strength> [<cycles per second>]` | `0.05 0.5` | How far and how fast the flow map pushes. |
+| `fresnel <power> [<strength>] [invert]` | `` | A rim brighter at grazing angles (strength 1), or with `invert` soft silhouettes. |
+| `softDepth <metres>` | `0` | Fade against the scene behind (particles, meshes). |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear tint; above 1 glows. |
+| `intensity <value>` | `1` | Multiplies the colour. |
+| `alpha <value>` | `1` | Multiplies the alpha. |
+| `offsetU <value>` | `0` | Added to the main u. |
+| `offsetV <value>` | `0` | Added to the main v. |
+| `custom <slot 1 to 8> <value>` | `` | A number a material shader reads: slots 1 to 4 are effect_custom1().x to .w, 5 to 8 effect_custom2(). |
+| `blend additive \| alpha \| subtractive \| multiply` | `` | Over the surface's own blend. Subtractive takes its colour away from what is behind (dark smoke, a void), multiply tints what is behind by it (scorch, shadow); a trail, ribbon or beam blends either as alpha. |
+| `doubleSided true \| false` | `false` | Meshes: draw both faces. |
+| `shader "<id>"` | `` | A material shader (`type shader`) whose surface_color hook runs last; it reads effect_life(), effect_random(), effect_custom1() and effect_custom2(). |
+| `param <name> <1 to 4 numbers>` | `` | One of the shader's parameters by name. |
+
+<a id="file-environment"></a>
+### `file:environment`
+
+An authored `environment` asset, cooked by `environment`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-flipbook"></a>
+### `file:flipbook`
+
+An authored `flipbook` asset, cooked by `flipbook`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-grammar"></a>
+### `file:grammar`
+
+An authored `grammar` asset, cooked by `grammar`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-icons"></a>
+### `file:icons`
+
+An authored `icons` asset, cooked by `icons`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-lightmap"></a>
+### `file:lightmap`
+
+An authored `lightmap` asset, cooked by `lightmap`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-look"></a>
+### `file:look`
+
+An authored `look` asset, cooked by `look`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-materials"></a>
+### `file:materials`
+
+An authored `materials` asset, cooked by `materials`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-model"></a>
+### `file:model`
+
+An authored `model` asset, cooked by `model`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-motion-action"></a>
+### `file:motion-action`
+
+An authored `motion-action` asset, cooked by `motion-action`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-navmesh"></a>
+### `file:navmesh`
+
+An authored `navmesh` asset, cooked by `navmesh`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-particles"></a>
+### `file:particles`
+
+An authored `particles` asset, cooked by `emitter`. Input: `.ogt` under assets/.
+
+Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `maxParticles <n>` | `256` | The ring of particles, 1 to 1048576: the newest overwrite the oldest. |
+| `shape point \| sphere <radius> [surface] \| cone <angle°> <radius> \| box <x> <y> <z> \| spline <x> <y> <z> ... [closed] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `cone 15 0.05` | Where particles are born and which way they start: a box by its half extents, a spline through 2 to 8 Catmull-Rom points, emitted evenly along it and along its tangent, a mesh's surface (a model's first mesh, in the emitter's space), area weighted and along its normals (a statue crumbling to embers, a sword's glow). |
+| `spread <degrees>` | `0` | Random deviation from the shape's direction; 180 is every direction. |
+| `rate <per second>` | `40` | Particles born per second. |
+| `burst <time> <count> [<cycles> <interval>]` | `` | Particles born at once at a time of each cycle, repeated `cycles` times `interval` apart; any number of lines. |
+| `duration <seconds>` | `1` | Seconds per emission cycle. |
+| `looping true \| false` | `true` | Start a new cycle at the end of each. |
+| `lifetime <min> [<max>]` | `1 1.5` | Seconds a particle lives. |
+| `speed <min> [<max>]` | `1.5 2.5` | Metres per second at birth. |
+| `size <min> [<max>]` | `0.08 0.12` | Metres across at birth. |
+| `sizeOverLife <t> <value> ...` | `` | A curve that scales the size over the life (1 when left out): the width and, without `heightOverLife`, the height. |
+| `heightOverLife <t> <value> ...` | `` | A curve that scales the height alone over the life (along the sprite's up, or the velocity when stretched; a mesh's y): a tall flame, a flat shockwave. Left out, the height is the width. |
+| `colorOverLife { key <t> <r> <g> <b> <a> ... }` | `` | Linear colour keys over the life, at most 8; left out, white fading over the last quarter. |
+| `randomColorOverLife { key <t> <r> <g> <b> <a> ... }` | `` | A second colour over the life: each particle's colour lies between colorOverLife and this at a share of its own (embers from orange to deep red). Left out, every particle takes colorOverLife. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear tint over the colour keys; above 1 blooms. |
+| `rotation <min> [<max>]` | `0` | The start rotation in degrees. |
+| `angularVelocity <min> [<max>]` | `0` | Degrees per second. |
+| `gravity <x> <y> <z>` | `0 -2 0` | Metres per second squared. |
+| `drag <per second>` | `0` | How fast motion relative to the air dies. |
+| `wind <0..1>` | `0` | The share of the air's motion (og.Wind and every og.WindMotor where the system is) that `drag` closes on: smoke and dust drift downwind; 0 slows to rest. |
+| `forceFields <0..1>` | `0` | The share of the og.ForceField acceleration where each particle is that it takes (1: as a body does): an updraft lifting smoke, a vortex swirling sparks. World-space particles only. |
+| `noise <strength> [<frequency> <scroll>]` | `0 0.5 0.3` | Turbulence: value noise pushing the particles. |
+| `texture "<id>"` | `` | A texture asset; left out, a soft dot. |
+| `sheet <columns> <rows> [<frames> [off \| life <cycles> \| fps <n> \| random] [blend]]` | `1 1` | The texture as a sprite sheet: a frame by age, at a rate, or one at random. `blend` cross-fades each frame into the next as it plays (life and fps, billboards), so 16 frames of smoke roll smoothly instead of stepping; a sheet played once holds its last frame. |
+| `blend additive \| alpha \| subtractive \| multiply` | `` | Left out: alpha for a lit mesh (a solid chip; added it would glow white), additive for everything else. Subtractive takes the colour away from what is behind (dark smoke), multiply tints what is behind by it (scorch); neither in sprite mode. |
+| `space world \| local` | `world` | Particles left behind in the world, or carried with the emitter. |
+| `align camera \| velocity [<stretch>] \| upright [<x> <y> <z>] \| facing <x> <y> <z>` | `camera` | Billboards face the camera, stretch along their velocity (stretch 0.05 when left out), stand on an axis of the emitter turning to face the eye (0 1 0 when left out: flames), or lie across one whatever the camera (facing 0 1 0: flat on the ground). |
+| `softDistance <metres>` | `0` | Fade where a billboard meets the scene behind it. |
+| `collision [<bounce> [<friction>]] [depth \| colliders] [die]` | `` | Bounce (0.4) with friction (0.2) off the drawn depth (what the camera sees), or off the scene's og.Collider shapes on or off screen; sprite mode always meets the colliders. With `die` a particle dies where it first hits (rain, sparks going out), a death event for a sub-emitter's splash. |
+| `render billboard \| sprite [<layer>] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `billboard` | 3D billboards, 2D sprites in a sprite layer, or a small mesh per particle that tumbles with its rotation (a model's first mesh). |
+| `lit true \| false` | `false` | Billboards and meshes shaded by the sun, the sky and local lights. |
+| `roughness <0..1>` | `1` | A lit mesh's surface: 1 matte; smoother reflects over an alpha body (glass shards). |
+| `distortion <0..1>` | `0` | Billboards bend the scene behind them by this fraction of the screen at most: heat haze, shock rings. |
+| `events birth \| death \| collision ...` | `` | Send og.ParticleEvent for these; the emitter's systems then simulate in the tick. |
+| `subEmitter birth \| death \| collision "<id>" <count> [<inherit>] \| life "<id>" [<inherit>]` | `` | Another emitter's particles born where this one's are born, die or bounce (count 1 to 4096, moving at their start velocity plus `inherit` times the parent's), or each particle running the other's own emission while it lives; up to 4, one level deep. |
+| `glow <strength>` | `0` | Sprite mode: strength in the 2D glow buffer (PostEffects.glow). |
+| `array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]` | `` | Sprite mode: a layer of a texture array (`type texture-array`) per particle instead of `texture`, picked as `sheet` picks a frame from the first `layers`; one draw per emitter. |
+| `round true \| false` | `false` | Fade each particle to the soft dot's round edge over its texture or layer. |
+| `effect "<id>"` | `` | Draw billboards or mesh particles with an effect material (`type effect`, §2). |
+| `speedOverLife <t> <value> ...` | `` | A curve that scales the velocity over the life (a burst that slows). |
+| `spinOverLife <t> <value> ...` | `` | A curve that scales the angular velocity over the life. |
+| `rateOverTime <t> <value> ...` | `` | A curve that scales `rate` over each cycle (t a fraction of `duration`). |
+| `trail <seconds> [<width>] [only]` | `` | A trail behind each particle: the path it took over the last <seconds>, a strip in its colour narrowing and fading to its tail, <width> a share of the particle's width (1 when left out); `only` draws the trails without the particles (a spark's streak). Billboards and mesh particles, not sprite mode. |
+| `inheritVelocity <fraction>` | `0` | The share of the emitter's own velocity, in world space, particles start with. |
+| `attractor <x> <y> <z> <strength> [<radius>]` | `` | A point in the emitter's space that pulls, or pushes when negative; up to 4. |
+| `field curl <strength> [<frequency> <scroll>] \| "<texture>" <strength> <size>` | `` | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1. |
+| `fieldGrid <cells> <size> <strength> <vectors>` | `` | What `og cook` writes in place of a texture field: the baked grid, x fastest. Not written by hand. |
+
+<a id="file-post"></a>
+### `file:post`
+
+An authored `post` asset, cooked by `post`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-prefab"></a>
+### `file:prefab`
+
+An authored `prefab` asset, cooked by `prefab`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-quest"></a>
+### `file:quest`
+
+An authored `quest` asset, cooked by `quest`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-rig"></a>
+### `file:rig`
+
+An authored `rig` asset, cooked by `rig`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-rig2d"></a>
+### `file:rig2d`
+
+An authored `rig2d` asset, cooked by `rig2d`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-scene"></a>
+### `file:scene`
+
+An authored `scene` asset, cooked by `scene`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-sfx"></a>
+### `file:sfx`
+
+An authored `sfx` asset, cooked by `sound`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-shader"></a>
+### `file:shader`
+
+An authored `shader` asset, cooked by `shader`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-strings"></a>
+### `file:strings`
+
+An authored `strings` asset, cooked by `strings`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-table"></a>
+### `file:table`
+
+An authored `table` asset, cooked by `table`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-terrain"></a>
+### `file:terrain`
+
+An authored `terrain` asset, cooked by `terrain`. Input: `.ogt` under assets/.
+
+Field coverage: parser line tables, including every nested block below. Output: tiled terrain, control pages and collision data, loaded with og.terrain.load.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `heightmap "<png\|exr>"` | `` | Image input, relative to the terrain then assets/. May be followed by generate processing. Exclusive with generate.script. |
+| `generate { ... }` | `` | Noise or script input, followed by hydraulic, thermal, terraces, shore, rivers, biome stages in that order. |
+| `height <low> <high>` | `0 100 (EXR: 0 1)` | Metres corresponding to image 0 and 1, or noise range. Not allowed with script; authored fields are not normalised or clipped by processing. |
+| `size <x> <z>` | `one metre per sample interval` | Positive finite world extents in metres; rows run -z to +z, columns -x to +x. |
+| `control "<image>" ...` | `` | RGBA weights, one image per four layers, all equal size. Exclusive with biome rules. |
+| `holes "<image>"` | `` | Black or transparent cells have no surface or collision. |
+| `tile <integer 16..1024>` | `128` | Quads per streaming tile side. |
+| `heightBlend <number >= 0>` | `0` | Layer height-blend amount. |
+| `castShadows true \| false` | `true` | Terrain casts shadows. |
+| `collision true \| false` | `true` | Build terrain collision. |
+| `lod { ... }` | `` | Drawn clipmap spacing and ring. |
+| `layer { ... }` | `` | Repeated material layer; at most sixteen. Past four use texture arrays. |
+| `layers "<texture-array.ogt>"` | `` | Albedo array asset. |
+| `layerNormals "<texture-array.ogt>"` | `` | Normal array asset. |
+
+<a id="file-terrain-lod"></a>
+### `file:terrain.lod`
+
+Terrain `lod` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `spacing <number >= 0>` | `0` | Finest spacing in metres; zero uses sample spacing. |
+| `ring <integer >= 0>` | `0` | Clipmap quads per side; zero selects the renderer's ring. |
+
+<a id="file-terrain-layer"></a>
+### `file:terrain.layer`
+
+Terrain `layer` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `albedo "<texture>"` | `` | Albedo asset; alpha holds material height. With arrays use albedoLayer. |
+| `normal "<texture>"` | `` | Normal asset; with arrays use normalLayer. |
+| `albedoLayer <integer >= 0>` | `layer index` | Albedo-array slice. |
+| `normalLayer <integer >= 0>` | `layer index` | Normal-array slice. |
+| `color <r> <g> <b>` | `1 1 1` | Linear colour multiplier. |
+| `roughness <number 0..1>` | `0.9` | PBR roughness. |
+| `tile <metres > 0>` | `4` | World metres per texture repeat. |
+| `triplanar true \| false` | `false` | Project texture on three axes. |
+| `normalStrength <number 0..4>` | `1` | Normal strength. |
+| `slope <low> <high>` | `0 90` | Slope band in degrees. |
+| `slopeFade <number >= 0>` | `4` | Slope-band fade in degrees. |
+| `altitude <low> <high>` | `-1000000 1000000` | Height band in metres above origin. |
+| `altitudeFade <number >= 0>` | `4` | Height-band fade in metres. |
+| `projectSlope <degrees 0..90>` | `0` | Use the two facing projections above this slope; zero follows triplanar. |
+| `antiTiling <number 0..1>` | `0` | Hex anti-tiling amount. |
+| `heightContrast <number 0..1>` | `0` | Height-blend contrast. |
+| `macroVariation <number 0..1>` | `0` | Coarse brightness and hue variation. |
+| `displacement <metres 0..4>` | `0` | Near-camera displacement from albedo alpha. |
+| `cellVariation <number 0..1>` | `0` | Per-cell colour variation from normal alpha. |
+
+<a id="file-terrain-generate"></a>
+### `file:terrain.generate`
+
+Terrain `generate` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `samples <columns 2..4097> <rows 2..4097>` | `257 257` | Noise grid only. An authored input supplies its dimensions; no implicit resampling. |
+| `seed <integer 0..4294967295>` | `1` | Noise, erosion and script seed. |
+| `noise { ... }` | `` | Noise input parameters; exclusive with authored input. |
+| `mask island [<falloff > 0 and <= 1>] \| ridge [<strength 0..1>]` | `none` | Noise shaping only; island defaults to 0.4, ridge to 1. |
+| `erosion { ... }` | `` | Hydraulic droplets; absent means no hydraulic processing. |
+| `thermal { ... }` | `` | Thermal talus processing; absent means none. |
+| `terraces { ... }` | `` | Terraces; authored fields anchor at zero, noise at its low height. |
+| `sea <finite metres>` | `` | Sea level for shore flattening and automatic drainage. |
+| `shore <metres 0..1000000>` | `2` | Shore width; requires sea if explicitly written. |
+| `rivers { ... }` | `` | Automatic drainage and river carving; absent means none. |
+| `moisture { ... }` | `` | Flow/noise mixture read by biome rules. |
+| `biome { ... }` | `` | Repeated rule, writes an existing material layer's control channel. |
+| `script "<file.ts>"` | `` | Default synchronous export returns {columns, rows, heights}; heights are metres. Relative imports and explicit inputs are tracked. Exclusive with heightmap/noise/mask/samples. |
+| `params { <name> <value> ... }` | `{}` | Script parameters: scalars, arrays or nested blocks. Requires script. |
+| `input "<name>" "<path>"` | `` | Repeated explicit script input, delivered as ctx.inputs[name] byte array; relative to the terrain. Requires script. |
+
+<a id="file-terrain-generate.noise"></a>
+### `file:terrain.generate.noise`
+
+Terrain `generate.noise` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `octaves <integer 1..12>` | `6` | FBM octave count. |
+| `frequency <number 0.001..10000>` | `3` | Features across the longer world side. |
+| `lacunarity <number 1..8>` | `2` | Frequency multiplier per octave. |
+| `gain <number 0..1>` | `0.5` | Amplitude multiplier per octave. |
+| `warp <number 0..100>` | `0` | Domain-warp strength in features. |
+
+<a id="file-terrain-generate.erosion"></a>
+### `file:terrain.generate.erosion`
+
+Terrain `generate.erosion` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `drops <integer 0..10000000>` | `40000` | Seeded droplet count. |
+| `lifetime <integer 1..1000>` | `30` | Steps per droplet. |
+| `radius <integer 1..16>` | `3` | Erosion brush radius in samples. |
+| `inertia <number 0..1>` | `0.05` | Share of previous direction. |
+| `capacity <number 0..1000>` | `4` | Sediment capacity. |
+| `deposition <number 0..1>` | `0.3` | Excess sediment deposition fraction. |
+| `erosion <number 0..1>` | `0.3` | Unused sediment capacity eroded per step. |
+| `evaporation <number 0..1>` | `0.01` | Water evaporated per step. |
+| `gravity <number 0..1000>` | `4` | Droplet acceleration. |
+
+<a id="file-terrain-generate.thermal"></a>
+### `file:terrain.generate.thermal`
+
+Terrain `generate.thermal` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `talus <degrees 0..89>` | `35` | Angle above which material slumps. |
+| `iterations <integer 0..10000>` | `20` | Thermal iterations. |
+| `rate <number 0..1>` | `0.5` | Fraction of excess moved each iteration. |
+
+<a id="file-terrain-generate.terraces"></a>
+### `file:terrain.generate.terraces`
+
+Terrain `generate.terraces` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `step <metres 0.001..1000000>` | `10` | Terrace step height. |
+| `blend <number 0..1>` | `0.4` | Smooth fraction of each step. |
+
+<a id="file-terrain-generate.rivers"></a>
+### `file:terrain.generate.rivers`
+
+Terrain `generate.rivers` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `threshold <integer 1..4294967295>` | `400` | Contributing samples at which a river starts. |
+| `depth <metres 0..1000000>` | `2` | Full river depth. |
+| `width <metres 0..1000000>` | `6` | Full river width. |
+
+<a id="file-terrain-generate.moisture"></a>
+### `file:terrain.generate.moisture`
+
+Terrain `generate.moisture` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `flow <number 0..1000000>` | `1` | Gathered-flow weight. |
+| `scale <number 0.001..1000000000>` | `64` | Contributing samples for half the flow contribution. |
+| `noise <number 0..1000000>` | `0.5` | Noise weight. |
+| `frequency <number 0.001..10000>` | `6` | Moisture-noise features across terrain. |
+
+<a id="file-terrain-generate.biome"></a>
+### `file:terrain.generate.biome`
+
+Terrain `generate.biome` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `layer <integer 0..15>` | `required` | Existing material layer to paint. |
+| `weight <number 0..1>` | `1` | Rule weight. |
+| `altitude <low> <high>` | `-1000000 1000000` | Ascending finite height band in metres. |
+| `altitudeFade <metres 0..1000000>` | `2` | Height-band fade. |
+| `slope <low> <high>` | `0 90` | Ascending finite slope band in degrees. |
+| `slopeFade <degrees 0..90>` | `4` | Slope-band fade. |
+| `moisture <low> <high>` | `0 1` | Ascending finite moisture band. |
+| `moistureFade <number 0..1>` | `0.1` | Moisture-band fade. |
+
+
+<a id="file-texture-array"></a>
+### `file:texture-array`
+
+An authored `texture-array` asset, cooked by `texture-array`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-tilemap"></a>
+### `file:tilemap`
+
+An authored `tilemap` asset, cooked by `tilemap`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-tileset"></a>
+### `file:tileset`
+
+An authored `tileset` asset, cooked by `tileset`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-timeline"></a>
+### `file:timeline`
+
+An authored `timeline` asset, cooked by `timeline`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-ui-material"></a>
+### `file:ui-material`
+
+An authored `ui-material` asset, cooked by `ui-material`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-vector"></a>
+### `file:vector`
+
+An authored `vector` asset, cooked by `vector`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-vfx"></a>
+### `file:vfx`
+
+An authored `vfx` asset, cooked by `vfx`. Input: `.ogt` under assets/.
+
+Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `duration <seconds>` | `` | How long the effect lasts; its elements end within it. Required. |
+| `loop true \| false` | `false` | Start over at the end. |
+| `impact <seconds>` | `` | The same as `event <seconds> "impact"`; at most one. |
+| `event <seconds> "<name>"` | `` | An og.VfxEvent with this name at this time. |
+| `param <name> <default>` | `` | A number the game sets per instance (og.Vfx.params, in the order declared; at most 4): elements read it with `when` and `amount`. |
+| `emitter "<id>" { ... }` | `` | An emitter asset (§1) playing its own cycle; `until` stops its emission and its particles live out. |
+| `mesh sphere \| quad \| ring \| box \| cylinder \| "<model id>" { ... }` | `` | A mesh drawn with an effect material (§2); a ring builds its own shape at load. |
+| `trail { ... }` | `` | A trail behind the element's point. |
+| `beam { ... }` | `` | A beam from the element's point to `to`. |
+| `light { ... }` | `` | A point light. |
+| `decal { ... }` | `` | A decal projected down the element's -y, from og.RenderSettings.decalAtlas. |
+| `glow { ... }` | `` | A soft bright glow facing the eye (version 1 named it `flash`). |
+| `shake { ... }` | `` | og.camera.shake, at once. |
+| `sound "<id>" { ... }` | `` | A sound asset, played at once by a child entity with og.AudioSource, cut when the effect despawns. |
+| `flipbook "<id>" { ... }` | `` | A camera-facing og.Sprite with og.Flipbook playing a sheet's first clip once (a `type vfx2d` pixel effect or any og.load.flipbook sheet); its og.FlipbookEvent events, the impact among them, reach the game as this effect's og.VfxEvent. |
+
+<a id="file-vfx2d"></a>
+### `file:vfx2d`
+
+An authored `vfx2d` asset, cooked by `flipbook`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-video"></a>
+### `file:video`
+
+An authored `video` asset, cooked by `video`. Input: `.ogt` under assets/.
+
+Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="guide-file-types-2"></a>
+### `file-types §2` Other engineering sources
+
+<a id="file-project"></a>
+### `file:project`
+
+project.ogt: project configuration, not an asset. See start and conventions.
+
+<a id="file-import"></a>
+### `file:import`
+
+A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.
+
+<a id="file-model-program"></a>
+### `file:model-program`
+
+.shape.json: model program operations; consumed by model. See model.
+
+<a id="file-theme"></a>
+### `file:theme`
+
+theme.json: compiles to pack.json and UI art. See themes and theme-tokens.
+
+<a id="file-pack"></a>
+### `file:pack`
+
+pack.json: UI style pack. See themes.
+
+<a id="file-font-extension"></a>
+### `file:font-extension`
+
+extension.json of kind font, with TTF/OTF sources. See localization.
+
+<a id="file-tsx"></a>
+### `file:tsx`
+
+TSX is the UI source; TS/TSX bundling is not a cook generator. See ui-tsx.
+
+<a id="file-animgraph"></a>
+### `file:animgraph`
+
+Runtime anim.graph text only: not currently a registered cook type. See animation.
+
+<a id="file-probe-record"></a>
+### `file:probe-record`
+
+cooked/probes/<key>.ogt: derived bake record, not an authored input. See render.
+
+Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.

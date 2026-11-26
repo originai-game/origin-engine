@@ -1,0 +1,24 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.procgen.heightmap",
+      "change": "HeightmapDesc accepts metre-valued heights up to 4097 samples per side. Cook and runtime reject invalid stage parameters instead of the runtime silently clamping them; terraceSharpness is replaced by terraceBlend (default 0.4), matching terrain.generate.terraces.blend.",
+      "fix": "Pass heights with columns/rows to process a designed field, use terraceBlend for terrace smoothing, and supply parameters in the documented terrain generator ranges."
+    }
+  ],
+  "added": [
+    {
+      "member": "terrain.generate",
+      "summary": "Processes an existing PNG/EXR heightmap or a deterministic TS heightfield through the same erosion, thermal, terraces, shore, automatic rivers and biome stages as runtime. Authored metre heights are not implicitly normalised or clipped."
+    },
+    {
+      "member": "og script",
+      "summary": "Runs cook's synchronous deterministic TS generator with tracked relative imports, parameters, seed and explicit byte inputs, reusing the cook action cache; also exposed as MCP script. No ambient I/O, clock, process or network."
+    },
+    {
+      "member": "og api",
+      "summary": "Adds the file namespace to list/find/show and MCP: every registered type is discoverable with an explicit field-coverage status; terrain's nested parser tables are generated and drift-checked. The generating guide's multi-file OGT/TS recipe runs through real cook and headless execution."
+    }
+  ]
+}

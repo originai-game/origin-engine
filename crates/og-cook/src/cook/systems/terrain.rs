@@ -53,15 +53,20 @@
 //! ```
 //!
 //! Or the terrain makes its field instead of reading one: a `generate`
-//! block in place of `heightmap` (refused beside it), whose samples are a
+//! block in place of `heightmap`, whose noise samples are a
 //! heightmap's (`height` and `size` keep their meaning: the field is
 //! normalised so its lowest sample stands at `height`'s low and its
 //! highest at its high, before erosion, rivers and the shore, and no
-//! sample leaves that range), built by
+//! noise sample leaves that range), built by
 //! `terrain_generate` with only IEEE-exact arithmetic, so every host makes
 //! the same field. With `biome` rules it writes the control map (refused
 //! beside `control`); without them there is none, and the layers' own
-//! slope and altitude rules place them. Every line, with its default:
+//! slope and altitude rules place them. A heightmap may also feed generate's
+//! processing; generate.script instead supplies a metre-valued heightfield.
+//! These authored fields skip noise/mask, are not normalised or clipped,
+//! and define their own dimensions. See the generated file reference for
+//! all fields and the generating guide for a multi-file TS/cook recipe.
+//! Noise generation, with its defaults:
 //!
 //! ```text
 //! generate {
@@ -292,6 +297,21 @@ pub(crate) fn terrain_dependencies(
         })
         .collect();
     if let Ok(doc) = Document::parse(&text) {
+        if let Some(g) = doc.body.get("generate").and_then(|e| e.block.as_ref()) {
+            let seed = g
+                .get("seed")
+                .and_then(|e| e.values.first())
+                .and_then(|v| v.as_number())
+                .map_or(1, |v| v.as_f64() as u32);
+            match super::super::generator::Spec::parse(g, seed).and_then(|spec| {
+                spec.map(|spec| super::super::generator::Program::prepare(&root, &s.rel, &spec))
+                    .transpose()
+            }) {
+                Ok(Some(program)) => out.push(format!("generator={}", program.key)),
+                Ok(None) => {}
+                Err(e) => out.push(format!("generator error={e}")),
+            }
+        }
         for k in ["layers", "layerNormals"] {
             if let Some(t) = string_of(&doc.body, k) {
                 let t = resolve(&s.rel, &root, &t);
@@ -370,6 +390,7 @@ pub(crate) struct TerrainDoc {
     /// The heightmap (an asset path), or none: `generate` makes the field.
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
+    pub script: Option<super::super::generator::Program>,
     /// The control maps (asset paths), one per four layers.
     pub control: Vec<String>,
     /// The hole map (an asset path).
@@ -388,68 +409,44 @@ pub(crate) struct TerrainDoc {
     pub normal_array: Option<String>,
 }
 
-const KEYS: [&str; 14] = [
-    "heightmap",
-    "generate",
-    "height",
-    "size",
-    "control",
-    "holes",
-    "tile",
-    "heightBlend",
-    "castShadows",
-    "collision",
-    "lod",
-    "layer",
-    "layers",
-    "layerNormals",
-];
-const LAYER_KEYS: [&str; 19] = [
-    "albedo",
-    "normal",
-    "albedoLayer",
-    "normalLayer",
-    "color",
-    "roughness",
-    "tile",
-    "triplanar",
-    "normalStrength",
-    "slope",
-    "slopeFade",
-    "altitude",
-    "altitudeFade",
-    "projectSlope",
-    "antiTiling",
-    "heightContrast",
-    "macroVariation",
-    "displacement",
-    "cellVariation",
-];
-
 pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     let body = &doc.body;
-    for e in &body.entries {
-        if !KEYS.contains(&e.key.as_str()) {
-            return Err(format!(
-                "line {}: '{}' is not a terrain entry: {}",
-                e.line,
-                e.key,
-                KEYS.join(", ")
-            ));
+    super::terrain_schema::check(body, super::terrain_schema::BODY, "terrain")?;
+    let heightmap = string_of(body, "heightmap");
+    let generate = body
+        .get("generate")
+        .map(super::terrain_generate::parse)
+        .transpose()?;
+    let mut script = None;
+    if let Some(g) = body.get("generate").and_then(|e| e.block.as_ref()) {
+        let spec = super::super::generator::Spec::parse(
+            g,
+            generate.as_ref().expect("parsed generate").seed,
+        )?;
+        if spec.is_some() && heightmap.is_some() {
+            return Err("a terrain has one input: heightmap or generate.script, not both".into());
+        }
+        if spec.is_none() && (g.get("params").is_some() || g.get("input").is_some()) {
+            return Err("generate.params/input require generate.script".into());
+        }
+        if spec.is_some() || heightmap.is_some() {
+            for key in ["samples", "noise", "mask"] {
+                if let Some(e) = g.get(key) {
+                    return Err(format!(
+                        "line {}: {key} describes a noise source; an authored field supplies its own samples and shape",
+                        e.line
+                    ));
+                }
+            }
+        }
+        if let Some(spec) = spec {
+            if body.get("height").is_some() {
+                return Err("height maps image intensities or noise; a TS heightfield already supplies metres".into());
+            }
+            script = Some(super::super::generator::Program::prepare(root, rel, &spec)?);
         }
     }
-    let heightmap = string_of(body, "heightmap");
-    let generate = match (body.get("generate"), body.get("heightmap")) {
-        (Some(g), Some(h)) => {
-            return Err(format!(
-                "line {}: a terrain makes its field (generate) or reads it (heightmap, line {}), not both",
-                g.line, h.line
-            ));
-        }
-        (Some(g), None) => Some(super::terrain_generate::parse(g)?),
-        (None, _) => None,
-    };
     if heightmap.is_none() && generate.is_none() {
         return Err("a terrain names its heightmap: heightmap \"<file>.png\" (16-bit grey) or .exr, or makes it: generate { ... }".into());
     }
@@ -470,7 +467,17 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             "'tile' is a whole number of quads from 16 to 1024, got {tile}"
         ));
     }
-    let lod = body.get("lod").and_then(|e| e.block.as_ref());
+    let lod = body
+        .get("lod")
+        .map(|e| {
+            let b = e
+                .block
+                .as_ref()
+                .ok_or_else(|| format!("line {}: lod is a block", e.line))?;
+            super::terrain_schema::check(b, super::terrain_schema::LOD, "lod")?;
+            Ok::<_, String>(b)
+        })
+        .transpose()?;
     let (lod_spacing, lod_ring) = match lod {
         Some(b) => (
             number(b, "spacing", 0.0)?.max(0.0),
@@ -501,16 +508,7 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
                 e.line
             ));
         };
-        for k in &b.entries {
-            if !LAYER_KEYS.contains(&k.key.as_str()) {
-                return Err(format!(
-                    "line {}: '{}' is not a layer entry: {}",
-                    k.line,
-                    k.key,
-                    LAYER_KEYS.join(", ")
-                ));
-            }
-        }
+        super::terrain_schema::check(b, super::terrain_schema::LAYER, "layer")?;
         let d = og_render_data::TerrainLayer::default();
         let color = match numbers(b, "color") {
             None => [1.0, 1.0, 1.0],
@@ -620,6 +618,7 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
     Ok(TerrainDoc {
         heightmap: heightmap.map(|h| resolve(rel, root, &h)),
         generate,
+        script,
         control,
         holes: string_of(body, "holes").map(|c| resolve(rel, root, &c)),
         height,
@@ -712,9 +711,47 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
         doc.size
             .unwrap_or([(columns - 1) as f32, (rows - 1) as f32])
     };
-    if let Some(g) = &doc.generate {
+    let base = if let Some(program) = &doc.script {
+        let field: super::super::generator::Heightfield = serde_json::from_value(program.run()?)
+            .map_err(|e| format!("generator heightfield: {e}"))?;
+        field.validate()?;
+        Some(Heightmap {
+            columns: field.columns,
+            rows: field.rows,
+            values: field.heights,
+            exr: true,
+        })
+    } else if let Some(name) = &doc.heightmap {
+        let mut map = decode_heightmap(name, &read(name, "heightmap")?)?;
+        let [lo, hi] = doc.height;
+        for h in &mut map.values {
+            *h = lo + *h * (hi - lo);
+        }
+        Some(map)
+    } else {
+        None
+    };
+    if let Some(mut g) = doc.generate.clone() {
+        if let Some(base) = &base {
+            g.columns = base.columns;
+            g.rows = base.rows;
+        }
         let size = size_of(g.columns, g.rows);
-        let made = super::terrain_generate::generate(g, size, doc.height);
+        let made = match base {
+            Some(map) => {
+                let field = super::super::generator::Heightfield {
+                    columns: map.columns,
+                    rows: map.rows,
+                    heights: map.values,
+                };
+                field.validate()?;
+                super::terrain_generate::process(&g, size, None, field.heights)
+            }
+            None => super::terrain_generate::generate(&g, size, doc.height),
+        };
+        if made.heights.iter().any(|h| !h.is_finite()) {
+            return Err("terrain processing produced non-finite heights; reduce the input magnitude or stage parameters".into());
+        }
         // The biomes' pages, then empty ones up to the layers'.
         let control = match made.control {
             Some(mut rgba) => {
@@ -740,16 +777,11 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             generated: Some((g.sea, made.river_length)),
         });
     }
-    let name = doc
-        .heightmap
-        .as_deref()
-        .expect("parse: a heightmap or generate");
-    let map = decode_heightmap(name, &read(name, "heightmap")?)?;
-    let [lo, hi] = doc.height;
+    let map = base.expect("parse: a heightmap or generate");
     Ok(Field {
         columns: map.columns,
         rows: map.rows,
-        heights: map.values.iter().map(|v| lo + v * (hi - lo)).collect(),
+        heights: map.values,
         control: control()?,
         holes: holes(map.columns, map.rows)?,
         size: size_of(map.columns, map.rows),
@@ -777,7 +809,7 @@ pub(crate) fn cook_terrain(
     // `height`: its tiles keep those steps, so terrains declared over one
     // range with equal edge samples meet exactly. An EXR's or a generated
     // field's heights are not steps of anything: they take the field's own.
-    let declared = (doc.heightmap.is_some() && !source.exr).then(|| {
+    let declared = (doc.heightmap.is_some() && doc.generate.is_none() && !source.exr).then(|| {
         (
             doc.height[0].min(doc.height[1]),
             doc.height[0].max(doc.height[1]),

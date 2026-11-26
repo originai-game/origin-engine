@@ -479,7 +479,12 @@ fn list_value(ix: &SearchIndex, kind: Option<&str>) -> serde_json::Value {
     } else {
         Vec::new()
     };
-    serde_json::json!({ "modules": modules, "guides": guides })
+    let files: Vec<_> = ix.docs.iter()
+        .filter(|d| d.kind == "file" && !d.name.trim_start_matches("file:").contains('.'))
+        .filter(|_| kind.is_none() || kind == Some("file"))
+        .map(|d| serde_json::json!({"name": d.name, "page": format!("{}.md", d.page), "summary": d.summary}))
+        .collect();
+    serde_json::json!({ "modules": modules, "guides": guides, "files": files })
 }
 
 /// The wiki directory: `OG_WIKI_DIR`, the engine package's `knowledge/wiki`,
@@ -550,8 +555,8 @@ pub fn index(dir: &Path) -> std::io::Result<SearchIndex> {
 }
 
 /// The entry kinds `og api find --kind` takes.
-pub const KINDS: [&str; 9] = [
-    "module", "fn", "record", "type", "member", "const", "value", "column", "guide",
+pub const KINDS: [&str; 10] = [
+    "module", "fn", "record", "type", "member", "const", "value", "column", "guide", "file",
 ];
 
 /// `og api find <words> [--kind K] [--limit N] [--json]`,
@@ -576,14 +581,14 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
         match *a {
             "--kind" => match it.next() {
                 Some(k)
-                    if (cmd == "list" && matches!(*k, "module" | "guide"))
+                    if (cmd == "list" && matches!(*k, "module" | "guide" | "file"))
                         || (cmd != "list" && KINDS.contains(k)) =>
                 {
                     kind = Some(*k);
                 }
                 _ => {
                     if cmd == "list" {
-                        eprintln!("og api list: --kind is module or guide");
+                        eprintln!("og api list: --kind is module, guide or file");
                     } else {
                         eprintln!("og api {cmd}: --kind is one of {}", KINDS.join(", "));
                     }
@@ -646,6 +651,16 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
                     g["name"].as_str().unwrap_or(""),
                     g["sections"].as_u64().unwrap_or(0),
                     g["summary"].as_str().unwrap_or("")
+                );
+            }
+        }
+        if let Some(files) = val["files"].as_array().filter(|f| !f.is_empty()) {
+            println!("File types ({}):", files.len());
+            for file in files {
+                println!(
+                    "  {} — {}",
+                    file["name"].as_str().unwrap_or(""),
+                    file["summary"].as_str().unwrap_or("")
                 );
             }
         }

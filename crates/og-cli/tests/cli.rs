@@ -45,6 +45,7 @@ mod cli {
     use super::*;
 
     mod create;
+    mod generating;
     mod maintenance;
     mod model;
     mod probe;

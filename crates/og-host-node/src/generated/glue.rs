@@ -880,7 +880,7 @@ pub fn og_procgen_wfc(env: Env, desc: Option<String>) -> crate::NodeBytes {
 }
 
 #[napi(js_name = "og_procgen_heightmap")]
-pub fn og_procgen_heightmap(env: Env, desc: Option<String>) -> crate::NodeBytes {
+pub fn og_procgen_heightmap(env: Env, desc: Option<crate::NodeBytes>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_heightmap(&Host, desc)
 }

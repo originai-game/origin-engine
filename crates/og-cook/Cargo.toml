@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:og-audio", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
+cook = ["og-render-data/bake", "dep:og-audio", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake", "dep:oxc_codegen", "dep:oxc_semantic", "dep:oxc_transformer", "dep:rquickjs"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -110,6 +110,11 @@ oxc_ast = { version = "=0.157.0", optional = true }
 oxc_ast_visit = { version = "=0.157.0", optional = true }
 oxc_parser = { version = "=0.157.0", optional = true }
 oxc_span = { version = "=0.157.0", optional = true }
+oxc_codegen = { version = "=0.157.0", optional = true }
+oxc_semantic = { version = "=0.157.0", optional = true }
+oxc_transformer = { version = "=0.157.0", optional = true }
+# An isolated ECMAScript realm, with no OS or network bindings, for cook generators.
+rquickjs = { version = "=0.14.0", features = ["loader"], optional = true }
 nalgebra = { version = "0.34.1", optional = true }
 # The cook compiles material shaders for every back end (WGSL in; SPIR-V
 # and MSL out), as wgpu would at load.

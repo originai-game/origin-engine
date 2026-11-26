@@ -13,8 +13,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `threshold` | `number` | `400` | ≥ 1 | — | — | Upstream sample count required before carving a channel. |
-| `depth` | `number` | `2` | ≥ 0 | `m` | — | Maximum carved channel depth. |
-| `width` | `number` | `6` | ≥ 0.1 | `m` | — | Half-width of carved river channels. |
+| `depth` | `number` | `2` | 0 … 1000000 | `m` | — | Maximum carved channel depth. |
+| `width` | `number` | `6` | 0 … 1000000 | `m` | — | Half-width of carved river channels. |
 
 ```ogt
 struct RiverCarveDesc {
@@ -27,11 +27,13 @@ struct RiverCarveDesc {
   field depth f32 "Maximum carved channel depth." {
     default 2
     min 0
+    max 1000000
     unit m
   }
   field width f32 "Half-width of carved river channels." {
     default 6
-    min 0.1
+    min 0
+    max 1000000
     unit m
   }
 }

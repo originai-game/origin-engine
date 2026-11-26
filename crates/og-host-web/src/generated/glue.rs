@@ -734,7 +734,7 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_heightmap(desc: Option<String>) -> Vec<u8> {
+pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_heightmap(&Host, desc)
 }
 

@@ -11,8 +11,8 @@ mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
     cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, materials, mcp, migrate,
-    model, prefab, probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui,
-    upgrade, vfx_import, vfx_preview, video, world_server,
+    model, prefab, probe, render, replay, run, script, serve_relay, session, sfx, sprite, style,
+    test, ui, upgrade, vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -53,6 +53,8 @@ commands:
                       --genre interactive-film adds a flow (og api show flow);
                       the start guide §1
   new [dir] [options]  alias for og create
+  script <file.ts> [--root DIR] [--params JSON] [--seed N] [--input name=path] [--out FILE] [--json]
+                      execute a deterministic cook generator; no network, arbitrary files, processes or clock
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>]
@@ -339,7 +341,7 @@ commands:
                       move project.ogt's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
-  api find <words> [--kind module|fn|record|type|member|const|value|column|guide] [--limit N] [--json]
+  api find <words> [--kind module|fn|record|type|member|const|value|column|guide|file] [--limit N] [--json]
                       the API reference and guide entries for the words (a name, a purpose, a
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
@@ -349,7 +351,7 @@ commands:
                       a module shows its overview and its core members, --all every member; --guide shows
                       the guide named like a module (physics, input, camera, audio, render); large guides
                       print a section table unless --all is passed
-  api list [--kind module|guide] [--json]
+  api list [--kind module|guide|file] [--json]
                       list every API module and guide with one-line summaries and section counts
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
@@ -489,6 +491,7 @@ fn main() -> ExitCode {
         ["test", rest @ ..] => test::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
+        ["script", rest @ ..] => script::run(rest),
         ["export", rest @ ..] => export::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
         ["fmt", rest @ ..] => fmt::run(rest),

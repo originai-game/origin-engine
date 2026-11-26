@@ -20450,7 +20450,7 @@
           "description": "Number of simulated rain drops.",
           "default": 40000,
           "minimum": 0,
-          "maximum": 2000000
+          "maximum": 10000000
         },
         "lifetime": {
           "type": "integer",
@@ -20459,7 +20459,7 @@
           "description": "Maximum simulation steps per drop.",
           "default": 30,
           "minimum": 1,
-          "maximum": 256
+          "maximum": 1000
         },
         "radius": {
           "type": "integer",
@@ -20468,49 +20468,49 @@
           "description": "Erosion brush radius in height samples.",
           "default": 3,
           "minimum": 1,
-          "maximum": 12
+          "maximum": 16
         },
         "inertia": {
           "type": "number",
           "description": "Directional momentum retained per step.",
           "default": 0.05,
           "minimum": 0,
-          "maximum": 0.99
+          "maximum": 1
         },
         "capacity": {
           "type": "number",
           "description": "Sediment carrying capacity factor.",
           "default": 4,
-          "minimum": 0.01,
-          "maximum": 64
+          "minimum": 0,
+          "maximum": 1000
         },
         "deposition": {
           "type": "number",
           "description": "Excess sediment deposition speed.",
           "default": 0.3,
-          "minimum": 0.01,
+          "minimum": 0,
           "maximum": 1
         },
         "erosion": {
           "type": "number",
           "description": "Terrain erosion speed.",
           "default": 0.3,
-          "minimum": 0.01,
+          "minimum": 0,
           "maximum": 1
         },
         "evaporation": {
           "type": "number",
           "description": "Water evaporation fraction per step.",
           "default": 0.01,
-          "minimum": 0.001,
-          "maximum": 0.5
+          "minimum": 0,
+          "maximum": 1
         },
         "gravity": {
           "type": "number",
           "description": "Downslope acceleration factor.",
           "default": 4,
-          "minimum": 0.1,
-          "maximum": 32
+          "minimum": 0,
+          "maximum": 1000
         }
       },
       "additionalProperties": false
@@ -20525,8 +20525,8 @@
           "type": "number",
           "description": "Angle of repose above which rock/soil slumps.",
           "default": 35,
-          "minimum": 5,
-          "maximum": 85,
+          "minimum": 0,
+          "maximum": 89,
           "x-og-unit": "deg"
         },
         "iterations": {
@@ -20536,13 +20536,13 @@
           "description": "Relaxation passes.",
           "default": 20,
           "minimum": 0,
-          "maximum": 500
+          "maximum": 10000
         },
         "rate": {
           "type": "number",
           "description": "Fraction of excess height moved per pass.",
           "default": 0.5,
-          "minimum": 0.01,
+          "minimum": 0,
           "maximum": 1
         }
       },
@@ -20567,13 +20567,15 @@
           "description": "Maximum carved channel depth.",
           "default": 2,
           "minimum": 0,
+          "maximum": 1000000,
           "x-og-unit": "m"
         },
         "width": {
           "type": "number",
           "description": "Half-width of carved river channels.",
           "default": 6,
-          "minimum": 0.1,
+          "minimum": 0,
+          "maximum": 1000000,
           "x-og-unit": "m"
         }
       },
@@ -20589,25 +20591,29 @@
           "type": "number",
           "description": "Weight of drainage flow accumulation.",
           "default": 1,
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 1000000
         },
         "scale": {
           "type": "number",
           "description": "Flow count at which moisture reaches saturation.",
           "default": 64,
-          "minimum": 1
+          "minimum": 0.001,
+          "maximum": 1000000000
         },
         "noise": {
           "type": "number",
           "description": "Weight of procedural moisture noise.",
           "default": 0.5,
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 1000000
         },
         "frequency": {
           "type": "number",
           "description": "Moisture noise frequency across the terrain.",
           "default": 6,
-          "minimum": 0.01
+          "minimum": 0.001,
+          "maximum": 10000
         }
       },
       "additionalProperties": false
@@ -20630,7 +20636,8 @@
           "type": "number",
           "description": "Relative rule weight.",
           "default": 1,
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 1
         },
         "altitudeMin": {
           "type": "number",
@@ -20649,6 +20656,7 @@
           "description": "Fade band outside altitude range.",
           "default": 2,
           "minimum": 0,
+          "maximum": 1000000,
           "x-og-unit": "m"
         },
         "slopeMin": {
@@ -20721,7 +20729,7 @@
           "description": "Samples along x.",
           "default": 257,
           "minimum": 2,
-          "maximum": 2049
+          "maximum": 4097
         },
         "rows": {
           "type": "integer",
@@ -20730,7 +20738,22 @@
           "description": "Samples along z.",
           "default": 257,
           "minimum": 2,
-          "maximum": 2049
+          "maximum": 4097
+        },
+        "heights": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero.",
+          "default": null
         },
         "minHeight": {
           "type": "number",
@@ -20764,13 +20787,15 @@
           "type": "number",
           "description": "Base noise periods across the terrain.",
           "default": 3,
-          "minimum": 0.01
+          "minimum": 0.001,
+          "maximum": 10000
         },
         "lacunarity": {
           "type": "number",
           "description": "Frequency multiplier per octave.",
           "default": 2,
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 8
         },
         "gain": {
           "type": "number",
@@ -20783,7 +20808,8 @@
           "type": "number",
           "description": "Domain warp strength (0: none).",
           "default": 0,
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 100
         },
         "mask": {
           "$ref": "#/$defs/HeightmapMask",
@@ -20826,12 +20852,13 @@
           "description": "Terrace step height in metres (0: disabled).",
           "default": 0,
           "minimum": 0,
+          "maximum": 1000000,
           "x-og-unit": "m"
         },
-        "terraceSharpness": {
+        "terraceBlend": {
           "type": "number",
-          "description": "Terrace edge sharpness (0 to 1).",
-          "default": 0.6,
+          "description": "Smooth fraction of a terrace step, matching terrain.generate.terraces.blend.",
+          "default": 0.4,
           "minimum": 0,
           "maximum": 1
         },
@@ -20853,6 +20880,7 @@
           "description": "Shore flattening margin above sea level.",
           "default": 2,
           "minimum": 0,
+          "maximum": 1000000,
           "x-og-unit": "m"
         },
         "rivers": {

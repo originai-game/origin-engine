@@ -3343,63 +3343,63 @@ export interface HydraulicErosionDesc {
    * Number of simulated rain drops.
    *
    * @default 40000
-   * @range 0..2000000
+   * @range 0..10000000
    */
   readonly drops?: number;
   /**
    * Maximum simulation steps per drop.
    *
    * @default 30
-   * @range 1..256
+   * @range 1..1000
    */
   readonly lifetime?: number;
   /**
    * Erosion brush radius in height samples.
    *
    * @default 3
-   * @range 1..12
+   * @range 1..16
    */
   readonly radius?: number;
   /**
    * Directional momentum retained per step.
    *
    * @default 0.05
-   * @range 0..0.99
+   * @range 0..1
    */
   readonly inertia?: number;
   /**
    * Sediment carrying capacity factor.
    *
    * @default 4
-   * @range 0.01..64
+   * @range 0..1000
    */
   readonly capacity?: number;
   /**
    * Excess sediment deposition speed.
    *
    * @default 0.3
-   * @range 0.01..1
+   * @range 0..1
    */
   readonly deposition?: number;
   /**
    * Terrain erosion speed.
    *
    * @default 0.3
-   * @range 0.01..1
+   * @range 0..1
    */
   readonly erosion?: number;
   /**
    * Water evaporation fraction per step.
    *
    * @default 0.01
-   * @range 0.001..0.5
+   * @range 0..1
    */
   readonly evaporation?: number;
   /**
    * Downslope acceleration factor.
    *
    * @default 4
-   * @range 0.1..32
+   * @range 0..1000
    */
   readonly gravity?: number;
 }
@@ -3414,7 +3414,7 @@ export interface ThermalErosionDesc {
    * Angle of repose above which rock/soil slumps.
    *
    * @default 35
-   * @range 5..85
+   * @range 0..89
    * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
    */
   readonly talus?: number;
@@ -3422,14 +3422,14 @@ export interface ThermalErosionDesc {
    * Relaxation passes.
    *
    * @default 20
-   * @range 0..500
+   * @range 0..10000
    */
   readonly iterations?: number;
   /**
    * Fraction of excess height moved per pass.
    *
    * @default 0.5
-   * @range 0.01..1
+   * @range 0..1
    */
   readonly rate?: number;
 }
@@ -3451,7 +3451,7 @@ export interface RiverCarveDesc {
    * Maximum carved channel depth.
    *
    * @default 2
-   * @range 0..
+   * @range 0..1000000
    * @unit m (metres)
    */
   readonly depth?: number;
@@ -3459,7 +3459,7 @@ export interface RiverCarveDesc {
    * Half-width of carved river channels.
    *
    * @default 6
-   * @range 0.1..
+   * @range 0..1000000
    * @unit m (metres)
    */
   readonly width?: number;
@@ -3475,28 +3475,28 @@ export interface MoistureDesc {
    * Weight of drainage flow accumulation.
    *
    * @default 1
-   * @range 0..
+   * @range 0..1000000
    */
   readonly flow?: number;
   /**
    * Flow count at which moisture reaches saturation.
    *
    * @default 64
-   * @range 1..
+   * @range 0.001..1000000000
    */
   readonly scale?: number;
   /**
    * Weight of procedural moisture noise.
    *
    * @default 0.5
-   * @range 0..
+   * @range 0..1000000
    */
   readonly noise?: number;
   /**
    * Moisture noise frequency across the terrain.
    *
    * @default 6
-   * @range 0.01..
+   * @range 0.001..10000
    */
   readonly frequency?: number;
 }
@@ -3518,7 +3518,7 @@ export interface BiomeRuleDesc {
    * Relative rule weight.
    *
    * @default 1
-   * @range 0..
+   * @range 0..1
    */
   readonly weight?: number;
   /**
@@ -3539,7 +3539,7 @@ export interface BiomeRuleDesc {
    * Fade band outside altitude range.
    *
    * @default 2
-   * @range 0..
+   * @range 0..1000000
    * @unit m (metres)
    */
   readonly altitudeFade?: number;
@@ -3607,16 +3607,22 @@ export interface HeightmapDesc {
    * Samples along x.
    *
    * @default 257
-   * @range 2..2049
+   * @range 2..4097
    */
   readonly columns?: number;
   /**
    * Samples along z.
    *
    * @default 257
-   * @range 2..2049
+   * @range 2..4097
    */
   readonly rows?: number;
+  /**
+   * Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero.
+   *
+   * @default null
+   */
+  readonly heights?: Float32Array | null;
   /**
    * Lowest base height before erosion.
    *
@@ -3648,14 +3654,14 @@ export interface HeightmapDesc {
    * Base noise periods across the terrain.
    *
    * @default 3
-   * @range 0.01..
+   * @range 0.001..10000
    */
   readonly frequency?: number;
   /**
    * Frequency multiplier per octave.
    *
    * @default 2
-   * @range 1..
+   * @range 1..8
    */
   readonly lacunarity?: number;
   /**
@@ -3669,7 +3675,7 @@ export interface HeightmapDesc {
    * Domain warp strength (0: none).
    *
    * @default 0
-   * @range 0..
+   * @range 0..100
    */
   readonly warp?: number;
   /**
@@ -3701,17 +3707,17 @@ export interface HeightmapDesc {
    * Terrace step height in metres (0: disabled).
    *
    * @default 0
-   * @range 0..
+   * @range 0..1000000
    * @unit m (metres)
    */
   readonly terraceStep?: number;
   /**
-   * Terrace edge sharpness (0 to 1).
+   * Smooth fraction of a terrace step, matching terrain.generate.terraces.blend.
    *
-   * @default 0.6
+   * @default 0.4
    * @range 0..1
    */
-  readonly terraceSharpness?: number;
+  readonly terraceBlend?: number;
   /**
    * Optional sea level height for coastal shore flattening and river outlets.
    *
@@ -3723,7 +3729,7 @@ export interface HeightmapDesc {
    * Shore flattening margin above sea level.
    *
    * @default 2
-   * @range 0..
+   * @range 0..1000000
    * @unit m (metres)
    */
   readonly shore?: number;

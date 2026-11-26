@@ -13,10 +13,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `layer` | `number` | `0` | ≤ 15 | — | — | Target terrain layer index (0 to 15). |
-| `weight` | `number` | `1` | ≥ 0 | — | — | Relative rule weight. |
+| `weight` | `number` | `1` | 0 … 1 | — | — | Relative rule weight. |
 | `altitudeMin` | `number` | `-1000000` | — | `m` | — | Minimum altitude. |
 | `altitudeMax` | `number` | `1000000` | — | `m` | — | Maximum altitude. |
-| `altitudeFade` | `number` | `2` | ≥ 0 | `m` | — | Fade band outside altitude range. |
+| `altitudeFade` | `number` | `2` | 0 … 1000000 | `m` | — | Fade band outside altitude range. |
 | `slopeMin` | `number` | `0` | 0 … 90 | `deg` | — | Minimum slope. |
 | `slopeMax` | `number` | `90` | 0 … 90 | `deg` | — | Maximum slope. |
 | `slopeFade` | `number` | `4` | 0 … 90 | `deg` | — | Fade band outside slope range. |
@@ -34,6 +34,7 @@ struct BiomeRuleDesc {
   field weight f32 "Relative rule weight." {
     default 1
     min 0
+    max 1
   }
   field altitudeMin f32 "Minimum altitude." {
     default -1000000
@@ -46,6 +47,7 @@ struct BiomeRuleDesc {
   field altitudeFade f32 "Fade band outside altitude range." {
     default 2
     min 0
+    max 1000000
     unit m
   }
   field slopeMin f32 "Minimum slope." {
@@ -82,4 +84,4 @@ struct BiomeRuleDesc {
 }
 ```
 
-<sub>Module `procgen` line 407</sub>
+<sub>Module `procgen` line 413</sub>

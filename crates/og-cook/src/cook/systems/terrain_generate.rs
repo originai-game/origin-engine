@@ -2,44 +2,22 @@
 //! heightfield, erosion, river and biome generation to
 //! [`og_render_data::terrain::generate`].
 
+use super::terrain_schema::{
+    BIOME as BIOME_KEYS, EROSION as EROSION_KEYS, GENERATE as KEYS, MOISTURE as MOISTURE_KEYS,
+    NOISE as NOISE_KEYS, RIVERS as RIVER_KEYS, TERRACES as TERRACE_KEYS, THERMAL as THERMAL_KEYS,
+    check as check_keys,
+};
 use og_core::ogt::{Block, Entry};
 pub use og_render_data::terrain::generate::{
-    Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate,
+    Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
 };
 
-const KEYS: [&str; 12] = [
-    "samples", "seed", "noise", "mask", "erosion", "thermal", "terraces", "sea", "shore", "rivers",
-    "moisture", "biome",
-];
-const NOISE_KEYS: [&str; 5] = ["octaves", "frequency", "lacunarity", "gain", "warp"];
-const EROSION_KEYS: [&str; 9] = [
-    "drops",
-    "lifetime",
-    "radius",
-    "inertia",
-    "capacity",
-    "deposition",
-    "erosion",
-    "evaporation",
-    "gravity",
-];
-const THERMAL_KEYS: [&str; 3] = ["talus", "iterations", "rate"];
-const TERRACE_KEYS: [&str; 2] = ["step", "blend"];
-const RIVER_KEYS: [&str; 3] = ["threshold", "depth", "width"];
-const MOISTURE_KEYS: [&str; 4] = ["flow", "scale", "noise", "frequency"];
-const BIOME_KEYS: [&str; 8] = [
-    "layer",
-    "weight",
-    "altitude",
-    "altitudeFade",
-    "slope",
-    "slopeFade",
-    "moisture",
-    "moistureFade",
-];
-
 /// The block of `key` inside `b`, its keys checked against `keys`.
-fn sub<'a>(b: &'a Block, key: &str, keys: &[&str]) -> Result<Option<&'a Block>, String> {
+fn sub<'a>(
+    b: &'a Block,
+    key: &str,
+    keys: &[crate::grammar::Line],
+) -> Result<Option<&'a Block>, String> {
     let Some(e) = b.get(key) else {
         return Ok(None);
     };
@@ -51,20 +29,6 @@ fn sub<'a>(b: &'a Block, key: &str, keys: &[&str]) -> Result<Option<&'a Block>, 
     };
     check_keys(inner, keys, key)?;
     Ok(Some(inner))
-}
-
-fn check_keys(b: &Block, keys: &[&str], what: &str) -> Result<(), String> {
-    for e in &b.entries {
-        if !keys.contains(&e.key.as_str()) {
-            return Err(format!(
-                "line {}: '{}' is not a {what} entry: {}",
-                e.line,
-                e.key,
-                keys.join(", ")
-            ));
-        }
-    }
-    Ok(())
 }
 
 /// The numbers of `key` (its line in errors), or `None`.
@@ -148,7 +112,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             entry.line
         ));
     };
-    check_keys(b, &KEYS, "generate")?;
+    check_keys(b, KEYS, "generate")?;
     let (columns, rows) = match values(b, "samples")? {
         None => (257, 257),
         Some((v, line)) => {
@@ -165,7 +129,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
     };
     let seed = whole(b, "seed", 1, 0, u32::MAX)?;
     let empty = Block::default();
-    let noise = sub(b, "noise", &NOISE_KEYS)?.unwrap_or(&empty);
+    let noise = sub(b, "noise", NOISE_KEYS)?.unwrap_or(&empty);
     let mask = match b.get("mask") {
         None => Mask::None,
         Some(e) => {
@@ -205,7 +169,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             }
         }
     };
-    let erosion = match sub(b, "erosion", &EROSION_KEYS)? {
+    let erosion = match sub(b, "erosion", EROSION_KEYS)? {
         None => None,
         Some(e) => Some(Hydraulic {
             drops: whole(e, "drops", 40000, 0, 10_000_000)?,
@@ -219,7 +183,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             gravity: num(e, "gravity", 4.0, 0.0, 1000.0)?,
         }),
     };
-    let thermal = match sub(b, "thermal", &THERMAL_KEYS)? {
+    let thermal = match sub(b, "thermal", THERMAL_KEYS)? {
         None => None,
         Some(t) => Some(Thermal {
             talus: num(t, "talus", 35.0, 0.0, 89.0)?,
@@ -227,7 +191,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             rate: num(t, "rate", 0.5, 0.0, 1.0)?,
         }),
     };
-    let terraces = match sub(b, "terraces", &TERRACE_KEYS)? {
+    let terraces = match sub(b, "terraces", TERRACE_KEYS)? {
         None => None,
         Some(t) => Some([
             num(t, "step", 10.0, 1.0e-3, 1.0e6)?,
@@ -249,7 +213,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             e.line
         ));
     }
-    let rivers = match sub(b, "rivers", &RIVER_KEYS)? {
+    let rivers = match sub(b, "rivers", RIVER_KEYS)? {
         None => None,
         Some(r) => Some(Rivers {
             threshold: whole(r, "threshold", 400, 1, u32::MAX)?,
@@ -257,7 +221,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             width: num(r, "width", 6.0, 0.0, 1.0e6)?,
         }),
     };
-    let m = sub(b, "moisture", &MOISTURE_KEYS)?.unwrap_or(&empty);
+    let m = sub(b, "moisture", MOISTURE_KEYS)?.unwrap_or(&empty);
     let moisture = Moisture {
         flow: num(m, "flow", 1.0, 0.0, 1.0e6)?,
         scale: num(m, "scale", 64.0, 1.0e-3, 1.0e9)?,
@@ -272,7 +236,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
                 e.line
             ));
         };
-        check_keys(r, &BIOME_KEYS, "biome")?;
+        check_keys(r, BIOME_KEYS, "biome")?;
         if r.get("layer").is_none() {
             return Err(format!(
                 "line {}: a biome names the layer it writes: layer <0 to 15>",
@@ -297,7 +261,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             line: e.line,
         });
     }
-    Ok(Generate {
+    let generate = Generate {
         columns,
         rows,
         seed,
@@ -315,5 +279,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
         rivers,
         moisture,
         biomes,
-    })
+    };
+    generate.check()?;
+    Ok(generate)
 }

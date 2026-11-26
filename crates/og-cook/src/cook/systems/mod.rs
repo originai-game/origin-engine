@@ -29,6 +29,7 @@ pub mod strings_extract;
 pub(super) mod table;
 pub(super) mod terrain;
 pub(super) mod terrain_generate;
+pub(super) mod terrain_schema;
 pub mod tilemap;
 pub(super) mod vfx;
 pub mod vfx2d;

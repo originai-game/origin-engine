@@ -299,47 +299,47 @@ module procgen {
     field drops u32 "Number of simulated rain drops." {
       default 40000
       min 0
-      max 2000000
+      max 10000000
     }
     field lifetime u32 "Maximum simulation steps per drop." {
       default 30
       min 1
-      max 256
+      max 1000
     }
     field radius u32 "Erosion brush radius in height samples." {
       default 3
       min 1
-      max 12
+      max 16
     }
     field inertia f32 "Directional momentum retained per step." {
       default 0.05
       min 0
-      max 0.99
+      max 1
     }
     field capacity f32 "Sediment carrying capacity factor." {
       default 4
-      min 0.01
-      max 64
+      min 0
+      max 1000
     }
     field deposition f32 "Excess sediment deposition speed." {
       default 0.3
-      min 0.01
+      min 0
       max 1
     }
     field erosion f32 "Terrain erosion speed." {
       default 0.3
-      min 0.01
+      min 0
       max 1
     }
     field evaporation f32 "Water evaporation fraction per step." {
       default 0.01
-      min 0.001
-      max 0.5
+      min 0
+      max 1
     }
     field gravity f32 "Downslope acceleration factor." {
       default 4
-      min 0.1
-      max 32
+      min 0
+      max 1000
     }
   }
 
@@ -348,18 +348,18 @@ module procgen {
     desc true
     field talus f32 "Angle of repose above which rock/soil slumps." {
       default 35
-      min 5
-      max 85
+      min 0
+      max 89
       unit deg
     }
     field iterations u32 "Relaxation passes." {
       default 20
       min 0
-      max 500
+      max 10000
     }
     field rate f32 "Fraction of excess height moved per pass." {
       default 0.5
-      min 0.01
+      min 0
       max 1
     }
   }
@@ -374,11 +374,13 @@ module procgen {
     field depth f32 "Maximum carved channel depth." {
       default 2
       min 0
+      max 1000000
       unit m
     }
     field width f32 "Half-width of carved river channels." {
       default 6
-      min 0.1
+      min 0
+      max 1000000
       unit m
     }
   }
@@ -389,18 +391,22 @@ module procgen {
     field flow f32 "Weight of drainage flow accumulation." {
       default 1
       min 0
+      max 1000000
     }
     field scale f32 "Flow count at which moisture reaches saturation." {
       default 64
-      min 1
+      min 0.001
+      max 1000000000
     }
     field noise f32 "Weight of procedural moisture noise." {
       default 0.5
       min 0
+      max 1000000
     }
     field frequency f32 "Moisture noise frequency across the terrain." {
       default 6
-      min 0.01
+      min 0.001
+      max 10000
     }
   }
 
@@ -413,6 +419,7 @@ module procgen {
     field weight f32 "Relative rule weight." {
       default 1
       min 0
+      max 1
     }
     field altitudeMin f32 "Minimum altitude." {
       default -1000000
@@ -425,6 +432,7 @@ module procgen {
     field altitudeFade f32 "Fade band outside altitude range." {
       default 2
       min 0
+      max 1000000
       unit m
     }
     field slopeMin f32 "Minimum slope." {
@@ -470,13 +478,14 @@ module procgen {
     field columns u32 "Samples along x." {
       default 257
       min 2
-      max 2049
+      max 4097
     }
     field rows u32 "Samples along z." {
       default 257
       min 2
-      max 2049
+      max 4097
     }
+    field heights Option.Float32Array "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero."
     field minHeight f32 "Lowest base height before erosion." {
       default 0
       unit m
@@ -495,11 +504,13 @@ module procgen {
     }
     field frequency f32 "Base noise periods across the terrain." {
       default 3
-      min 0.01
+      min 0.001
+      max 10000
     }
     field lacunarity f32 "Frequency multiplier per octave." {
       default 2
       min 1
+      max 8
     }
     field gain f32 "Amplitude multiplier per octave." {
       default 0.5
@@ -508,6 +519,7 @@ module procgen {
     }
     field warp f32 "Domain warp strength (0: none)." {
       min 0
+      max 100
     }
     field mask HeightmapMask "Macro terrain shaping mask."
     field maskStrength f32 "Island coast falloff width (0..1) or ridge blend factor (0..1)." {
@@ -519,10 +531,11 @@ module procgen {
     field thermal Option.ThermalErosionDesc "Optional thermal talus erosion pass."
     field terraceStep f32 "Terrace step height in metres (0: disabled)." {
       min 0
+      max 1000000
       unit m
     }
-    field terraceSharpness f32 "Terrace edge sharpness (0 to 1)." {
-      default 0.6
+    field terraceBlend f32 "Smooth fraction of a terrace step, matching terrain.generate.terraces.blend." {
+      default 0.4
       min 0
       max 1
     }
@@ -532,6 +545,7 @@ module procgen {
     field shore f32 "Shore flattening margin above sea level." {
       default 2
       min 0
+      max 1000000
       unit m
     }
     field rivers Option.RiverCarveDesc "Optional drainage river carving pass."
@@ -863,4 +877,3 @@ module procgen {
 }
 
 # ── input ─────────────────────────────────────────────────────────────────
-

@@ -13,24 +13,25 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `size` | `Vector2` | `{ x: 256, y: 256 }` | — | `m` | — | World extent along x and z. |
-| `columns` | `number` | `257` | 2 … 2049 | — | — | Samples along x. |
-| `rows` | `number` | `257` | 2 … 2049 | — | — | Samples along z. |
+| `columns` | `number` | `257` | 2 … 4097 | — | — | Samples along x. |
+| `rows` | `number` | `257` | 2 … 4097 | — | — | Samples along z. |
+| `heights` | `Float32Array \| null` | `null` | — | — | — | Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero. |
 | `minHeight` | `number` | `0` | — | `m` | — | Lowest base height before erosion. |
 | `maxHeight` | `number` | `48` | — | `m` | — | Highest base height before erosion. |
 | `seed` | `number` | `1` | — | — | — | Deterministic seed. |
 | `octaves` | `number` | `6` | 1 … 12 | — | — | Fractal noise octaves. |
-| `frequency` | `number` | `3` | ≥ 0.01 | — | — | Base noise periods across the terrain. |
-| `lacunarity` | `number` | `2` | ≥ 1 | — | — | Frequency multiplier per octave. |
+| `frequency` | `number` | `3` | 0.001 … 10000 | — | — | Base noise periods across the terrain. |
+| `lacunarity` | `number` | `2` | 1 … 8 | — | — | Frequency multiplier per octave. |
 | `gain` | `number` | `0.5` | 0 … 1 | — | — | Amplitude multiplier per octave. |
-| `warp` | `number` | `0` | ≥ 0 | — | — | Domain warp strength (0: none). |
+| `warp` | `number` | `0` | 0 … 100 | — | — | Domain warp strength (0: none). |
 | `mask` | `HeightmapMask` | `"none"` | — | — | — | Macro terrain shaping mask. |
 | `maskStrength` | `number` | `0.4` | 0 … 1 | — | — | Island coast falloff width (0..1) or ridge blend factor (0..1). |
 | `erosion` | `HydraulicErosionDesc \| null` | `null` | — | — | — | Optional hydraulic droplet erosion pass. |
 | `thermal` | `ThermalErosionDesc \| null` | `null` | — | — | — | Optional thermal talus erosion pass. |
-| `terraceStep` | `number` | `0` | ≥ 0 | `m` | — | Terrace step height in metres (0: disabled). |
-| `terraceSharpness` | `number` | `0.6` | 0 … 1 | — | — | Terrace edge sharpness (0 to 1). |
+| `terraceStep` | `number` | `0` | 0 … 1000000 | `m` | — | Terrace step height in metres (0: disabled). |
+| `terraceBlend` | `number` | `0.4` | 0 … 1 | — | — | Smooth fraction of a terrace step, matching terrain.generate.terraces.blend. |
 | `seaLevel` | `number \| null` | `null` | — | `m` | — | Optional sea level height for coastal shore flattening and river outlets. |
-| `shore` | `number` | `2` | ≥ 0 | `m` | — | Shore flattening margin above sea level. |
+| `shore` | `number` | `2` | 0 … 1000000 | `m` | — | Shore flattening margin above sea level. |
 | `rivers` | `RiverCarveDesc \| null` | `null` | — | — | — | Optional drainage river carving pass. |
 | `moisture` | `MoistureDesc` | `{}` | — | — | — | Moisture settings for biome painting. |
 | `biomes` | `readonly BiomeRuleDesc[]` | `[]` | — | — | — | Biome control-map rules (empty omits the control map). |
@@ -46,13 +47,14 @@ struct HeightmapDesc {
   field columns u32 "Samples along x." {
     default 257
     min 2
-    max 2049
+    max 4097
   }
   field rows u32 "Samples along z." {
     default 257
     min 2
-    max 2049
+    max 4097
   }
+  field heights Option.Float32Array "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero."
   field minHeight f32 "Lowest base height before erosion." {
     default 0
     unit m
@@ -71,11 +73,13 @@ struct HeightmapDesc {
   }
   field frequency f32 "Base noise periods across the terrain." {
     default 3
-    min 0.01
+    min 0.001
+    max 10000
   }
   field lacunarity f32 "Frequency multiplier per octave." {
     default 2
     min 1
+    max 8
   }
   field gain f32 "Amplitude multiplier per octave." {
     default 0.5
@@ -84,6 +88,7 @@ struct HeightmapDesc {
   }
   field warp f32 "Domain warp strength (0: none)." {
     min 0
+    max 100
   }
   field mask HeightmapMask "Macro terrain shaping mask."
   field maskStrength f32 "Island coast falloff width (0..1) or ridge blend factor (0..1)." {
@@ -95,10 +100,11 @@ struct HeightmapDesc {
   field thermal Option.ThermalErosionDesc "Optional thermal talus erosion pass."
   field terraceStep f32 "Terrace step height in metres (0: disabled)." {
     min 0
+    max 1000000
     unit m
   }
-  field terraceSharpness f32 "Terrace edge sharpness (0 to 1)." {
-    default 0.6
+  field terraceBlend f32 "Smooth fraction of a terrace step, matching terrain.generate.terraces.blend." {
+    default 0.4
     min 0
     max 1
   }
@@ -108,6 +114,7 @@ struct HeightmapDesc {
   field shore f32 "Shore flattening margin above sea level." {
     default 2
     min 0
+    max 1000000
     unit m
   }
   field rivers Option.RiverCarveDesc "Optional drainage river carving pass."
@@ -116,4 +123,4 @@ struct HeightmapDesc {
 }
 ```
 
-<sub>Module `procgen` line 463</sub>
+<sub>Module `procgen` line 471</sub>

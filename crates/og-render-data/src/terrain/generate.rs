@@ -62,6 +62,106 @@ impl Default for Generate {
     }
 }
 
+impl Generate {
+    /// The same parameter domain for authored assets and runtime calls.
+    /// Reject invalid requests instead of silently clamping one host's copy.
+    pub fn check(&self) -> Result<(), String> {
+        fn number(name: &str, v: f32, lo: f32, hi: f32) -> Result<(), String> {
+            if v.is_finite() && (lo..=hi).contains(&v) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "{name}: expected a finite number in {lo}..={hi}, got {v}"
+                ))
+            }
+        }
+        fn whole(name: &str, v: u32, lo: u32, hi: u32) -> Result<(), String> {
+            if (lo..=hi).contains(&v) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "{name}: expected an integer in {lo}..={hi}, got {v}"
+                ))
+            }
+        }
+        whole("columns", self.columns, 2, 4097)?;
+        whole("rows", self.rows, 2, 4097)?;
+        whole("noise.octaves", self.octaves, 1, 12)?;
+        for (key, v, lo, hi) in [
+            ("noise.frequency", self.frequency, 1e-3, 1e4),
+            ("noise.lacunarity", self.lacunarity, 1.0, 8.0),
+            ("noise.gain", self.gain, 0.0, 1.0),
+            ("noise.warp", self.warp, 0.0, 100.0),
+            ("shore", self.shore, 0.0, 1e6),
+            ("moisture.flow", self.moisture.flow, 0.0, 1e6),
+            ("moisture.scale", self.moisture.scale, 1e-3, 1e9),
+            ("moisture.noise", self.moisture.noise, 0.0, 1e6),
+            ("moisture.frequency", self.moisture.frequency, 1e-3, 1e4),
+        ] {
+            number(key, v, lo, hi)?;
+        }
+        match self.mask {
+            Mask::None => {}
+            Mask::Island(v) if v > 0.0 => number("mask.island", v, 0.0, 1.0)?,
+            Mask::Island(_) => return Err("mask.island must be above zero".into()),
+            Mask::Ridge(v) => number("mask.ridge", v, 0.0, 1.0)?,
+        }
+        if let Some(e) = self.erosion {
+            whole("erosion.drops", e.drops, 0, 10_000_000)?;
+            whole("erosion.lifetime", e.lifetime, 1, 1000)?;
+            whole("erosion.radius", e.radius, 1, 16)?;
+            for (key, v, hi) in [
+                ("inertia", e.inertia, 1.0),
+                ("capacity", e.capacity, 1000.0),
+                ("deposition", e.deposition, 1.0),
+                ("erosion", e.erosion, 1.0),
+                ("evaporation", e.evaporation, 1.0),
+                ("gravity", e.gravity, 1000.0),
+            ] {
+                number(&format!("erosion.{key}"), v, 0.0, hi)?;
+            }
+        }
+        if let Some(t) = self.thermal {
+            whole("thermal.iterations", t.iterations, 0, 10_000)?;
+            number("thermal.talus", t.talus, 0.0, 89.0)?;
+            number("thermal.rate", t.rate, 0.0, 1.0)?;
+        }
+        if let Some([step, blend]) = self.terraces {
+            number("terraces.step", step, 1e-3, 1e6)?;
+            number("terraces.blend", blend, 0.0, 1.0)?;
+        }
+        if self.sea.is_some_and(|s| !s.is_finite()) {
+            return Err("sea must be finite".into());
+        }
+        if let Some(r) = self.rivers {
+            whole("rivers.threshold", r.threshold, 1, u32::MAX)?;
+            number("rivers.depth", r.depth, 0.0, 1e6)?;
+            number("rivers.width", r.width, 0.0, 1e6)?;
+        }
+        for b in &self.biomes {
+            whole("biome.layer", b.layer, 0, MAX_TERRAIN_LAYERS as u32 - 1)?;
+            for (key, v, hi) in [
+                ("weight", b.weight, 1.0),
+                ("altitudeFade", b.altitude_fade, 1e6),
+                ("slopeFade", b.slope_fade, 90.0),
+                ("moistureFade", b.moisture_fade, 1.0),
+            ] {
+                number(&format!("biome.{key}"), v, 0.0, hi)?;
+            }
+            for (key, [a, z]) in [
+                ("altitude", b.altitude),
+                ("slope", b.slope),
+                ("moisture", b.moisture),
+            ] {
+                if !a.is_finite() || !z.is_finite() || a > z {
+                    return Err(format!("biome.{key}: expected an ascending finite range"));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Mask {
     #[default]
@@ -378,15 +478,13 @@ const RIVER_EPS: f32 = 1.0e-3;
 pub fn generate(g: &Generate, size: [f32; 2], height: [f32; 2]) -> Generated {
     let cols = g.columns.clamp(2, 4097) as usize;
     let rows = g.rows.clamp(2, 4097) as usize;
-    let n = cols * rows;
     let sx = size[0].max(1e-3);
     let sz = size[1].max(1e-3);
-    let cell = [sx / (cols - 1) as f32, sz / (rows - 1) as f32];
     let longer = sx.max(sz);
     let [lo, hi] = [height[0].min(height[1]), height[0].max(height[1])];
 
     // Noise and mask, normalised to 0..1.
-    let mut v = vec![0.0f32; n];
+    let mut v = vec![0.0f32; cols * rows];
     for r in 0..rows {
         for c in 0..cols {
             let (u, w) = (c as f32 / (cols - 1) as f32, r as f32 / (rows - 1) as f32);
@@ -417,13 +515,35 @@ pub fn generate(g: &Generate, size: [f32; 2], height: [f32; 2]) -> Generated {
         .iter()
         .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
     let span = vmax - vmin;
-    let mut h: Vec<f32> = v
+    let h: Vec<f32> = v
         .iter()
         .map(|&x| {
             let t = if span > 0.0 { (x - vmin) / span } else { 0.0 };
             lo + t * (hi - lo)
         })
         .collect();
+    process(g, size, Some(height), h)
+}
+
+/// Applies the terrain stages to a row-major field in metres. The caller
+/// validates dimensions and finite samples; this never normalises the input.
+/// A noise source supplies a clipping range; an authored field passes None
+/// (terraces then anchor at zero) so erosion can leave its original extrema.
+pub fn process(
+    g: &Generate,
+    size: [f32; 2],
+    height: Option<[f32; 2]>,
+    mut h: Vec<f32>,
+) -> Generated {
+    let cols = g.columns.clamp(2, 4097) as usize;
+    let rows = g.rows.clamp(2, 4097) as usize;
+    let n = cols * rows;
+    assert_eq!(h.len(), n, "terrain field dimensions");
+    let sx = size[0].max(1e-3);
+    let sz = size[1].max(1e-3);
+    let cell = [sx / (cols - 1) as f32, sz / (rows - 1) as f32];
+    let longer = sx.max(sz);
+    let lo = height.map_or(0.0, |h| h[0].min(h[1]));
 
     if let Some(e) = &g.erosion {
         hydraulic(&mut h, cols, rows, (cell[0] + cell[1]) * 0.5, e, g.seed);
@@ -546,9 +666,10 @@ pub fn generate(g: &Generate, size: [f32; 2], height: [f32; 2]) -> Generated {
         }
     }
 
-    // No sample leaves the range `height` names (erosion digs, rivers carve).
-    for x in &mut h {
-        *x = x.clamp(lo, hi);
+    if let Some([a, b]) = height {
+        for x in &mut h {
+            *x = x.clamp(a.min(b), a.max(b));
+        }
     }
     let control =
         (!g.biomes.is_empty()).then(|| biomes(g, &h, &gathered, cols, rows, cell, longer));

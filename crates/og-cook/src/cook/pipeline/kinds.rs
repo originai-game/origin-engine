@@ -135,7 +135,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     model::KINDS,
 ];
 
-fn kinds() -> impl Iterator<Item = &'static KindDef> {
+pub(in crate::cook) fn kinds() -> impl Iterator<Item = &'static KindDef> {
     SYSTEMS.iter().flat_map(|s| s.iter().copied())
 }
 

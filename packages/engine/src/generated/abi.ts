@@ -318,7 +318,7 @@ export interface HostAbi<A, V> {
   /** `og.procgen.wfc` */
   og_procgen_wfc(desc: string | undefined): Uint8Array;
   /** `og.procgen.heightmap` */
-  og_procgen_heightmap(desc: string | undefined): Uint8Array;
+  og_procgen_heightmap(desc: Uint8Array | undefined): Uint8Array;
   /** `og.procgen.plant` */
   og_procgen_plant(desc: string | undefined): Uint8Array;
   /** `og.procgen.fracture` */

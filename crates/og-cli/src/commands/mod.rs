@@ -31,6 +31,7 @@ pub(super) mod probe;
 pub(super) mod render;
 pub(super) mod replay;
 pub(super) mod run;
+pub(super) mod script;
 pub(super) mod serve_relay;
 pub(super) mod session;
 pub(super) mod sfx;

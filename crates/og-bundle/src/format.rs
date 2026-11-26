@@ -163,7 +163,7 @@ impl Area {
             Area::Ui => ("ui", 1),
             Area::Effect => ("effect", 1),
             Area::Lighting => ("lighting", 1),
-            Area::Terrain => ("terrain", 1),
+            Area::Terrain => ("terrain", 2),
             Area::Hlod => ("hlod", 1),
         }
     }

@@ -12,7 +12,7 @@
 // (default 120). The projects go under --out (default target/guide-recipes),
 // inside the checkout so `@origingame/engine` resolves.
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 export interface Recipe {
   /** The guide, as given. */
@@ -21,6 +21,7 @@ export interface Recipe {
   readonly line: number;
   readonly ticks: number;
   readonly source: string;
+  readonly files?: { path: string; source: string; line: number }[];
 }
 
 const DEFAULT_TICKS = 120;
@@ -30,15 +31,26 @@ export function extract(guide: string, text: string): Recipe[] {
   const lines = text.split("\n");
   const out: Recipe[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const open = /^```ts\s+recipe\b(.*)$/.exec(lines[i]!);
+    const open = /^```(ts|ogt|json|text)\s+recipe\b(.*)$/.exec(lines[i]!);
     if (!open) continue;
-    const ticksArg = /\bticks=(\d+)\b/.exec(open[1]!);
+    const ticksArg = /\bticks=(\d+)\b/.exec(open[2]!);
     const ticks = ticksArg ? Number(ticksArg[1]) : DEFAULT_TICKS;
     const body: string[] = [];
     let j = i + 1;
     for (; j < lines.length && !/^```\s*$/.test(lines[j]!); j++) body.push(lines[j]!);
     if (j === lines.length) throw new Error(`${guide}:${i + 1}: a recipe block that never closes`);
-    out.push({ guide, line: i + 2, ticks, source: `${body.join("\n")}\n` });
+    const source = `${body.join("\n")}\n`;
+    const file = /\bfile=([^\s]+)/.exec(open[2]!)?.[1];
+    if (file) {
+      if (isAbsolute(file) || file.split(/[\\/]/).includes("..") || file.includes("\\")) throw new Error(`${guide}:${i + 1}: recipe file must stay inside its project`);
+      const previous = out[out.length - 1];
+      if (!previous) throw new Error(`${guide}:${i + 1}: an attached recipe file follows its main.ts block`);
+      if (file === "src/main.ts" || file === "project.ogt" || file === "tsconfig.json" || previous.files?.some((f) => f.path === file)) throw new Error(`${guide}:${i + 1}: duplicate or reserved recipe path ${file}`);
+      out[out.length - 1] = { ...previous, files: [...previous.files ?? [], { path: file, source, line: i + 2 }] };
+    } else {
+      if (open[1] !== "ts") throw new Error(`${guide}:${i + 1}: only a TS main.ts recipe may omit file=`);
+      out.push({ guide, line: i + 2, ticks, source });
+    }
     i = j;
   }
   return out;
@@ -67,7 +79,7 @@ const TSCONFIG = {
     strict: true, exactOptionalPropertyTypes: true, noFallthroughCasesInSwitch: true,
     isolatedModules: true, verbatimModuleSyntax: true, allowImportingTsExtensions: true, noEmit: true, jsx: "preserve",
   },
-  include: ["src/**/*.ts", ".og/types/**/*.d.ts"],
+  include: ["src/**/*.ts", "assets/**/*.ts", ".og/types/**/*.d.ts"],
 };
 
 interface Diagnostic { file: string | null; line: number | null; message: string }
@@ -110,9 +122,18 @@ export function check(recipe: Recipe, dir: string, og: string): string[] {
   writeFileSync(join(dir, "project.ogt"), PROJECT);
   writeFileSync(join(dir, "tsconfig.json"), `${JSON.stringify(TSCONFIG, null, 2)}\n`);
   writeFileSync(join(dir, "src", "main.ts"), recipe.source);
+  for (const file of recipe.files ?? []) {
+    mkdirSync(dirname(join(dir, file.path)), { recursive: true });
+    writeFileSync(join(dir, file.path), file.source);
+  }
   const failures: string[] = [];
   const hashes: string[] = [];
   for (let run = 0; run < 2; run++) {
+    // Multi-file recipes exercise the real cook, not just a mocked generator.
+    if (recipe.files?.length) {
+      const cooked = Bun.spawnSync([og, "cook", dir, "--json"], { stdout: "pipe", stderr: "pipe" });
+      if (cooked.exitCode !== 0) return [`${at(recipe, null)}: og cook exited ${cooked.exitCode}: ${cooked.stderr.toString()} ${cooked.stdout.toString()}`];
+    }
     const r = Bun.spawnSync([og, "run", dir, "--headless", "--json", "--ticks", String(recipe.ticks)], { stdout: "pipe", stderr: "pipe" });
     const stdout = r.stdout.toString(), stderr = r.stderr.toString();
     const diagnostics = last(stdout, "diagnostics")?.diagnostics ?? [];

@@ -1999,6 +1999,7 @@ pub mod procgen {
         pub size: Vec2,
         pub columns: u32,
         pub rows: u32,
+        pub heights: Option<Vec<f32>>,
         pub min_height: f32,
         pub max_height: f32,
         pub seed: u32,
@@ -2012,7 +2013,7 @@ pub mod procgen {
         pub erosion: Option<HydraulicErosionDesc>,
         pub thermal: Option<ThermalErosionDesc>,
         pub terrace_step: f32,
-        pub terrace_sharpness: f32,
+        pub terrace_blend: f32,
         pub sea_level: Option<f32>,
         pub shore: f32,
         pub rivers: Option<RiverCarveDesc>,
@@ -2026,6 +2027,7 @@ pub mod procgen {
                 size: Vec2::new(256.0_f32, 256.0_f32),
                 columns: 257,
                 rows: 257,
+                heights: Default::default(),
                 min_height: 0.0_f32,
                 max_height: 48.0_f32,
                 seed: 1,
@@ -2039,7 +2041,7 @@ pub mod procgen {
                 erosion: Default::default(),
                 thermal: Default::default(),
                 terrace_step: Default::default(),
-                terrace_sharpness: 0.6_f32,
+                terrace_blend: 0.4_f32,
                 sea_level: Default::default(),
                 shore: 2.0_f32,
                 rivers: Default::default(),
@@ -2059,6 +2061,7 @@ pub mod procgen {
                 size: field(o, "size", d.size)?,
                 columns: field(o, "columns", d.columns)?,
                 rows: field(o, "rows", d.rows)?,
+                heights: field(o, "heights", d.heights)?,
                 min_height: field(o, "minHeight", d.min_height)?,
                 max_height: field(o, "maxHeight", d.max_height)?,
                 seed: field(o, "seed", d.seed)?,
@@ -2072,7 +2075,7 @@ pub mod procgen {
                 erosion: field(o, "erosion", d.erosion)?,
                 thermal: field(o, "thermal", d.thermal)?,
                 terrace_step: field(o, "terraceStep", d.terrace_step)?,
-                terrace_sharpness: field(o, "terraceSharpness", d.terrace_sharpness)?,
+                terrace_blend: field(o, "terraceBlend", d.terrace_blend)?,
                 sea_level: field(o, "seaLevel", d.sea_level)?,
                 shore: field(o, "shore", d.shore)?,
                 rivers: field(o, "rivers", d.rivers)?,
@@ -2088,6 +2091,7 @@ pub mod procgen {
             o.insert("size".into(), self.size.to_json());
             o.insert("columns".into(), self.columns.to_json());
             o.insert("rows".into(), self.rows.to_json());
+            o.insert("heights".into(), self.heights.as_deref().map_or(Value::Null, to_bin_f32));
             o.insert("minHeight".into(), self.min_height.to_json());
             o.insert("maxHeight".into(), self.max_height.to_json());
             o.insert("seed".into(), self.seed.to_json());
@@ -2101,7 +2105,7 @@ pub mod procgen {
             o.insert("erosion".into(), self.erosion.to_json());
             o.insert("thermal".into(), self.thermal.to_json());
             o.insert("terraceStep".into(), self.terrace_step.to_json());
-            o.insert("terraceSharpness".into(), self.terrace_sharpness.to_json());
+            o.insert("terraceBlend".into(), self.terrace_blend.to_json());
             o.insert("seaLevel".into(), self.sea_level.to_json());
             o.insert("shore".into(), self.shore.to_json());
             o.insert("rivers".into(), self.rivers.to_json());

@@ -37,6 +37,10 @@ describe("extract", () => {
     expect(recipes.map((r) => [r.line, r.ticks])).toEqual([[6, 30], [18, 120]]);
     expect(recipes[0]!.source.startsWith("import { og, defineSystem }")).toBe(true);
     expect(recipes[1]!.source).toContain(`const n: number = "a string";`);
+    const attached = extract("g.md", `${GUIDE}\n\`\`\`ogt recipe file=assets/input.ogt\ntype terrain\n\`\`\`\n\`\`\`ts recipe file=assets/input.ts\nexport default () => [1];\n\`\`\``);
+    expect(attached).toHaveLength(2);
+    expect(attached[1]!.files!.map((f) => f.path)).toEqual(["assets/input.ogt", "assets/input.ts"]);
+    expect(() => extract("g.md", `${GUIDE}\n\`\`\`ts recipe file=../escape.ts\nexport {};\n\`\`\``)).toThrow("inside its project");
   });
 
   test("an unclosed block names its line", () => {

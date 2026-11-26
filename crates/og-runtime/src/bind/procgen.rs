@@ -218,14 +218,14 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Result<crate::host::wire::WfcResu
     })
 }
 
-pub fn og_procgen_heightmap(desc: Option<String>) -> Result<wire::HeightmapResult, String> {
+pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Result<wire::HeightmapResult, String> {
     use og_render::terrain_generate::{
-        Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate,
+        Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
     };
-    let d: wire::HeightmapDesc = wire::arg(desc.as_deref(), "desc")?;
-    if d.columns < 2 || d.rows < 2 || d.columns > 2049 || d.rows > 2049 {
+    let d: wire::HeightmapDesc = crate::host::bin::arg(desc, "desc")?;
+    if d.columns < 2 || d.rows < 2 || d.columns > 4097 || d.rows > 4097 {
         return Err(format!(
-            "columns x rows is {} x {}: each must be 2 to 2049",
+            "columns x rows is {} x {}: each must be 2 to 4097",
             d.columns, d.rows
         ));
     }
@@ -243,54 +243,50 @@ pub fn og_procgen_heightmap(desc: Option<String>) -> Result<wire::HeightmapResul
         && d.warp.is_finite()
         && d.mask_strength.is_finite()
         && d.terrace_step.is_finite()
-        && d.terrace_sharpness.is_finite()
+        && d.terrace_blend.is_finite()
         && d.shore.is_finite())
     {
         return Err("desc contains a non-finite parameter".into());
     }
     let mask = match d.mask {
         wire::HeightmapMask::None => Mask::None,
-        wire::HeightmapMask::Island => Mask::Island(d.mask_strength.clamp(0.0, 1.0)),
-        wire::HeightmapMask::Ridge => Mask::Ridge(d.mask_strength.clamp(0.0, 1.0)),
+        wire::HeightmapMask::Island => Mask::Island(d.mask_strength),
+        wire::HeightmapMask::Ridge => Mask::Ridge(d.mask_strength),
     };
     let erosion = d.erosion.map(|e| Hydraulic {
-        drops: e.drops.min(2_000_000),
-        lifetime: e.lifetime.clamp(1, 256),
-        radius: e.radius.clamp(1, 12),
-        inertia: e.inertia.clamp(0.0, 0.99),
-        capacity: e.capacity.clamp(0.01, 64.0),
-        deposition: e.deposition.clamp(0.01, 1.0),
-        erosion: e.erosion.clamp(0.01, 1.0),
-        evaporation: e.evaporation.clamp(0.001, 0.5),
-        gravity: e.gravity.clamp(0.1, 32.0),
+        drops: e.drops,
+        lifetime: e.lifetime,
+        radius: e.radius,
+        inertia: e.inertia,
+        capacity: e.capacity,
+        deposition: e.deposition,
+        erosion: e.erosion,
+        evaporation: e.evaporation,
+        gravity: e.gravity,
     });
     let thermal = d.thermal.map(|t| Thermal {
-        talus: t.talus.clamp(5.0, 85.0),
-        iterations: t.iterations.min(500),
-        rate: t.rate.clamp(0.01, 1.0),
+        talus: t.talus,
+        iterations: t.iterations,
+        rate: t.rate,
     });
     let rivers = d.rivers.map(|r| Rivers {
-        threshold: r.threshold.max(1),
-        depth: r.depth.max(0.0),
-        width: r.width.max(0.1),
+        threshold: r.threshold,
+        depth: r.depth,
+        width: r.width,
     });
-    let terraces =
-        (d.terrace_step > 0.0).then_some([d.terrace_step, d.terrace_sharpness.clamp(0.0, 1.0)]);
+    let terraces = (d.terrace_step != 0.0).then_some([d.terrace_step, d.terrace_blend]);
     let biomes: Vec<Biome> = d
         .biomes
         .iter()
         .map(|b| Biome {
-            layer: b.layer.min(15),
-            weight: b.weight.max(0.0),
+            layer: b.layer,
+            weight: b.weight,
             altitude: [b.altitude_min, b.altitude_max],
-            altitude_fade: b.altitude_fade.max(0.0),
-            slope: [b.slope_min.clamp(0.0, 90.0), b.slope_max.clamp(0.0, 90.0)],
-            slope_fade: b.slope_fade.clamp(0.0, 90.0),
-            moisture: [
-                b.moisture_min.clamp(0.0, 1.0),
-                b.moisture_max.clamp(0.0, 1.0),
-            ],
-            moisture_fade: b.moisture_fade.clamp(0.0, 1.0),
+            altitude_fade: b.altitude_fade,
+            slope: [b.slope_min, b.slope_max],
+            slope_fade: b.slope_fade,
+            moisture: [b.moisture_min, b.moisture_max],
+            moisture_fade: b.moisture_fade,
             line: 0,
         })
         .collect();
@@ -298,35 +294,44 @@ pub fn og_procgen_heightmap(desc: Option<String>) -> Result<wire::HeightmapResul
         columns: d.columns,
         rows: d.rows,
         seed: d.seed,
-        octaves: d.octaves.clamp(1, 12),
-        frequency: d.frequency.max(0.01),
-        lacunarity: d.lacunarity.max(1.0),
-        gain: d.gain.clamp(0.0, 1.0),
-        warp: d.warp.max(0.0),
+        octaves: d.octaves,
+        frequency: d.frequency,
+        lacunarity: d.lacunarity,
+        gain: d.gain,
+        warp: d.warp,
         mask,
         erosion,
         thermal,
         terraces,
-        sea: d.sea_level.filter(|x| x.is_finite()),
-        shore: d.shore.max(0.0),
+        sea: d.sea_level,
+        shore: d.shore,
         rivers,
         moisture: Moisture {
-            flow: d.moisture.flow.max(0.0),
-            scale: d.moisture.scale.max(1.0),
-            noise: d.moisture.noise.max(0.0),
-            frequency: d.moisture.frequency.max(0.01),
+            flow: d.moisture.flow,
+            scale: d.moisture.scale,
+            noise: d.moisture.noise,
+            frequency: d.moisture.frequency,
         },
         biomes,
     };
-    let out = generate(&spec, [d.size.x, d.size.y], [d.min_height, d.max_height]);
+    spec.check()?;
+    let out = if let Some(heights) = d.heights {
+        if heights.len() as u64 != u64::from(d.columns) * u64::from(d.rows)
+            || heights.iter().any(|h| !h.is_finite())
+        {
+            return Err("desc.heights must contain columns × rows finite metre samples".into());
+        }
+        process(&spec, [d.size.x, d.size.y], None, heights)
+    } else {
+        generate(&spec, [d.size.x, d.size.y], [d.min_height, d.max_height])
+    };
     let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
     for &h in &out.heights {
+        if !h.is_finite() {
+            return Err("terrain processing produced non-finite heights; reduce the input magnitude or stage parameters".into());
+        }
         lo = lo.min(h);
         hi = hi.max(h);
-    }
-    if !lo.is_finite() {
-        lo = d.min_height;
-        hi = d.max_height;
     }
     Ok(wire::HeightmapResult {
         columns: d.columns,

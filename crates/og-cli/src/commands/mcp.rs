@@ -232,9 +232,9 @@ impl Server {
             "api_list" => {
                 let kind = a.get("kind").and_then(Value::as_str);
                 if let Some(k) = kind
-                    && !matches!(k, "module" | "guide")
+                    && !matches!(k, "module" | "guide" | "file")
                 {
-                    return Err("api_list: kind must be `module` or `guide`".into());
+                    return Err("api_list: kind must be `module`, `guide` or `file`".into());
                 }
                 return Ok(match self.wiki() {
                     Ok(wiki) => {
@@ -502,6 +502,23 @@ impl Server {
                     flag(&mut args, "--hit", "hit");
                 }
                 append_json = sub == "preview";
+            }
+            "script" => {
+                let file = a
+                    .get("file")
+                    .and_then(Value::as_str)
+                    .ok_or("script: file is a TS module path relative to root")?;
+                args.extend(["script".into(), file.into()]);
+                push(&mut args, "--root", "root");
+                push(&mut args, "--params", "params");
+                push(&mut args, "--seed", "seed");
+                push(&mut args, "--out", "out");
+                if let Some(inputs) = a.get("inputs").and_then(Value::as_object) {
+                    for (name, path) in inputs {
+                        let path = path.as_str().ok_or("script.inputs values are paths")?;
+                        args.extend(["--input".into(), format!("{name}={path}")]);
+                    }
+                }
             }
             "sfx" => {
                 args.push("sfx".into());
@@ -1058,6 +1075,18 @@ fn tools() -> Value {
             &["subcommand"],
         ),
         tool(
+            "script",
+            "Execute a deterministic TS generator with the cook's executor and cache. Returns its key and source data, or writes data to an explicitly chosen out file. No network, process, clock or undeclared file access.",
+            json!({
+                "file": s("TS module path relative to root; default export is a synchronous function of ctx.params, ctx.seed and ctx.inputs."),
+                "root": s("Input root directory (default current directory; use assets to share a terrain cook key)."),
+                "params": {"type": "object"}, "seed": n("Seed (default 1)."),
+                "inputs": {"type": "object", "additionalProperties": {"type": "string"}},
+                "out": s("Explicit JSON output file; omitted means no project files are written."),
+            }),
+            &["file"],
+        ),
+        tool(
             "sfx",
             "`og sfx`: list procedural sound presets, synthesise one into `.ogt`/`.wav`, or write a library.",
             json!({
@@ -1148,7 +1177,7 @@ fn tools() -> Value {
             "api_list",
             "`og api list --json` (in-process cached index): list every API module and guide with summaries.",
             json!({
-                "kind": s("Optional filter: `module` or `guide`."),
+                "kind": { "type": "string", "enum": ["module", "guide", "file"] },
             }),
             &[],
         ),

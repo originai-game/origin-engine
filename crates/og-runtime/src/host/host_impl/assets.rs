@@ -324,9 +324,11 @@ macro_rules! __og_host_bindings_assets {
                     $crate::og_procgen_wfc(desc),
                 ))
             }
-            fn og_procgen_heightmap(&self, desc: Option<String>) -> Self::Bytes {
+            fn og_procgen_heightmap(&self, desc: Option<Self::Bytes>) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
-                    $crate::og_procgen_heightmap(desc),
+                    $crate::og_procgen_heightmap(
+                        desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                    ),
                 ))
             }
             fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes {

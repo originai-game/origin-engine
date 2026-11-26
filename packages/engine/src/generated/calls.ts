@@ -515,7 +515,7 @@ export const og = Object.freeze({
     poissonDisk: (desc?: unknown): unknown => JSON.parse(abi().og_procgen_poisson_disk(json(desc))) as unknown,
     bsp: (desc?: unknown): unknown => binDecode(abi().og_procgen_bsp(json(desc))),
     wfc: (desc?: unknown): unknown => binDecode(abi().og_procgen_wfc(json(desc))),
-    heightmap: (desc?: unknown): unknown => binDecode(abi().og_procgen_heightmap(json(desc))),
+    heightmap: (desc?: unknown): unknown => binDecode(abi().og_procgen_heightmap(binOpt(desc))),
     plant: (desc?: unknown): unknown => binDecode(abi().og_procgen_plant(json(desc))),
     fracture: (desc?: unknown): unknown => binDecode(abi().og_procgen_fracture(binOpt(desc))),
   }),

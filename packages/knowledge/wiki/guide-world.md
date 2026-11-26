@@ -11,11 +11,18 @@ The API: `og api show terrain`, `og api show stream`, `og api show tilemap`,
 <a id="guide-world-1"></a>
 ### `world §1` Terrain: the file and placing it
 
-A `type terrain` `.ogt` names a 16-bit grey PNG or EXR heightmap, an
+A `type terrain` `.ogt` names a 16-bit grey PNG or EXR heightmap (or a
+deterministic `generate.script` heightfield in metres), an
 optional control map, up to sixteen layered materials with slope and
 altitude rules (each pixel blends its four strongest), and an optional
 `holes` map whose black or transparent cells are cut out of the surface (a
 cave mouth, a pit, a tunnel through a hill). `og cook` cooks it into tiles.
+
+An image or TS heightfield may feed `generate` processing: hydraulic and
+thermal erosion, terraces, shore, automatic rivers and biome control, in
+that order. Given metre heights are not normalised or clipped to a noise
+range. See `generating` for a complete multi-file cook recipe and
+`file:terrain` for the parser's nested field reference.
 
 - Layer maps are separate textures for the first four layers, or layers of
   two texture arrays: `layers` and `layerNormals`, with each layer's

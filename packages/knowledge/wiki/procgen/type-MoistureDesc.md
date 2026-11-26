@@ -12,10 +12,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `flow` | `number` | `1` | ≥ 0 | — | — | Weight of drainage flow accumulation. |
-| `scale` | `number` | `64` | ≥ 1 | — | — | Flow count at which moisture reaches saturation. |
-| `noise` | `number` | `0.5` | ≥ 0 | — | — | Weight of procedural moisture noise. |
-| `frequency` | `number` | `6` | ≥ 0.01 | — | — | Moisture noise frequency across the terrain. |
+| `flow` | `number` | `1` | 0 … 1000000 | — | — | Weight of drainage flow accumulation. |
+| `scale` | `number` | `64` | 0.001 … 1000000000 | — | — | Flow count at which moisture reaches saturation. |
+| `noise` | `number` | `0.5` | 0 … 1000000 | — | — | Weight of procedural moisture noise. |
+| `frequency` | `number` | `6` | 0.001 … 10000 | — | — | Moisture noise frequency across the terrain. |
 
 ```ogt
 struct MoistureDesc {
@@ -24,20 +24,24 @@ struct MoistureDesc {
   field flow f32 "Weight of drainage flow accumulation." {
     default 1
     min 0
+    max 1000000
   }
   field scale f32 "Flow count at which moisture reaches saturation." {
     default 64
-    min 1
+    min 0.001
+    max 1000000000
   }
   field noise f32 "Weight of procedural moisture noise." {
     default 0.5
     min 0
+    max 1000000
   }
   field frequency f32 "Moisture noise frequency across the terrain." {
     default 6
-    min 0.01
+    min 0.001
+    max 10000
   }
 }
 ```
 
-<sub>Module `procgen` line 386</sub>
+<sub>Module `procgen` line 388</sub>

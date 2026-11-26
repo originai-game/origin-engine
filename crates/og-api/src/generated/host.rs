@@ -354,7 +354,7 @@ pub trait ProcgenApi: Wire {
     /// `og.procgen.wfc`
     fn og_procgen_wfc(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.heightmap`
-    fn og_procgen_heightmap(&self, desc: Option<String>) -> Self::Bytes;
+    fn og_procgen_heightmap(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
     /// `og.procgen.plant`
     fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.fracture`
