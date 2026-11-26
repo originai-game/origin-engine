@@ -13,6 +13,9 @@ autotests = false
 # nothing in a publish build reads them (the probe's schema members, the
 # inspector and Tune are not built in).
 publish = []
+# Structural author schemas are tooling only; packed runtime reflection does
+# not link the derive/JSON Schema validator or its regular-expression engine.
+source = ["dep:schemars", "dep:jsonschema", "dep:serde_path_to_error"]
 
 [dependencies]
 og-core-derive = { path = "../og-core-derive" }
@@ -21,7 +24,16 @@ bytemuck = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+schemars = { version = "=1.2.3", optional = true }
+# No network or filesystem schema resolution in author tools.
+jsonschema = { version = "=0.63.2", default-features = false, optional = true }
+serde_path_to_error = { version = "0.1", optional = true }
 
 [[test]]
 name = "layers"
 path = "tests/layers.rs"
+
+[[test]]
+name = "source"
+path = "tests/source.rs"
+required-features = ["source"]

@@ -167,6 +167,16 @@ invalidated by the compiler itself.
 - **Reflection** is the one schema (fields, types, ranges, labels, units,
   `tunable`, docs), exported by `og schema`, and what the inspector, Tune,
   the probe's `bounds`, scene text and the wiki read.
+- **Author input shapes** live on their Rust input structs/enums, alongside
+  serde decoding: `JsonSchema` derives in `og_core::reflect::source` share
+  names, defaults, enum tags and unknown-field rules with `Deserialize`.
+  `InputSchema<T>` validates against their Draft 2020-12 document before
+  decoding; `typescript` emits readonly TS shapes from that same document.
+  Field docs, ranges and units belong there, not in a parallel TS field table.
+  Domain validators still check relationships such as a heightfield's
+  sample count. The `source` feature is cook/tooling-only, not a replacement
+  for packed runtime reflection. Heightfield generator results use it;
+  other author frontends have not yet switched.
 - **Handles**: assets, meshes, materials, sounds and scenes are generational
   handles; a dead handle is an error value, never a crash.
 

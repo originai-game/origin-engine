@@ -497,15 +497,28 @@ impl Program {
 
 /// A heightfield uses metres, not a normalised 0..1 image. Range mapping is
 /// exclusively the terrain file's explicit `height` setting.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, og_core::reflect::source::schemars::JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct Heightfield {
+    /// Sample columns; 2..4097. Together with rows, fixes the height count.
     pub columns: u32,
+    /// Sample rows; 2..4097, ordered from -z to +z.
     pub rows: u32,
+    /// Finite row-major heights in metres; never normalised or clipped.
+    #[schemars(extend("x-og-unit" = "m"))]
     pub heights: Vec<f32>,
 }
 
 impl Heightfield {
+    pub fn schema() -> &'static og_core::reflect::source::InputSchema<Self> {
+        static SCHEMA: std::sync::OnceLock<og_core::reflect::source::InputSchema<Heightfield>> =
+            std::sync::OnceLock::new();
+        SCHEMA.get_or_init(|| {
+            og_core::reflect::source::InputSchema::new().expect("heightfield input schema")
+        })
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         if !(2..=4097).contains(&self.columns)
             || !(2..=4097).contains(&self.rows)

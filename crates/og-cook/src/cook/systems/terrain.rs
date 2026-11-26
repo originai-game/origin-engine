@@ -737,7 +737,8 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             .unwrap_or([(columns - 1) as f32, (rows - 1) as f32])
     };
     let base = if let Some(program) = &doc.script {
-        let field: super::super::generator::Heightfield = serde_json::from_value(program.run()?)
+        let field = super::super::generator::Heightfield::schema()
+            .decode(program.run()?)
             .map_err(|e| format!("generator heightfield: {e}"))?;
         field.validate()?;
         Some(Heightmap {

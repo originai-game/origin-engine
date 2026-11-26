@@ -54,6 +54,8 @@ use std::ops::Range;
 
 mod field_type;
 mod field_value;
+#[cfg(feature = "source")]
+pub mod source;
 
 pub use field_type::{
     FieldType, LIST_MAX_CAPACITY, STR_MAX_CAPACITY, Scalar, list_elements, list_len, pack_list,
