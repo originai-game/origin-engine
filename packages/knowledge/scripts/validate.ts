@@ -171,9 +171,9 @@ function wikiModules(roots: Roots): Set<string> {
   return new Set(readdirSync(dir).filter((n) => n.endsWith(".md") && n !== "index.md").map((n) => n.slice(0, -3)));
 }
 
-/** The modules or guides a text names as `og api show <name>`: a lowercase word or hyphenated slug, not a dotted name such as `og.physics.castRay`. */
+/** The modules or guides a text names as `og api show <name>`: a lowercase word or hyphenated slug, not an exact name such as `og.physics.castRay` or `file:terrain`. */
 export function shownModules(text: string): Set<string> {
-  return new Set([...text.matchAll(/\bog api show ([a-z][a-z0-9-]*)(?![\w.-])/g)].map((m) => m[1]!));
+  return new Set([...text.matchAll(/\bog api show ([a-z][a-z0-9-]*)(?![\w.:-])/g)].map((m) => m[1]!));
 }
 
 /**

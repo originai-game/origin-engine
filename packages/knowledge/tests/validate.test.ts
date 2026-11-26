@@ -60,6 +60,15 @@ test("every og.* name and Type.field a guide writes exists in the generated API"
   );
 });
 
+test("guide pointers distinguish modules from exact API and file names", () => {
+  const p = added((r) =>
+    edit(guide(r, "start"), (s) => `${s}\nRead \`og api show physics\`, \`og api show three-to-og\`, \`og api show og.physics.castRay\`, \`og api show file:terrain\`, \`og api show file:terrain.generate.erosion\`, and \`og api show missing-module\`.\n`),
+  );
+  expect(p).toEqual([
+    "wiki/guide-start.md: names `og api show missing-module`, and the generated wiki has no module or guide missing-module (wiki/index.md lists them; write a type or function as its full name, og.<name>)",
+  ]);
+});
+
 test("brief vocabularies stay in lockstep with Rust cook/synth constants", async () => {
   const repo = join(real.pkg, "..", "..");
   const { MOODS, SFX_PRESETS } = await import("../scripts/brief.ts");
