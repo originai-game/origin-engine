@@ -160,13 +160,7 @@ pub use world::uncooked::Decoded;
 
 use serde_json::{Value, json};
 
-/// `{ ok: true, value }` as wire text.
-pub(crate) fn ok(value: Value) -> String {
-    // The same text as `json!({ "ok": true, "value": value })`, without
-    // the macro's copy of `value` (serde_json::to_value of a Value, a
-    // sixth of og.world.get).
-    format!(r#"{{"ok":true,"value":{value}}}"#)
-}
+pub(crate) use og_api::wire::{ok_value as ok, parse};
 
 /// `{ ok: true }`: a successful `Result<void>`.
 pub(crate) fn ok_void() -> String {
@@ -176,15 +170,6 @@ pub(crate) fn ok_void() -> String {
 /// `{ ok: false, reason }` as wire text.
 pub(crate) fn refuse(reason: impl Into<String>) -> String {
     json!({ "ok": false, "reason": reason.into() }).to_string()
-}
-
-/// Parses wire JSON; an absent optional argument is `null`.
-pub(crate) fn parse(text: Option<&str>) -> Result<Value, String> {
-    match text {
-        None => Ok(Value::Null),
-        Some(t) if t.is_empty() || t == "undefined" => Ok(Value::Null),
-        Some(t) => serde_json::from_str(t).map_err(|e| format!("malformed JSON argument: {e}")),
-    }
 }
 
 /// Installs the host's hooks (its dispatcher, view hand-out and clock).

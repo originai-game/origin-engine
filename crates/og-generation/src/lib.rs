@@ -3,7 +3,7 @@
 //! heightmaps, procedural plants, and Voronoi mesh fracture). Each call is a
 //! pure function of its desc (including its seed), so it needs no world.
 
-use crate::host::wire;
+use og_api::wire;
 use og_core::glam::{DVec3, Vec2, Vec3};
 use og_core::noise::{self, Fbm, NoiseKind};
 use og_core::procgen::{self, BspDesc, Wfc, WfcTile};
@@ -150,7 +150,7 @@ pub fn og_procgen_poisson_disk(desc: Option<String>) -> Result<Vec<Vec2>, String
     Ok(pts.into_iter().map(Vec2::from_array).collect::<Vec<_>>())
 }
 
-fn rect(r: &procgen::CellRect) -> crate::host::wire::CellRect {
+fn rect(r: &procgen::CellRect) -> wire::CellRect {
     wire::CellRect {
         x: r.x,
         y: r.y,
@@ -159,7 +159,7 @@ fn rect(r: &procgen::CellRect) -> crate::host::wire::CellRect {
     }
 }
 
-pub fn og_procgen_bsp(desc: Option<String>) -> Result<crate::host::wire::BspResult, String> {
+pub fn og_procgen_bsp(desc: Option<String>) -> Result<wire::BspResult, String> {
     let d: wire::BspDesc = wire::arg(desc.as_deref(), "desc")?;
     let out = procgen::bsp_rooms(&BspDesc {
         seed: d.seed,
@@ -185,7 +185,7 @@ pub fn og_procgen_bsp(desc: Option<String>) -> Result<crate::host::wire::BspResu
     })
 }
 
-pub fn og_procgen_wfc(desc: Option<String>) -> Result<crate::host::wire::WfcResult, String> {
+pub fn og_procgen_wfc(desc: Option<String>) -> Result<wire::WfcResult, String> {
     let d: wire::WfcDesc = wire::arg(desc.as_deref(), "desc")?;
     let tiles = d
         .tiles
@@ -219,10 +219,10 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Result<crate::host::wire::WfcResu
 }
 
 pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Result<wire::HeightmapResult, String> {
-    use og_render::terrain_generate::{
+    use og_render_data::terrain::generate::{
         Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
     };
-    let d: wire::HeightmapDesc = crate::host::bin::arg(desc, "desc")?;
+    let d: wire::HeightmapDesc = og_api::bin::arg(desc, "desc")?;
     if d.columns < 2 || d.rows < 2 || d.columns > 4097 || d.rows > 4097 {
         return Err(format!(
             "columns x rows is {} x {}: each must be 2 to 4097",
@@ -460,7 +460,7 @@ pub fn og_procgen_plant(desc: Option<String>) -> Result<wire::PlantMeshResult, S
 pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult, String> {
     use og_shape::boolean::fracture::{bounds, contains, voronoi};
     use og_shape::generators::Mesh;
-    let d: wire::FractureDesc = crate::host::bin::arg(desc, "desc")?;
+    let d: wire::FractureDesc = og_api::bin::arg(desc, "desc")?;
     if d.positions.len() < 9 || !d.positions.len().is_multiple_of(3) {
         return Err("desc.positions must hold at least 3 vertices (x y z floats)".into());
     }

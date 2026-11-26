@@ -9,6 +9,7 @@ autotests = false
 
 [dependencies]
 og-api = { path = "../og-api" }
+og-generation = { path = "../og-generation" }
 og-core = { path = "../og-core" }
 og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }

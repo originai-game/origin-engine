@@ -5,9 +5,14 @@
 //! generators are `og-idl`; the host-neutral runtime the hosts wrap is
 //! `og-runtime`. See `crates/og-api/README.md`.
 //!
-//! This crate depends only on `og-records` and changes only when the
-//! generated Rust does, so neither the generators nor the runtime rebuild
-//! what depends on the contract alone; `og`'s cook reads only the records.
+//! The wire readers and binary envelope are shared by runtime bindings and
+//! offline generators, so both consume the IDL's defaults and validation.
+//! The cook's record-only consumers still depend on `og-records` directly.
+
+/// The OGB1 binary wire envelope shared by hosts and offline generators.
+pub mod bin;
+/// Typed wire arguments generated from the IDL, with common JSON readers.
+pub mod wire;
 
 /// The host contract generated from the IDL: the traits `og-host-web` and
 /// `og-host-node` implement (`og api gen` writes `src/generated/host.rs`).

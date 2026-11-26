@@ -8,7 +8,7 @@ hosts wrap. Four crates, so that an edit rebuilds only what compiles it:
 |---|---|---|
 | `og-idl` (`crates/og-idl`) | the IDL's model, validator and generators: `read`, `generate`, `write`, `check` | `og` (`og api gen`, `og api check`) |
 | `og-records` (`crates/og-records`) | the record and column tables (`RECORDS`, `COLUMNS` and their decl types), which `og_api::host` re-exports; no dependencies | `og-api`, `og`'s cook |
-| `og-api` (this crate) | `api/` and what the generators write here: `og_api::host`, the traits; depends only on `og-records` | both hosts, `og-runtime` |
+| `og-api` (this crate) | `api/`, generated host traits and typed wire readers; the OGB1 envelope; depends on `og-records`, glam and serde_json | both hosts, `og-runtime`, pure generators |
 | `og-runtime` (`crates/og-runtime`) | the host-neutral runtime the traits call (below) | both hosts |
 
 `og api gen` rewrites only a file whose bytes change, and the generated Rust
@@ -30,6 +30,7 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | runtime binding table | `packages/engine/types/bindings.json` | the TypeScript runtime of both hosts |
 | JSON Schema + API catalog | `packages/engine/schema/api.schema.json` | the platform's knowledge package, the wiki generator |
 | host traits | `crates/og-api/src/generated/host.rs` (`og_api::host`) | `og-host-web`, `og-host-node` implement them |
+| typed wire readers | `crates/og-api/src/generated/wire.rs` (`og_api::wire`) | runtime and cook generators share IDL defaults and validation |
 | record and column tables | `crates/og-records/src/generated/records.rs` (`og_records`, re-exported as `og_api::host::RECORDS`, `COLUMNS`, ...) | `og-runtime`'s reflection, `og`'s cook |
 | wasm-bindgen glue | `crates/og-host-web/src/generated/glue.rs` | the web host's exports |
 | napi glue | `crates/og-host-node/src/generated/glue.rs` | the native host's exports |

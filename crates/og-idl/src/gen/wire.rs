@@ -1,4 +1,4 @@
-//! The runtime's typed wire readers (`crates/og-runtime/src/host/generated/wire.rs`):
+//! Shared typed wire readers (`crates/og-api/src/generated/wire.rs`):
 //! one Rust type per struct, enum and union a binding takes as JSON (or, for
 //! enums, as a string), with its IDL defaults and a reader over
 //! `serde_json::Value`, so a field name, a type or a default the runtime
@@ -7,7 +7,7 @@
 //! their layouts decode them (og-runtime's `codec::Layout::read`), readers
 //! only: the runtime writes a row through its layout.
 //!
-//! The readers implement og-runtime's `wire::FromJson`. Their rules, the
+//! The readers implement og-api's `wire::FromJson`. Their rules, the
 //! same for every type: an absent field takes its default, and so does a
 //! `null` one, except a float field (`f32`, `f64`, the float members of
 //! vectors, quaternions and colours), where `null` reads as NaN, the form
@@ -658,7 +658,7 @@ impl<'a> Gen<'a, '_> {
     }
 }
 
-/// `crates/og-runtime/src/host/generated/wire.rs`.
+/// `crates/og-api/src/generated/wire.rs`.
 pub fn wire_rs(ix: &Index<'_>) -> String {
     let mut g = Gen {
         ix,

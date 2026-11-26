@@ -267,7 +267,7 @@ pub fn generate(api: &Api) -> Vec<Generated> {
             contents: r#gen::host::records_rs(&ix),
         },
         Generated {
-            path: "crates/og-runtime/src/host/generated/wire.rs".to_string(),
+            path: "crates/og-api/src/generated/wire.rs".to_string(),
             contents: r#gen::wire::wire_rs(&ix),
         },
         Generated {

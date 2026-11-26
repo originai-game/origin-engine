@@ -12,7 +12,7 @@
 //! - Raw little-endian blob payloads, each starting at an 8-byte boundary so JS
 //!   can construct zero-copy TypedArray views over the returned `ArrayBuffer`.
 
-use crate::host::wire::{self, FromJson, ToJson};
+use crate::wire::{self, FromJson, ToJson};
 use serde_json::{Map, Value};
 use std::cell::RefCell;
 

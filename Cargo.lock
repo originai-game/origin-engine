@@ -3162,6 +3162,7 @@ dependencies = [
 name = "og-api"
 version = "0.9.0"
 dependencies = [
+ "glam 0.34.1",
  "og-anim",
  "og-audio",
  "og-core",
@@ -3381,6 +3382,16 @@ name = "og-env"
 version = "0.9.0"
 dependencies = [
  "og-core",
+]
+
+[[package]]
+name = "og-generation"
+version = "0.9.0"
+dependencies = [
+ "og-api",
+ "og-core",
+ "og-render-data",
+ "og-shape",
 ]
 
 [[package]]
@@ -3642,6 +3653,7 @@ dependencies = [
  "og-css",
  "og-ecs",
  "og-env",
+ "og-generation",
  "og-i18n",
  "og-input",
  "og-lanes",

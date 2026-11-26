@@ -4,10 +4,9 @@
 //! [`ui_cursor`]).
 
 pub(crate) mod api;
-pub mod bin;
 pub(crate) mod codec;
 pub mod host_impl;
 pub(crate) mod platform;
 pub mod shared;
 pub mod ui_cursor;
-pub mod wire;
+pub use og_api::{bin, wire};
