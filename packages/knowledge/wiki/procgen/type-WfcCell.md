@@ -25,4 +25,4 @@ struct WfcCell {
 }
 ```
 
-<sub>Module `procgen` line 241</sub>
+<sub>Module `procgen` line 253</sub>

@@ -190,7 +190,15 @@ fn expand_block(b: &mut Block, root: &Path, rel: &str) -> Result<bool, String> {
             changed = true;
         } else if matches!(
             e.key.as_str(),
-            "part" | "a" | "b" | "csgGeometry" | "mergeGeometries"
+            "part"
+                | "a"
+                | "b"
+                | "csgGeometry"
+                | "mergeGeometries"
+                | "plant"
+                | "leafGeometry"
+                | "flowerGeometry"
+                | "stamp"
         ) {
             changed |= expand_block(body, root, rel)?;
         }
@@ -200,7 +208,10 @@ fn expand_block(b: &mut Block, root: &Path, rel: &str) -> Result<bool, String> {
 
 pub(crate) fn expand(sources: &mut [Source]) {
     for s in sources {
-        if s.kind != &model::MODEL || !s.rel.ends_with(".ogt") || s.error.is_some() {
+        if (s.kind != &model::MODEL && s.kind != &crate::cook::systems::terrain::TERRAIN)
+            || !s.rel.ends_with(".ogt")
+            || s.error.is_some()
+        {
             continue;
         }
         let result = (|| {

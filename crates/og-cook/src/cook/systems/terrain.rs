@@ -298,6 +298,20 @@ pub(crate) fn terrain_dependencies(
         .collect();
     if let Ok(doc) = Document::parse(&text) {
         if let Some(g) = doc.body.get("generate").and_then(|e| e.block.as_ref()) {
+            if let Some(name) = string_of(g, "preserve") {
+                let rel = resolve(&s.rel, &root, &name);
+                let field = std::fs::read(root.join(&rel))
+                    .map_err(|e| e.to_string())
+                    .and_then(|bytes| super::field::source(&root, &rel, &bytes))
+                    .and_then(|data| data.to_text());
+                match field {
+                    Ok(text) => out.push(format!(
+                        "preserve={:016x}",
+                        super::hash_bytes(text.as_bytes())
+                    )),
+                    Err(e) => out.push(format!("preserve error={e}")),
+                }
+            }
             let seed = g
                 .get("seed")
                 .and_then(|e| e.values.first())
@@ -391,6 +405,8 @@ pub(crate) struct TerrainDoc {
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
     pub script: Option<super::super::generator::Program>,
+    pub preserve: Option<String>,
+    pub edits: Vec<super::terrain_edit::Step>,
     /// The control maps (asset paths), one per four layers.
     pub control: Vec<String>,
     /// The hole map (an asset path).
@@ -419,7 +435,14 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         .map(super::terrain_generate::parse)
         .transpose()?;
     let mut script = None;
+    let mut preserve = None;
     if let Some(g) = body.get("generate").and_then(|e| e.block.as_ref()) {
+        if let Some(e) = g.get("preserve") {
+            if e.values.len() != 1 || e.block.is_some() {
+                return Err("preserve takes one field asset path".into());
+            }
+            preserve = Some(resolve(rel, root, e.string(0).map_err(|e| e.to_string())?));
+        }
         let spec = super::super::generator::Spec::parse(
             g,
             generate.as_ref().expect("parsed generate").seed,
@@ -616,9 +639,11 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         }
     }
     Ok(TerrainDoc {
+        edits: super::terrain_edit::parse(body, layers.len())?,
         heightmap: heightmap.map(|h| resolve(rel, root, &h)),
         generate,
         script,
+        preserve,
         control,
         holes: string_of(body, "holes").map(|c| resolve(rel, root, &c)),
         height,
@@ -737,6 +762,14 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             g.rows = base.rows;
         }
         let size = size_of(g.columns, g.rows);
+        if let Some(rel) = &doc.preserve {
+            let data = super::field::source(root, rel, &read(rel, "preserve field")?)?;
+            if data.dimensions != [g.columns, g.rows, 1] || data.channels != 1 {
+                return Err("preserve field must match terrain columns × rows × 1, one channel; no resampling".into());
+            }
+            g.preserve = data.values;
+        }
+        g.check()?;
         let made = match base {
             Some(map) => {
                 let field = super::super::generator::Heightfield {
@@ -766,28 +799,34 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             }
             None => control()?,
         };
-        return Ok(Field {
-            columns: g.columns,
-            rows: g.rows,
-            heights: made.heights,
-            control,
-            holes: holes(g.columns, g.rows)?,
-            size,
-            exr: false,
-            generated: Some((g.sea, made.river_length)),
-        });
+        return super::terrain_edit::apply(
+            Field {
+                columns: g.columns,
+                rows: g.rows,
+                heights: made.heights,
+                control,
+                holes: holes(g.columns, g.rows)?,
+                size,
+                exr: false,
+                generated: Some((g.sea, made.river_length)),
+            },
+            &doc.edits,
+        );
     }
     let map = base.expect("parse: a heightmap or generate");
-    Ok(Field {
-        columns: map.columns,
-        rows: map.rows,
-        heights: map.values,
-        control: control()?,
-        holes: holes(map.columns, map.rows)?,
-        size: size_of(map.columns, map.rows),
-        exr: map.exr,
-        generated: None,
-    })
+    super::terrain_edit::apply(
+        Field {
+            columns: map.columns,
+            rows: map.rows,
+            heights: map.values,
+            control: control()?,
+            holes: holes(map.columns, map.rows)?,
+            size: size_of(map.columns, map.rows),
+            exr: map.exr,
+            generated: None,
+        },
+        &doc.edits,
+    )
 }
 
 pub(crate) fn cook_terrain(

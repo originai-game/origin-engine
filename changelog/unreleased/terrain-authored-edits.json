@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "file:terrain.edit, file:terrain.stamp",
+      "summary": "Author local terrain brushes and placed primitive, buffer or model geometry stamps directly in a terrain file. Cook applies edit and stamp blocks in written order after generation and shape protection, using the same Rust brush, projection and patch kernels as live terrain edits. Projected scatter samples the processed terrain, including its imported model operands."
+    },
+    {
+      "member": "og api file directory",
+      "summary": "Discover authored tileset, tilemap layer and object fields from parser line tables, and model-program operation and profile keys from the JSON parser's accepted-field tables."
+    }
+  ]
+}

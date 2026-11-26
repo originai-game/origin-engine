@@ -58,7 +58,7 @@ use glam::{DMat4, DVec3};
 use og_core::Rng;
 use og_core::ogt::{Block, Document};
 use og_physics_data::fracture::{Bond, Chunk, FractureAsset, NONE};
-use og_shape::boolean::fracture::{self, Piece};
+use og_shape::boolean::fracture::{self, Piece, seeds};
 use og_shape::generators::Mesh;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -76,6 +76,13 @@ pub const LINES: &[crate::grammar::Line] = &[
     ),
     crate::grammar::Line::new("chunks", "<2..256>", "16", "Support chunk count.", ""),
     crate::grammar::Line::new("seed", "<u32>", "1", "Deterministic cut pattern.", ""),
+    crate::grammar::Line::new(
+        "site",
+        "<x> <y> <z>",
+        "",
+        "Repeat 2..128 explicit Voronoi centres in model metres; requires style voronoi and pattern volume, replaces automatic support-cell sampling. Site order fixes cell ids. Children retain their declared generator.",
+        "",
+    ),
     crate::grammar::Line::new(
         "children",
         "<0..32>",
@@ -171,6 +178,7 @@ struct Anchor {
 pub(crate) struct Settings {
     chunks: u32,
     seed: u32,
+    sites: Vec<DVec3>,
     children: u32,
     pattern: Pattern,
     style: Style,
@@ -344,9 +352,35 @@ impl Settings {
         };
         let interior = block("interior")?;
         let mortar = block("mortar")?;
+        let mut sites = Vec::new();
+        for e in b.get_all("site") {
+            let values: Option<Vec<_>> = e
+                .values
+                .iter()
+                .map(|v| v.as_number().map(|n| n.as_f64()))
+                .collect();
+            let values = values
+                .filter(|v| v.len() == 3 && v.iter().all(|v| v.is_finite()))
+                .ok_or("fracture.site takes finite x y z")?;
+            let p = DVec3::new(values[0], values[1], values[2]);
+            if sites.contains(&p) {
+                return Err("fracture sites must be distinct".into());
+            }
+            sites.push(p);
+        }
+        if !sites.is_empty()
+            && (!(2..=128).contains(&sites.len())
+                || style != Style::Voronoi
+                || pattern != Pattern::Volume
+                || impact.is_some()
+                || b.get("chunks").is_some())
+        {
+            return Err("fracture.site needs 2..128 centres, style voronoi, pattern volume, and no chunks or impact".into());
+        }
         Ok(Settings {
             chunks: count(b, "chunks", 16, 2, 256)?,
             seed: count(b, "seed", 1, 0, u32::MAX)?,
+            sites,
             children: count(b, "children", 0, 0, 32)?,
             pattern,
             style,
@@ -466,59 +500,6 @@ fn flatten(g: &model::GltfSource) -> Result<(Mesh, Vec<u32>), String> {
         return Err("the model has no triangles to fracture".into());
     }
     Ok((mesh, material))
-}
-
-/// `n` seeds inside `mesh` (Mitchell's best candidate: of 8 candidates
-/// the one farthest from the seeds so far, so chunks come in even sizes
-/// without a grid), on the plane through the centre across `slab` (an
-/// axis) when given, gathered round `impact` for half of them.
-fn seeds(
-    mesh: &Mesh,
-    n: u32,
-    rng: &mut Rng,
-    slab: Option<usize>,
-    impact: Option<(DVec3, f64)>,
-) -> Vec<DVec3> {
-    let (lo, hi) = fracture::bounds(mesh);
-    let centre = (lo + hi) * 0.5;
-    let mut out: Vec<DVec3> = Vec::new();
-    let mut f = || rng.next_f64();
-    let mut tries = 0;
-    while (out.len() as u32) < n && tries < n * 64 {
-        tries += 1;
-        let near = impact.is_some() && out.len().is_multiple_of(2);
-        let mut best: Option<(f64, DVec3)> = None;
-        for _ in 0..8 {
-            let mut p = match (near, impact) {
-                (true, Some((at, r))) => {
-                    // Denser towards the point: r u² along a direction.
-                    let d = DVec3::new(f() * 2.0 - 1.0, f() * 2.0 - 1.0, f() * 2.0 - 1.0);
-                    let u = f();
-                    at + d.normalize_or_zero() * (r * u * u)
-                }
-                _ => lo + (hi - lo) * DVec3::new(f(), f(), f()),
-            };
-            if let Some(a) = slab {
-                p[a] = centre[a];
-            }
-            if !fracture::contains(mesh, p) {
-                continue;
-            }
-            let d = out
-                .iter()
-                .map(|q| (*q - p).length_squared())
-                .fold(f64::INFINITY, f64::min);
-            if best.is_none_or(|(bd, _)| d > bd) {
-                best = Some((d, p));
-            }
-        }
-        if let Some((d, p)) = best
-            && d > 0.0
-        {
-            out.push(p);
-        }
-    }
-    out
 }
 
 /// Voronoi cells of `seeds` under `metric`, the seeds moved to their
@@ -1120,7 +1101,11 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
                 }
                 _ => (DVec3::ONE, 0),
             };
-            let seeds_1 = seeds(&mesh, s.chunks, &mut rng, slab, s.impact);
+            let seeds_1 = if s.sites.is_empty() {
+                seeds(&mesh, s.chunks, &mut rng, slab, s.impact)
+            } else {
+                s.sites.clone()
+            };
             if seeds_1.len() < 2 {
                 return Err(
                     "fewer than 2 seeds fell inside the model: is it closed and facing out?".into(),

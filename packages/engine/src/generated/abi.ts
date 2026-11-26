@@ -308,19 +308,19 @@ export interface HostAbi<A, V> {
   /** `og.procgen.curlNoise` */
   og_procgen_curl_noise(desc: string, x: number, y: number, z: number): string;
   /** `og.procgen.worley` */
-  og_procgen_worley(seed: number, x: number, y: number, z: number, three_d: boolean): string;
+  og_procgen_worley(seed: number, x: number, y: number, z: number, three_d: boolean, sites: string | undefined): string;
   /** `og.procgen.noiseGrid` */
   og_procgen_noise_grid(desc: string | undefined): Uint8Array;
   /** `og.procgen.poissonDisk` */
-  og_procgen_poisson_disk(desc: string | undefined): string;
+  og_procgen_poisson_disk(desc: Uint8Array | undefined): string;
   /** `og.procgen.bsp` */
-  og_procgen_bsp(desc: string | undefined): Uint8Array;
+  og_procgen_bsp(desc: Uint8Array | undefined): Uint8Array;
   /** `og.procgen.wfc` */
   og_procgen_wfc(desc: string | undefined): Uint8Array;
   /** `og.procgen.heightmap` */
   og_procgen_heightmap(desc: Uint8Array | undefined): Uint8Array;
   /** `og.procgen.plant` */
-  og_procgen_plant(desc: string | undefined): Uint8Array;
+  og_procgen_plant(desc: Uint8Array | undefined): Uint8Array;
   /** `og.procgen.fracture` */
   og_procgen_fracture(desc: Uint8Array | undefined): Uint8Array;
   /** `og.input.intent` */

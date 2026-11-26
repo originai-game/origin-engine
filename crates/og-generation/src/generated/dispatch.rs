@@ -47,7 +47,8 @@ pub fn invoke(name: &str, args: &[Value]) -> Result<Value, String> {
             let a2 = wire::value::<f64>(args.get(2).ok_or("og.procgen.worley.y: required argument")?, "y")?;
             let a3 = wire::value::<f64>(args.get(3).ok_or("og.procgen.worley.z: required argument")?, "z")?;
             let a4 = wire::value::<bool>(args.get(4).ok_or("og.procgen.worley.three_d: required argument")?, "three_d")?;
-            crate::og_procgen_worley(a0, a1, a2, a3, a4).to_json()
+            let a5 = args.get(5).map(Value::to_string);
+            crate::og_procgen_worley(a0, a1, a2, a3, a4, a5).to_json()
         }
         "noiseGrid" => {
             let a0 = args.first().map(Value::to_string);
@@ -57,14 +58,14 @@ pub fn invoke(name: &str, args: &[Value]) -> Result<Value, String> {
             }
         }
         "poissonDisk" => {
-            let a0 = args.first().map(Value::to_string);
+            let a0 = args.first().map(|v| v.to_string().into_bytes());
             match crate::og_procgen_poisson_disk(a0) {
                 Ok(value) => json!({"ok": true, "value": value.to_json()}),
                 Err(reason) => json!({"ok": false, "reason": reason}),
             }
         }
         "bsp" => {
-            let a0 = args.first().map(Value::to_string);
+            let a0 = args.first().map(|v| v.to_string().into_bytes());
             match crate::og_procgen_bsp(a0) {
                 Ok(value) => json!({"ok": true, "value": value.to_json()}),
                 Err(reason) => json!({"ok": false, "reason": reason}),
@@ -85,7 +86,7 @@ pub fn invoke(name: &str, args: &[Value]) -> Result<Value, String> {
             }
         }
         "plant" => {
-            let a0 = args.first().map(Value::to_string);
+            let a0 = args.first().map(|v| v.to_string().into_bytes());
             match crate::og_procgen_plant(a0) {
                 Ok(value) => json!({"ok": true, "value": value.to_json()}),
                 Err(reason) => json!({"ok": false, "reason": reason}),

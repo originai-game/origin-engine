@@ -2,6 +2,50 @@
 
 use crate::{Error, ErrorKind, Result, Rng};
 
+/// Authored constraints on the same Bridson sampler. Grids cover the
+/// rectangular domain with nearest-cell lookup (no hidden resampling).
+#[derive(Default)]
+pub struct PoissonInput {
+    pub region: Vec<[f32; 2]>,
+    pub holes: Vec<Vec<[f32; 2]>>,
+    pub points: Vec<[f32; 2]>,
+    pub columns: u32,
+    pub rows: u32,
+    pub density: Vec<f32>,
+    pub radii: Vec<f32>,
+}
+
+impl PoissonInput {
+    fn inside(&self, p: [f32; 2]) -> bool {
+        fn polygon(p: [f32; 2], ring: &[[f32; 2]]) -> bool {
+            let mut inside = false;
+            for i in 0..ring.len() {
+                let (a, b) = (ring[i], ring[(i + 1) % ring.len()]);
+                if (a[1] > p[1]) != (b[1] > p[1])
+                    && f64::from(p[0])
+                        < (f64::from(b[0]) - f64::from(a[0])) * (f64::from(p[1]) - f64::from(a[1]))
+                            / (f64::from(b[1]) - f64::from(a[1]))
+                            + f64::from(a[0])
+                {
+                    inside = !inside;
+                }
+            }
+            inside
+        }
+        (self.region.is_empty() || polygon(p, &self.region))
+            && !self.holes.iter().any(|ring| polygon(p, ring))
+    }
+
+    fn sample(&self, grid: &[f32], p: [f32; 2], size: [f32; 2], default: f32) -> f32 {
+        if grid.is_empty() {
+            return default;
+        }
+        let x = ((p[0] / size[0] * self.columns as f32) as u32).min(self.columns - 1);
+        let y = ((p[1] / size[1] * self.rows as f32) as u32).min(self.rows - 1);
+        grid[(y * self.columns + x) as usize]
+    }
+}
+
 /// Points in `[0, width) × [0, height)`, none closer than `radius` to
 /// another, every gap filled to within twice it (Bridson 2007): `attempts`
 /// candidates around each active point, the active list taken from by a
@@ -30,6 +74,29 @@ pub fn poisson_disk_ex(
     max: usize,
     wrap: bool,
 ) -> Result<Vec<[f32; 2]>> {
+    poisson_disk_in(
+        seed,
+        [width, height],
+        radius,
+        attempts,
+        max,
+        wrap,
+        &PoissonInput::default(),
+    )
+}
+
+/// Bridson points with explicit region, exclusion holes, retained points,
+/// density probabilities and spatial minimum separation.
+pub fn poisson_disk_in(
+    seed: u32,
+    size: [f32; 2],
+    radius: f32,
+    attempts: u32,
+    max: usize,
+    wrap: bool,
+    input: &PoissonInput,
+) -> Result<Vec<[f32; 2]>> {
+    let [width, height] = size;
     if !(width > 0.0
         && height > 0.0
         && radius > 0.0
@@ -44,6 +111,50 @@ pub fn poisson_disk_ex(
             ),
         ));
     }
+    let invalid = |reason| Error::new(ErrorKind::Invalid, reason);
+    for ring in std::iter::once(&input.region)
+        .filter(|r| !r.is_empty())
+        .chain(input.holes.iter())
+    {
+        if ring.len() < 3 || ring.iter().flatten().any(|v| !v.is_finite()) {
+            return Err(invalid(
+                "Poisson region and holes need at least three finite points",
+            ));
+        }
+    }
+    for grid in [&input.density, &input.radii] {
+        if !grid.is_empty()
+            && (input.columns == 0
+                || input.rows == 0
+                || u64::from(input.columns) * u64::from(input.rows) != grid.len() as u64)
+        {
+            return Err(invalid("Poisson grids need columns × rows values"));
+        }
+    }
+    if input
+        .density
+        .iter()
+        .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+        || input.radii.iter().any(|v| !v.is_finite() || *v < radius)
+    {
+        return Err(invalid(
+            "Poisson density must be 0..1 and radii must be finite and at least radius",
+        ));
+    }
+    if input.points.len() > max {
+        return Err(invalid("Poisson retained points exceed maxPoints"));
+    }
+    let accepted = |p: [f32; 2]| {
+        p.iter().all(|v| v.is_finite())
+            && p[0] >= 0.0
+            && p[1] >= 0.0
+            && p[0] < width
+            && p[1] < height
+            && input.inside(p)
+            && input.sample(&input.density, p, size, 1.0) > 0.0
+    };
+    let separation = |p| input.sample(&input.radii, p, size, radius);
+    let max_radius = input.radii.iter().copied().fold(radius, f32::max);
     const MAX_CELLS: u64 = 1 << 24;
     // Slightly below radius / sqrt(2) so each cell's diagonal is strictly < radius,
     // guaranteeing at most one valid point can ever inhabit a cell.
@@ -88,13 +199,51 @@ pub fn poisson_disk_ex(
     };
     let mut points: Vec<[f32; 2]> = Vec::new();
     let mut active: Vec<u32> = Vec::new();
-    let first = [rng.range_f32(0.0, width), rng.range_f32(0.0, height)];
-    let (cx, cy) = at(first);
-    grid[cy * gw + cx] = 0;
-    points.push(first);
-    active.push(0);
-    let r2 = f64::from(radius) * f64::from(radius);
     let (w64, h64) = (f64::from(width), f64::from(height));
+    let distance2 = |p: [f32; 2], q: [f32; 2]| {
+        let [mut x, mut y] = [
+            (f64::from(p[0]) - f64::from(q[0])).abs(),
+            (f64::from(p[1]) - f64::from(q[1])).abs(),
+        ];
+        if wrap {
+            x = x.min(w64 - x);
+            y = y.min(h64 - y);
+        }
+        x * x + y * y
+    };
+    for &p in &input.points {
+        if !accepted(p)
+            || points
+                .iter()
+                .any(|&q| distance2(p, q) < f64::from(separation(p).max(separation(q))).powi(2))
+        {
+            return Err(invalid(
+                "Poisson retained points must lie in the allowed region and satisfy pairwise separation",
+            ));
+        }
+        let (cx, cy) = at(p);
+        grid[cy * gw + cx] = points.len() as u32;
+        active.push(points.len() as u32);
+        points.push(p);
+    }
+    if points.is_empty() {
+        for _ in 0..4096 {
+            let p = [rng.range_f32(0.0, width), rng.range_f32(0.0, height)];
+            if accepted(p)
+                && (input.density.is_empty()
+                    || rng.range_f32(0.0, 1.0) < input.sample(&input.density, p, size, 1.0))
+            {
+                let (cx, cy) = at(p);
+                grid[cy * gw + cx] = 0;
+                points.push(p);
+                active.push(0);
+                break;
+            }
+        }
+    }
+    let reach = (f64::from(max_radius) / cell_f64)
+        .ceil()
+        .min(gw.max(gh) as f64) as i64;
     while !active.is_empty() && points.len() < max {
         let k = rng.integer(0, active.len() as i64 - 1) as usize;
         let base = points[active[k] as usize];
@@ -115,7 +264,7 @@ pub fn poisson_disk_ex(
                 }
             }
             let u = rng.range_f32(0.0, 1.0);
-            let d = radius * (1.0 + 3.0 * u).sqrt();
+            let d = separation(base) * (1.0 + 3.0 * u).sqrt();
             let mut px_f = base[0] + dx * d;
             let mut py_f = base[1] + dy * d;
             if wrap {
@@ -131,9 +280,15 @@ pub fn poisson_disk_ex(
                 continue;
             }
             let p = [px_f, py_f];
+            if !accepted(p)
+                || (!input.density.is_empty()
+                    && rng.range_f32(0.0, 1.0) >= input.sample(&input.density, p, size, 1.0))
+            {
+                continue;
+            }
             let (px, py) = at(p);
             let mut clear = true;
-            'near: for oy in -2i64..=2 {
+            'near: for oy in -reach..=reach {
                 let gy = if wrap {
                     (py as i64 + oy).rem_euclid(gh as i64) as usize
                 } else {
@@ -143,7 +298,7 @@ pub fn poisson_disk_ex(
                     }
                     y as usize
                 };
-                for ox in -2i64..=2 {
+                for ox in -reach..=reach {
                     let gx = if wrap {
                         (px as i64 + ox).rem_euclid(gw as i64) as usize
                     } else {
@@ -156,17 +311,7 @@ pub fn poisson_disk_ex(
                     let q = grid[gy * gw + gx];
                     if q != u32::MAX {
                         let o = points[q as usize];
-                        let mut ex = (f64::from(o[0]) - f64::from(p[0])).abs();
-                        let mut ey = (f64::from(o[1]) - f64::from(p[1])).abs();
-                        if wrap {
-                            if ex > 0.5 * w64 {
-                                ex = w64 - ex;
-                            }
-                            if ey > 0.5 * h64 {
-                                ey = h64 - ey;
-                            }
-                        }
-                        if ex * ex + ey * ey < r2 {
+                        if distance2(p, o) < f64::from(separation(p).max(separation(o))).powi(2) {
                             clear = false;
                             break 'near;
                         }

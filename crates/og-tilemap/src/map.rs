@@ -548,6 +548,7 @@ impl TilemapAsset {
         };
         let mut layer_entries: Vec<&Entry> = Vec::new();
         let mut object_entries: Vec<&Entry> = Vec::new();
+        crate::grammar::check(&doc.body, crate::grammar::MAP)?;
         for e in &doc.body.entries {
             match e.key.as_str() {
                 "size" => {
@@ -617,6 +618,9 @@ impl TilemapAsset {
                 height: 0.0,
                 properties: Vec::new(),
             };
+            if let Some(b) = &e.block {
+                crate::grammar::check(b, crate::grammar::OBJECT)?;
+            }
             for p in e.block.iter().flat_map(|b| &b.entries) {
                 match p.key.as_str() {
                     "kind" => {
@@ -680,6 +684,7 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
         .block
         .as_ref()
         .ok_or_else(|| err(e.line, "layer needs a { block }"))?;
+    crate::grammar::check(block, crate::grammar::LAYER)?;
     let mut legend: Vec<(char, i64)> = Vec::new();
     let mut rows: Vec<&Entry> = Vec::new();
     for p in &block.entries {

@@ -9,7 +9,7 @@ use super::terrain_schema::{
 };
 use og_core::ogt::{Block, Entry};
 pub use og_render_data::terrain::generate::{
-    Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
+    Biome, Channel, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
 };
 
 /// The block of `key` inside `b`, its keys checked against `keys`.
@@ -261,6 +261,47 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             line: e.line,
         });
     }
+    let mut channels = Vec::new();
+    for e in b.get_all("channel") {
+        if !e.values.is_empty() {
+            return Err("channel takes a block, not values".into());
+        }
+        let c = e.block.as_ref().ok_or("channel needs a block")?;
+        check_keys(c, super::terrain_schema::CHANNEL, "channel")?;
+        let mut points = Vec::new();
+        for p in c.get_all("point") {
+            let values: Option<Vec<_>> = p
+                .values
+                .iter()
+                .map(|v| v.as_number().map(|v| v.as_f32()))
+                .collect();
+            let values = values
+                .filter(|v| v.len() == 3 && p.block.is_none())
+                .ok_or("channel point takes x y z")?;
+            points.push([values[0], values[1], values[2]]);
+        }
+        if c.get("width").is_none() {
+            return Err("channel needs an explicit width".into());
+        }
+        let river = c
+            .get("river")
+            .map(|e| {
+                if e.values.len() != 1 || e.block.is_some() {
+                    return Err("channel.river takes true or false".to_string());
+                }
+                e.values[0]
+                    .as_bool()
+                    .ok_or_else(|| "channel.river takes true or false".to_string())
+            })
+            .transpose()?
+            .unwrap_or(false);
+        channels.push(Channel {
+            points,
+            width: num(c, "width", 0.0, 0.001, 1e6)?,
+            depth: num(c, "depth", 0.0, 0.0, 1e6)?,
+            river,
+        });
+    }
     let generate = Generate {
         columns,
         rows,
@@ -277,6 +318,9 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
         sea,
         shore: num(b, "shore", 2.0, 0.0, 1.0e6)?,
         rivers,
+        channels,
+        preserve: Vec::new(),
+        preserve_border: whole(b, "preserveBorder", 0, 0, 4097)?,
         moisture,
         biomes,
     };

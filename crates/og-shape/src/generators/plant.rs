@@ -134,7 +134,7 @@ pub struct Flowers {
     pub center_color: [f32; 3],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Plant {
     pub seed: u32,
     pub growth: Growth,
@@ -147,6 +147,13 @@ pub struct Plant {
     pub force_strength: f64,
     pub leaves: Option<Leaves>,
     pub flowers: Option<Flowers>,
+    /// Authored trunk ring centres in metres; children grow from this
+    /// curve instead of a wandering trunk. Empty uses procedural growth.
+    pub path: Vec<DVec3>,
+    /// Unit foliage pieces: x across, y along, z facing; transformed by
+    /// each leaf/flower's declared length and width. Wind stays generated.
+    pub leaf_mesh: Option<Mesh>,
+    pub flower_mesh: Option<Mesh>,
 }
 
 impl Default for Level {
@@ -231,6 +238,9 @@ impl Default for Plant {
             force_strength: 0.01,
             leaves: Some(Leaves::default()),
             flowers: None,
+            path: Vec::new(),
+            leaf_mesh: None,
+            flower_mesh: None,
         }
     }
 }
@@ -409,6 +419,16 @@ enum Leafing {
 }
 
 fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
+    if !p.path.is_empty()
+        && (p.path.len() < 2
+            || p.path.len() > 1025
+            || p.path.iter().any(|p| !p.is_finite())
+            || p.path
+                .windows(2)
+                .any(|p| p[0].distance_squared(p[1]) <= 1e-16))
+    {
+        return Err("plant path needs 2..1025 finite, distinct consecutive ring centres".into());
+    }
     let levels = (p.levels as usize).min(LEVELS - 1);
     let (branches, leaves) = counts(p);
     if branches > MAX_BRANCHES || leaves > MAX_LEAVES {
@@ -424,17 +444,22 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
     let mut rolling = rng.fork("plant leaf roll");
     let target = p.force_direction.normalize_or(DVec3::Y);
     let trunk = p.level[0];
+    let root = p.path.first().copied().unwrap_or(DVec3::ZERO);
     let mut queue = std::collections::VecDeque::new();
     queue.push_back(Bud {
-        origin: DVec3::ZERO,
+        origin: root,
         q: DQuat::IDENTITY,
         length: trunk.length.max(0.0),
         radius: trunk.radius.max(1e-4),
         level: 0,
-        sections: trunk.sections.max(1),
+        sections: if p.path.is_empty() {
+            trunk.sections.max(1)
+        } else {
+            p.path.len() as u32 - 1
+        },
         segments: trunk.segments.max(3),
         sway: Sway {
-            pivot: DVec3::ZERO,
+            pivot: root,
             stiffness: 1.0,
         },
     });
@@ -450,6 +475,20 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
         let (mut origin, mut q) = (bud.origin, bud.q);
         for i in 0..=bud.sections {
             let t = i as f64 / bud.sections as f64;
+            let guided = bud.level == 0 && !p.path.is_empty();
+            if guided {
+                origin = p.path[i as usize];
+                let k = (i as usize).min(p.path.len() - 2);
+                let direction = (p.path[k + 1] - p.path[k]).normalize();
+                let axis = DVec3::Y.cross(direction);
+                q = if axis.length_squared() > 1e-16 {
+                    turn(axis.normalize(), double::atan2(axis.length(), direction.y))
+                } else if direction.y < 0.0 {
+                    turn(DVec3::X, double::PI)
+                } else {
+                    DQuat::IDENTITY
+                };
+            }
             let radius = if i == bud.sections && last_level {
                 1e-4
             } else {
@@ -457,6 +496,9 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             }
             .max(1e-4);
             sections.push(Section { origin, q, radius });
+            if guided {
+                continue;
+            }
             origin += q * DVec3::Y * step;
             // Thin branches wander more (at most four times as much).
             let units = radius / UNIT;
@@ -607,6 +649,11 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             let wind = wind_of(leaf.sway, leaf.origin, 1.0);
             let (len, width) = (leaf.size * scale, leaf.size * scale * lv.width);
             let q = skyward(leaf.q, lv.facing, rolling.range(-0.5, 0.5));
+            if let Some(mesh) = &p.leaf_mesh {
+                custom_piece(&mut out, mesh, leaf.origin, q, [width, len, width], c, wind);
+                out.leaf_count += 1;
+                continue;
+            }
             match lv.shape {
                 LeafShape::Blade => {
                     let outline = (LEAF, kite);
@@ -629,6 +676,19 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             let u = colour.next_f64() as f32;
             let c: [f32; 3] = std::array::from_fn(|k| f.color[k] + (f.color2[k] - f.color[k]) * u);
             let wind = wind_of(flower.sway, flower.origin, 0.6);
+            if let Some(mesh) = &p.flower_mesh {
+                custom_piece(
+                    &mut out,
+                    mesh,
+                    flower.origin,
+                    flower.q,
+                    [flower.size * f.width, flower.size, flower.size * f.width],
+                    c,
+                    wind,
+                );
+                out.flower_count += 1;
+                continue;
+            }
             let offset = double::TAU * colour.next_f64();
             for k in 0..petals {
                 let round = offset + double::TAU * f64::from(k) / f64::from(petals);
@@ -743,6 +803,39 @@ fn piece(
         out.leaf_wind.push(wind);
     }
     m.indices.extend(tris.iter().map(|i| first + i));
+}
+
+#[allow(clippy::too_many_arguments)]
+fn custom_piece(
+    out: &mut PlantMesh,
+    mesh: &Mesh,
+    origin: DVec3,
+    q: DQuat,
+    scale: [f64; 3],
+    color: [f32; 3],
+    wind: [f32; 8],
+) {
+    let scale = DVec3::from(scale).max(DVec3::splat(1e-8));
+    let verts: Vec<_> = mesh
+        .positions
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            (
+                DVec3::from(p.map(f64::from)) * scale,
+                (DVec3::from(mesh.normals[i].map(f64::from)) / scale).normalize_or(DVec3::Y),
+                mesh.uvs[i],
+                1.0,
+            )
+        })
+        .collect();
+    let first = out.leaves.positions.len();
+    piece(out, origin, q, &verts, &mesh.indices, color, wind);
+    for (i, c) in mesh.colors.iter().enumerate() {
+        for (v, c) in out.leaves.colors[first + i].iter_mut().zip(c) {
+            *v *= c;
+        }
+    }
 }
 
 /// A blade's edge at two heights, as (along, across, shade), and how far
@@ -863,7 +956,14 @@ mod tests {
         let p = Plant::default();
         let a = plant(&p, 1.0).unwrap();
         assert_eq!(a, plant(&p, 1.0).unwrap());
-        let other = plant(&Plant { seed: 2, ..p }, 1.0).unwrap();
+        let other = plant(
+            &Plant {
+                seed: 2,
+                ..p.clone()
+            },
+            1.0,
+        )
+        .unwrap();
         assert_ne!(a.wood.positions, other.wood.positions);
         let mut flowered = p;
         flowered.flowers = Some(Flowers::default());

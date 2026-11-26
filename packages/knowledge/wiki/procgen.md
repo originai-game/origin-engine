@@ -32,7 +32,7 @@ module procgen {
 | [`og.procgen.noise`](procgen/fn-noise.md) | function | `(desc: FbmDesc, x: number, y: number, z: number): number` | Noise at one point, about -1 to 1: a pure function of the desc and the point. |
 | [`og.procgen.noiseGrad`](procgen/fn-noiseGrad.md) | function | `(desc: FbmDesc, x: number, y: number, z: number): NoiseGrad` | Analytical value and gradient of Perlin FBM at one point (exact chain-rule derivatives, no finite-difference jitter). |
 | [`og.procgen.curlNoise`](procgen/fn-curlNoise.md) | function | `(desc: FbmDesc, x: number, y: number, z: number): Vector3` | Divergence-free curl vector field from analytical noise gradients: 2D returns `(dN/dy, -dN/dx, 0)`, 3D returns the full 3D curl of three independent potentials. |
-| [`og.procgen.worley`](procgen/fn-worley.md) | function | `(seed: number, x: number, y: number, z: number, threeD: boolean): Vector2` | Cellular Worley noise distances at a point: `x` is F1 (nearest feature distance) and `y` is F2 (second-nearest feature distance). |
+| [`og.procgen.worley`](procgen/fn-worley.md) | function | `(seed: number, x: number, y: number, z: number, threeD: boolean, sites?: readonly Vector3[] \| null): Vector2` | Cellular Worley noise distances at a point: `x` is F1 (nearest feature distance) and `y` is F2 (second-nearest feature distance). |
 | [`og.procgen.noiseGrid`](procgen/fn-noiseGrid.md) | function | `(desc?: NoiseGridDesc): Result<Float32Array>` | Noise over a grid in one call, row-major as a native Float32Array: `values[j * width + i]` is the sample at (x + i * step, y + j * step). |
 | [`PoissonDesc`](procgen/type-PoissonDesc.md) | desc struct |  | Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field. |
 | [`og.procgen.poissonDisk`](procgen/fn-poissonDisk.md) | function | `(desc?: PoissonDesc): Result<readonly Vector2[]>` | Poisson-disk points in [0, width) × [0, height), in the order they were placed. |
@@ -51,6 +51,7 @@ module procgen {
 | [`RiverCarveDesc`](procgen/type-RiverCarveDesc.md) | desc struct |  | Drainage-accumulation river carving pass. |
 | [`MoistureDesc`](procgen/type-MoistureDesc.md) | desc struct |  | Moisture field weights for biome painting. |
 | [`BiomeRuleDesc`](procgen/type-BiomeRuleDesc.md) | desc struct |  | One biome painting rule mapping altitude, slope and moisture bands onto a terrain layer index. |
+| [`TerrainChannelDesc`](procgen/type-TerrainChannelDesc.md) | desc struct |  | An authored valley or river centre line in terrain-local xyz metres. |
 | [`HeightmapDesc`](procgen/type-HeightmapDesc.md) | desc struct |  | Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit). |
 | [`HeightmapResult`](procgen/type-HeightmapResult.md) | struct |  | Generated procedural heightfield and optional biome control map, ready for og.terrain.create. |
 | [`og.procgen.heightmap`](procgen/fn-heightmap.md) | function | `(desc?: HeightmapDesc): Result<HeightmapResult>` | Generate a deterministic eroded terrain heightmap and optional biome control map as native TypedArrays (hand directly to og.terrain.create). |

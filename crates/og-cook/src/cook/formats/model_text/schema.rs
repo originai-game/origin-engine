@@ -289,6 +289,9 @@ pub const BLOCKS: &[(&str, &[Line])] = &[
             "seed", "<u32>", "Plant default or kind", "Deterministic generator seed.";
             "growth", "deciduous | evergreen", "Plant default or kind", "Branch growth mechanism.";
             "levels", "<0..3>", "Plant default or kind", "Branch levels after the trunk.";
+            "path", "<x y z> ...", "", "2..1025 authored trunk ring centres in metres; replaces trunk wandering and sections. Children grow from this curve.";
+            "leafGeometry", "{ <geometry> { ... } }", "", "Unit custom leaf, x across, y along, z facing; transformed by leaf size and width with generated wind. Uses the normal geometry and model operand parser.";
+            "flowerGeometry", "{ <geometry> { ... } }", "", "Unit custom whole flower replacing procedural petals and centre; transformed by flower size and width.";
             "force", "<x> <y> <z> <strength>", "Plant default or kind", "Tropism direction and strength.";
             "trunk", "{ ... }", "Plant default or kind", "Trunk level parameters.";
             "branch1", "{ ... }", "Plant default or kind", "First branch level.";

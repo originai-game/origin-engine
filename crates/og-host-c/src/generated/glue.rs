@@ -710,7 +710,7 @@ unsafe extern "C" fn og_procgen_curl_noise(args: *const crate::OgValue, out: *mu
 }
 
 unsafe extern "C" fn og_procgen_worley(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as ProcgenApi>::og_procgen_worley(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) }, unsafe { crate::arg(args, 4) });
+    let r = <Host as ProcgenApi>::og_procgen_worley(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) }, unsafe { crate::arg(args, 4) }, unsafe { crate::arg(args, 5) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3662,7 +3662,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_procgen_noise", arity: 4, call: og_procgen_noise },
     crate::Symbol { name: c"og_procgen_noise_grad", arity: 4, call: og_procgen_noise_grad },
     crate::Symbol { name: c"og_procgen_curl_noise", arity: 4, call: og_procgen_curl_noise },
-    crate::Symbol { name: c"og_procgen_worley", arity: 5, call: og_procgen_worley },
+    crate::Symbol { name: c"og_procgen_worley", arity: 6, call: og_procgen_worley },
     crate::Symbol { name: c"og_procgen_noise_grid", arity: 1, call: og_procgen_noise_grid },
     crate::Symbol { name: c"og_procgen_poisson_disk", arity: 1, call: og_procgen_poisson_disk },
     crate::Symbol { name: c"og_procgen_bsp", arity: 1, call: og_procgen_bsp },

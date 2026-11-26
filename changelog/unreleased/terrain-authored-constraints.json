@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "terrain.generate.channel, og.procgen.heightmap",
+      "summary": "Carve explicit valley and river polylines with the shared parabolic river section; river lines must not rise downstream and can share endpoints as an authored network. Preserve a scalar field of original-shape weights or a boundary band after processing. Cook tracks generated preservation fields and uses the same constraints as runtime, without resampling or inferring branches."
+    }
+  ]
+}

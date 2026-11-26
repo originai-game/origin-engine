@@ -75,7 +75,11 @@ fn numbers(e: &Entry) -> Result<Vec<f32>, String> {
         .collect()
 }
 
-pub(crate) fn expand(s: &Source, doc: &Document) -> Result<Document, String> {
+pub(crate) fn expand(
+    s: &Source,
+    doc: &Document,
+    terrains: &dyn Fn(&str) -> Result<String, String>,
+) -> Result<Document, String> {
     if doc.version != 1 {
         return Err("scatter is version 1".into());
     }
@@ -170,8 +174,7 @@ pub(crate) fn expand(s: &Source, doc: &Document) -> Result<Document, String> {
         .as_ref()
         .map(|rel| {
             let rel = crate::runtime::asset_id(rel);
-            let text = std::fs::read_to_string(root.join(rel))
-                .map_err(|e| format!("scatter terrain {rel}: {e}"))?;
+            let text = terrains(rel)?;
             let doc = terrain::parse(rel, &root, &text)?;
             terrain::field(&doc, &root)
         })

@@ -26,7 +26,7 @@ pub(crate) fn is_reader(op: &str) -> bool {
 }
 
 /// Every operation and the fields it takes.
-pub(crate) const OPS: &[(&str, &[&str])] = &[
+pub const OPS: &[(&str, &[&str])] = &[
     ("frame", &["origin", "normal", "up"]),
     ("offset", &["frame", "distance"]),
     ("translate", &["frame", "x", "y", "z"]),

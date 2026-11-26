@@ -19288,6 +19288,11 @@
           "name": "threeD",
           "type": "bool",
           "optional": false
+        },
+        {
+          "name": "sites",
+          "type": "Option<List<Vector3>>",
+          "optional": true
         }
       ],
       "returns": "Vector2",

@@ -9,6 +9,7 @@
 //! Cells are (x right, y down) with row 0 at the top; world coordinates are
 //! map-local with y up from the map's top-left corner.
 
+pub mod grammar;
 pub mod map;
 pub mod state;
 pub mod tileset;

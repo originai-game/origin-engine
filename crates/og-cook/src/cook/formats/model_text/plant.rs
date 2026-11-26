@@ -271,6 +271,29 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, Plan
         force_strength,
         leaves,
         flowers,
+        path: f
+            .get("path")
+            .map(|e| {
+                let v = numbers(e)?;
+                if !v.len().is_multiple_of(3) {
+                    return Err(at(e, "takes xyz ring centres"));
+                }
+                Ok(v.as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|p| DVec3::new(p[0], p[1], p[2]))
+                    .collect())
+            })
+            .transpose()?
+            .unwrap_or_default(),
+        leaf_mesh: f
+            .block("leafGeometry")?
+            .map(|b| geometry_entry(b, "plant.leafGeometry", 0).and_then(|e| geometry(e, 1.0)))
+            .transpose()?,
+        flower_mesh: f
+            .block("flowerGeometry")?
+            .map(|b| geometry_entry(b, "plant.flowerGeometry", 0).and_then(|e| geometry(e, 1.0)))
+            .transpose()?,
     };
     Ok((plant, look))
 }

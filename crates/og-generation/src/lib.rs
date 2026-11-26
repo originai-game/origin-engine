@@ -111,7 +111,22 @@ pub fn og_procgen_curl_noise(desc: String, x: f64, y: f64, z: f64) -> Vec3 {
     }
 }
 
-pub fn og_procgen_worley(seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> Vec2 {
+pub fn og_procgen_worley(
+    seed: u32,
+    x: f64,
+    y: f64,
+    z: f64,
+    three_d: bool,
+    sites: Option<String>,
+) -> Vec2 {
+    if let Some(sites) = sites {
+        let Ok(sites): Result<Vec<Vec3>, _> = wire::arg(Some(&sites), "sites") else {
+            return Vec2::splat(f32::NAN);
+        };
+        let sites: Vec<_> = sites.iter().map(|p| p.to_array()).collect();
+        return noise::worley_sites([x as f32, y as f32, z as f32], &sites, !three_d)
+            .map_or(Vec2::splat(f32::NAN), |s| Vec2::new(s.f1, s.f2));
+    }
     let s = if three_d {
         noise::worley3(seed, x as f32, y as f32, z as f32)
     } else {
@@ -142,16 +157,28 @@ pub fn og_procgen_noise_grid(desc: Option<String>) -> Result<Vec<f32>, String> {
     Ok(out)
 }
 
-pub fn og_procgen_poisson_disk(desc: Option<String>) -> Result<Vec<Vec2>, String> {
-    let d: wire::PoissonDesc = wire::arg(desc.as_deref(), "desc")?;
-    let pts = procgen::poisson_disk_ex(
+pub fn og_procgen_poisson_disk(desc: Option<Vec<u8>>) -> Result<Vec<Vec2>, String> {
+    let d: wire::PoissonDesc = og_api::bin::arg(desc, "desc")?;
+    let pts = procgen::poisson_disk_in(
         d.seed,
-        d.width,
-        d.height,
+        [d.width, d.height],
         d.radius,
         d.attempts.clamp(1, 256),
         d.max_points.min(1 << 20) as usize,
         d.wrap,
+        &procgen::PoissonInput {
+            region: d.region.iter().map(|p| p.to_array()).collect(),
+            holes: d
+                .holes
+                .iter()
+                .map(|r| r.iter().map(|p| p.to_array()).collect())
+                .collect(),
+            points: d.points.iter().map(|p| p.to_array()).collect(),
+            columns: d.columns,
+            rows: d.rows,
+            density: d.density,
+            radii: d.radii,
+        },
     )
     .map_err(|e| e.reason().to_string())?;
     Ok(pts.into_iter().map(Vec2::from_array).collect::<Vec<_>>())
@@ -166,8 +193,8 @@ fn rect(r: &procgen::CellRect) -> wire::CellRect {
     }
 }
 
-pub fn og_procgen_bsp(desc: Option<String>) -> Result<wire::BspResult, String> {
-    let d: wire::BspDesc = wire::arg(desc.as_deref(), "desc")?;
+pub fn og_procgen_bsp(desc: Option<Vec<u8>>) -> Result<wire::BspResult, String> {
+    let d: wire::BspDesc = og_api::bin::arg(desc, "desc")?;
     let out = procgen::bsp_rooms(&BspDesc {
         seed: d.seed,
         width: d.width,
@@ -177,6 +204,17 @@ pub fn og_procgen_bsp(desc: Option<String>) -> Result<wire::BspResult, String> {
         depth: d.depth,
         padding: d.padding,
         corridor: d.corridor,
+        mask: d.mask,
+        rooms: d
+            .rooms
+            .iter()
+            .map(|r| procgen::CellRect {
+                x: r.x,
+                y: r.y,
+                width: r.width,
+                height: r.height,
+            })
+            .collect(),
         loops: if d.loops.is_finite() {
             d.loops.clamp(0.0, 1.0)
         } else {
@@ -214,6 +252,7 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Result<wire::WfcResult, String> {
         height: d.height,
         tiles,
         fixed,
+        allowed: d.allowed,
         wrap: d.wrap,
         attempts: d.attempts.clamp(1, 1000),
     })
@@ -227,7 +266,7 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Result<wire::WfcResult, String> {
 
 pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Result<wire::HeightmapResult, String> {
     use og_render_data::terrain::generate::{
-        Biome, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
+        Biome, Channel, Generate, Hydraulic, Mask, Moisture, Rivers, Thermal, generate, process,
     };
     let d: wire::HeightmapDesc = og_api::bin::arg(desc, "desc")?;
     if d.columns < 2 || d.rows < 2 || d.columns > 4097 || d.rows > 4097 {
@@ -313,6 +352,18 @@ pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Result<wire::HeightmapResu
         sea: d.sea_level,
         shore: d.shore,
         rivers,
+        channels: d
+            .channels
+            .into_iter()
+            .map(|c| Channel {
+                points: c.points.into_iter().map(|p| [p.x, p.y, p.z]).collect(),
+                width: c.width,
+                depth: c.depth,
+                river: c.river,
+            })
+            .collect(),
+        preserve: d.preserve.unwrap_or_default(),
+        preserve_border: d.preserve_border,
         moisture: Moisture {
             flow: d.moisture.flow,
             scale: d.moisture.scale,
@@ -385,13 +436,45 @@ fn flatten_plant_part(mesh: &og_shape::generators::Mesh, wind: &[[f32; 8]]) -> w
     }
 }
 
-pub fn og_procgen_plant(desc: Option<String>) -> Result<wire::PlantMeshResult, String> {
+fn foliage_mesh(
+    desc: Option<wire::BufferGeometryDesc>,
+) -> Result<Option<og_shape::generators::Mesh>, String> {
+    desc.map(|d| {
+        let m = og_render_data::geometry::buffer_geometry(
+            &og_render_data::geometry::BufferAttributes {
+                positions: &d.positions,
+                normals: d.normals.as_deref(),
+                uvs: d.uvs.as_deref(),
+                colors: d.colors.as_deref(),
+                tangents: d.tangents.as_deref(),
+                indices: d.indices.as_deref(),
+            },
+        )?;
+        if m.indices.is_empty() {
+            return Err("foliage mesh needs at least one triangle".into());
+        }
+        Ok(og_shape::generators::Mesh {
+            positions: m.vertices.iter().map(|v| v.position).collect(),
+            normals: m.vertices.iter().map(|v| v.normal).collect(),
+            uvs: m.vertices.iter().map(|v| v.uv).collect(),
+            colors: m.vertices.iter().map(|v| v.color).collect(),
+            tangents: Vec::new(),
+            indices: m.indices,
+        })
+    })
+    .transpose()
+}
+
+pub fn og_procgen_plant(desc: Option<Vec<u8>>) -> Result<wire::PlantMeshResult, String> {
     use og_shape::generators::plant::{
         Flowers, Growth, LEVELS, LeafShape, Leaves, Level, Plant, plant,
     };
-    let d: wire::PlantDesc = wire::arg(desc.as_deref(), "desc")?;
+    let d: wire::PlantDesc = og_api::bin::arg(desc, "desc")?;
     let mut spec = Plant {
         seed: d.seed,
+        path: d.path.iter().map(|p| p.as_dvec3()).collect(),
+        leaf_mesh: foliage_mesh(d.leaf_mesh)?,
+        flower_mesh: foliage_mesh(d.flower_mesh)?,
         growth: match d.growth {
             wire::PlantGrowth::Deciduous => Growth::Deciduous,
             wire::PlantGrowth::Evergreen => Growth::Evergreen,
@@ -465,7 +548,7 @@ pub fn og_procgen_plant(desc: Option<String>) -> Result<wire::PlantMeshResult, S
 }
 
 pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult, String> {
-    use og_shape::boolean::fracture::{bounds, contains, voronoi};
+    use og_shape::boolean::fracture::{bounds, seeds, voronoi};
     use og_shape::generators::Mesh;
     let d: wire::FractureDesc = og_api::bin::arg(desc, "desc")?;
     if d.positions.len() < 9 || !d.positions.len().is_multiple_of(3) {
@@ -481,7 +564,14 @@ pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult
     if d.indices.iter().any(|&i| i as usize >= vert_count) {
         return Err("desc.indices contains an out-of-range vertex index".into());
     }
-    let chunks = d.chunks.clamp(2, 128) as usize;
+    if !d.sites.is_empty() && !(2..=128).contains(&d.sites.len()) {
+        return Err("desc.sites needs 2..128 cell centres".into());
+    }
+    let chunks = if d.sites.is_empty() {
+        d.chunks.clamp(2, 128) as usize
+    } else {
+        d.sites.len()
+    };
     let metric = DVec3::new(
         f64::from(d.metric.x).abs().max(1e-4),
         f64::from(d.metric.y).abs().max(1e-4),
@@ -505,7 +595,6 @@ pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult
     let extent = hi - lo;
     let diag = extent.length().max(1e-4);
     let mut rng = Rng::new(d.seed);
-    let mut seeds = Vec::with_capacity(chunks);
     let impact = d
         .impact
         .map(|v| DVec3::new(f64::from(v.x), f64::from(v.y), f64::from(v.z)));
@@ -514,44 +603,21 @@ pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult
     } else {
         diag * 0.5
     };
-    // Sample deterministic seed centres inside the closed mesh (clustering half
-    // near `impact` when given), falling back to bounding-box samples if thin.
-    let max_tries = chunks * 32;
-    let mut tries = 0;
-    while seeds.len() < chunks && tries < max_tries {
-        tries += 1;
-        let pt = if let Some(imp) = impact
-            && seeds.len() * 2 < chunks
-        {
-            // Box-Muller-free deterministic cubic radial clustering near impact.
-            let dx = rng.range(-1.0, 1.0);
-            let dy = rng.range(-1.0, 1.0);
-            let dz = rng.range(-1.0, 1.0);
-            let dir = DVec3::new(dx, dy, dz);
-            let len = dir.length();
-            if len > 1e-6 {
-                let r = impact_r * rng.next_f64() * rng.next_f64();
-                imp + (dir / len) * r
-            } else {
-                imp
-            }
-        } else {
-            DVec3::new(
-                lo.x + rng.next_f64() * extent.x,
-                lo.y + rng.next_f64() * extent.y,
-                lo.z + rng.next_f64() * extent.z,
-            )
-        };
-        if contains(&mesh, pt) {
-            seeds.push(pt);
-        }
-    }
-    while seeds.len() < chunks {
-        seeds.push(DVec3::new(
-            lo.x + rng.next_f64() * extent.x,
-            lo.y + rng.next_f64() * extent.y,
-            lo.z + rng.next_f64() * extent.z,
-        ));
+    let seeds = if d.sites.is_empty() {
+        seeds(
+            &mesh,
+            chunks as u32,
+            &mut rng,
+            None,
+            impact.map(|p| (p, impact_r)),
+        )
+    } else {
+        d.sites.iter().map(|p| p.as_dvec3()).collect()
+    };
+    if seeds.len() < 2 {
+        return Err(
+            "fewer than 2 seeds fell inside the model: is it closed and facing out?".into(),
+        );
     }
     let material = vec![0u32; mesh.triangle_count()];
     let out = voronoi(&mesh, &material, &seeds, metric, uv_scale)?;

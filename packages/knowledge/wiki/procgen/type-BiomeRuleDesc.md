@@ -84,4 +84,4 @@ struct BiomeRuleDesc {
 }
 ```
 
-<sub>Module `procgen` line 413</sub>
+<sub>Module `procgen` line 426</sub>

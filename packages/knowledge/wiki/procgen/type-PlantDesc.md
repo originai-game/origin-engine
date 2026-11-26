@@ -16,6 +16,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `growth` | `PlantGrowth` | `"deciduous"` | — | — | — | Branching habit (deciduous or evergreen). |
 | `levels` | `number` | `2` | ≤ 3 | — | — | Branching levels beyond the trunk (0 to 3). |
 | `levelsSpec` | `readonly PlantLevelDesc[]` | `[]` | — | — | — | Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults). |
+| `path` | `readonly Vector3[]` | `[]` | — | — | — | Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ. |
+| `leafMesh` | `BufferGeometryDesc \| null` | `null` | — | — | — | Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply. |
+| `flowerMesh` | `BufferGeometryDesc \| null` | `null` | — | — | — | Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width. |
 | `forceDirection` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | Tropism / gravity bend direction. |
 | `forceStrength` | `number` | `0.01` | -2 … 2 | — | — | Tropism bend strength (negative droops boughs downward). |
 | `leaves` | `PlantLeavesDesc \| null` | `null` | — | — | — | Optional foliage leaves (pass {} for standard broadleaf leaves; omit or null for bare winter wood). |
@@ -34,6 +37,9 @@ struct PlantDesc {
     max 3
   }
   field levelsSpec List.PlantLevelDesc "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults)."
+  field path List.Vector3 "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ."
+  field leafMesh Option.BufferGeometryDesc "Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply."
+  field flowerMesh Option.BufferGeometryDesc "Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width."
   field forceDirection Vector3 "Tropism / gravity bend direction." {
     default 0 1 0
   }
@@ -47,4 +53,4 @@ struct PlantDesc {
 }
 ```
 
-<sub>Module `procgen` line 759</sub>
+<sub>Module `procgen` line 792</sub>

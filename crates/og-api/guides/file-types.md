@@ -687,6 +687,9 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `seed <u32>` | `Plant default or kind` | Deterministic generator seed. |
 | `growth deciduous \| evergreen` | `Plant default or kind` | Branch growth mechanism. |
 | `levels <0..3>` | `Plant default or kind` | Branch levels after the trunk. |
+| `path <x y z> ...` | `` | 2..1025 authored trunk ring centres in metres; replaces trunk wandering and sections. Children grow from this curve. |
+| `leafGeometry { <geometry> { ... } }` | `` | Unit custom leaf, x across, y along, z facing; transformed by leaf size and width with generated wind. Uses the normal geometry and model operand parser. |
+| `flowerGeometry { <geometry> { ... } }` | `` | Unit custom whole flower replacing procedural petals and centre; transformed by flower size and width. |
 | `force <x> <y> <z> <strength>` | `Plant default or kind` | Tropism direction and strength. |
 | `trunk { ... }` | `Plant default or kind` | Trunk level parameters. |
 | `branch1 { ... }` | `Plant default or kind` | First branch level. |
@@ -808,6 +811,7 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `style voronoi \| concrete \| brick \| wood \| glass` | `voronoi` | Fracture mechanism, not a gameplay rule. |
 | `chunks <2..256>` | `16` | Support chunk count. |
 | `seed <u32>` | `1` | Deterministic cut pattern. |
+| `site <x> <y> <z>` | `` | Repeat 2..128 explicit Voronoi centres in model metres; requires style voronoi and pattern volume, replaces automatic support-cell sampling. Site order fixes cell ids. Children retain their declared generator. |
 | `children <0..32>` | `0` | Child pieces per support chunk. |
 | `pattern auto \| volume \| slab` | `auto` | 3D cells or shards through the thinnest axis; auto detects thin input. |
 | `brick <length> <height>` | `0.25 0.1` | Brick dimensions, each at least 0.01 metres. |
@@ -1128,6 +1132,22 @@ Field coverage: parser line tables, including every nested block below. Output: 
 | `layer { ... }` | `` | Repeated material layer; at most sixteen. Past four use texture arrays. |
 | `layers "<texture-array.ogt>"` | `` | Albedo array asset. |
 | `layerNormals "<texture-array.ogt>"` | `` | Normal array asset. |
+| `edit { ... }` | `` | Repeated local-space brush. Edits and stamps run in written order after generate and its final shape projection; explicit edits may intentionally change protected samples. |
+| `stamp { ... }` | `` | Repeated placed geometry projected through the shared runtime stamp mechanism. Geometry may be procedural, generated buffers or modelGeometry; model dependencies import first. |
+
+<a id="file-terrain-edit"></a>
+### `file:terrain.edit`
+
+Terrain `edit` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `mode raise \| lower \| flatten \| smooth \| paint \| hole \| fill` | `required` | The runtime TerrainBrush operation. |
+| `center <x> <y> <z>` | `required` | Terrain-local metres. Flatten targets y. |
+| `radius <metres > 0>` | `required` | Circular brush radius. |
+| `strength <number >= 0>` | `0` | Raise/lower distance in metres; other modes clamp strength to 1. |
+| `falloff <0..1>` | `0` | Fraction of radius fading smoothly to zero. |
+| `layer <index>` | `0` | Existing material layer for paint. |
 
 <a id="file-terrain-lod"></a>
 ### `file:terrain.lod`
@@ -1183,6 +1203,9 @@ Terrain `generate` block fields.
 | `sea <finite metres>` | `` | Sea level for shore flattening and automatic drainage. |
 | `shore <metres 0..1000000>` | `2` | Shore width; requires sea if explicitly written. |
 | `rivers { ... }` | `` | Automatic drainage and river carving; absent means none. |
+| `channel { ... }` | `` | Repeat explicit valley/river centre lines, carved after automatic stages using the shared parabolic section. |
+| `preserve "<field.ogt>"` | `` | Single-channel field matching the height grid; finite weights 0..1 blend the final carved result toward the original base. No resampling. One preserves the original bits, zero is free. |
+| `preserveBorder <samples 0..4097>` | `0` | Pin this many boundary samples to the original base, overriding preserve weights; a band covering the whole field pins every sample. |
 | `moisture { ... }` | `` | Flow/noise mixture read by biome rules. |
 | `biome { ... }` | `` | Repeated rule, writes an existing material layer's control channel. |
 | `script "<file.ts>"` | `` | Default synchronous export returns {columns, rows, heights}; heights are metres. Relative imports and explicit inputs are tracked. Exclusive with heightmap/noise/mask/samples. |
@@ -1251,6 +1274,18 @@ Terrain `generate.rivers` block fields.
 | `depth <metres 0..1000000>` | `2` | Full river depth. |
 | `width <metres 0..1000000>` | `6` | Full river width. |
 
+<a id="file-terrain-generate.channel"></a>
+### `file:terrain.generate.channel`
+
+Terrain `generate.channel` block fields.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `point <x> <y> <z>` | `` | Repeat at least two terrain-local metre points; consecutive xz positions must differ. Shared endpoints specify a network; no branch is inferred. |
+| `width <metres 0.001..1000000>` | `required` | Full width, parabolic from line y minus depth to the original ground; only lowers. |
+| `depth <metres 0..1000000>` | `0` | Bed below the line y; zero puts a valley floor on the line. |
+| `river true \| false` | `false` | Require non-rising y downstream and count declared segment lengths in riverLength; intersections take the lower bed. |
+
 <a id="file-terrain-generate.moisture"></a>
 ### `file:terrain.generate.moisture`
 
@@ -1280,6 +1315,41 @@ Terrain `generate.biome` block fields.
 | `moistureFade <number 0..1>` | `0.1` | Moisture-band fade. |
 
 
+<a id="file-terrain-stamp"></a>
+### `file:terrain.stamp`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `mode carve \| hole` | `carve` | Lower to mesh underside or cut covered cells; no runtime stamp id is persisted. |
+| `depth <metres >= 0>` | `0` | Additional carve depth inside the footprint; its edge meets the underside, as at runtime. |
+| `position <x> <y> <z>` | `0 0 0` | Translation in metres. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Nonzero quaternion, normalized on import. |
+| `scale <x> <y> <z>` | `1 1 1` | Nonzero scale; negative components bake reflected triangles. |
+| `mirror none \| x \| y \| z` | `none` | Reflect geometry, correcting winding and tangent handedness. |
+| `modelGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `bufferGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `boxGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `planeGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `sphereGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `cylinderGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `coneGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `capsuleGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `torusGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `ringGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `circleGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `tubeGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `shapeGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `extrudeGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `latheGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `polyhedronGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `icosahedronGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `dodecahedronGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `octahedronGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `tetrahedronGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `sweepGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `csgGeometry { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+| `mergeGeometries { ... }` | `one geometry required` | Geometry fields are the same as file:model.part.<geometry>. |
+
 <a id="file-texture-array"></a>
 ### `file:texture-array`
 
@@ -1292,7 +1362,48 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `tilemap` asset, cooked by `tilemap`. Input: `.ogt` under assets/.
 
-Field coverage: generate block only; see world for the authored map fields. Output: normal tilemap blob, loaded with og.load.tilemap.
+Field coverage: map, layer and object parser line tables, plus the cook generation block. Output: normal tilemap blob, loaded with og.load.tilemap.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <columns> <rows>` | `required` | Positive map dimensions in cells; generation may supply them at cook. |
+| `tile <width> <height>` | `required` | Positive tile pixel dimensions. |
+| `unit <number>` | `1` | World metres per tile height; tile aspect ratio is retained. |
+| `orientation orthogonal \| isometric \| staggered \| hex [pointy \| flat]` | `orthogonal` | Cell placement; no orientation is inferred from tile art. |
+| `tileset "<asset>"` | `required` | Repeat ordered tileset asset references; layer.tileset indexes this list. |
+| `layer "<name>" { ... }` | `` | Repeat uniquely named tile layers. |
+| `object "<name>" { ... }` | `` | Repeat authored objects in cell coordinates. |
+
+<a id="file-tilemap-layer"></a>
+### `file:tilemap.layer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `tileset <index>` | `0` | Index into the map's tilesets. |
+| `z <integer>` | `layer index` | Draw order. |
+| `parallax <x> <y>` | `1 1` | Camera-relative parallax factors. |
+| `offset <x> <y>` | `0 0` | World-space layer offset. |
+| `opacity <number>` | `1` | Layer opacity. |
+| `visible true \| false` | `true` | Initial visibility. |
+| `collision true \| false` | `false` | Generate colliders from the tileset's collision declarations. |
+| `colliderLayers <bits>` | `0` | Collision membership; requires collision true. |
+| `colliderMask <bits>` | `0` | Collision mask; requires collision true. |
+| `cellColliders true \| false` | `false` | Keep individual cell colliders; requires collision true. |
+| `lit true \| false` | `true` | Receive 2D lighting. |
+| `repeat x \| y \| x y` | `` | Repeat along the named axes. |
+| `terrain "<name>"` | `` | Tileset autotile terrain; rows are occupancy 0/1 instead of tile ids. |
+| `legend "<character>" <tile id>` | `` | Repeat character-to-id mappings for quoted rows; -1 is empty. |
+| `row <tile id> ... \| "<characters>"` | `empty layer` | Repeat one row per map row, each exactly map width; nonnegative ids are zero based, negative ids empty. |
+
+<a id="file-tilemap-object"></a>
+### `file:tilemap.object`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind <name>` | `` | Game-authored object type string. |
+| `rect <x> <y> <width> <height>` | `0 0 0 0` | Top-left and size in cells; y down is converted to world y up. |
+| `at <x> <y>` | `0 0` | Position in cells, y down; does not change rect size. |
+| `prop <key> <value>` | `` | Repeat string-valued game properties; values may be numbers, words or strings. |
 
 <a id="file-tilemap-generate"></a>
 ### `file:tilemap.generate`
@@ -1311,7 +1422,40 @@ The script returns {width, height, layers: [{name, tiles}]}. Each layer names an
 
 An authored `tileset` asset, cooked by `tileset`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line tables. Atlas image, collision shapes, animation and autotiling rules are authored, never inferred.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `texture "<image>"` | `required` | Atlas texture asset. |
+| `grid <tile width> <tile height> <columns> <rows>` | `required` | Positive pixel and grid dimensions. |
+| `margin <pixels>` | `0` | Outer atlas margin. |
+| `spacing <pixels>` | `0` | Spacing between tiles. |
+| `filter nearest \| linear` | `nearest` | Atlas sampler. |
+| `solid <tile id> ...` | `` | Mark complete tile rectangles as solid. |
+| `tile <id> { ... }` | `` | Per-tile collision and animation. |
+| `terrain <name> { ... }` | `` | Uniquely named explicit autotile rule set. |
+
+<a id="file-tileset-tile"></a>
+### `file:tileset.tile`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `polygon <x> <y> ...` | `` | Repeat collision polygons, at least three pixel-coordinate pairs. |
+| `collide <x> <y> <width> <height>` | `` | Collision rectangle in pixels; positive size. |
+| `solid ` | `` | The full tile collides. |
+| `frames <tile id> ...` | `` | Nonempty animation frame ids in playback order. |
+| `fps <number > 0>` | `` | Uniform frame rate; requires frames. |
+| `durations <seconds > 0> ...` | `` | One duration per frame, overrides fps; requires frames. |
+
+<a id="file-tileset-terrain"></a>
+### `file:tileset.terrain`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `mode blob47 \| bitmask16` | `required` | Neighbour mask encoding. |
+| `rule <mask> <tile id>` | `` | Repeat explicit mask-to-tile mappings, each mask only once. |
+| `default <tile id>` | `required` | Tile used where no explicit rule matches. |
+| `edge filled \| empty` | `filled` | Occupancy outside the map. |
 
 <a id="file-timeline"></a>
 ### `file:timeline`
@@ -1408,6 +1552,7 @@ A source's .ogt sidecar or directory import.ogt: input settings, not an independ
 | `style voronoi \| concrete \| brick \| wood \| glass` | `voronoi` | Fracture mechanism, not a gameplay rule. |
 | `chunks <2..256>` | `16` | Support chunk count. |
 | `seed <u32>` | `1` | Deterministic cut pattern. |
+| `site <x> <y> <z>` | `` | Repeat 2..128 explicit Voronoi centres in model metres; requires style voronoi and pattern volume, replaces automatic support-cell sampling. Site order fixes cell ids. Children retain their declared generator. |
 | `children <0..32>` | `0` | Child pieces per support chunk. |
 | `pattern auto \| volume \| slab` | `auto` | 3D cells or shards through the thinnest axis; auto detects thin input. |
 | `brick <length> <height>` | `0.25 0.1` | Brick dimensions, each at least 0.01 metres. |
@@ -1423,6 +1568,884 @@ A source's .ogt sidecar or directory import.ogt: input settings, not an independ
 
 .shape.json: model program operations; consumed by model. See model.
 
+The operation and profile key sets below are the exact tables used to reject unknown JSON fields; parameter expressions are resolved before dispatch. For value types, units and construction examples see model. These are JSON objects, not OGT blocks. The op discriminator selects an operation, and a one-key profile object selects a profile.
+
+<a id="file-model-program-op-frame"></a>
+### `file:model-program.op.frame`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `origin <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `normal <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `up <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-offset"></a>
+### `file:model-program.op.offset`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-translate"></a>
+### `file:model-program.op.translate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `z <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-turn"></a>
+### `file:model-program.op.turn`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `rz <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-compose"></a>
+### `file:model-program.op.compose`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `local <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-bbox"></a>
+### `file:model-program.op.bbox`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-face"></a>
+### `file:model-program.op.face`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-edge"></a>
+### `file:model-program.op.edge`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-local"></a>
+### `file:model-program.op.local`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-anchor"></a>
+### `file:model-program.op.anchor`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-placement"></a>
+### `file:model-program.op.placement`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-grid"></a>
+### `file:model-program.op.grid`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `nx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ny <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `px <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `py <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `stagger <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-ring"></a>
+### `file:model-program.op.ring`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `n <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `start <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-along"></a>
+### `file:model-program.op.along`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `count <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-snap"></a>
+### `file:model-program.op.snap`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `direction <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-names"></a>
+### `file:model-program.op.names`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-measure"></a>
+### `file:model-program.op.measure`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `posed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-units"></a>
+### `file:model-program.op.units`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `unit <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-uvs"></a>
+### `file:model-program.op.uvs`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-op-box"></a>
+### `file:model-program.op.box`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-cylinder"></a>
+### `file:model-program.op.cylinder`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radiusTop <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-cone"></a>
+### `file:model-program.op.cone`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-sphere"></a>
+### `file:model-program.op.sphere`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-dome"></a>
+### `file:model-program.op.dome`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-tube"></a>
+### `file:model-program.op.tube`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `outer <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `inner <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-torus"></a>
+### `file:model-program.op.torus`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tube <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tubeSegments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-wedge"></a>
+### `file:model-program.op.wedge`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-extrude"></a>
+### `file:model-program.op.extrude`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `twist <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `taper <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `bothSides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `until <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-revolve"></a>
+### `file:model-program.op.revolve`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-sweep"></a>
+### `file:model-program.op.sweep`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `up <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `twist <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `scaleEnd <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-loft"></a>
+### `file:model-program.op.loft`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sections <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `samples <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `steps <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `curve <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-thread"></a>
+### `file:model-program.op.thread`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `length <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-wire"></a>
+### `file:model-program.op.wire`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `fillet <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `fillets <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-body"></a>
+### `file:model-program.op.body`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `plan <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `top <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `bottom <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `n <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-knurl"></a>
+### `file:model-program.op.knurl`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `straight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-gear"></a>
+### `file:model-program.op.gear`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `teeth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `module <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `pressureAngle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `bore <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `hub <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `hubHeight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-at"></a>
+### `file:model-program.op.at`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-transform"></a>
+### `file:model-program.op.transform`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-group"></a>
+### `file:model-program.op.group`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-wrap"></a>
+### `file:model-program.op.wrap`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `parts <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-assembly"></a>
+### `file:model-program.op.assembly`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `anchors <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-attach"></a>
+### `file:model-program.op.attach`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `to <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-copy"></a>
+### `file:model-program.op.copy`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-mirror"></a>
+### `file:model-program.op.mirror`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `plane <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-cut"></a>
+### `file:model-program.op.cut`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-join"></a>
+### `file:model-program.op.join`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-intersect"></a>
+### `file:model-program.op.intersect`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-merge"></a>
+### `file:model-program.op.merge`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-delete"></a>
+### `file:model-program.op.delete`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-seat"></a>
+### `file:model-program.op.seat`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `host <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `part <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-scale"></a>
+### `file:model-program.op.scale`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `z <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-hole"></a>
+### `file:model-program.op.hole`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `counterbore <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `countersink <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-pocket"></a>
+### `file:model-program.op.pocket`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-split"></a>
+### `file:model-program.op.split`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `keep <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-shell"></a>
+### `file:model-program.op.shell`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `thickness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `open <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-dent"></a>
+### `file:model-program.op.dent`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-subdivide"></a>
+### `file:model-program.op.subdivide`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `levels <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sharp <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-displace"></a>
+### `file:model-program.op.displace`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `noise <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `scale <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `amount <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `octaves <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `seed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `density <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-fillet"></a>
+### `file:model-program.op.fillet`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-chamfer"></a>
+### `file:model-program.op.chamfer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `distance2 <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-soften"></a>
+### `file:model-program.op.soften`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-material"></a>
+### `file:model-program.op.material`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `color <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `metalness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `roughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `emissive <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `opacity <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `map <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `mapSize <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `clearcoat <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `clearcoatRoughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sheenColor <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sheenRoughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `transmission <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `iridescence <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `surface <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-joint"></a>
+### `file:model-program.op.joint`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `child <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `parent <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `kind <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `range <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `mimic <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-pose"></a>
+### `file:model-program.op.pose`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `joint <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `value <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `clip <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `time <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-clip"></a>
+### `file:model-program.op.clip`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `keys <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-skin"></a>
+### `file:model-program.op.skin`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `bones <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `joints <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `blend <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `maxEdge <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-humanoid"></a>
+### `file:model-program.op.humanoid`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `bind <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-op-morph"></a>
+### `file:model-program.op.morph`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `deltas <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `regions <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `offset <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `scale <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `weight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-rect"></a>
+### `file:model-program.profile.rect`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-circle"></a>
+### `file:model-program.profile.circle`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-ellipse"></a>
+### `file:model-program.profile.ellipse`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-slot"></a>
+### `file:model-program.profile.slot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `length <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-polygon"></a>
+### `file:model-program.profile.polygon`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `sides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `flats <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-poly"></a>
+### `file:model-program.profile.poly`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-gear"></a>
+### `file:model-program.profile.gear`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `teeth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `module <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `pressureAngle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-union"></a>
+### `file:model-program.profile.union`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-profile-subtract"></a>
+### `file:model-program.profile.subtract`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-profile-intersect"></a>
+### `file:model-program.profile.intersect`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-profile-offset"></a>
+### `file:model-program.profile.offset`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-translate"></a>
+### `file:model-program.profile.translate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-rotate"></a>
+### `file:model-program.profile.rotate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-scale"></a>
+### `file:model-program.profile.scale`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-superellipse"></a>
+### `file:model-program.profile.superellipse`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `exponent <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-spline"></a>
+### `file:model-program.profile.spline`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-path"></a>
+### `file:model-program.profile.path`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-profile-stroke"></a>
+### `file:model-program.profile.stroke`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `join <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `roundCaps <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-hull"></a>
+### `file:model-program.profile.hull`
+
+| Field | Default | Meaning |
+|---|---|---|
+
+<a id="file-model-program-profile-mirror"></a>
+### `file:model-program.profile.mirror`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+
+<a id="file-model-program-profile-text"></a>
+### `file:model-program.profile.text`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `text <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `font <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `size <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `spacing <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
 <a id="file-theme"></a>
 ### `file:theme`
 

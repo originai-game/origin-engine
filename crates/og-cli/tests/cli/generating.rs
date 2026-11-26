@@ -250,6 +250,84 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
     );
     assert_eq!(mechanisms["data"]["tiles"], serde_json::json!([0, 1, 0]));
 
+    std::fs::write(root.join("channels.ts"), r#"
+        import {procgen} from '@origingame/engine/generate';
+        export default () => {
+            const heights = Float32Array.from({length:15}, (_, i) => 100+i);
+            const preserve = new Float32Array(15);
+            preserve[7] = 0.5; preserve[8] = 1;
+            const desc = {columns:5, rows:3, size:{x:8,y:4}, heights, preserve, preserveBorder:1,
+                channels:[{points:[{x:-4,y:80,z:0},{x:4,y:72,z:0}],width:4,depth:2,river:true}]};
+            const result = procgen.heightmap(desc);
+            if (!result.ok) throw new Error(result.reason);
+            const rising = procgen.heightmap({...desc, channels:[{...desc.channels[0],points:[{x:0,y:0,z:0},{x:1,y:1,z:0}]}]});
+            const malformed = procgen.heightmap({...desc, preserve:new Float32Array(14)});
+            return {heights:result.value.heights, length:result.value.riverLength, rising:rising.ok, malformed:malformed.ok};
+        };
+    "#).unwrap();
+    let channels = value(&run("channels.ts", "{}"));
+    assert_eq!(
+        channels["data"]["heights"],
+        serde_json::json!([
+            100, 101, 102, 103, 104, 105, 76, 90.5, 108, 109, 110, 111, 112, 113, 114
+        ])
+    );
+    assert_eq!(channels["data"]["length"], 8);
+    assert_eq!(channels["data"]["rising"], false);
+    assert_eq!(channels["data"]["malformed"], false);
+
+    std::fs::write(root.join("constraints.ts"), r#"
+        import {procgen} from '@origingame/engine/generate';
+        export default () => {
+            const require = (v, message) => {if (!v) throw new Error(message)};
+            const tiles = [0,1].map(() => ({weight:1,up:0,right:0,down:0,left:0,rotations:false}));
+            const w = procgen.wfc({width:2,height:2,tiles,allowed:[[1],[0],[0,1],[1]]});
+            require(w.ok && w.value.tiles[0] === 1 && w.value.tiles[1] === 0 && w.value.tiles[3] === 1, 'allowed WFC domains');
+            require(!procgen.wfc({width:2,height:2,tiles,allowed:[[1],[0],[0,1],[1]],fixed:[{x:0,y:0,tile:0}]}).ok, 'conflicting fixed cell must fail');
+            require(!procgen.wfc({width:1,height:1,tiles,allowed:[[]]}).ok, 'empty domain must fail');
+            const polygon = (x0,y0,x1,y1) => [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];
+            const retained = [{x:.5,y:.5},{x:6,y:.5}];
+            const p = procgen.poissonDisk({seed:13,width:8,height:6,radius:.7,region:polygon(.25,.25,7.75,5.75),holes:[polygon(.5,2,1.5,3)],points:retained,columns:4,rows:1,density:new Float32Array([1,0,1,1]),radii:new Float32Array([.7,1,1.4,2]),maxPoints:100});
+            require(p.ok && p.value.length > 5, 'constrained Poisson must place points');
+            require(p.value.slice(0,2).every((p,i) => p.x === retained[i].x && p.y === retained[i].y), 'retained point ordering');
+            const radius = p => [.7,1,1.4,2][Math.min(3,Math.floor(p.x/2))];
+            for (let i=0;i<p.value.length;i++) {
+                const a = p.value[i];
+                require(a.x>=.25 && a.x<7.75 && a.y>=.25 && a.y<5.75 && !(a.x>=2 && a.x<4) && !(a.x>=.5 && a.x<1.5 && a.y>=2 && a.y<3), 'region, hole and density must constrain samples');
+                for(let j=0;j<i;j++) {const b=p.value[j]; require(Math.hypot(a.x-b.x,a.y-b.y)+1e-6>=Math.max(radius(a),radius(b)), 'symmetric variable separation');}
+            }
+            require(!procgen.poissonDisk({width:8,height:6,radius:1,points:[{x:1,y:1},{x:1.1,y:1}]}).ok, 'overlapping retained points must fail');
+            const mask = Uint8Array.from({length:14*9}, (_,i) => i%14===7 && Math.floor(i/14)!==5 ? 0 : 1);
+            const rooms = [{x:1,y:1,width:2,height:2},{x:10,y:1,width:2,height:3}];
+            const b = procgen.bsp({seed:5,width:14,height:9,minRoom:2,maxRoom:3,depth:2,padding:1,corridor:1,mask,rooms});
+            require(b.ok && rooms.every((r,i) => Object.entries(r).every(([k,v]) => b.value.rooms[i][k]===v)), 'BSP retained rooms');
+            require(b.value.cells.every((v,i) => !v || mask[i]), 'BSP must not carve exclusions');
+            const floor = Array.from(b.value.cells).findIndex(v=>v!==0), seen=new Set([floor]), queue=[floor];
+            for(let k=0;k<queue.length;k++) {const i=queue[k]; for(const j of [i-14,i+14,...(i%14 ? [i-1]:[]),...(i%14<13 ? [i+1]:[])]) if(j>=0 && j<126 && b.value.cells[j] && !seen.has(j)){seen.add(j);queue.push(j);}}
+            require(seen.size===b.value.cells.reduce((n,v)=>n+Number(v!==0),0), 'every BSP floor must remain connected');
+            mask[5*14+7]=0;
+            require(!procgen.bsp({width:14,height:9,minRoom:2,maxRoom:3,depth:2,padding:1,corridor:1,mask,rooms}).ok, 'disconnected mask must fail');
+            const f = procgen.fracture({positions:new Float32Array([0,0,0,2,0,0,0,2,0,0,0,2]),indices:new Uint32Array([0,2,1,0,1,3,0,3,2,1,2,3]),sites:[{x:.2,y:.2,z:.2},{x:1,y:.2,z:.2}]});
+            require(f.ok && f.value.pieces.length===2 && Math.abs(f.value.pieces.reduce((n,p)=>n+p.volume,0)-4/3)<1e-5, 'authored fracture sites must partition the original volume');
+            const sites = [{x:3,y:0,z:0},{x:0,y:4,z:3}];
+            const flat = procgen.worley(0,0,0,0,false,sites), solid=procgen.worley(0,0,0,0,true,sites);
+            require(flat.x===3 && flat.y===4 && solid.x===3 && solid.y===5, 'authored Worley distances must use declared dimensions');
+            const path=[{x:-2,y:0,z:1},{x:-1,y:2,z:1},{x:1,y:3,z:-1}];
+            const plant=procgen.plant({levels:0,path,levelsSpec:[{segments:4}],leaves:{count:1,start:.5,end:.5,sizeVariance:0},leafMesh:{positions:new Float32Array([0,0,0,1,0,0,0,1,0]),uvs:new Float32Array([0,0,1,0,0,1]),colors:new Float32Array([1,1,1,.25,1,1,1,.5,1,1,1,.75])}});
+            require(plant.ok && plant.value.leafCount===1 && plant.value.leaves.indices.length===3, 'custom foliage must replace the primitive');
+            for(let ring=0;ring<3;ring++) for(let axis=0;axis<3;axis++) {
+                let centre=0;for(let v=0;v<4;v++)centre+=plant.value.wood.positions[(ring*5+v)*3+axis]/4;
+                require(Math.abs(centre-path[ring][['x','y','z'][axis]])<1e-5,'authored trunk ring centre');
+            }
+            require(plant.value.leaves.colors[3]===.25 && plant.value.leaves.colors[7]===.5 && plant.value.leaves.colors[11]===.75, 'custom foliage alpha must survive');
+            return {verified:true};
+        };
+    "#).unwrap();
+    assert_eq!(
+        value(&run("constraints.ts", "{}"))["data"]["verified"],
+        true
+    );
+
     let exported = og()
         .args([
             "script",

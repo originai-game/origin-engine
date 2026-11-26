@@ -16,6 +16,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `columns` | `number` | `257` | 2 … 4097 | — | — | Samples along x. |
 | `rows` | `number` | `257` | 2 … 4097 | — | — | Samples along z. |
 | `heights` | `Float32Array \| null` | `null` | — | — | — | Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero. |
+| `channels` | `readonly TerrainChannelDesc[]` | `[]` | — | — | — | Explicit valley/river polylines; no inferred branches. Intersections take the lower carved bed. |
+| `preserve` | `Float32Array \| null` | `null` | — | — | — | Optional columns × rows weights in 0..1. After all carving, blend toward the original base: 0 free, 1 bit-exact original. This is a final shape constraint, not an impermeable erosion boundary. |
+| `preserveBorder` | `number` | `0` | ≤ 4097 | — | — | Width in samples of the boundary pinned to the original base, overriding preserve weights. A band covering the whole field pins every sample. |
 | `minHeight` | `number` | `0` | — | `m` | — | Lowest base height before erosion. |
 | `maxHeight` | `number` | `48` | — | `m` | — | Highest base height before erosion. |
 | `seed` | `number` | `1` | — | — | — | Deterministic seed. |
@@ -55,6 +58,11 @@ struct HeightmapDesc {
     max 4097
   }
   field heights Option.Float32Array "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero."
+  field channels List.TerrainChannelDesc "Explicit valley/river polylines; no inferred branches. Intersections take the lower carved bed."
+  field preserve Option.Float32Array "Optional columns × rows weights in 0..1. After all carving, blend toward the original base: 0 free, 1 bit-exact original. This is a final shape constraint, not an impermeable erosion boundary."
+  field preserveBorder u32 "Width in samples of the boundary pinned to the original base, overriding preserve weights. A band covering the whole field pins every sample." {
+    max 4097
+  }
   field minHeight f32 "Lowest base height before erosion." {
     default 0
     unit m
@@ -123,4 +131,4 @@ struct HeightmapDesc {
 }
 ```
 
-<sub>Module `procgen` line 471</sub>
+<sub>Module `procgen` line 499</sub>

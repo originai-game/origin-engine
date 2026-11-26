@@ -243,6 +243,7 @@ impl Tileset {
         };
         let mut grid = false;
         let mut texture = false;
+        crate::grammar::check(&doc.body, crate::grammar::TILESET)?;
         for e in &doc.body.entries {
             match e.key.as_str() {
                 "texture" => {
@@ -502,6 +503,7 @@ fn parse_tile(block: &Block, t: &Tileset) -> Result<TileDef> {
     let mut fps: Option<(f32, usize)> = None;
     let mut durations: Option<(Vec<f32>, usize)> = None;
     let _ = t;
+    crate::grammar::check(block, crate::grammar::TILE)?;
     for e in &block.entries {
         match e.key.as_str() {
             "polygon" => {
@@ -585,6 +587,7 @@ fn parse_tile(block: &Block, t: &Tileset) -> Result<TileDef> {
 }
 
 fn parse_terrain(name: String, block: &Block, line: usize) -> Result<Terrain> {
+    crate::grammar::check(block, crate::grammar::TERRAIN)?;
     let mut mode = None;
     let mut rules = BTreeMap::new();
     let mut default = None;

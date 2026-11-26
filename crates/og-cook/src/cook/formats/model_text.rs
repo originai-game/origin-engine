@@ -1007,7 +1007,12 @@ fn placement_keys() -> Vec<&'static str> {
 
 /// A geometry block with its placement, baked into one mesh (a CSG
 /// operand, a merged part).
-fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Result<Mesh, String> {
+pub(crate) fn placed_geometry(
+    block: &Block,
+    what: &str,
+    line: usize,
+    detail: f64,
+) -> Result<Mesh, String> {
     let g = geometry_entry(block, what, line)?;
     let mut allowed = placement_keys();
     allowed.push(g.key.as_str());

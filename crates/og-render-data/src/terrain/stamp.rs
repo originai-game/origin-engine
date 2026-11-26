@@ -129,3 +129,48 @@ pub fn patch(
         .collect();
     Some((rect, values))
 }
+
+/// Apply a rasterised patch to terrain data. Live edit-log replay and
+/// authored stamps use the same minimum-height and hole semantics.
+pub fn apply(
+    d: &mut super::TerrainData,
+    hole: bool,
+    rect: [u32; 4],
+    values: &[f32],
+) -> Result<u32, String> {
+    let [c0, r0, w, h] = rect;
+    let (cols, rows) = if hole { d.cells() } else { (d.columns, d.rows) };
+    if c0.checked_add(w).is_none_or(|n| n > cols)
+        || r0.checked_add(h).is_none_or(|n| n > rows)
+        || values.len() as u64 != u64::from(w) * u64::from(h)
+    {
+        return Err(format!(
+            "a terrain stamp over {w} × {h} points at ({c0}, {r0}) does not fit the terrain's {cols} × {rows}"
+        ));
+    }
+    let at = |i: usize| ((r0 + i as u32 / w) * cols + c0 + i as u32 % w) as usize;
+    let mut covered = 0;
+    if hole {
+        let mut holes = d
+            .holes
+            .as_ref()
+            .map_or_else(|| vec![0u8; (cols * rows) as usize], |h| h.to_vec());
+        for (i, v) in values.iter().enumerate() {
+            if *v == 1.0 {
+                holes[at(i)] = 1;
+                covered += 1;
+            }
+        }
+        d.holes = holes.contains(&1).then(|| holes.into());
+    } else {
+        let heights = std::sync::Arc::make_mut(&mut d.heights);
+        for (i, v) in values.iter().enumerate() {
+            if !v.is_nan() {
+                let k = at(i);
+                heights[k] = heights[k].min(*v);
+                covered += 1;
+            }
+        }
+    }
+    Ok(covered)
+}

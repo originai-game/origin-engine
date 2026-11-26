@@ -17,7 +17,7 @@ mod poisson;
 mod wfc;
 
 pub use bsp::{BspDesc, BspLayout, CellRect, bsp_rooms};
-pub use poisson::{poisson_disk, poisson_disk_ex};
+pub use poisson::{PoissonInput, poisson_disk, poisson_disk_ex, poisson_disk_in};
 pub use wfc::{Wfc, WfcOut, WfcTile, wfc};
 
 /// The index of a weight drawn in proportion to it (one draw), among the

@@ -27,6 +27,9 @@ pub struct Wfc {
     pub tiles: Vec<WfcTile>,
     /// Cells fixed before the first draw: `(x, y, tile, quarter_turns)`.
     pub fixed: Vec<(u32, u32, u32, u32)>,
+    /// Per-cell tile domains, row-major; an empty outer list leaves all
+    /// cells unrestricted. Rotations of an allowed tile remain available.
+    pub allowed: Vec<Vec<u32>>,
     /// Edges wrap around (a tiling texture).
     pub wrap: bool,
     /// Tries before refusing, each on the seed's fork `attempt-<n>`.
@@ -111,6 +114,17 @@ pub fn wfc(desc: &Wfc) -> Result<WfcOut> {
     let (w, h) = (desc.width as usize, desc.height as usize);
     if desc.tiles.is_empty() {
         return Err(Error::new(ErrorKind::Invalid, "WFC: no tiles"));
+    }
+    if !desc.allowed.is_empty()
+        && (desc.allowed.len() != w * h
+            || desc.allowed.iter().any(|domain| {
+                domain.is_empty() || domain.iter().any(|&t| t as usize >= desc.tiles.len())
+            }))
+    {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "WFC: allowed needs width × height nonempty lists of valid tile indices",
+        ));
     }
 
     // Build deduplicated variants per tile while preserving total tile weight
@@ -223,7 +237,7 @@ pub fn wfc(desc: &Wfc) -> Result<WfcOut> {
         } else {
             root.fork(&format!("attempt-{attempt}"))
         };
-        match solve(&mut rng, w, h, desc.wrap, &variants, &compat, &fixed) {
+        match solve(&mut rng, desc, &variants, &compat, &fixed, &desc.allowed) {
             Ok(cells) => {
                 let mut tiles = Vec::with_capacity(cells.len());
                 let mut rotations = Vec::with_capacity(cells.len());
@@ -568,16 +582,24 @@ impl<'a> Solver<'a> {
 /// One solve attempt with bounded chronological backtracking.
 fn solve(
     rng: &mut Rng,
-    w: usize,
-    h: usize,
-    wrap: bool,
+    desc: &Wfc,
     variants: &[Variant],
     compat: &[Vec<Vec<u16>>; 4],
     fixed: &[(usize, usize, u32)],
+    allowed: &[Vec<u32>],
 ) -> std::result::Result<Vec<usize>, usize> {
+    let (w, h, wrap) = (desc.width as usize, desc.height as usize, desc.wrap);
     let mut s = Solver::new(rng, w, h, wrap, variants, compat);
     let cells = w * h;
     let n = variants.len();
+
+    for (c, domain) in allowed.iter().enumerate() {
+        for (v, variant) in variants.iter().enumerate() {
+            if !domain.contains(&variant.tile) {
+                s.banish(c, v)?;
+            }
+        }
+    }
 
     // Eliminate variants that have zero compatibility in any present neighbour direction.
     for c in 0..cells {

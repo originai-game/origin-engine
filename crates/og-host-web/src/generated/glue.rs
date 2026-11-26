@@ -709,8 +709,8 @@ pub fn og_procgen_curl_noise(desc: String, x: f64, y: f64, z: f64) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_worley(seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String {
-    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d)
+pub fn og_procgen_worley(seed: u32, x: f64, y: f64, z: f64, three_d: bool, sites: Option<String>) -> String {
+    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d, sites)
 }
 
 #[wasm_bindgen]
@@ -719,12 +719,12 @@ pub fn og_procgen_noise_grid(desc: Option<String>) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
+pub fn og_procgen_poisson_disk(desc: Option<Vec<u8>>) -> String {
     <Host as ProcgenApi>::og_procgen_poisson_disk(&Host, desc)
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_bsp(desc: Option<String>) -> Vec<u8> {
+pub fn og_procgen_bsp(desc: Option<Vec<u8>>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
 }
 
@@ -739,7 +739,7 @@ pub fn og_procgen_heightmap(desc: Option<Vec<u8>>) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_plant(desc: Option<String>) -> Vec<u8> {
+pub fn og_procgen_plant(desc: Option<Vec<u8>>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_plant(&Host, desc)
 }
 

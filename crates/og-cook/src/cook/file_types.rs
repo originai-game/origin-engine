@@ -49,6 +49,7 @@ pub fn markdown() -> Result<String, String> {
                     table(&mut out, fields);
                     out.push('\n');
                 }
+                block(&mut out, "terrain.stamp", &terrain_schema::stamp_lines());
             }
             "animgraph" => {
                 out.push_str("Field coverage: asset bindings and all nested graph declarations share the runtime parser's line tables. Output: a validated graph with tracked model animation dependencies; load with og.load.animgraph. Bind names are resolved at cook; runtime handles are never stored.\n\n");
@@ -83,8 +84,18 @@ pub fn markdown() -> Result<String, String> {
                 table(&mut out, match ty { "particles" => crate::fx::EMITTER_LINES, "effect" => crate::effect::EFFECT_LINES, _ => crate::vfx::VFX_LINES });
             }
             "tilemap" => {
-                out.push_str("Field coverage: generate block only; see world for the authored map fields. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n<a id=\"file-tilemap-generate\"></a>\n### `file:tilemap.generate`\n\nThe script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.\n\n");
+                out.push_str("Field coverage: map, layer and object parser line tables, plus the cook generation block. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n");
+                table(&mut out, og_tilemap::grammar::MAP);
+                block(&mut out, "tilemap.layer", og_tilemap::grammar::LAYER);
+                block(&mut out, "tilemap.object", og_tilemap::grammar::OBJECT);
+                out.push_str("\n<a id=\"file-tilemap-generate\"></a>\n### `file:tilemap.generate`\n\nThe script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
+            }
+            "tileset" => {
+                out.push_str("Field coverage: complete parser line tables. Atlas image, collision shapes, animation and autotiling rules are authored, never inferred.\n\n");
+                table(&mut out, og_tilemap::grammar::TILESET);
+                block(&mut out, "tileset.tile", og_tilemap::grammar::TILE);
+                block(&mut out, "tileset.terrain", og_tilemap::grammar::TERRAIN);
             }
             "scatter" => {
                 out.push_str("Field coverage: complete parser line table. Output: a normal scene; load with og.load.scene or reference from a scene. Model placements reuse normal model instancing; prefab placements expand their authored entities. No distribution, density, model or gameplay rule is inferred. Paths are asset-root relative.\n\n");
@@ -162,6 +173,18 @@ pub fn markdown() -> Result<String, String> {
         if ty == "import" {
             block(&mut out, "import.animation", super::anim::LINES);
             block(&mut out, "import.fracture", super::systems::fracture::LINES);
+        }
+        if ty == "model-program" {
+            out.push_str("The operation and profile key sets below are the exact tables used to reject unknown JSON fields; parameter expressions are resolved before dispatch. For value types, units and construction examples see model. These are JSON objects, not OGT blocks. The op discriminator selects an operation, and a one-key profile object selects a profile.\n");
+            for (prefix, entries) in [
+                ("op", og_shape::model::program::OPS),
+                ("profile", og_shape::model::program::PROFILES),
+            ] {
+                for (name, fields) in entries {
+                    let lines: Vec<_> = fields.iter().map(|name| Line::new(name, "<JSON value>", "see model", "Value is read by the shared model-program parser; parameters may use $expressions.", "")).collect();
+                    block(&mut out, &format!("model-program.{prefix}.{name}"), &lines);
+                }
+            }
         }
     }
     out.push_str("Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.\n");

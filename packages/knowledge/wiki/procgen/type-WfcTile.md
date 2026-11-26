@@ -32,4 +32,4 @@ struct WfcTile {
 }
 ```
 
-<sub>Module `procgen` line 228</sub>
+<sub>Module `procgen` line 240</sub>

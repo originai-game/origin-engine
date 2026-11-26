@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `height` | `number` | `16` | 1 … 1024 | — | — | Rows. |
 | `tiles` | `readonly WfcTile[]` | `[]` | — | — | — | The tiles (with rotations, at most 1,024 variants). |
 | `fixed` | `readonly WfcCell[]` | `[]` | — | — | — | Cells decided before the first draw. |
+| `allowed` | `readonly (readonly number[])[]` | `[]` | — | — | — | Optional width × height row-major domains of allowed tile indices. Every supplied domain must be nonempty; rotations remain available. Use an authored empty tile to constrain excluded regions, not an implicit wall preset. Fixed cells must also satisfy their domain. |
 | `wrap` | `boolean` | `false` | — | — | — | The edges wrap round (a tiling texture). |
 | `attempts` | `number` | `10` | 1 … 1000 | — | — | Tries before refusing. |
 
@@ -37,6 +38,7 @@ struct WfcDesc {
   }
   field tiles List.WfcTile "The tiles (with rotations, at most 1,024 variants)."
   field fixed List.WfcCell "Cells decided before the first draw."
+  field allowed List.List.u32 "Optional width × height row-major domains of allowed tile indices. Every supplied domain must be nonempty; rotations remain available. Use an authored empty tile to constrain excluded regions, not an implicit wall preset. Fixed cells must also satisfy their domain."
   field wrap bool "The edges wrap round (a tiling texture)."
   field attempts u32 "Tries before refusing." {
     default 10
@@ -46,4 +48,4 @@ struct WfcDesc {
 }
 ```
 
-<sub>Module `procgen` line 249</sub>
+<sub>Module `procgen` line 261</sub>

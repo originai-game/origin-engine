@@ -84,13 +84,16 @@ fn entity(e: Entity) -> Result<Entry, String> {
         .with_block(body))
 }
 
-fn make(s: &Source) -> Result<Option<Vec<u8>>, String> {
+fn make(
+    s: &Source,
+    terrains: &dyn Fn(&str) -> Result<String, String>,
+) -> Result<Option<Vec<u8>>, String> {
     if s.kind != &SCENE || !s.rel.ends_with(".ogt") || s.error.is_some() {
         return Ok(None);
     }
     let mut doc = Document::parse(&String::from_utf8_lossy(&s.bytes)).map_err(|e| e.to_string())?;
     if doc.ty == "scatter" {
-        return super::scatter::expand(s, &doc)?
+        return super::scatter::expand(s, &doc, terrains)?
             .to_text()
             .map(|text| Some(text.into_bytes()))
             .map_err(|e| e.to_string());
@@ -135,8 +138,25 @@ fn make(s: &Source) -> Result<Option<Vec<u8>>, String> {
 }
 
 pub(crate) fn expand(sources: &mut [Source]) {
+    let terrains: std::collections::BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| s.kind == &crate::cook::systems::terrain::TERRAIN)
+        .map(|s| {
+            (
+                s.rel.clone(),
+                s.error
+                    .clone()
+                    .map_or_else(|| Ok(String::from_utf8_lossy(&s.bytes).into_owned()), Err),
+            )
+        })
+        .collect();
     for s in sources {
-        match make(s) {
+        match make(s, &|id| {
+            terrains
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| Err(format!("scatter terrain '{id}' is not an asset")))
+        }) {
             Ok(Some(bytes)) => s.bytes = bytes,
             Ok(None) => {}
             Err(e) => s.error = Some(e),

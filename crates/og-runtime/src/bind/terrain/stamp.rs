@@ -17,7 +17,6 @@ use crate::host::wire::{TerrainStampDesc, TerrainStampMode};
 use glam::{Mat4, Vec2, Vec3};
 use og_render::TerrainData;
 use serde_json::{Value, json};
-use std::sync::Arc;
 
 /// TerrainStampMode's variants, in the IDL's order.
 const MODES: [&str; 2] = ["carve", "hole"];
@@ -93,39 +92,7 @@ impl Patch {
 
     /// Applies it to a terrain's field; answers the points it changed.
     pub(crate) fn apply(&self, d: &mut TerrainData) -> Result<u32, String> {
-        let [c0, r0, w, h] = self.rect;
-        let (cols, rows) = if self.hole {
-            d.cells()
-        } else {
-            (d.columns, d.rows)
-        };
-        if c0 + w > cols || r0 + h > rows {
-            return Err(format!(
-                "a terrain stamp over {w} × {h} points at ({c0}, {r0}) does not fit the terrain's {cols} × {rows}"
-            ));
-        }
-        let at = |i: usize| ((r0 + i as u32 / w) * cols + c0 + i as u32 % w) as usize;
-        if self.hole {
-            let mut holes = d
-                .holes
-                .as_ref()
-                .map_or_else(|| vec![0u8; (cols * rows) as usize], |h| h.to_vec());
-            for (i, v) in self.values.iter().enumerate() {
-                if *v == 1.0 {
-                    holes[at(i)] = 1;
-                }
-            }
-            d.holes = holes.contains(&1).then(|| holes.into());
-        } else {
-            let heights = Arc::make_mut(&mut d.heights);
-            for (i, v) in self.values.iter().enumerate() {
-                if !v.is_nan() {
-                    let k = at(i);
-                    heights[k] = heights[k].min(*v);
-                }
-            }
-        }
-        Ok(self.covered())
+        og_render::terrain_stamp::apply(d, self.hole, self.rect, &self.values)
     }
 
     /// The rectangle of a terrain's space (`d`'s) it changes.

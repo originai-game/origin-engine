@@ -51,7 +51,15 @@ fn walk(b: &mut Block, f: &mut dyn FnMut(&mut Entry) -> Result<(), String>) -> R
             f(e)?;
         } else if matches!(
             e.key.as_str(),
-            "part" | "a" | "b" | "csgGeometry" | "mergeGeometries"
+            "part"
+                | "a"
+                | "b"
+                | "csgGeometry"
+                | "mergeGeometries"
+                | "plant"
+                | "leafGeometry"
+                | "flowerGeometry"
+                | "stamp"
         ) && let Some(b) = e.block.as_mut()
         {
             walk(b, f)?;

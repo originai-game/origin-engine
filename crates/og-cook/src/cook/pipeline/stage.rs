@@ -126,7 +126,6 @@ pub(crate) fn scan_sources(
     field::expand(&mut sources);
     tilemap::expand(&mut sources);
     audio::expand(&mut sources);
-    scene::expand(&mut sources);
     model_text::expand(&mut sources);
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).
@@ -182,7 +181,7 @@ pub(crate) fn import(
     let dependencies: Vec<_> = sources
         .iter()
         .map(|s| {
-            if s.kind == &model::MODEL && ext(&s.rel) == "ogt" {
+            if (s.kind == &model::MODEL || s.kind == &terrain::TERRAIN) && ext(&s.rel) == "ogt" {
                 model_text::operand_references(&s.bytes)
             } else {
                 Vec::new()
@@ -282,6 +281,12 @@ pub(crate) fn import(
             reused_fractures.insert(s.rel.clone());
         }
         consumed.extend(made.consumed);
+    }
+    // Projected scatter reads terrain after its mesh operands have been
+    // resolved, so it sees precisely the field the terrain cook writes.
+    scene::expand(sources);
+    for s in sources.iter_mut().filter(|s| s.kind == &scene::SCENE) {
+        s.hash = source_hash(s);
     }
     Imported {
         model_texts,

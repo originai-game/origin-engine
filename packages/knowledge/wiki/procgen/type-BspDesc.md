@@ -21,6 +21,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `padding` | `number` | `1` | — | — | — | Wall cells kept between a room and its leaf's edge. |
 | `corridor` | `number` | `1` | ≥ 1 | — | — | Corridor width, in cells. |
 | `loops` | `number` | `0` | 0 … 1 | `ratio` | — | Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops). |
+| `mask` | `Uint8Array` | — | — | — | — | Optional width × height writable cells; zero excludes both rooms and corridors. Corridors route through writable squares at the declared width. Refuses disconnected output rather than clipping rooms or cutting through exclusions. |
+| `rooms` | `readonly CellRect[]` | `[]` | — | — | — | Optional non-overlapping authored rooms, retained first in this order; must fit writable cells. Generated rooms avoid them, and the same corridor mechanism connects them. |
 
 ```ogt
 struct BspDesc {
@@ -61,7 +63,9 @@ struct BspDesc {
     max 1
     unit ratio
   }
+  field mask Uint8Array "Optional width × height writable cells; zero excludes both rooms and corridors. Corridors route through writable squares at the declared width. Refuses disconnected output rather than clipping rooms or cutting through exclusions."
+  field rooms List.CellRect "Optional non-overlapping authored rooms, retained first in this order; must fit writable cells. Generated rooms avoid them, and the same corridor mechanism connects them."
 }
 ```
 
-<sub>Module `procgen` line 174</sub>
+<sub>Module `procgen` line 184</sub>

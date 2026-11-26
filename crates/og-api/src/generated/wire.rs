@@ -1275,6 +1275,13 @@ pub mod procgen {
         pub width: f32,
         pub height: f32,
         pub radius: f32,
+        pub region: Vec<Vec2>,
+        pub holes: Vec<Vec<Vec2>>,
+        pub points: Vec<Vec2>,
+        pub columns: u32,
+        pub rows: u32,
+        pub density: Vec<f32>,
+        pub radii: Vec<f32>,
         pub attempts: u32,
         pub max_points: u32,
         pub wrap: bool,
@@ -1287,6 +1294,13 @@ pub mod procgen {
                 width: Default::default(),
                 height: Default::default(),
                 radius: 1.0_f32,
+                region: Default::default(),
+                holes: Default::default(),
+                points: Default::default(),
+                columns: Default::default(),
+                rows: Default::default(),
+                density: Default::default(),
+                radii: Default::default(),
                 attempts: 30,
                 max_points: 4096,
                 wrap: Default::default(),
@@ -1305,6 +1319,13 @@ pub mod procgen {
                 width: field(o, "width", d.width)?,
                 height: field(o, "height", d.height)?,
                 radius: field(o, "radius", d.radius)?,
+                region: field(o, "region", d.region)?,
+                holes: field(o, "holes", d.holes)?,
+                points: field(o, "points", d.points)?,
+                columns: field(o, "columns", d.columns)?,
+                rows: field(o, "rows", d.rows)?,
+                density: field(o, "density", d.density)?,
+                radii: field(o, "radii", d.radii)?,
                 attempts: field(o, "attempts", d.attempts)?,
                 max_points: field(o, "maxPoints", d.max_points)?,
                 wrap: field(o, "wrap", d.wrap)?,
@@ -1319,6 +1340,13 @@ pub mod procgen {
             o.insert("width".into(), self.width.to_json());
             o.insert("height".into(), self.height.to_json());
             o.insert("radius".into(), self.radius.to_json());
+            o.insert("region".into(), self.region.to_json());
+            o.insert("holes".into(), self.holes.to_json());
+            o.insert("points".into(), self.points.to_json());
+            o.insert("columns".into(), self.columns.to_json());
+            o.insert("rows".into(), self.rows.to_json());
+            o.insert("density".into(), to_bin_f32(&self.density));
+            o.insert("radii".into(), to_bin_f32(&self.radii));
             o.insert("attempts".into(), self.attempts.to_json());
             o.insert("maxPoints".into(), self.max_points.to_json());
             o.insert("wrap".into(), self.wrap.to_json());
@@ -1384,6 +1412,8 @@ pub mod procgen {
         pub padding: u32,
         pub corridor: u32,
         pub loops: f32,
+        pub mask: Vec<u8>,
+        pub rooms: Vec<CellRect>,
     }
 
     impl Default for BspDesc {
@@ -1398,6 +1428,8 @@ pub mod procgen {
                 padding: 1,
                 corridor: 1,
                 loops: Default::default(),
+                mask: Default::default(),
+                rooms: Default::default(),
             }
         }
     }
@@ -1418,6 +1450,8 @@ pub mod procgen {
                 padding: field(o, "padding", d.padding)?,
                 corridor: field(o, "corridor", d.corridor)?,
                 loops: field(o, "loops", d.loops)?,
+                mask: field(o, "mask", d.mask)?,
+                rooms: field(o, "rooms", d.rooms)?,
             })
         }
     }
@@ -1434,6 +1468,8 @@ pub mod procgen {
             o.insert("padding".into(), self.padding.to_json());
             o.insert("corridor".into(), self.corridor.to_json());
             o.insert("loops".into(), self.loops.to_json());
+            o.insert("mask".into(), to_bin_u8(&self.mask));
+            o.insert("rooms".into(), self.rooms.to_json());
             Value::Object(o)
         }
     }
@@ -1592,6 +1628,7 @@ pub mod procgen {
         pub height: u32,
         pub tiles: Vec<WfcTile>,
         pub fixed: Vec<WfcCell>,
+        pub allowed: Vec<Vec<u32>>,
         pub wrap: bool,
         pub attempts: u32,
     }
@@ -1604,6 +1641,7 @@ pub mod procgen {
                 height: 16,
                 tiles: Default::default(),
                 fixed: Default::default(),
+                allowed: Default::default(),
                 wrap: Default::default(),
                 attempts: 10,
             }
@@ -1622,6 +1660,7 @@ pub mod procgen {
                 height: field(o, "height", d.height)?,
                 tiles: field(o, "tiles", d.tiles)?,
                 fixed: field(o, "fixed", d.fixed)?,
+                allowed: field(o, "allowed", d.allowed)?,
                 wrap: field(o, "wrap", d.wrap)?,
                 attempts: field(o, "attempts", d.attempts)?,
             })
@@ -1636,6 +1675,7 @@ pub mod procgen {
             o.insert("height".into(), self.height.to_json());
             o.insert("tiles".into(), self.tiles.to_json());
             o.insert("fixed".into(), self.fixed.to_json());
+            o.insert("allowed".into(), self.allowed.to_json());
             o.insert("wrap".into(), self.wrap.to_json());
             o.insert("attempts".into(), self.attempts.to_json());
             Value::Object(o)
@@ -1993,6 +2033,52 @@ pub mod procgen {
         }
     }
 
+    /// `TerrainChannelDesc`: packages/knowledge/wiki/procgen.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TerrainChannelDesc {
+        pub points: Vec<Vec3>,
+        pub width: f32,
+        pub depth: f32,
+        pub river: bool,
+    }
+
+    impl Default for TerrainChannelDesc {
+        fn default() -> Self {
+            Self {
+                points: Default::default(),
+                width: Default::default(),
+                depth: Default::default(),
+                river: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TerrainChannelDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                points: field(o, "points", d.points)?,
+                width: field(o, "width", d.width)?,
+                depth: field(o, "depth", d.depth)?,
+                river: field(o, "river", d.river)?,
+            })
+        }
+    }
+
+    impl ToJson for TerrainChannelDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("points".into(), self.points.to_json());
+            o.insert("width".into(), self.width.to_json());
+            o.insert("depth".into(), self.depth.to_json());
+            o.insert("river".into(), self.river.to_json());
+            Value::Object(o)
+        }
+    }
+
     /// `HeightmapDesc`: packages/knowledge/wiki/procgen.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct HeightmapDesc {
@@ -2000,6 +2086,9 @@ pub mod procgen {
         pub columns: u32,
         pub rows: u32,
         pub heights: Option<Vec<f32>>,
+        pub channels: Vec<TerrainChannelDesc>,
+        pub preserve: Option<Vec<f32>>,
+        pub preserve_border: u32,
         pub min_height: f32,
         pub max_height: f32,
         pub seed: u32,
@@ -2028,6 +2117,9 @@ pub mod procgen {
                 columns: 257,
                 rows: 257,
                 heights: Default::default(),
+                channels: Default::default(),
+                preserve: Default::default(),
+                preserve_border: Default::default(),
                 min_height: 0.0_f32,
                 max_height: 48.0_f32,
                 seed: 1,
@@ -2062,6 +2154,9 @@ pub mod procgen {
                 columns: field(o, "columns", d.columns)?,
                 rows: field(o, "rows", d.rows)?,
                 heights: field(o, "heights", d.heights)?,
+                channels: field(o, "channels", d.channels)?,
+                preserve: field(o, "preserve", d.preserve)?,
+                preserve_border: field(o, "preserveBorder", d.preserve_border)?,
                 min_height: field(o, "minHeight", d.min_height)?,
                 max_height: field(o, "maxHeight", d.max_height)?,
                 seed: field(o, "seed", d.seed)?,
@@ -2092,6 +2187,9 @@ pub mod procgen {
             o.insert("columns".into(), self.columns.to_json());
             o.insert("rows".into(), self.rows.to_json());
             o.insert("heights".into(), self.heights.as_deref().map_or(Value::Null, to_bin_f32));
+            o.insert("channels".into(), self.channels.to_json());
+            o.insert("preserve".into(), self.preserve.as_deref().map_or(Value::Null, to_bin_f32));
+            o.insert("preserveBorder".into(), self.preserve_border.to_json());
             o.insert("minHeight".into(), self.min_height.to_json());
             o.insert("maxHeight".into(), self.max_height.to_json());
             o.insert("seed".into(), self.seed.to_json());
@@ -2475,6 +2573,9 @@ pub mod procgen {
         pub growth: PlantGrowth,
         pub levels: u32,
         pub levels_spec: Vec<PlantLevelDesc>,
+        pub path: Vec<Vec3>,
+        pub leaf_mesh: Option<BufferGeometryDesc>,
+        pub flower_mesh: Option<BufferGeometryDesc>,
         pub force_direction: Vec3,
         pub force_strength: f32,
         pub leaves: Option<PlantLeavesDesc>,
@@ -2488,6 +2589,9 @@ pub mod procgen {
                 growth: Default::default(),
                 levels: 2,
                 levels_spec: Default::default(),
+                path: Default::default(),
+                leaf_mesh: Default::default(),
+                flower_mesh: Default::default(),
                 force_direction: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
                 force_strength: 0.01_f32,
                 leaves: Default::default(),
@@ -2507,6 +2611,9 @@ pub mod procgen {
                 growth: field(o, "growth", d.growth)?,
                 levels: field(o, "levels", d.levels)?,
                 levels_spec: field(o, "levelsSpec", d.levels_spec)?,
+                path: field(o, "path", d.path)?,
+                leaf_mesh: field(o, "leafMesh", d.leaf_mesh)?,
+                flower_mesh: field(o, "flowerMesh", d.flower_mesh)?,
                 force_direction: field(o, "forceDirection", d.force_direction)?,
                 force_strength: field(o, "forceStrength", d.force_strength)?,
                 leaves: field(o, "leaves", d.leaves)?,
@@ -2522,6 +2629,9 @@ pub mod procgen {
             o.insert("growth".into(), self.growth.to_json());
             o.insert("levels".into(), self.levels.to_json());
             o.insert("levelsSpec".into(), self.levels_spec.to_json());
+            o.insert("path".into(), self.path.to_json());
+            o.insert("leafMesh".into(), self.leaf_mesh.to_json());
+            o.insert("flowerMesh".into(), self.flower_mesh.to_json());
             o.insert("forceDirection".into(), self.force_direction.to_json());
             o.insert("forceStrength".into(), self.force_strength.to_json());
             o.insert("leaves".into(), self.leaves.to_json());
@@ -2643,6 +2753,7 @@ pub mod procgen {
     pub struct FractureDesc {
         pub positions: Vec<f32>,
         pub indices: Vec<u32>,
+        pub sites: Vec<Vec3>,
         pub chunks: u32,
         pub seed: u32,
         pub metric: Vec3,
@@ -2656,6 +2767,7 @@ pub mod procgen {
             Self {
                 positions: Default::default(),
                 indices: Default::default(),
+                sites: Default::default(),
                 chunks: 8,
                 seed: 1,
                 metric: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
@@ -2675,6 +2787,7 @@ pub mod procgen {
             Ok(Self {
                 positions: field(o, "positions", d.positions)?,
                 indices: field(o, "indices", d.indices)?,
+                sites: field(o, "sites", d.sites)?,
                 chunks: field(o, "chunks", d.chunks)?,
                 seed: field(o, "seed", d.seed)?,
                 metric: field(o, "metric", d.metric)?,
@@ -2690,6 +2803,7 @@ pub mod procgen {
             let mut o = Map::new();
             o.insert("positions".into(), to_bin_f32(&self.positions));
             o.insert("indices".into(), to_bin_u32(&self.indices));
+            o.insert("sites".into(), self.sites.to_json());
             o.insert("chunks".into(), self.chunks.to_json());
             o.insert("seed".into(), self.seed.to_json());
             o.insert("metric".into(), self.metric.to_json());

@@ -25,4 +25,4 @@ enum HeightmapMask {
 }
 ```
 
-<sub>Module `procgen` line 289</sub>
+<sub>Module `procgen` line 302</sub>

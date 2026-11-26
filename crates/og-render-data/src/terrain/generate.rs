@@ -15,6 +15,9 @@ use std::collections::BinaryHeap;
 
 use crate::terrain::MAX_TERRAIN_LAYERS;
 
+mod constraints;
+pub use constraints::Channel;
+
 /// A terrain generation specification (shared by `og-cook`'s `generate {}`
 /// block and `og-runtime`'s `og.procgen.heightmap` API).
 #[derive(Clone, Debug, PartialEq)]
@@ -34,6 +37,9 @@ pub struct Generate {
     pub sea: Option<f32>,
     pub shore: f32,
     pub rivers: Option<Rivers>,
+    pub channels: Vec<Channel>,
+    pub preserve: Vec<f32>,
+    pub preserve_border: u32,
     pub moisture: Moisture,
     pub biomes: Vec<Biome>,
 }
@@ -56,6 +62,9 @@ impl Default for Generate {
             sea: None,
             shore: 2.0,
             rivers: None,
+            channels: Vec::new(),
+            preserve: Vec::new(),
+            preserve_border: 0,
             moisture: Moisture::default(),
             biomes: Vec::new(),
         }
@@ -86,6 +95,7 @@ impl Generate {
         }
         whole("columns", self.columns, 2, 4097)?;
         whole("rows", self.rows, 2, 4097)?;
+        constraints::check(self)?;
         whole("noise.octaves", self.octaves, 1, 12)?;
         for (key, v, lo, hi) in [
             ("noise.frequency", self.frequency, 1e-3, 1e4),
@@ -544,6 +554,7 @@ pub fn process(
     let cell = [sx / (cols - 1) as f32, sz / (rows - 1) as f32];
     let longer = sx.max(sz);
     let lo = height.map_or(0.0, |h| h[0].min(h[1]));
+    let original = (!g.preserve.is_empty() || g.preserve_border > 0).then(|| h.clone());
 
     if let Some(e) = &g.erosion {
         hydraulic(&mut h, cols, rows, (cell[0] + cell[1]) * 0.5, e, g.seed);
@@ -671,6 +682,19 @@ pub fn process(
             *x = x.clamp(a.min(b), a.max(b));
         }
     }
+    river_length += constraints::carve(g, [sx, sz], &mut h);
+    if let Some(original) = original {
+        constraints::preserve(g, &original, &mut h);
+    }
+    // Biomes must see drainage on the constrained surface, not on the
+    // unconstrained intermediate used by automatic river carving.
+    let gathered = if !g.biomes.is_empty()
+        && (!g.channels.is_empty() || !g.preserve.is_empty() || g.preserve_border > 0)
+    {
+        flow(&h, cols, rows, cell, g.sea).2
+    } else {
+        gathered
+    };
     let control =
         (!g.biomes.is_empty()).then(|| biomes(g, &h, &gathered, cols, rows, cell, longer));
     Generated {

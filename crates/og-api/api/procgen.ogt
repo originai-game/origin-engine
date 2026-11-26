@@ -117,6 +117,9 @@ module procgen {
     param y f32 "y."
     param z f32 "z (3D only)."
     param threeD bool "Sample 3D cellular lattice when true, 2D when false."
+    param sites Option.List.Vector3 "Optional explicit feature sites, replacing the seeded lattice; at least two finite points. Distances are Euclidean in the supplied coordinates (2D ignores z), not normalized. Invalid input returns NaN distances." {
+      optional true
+    }
     returns Vector2
   }
 
@@ -143,6 +146,13 @@ module procgen {
       min 0
       unit m
     }
+    field region List.Vector2 "Optional polygon in rectangular-domain metres; at least three finite points. Points outside it are excluded."
+    field holes List.List.Vector2 "Exclusion polygons in the same coordinates; each at least three points."
+    field points List.Vector2 "Existing points retained first in this order. Must lie in the allowed region and satisfy pairwise separation; count includes them in maxPoints. Supply one in each disconnected region to seed every region."
+    field columns u32 "Density/radii grid columns; required when a grid is supplied."
+    field rows u32 "Density/radii grid rows; required when a grid is supplied."
+    field density Float32Array "Optional columns × rows probability field in 0..1, nearest-cell sampled across width × height. Zero excludes, one keeps all candidates; does not promise an exact population."
+    field radii Float32Array "Optional columns × rows minimum separations in metres, each finite and at least radius. Pairwise distance must meet the larger endpoint radius. Nearest-cell lookup, no implicit normalization."
     field attempts u32 "Candidates tried around a point before it is done (more fills tighter)." {
       default 30
       min 1
@@ -209,6 +219,8 @@ module procgen {
       max 1
       unit ratio
     }
+    field mask Uint8Array "Optional width × height writable cells; zero excludes both rooms and corridors. Corridors route through writable squares at the declared width. Refuses disconnected output rather than clipping rooms or cutting through exclusions."
+    field rooms List.CellRect "Optional non-overlapping authored rooms, retained first in this order; must fit writable cells. Generated rooms avoid them, and the same corridor mechanism connects them."
   }
 
   struct BspResult {
@@ -262,6 +274,7 @@ module procgen {
     }
     field tiles List.WfcTile "The tiles (with rotations, at most 1,024 variants)."
     field fixed List.WfcCell "Cells decided before the first draw."
+    field allowed List.List.u32 "Optional width × height row-major domains of allowed tile indices. Every supplied domain must be nonempty; rotations remain available. Use an authored empty tile to constrain excluded regions, not an implicit wall preset. Fixed cells must also satisfy their domain."
     field wrap bool "The edges wrap round (a tiling texture)."
     field attempts u32 "Tries before refusing." {
       default 10
@@ -468,6 +481,21 @@ module procgen {
     }
   }
 
+  struct TerrainChannelDesc {
+    doc "An authored valley or river centre line in terrain-local xyz metres. The existing river carver's parabolic section lowers toward the line's y minus depth, never raises ground. Repeated river lines form a network by sharing endpoints; the game specifies every branch. Applied after automatic processing, before preservation and biome painting."
+    desc true
+    field points List.Vector3 "At least two finite xyz points with distinct consecutive xz positions."
+    field width f32 "Required full width in metres, 0.001..1000000; zero is refused." {
+      min 0
+      max 1000000
+    }
+    field depth f32 "Distance below the line's y to carve the bed; zero places a valley floor at the line." {
+      min 0
+      max 1000000
+    }
+    field river bool "Mark as a river: y must not rise downstream; its declared segment lengths contribute to riverLength."
+  }
+
   struct HeightmapDesc {
     doc "Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit)."
     desc true
@@ -486,6 +514,11 @@ module procgen {
       max 4097
     }
     field heights Option.Float32Array "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero."
+    field channels List.TerrainChannelDesc "Explicit valley/river polylines; no inferred branches. Intersections take the lower carved bed."
+    field preserve Option.Float32Array "Optional columns × rows weights in 0..1. After all carving, blend toward the original base: 0 free, 1 bit-exact original. This is a final shape constraint, not an impermeable erosion boundary."
+    field preserveBorder u32 "Width in samples of the boundary pinned to the original base, overriding preserve weights. A band covering the whole field pins every sample." {
+      max 4097
+    }
     field minHeight f32 "Lowest base height before erosion." {
       default 0
       unit m
@@ -768,6 +801,9 @@ module procgen {
       max 3
     }
     field levelsSpec List.PlantLevelDesc "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults)."
+    field path List.Vector3 "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ."
+    field leafMesh Option.BufferGeometryDesc "Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply."
+    field flowerMesh Option.BufferGeometryDesc "Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width."
     field forceDirection Vector3 "Tropism / gravity bend direction." {
       default 0 1 0
     }
@@ -814,6 +850,7 @@ module procgen {
     desc true
     field positions Float32Array "Closed mesh vertex positions, x y z per vertex."
     field indices Uint32Array "Counter-clockwise triangle indices (multiple of 3)."
+    field sites List.Vector3 "Optional 2..128 distinct finite Voronoi cell centres in mesh metres; replaces chunks, seed and impact sampling. Site order determines cell ids, including empty cells outside the mesh."
     field chunks u32 "Target number of Voronoi seed cells." {
       default 8
       min 2

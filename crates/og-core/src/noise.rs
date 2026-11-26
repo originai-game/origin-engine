@@ -403,6 +403,40 @@ impl WorleySample {
     }
 }
 
+/// Cellular distances to authored sites rather than a generated lattice.
+/// The nearest site's index is its cell id; ties keep the first index.
+pub fn worley_sites(point: [f32; 3], sites: &[[f32; 3]], flat: bool) -> Option<WorleySample> {
+    if sites.len() < 2
+        || point
+            .iter()
+            .chain(sites.iter().flatten())
+            .any(|v| !v.is_finite())
+    {
+        return None;
+    }
+    let (mut d1, mut d2, mut cell) = (f64::INFINITY, f64::INFINITY, 0);
+    for (i, site) in sites.iter().enumerate() {
+        let d: f64 = (0..if flat { 2 } else { 3 })
+            .map(|k| {
+                let x = f64::from(point[k]) - f64::from(site[k]);
+                x * x
+            })
+            .sum();
+        if d < d1 {
+            d2 = d1;
+            d1 = d;
+            cell = i as u32;
+        } else if d < d2 {
+            d2 = d;
+        }
+    }
+    Some(WorleySample {
+        f1: d1.sqrt() as f32,
+        f2: d2.sqrt() as f32,
+        cell,
+    })
+}
+
 /// 2D Worley (cellular) noise at `(x, y)`.
 pub fn worley2(seed: u32, x: f32, y: f32) -> WorleySample {
     worley2_periodic(seed, x, y, 0, 0)

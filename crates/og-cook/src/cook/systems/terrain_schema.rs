@@ -23,7 +23,38 @@ pub const BODY: &[Line] = lines! {
     "layer", "{ ... }", "", "Repeated material layer; at most sixteen. Past four use texture arrays.";
     "layers", "\"<texture-array.ogt>\"", "", "Albedo array asset.";
     "layerNormals", "\"<texture-array.ogt>\"", "", "Normal array asset.";
+    "edit", "{ ... }", "", "Repeated local-space brush. Edits and stamps run in written order after generate and its final shape projection; explicit edits may intentionally change protected samples.";
+    "stamp", "{ ... }", "", "Repeated placed geometry projected through the shared runtime stamp mechanism. Geometry may be procedural, generated buffers or modelGeometry; model dependencies import first.";
 };
+pub const EDIT: &[Line] = lines! {
+    "mode", "raise | lower | flatten | smooth | paint | hole | fill", "required", "The runtime TerrainBrush operation.";
+    "center", "<x> <y> <z>", "required", "Terrain-local metres. Flatten targets y.";
+    "radius", "<metres > 0>", "required", "Circular brush radius.";
+    "strength", "<number >= 0>", "0", "Raise/lower distance in metres; other modes clamp strength to 1.";
+    "falloff", "<0..1>", "0", "Fraction of radius fading smoothly to zero.";
+    "layer", "<index>", "0", "Existing material layer for paint.";
+};
+pub const STAMP: &[Line] = lines! {
+    "mode", "carve | hole", "carve", "Lower to mesh underside or cut covered cells; no runtime stamp id is persisted.";
+    "depth", "<metres >= 0>", "0", "Additional carve depth inside the footprint; its edge meets the underside, as at runtime.";
+};
+
+pub fn stamp_lines() -> Vec<Line> {
+    STAMP
+        .iter()
+        .chain(super::super::model_text::schema::PLACEMENT)
+        .copied()
+        .chain(super::super::model_text::GEOMETRIES.iter().map(|name| {
+            Line::new(
+                name,
+                "{ ... }",
+                "one geometry required",
+                "Geometry fields are the same as file:model.part.<geometry>.",
+                "",
+            )
+        }))
+        .collect()
+}
 pub const LOD: &[Line] = lines! {
     "spacing", "<number >= 0>", "0", "Finest spacing in metres; zero uses sample spacing.";
     "ring", "<integer >= 0>", "0", "Clipmap quads per side; zero selects the renderer's ring.";
@@ -60,6 +91,9 @@ pub const GENERATE: &[Line] = lines! {
     "sea", "<finite metres>", "", "Sea level for shore flattening and automatic drainage.";
     "shore", "<metres 0..1000000>", "2", "Shore width; requires sea if explicitly written.";
     "rivers", "{ ... }", "", "Automatic drainage and river carving; absent means none.";
+    "channel", "{ ... }", "", "Repeat explicit valley/river centre lines, carved after automatic stages using the shared parabolic section.";
+    "preserve", "\"<field.ogt>\"", "", "Single-channel field matching the height grid; finite weights 0..1 blend the final carved result toward the original base. No resampling. One preserves the original bits, zero is free.";
+    "preserveBorder", "<samples 0..4097>", "0", "Pin this many boundary samples to the original base, overriding preserve weights; a band covering the whole field pins every sample.";
     "moisture", "{ ... }", "", "Flow/noise mixture read by biome rules.";
     "biome", "{ ... }", "", "Repeated rule, writes an existing material layer's control channel.";
     "script", "\"<file.ts>\"", "", "Default synchronous export returns {columns, rows, heights}; heights are metres. Relative imports and explicit inputs are tracked. Exclusive with heightmap/noise/mask/samples.";
@@ -104,6 +138,12 @@ pub const MOISTURE: &[Line] = lines! {
     "noise", "<number 0..1000000>", "0.5", "Noise weight.";
     "frequency", "<number 0.001..10000>", "6", "Moisture-noise features across terrain.";
 };
+pub const CHANNEL: &[Line] = lines! {
+    "point", "<x> <y> <z>", "", "Repeat at least two terrain-local metre points; consecutive xz positions must differ. Shared endpoints specify a network; no branch is inferred.";
+    "width", "<metres 0.001..1000000>", "required", "Full width, parabolic from line y minus depth to the original ground; only lowers.";
+    "depth", "<metres 0..1000000>", "0", "Bed below the line y; zero puts a valley floor on the line.";
+    "river", "true | false", "false", "Require non-rising y downstream and count declared segment lengths in riverLength; intersections take the lower bed.";
+};
 pub const BIOME: &[Line] = lines! {
     "layer", "<integer 0..15>", "required", "Existing material layer to paint.";
     "weight", "<number 0..1>", "1", "Rule weight.";
@@ -117,6 +157,7 @@ pub const BIOME: &[Line] = lines! {
 
 pub const BLOCKS: &[(&str, &[Line])] = &[
     ("", BODY),
+    ("edit", EDIT),
     ("lod", LOD),
     ("layer", LAYER),
     ("generate", GENERATE),
@@ -125,6 +166,7 @@ pub const BLOCKS: &[(&str, &[Line])] = &[
     ("generate.thermal", THERMAL),
     ("generate.terraces", TERRACES),
     ("generate.rivers", RIVERS),
+    ("generate.channel", CHANNEL),
     ("generate.moisture", MOISTURE),
     ("generate.biome", BIOME),
 ];
@@ -139,7 +181,11 @@ pub fn check(b: &Block, lines: &[Line], what: &str) -> Result<(), String> {
                 crate::grammar::keys(lines, &[])
             ));
         }
-        if !matches!(e.key.as_str(), "layer" | "biome" | "input") && b.get_all(&e.key).count() > 1 {
+        if !matches!(
+            e.key.as_str(),
+            "layer" | "biome" | "input" | "channel" | "point" | "edit" | "stamp"
+        ) && b.get_all(&e.key).count() > 1
+        {
             return Err(format!(
                 "line {}: duplicate {what} entry '{}'",
                 e.line, e.key
@@ -155,6 +201,9 @@ pub fn check_defaults() -> Result<(), String> {
     for (path, fields) in BLOCKS.iter().filter(|(p, _)| p.starts_with("generate")) {
         let wrap = |body: &str| match path.strip_prefix("generate.") {
             Some("biome") => format!("generate {{\nbiome {{\nlayer 0\n{body}\n}}\n}}"),
+            Some("channel") => format!(
+                "generate {{\nchannel {{\nwidth 1\npoint 0 0 0\npoint 1 0 0\n{body}\n}}\n}}"
+            ),
             Some(name) => format!("generate {{\n{name} {{\n{body}\n}}\n}}"),
             None => format!("generate {{\nsea 0\n{body}\n}}"),
         };

@@ -344,19 +344,19 @@ pub trait ProcgenApi: Wire {
     /// `og.procgen.curlNoise`
     fn og_procgen_curl_noise(&self, desc: String, x: f64, y: f64, z: f64) -> String;
     /// `og.procgen.worley`
-    fn og_procgen_worley(&self, seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String;
+    fn og_procgen_worley(&self, seed: u32, x: f64, y: f64, z: f64, three_d: bool, sites: Option<String>) -> String;
     /// `og.procgen.noiseGrid`
     fn og_procgen_noise_grid(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.poissonDisk`
-    fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String;
+    fn og_procgen_poisson_disk(&self, desc: Option<Self::Bytes>) -> String;
     /// `og.procgen.bsp`
-    fn og_procgen_bsp(&self, desc: Option<String>) -> Self::Bytes;
+    fn og_procgen_bsp(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
     /// `og.procgen.wfc`
     fn og_procgen_wfc(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.heightmap`
     fn og_procgen_heightmap(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
     /// `og.procgen.plant`
-    fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes;
+    fn og_procgen_plant(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
     /// `og.procgen.fracture`
     fn og_procgen_fracture(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
 }

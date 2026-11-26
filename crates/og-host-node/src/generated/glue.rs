@@ -850,9 +850,9 @@ pub fn og_procgen_curl_noise(env: Env, desc: String, x: f64, y: f64, z: f64) -> 
 }
 
 #[napi(js_name = "og_procgen_worley")]
-pub fn og_procgen_worley(env: Env, seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String {
+pub fn og_procgen_worley(env: Env, seed: u32, x: f64, y: f64, z: f64, three_d: bool, sites: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d)
+    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d, sites)
 }
 
 #[napi(js_name = "og_procgen_noise_grid")]
@@ -862,13 +862,13 @@ pub fn og_procgen_noise_grid(env: Env, desc: Option<String>) -> crate::NodeBytes
 }
 
 #[napi(js_name = "og_procgen_poisson_disk")]
-pub fn og_procgen_poisson_disk(env: Env, desc: Option<String>) -> String {
+pub fn og_procgen_poisson_disk(env: Env, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_poisson_disk(&Host, desc)
 }
 
 #[napi(js_name = "og_procgen_bsp")]
-pub fn og_procgen_bsp(env: Env, desc: Option<String>) -> crate::NodeBytes {
+pub fn og_procgen_bsp(env: Env, desc: Option<crate::NodeBytes>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
 }
@@ -886,7 +886,7 @@ pub fn og_procgen_heightmap(env: Env, desc: Option<crate::NodeBytes>) -> crate::
 }
 
 #[napi(js_name = "og_procgen_plant")]
-pub fn og_procgen_plant(env: Env, desc: Option<String>) -> crate::NodeBytes {
+pub fn og_procgen_plant(env: Env, desc: Option<crate::NodeBytes>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_plant(&Host, desc)
 }

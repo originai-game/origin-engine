@@ -293,6 +293,58 @@ pub fn bounds(m: &Mesh) -> (DVec3, DVec3) {
         })
 }
 
+/// Mitchell best-candidate sites inside a closed mesh: of eight candidates,
+/// keep the one farthest from sites already kept. Optional slab pins the
+/// named axis to the bounds' centre; impact gathers alternating sites near
+/// the given point. Never substitutes an outside bounding-box point.
+pub fn seeds(
+    mesh: &Mesh,
+    n: u32,
+    rng: &mut og_core::Rng,
+    slab: Option<usize>,
+    impact: Option<(DVec3, f64)>,
+) -> Vec<DVec3> {
+    let (lo, hi) = bounds(mesh);
+    let centre = (lo + hi) * 0.5;
+    let mut out: Vec<DVec3> = Vec::new();
+    let mut f = || rng.next_f64();
+    let mut tries = 0;
+    while (out.len() as u32) < n && tries < n * 64 {
+        tries += 1;
+        let near = impact.is_some() && out.len().is_multiple_of(2);
+        let mut best: Option<(f64, DVec3)> = None;
+        for _ in 0..8 {
+            let mut p = match (near, impact) {
+                (true, Some((at, r))) => {
+                    let d = DVec3::new(f() * 2.0 - 1.0, f() * 2.0 - 1.0, f() * 2.0 - 1.0);
+                    let u = f();
+                    at + d.normalize_or_zero() * (r * u * u)
+                }
+                _ => lo + (hi - lo) * DVec3::new(f(), f(), f()),
+            };
+            if let Some(a) = slab {
+                p[a] = centre[a];
+            }
+            if !contains(mesh, p) {
+                continue;
+            }
+            let d = out
+                .iter()
+                .map(|q| (*q - p).length_squared())
+                .fold(f64::INFINITY, f64::min);
+            if best.is_none_or(|(bd, _)| d > bd) {
+                best = Some((d, p));
+            }
+        }
+        if let Some((d, p)) = best
+            && d > 0.0
+        {
+            out.push(p);
+        }
+    }
+    out
+}
+
 /// A half-space a cell keeps, `normal · x <= d`: the face it makes is
 /// tagged `tag`, the cell on its other side ([`BOUNDS`] for none).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -346,6 +398,11 @@ pub fn voronoi(
 ) -> Result<Fracture, String> {
     if seeds.is_empty() {
         return Err("a fracture needs at least one seed".into());
+    }
+    for (i, seed) in seeds.iter().enumerate() {
+        if !seed.is_finite() || seeds[..i].contains(seed) {
+            return Err("fracture sites must be finite and distinct".into());
+        }
     }
     cut(mesh, material, &voronoi_cells(seeds, metric), uv_scale)
 }

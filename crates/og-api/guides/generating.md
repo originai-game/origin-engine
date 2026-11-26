@@ -17,7 +17,15 @@ import heights from "../assets/heights.ts";
 export default og.game({
   start(world) {
     const base = heights({ params: { offset: 117 }, seed: 9, inputs: {} });
-    const result = og.procgen.heightmap({ ...base, size: { x: 24, y: 12 }, thermal: { talus: 20, iterations: 3, rate: 0.3 } });
+    const preserve = new Float32Array(base.columns * base.rows);
+    preserve[3 * base.columns + 8] = 1;
+    preserve[3 * base.columns + 6] = 0.5;
+    const result = og.procgen.heightmap({ ...base, size: { x: 24, y: 12 }, thermal: { talus: 20, iterations: 3, rate: 0.3 },
+      preserve, preserveBorder: 1, channels: [
+        { points: [{x:-8,y:120,z:0}, {x:8,y:116,z:0}], width:8 },
+        { points: [{x:-10,y:120,z:-4}, {x:0,y:118,z:0}, {x:10,y:116,z:4}], width:2, depth:1, river:true },
+      ],
+    });
     og.assert.always(result.ok, "runtime processing accepted", {});
     if (!result.ok) return;
     const made = result.value;
@@ -30,11 +38,20 @@ export default og.game({
     world.insert(ground, og.Terrain, { data: loaded.value.data });
     world.insert(ground, og.Collider, { shape: "heightfield", mesh: loaded.value.geometry });
     const tolerance = (made.maxHeight - made.minHeight) / 65535 + 0.001;
-    for (const [c, r] of [[0, 0], [6, 2], [12, 6], [3, 5]]) {
+    for (const [c, r] of [[0, 0], [6, 2], [12, 6], [3, 5], [8, 3], [6, 3]]) {
       const sample = og.terrain.sample(world, { data: loaded.value.data, x: c! * 2 - 12, z: r! * 2 - 6 });
       og.assert.always(sample.ok && Math.abs(sample.value!.height - made.heights[r! * base.columns + c!]!) <= tolerance, "cooked and runtime heights agree", {});
     }
     og.assert.always(Math.abs(made.heights[0]! - 117) < 0.001 && made.maxHeight > 125, "authored metres are not normalised or clipped to the noise range", {});
+    og.assert.always(made.heights[3 * base.columns + 8] === base.heights[3 * base.columns + 8], "full shape constraint preserves the designed peak exactly", {});
+    og.assert.always(Math.abs(made.heights[3 * base.columns + 6]! - (base.heights[3 * base.columns + 6]! + 117) / 2) < 0.001, "half constraint blends the authored river bed toward the input", {});
+    og.assert.always(Math.abs(made.riverLength - 2 * Math.sqrt(116)) < 0.001, "declared river segments are measured in terrain metres", {});
+    const edited = og.terrain.load(world, "edited.ogt");
+    if (!edited.ok) throw new Error(edited.reason);
+    for (const [x, z, expected] of [[-8,-4,23], [4,0,9], [2,0,7], [10,4,20]]) {
+      const sample = og.terrain.sample(world, { data: edited.value.data, x: x!, z: z! });
+      og.assert.always(sample.ok && Math.abs(sample.value!.height - expected!) < 0.002, "cook applies authored brushes and model stamps in written order", {});
+    }
     const model = og.load.gltf(world, "curves.ogt", {});
     if (!model.ok) throw new Error(model.reason);
     const info = og.load.gltfInfo(world, model.value);
@@ -74,6 +91,13 @@ export default og.game({
     const graph = og.load.animgraph(world, "graph.ogt");
     const again = og.load.animgraph(world, "graph.ogt");
     og.assert.always(graph.ok && again.ok && graph.value === again.value, "cooked sprite graph loads once", {});
+    const plant = og.load.gltf(world, "guided.ogt", {});
+    if (!plant.ok) throw new Error(plant.reason);
+    const foliage = og.load.gltfInfo(world, plant.value);
+    if (!foliage.ok) throw new Error(foliage.reason);
+    og.assert.always(foliage.value.parts.length === 2, "guided plant cooks wood and custom foliage", {});
+    const counts = foliage.value.parts.map(part => og.render.geometryInfo(world, part.geometry));
+    og.assert.always(counts.every(v => v.ok) && counts.reduce((n, v) => n + v.value!.triangles, 0) === 17, "two trunk sections and one custom leaf triangle survive cook", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
@@ -96,6 +120,21 @@ generate {
     iterations 3
     rate 0.3
   }
+  preserve "protect.ogt"
+  preserveBorder 1
+  channel {
+    point -8 120 0
+    point 8 116 0
+    width 8
+  }
+  channel {
+    point -10 120 -4
+    point 0 118 0
+    point 10 116 4
+    width 2
+    depth 1
+    river true
+  }
 }
 layer {
   color 0.32 0.43 0.38
@@ -117,6 +156,109 @@ export default function heights(ctx: GeneratorContext<{ offset: number }>) {
   }
   return { columns, rows, heights } satisfies HeightfieldSource;
 }
+```
+
+```ogt recipe file=assets/edited.ogt
+type terrain
+version 1
+---
+size 24 12
+tile 16
+generate {
+  script "flat.ts"
+}
+edit {
+  mode raise
+  center -8 0 -4
+  radius 1
+  strength 3
+}
+stamp {
+  modelGeometry {
+    source "stamp.ogt"
+  }
+  position 4 8 0
+}
+edit {
+  mode raise
+  center 4 0 0
+  radius 1
+  strength 2
+}
+```
+
+```ts recipe file=assets/flat.ts
+export default () => ({ columns:13, rows:7, heights: new Float32Array(91).fill(20) });
+```
+
+```ogt recipe file=assets/stamp.ogt
+type model
+version 1
+---
+conform off
+part "underside" {
+  boxGeometry {
+    width 4
+    height 2
+    depth 4
+  }
+}
+```
+
+```ogt recipe file=assets/protect.ogt
+type field
+version 1
+---
+generate {
+  script "protect.ts"
+}
+```
+
+```ts recipe file=assets/protect.ts
+import type { FieldSource } from "@origingame/engine/generate";
+export default function protect() {
+  const values = new Float32Array(13 * 7);
+  values[3 * 13 + 8] = 1;
+  values[3 * 13 + 6] = 0.5;
+  return { dimensions: [13,7,1], channels: 1, values } satisfies FieldSource;
+}
+```
+
+```ogt recipe file=assets/guided.ogt
+type model
+version 1
+---
+conform off
+plant "guided" {
+  levels 0
+  path -2 0 1 -1 2 1 1 3 -1
+  trunk {
+    radius 0.2
+    segments 4
+  }
+  leaves {
+    count 1
+    start 0.5
+    end 0.5
+    sizeVariance 0
+  }
+  leafGeometry {
+    bufferGeometry {
+      generate {
+        script "leaf.ts"
+      }
+    }
+  }
+}
+```
+
+```ts recipe file=assets/leaf.ts
+import type { MeshSource } from "@origingame/engine/generate";
+export default () => ({
+  positions: new Float32Array([0,0,0,1,0,0,0,1,0]),
+  uvs: new Float32Array([0,0,1,0,0,1]),
+  colors: new Float32Array([1,1,1,0.25,1,1,1,0.5,1,1,1,0.75]),
+}) satisfies MeshSource;
 ```
 
 ```ogt recipe file=assets/curves.ogt
@@ -375,8 +517,10 @@ export default function grid(ctx: GeneratorContext<{ width: number; height: numb
   const wfc = procgen.wfc({ width, height, seed: ctx.seed, tiles: [
     { weight: 1, up: 0, right: 1, down: 0, left: 2, rotations: false },
     { weight: 1, up: 0, right: 2, down: 0, left: 1, rotations: false },
-  ], fixed: Array.from({ length: height }, (_, y) => ({ x: 0, y, tile: 0, quarterTurns: 0 })) });
-  const bsp = procgen.bsp({ width, height, seed: ctx.seed, minRoom: 2, maxRoom: 4, depth: 2, padding: 1, corridor: 1 });
+  ], allowed: Array.from({ length: width * height }, (_, i) => [i % width % 2]) });
+  const mask = Uint8Array.from({ length: width * height }, (_, i) => i % width === 6 && Math.floor(i / width) < 4 ? 0 : 1);
+  const bsp = procgen.bsp({ width, height, seed: ctx.seed, minRoom: 2, maxRoom: 4, depth: 2, padding: 1, corridor: 1, mask,
+    rooms: [{ x: 1, y: 1, width: 2, height: 2 }, { x: 8, y: 2, width: 2, height: 2 }] });
   if (!wfc.ok) throw new Error(wfc.reason);
   if (!bsp.ok) throw new Error(bsp.reason);
   return { width, height, layers: [

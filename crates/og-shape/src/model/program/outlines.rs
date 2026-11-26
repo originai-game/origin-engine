@@ -3,7 +3,7 @@
 use super::*;
 
 /// The fields each profile takes.
-pub(crate) const PROFILES: &[(&str, &[&str])] = &[
+pub const PROFILES: &[(&str, &[&str])] = &[
     ("rect", &["width", "height", "radius"]),
     ("circle", &["radius", "segments"]),
     ("ellipse", &["rx", "ry", "segments"]),

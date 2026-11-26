@@ -3778,6 +3778,7 @@
         "RiverCarveDesc",
         "MoistureDesc",
         "BiomeRuleDesc",
+        "TerrainChannelDesc",
         "HeightmapDesc",
         "HeightmapResult",
         "PlantGrowth",
@@ -3924,6 +3925,12 @@
               "type": "bool",
               "optional": false,
               "doc": "Sample 3D cellular lattice when true, 2D when false."
+            },
+            {
+              "name": "sites",
+              "type": "Option<List<Vector3>>",
+              "optional": true,
+              "doc": "Optional explicit feature sites, replacing the seeded lattice; at least two finite points. Distances are Euclidean in the supplied coordinates (2D ignores z), not normalized. Invalid input returns NaN distances."
             }
           ],
           "returns": "Vector2",
@@ -20081,6 +20088,61 @@
           "minimum": 0,
           "x-og-unit": "m"
         },
+        "region": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "Optional polygon in rectangular-domain metres; at least three finite points. Points outside it are excluded.",
+          "default": []
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Vector2"
+            }
+          },
+          "description": "Exclusion polygons in the same coordinates; each at least three points.",
+          "default": []
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "Existing points retained first in this order. Must lie in the allowed region and satisfy pairwise separation; count includes them in maxPoints. Supply one in each disconnected region to seed every region.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Density/radii grid columns; required when a grid is supplied.",
+          "default": 0
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Density/radii grid rows; required when a grid is supplied.",
+          "default": 0
+        },
+        "density": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional columns × rows probability field in 0..1, nearest-cell sampled across width × height. Zero excludes, one keeps all candidates; does not promise an exact population."
+        },
+        "radii": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional columns × rows minimum separations in metres, each finite and at least radius. Pairwise distance must meet the larger endpoint radius. Nearest-cell lookup, no implicit normalization."
+        },
         "attempts": {
           "type": "integer",
           "minimum": 0,
@@ -20223,6 +20285,21 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio"
+        },
+        "mask": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional width × height writable cells; zero excludes both rooms and corridors. Corridors route through writable squares at the declared width. Refuses disconnected output rather than clipping rooms or cutting through exclusions."
+        },
+        "rooms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CellRect"
+          },
+          "description": "Optional non-overlapping authored rooms, retained first in this order; must fit writable cells. Generated rooms avoid them, and the same corridor mechanism connects them.",
+          "default": []
         }
       },
       "additionalProperties": false
@@ -20412,6 +20489,19 @@
             "$ref": "#/$defs/WfcCell"
           },
           "description": "Cells decided before the first draw.",
+          "default": []
+        },
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          },
+          "description": "Optional width × height row-major domains of allowed tile indices. Every supplied domain must be nonempty; rotations remain available. Use an authored empty tile to constrain excluded regions, not an implicit wall preset. Fixed cells must also satisfy their domain.",
           "default": []
         },
         "wrap": {
@@ -20751,6 +20841,42 @@
       },
       "additionalProperties": false
     },
+    "TerrainChannelDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "An authored valley or river centre line in terrain-local xyz metres. The existing river carver's parabolic section lowers toward the line's y minus depth, never raises ground. Repeated river lines form a network by sharing endpoints; the game specifies every branch. Applied after automatic processing, before preservation and biome painting.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "At least two finite xyz points with distinct consecutive xz positions.",
+          "default": []
+        },
+        "width": {
+          "type": "number",
+          "description": "Required full width in metres, 0.001..1000000; zero is refused.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "depth": {
+          "type": "number",
+          "description": "Distance below the line's y to carve the bed; zero places a valley floor at the line.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "river": {
+          "type": "boolean",
+          "description": "Mark as a river: y must not rise downstream; its declared segment lengths contribute to riverLength.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "HeightmapDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
@@ -20798,6 +20924,37 @@
           ],
           "description": "Optional row-major metres (columns × rows). Skips noise/mask and applies cook's erosion, thermal, terraces, shore, rivers and biomes without normalising/clipping. Input terraces anchor at zero.",
           "default": null
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TerrainChannelDesc"
+          },
+          "description": "Explicit valley/river polylines; no inferred branches. Intersections take the lower carved bed.",
+          "default": []
+        },
+        "preserve": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional columns × rows weights in 0..1. After all carving, blend toward the original base: 0 free, 1 bit-exact original. This is a final shape constraint, not an impermeable erosion boundary.",
+          "default": null
+        },
+        "preserveBorder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in samples of the boundary pinned to the original base, overriding preserve weights. A band covering the whole field pins every sample.",
+          "default": 0,
+          "maximum": 4097
         },
         "minHeight": {
           "type": "number",
@@ -21364,6 +21521,38 @@
           "description": "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults).",
           "default": []
         },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ.",
+          "default": []
+        },
+        "leafMesh": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BufferGeometryDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply.",
+          "default": null
+        },
+        "flowerMesh": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BufferGeometryDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width.",
+          "default": null
+        },
         "forceDirection": {
           "$ref": "#/$defs/Vector3",
           "description": "Tropism / gravity bend direction.",
@@ -21542,6 +21731,14 @@
             "type": "number"
           },
           "description": "Counter-clockwise triangle indices (multiple of 3)."
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "Optional 2..128 distinct finite Voronoi cell centres in mesh metres; replaces chunks, seed and impact sampling. Site order determines cell ids, including empty cells outside the mesh.",
+          "default": []
         },
         "chunks": {
           "type": "integer",

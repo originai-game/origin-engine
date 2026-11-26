@@ -145,8 +145,10 @@ mod report;
 mod ops;
 pub(crate) use args::*;
 pub(crate) use generate::*;
-pub(crate) use ops::*;
-pub(crate) use outlines::*;
+pub use ops::OPS;
+pub(crate) use ops::is_reader;
+pub use outlines::PROFILES;
+pub(crate) use outlines::{nest, path3, profile};
 pub use report::*;
 
 /// A model and the program that built it.

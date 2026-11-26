@@ -311,20 +311,25 @@ macro_rules! __og_host_bindings_assets {
                 y: f64,
                 z: f64,
                 three_d: bool,
+                sites: Option<String>,
             ) -> String {
-                $crate::host_impl::json($crate::og_procgen_worley(seed, x, y, z, three_d))
+                $crate::host_impl::json($crate::og_procgen_worley(seed, x, y, z, three_d, sites))
             }
             fn og_procgen_noise_grid(&self, desc: Option<String>) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out(
                     $crate::host_impl::answer_bin_f32s($crate::og_procgen_noise_grid(desc)),
                 )
             }
-            fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_procgen_poisson_disk(desc))
+            fn og_procgen_poisson_disk(&self, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_procgen_poisson_disk(
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
             }
-            fn og_procgen_bsp(&self, desc: Option<String>) -> Self::Bytes {
+            fn og_procgen_bsp(&self, desc: Option<Self::Bytes>) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
-                    $crate::og_procgen_bsp(desc),
+                    $crate::og_procgen_bsp(
+                        desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                    ),
                 ))
             }
             fn og_procgen_wfc(&self, desc: Option<String>) -> Self::Bytes {
@@ -339,9 +344,11 @@ macro_rules! __og_host_bindings_assets {
                     ),
                 ))
             }
-            fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes {
+            fn og_procgen_plant(&self, desc: Option<Self::Bytes>) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
-                    $crate::og_procgen_plant(desc),
+                    $crate::og_procgen_plant(
+                        desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                    ),
                 ))
             }
             fn og_procgen_fracture(&self, desc: Option<Self::Bytes>) -> Self::Bytes {

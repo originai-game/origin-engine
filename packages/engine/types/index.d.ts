@@ -3103,6 +3103,44 @@ export interface PoissonDesc {
    */
   readonly radius?: number;
   /**
+   * Optional polygon in rectangular-domain metres; at least three finite points. Points outside it are excluded.
+   *
+   * @default []
+   */
+  readonly region?: readonly Vector2[];
+  /**
+   * Exclusion polygons in the same coordinates; each at least three points.
+   *
+   * @default []
+   */
+  readonly holes?: readonly (readonly Vector2[])[];
+  /**
+   * Existing points retained first in this order. Must lie in the allowed region and satisfy pairwise separation; count includes them in maxPoints. Supply one in each disconnected region to seed every region.
+   *
+   * @default []
+   */
+  readonly points?: readonly Vector2[];
+  /**
+   * Density/radii grid columns; required when a grid is supplied.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * Density/radii grid rows; required when a grid is supplied.
+   *
+   * @default 0
+   */
+  readonly rows?: number;
+  /**
+   * Optional columns × rows probability field in 0..1, nearest-cell sampled across width × height. Zero excludes, one keeps all candidates; does not promise an exact population.
+   */
+  readonly density?: Float32Array;
+  /**
+   * Optional columns × rows minimum separations in metres, each finite and at least radius. Pairwise distance must meet the larger endpoint radius. Nearest-cell lookup, no implicit normalization.
+   */
+  readonly radii?: Float32Array;
+  /**
    * Candidates tried around a point before it is done (more fills tighter).
    *
    * @default 30
@@ -3205,6 +3243,16 @@ export interface BspDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly loops?: number;
+  /**
+   * Optional width × height writable cells; zero excludes both rooms and corridors. Corridors route through writable squares at the declared width. Refuses disconnected output rather than clipping rooms or cutting through exclusions.
+   */
+  readonly mask?: Uint8Array;
+  /**
+   * Optional non-overlapping authored rooms, retained first in this order; must fit writable cells. Generated rooms avoid them, and the same corridor mechanism connects them.
+   *
+   * @default []
+   */
+  readonly rooms?: readonly CellRect[];
 }
 
 /** What og.procgen.bsp made. */
@@ -3297,6 +3345,12 @@ export interface WfcDesc {
    * @default []
    */
   readonly fixed?: readonly WfcCell[];
+  /**
+   * Optional width × height row-major domains of allowed tile indices. Every supplied domain must be nonempty; rotations remain available. Use an authored empty tile to constrain excluded regions, not an implicit wall preset. Fixed cells must also satisfy their domain.
+   *
+   * @default []
+   */
+  readonly allowed?: readonly (readonly number[])[];
   /**
    * The edges wrap round (a tiling texture).
    *
@@ -3591,6 +3645,40 @@ export interface BiomeRuleDesc {
 }
 
 /**
+ * An authored valley or river centre line in terrain-local xyz metres. The existing river carver's parabolic section lowers toward the line's y minus depth, never raises ground. Repeated river lines form a network by sharing endpoints; the game specifies every branch. Applied after automatic processing, before preservation and biome painting.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainChannelDesc {
+  /**
+   * At least two finite xyz points with distinct consecutive xz positions.
+   *
+   * @default []
+   */
+  readonly points?: readonly Vector3[];
+  /**
+   * Required full width in metres, 0.001..1000000; zero is refused.
+   *
+   * @default 0
+   * @range 0..1000000
+   */
+  readonly width?: number;
+  /**
+   * Distance below the line's y to carve the bed; zero places a valley floor at the line.
+   *
+   * @default 0
+   * @range 0..1000000
+   */
+  readonly depth?: number;
+  /**
+   * Mark as a river: y must not rise downstream; its declared segment lengths contribute to riverLength.
+   *
+   * @default false
+   */
+  readonly river?: boolean;
+}
+
+/**
  * Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -3623,6 +3711,25 @@ export interface HeightmapDesc {
    * @default null
    */
   readonly heights?: Float32Array | null;
+  /**
+   * Explicit valley/river polylines; no inferred branches. Intersections take the lower carved bed.
+   *
+   * @default []
+   */
+  readonly channels?: readonly TerrainChannelDesc[];
+  /**
+   * Optional columns × rows weights in 0..1. After all carving, blend toward the original base: 0 free, 1 bit-exact original. This is a final shape constraint, not an impermeable erosion boundary.
+   *
+   * @default null
+   */
+  readonly preserve?: Float32Array | null;
+  /**
+   * Width in samples of the boundary pinned to the original base, overriding preserve weights. A band covering the whole field pins every sample.
+   *
+   * @default 0
+   * @range ..4097
+   */
+  readonly preserveBorder?: number;
   /**
    * Lowest base height before erosion.
    *
@@ -4091,6 +4198,24 @@ export interface PlantDesc {
    */
   readonly levelsSpec?: readonly PlantLevelDesc[];
   /**
+   * Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ.
+   *
+   * @default []
+   */
+  readonly path?: readonly Vector3[];
+  /**
+   * Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply.
+   *
+   * @default null
+   */
+  readonly leafMesh?: BufferGeometryDesc | null;
+  /**
+   * Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width.
+   *
+   * @default null
+   */
+  readonly flowerMesh?: BufferGeometryDesc | null;
+  /**
    * Tropism / gravity bend direction.
    *
    * @default { x: 0, y: 1, z: 0 }
@@ -4162,6 +4287,12 @@ export interface FractureDesc {
   readonly positions?: Float32Array;
   /** Counter-clockwise triangle indices (multiple of 3). */
   readonly indices?: Uint32Array;
+  /**
+   * Optional 2..128 distinct finite Voronoi cell centres in mesh metres; replaces chunks, seed and impact sampling. Site order determines cell ids, including empty cells outside the mesh.
+   *
+   * @default []
+   */
+  readonly sites?: readonly Vector3[];
   /**
    * Target number of Voronoi seed cells.
    *
@@ -38238,8 +38369,9 @@ export declare namespace og {
      * @param y y.
      * @param z z (3D only).
      * @param threeD Sample 3D cellular lattice when true, 2D when false.
+     * @param sites Optional explicit feature sites, replacing the seeded lattice; at least two finite points. Distances are Euclidean in the supplied coordinates (2D ignores z), not normalized. Invalid input returns NaN distances.
      */
-    function worley(seed: number, x: number, y: number, z: number, threeD: boolean): Vector2;
+    function worley(seed: number, x: number, y: number, z: number, threeD: boolean, sites?: readonly Vector3[] | null): Vector2;
     /**
      * Noise over a grid in one call, row-major as a native Float32Array: `values[j * width + i]` is the sample at (x + i * step, y + j * step).
      *
