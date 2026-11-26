@@ -183,3 +183,215 @@ pack.scheme = "light";
         Geometry::BoxGeometry(_)
     ));
 }
+
+#[test]
+fn source_data_author_contracts() {
+    use og_cook::cook::source_schemas::world::source_data::{
+        EnvironmentInput, FieldData, IconSet, PcmInput, TextureArrayInput, TextureKind, VectorInput,
+    };
+    let inputs = [
+        (
+            "field",
+            "Field",
+            json!({"dimensions":[2,1,1], "channels":2,
+            "origin":[-2,3,5], "spacing":[0.5,2,3], "values":[-1,0,2,4]}),
+        ),
+        (
+            "sound",
+            "Sound",
+            json!({"rate":44100,"channels":2,"samples":[-0.5,0.25,0.75,-1]}),
+        ),
+        (
+            "icons",
+            "Icons",
+            json!({"icons":[["close","xmark"],["heart","heart"]],
+            "join":"round", "sticker":[1.5,-2,3]}),
+        ),
+        (
+            "vector",
+            "Vector",
+            json!({"svg":"<svg viewBox='0 0 2 3'><path d='M0 0L2 3'/></svg>", "tolerance":0.01}),
+        ),
+        (
+            "texture-array",
+            "TextureArray",
+            json!({"kind":"single", "layers":["rough/a.png","rough/b.png"]}),
+        ),
+        (
+            "environment",
+            "Environment",
+            json!({"source":{"faces":["px.hdr","nx.hdr","py.hdr","ny.hdr","pz.hdr","nz.hdr"]},
+            "intensity":0, "rotation":-30, "size":64, "sun":"keep", "samples":16, "expand":0, "sunBoost":100}),
+        ),
+    ];
+    let mut ts = String::new();
+    for (kind, name, input) in &inputs {
+        let schema = (source_schemas::get(kind).unwrap().schema)();
+        schema
+            .check(input)
+            .unwrap_or_else(|e| panic!("{kind}: {e}"));
+        ts.push_str(&typescript(schema.document(), name).unwrap());
+        ts.push_str(&format!("const value{name}: {name} = {input};\n"));
+    }
+    FieldData::schema()
+        .decode(inputs[0].2.clone())
+        .unwrap()
+        .validate()
+        .unwrap();
+    let field = FieldData::schema()
+        .decode(json!({"dimensions":[1,1,1],"channels":1,"values":[3]}))
+        .unwrap();
+    assert_eq!(field.origin, [0.0; 3]);
+    assert_eq!(field.spacing, [1.0; 3]);
+    assert_eq!(
+        PcmInput::schema()
+            .decode(inputs[1].2.clone())
+            .unwrap()
+            .samples[1],
+        0.25
+    );
+    let icons = IconSet::schema()
+        .decode(json!({"icons":[["a","b"]]}))
+        .unwrap();
+    assert_eq!(
+        (icons.source.as_str(), icons.size, icons.range),
+        (".", 48, 8)
+    );
+    assert!(matches!(
+        TextureArrayInput::schema()
+            .decode(json!({"layers":["a.png"]}))
+            .unwrap()
+            .kind,
+        TextureKind::Color
+    ));
+    assert!(matches!(
+        VectorInput::schema()
+            .decode(json!({"source":"icon.svg"}))
+            .unwrap(),
+        VectorInput::File { .. }
+    ));
+    assert!(
+        EnvironmentInput::schema()
+            .decode(json!({"source":{"equirect":"sky.png"}}))
+            .unwrap()
+            .sun
+            .is_none()
+    );
+    EnvironmentInput::schema()
+        .decode(json!({"source":{"equirect":"sky.png"},"hemisphere":"upper", "ground":[0,0.3,1]}))
+        .unwrap();
+    EnvironmentInput::schema()
+        .decode(json!({"source":{"ktx2":"studio.ktx2"},"prefiltered":true}))
+        .unwrap();
+    for (kind, wrong) in [
+        (
+            "field",
+            json!({"dimensions":[2,0,1],"channels":1,"values":[0,1]}),
+        ),
+        (
+            "field",
+            json!({"dimensions":[1,1],"channels":1,"values":[0]}),
+        ),
+        (
+            "field",
+            json!({"dimensions":[1,1,1],"channels":5,"values":[0]}),
+        ),
+        (
+            "field",
+            json!({"dimensions":[1,1,1],"channels":1,"values":[0],"spacing":[1,0,2]}),
+        ),
+        (
+            "field",
+            json!({"dimensions":[1,1,1],"channels":1,"values":[1e39]}),
+        ),
+        ("sound", json!({"rate":7999,"channels":1,"samples":[0]})),
+        ("sound", json!({"rate":192001,"channels":1,"samples":[0]})),
+        ("sound", json!({"rate":48000,"channels":3,"samples":[0]})),
+        ("sound", json!({"rate":48000,"channels":1,"samples":[]})),
+        ("sound", json!({"rate":48000,"channels":1,"samples":[1e39]})),
+        ("icons", json!({})),
+        ("icons", json!({"icons":[]})),
+        ("icons", json!({"icons":[["a","b"]],"size":513})),
+        ("icons", json!({"icons":[["a","b"]],"join":"arcs"})),
+        ("icons", json!({"icons":[["a","b"]],"sticker":[-0.1,0,0]})),
+        ("icons", json!({"icons":[["a","b"]],"sticker":[0,4.1,0]})),
+        ("vector", json!({})),
+        ("vector", json!({"source":"a.svg","svg":"<svg/>"})),
+        ("vector", json!({"source":"a.svg","tolerance":0})),
+        ("vector", json!({"source":"a.svg","tolerance":1e39})),
+        ("texture-array", json!({"kind":5,"layers":["a.png"]})),
+        ("texture-array", json!({"kind":"height","layers":["a.png"]})),
+        ("texture-array", json!({"layers":[]})),
+        ("texture-array", json!({"layers":[""]})),
+        ("environment", json!({"source":"studio.hdr"})),
+        ("environment", json!({"source":{"faces":["a.hdr"]}})),
+        (
+            "environment",
+            json!({"source":{"ktx2":"a.ktx2","equirect":"a.hdr"}}),
+        ),
+        (
+            "environment",
+            json!({"source":{"equirect":"a.hdr"},"samples":15}),
+        ),
+        (
+            "environment",
+            json!({"source":{"equirect":"a.hdr"},"ground":[0,-0.1,1],"hemisphere":"upper"}),
+        ),
+        (
+            "environment",
+            json!({"source":{"equirect":"a.hdr"},"sun":"auto"}),
+        ),
+        (
+            "environment",
+            json!({"source":{"equirect":"a.hdr"},"sunBoost":101}),
+        ),
+    ] {
+        assert!(
+            (source_schemas::get(kind).unwrap().schema)()
+                .check(&wrong)
+                .is_err(),
+            "{kind} accepted {wrong}"
+        );
+    }
+    ts.push_str(
+        r#"
+const fileVector: Vector = {source:"icon.svg"};
+const defaultArray: TextureArray = {layers:["mask.png"]};
+const imageSky: Environment = {source:{equirect:"sky.png"},hemisphere:"upper",ground:[0,0.5,1]};
+const cubeSky: Environment = {source:{ktx2:"studio.ktx2"},prefiltered:true};
+// @ts-expect-error Grid dimensions are a fixed three-axis tuple.
+const badGrid: Field = {dimensions:[1,2],channels:1,values:[0]};
+// @ts-expect-error PCM data is structured numbers, not an encoded string.
+const badPcm: Sound = {rate:48000,channels:1,samples:"AA=="};
+// @ts-expect-error Icons need named file-stem pairs.
+const badIcons: Icons = {icons:["heart"]};
+// @ts-expect-error SVG's internal join aliases are not author enum members.
+const badJoin: Icons = {icons:[["a","b"]],join:"arcs"};
+// @ts-expect-error A vector must name an actual source.
+const missingSvg: Vector = {tolerance:0.1};
+// @ts-expect-error No arbitrary parser block is exposed as an author escape hatch.
+const vectorBlock: Vector = {source:"a.svg",config:{}};
+// @ts-expect-error Texture kind names are not runtime numeric codes.
+const numericKind: TextureArray = {kind:5,layers:["a.png"]};
+// @ts-expect-error Six cubemap faces have fixed order and arity.
+const shortCube: Environment = {source:{faces:["px.hdr","nx.hdr"]}};
+// @ts-expect-error Sun selection uses the domain vocabulary.
+const badSun: Environment = {source:{equirect:"sky.png"},sun:true};
+// @ts-expect-error Author data is readonly, including nested arrays.
+valueSound.samples[0] = 1;
+"#,
+    );
+    let dir = temp::TempDir::new("source-data-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .expect("pinned tsrs checker (docs/ci.md)");
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}

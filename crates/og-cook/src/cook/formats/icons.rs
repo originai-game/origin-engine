@@ -113,21 +113,69 @@ pub(crate) const LINES: &[crate::grammar::Line] = &[
 ];
 
 /// A parsed icon set file.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(
+    Clone, Debug, PartialEq, serde::Deserialize, og_core::reflect::source::schemars::JsonSchema,
+)]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("required" = ["icons"]))]
+#[serde(default, deny_unknown_fields)]
 pub struct IconSet {
+    /// Directory of source SVGs, relative to this source file.
     pub source: String,
+    /// Square MSDF glyph size in pixels.
+    #[schemars(range(min = 1, max = 512), extend("x-og-unit" = "px"))]
     pub size: u32,
+    /// MSDF distance range in pixels.
+    #[schemars(range(min = 1, max = 512), extend("x-og-unit" = "px"))]
     pub range: u32,
     /// The join of a stroked path that names none (`join`; SVG's miter).
     pub join: Join,
     /// (name, SVG file stem), in index order.
+    /// Unique names and paths beneath source are checked by the icon validator.
+    #[schemars(length(min = 1, max = 6400), inner(inner(length(min = 1))))]
     pub icons: Vec<(String, String)>,
     /// A toned icon's outline width and shadow offset, in 24ths of the em.
+    #[schemars(extend("x-og-unit" = "em/24", "prefixItems" = [
+        {"type":"number", "format":"float", "minimum":0, "maximum":4},
+        {"type":"number", "format":"float", "minimum":-4, "maximum":4},
+        {"type":"number", "format":"float", "minimum":-4, "maximum":4}
+    ]))]
     pub sticker: [f32; 3],
 }
 
+impl IconSet {
+    pub fn schema() -> &'static og_core::reflect::source::InputSchema<Self> {
+        static SCHEMA: std::sync::OnceLock<og_core::reflect::source::InputSchema<IconSet>> =
+            std::sync::OnceLock::new();
+        SCHEMA.get_or_init(|| og_core::reflect::source::InputSchema::new().expect("icons schema"))
+    }
+}
+
+impl Default for IconSet {
+    fn default() -> Self {
+        Self {
+            source: ".".into(),
+            size: 48,
+            range: 8,
+            join: Join::Miter,
+            icons: Vec::new(),
+            sticker: [0.0; 3],
+        }
+    }
+}
+
 /// How a stroke's segments meet at a corner (SVG's `stroke-linejoin`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    serde::Deserialize,
+    og_core::reflect::source::schemars::JsonSchema,
+)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "lowercase")]
 pub enum Join {
     /// Out to the point where the two edges meet (within the miter limit).
     #[default]
@@ -155,14 +203,7 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
     if doc.ty != ICONS_TYPE {
         return Err(format!("an icon set is `type icons`, not `{}`", doc.ty));
     }
-    let mut set = IconSet {
-        source: ".".into(),
-        size: 48,
-        range: 8,
-        join: Join::Miter,
-        icons: Vec::new(),
-        sticker: [0.0; 3],
-    };
+    let mut set = IconSet::default();
     for e in &doc.body.entries {
         let at = |m: String| format!("line {}: {m}", e.line);
         if !LINES.iter().any(|f| f.key == e.key) {

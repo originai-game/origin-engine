@@ -20,6 +20,7 @@
 //! to exactly the samples of the whole file.
 
 mod generate;
+pub use generate::Pcm as PcmInput;
 pub(crate) use generate::expand;
 
 use super::{

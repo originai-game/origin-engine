@@ -43,14 +43,31 @@ pub const LINES: &[Line] = &[
 ];
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "source",
+    derive(og_core::reflect::source::schemars::JsonSchema)
+)]
+#[cfg_attr(
+    feature = "source",
+    schemars(crate = "og_core::reflect::source::schemars")
+)]
 #[serde(deny_unknown_fields)]
 pub struct FieldData {
+    /// Positive sample counts; x varies fastest, then y, then z.
+    #[cfg_attr(feature = "source", schemars(inner(range(min = 1))))]
     pub dimensions: [u32; 3],
+    /// Interleaved scalar channels per cell; their meaning belongs to the author.
+    #[cfg_attr(feature = "source", schemars(range(min = 1, max = 4)))]
     pub channels: u32,
+    /// First sample position in authored coordinate units.
     #[serde(default)]
     pub origin: [f32; 3],
+    /// Positive sample spacing in authored coordinate units.
     #[serde(default = "spacing")]
+    #[cfg_attr(feature = "source", schemars(extend("items" = {"type":"number", "format":"float", "exclusiveMinimum":0})))]
     pub spacing: [f32; 3],
+    /// Finite f32 samples; dimensions product times channels, without normalization.
+    #[cfg_attr(feature = "source", schemars(length(min = 1, max = 16_777_216)))]
     pub values: Vec<f32>,
 }
 
@@ -59,6 +76,13 @@ fn spacing() -> [f32; 3] {
 }
 
 impl FieldData {
+    #[cfg(feature = "source")]
+    pub fn schema() -> &'static og_core::reflect::source::InputSchema<Self> {
+        static SCHEMA: std::sync::OnceLock<og_core::reflect::source::InputSchema<FieldData>> =
+            std::sync::OnceLock::new();
+        SCHEMA.get_or_init(|| og_core::reflect::source::InputSchema::new().expect("field schema"))
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         let count = self
             .dimensions

@@ -4,12 +4,27 @@ use crate::cook::{assets_root, generator};
 use og_core::ogt::Document;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, og_core::reflect::source::schemars::JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
-struct Pcm {
-    rate: u32,
-    channels: u32,
-    samples: Vec<f32>,
+pub struct Pcm {
+    /// Sample rate in hertz; no resampling before the codec import.
+    #[schemars(range(min = 8000, max = 192000), extend("x-og-unit" = "Hz"))]
+    pub rate: u32,
+    /// One mono channel or interleaved stereo.
+    #[schemars(range(min = 1, max = 2))]
+    pub channels: u32,
+    /// Finite PCM samples, at least one complete interleaved frame.
+    #[schemars(length(min = 1))]
+    pub samples: Vec<f32>,
+}
+
+impl Pcm {
+    pub fn schema() -> &'static og_core::reflect::source::InputSchema<Self> {
+        static SCHEMA: std::sync::OnceLock<og_core::reflect::source::InputSchema<Pcm>> =
+            std::sync::OnceLock::new();
+        SCHEMA.get_or_init(|| og_core::reflect::source::InputSchema::new().expect("PCM schema"))
+    }
 }
 
 fn make(s: &Source) -> Result<Option<Vec<u8>>, String> {

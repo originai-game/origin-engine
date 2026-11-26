@@ -151,13 +151,16 @@ pub(crate) const LINES: &[crate::grammar::Line] = &[
 ];
 
 /// What an environment bakes from.
-pub(crate) enum EnvironmentSource {
+#[derive(serde::Deserialize, og_core::reflect::source::schemars::JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum EnvironmentSource {
     /// An equirectangular HDR or sRGB image.
-    Equirect(String),
+    Equirect(#[schemars(length(min = 1), extend("x-og-input" = "bytes"))] String),
     /// A KTX2 cube map.
-    Ktx2(String),
+    Ktx2(#[schemars(length(min = 1), extend("x-og-input" = "bytes"))] String),
     /// Six face images, +x −x +y −y +z −z.
-    Faces([String; 6]),
+    Faces(#[schemars(inner(length(min = 1)), extend("x-og-input" = "bytes"))] [String; 6]),
 }
 
 impl EnvironmentSource {
