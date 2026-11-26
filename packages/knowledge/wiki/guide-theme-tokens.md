@@ -108,7 +108,7 @@ Scale tokens under `theme` in `pack.json`, with the utility classes that read ea
 
 Pass component, slot, and optional variant to `packClass(component, slot, variant)` from `@origingame/engine/ui` (resolved as `@Component.slot` or `@Component.slot.variant`).
 
-Total: 231 pack slots across 59 component groups.
+Total: 233 pack slots across 59 component groups.
 
 | Component | Slots |
 |---|---|
@@ -119,7 +119,7 @@ Total: 231 pack slots across 59 component groups.
 | `BannerQueue` | `@BannerQueue.item` |
 | `Bar` | `@Bar.fill`, `@Bar.frame`, `@Bar.frame.low`, `@Bar.frame.thick`, `@Bar.ghost`, `@Bar.tick`, `@Bar.tone`, `@Bar.tone.boss`, `@Bar.tone.invulnerable`, `@Bar.tone.low`, `@Bar.tone.mana`, `@Bar.tone.shield`, `@Bar.tone.stamina`, `@Bar.tone.xp`, `@Bar.trail`, `@Bar.value` |
 | `Boss` | `@Boss.figure`, `@Boss.phase`, `@Boss.status` |
-| `Button` | `@Button.plate`, `@Button.plate.contrast`, `@Button.plate.danger`, `@Button.plate.ghost`, `@Button.plate.ghost-faint`, `@Button.plate.ghost-muted`, `@Button.plate.outline`, `@Button.plate.primary`, `@Button.plate.warning`, `@Button.spinner` |
+| `Button` | `@Button.plate`, `@Button.plate.contrast`, `@Button.plate.danger`, `@Button.plate.ghost`, `@Button.plate.ghost-faint`, `@Button.plate.ghost-muted`, `@Button.plate.menu`, `@Button.plate.menu-danger`, `@Button.plate.outline`, `@Button.plate.primary`, `@Button.plate.warning`, `@Button.spinner` |
 | `CastBar` | `@CastBar.fill`, `@CastBar.frame`, `@CastBar.track` |
 | `Celebrate` | `@Celebrate.halo`, `@Celebrate.title` |
 | `Checkbox` | `@Checkbox.dash`, `@Checkbox.indicator`, `@Checkbox.mark` |

@@ -4198,7 +4198,7 @@ A press target (NSH base's `Button`): it owns its presses, its pressed, selected
 
 | Prop | Type | What |
 |---|---|---|
-| `variant?` | `ButtonVariant \| undefined` | The look, rune-kit's matrix: `neutral` (the default), `primary` (the main action), `danger`, `warning`, `contrast` (the inverse of the page), `outline` (a rim, no fill) and the ghosts `ghost`, `ghost-muted` and `ghost-faint` (no plate until hovered). `quiet` is `ghost-muted`. The pack dresses each through `Button.plate.<variant>`. |
+| `variant?` | `ButtonVariant \| undefined` | The look, rune-kit's matrix: `neutral` (the default), `primary` (the main action), `danger`, `warning`, `contrast` (the inverse of the page), `outline` (a rim, no fill) and the ghosts `ghost`, `ghost-muted` and `ghost-faint` (no plate until hovered). `quiet` is `ghost-muted`. `menu` is a front-end menu entry (a main or pause menu's row: type until it is the one, then filled in the accent) and `menu-danger` one that ends something (Quit game). The pack dresses each through `Button.plate.<variant>`. |
 | `size?` | `"sm" \| "md" \| "lg" \| undefined` | Its padding and type: `sm`, `md` (the default) or `lg`. Each is a touch target 44 px tall or more. |
 | `small?` | `boolean \| undefined` | `size="sm"`, its old name. |
 | `pressed?` | `boolean \| undefined` | A toggle that is on: screen readers say so, and `aria-pressed:` styles apply. |
@@ -4208,6 +4208,7 @@ A press target (NSH base's `Button`): it owns its presses, its pressed, selected
 | `label?` | `string \| undefined` | What a screen reader calls it when its content is not words (an icon). |
 | `description?` | `string \| undefined` | What pressing it does, read after its name. |
 | `role?` | `string \| undefined` | What it is for screen readers, when not a button (a tab, a menu item). |
+| `name?` | `string \| undefined` | Its node name, which tests and the probe find it by (Resume). |
 | `class?` | `string \| undefined` | Classes of the document that uses it; they come after its own, so they win. |
 | `tabIndex?` | `number \| undefined` |  |
 | `autofocus?` | `boolean \| undefined` | It takes the focus once it shows (a menu's first choice, a dialog's safe one). |
@@ -5574,7 +5575,7 @@ The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, 
 | `objective` | `string` | The current objective (empty: none). |
 | `played` | `number` | Seconds played this run. |
 | `canSave?` | `boolean` | Saving is allowed here. |
-| `rows?` | `ReadonlyArray<PauseRow>` | The game's own rows (Restart stage), each drawn as a built-in row and reported by onRow with its key: in the main group after the built-in ones, or after the row `after` names (a built-in row's key: resume, settings, controls, save, load, quitToMenu, quit; or an earlier row of the game's); a `minor` row goes below the rule with Quit to menu and Quit game. |
+| `rows?` | `ReadonlyArray<PauseRow>` | The game's own rows (Restart stage), each drawn as a built-in row and reported by onRow with its key: in the main group after the built-in ones, or after the row `after` names (a built-in row's key: resume, settings, controls, save, load, quitToMenu, quit; or an earlier row of the game's); a `minor` row goes in the group set apart below them, with Quit to menu and Quit game. |
 | `onRow?` | `((e: UiEvent, key: string) => void) \| undefined` | A row of the game's (props.rows) pressed, with its key. |
 | `side?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the side snippet). |
 | `onControls?` | `((e: UiEvent, key?: string) => void) \| undefined` | The controls event, with the row's key where it comes from a row. |
@@ -5592,7 +5593,7 @@ Each `PauseRow`:
 | `key` | `string` | Its stable key, reported by onRow. |
 | `label` | `string` | What it says. |
 | `after?` | `string` | The key of the row it follows; empty or unknown: the end of its group. |
-| `minor?` | `boolean` | Below the rule, with Quit to menu and Quit game, without a chevron. |
+| `minor?` | `boolean` | In the group set apart below, with Quit to menu and Quit game, without a chevron. |
 | `danger?` | `boolean` | Tinted as a danger when hovered, as Quit game is. |
 | `disabled?` | `boolean` | Drawn grey and takes no press. |
 

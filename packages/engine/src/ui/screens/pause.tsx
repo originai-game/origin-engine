@@ -1,4 +1,5 @@
 import {For, Scroll, Icon, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import { Button } from "../controls/button";
 import "./pause.en.ogt";
 
 export interface PauseScreenProps {
@@ -10,7 +11,7 @@ export interface PauseScreenProps {
   played: number;
   /** Saving is allowed here. */
   canSave?: boolean;
-  /** The game's own rows (Restart stage), each drawn as a built-in row and reported by onRow with its key: in the main group after the built-in ones, or after the row `after` names (a built-in row's key: resume, settings, controls, save, load, quitToMenu, quit; or an earlier row of the game's); a `minor` row goes below the rule with Quit to menu and Quit game. */
+  /** The game's own rows (Restart stage), each drawn as a built-in row and reported by onRow with its key: in the main group after the built-in ones, or after the row `after` names (a built-in row's key: resume, settings, controls, save, load, quitToMenu, quit; or an earlier row of the game's); a `minor` row goes in the group set apart below them, with Quit to menu and Quit game. */
   rows?: ReadonlyArray<PauseRow>;
   /** A row of the game's (props.rows) pressed, with its key. */
   onRow?: ((e: UiEvent, key: string) => void) | undefined;
@@ -40,7 +41,7 @@ export interface PauseRow {
   label: string;
   /** The key of the row it follows; empty or unknown: the end of its group. */
   after?: string;
-  /** Below the rule, with Quit to menu and Quit game, without a chevron. */
+  /** In the group set apart below, with Quit to menu and Quit game, without a chevron. */
   minor?: boolean;
   /** Tinted as a danger when hovered, as Quit game is. */
   danger?: boolean;
@@ -48,7 +49,7 @@ export interface PauseRow {
   disabled?: boolean;
 }
 
-type Entry = PauseRow & { name: string; rule: boolean; press: (e: UiEvent) => void };
+type Entry = PauseRow & { name: string; apart: boolean; press: (e: UiEvent) => void };
 
 /**
  * The rows drawn, in order: each built-in row whose handler the game passes,
@@ -56,7 +57,7 @@ type Entry = PauseRow & { name: string; rule: boolean; press: (e: UiEvent) => vo
  */
 function pauseRows(props: PauseScreenProps): Entry[] {
   const own = (key: string, label: string, handler: ((e: UiEvent) => void) | undefined, more: Partial<PauseRow> = {}) =>
-    handler ? [{ key, label, name: key.charAt(0).toUpperCase() + key.slice(1), rule: false, press: handler, ...more }] : [];
+    handler ? [{ key, label, name: key.charAt(0).toUpperCase() + key.slice(1), apart: false, press: handler, ...more }] : [];
   const main: Entry[] = [
     ...own("resume", t("screen.pause.resume"), props.onResume && ((e) => props.onResume!(e))),
     ...own("settings", t("screen.pause.settings"), props.onSettings && ((e) => props.onSettings!(e))),
@@ -71,12 +72,12 @@ function pauseRows(props: PauseScreenProps): Entry[] {
   ];
   for (const row of props.rows ?? []) {
     const group = row.minor ? minor : main;
-    const entry: Entry = { ...row, name: row.key, rule: false, press: (e) => props.onRow?.(e, row.key) };
+    const entry: Entry = { ...row, name: row.key, apart: false, press: (e) => props.onRow?.(e, row.key) };
     const at = row.after ? group.findIndex((r) => r.key === row.after) : -1;
     if (at < 0) group.push(entry);
     else group.splice(at + 1, 0, entry);
   }
-  if (main.length > 0 && minor.length > 0) minor[0] = { ...minor[0]!, rule: true };
+  if (main.length > 0 && minor.length > 0) minor[0] = { ...minor[0]!, apart: true };
   return [...main, ...minor];
 }
 
@@ -114,19 +115,17 @@ export function PauseScreen(props: PauseScreenProps) {
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
-                <Show when={r().rule}>
-                  <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6 short:hidden" />
+                <Show when={r().apart}>
+                  <View class="h-4 short:h-1" />
                 </Show>
-                <View class={`flex-row items-center justify-center gap-1 group/row w-full min-h-11 text-fg-muted py-1 px-4 rounded-button ${r().danger ? "hover:bg-danger hover:text-danger-fg focus-visible:bg-danger focus-visible:text-danger-fg active:bg-danger active:text-danger-fg" : "hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg"} disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" name={r().name} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
-                  <View class="flex-row items-center gap-x-3 w-full">
-                    <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
-                      {r().label}
-                    </Text>
-                    <Show when={!r().minor}>
-                      <Icon class="opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-                    </Show>
-                  </View>
-                </View>
+                <Button variant={r().danger ? "menu-danger" : "menu"} class="group/row compact:pl-6" name={r().name} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
+                  <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
+                    {r().label}
+                  </Text>
+                  <Show when={!r().minor}>
+                    <Icon class="opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+                  </Show>
+                </Button>
               </>
             )}
           </For>

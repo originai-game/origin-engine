@@ -120,6 +120,16 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "text-fg-subtle hover:text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0",
     ),
     (
+        "Button.plate.menu",
+        "a front-end menu entry (the main menu's, the pause menu's): type, not a box, dim until it is the one, then the HUD accent fills it",
+        "w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hud-accent hover:text-hud-accent-fg hover:shadow-none hover:inset-ring-0 focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-none active:bg-hud-accent active:text-hud-accent-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+    ),
+    (
+        "Button.plate.menu-danger",
+        "a menu entry that ends something (Quit game): the danger fills it",
+        "w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-danger hover:text-danger-fg hover:shadow-none hover:inset-ring-0 focus-visible:bg-danger focus-visible:text-danger-fg active:bg-none active:bg-danger active:text-danger-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+    ),
+    (
         "Button.spinner",
         "what a busy button shows before its label",
         "size-4 shrink-0 rounded-capsule border-regular border-current border-t-transparent animate-spin",

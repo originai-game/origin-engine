@@ -1,6 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import {Scroll, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
+import { Button } from "../controls/button";
 import "./main-menu.en.ogt";
 
 export interface MainMenuScreenProps {
@@ -82,70 +83,25 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         </Show>
         <View class="gap-y-0.5 w-110 max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" focusGroup="stop" data-after-news={props.news !== ""}>
           <Show when={props.canContinue && props.onContinue}>
-            <View class={`flex-row items-center justify-center gap-1 group/continue w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <View class="grow shrink">
-                  <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                    {t("screen.main-menu.continue")}
-                  </Text>
-                  <Text class="text-start text-base font-medium text-fg-muted whitespace-nowrap overflow-hidden group-hover/continue:text-hud-accent-fg group-focus-visible/continue:text-hud-accent-fg">
-                    {props.saveLine}
-                  </Text>
-                </View>
-                <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/continue:opacity-100 group-focus-visible/continue:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.continue")} line={props.saveLine} onPress={(e) => props.onContinue?.(e)} autofocus />
           </Show>
           <Show when={props.onNewGame}>
-            <View class={`flex-row items-center justify-center gap-1 group/newgame w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                  {t("screen.main-menu.newGame")}
-                </Text>
-                <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/newgame:opacity-100 group-focus-visible/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.newGame")} onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue} />
           </Show>
           <Show when={props.onModes}>
-            <View class={`flex-row items-center justify-center gap-1 group/modes w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                  {t("screen.main-menu.modes")}
-                </Text>
-                <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/modes:opacity-100 group-focus-visible/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.modes")} onPress={(e) => props.onModes?.(e)} />
           </Show>
           <Show when={props.onSettings}>
-            <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                  {t("screen.main-menu.settings")}
-                </Text>
-                <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/settings:opacity-100 group-focus-visible/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.settings")} onPress={(e) => props.onSettings?.(e)} />
           </Show>
           <Show when={(props.onNewGame || props.onModes || props.onSettings || (props.canContinue && props.onContinue)) && (props.onCredits || props.onQuit)}>
-            <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6" />
+            <View class="h-4" />
           </Show>
           <Show when={props.onCredits}>
-            <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                  {t("screen.main-menu.credits")}
-                </Text>
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.credits")} onPress={(e) => props.onCredits?.(e)} minor />
           </Show>
           <Show when={props.onQuit}>
-            <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
-              <View class="flex-row items-center gap-x-3 w-full">
-                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                  {t("screen.main-menu.quit")}
-                </Text>
-              </View>
-            </View>
+            <Entry label={t("screen.main-menu.quit")} onPress={(e) => props.onQuit?.(e)} minor />
           </Show>
           <View>{props.extra?.()}</View>
         </View>
@@ -154,6 +110,23 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         {props.version}
       </Text>
     </View>
+  );
+}
+
+/** One entry: the built-in Button's `menu` variant, its label in the menu's type, a line under it where it has one, and a chevron while it is the one (none on a minor entry). */
+function Entry(props: { label: string; line?: string; minor?: boolean; autofocus?: boolean; onPress: (e: UiEvent) => void }) {
+  return (
+    <Button variant="menu" class="group/entry compact:pl-6" autofocus={props.autofocus} onPress={props.onPress}>
+      <View class="grow shrink">
+        <Text class="text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">{props.label}</Text>
+        <Show when={props.line}>
+          <Text class="text-start text-base font-medium text-fg-muted whitespace-nowrap overflow-hidden group-hover/entry:text-hud-accent-fg group-focus-visible/entry:text-hud-accent-fg">{props.line}</Text>
+        </Show>
+      </View>
+      <Show when={!props.minor}>
+        <Icon class="opacity-0 size-4 group-hover/entry:opacity-100 group-focus-visible/entry:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+      </Show>
+    </Button>
   );
 }
 

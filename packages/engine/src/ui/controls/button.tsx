@@ -1,7 +1,7 @@
 import { Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
 
 /** rune-kit's button variants; `quiet` is the old name of `ghost-muted`. */
-export type ButtonVariant = "neutral" | "primary" | "danger" | "warning" | "outline" | "contrast" | "ghost" | "ghost-muted" | "ghost-faint" | "quiet";
+export type ButtonVariant = "neutral" | "primary" | "danger" | "warning" | "outline" | "contrast" | "ghost" | "ghost-muted" | "ghost-faint" | "menu" | "menu-danger" | "quiet";
 
 export interface ButtonProps {
   /**
@@ -9,7 +9,10 @@ export interface ButtonProps {
    * main action), `danger`, `warning`, `contrast` (the inverse of the
    * page), `outline` (a rim, no fill) and the ghosts `ghost`,
    * `ghost-muted` and `ghost-faint` (no plate until hovered). `quiet` is
-   * `ghost-muted`. The pack dresses each through `Button.plate.<variant>`.
+   * `ghost-muted`. `menu` is a front-end menu entry (a main or pause
+   * menu's row: type until it is the one, then filled in the accent) and
+   * `menu-danger` one that ends something (Quit game). The pack dresses
+   * each through `Button.plate.<variant>`.
    */
   variant?: ButtonVariant | undefined;
   /** Its padding and type: `sm`, `md` (the default) or `lg`. Each is a touch target 44 px tall or more. */
@@ -29,6 +32,8 @@ export interface ButtonProps {
   description?: string | undefined;
   /** What it is for screen readers, when not a button (a tab, a menu item). */
   role?: string | undefined;
+  /** Its node name, which tests and the probe find it by (Resume). */
+  name?: string | undefined;
   /** Classes of the document that uses it; they come after its own, so they win. */
   class?: string | undefined;
   tabIndex?: number | undefined;
