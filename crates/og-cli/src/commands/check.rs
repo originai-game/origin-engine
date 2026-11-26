@@ -60,7 +60,9 @@ const USAGE: &str = "usage: og check [project|entry|tsconfig.json] [--json] [--c
 mod lints;
 mod tsgo;
 mod ui;
-use lints::{locale_fonts_lint, lockstep_lint, module_state, shader_capabilities_lint};
+use lints::{
+    font_packs_lint, locale_fonts_lint, lockstep_lint, module_state, shader_capabilities_lint,
+};
 pub(crate) use tsgo::settled_tsgo_fault;
 pub use tsgo::{Checker, NO_TSRS, Tool, default_checkers, locate_tsrs, platform};
 use ui::{missing_tables, pack_grounds, ui_grounds_lint, unknown_classes};
@@ -242,6 +244,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     }
     lockstep_lint(p, json, true);
     locale_fonts_lint(p, json, true);
+    font_packs_lint(p, json, true);
     shader_capabilities_lint(p, json, true);
     Ok(report)
 }
@@ -381,6 +384,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(p) = &project {
         lockstep_lint(p, json, false);
         locale_fonts_lint(p, json, false);
+        font_packs_lint(p, json, false);
         shader_capabilities_lint(p, json, false);
         let game = p.root.join("assets/styles/game/pack.json");
         let dirs = [

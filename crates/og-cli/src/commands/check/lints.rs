@@ -118,6 +118,51 @@ pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
     }
 }
 
+/// Installed font packs (assets/fonts/<pack>/) named like one this engine
+/// bundles but whose faces differ from it: an older engine's copy, which
+/// shadows the bundled pack and may lack characters the engine's draws.
+pub(super) fn font_packs_lint(p: &Project, json: bool, to_stderr: bool) {
+    let Some(bundled) = og_cook::cook::look::fonts_dir() else {
+        return;
+    };
+    let Ok(entries) = std::fs::read_dir(p.root.join("assets/fonts")) else {
+        return;
+    };
+    let mut differ: Vec<String> = entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().to_str()?.to_owned();
+            let ours = bundled.join(&name);
+            let manifest: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(ours.join("extension.json")).ok()?).ok()?;
+            let faces = manifest["faces"].as_array()?;
+            faces
+                .iter()
+                .filter_map(|f| f.as_str())
+                .any(|f| std::fs::read(e.path().join(f)).ok() != std::fs::read(ours.join(f)).ok())
+                .then_some(name)
+        })
+        .collect();
+    if differ.is_empty() {
+        return;
+    }
+    differ.sort();
+    let message = format!(
+        "{}: the installed font pack's faces differ from this engine's pack of that name (an older engine's copy shadows it and may lack characters it draws). Remove assets/fonts/<pack> and run `og font add <pack>` to install this engine's.",
+        differ.join(", ")
+    );
+    let text = if json {
+        serde_json::json!({"event": "font-packs", "packs": differ, "message": message}).to_string()
+    } else {
+        format!("assets/fonts: warning: {message}")
+    };
+    if to_stderr && !json {
+        eprintln!("{text}");
+    } else {
+        println!("{text}");
+    }
+}
+
 /// The determinism lint (`lockstep_lint`) over a project's sources, beside
 /// the entry, for every game: printed as warnings
 /// (`<file>(<line>,<col>): warning OG<code>:`) or, with `json`, as one

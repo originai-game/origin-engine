@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og check font-packs",
+      "summary": "`og check` warns of an installed font pack (assets/fonts/<pack>) whose faces differ from this engine's pack of that name, such as an older engine's chinese-simplified copy that lacks GB 2312's level 2 hanzi, and says to remove the directory and run `og font add <pack>` to take the engine's; `og font add` writes nothing over an installed pack. `--json` gives a `font-packs` event."
+    }
+  ]
+}
