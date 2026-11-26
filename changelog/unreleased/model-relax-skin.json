@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "model import relaxSkin",
+      "change": "Models can explicitly relax existing skin weights in regions stretched by the cook's stress probes, before welding and LOD generation. Defaults to false; reports changed vertices and remaining stretch after at most 12 deterministic widening passes, retaining a result that worsens no probe pose. Probes and position welding now use model-space skin binds, including quantised meshes' dequantisation, rather than treating accessor units as model units. The Last Light uses its original unsmoothed asset with this import setting instead of an external repair script.",
+      "fix": "Set model { relaxSkin true } in import settings to repair flagged regions; inspect the cooked character in its animations and review any remaining skin stretch warnings. Leave the setting absent to preserve authored weights."
+    }
+  ]
+}

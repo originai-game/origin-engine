@@ -1,10 +1,30 @@
-//! Read-only skin diagnostics, before welding/LOD generation. Triangle IDs
+//! Skin diagnostics and explicit weight relaxation, before welding/LOD generation. Triangle IDs
 //! are source primitive index triples, not the reordered cooked triangles.
 //! Probes rotate about bind joints in model axes (+Y up, +Z forward), composed
-//! down the hierarchy. They are stress tests, not animations or weight repair.
+//! down the hierarchy. They are stress tests, not animations.
 
 use super::{GltfSource, Mat4, Path, Quat, Vec3, node_order};
 use og_anim::{HumanoidMap, NONE, SkeletonAsset, SkeletonNode, Trs};
+use std::collections::BTreeMap;
+
+mod relax;
+
+type Weights = (Vec<[u16; 4]>, Vec<[f32; 4]>);
+type Repairs = BTreeMap<(usize, usize), Weights>;
+
+struct Binding {
+    skin: usize,
+    roots: Vec<usize>,
+    parents: Vec<Option<usize>>,
+    region: Vec<Option<usize>>,
+    poses: Vec<Pose>,
+}
+
+struct Pose {
+    name: String,
+    bind: Mat4,
+    palette: Vec<Mat4>,
+}
 
 struct Probe {
     name: String,
@@ -159,8 +179,60 @@ pub(in crate::cook) fn report(
     root: &Path,
     rig: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    let (mut notes, _) = inspect(src, root, rig, false)?;
+    notes.extend(src.skin_relax_notes.iter().cloned());
+    Ok(notes)
+}
+
+/// Replace only repaired primitives' attributes, with private accessors so
+/// shared/interleaved/normalized/sparse source accessors remain untouched.
+pub(in crate::cook) fn repair(
+    src: &mut GltfSource,
+    root: &Path,
+    rig: Option<&str>,
+) -> Result<(), String> {
+    let (notes, repairs) = inspect(src, root, rig, true)?;
+    for ((mesh, prim), (joints, weights)) in repairs {
+        for (semantic, component, bytes) in [
+            ("JOINTS_0", 5123, bytemuck::cast_slice(&joints).to_vec()),
+            ("WEIGHTS_0", 5126, bytemuck::cast_slice(&weights).to_vec()),
+        ] {
+            let buffer = src.buffers.len();
+            let views = src.json["bufferViews"].as_array_mut().unwrap();
+            let view = views.len();
+            views.push(serde_json::json!({"buffer":buffer,"byteLength":bytes.len()}));
+            src.json["buffers"]
+                .as_array_mut()
+                .unwrap()
+                .push(serde_json::json!({"byteLength":bytes.len()}));
+            src.buffers.push(gltf::buffer::Data(bytes));
+            let accessors = src.json["accessors"].as_array_mut().unwrap();
+            let accessor = accessors.len();
+            accessors.push(
+                serde_json::json!({"bufferView":view,"componentType":component,
+                "count":joints.len(),"type":"VEC4"}),
+            );
+            src.json["meshes"][mesh]["primitives"][prim]["attributes"][semantic] =
+                serde_json::json!(accessor);
+        }
+    }
+    src.doc = gltf::Document::from_json(
+        serde_json::from_value(src.json.clone()).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    src.skin_relax_notes
+        .extend(notes.into_iter().filter(|n| n.starts_with("skin relax:")));
+    Ok(())
+}
+
+fn inspect(
+    src: &GltfSource,
+    root: &Path,
+    rig: Option<&str>,
+    repair: bool,
+) -> Result<(Vec<String>, Repairs), String> {
     if src.doc.skins().next().is_none() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), BTreeMap::new()));
     }
     let order = node_order(&src.doc, &mut |_| (0, 0)).map_err(|e| e.0)?;
     let mut skeleton = SkeletonAsset::default();
@@ -180,6 +252,9 @@ pub(in crate::cook) fn report(
     }
     let map = crate::cook::anim::humanoid(root, rig, &skeleton)?;
     let mut notes = Vec::new();
+    let mut repairs = BTreeMap::new();
+    let mut bindings: BTreeMap<usize, Vec<Binding>> = BTreeMap::new();
+    let binds = super::skin_binds(src);
     // A mesh can be instanced with different skins: diagnose each binding.
     let mut seen = std::collections::BTreeSet::new();
     for node in src.doc.nodes() {
@@ -216,86 +291,17 @@ pub(in crate::cook) fn report(
         if inverse.len() != joints.len() {
             return Err("inverse bind matrix count differs from joints".into());
         }
+        let bind = binds.get(&node.index()).copied().unwrap_or(Mat4::IDENTITY);
         // The node's default TRS need not be its bind pose. The inverse bind
-        // is the authority for each pivot in the source mesh's model space.
+        // locates each pivot in accessor space; the skin bind carries that
+        // space into model units (including gltfpack's dequantisation).
         let mut pivots = vec![Vec3::ZERO; skeleton.nodes.len()];
         for (&j, ib) in joints.iter().zip(&inverse) {
-            pivots[j] = ib.inverse().transform_point3(Vec3::ZERO);
+            pivots[j] = bind.transform_point3(ib.inverse().transform_point3(Vec3::ZERO));
         }
-        for prim in mesh
-            .primitives()
-            .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
-        {
-            let reader = prim.reader(|b| Some(&src.buffers[b.index()].0));
-            let (Some(p), Some(j), Some(w)) = (
-                reader.read_positions(),
-                reader.read_joints(0),
-                reader.read_weights(0),
-            ) else {
-                continue;
-            };
-            let positions: Vec<_> = p.map(Vec3::from).collect();
-            let js: Vec<_> = j.into_u16().collect();
-            let ws: Vec<_> = w.into_f32().collect();
-            let indices: Vec<_> = reader
-                .read_indices()
-                .map(|i| i.into_u32().collect())
-                .unwrap_or_else(|| (0..positions.len() as u32).collect());
-            if js.len() != positions.len()
-                || ws.len() != positions.len()
-                || js.iter().flatten().any(|&j| j as usize >= joints.len())
-                || indices.iter().any(|&i| i as usize >= positions.len())
-            {
-                return Err("skin vertex attributes or indices out of range".into());
-            }
-            let cross = js
-                .iter()
-                .zip(&ws)
-                .filter(|(js, ws)| {
-                    let mut weights = vec![0.0; roots.len()];
-                    for (&j, &w) in js.iter().zip(ws.iter()) {
-                        if let Some(r) = region[j as usize] {
-                            weights[r] += w;
-                        }
-                    }
-                    let dominant = weights
-                        .iter()
-                        .enumerate()
-                        .max_by(|a, b| a.1.total_cmp(b.1).then(b.0.cmp(&a.0)));
-                    dominant.is_some_and(|(d, &w)| {
-                        w > 0.0
-                            && weights.iter().enumerate().any(|(r, &w)| {
-                                r != d && w > 0.02 && parents[roots[r]] != parents[roots[d]]
-                            })
-                    })
-                })
-                .count();
-            let label = format!(
-                "skin {} mesh {} '{}' primitive {}",
-                skin.index(),
-                mesh.index(),
-                mesh.name().unwrap_or(""),
-                prim.index()
-            );
-            notes.push(format!("skin diagnostics: {label}: {} vertices, {cross} cross-limb vertices (information only), {} probe poses", positions.len(), poses.len()));
-            let deform = |palette: &[Mat4]| -> Vec<Vec3> {
-                positions
-                    .iter()
-                    .zip(&js)
-                    .zip(&ws)
-                    .map(|((&p, js), ws)| {
-                        let sum: f32 = ws.iter().sum();
-                        if sum == 0.0 {
-                            return p;
-                        }
-                        js.iter()
-                            .zip(ws)
-                            .map(|(&j, &w)| palette[j as usize].transform_point3(p) * (w / sum))
-                            .sum()
-                    })
-                    .collect()
-            };
-            for pose in &poses {
+        let poses = poses
+            .into_iter()
+            .map(|pose| {
                 let mut delta = vec![Mat4::IDENTITY; skeleton.nodes.len()];
                 for (i, n) in skeleton.nodes.iter().enumerate() {
                     let angle = pose
@@ -313,27 +319,159 @@ pub(in crate::cook) fn report(
                         delta[n.parent as usize] * local
                     };
                 }
-                let palette: Vec<_> = joints.iter().map(|&j| delta[j]).collect();
-                let posed = deform(&palette);
-                let bad: Vec<_> = indices
-                    .as_chunks::<3>()
-                    .0
+                Pose {
+                    name: pose.name,
+                    bind,
+                    palette: joints.iter().map(|&j| delta[j] * bind).collect(),
+                }
+            })
+            .collect();
+        bindings.entry(mesh.index()).or_default().push(Binding {
+            skin: skin.index(),
+            roots,
+            parents,
+            region,
+            poses,
+        });
+    }
+    for mesh in src.doc.meshes() {
+        let Some(bindings) = bindings.get(&mesh.index()) else {
+            continue;
+        };
+        for prim in mesh
+            .primitives()
+            .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
+        {
+            let reader = prim.reader(|b| Some(&src.buffers[b.index()].0));
+            let (Some(p), Some(j), Some(w)) = (
+                reader.read_positions(),
+                reader.read_joints(0),
+                reader.read_weights(0),
+            ) else {
+                continue;
+            };
+            let positions: Vec<_> = p.map(Vec3::from).collect();
+            let mut js: Vec<_> = j.into_u16().collect();
+            let mut ws: Vec<_> = w.into_f32().collect();
+            let indices: Vec<_> = reader
+                .read_indices()
+                .map(|i| i.into_u32().collect())
+                .unwrap_or_else(|| (0..positions.len() as u32).collect());
+            if js.len() != positions.len()
+                || ws.len() != positions.len()
+                || bindings
                     .iter()
-                    .enumerate()
-                    .filter_map(|(id, t)| {
-                        let e0 = longest(&positions, t);
-                        let e1 = longest(&posed, t);
-                        (e1 > 0.08 && e1 > 2.5 * e0).then_some(id)
+                    .any(|b| js.iter().flatten().any(|&j| j as usize >= b.region.len()))
+                || indices.iter().any(|&i| i as usize >= positions.len())
+            {
+                return Err("skin vertex attributes or indices out of range".into());
+            }
+            let palettes: Vec<_> = bindings.iter().flat_map(|b| &b.poses).collect();
+            if repair {
+                let changed = relax::relax(&positions, &indices, &palettes, &mut js, &mut ws);
+                let remaining: usize = palettes
+                    .iter()
+                    .map(|p| stretched(&positions, &indices, &js, &ws, p).len())
+                    .sum();
+                notes.push(format!("skin relax: mesh {} primitive {}: {changed} of {} vertices reweighted; {remaining} remaining stretched triangles across {} probe poses (limit 12 passes)", mesh.index(), prim.index(), positions.len(), palettes.len()));
+                if changed > 0 {
+                    repairs.insert((mesh.index(), prim.index()), (js.clone(), ws.clone()));
+                }
+            }
+            for binding in bindings {
+                let Binding {
+                    roots,
+                    parents,
+                    region,
+                    poses,
+                    ..
+                } = binding;
+                let cross = js
+                    .iter()
+                    .zip(&ws)
+                    .filter(|(js, ws)| {
+                        let mut weights = vec![0.0; roots.len()];
+                        for (&j, &w) in js.iter().zip(ws.iter()) {
+                            if let Some(r) = region[j as usize] {
+                                weights[r] += w;
+                            }
+                        }
+                        let dominant = weights
+                            .iter()
+                            .enumerate()
+                            .max_by(|a, b| a.1.total_cmp(b.1).then(b.0.cmp(&a.0)));
+                        dominant.is_some_and(|(d, &w)| {
+                            w > 0.0
+                                && weights.iter().enumerate().any(|(r, &w)| {
+                                    r != d && w > 0.02 && parents[roots[r]] != parents[roots[d]]
+                                })
+                        })
                     })
-                    .collect();
-                let severity = if bad.is_empty() {
-                    "skin diagnostics:"
-                } else {
-                    "warning: skin stretch:"
-                };
-                notes.push(format!("{severity} {label}: {}: {} stretched triangles (longest edge >2.5x bind and >0.08 model units); source triangle IDs {bad:?}", pose.name, bad.len()));
+                    .count();
+                let label = format!(
+                    "skin {} mesh {} '{}' primitive {}",
+                    binding.skin,
+                    mesh.index(),
+                    mesh.name().unwrap_or(""),
+                    prim.index()
+                );
+                notes.push(format!("skin diagnostics: {label}: {} vertices, {cross} cross-limb vertices (information only), {} probe poses", positions.len(), poses.len()));
+                for pose in poses {
+                    let name = &pose.name;
+                    let bad = stretched(&positions, &indices, &js, &ws, pose);
+                    let severity = if bad.is_empty() {
+                        "skin diagnostics:"
+                    } else {
+                        "warning: skin stretch:"
+                    };
+                    let hint = if bad.is_empty() {
+                        ""
+                    } else {
+                        "; opt in to model { relaxSkin true } in import settings to relax stretched regions"
+                    };
+                    notes.push(format!("{severity} {label}: {name}: {} stretched triangles (longest edge >2.5x bind and >0.08 model units); source triangle IDs {bad:?}{hint}", bad.len()));
+                }
             }
         }
     }
-    Ok(notes)
+    Ok((notes, repairs))
+}
+
+fn stretched(
+    positions: &[Vec3],
+    indices: &[u32],
+    js: &[[u16; 4]],
+    ws: &[[f32; 4]],
+    pose: &Pose,
+) -> Vec<usize> {
+    let bind: Vec<_> = positions
+        .iter()
+        .map(|&p| pose.bind.transform_point3(p))
+        .collect();
+    let posed: Vec<Vec3> = positions
+        .iter()
+        .zip(js)
+        .zip(ws)
+        .map(|((&p, js), ws)| {
+            let sum: f32 = ws.iter().sum();
+            if sum == 0.0 {
+                return pose.bind.transform_point3(p);
+            }
+            js.iter()
+                .zip(ws)
+                .map(|(&j, &w)| pose.palette[j as usize].transform_point3(p) * (w / sum))
+                .sum()
+        })
+        .collect();
+    indices
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .enumerate()
+        .filter_map(|(id, t)| {
+            let e0 = longest(&bind, t);
+            let e1 = longest(&posed, t);
+            (e1 > 0.08 && e1 > 2.5 * e0).then_some(id)
+        })
+        .collect()
 }

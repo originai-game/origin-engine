@@ -72,6 +72,13 @@ pub(crate) const MODEL_LINES: &[crate::grammar::Line] = &[
         "",
     ),
     crate::grammar::Line::new(
+        "relaxSkin",
+        "true | false",
+        "false",
+        "Relax only skin-probe stretched regions before welding and LODs. Position seams share weights; at most 12 passes, with changed vertices and remaining stretch reported.",
+        "",
+    ),
+    crate::grammar::Line::new(
         "front",
         "\"+x\" | \"-x\" | \"+y\" | \"-y\" | \"+z\" | \"-z\"",
         "source orientation",

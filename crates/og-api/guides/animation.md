@@ -234,6 +234,23 @@ are not retroactive on seek unless authored that way.
 
 - A model's glTF skins and clips are cooked into its `<model>#anim` blob,
   which og.load.animation loads.
+- The cook probes skinned triangles in bind-joint stress poses (humanoids:
+  both arms forward and a stride; other rigs: topology-derived branches).
+  A `skin stretch` warning names source triangle IDs whose longest edge
+  exceeds both 2.5 times its bind length and 0.08 model units. To explicitly
+  repair those regions, set `model { relaxSkin true }` in the model's import
+  sidecar (`<model>.glb.ogt`, `type import`, version 1). It defaults to false.
+  Probes and position welding use model units after the skin bind transform,
+  including quantised meshes' dequantisation. The cook welds positions to
+  five decimal places for weight averaging, blends each flagged region with
+  its neighbours 16 times per pass, widens it each pass, and retains four
+  normalized influences with joint-index tie breaks. It stops at zero probe
+  stretch or 12 passes, keeps the best result that worsens no probe pose,
+  and reports changed source vertices and remaining stretched triangles.
+  Only affected regions change;
+  positions, UV seams, clips and the source file stay untouched. Inspect
+  the character in its real animations too: stress probes are not animations
+  and zero reported stretch does not guarantee a good deformation.
 - Clips bind to a skeleton's nodes by name, so a clip of one rig plays on
   another with the same node names. A rig with other names or proportions
   plays it retargeted: at cook time with a model's `animation { library }`
@@ -620,4 +637,3 @@ filter nearest
 - **`pivot <part> <x> <y>`**: optional manual joint override in canvas pixels.
 - **`unit <px>`**: pixels per world unit; **`filter nearest`**: crisp pixel-art sampling.
 - Load the cooked rig with `og.load.rig2d` and play its generated clips on `og.Skeleton2D` like any other 2D skeleton (§9).
-

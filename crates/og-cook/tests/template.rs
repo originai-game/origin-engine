@@ -241,3 +241,162 @@ fn sounds_fonts_and_scenes_load_as_authored() {
         .collect();
     assert_eq!(f32s, [0.0, 2.2, 0.0, 0.0, 0.0, 0.0, 1.0, 0.25, 0.25, 0.25]);
 }
+
+/// A discontinuous weight at a seam stretches two coincident triangles;
+/// a disconnected, healthy triangle must retain its authored weights.
+/// Exercise import through cooked animation data, not the relaxation helper.
+#[test]
+fn skin_relax_is_explicit_local_and_deterministic() {
+    use serde_json::json;
+    let root = crate::temp::TempDir::new("skin-relax");
+    let assets = root.join("assets");
+    std::fs::create_dir_all(&assets).unwrap();
+    let positions: [[f32; 3]; 9] = [
+        [0.0, 1.0, 0.0],
+        [0.03, 1.0, 0.0],
+        [0.0, 1.03, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.03, 1.0, 0.0],
+        [0.0, 1.03, 0.0],
+        [3.0, 0.02, 0.0],
+        [3.001, 0.02, 0.0],
+        [3.0, 0.021, 0.0],
+    ];
+    let joints: [[u16; 4]; 9] = std::array::from_fn(|i| [u16::from(i % 3 == 0), 0, 0, 0]);
+    let weights = [[1.0f32, 0.0, 0.0, 0.0]; 9];
+    let mut bytes = Vec::new();
+    let mut views = Vec::new();
+    for data in [
+        bytemuck::cast_slice(&positions),
+        bytemuck::cast_slice(&joints),
+        bytemuck::cast_slice(&weights),
+    ] {
+        views.push(json!({"buffer":0,"byteOffset":bytes.len(),"byteLength":data.len()}));
+        bytes.extend_from_slice(data);
+    }
+    let mut source = json!({
+        "asset":{"version":"2.0"}, "buffers":[{"uri":"mesh.bin","byteLength":bytes.len()}],
+        "bufferViews":views,
+        "accessors":[
+            {"bufferView":0,"componentType":5126,"count":9,"type":"VEC3","min":[0,0.02,0],"max":[3.001,1.03,0]},
+            {"bufferView":1,"componentType":5123,"count":9,"type":"VEC4"},
+            {"bufferView":2,"componentType":5126,"count":9,"type":"VEC4"}
+        ],
+        "meshes":[{"primitives":[{"attributes":{"POSITION":0,"JOINTS_0":1,"WEIGHTS_0":2}}]}],
+        "nodes":[{"children":[1,4]}, {"children":[2]}, {"children":[3]}, {},
+            {"children":[5]}, {"children":[6]}, {}, {"mesh":0,"skin":0}, {"mesh":0,"skin":1}],
+        "skins":[{"joints":[0,1,2,3,4,5,6]}, {"joints":[0,1]}],
+        "scenes":[{"nodes":[0,7,8]}],"scene":0
+    });
+    std::fs::write(assets.join("mesh.bin"), &bytes).unwrap();
+    std::fs::write(assets.join("mesh.gltf"), source.to_string()).unwrap();
+    let cook = |setting: &str, threads| {
+        std::fs::write(
+            assets.join("mesh.gltf.ogt"),
+            format!("type import\nversion 1\n---\nmodel {{\n lods 1\n {setting}\n}}\n"),
+        )
+        .unwrap();
+        let report = cook_project(
+            &root,
+            &CookOptions {
+                threads,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let output = report
+            .assets
+            .iter()
+            .flat_map(|a| &a.outputs)
+            .find(|o| o.id == "mesh.gltf#anim")
+            .unwrap();
+        let bytes = std::fs::read(root.join("cooked").join(&output.file)).unwrap();
+        let animation =
+            og_anim::cooked::CookedAnimation::from_bytes("mesh.gltf#anim", &bytes).unwrap();
+        (report, animation.skin_streams, bytes)
+    };
+    let (off, authored, _) = cook("", 1);
+    assert!(
+        off.warnings
+            .iter()
+            .any(|w| w.contains("skin stretch") && w.contains("relaxSkin"))
+    );
+    let (_, explicit_off, _) = cook("relaxSkin false", 1);
+    assert_eq!(authored, explicit_off);
+    let (on, repaired, first) = cook("relaxSkin true", 1);
+    assert!(!on.warnings.iter().any(|w| w.contains("skin stretch")));
+    assert!(
+        on.assets
+            .iter()
+            .flat_map(|a| &a.notes)
+            .any(|n| n.contains("6 of 9 vertices reweighted; 0 remaining"))
+    );
+    assert_ne!(authored, repaired);
+    let stream = &repaired[0];
+    // The second binding has no branch probes and only two joints. Even
+    // zero-weight slots must remain valid for that binding of the shared mesh.
+    assert!(stream.joints.iter().flatten().all(|&j| j < 2));
+    assert_eq!(
+        stream
+            .weights
+            .iter()
+            .filter(|&&w| w == [1.0, 0.0, 0.0, 0.0])
+            .count(),
+        3
+    );
+    for ws in &stream.weights {
+        assert!((ws.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+    }
+    std::fs::remove_dir_all(root.join("cooked")).unwrap();
+    let (again, _, second) = cook("relaxSkin true", 8);
+    assert_eq!(first, second, "fresh parallel cook must be byte-identical");
+    assert!(!again.warnings.iter().any(|w| w.contains("skin stretch")));
+    let (cached, _, _) = cook("relaxSkin true", 8);
+    assert!(
+        cached
+            .assets
+            .iter()
+            .flat_map(|a| &a.notes)
+            .any(|n| n.contains("6 of 9 vertices reweighted; 0 remaining"))
+    );
+    assert_eq!(std::fs::read(assets.join("mesh.bin")).unwrap(), bytes);
+
+    // The same mesh in quantised-accessor units, with dequantisation in its
+    // inverse binds as gltfpack writes it. The tiny disconnected triangle is
+    // below 8 cm in model space even though its accessor-space edges are huge.
+    let scaled = positions.map(|p| p.map(|v| v * 32768.0));
+    bytes[..std::mem::size_of_val(&scaled)].copy_from_slice(bytemuck::cast_slice(&scaled));
+    let s = 1.0f32 / 32768.0;
+    let inverse = [
+        s, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 1.0,
+    ];
+    source["bufferViews"].as_array_mut().unwrap().push(json!({
+        "buffer":0,"byteOffset":bytes.len(),"byteLength":7 * 64
+    }));
+    bytes.extend_from_slice(bytemuck::cast_slice(&[inverse; 7]));
+    source["buffers"][0]["byteLength"] = json!(bytes.len());
+    source["accessors"][0]["min"] = json!([0.0, 0.02 * 32768.0, 0.0]);
+    source["accessors"][0]["max"] = json!([3.001 * 32768.0, 1.03 * 32768.0, 0.0]);
+    for (skin, count) in [7, 2].into_iter().enumerate() {
+        source["skins"][skin]["inverseBindMatrices"] = json!(3 + skin);
+        source["accessors"].as_array_mut().unwrap().push(json!({
+            "bufferView":3,"componentType":5126,"count":count,"type":"MAT4"
+        }));
+    }
+    std::fs::write(assets.join("mesh.bin"), &bytes).unwrap();
+    std::fs::write(assets.join("mesh.gltf"), source.to_string()).unwrap();
+    let (_, scaled_authored, _) = cook("", 1);
+    assert_eq!(authored, scaled_authored);
+    let (scaled_on, scaled_repaired, _) = cook("relaxSkin true", 1);
+    assert!(
+        !scaled_on
+            .warnings
+            .iter()
+            .any(|w| w.contains("skin stretch"))
+    );
+    assert_eq!(
+        repaired, scaled_repaired,
+        "skin weights must not depend on accessor units"
+    );
+}

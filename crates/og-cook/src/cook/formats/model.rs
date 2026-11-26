@@ -123,6 +123,8 @@ pub struct GltfSource {
     /// time.
     pub orm_overrides: Vec<Option<usize>>,
     pub warnings: Vec<String>,
+    /// Import-time skin relaxation facts, reported even on incremental cooks.
+    pub(crate) skin_relax_notes: Vec<String>,
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
     pub(crate) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
@@ -734,6 +736,7 @@ pub(crate) fn load_with(
         cutouts,
         orm_overrides,
         warnings,
+        skin_relax_notes: Vec::new(),
         conform_plan: Default::default(),
         role: Default::default(),
         segments: None,

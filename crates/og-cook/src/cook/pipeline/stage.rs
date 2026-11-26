@@ -558,6 +558,38 @@ fn import_source(
     if s.kind == &crate::cook::model::MODEL {
         match model::load_with(&s.bytes, &read) {
             Ok(mut g) => {
+                let relaxed = (|| {
+                    let enabled = settings_block(s, "model")
+                        .and_then(|b| b.get("relaxSkin"))
+                        .map(|e| {
+                            if e.values.len() == 1 {
+                                e.values[0].as_bool()
+                            } else {
+                                None
+                            }
+                            .ok_or_else(|| {
+                                format!(
+                                    "line {}: relaxSkin takes true or false (the default)",
+                                    e.line
+                                )
+                            })
+                        })
+                        .transpose()?
+                        .unwrap_or(false);
+                    if enabled {
+                        let settings = anim_settings(s)?;
+                        model::skin_report::repair(
+                            &mut g,
+                            &assets_root(s),
+                            settings.rig.as_deref(),
+                        )?;
+                    }
+                    Ok::<_, String>(())
+                })();
+                if let Err(error) = relaxed {
+                    s.error = Some(error);
+                    return None;
+                }
                 g.role = role;
                 if let Some((read, notes)) = imported {
                     g.external.extend(read);

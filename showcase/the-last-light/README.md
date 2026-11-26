@@ -73,16 +73,18 @@ platform account under the gateway's generation terms.
 | `assets/models/rock-cliff.glb` | `hero-a-rock-cliff-v1` (task `01a1e8a7-94d6-7313-8352-60b5a7fd7233`) | `be7319b7dc9bc829a0e94677488bdde8` | 103323 of 123547 triangles, maps at 1024 | `717a9200f8539b4307b9b34223ec6023c840681cb1a8296963c70c02b3461a7a` | `e4d1f7971ef17be0f7381d8a5cab6ca6b1df37d6f09373d3d256ed0553f1a4da` |
 | `assets/models/sea-stack.glb` | `hero-a-sea-stack-v1` (task `01a1e8a7-9f75-743e-ad81-2390114c23b3`) | `8f591a238b3a105a1944c8b309448388` | 36921 of 82185 triangles, maps at 1024 | `40d7a199399e54e5253ba6ac716c0eb47709048b6b47a2a3bf7d6a7383101e60` | `ee6b4e724e625671659acb6315a883c0ee3dc3db4b24593bb8635a7e426b0d4f` |
 | `assets/models/boulder.glb` | `hero-a-boulder-v1` (task `01a1e8a7-b1ee-7746-a887-e75ebe577f71`) | `6743e88e526e2b47021b396822fadf0c` | 33190 of 40065 triangles, maps at 1024 | `e85e399df8f5c7c67bc0b845337a0bf61efd75705c1ca6465f9b8298f4276e67` | `4ea8c05167332ffd738fc1b7c229645cc27b847126ad6e0f44f080a3ee10e212` |
-| `assets/models/wanderer.glb` | `hero-a-wanderer-v1b` (task `01a1e8a7-dfd2-70e3-a729-8746dfdbc122`), `hero-a-wanderer-rig-v1` (task `01a1e8c5-0bc3-7783-af0f-90b87fb60f01`), `hero-a-wanderer-idles-v1` (task `01a1e8c7-7cf4-769d-948e-ebca895e9744`) | `87816eadef36874dcee3324c44883bef`, `928b553c2339704026d35e0fb567dfdf` | 47301 of 92929 triangles, maps at 1024 | `be6c9180a600dc6990950632ba35831811af1b6cdd5736e46305c3f182c45557` | `b182ebf6ceaa0522aa097749e855f6ab84071a920bd1e28c3ded6b6803b4eb12` |
+| `assets/models/wanderer.glb` | `hero-a-wanderer-v1b` (task `01a1e8a7-dfd2-70e3-a729-8746dfdbc122`), `hero-a-wanderer-rig-v1` (task `01a1e8c5-0bc3-7783-af0f-90b87fb60f01`), `hero-a-wanderer-idles-v1` (task `01a1e8c7-7cf4-769d-948e-ebca895e9744`) | `87816eadef36874dcee3324c44883bef`, `928b553c2339704026d35e0fb567dfdf` | 47301 of 92929 triangles, maps at 1024 | `5b9261b2d45e00366670d1a0978e4df69f76021425f82c4a94f25dc626a22c83` | `b182ebf6ceaa0522aa097749e855f6ab84071a920bd1e28c3ded6b6803b4eb12` |
 
 The wanderer is three tasks: the mesh from a front and a back view
 (multiview), its rig, and the rig's three idle clips (`Idle`, `Idle_02`,
 `Long_Breathe_and_Look_Around`). After packing, `tools/cloak.ts` gives it
 its cloak: a second mesh skinned to the spine, its cloth drawn by
-ImageMagick, which og.Garment simulates. Then `tools/smooth-skin.py`
-smooths the body's weights at the armpits, where the cook's skin probe saw
-stretched triangles in its arm poses (284 vertices), until no probe pose
-stretches any. The shipped checksum is the smoothed, cloaked file's.
+ImageMagick, which og.Garment simulates. The pinned GLB retains the original
+body weights. Its `wanderer.glb.ogt` import sidecar opts into
+`model { relaxSkin true }`: the cook relaxes the armpit regions flagged by
+its skin probes before welding and LODs, leaving the cloak's weights alone.
+The cook report lists changed vertices and any remaining stretch; the
+source checksum is the original, unsmoothed cloaked file's.
 
 The sources as generated are kept as private objects in the asset store
 by `tools/archive.ts` (docs/ci.md §Generated sources): `model.glb`, the

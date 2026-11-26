@@ -5222,6 +5222,7 @@ Directory import.ogt contains repeated `match "<pattern>" ... { ... }` blocks (p
 | `impostorBelow true \| false` | `false` | Include lower hemisphere. |
 | `stream_textures true \| false` | `false` | Stream high mip levels, keeping the shared mip tail resident. |
 | `process { ... }` | `off` | Shared static-mesh preparation; see file:model.process. |
+| `relaxSkin true \| false` | `false` | Relax only skin-probe stretched regions before welding and LODs. Position seams share weights; at most 12 passes, with changed vertices and remaining stretch reported. |
 | `front "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `source orientation` | Source forward axis, rotated to engine +Z. Must be perpendicular to up. |
 | `up "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `+y when front is given` | Source up axis, rotated to engine +Y. |
 | `voxScale <metres per voxel > 0>` | `1` | VOX sources only. |
