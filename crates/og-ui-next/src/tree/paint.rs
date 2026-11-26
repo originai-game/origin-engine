@@ -343,13 +343,14 @@ impl Tree {
             // Its `blur-*` and `drop-shadow-*` draw it and its subtree
             // through a layer of their own, while the paint has room for
             // one; past it, unfiltered, said once.
-            let group =
-                r.effect_count > 0 && room.take(reached([x, y, b.w, b.h], r.effects(), screen));
-            if r.effect_count > 0 && !group && !self.warned_layers.contains(&el.node) {
+            let material = el.material.as_ref().map(|b| b.1);
+            let needs_group = r.effect_count > 0 || material.is_some();
+            let group = needs_group && room.take(reached([x, y, b.w, b.h], r.effects(), screen));
+            if needs_group && !group && !self.warned_layers.contains(&el.node) {
                 self.warned_layers.push(el.node);
                 let name = &self.input.per[e].name;
                 self.warnings.push(format!(
-                    "node {}{}{} draws its blur and drop shadows unfiltered: the frame's other filters already take {} layers or {} screens of them",
+                    "node {}{}{} draws without its subtree material, blur and drop shadows: the frame's other filters already take {} layers or {} screens of them",
                     el.node,
                     if name.is_empty() { "" } else { " " },
                     name,
@@ -471,6 +472,7 @@ impl Tree {
                     count: p.effects.len() as u32 - first,
                     xf,
                     backdrop: true,
+                    material: None,
                 });
                 p.quads.push(quad(
                     PaintKind::Group,
@@ -493,6 +495,7 @@ impl Tree {
                     first,
                     count: u32::from(r.effect_count),
                     xf,
+                    material,
                     composite: PaintQuad {
                         mask: outer_mask,
                         filter: outer_filter,

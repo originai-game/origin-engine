@@ -41,6 +41,8 @@ use og_draw::paint::{Paint, PaintEffect, PaintKind};
 use std::cell::RefCell;
 use std::ops::Range;
 
+mod material;
+
 /// `struct PaintGpu` in ui_paint.wgsl.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -91,6 +93,7 @@ enum Step {
 /// backdrop's capture), and for a filter group what draws into it.
 struct GroupLayer {
     backdrop: bool,
+    material: Option<og_draw::paint::PaintMaterial>,
     rect: [i32; 4],
     /// The level a filter group's layer is drawn at: its rect halved that
     /// many times ([`super::filter::source_level`]).
@@ -113,6 +116,7 @@ struct LayerTarget {
 /// not draw), and what binds a result (by its view).
 struct Fx {
     filters: FilterRunner,
+    materials: material::Materials,
     results: Vec<Option<wgpu::BindGroup>>,
     binds: Vec<(wgpu::TextureView, wgpu::BindGroup)>,
 }
@@ -136,6 +140,8 @@ pub(crate) struct GroupCx<'a> {
     pub group1: &'a dyn Fn(PaintBind) -> &'a wgpu::BindGroup,
     pub layout: &'a wgpu::BindGroupLayout,
     pub sampler: &'a wgpu::Sampler,
+    pub materials: &'a [crate::UiMaterialShader],
+    pub time: f32,
 }
 
 /// A page of the glyph atlas on the GPU.
@@ -736,6 +742,7 @@ impl PaintRenderer {
             scale: 1.0,
             fx: RefCell::new(Fx {
                 filters: FilterRunner::new(device),
+                materials: material::Materials::default(),
                 results: Vec::new(),
                 binds: Vec::new(),
             }),
@@ -1245,7 +1252,7 @@ impl PaintRenderer {
                 let nested = paint.quads[i + 1..(group.end as usize).min(paint.quads.len())]
                     .iter()
                     .any(|q| q.kind == PaintKind::Group as u32);
-                let level = if group.backdrop || nested {
+                let level = if group.backdrop || nested || group.material.is_some() {
                     0
                 } else {
                     super::filter::source_level(&filter, scale)
@@ -1257,6 +1264,7 @@ impl PaintRenderer {
                 }
                 self.layers.push(GroupLayer {
                     backdrop: group.backdrop,
+                    material: group.material,
                     rect,
                     level,
                     steps: Vec::new(),
@@ -1560,8 +1568,13 @@ impl PaintRenderer {
         let mut fx = self.fx.borrow_mut();
         fx.filters.begin();
         // A result's binding lives as long as its target.
-        let Fx { filters, binds, .. } = &mut *fx;
-        binds.retain(|(v, _)| filters.holds(v));
+        let Fx {
+            filters,
+            materials,
+            binds,
+            ..
+        } = &mut *fx;
+        binds.retain(|(v, _)| filters.holds(v) || materials.holds(v));
         fx.results.clear();
         fx.results.resize(self.layers.len(), None);
         let mut draws = 0;
@@ -1762,38 +1775,57 @@ impl PaintRenderer {
             texture_view: &|_| None,
             layer: &layer_input,
         };
-        let Some(prepared) = fx.filters.prepare(
-            cx.device,
-            cx.queue,
-            Some(filter),
-            source,
-            size,
-            origin,
-            scale,
-            &inputs,
-            true,
-        ) else {
-            return 0;
+        // A material alone reads its subtree directly. The filter runner
+        // has no work (and no pooled result) for an empty filter list.
+        let (result, mut draws) = if filter.primitives.is_empty()
+            && let Source::Drawn(view, _) = &source
+        {
+            ((*view).clone(), 0)
+        } else {
+            let Some(prepared) = fx.filters.prepare(
+                cx.device,
+                cx.queue,
+                Some(filter),
+                source,
+                size,
+                origin,
+                scale,
+                &inputs,
+                true,
+            ) else {
+                return 0;
+            };
+            let draws = fx.filters.record(encoder, &prepared);
+            fx.filters.done(&prepared);
+            if draws < prepared.passes() {
+                return draws;
+            }
+            (prepared.result, draws)
         };
-        let draws = fx.filters.record(encoder, &prepared);
-        fx.filters.done(&prepared);
-        // A pass that did not run (its pipeline not made yet) leaves the
-        // group out this frame.
-        if draws < prepared.passes() {
-            return draws;
-        }
-        let bind = match fx.binds.iter().find(|(v, _)| *v == prepared.result) {
+        let result = if let Some(binding) = l.material {
+            let Some(result) = fx.materials.record(
+                encoder,
+                cx,
+                k,
+                binding,
+                &result,
+                size,
+                [size.0 as f32 / scale, size.1 as f32 / scale],
+            ) else {
+                return draws;
+            };
+            draws += 1;
+            result
+        } else {
+            result
+        };
+        let bind = match fx.binds.iter().find(|(v, _)| *v == result) {
             Some((_, b)) => b.clone(),
             None => {
                 let b = crate::sprite_bind_group(
-                    cx.device,
-                    cx.queue,
-                    cx.layout,
-                    &prepared.result,
-                    cx.sampler,
-                    [0.0; 4],
+                    cx.device, cx.queue, cx.layout, &result, cx.sampler, [0.0; 4],
                 );
-                fx.binds.push((prepared.result.clone(), b.clone()));
+                fx.binds.push((result.clone(), b.clone()));
                 b
             }
         };

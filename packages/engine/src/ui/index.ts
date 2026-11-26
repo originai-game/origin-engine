@@ -13,7 +13,7 @@ import { type Accessor, batch, createContext, createMemo, createRoot, createSign
 export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 export type { Accessor, Context, Signal } from "./signals.ts";
 import type { HostProps, UiChild, UiNode } from "./types.ts";
-export type { HostProps, UiChild, UiEvent, UiNode } from "./types.ts";
+export type { HostProps, UiChild, UiEvent, UiMaterialBinding, UiNode } from "./types.ts";
 
 
 /** The id the host calls take: the runtime's world (WorldImpl) carries it. */

@@ -200,6 +200,15 @@ pub struct PaintGroup {
     /// The transform of the element's own space, of [`Paint::transforms`].
     pub xf: u32,
     pub backdrop: bool,
+    /// A custom material over the filtered subtree, before its mask and opacity.
+    pub material: Option<PaintMaterial>,
+}
+
+/// A resolved custom UI material and its per-subtree parameter values.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PaintMaterial {
+    pub shader: crate::ui::UiMaterialHandle,
+    pub params: [[f32; 4]; crate::ui::UI_MATERIAL_PARAMS],
 }
 
 /// The most groups a paint draws through layers; past it, the rest draw
@@ -291,6 +300,8 @@ pub struct Paint {
     /// output's height).
     pub width: f32,
     pub height: f32,
+    /// Unscaled UI time for materials; advancing it does not repaint the arena.
+    pub time: f32,
     pub quads: Vec<PaintQuad>,
     pub gradients: Vec<PaintGradient>,
     pub stops: Vec<PaintStop>,

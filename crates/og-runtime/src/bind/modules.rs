@@ -198,6 +198,7 @@ pub(crate) fn mount_back(
                     && let rs = &mut *eng.render.borrow_mut()
                     && let crate::present::extract::RenderState {
                         ui_next: Some(next),
+                        ui_draw,
                         ui_faces,
                         ui_icons,
                         textures,
@@ -210,6 +211,7 @@ pub(crate) fn mount_back(
                     } = rs
                 {
                     // The controls show what the last sample read.
+                    next.sync_materials(ui_draw, scene);
                     next.zone_states(og_input::actions::lock(&zones_to).zone_states());
                     // The tick's camera and anchored entities (docs/ui.md §1).
                     let view = feed.view(ctx, &viewport_of(engine_id));

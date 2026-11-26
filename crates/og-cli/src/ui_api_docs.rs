@@ -803,7 +803,7 @@ const UI_SECTIONS: &[Section] = &[
     Section {
         title: "HostProps",
         intro: "",
-        names: &["HostProps"],
+        names: &["HostProps", "UiMaterialBinding"],
     },
     Section {
         title: "UiEvent and node types",

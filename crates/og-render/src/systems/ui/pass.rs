@@ -26,19 +26,19 @@ pub(crate) const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16
 
 /// `struct LayerParams` in ui_material.wgsl.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct LayerParams {
-    rect: [f32; 4],
-    params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
-    info: [f32; 4],
-    mask_uv: [f32; 4],
+#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct LayerParams {
+    pub(crate) rect: [f32; 4],
+    pub(crate) params: [[f32; 4]; super::UI_MATERIAL_PARAMS],
+    pub(crate) info: [f32; 4],
+    pub(crate) mask_uv: [f32; 4],
     /// Used UV extent (xy) and half a target texel (zw).
-    sample_uv: [f32; 4],
+    pub(crate) sample_uv: [f32; 4],
     /// A projected layer's drape (`info.w` 1, 2 on its plane only,
     /// [`super::UiDrape`]): its
     /// rows `a` with the scale's x and y and the reach in w, then its
     /// rows `b`.
-    drape: [[f32; 4]; 6],
+    pub(crate) drape: [[f32; 4]; 6],
 }
 
 /// The shape family's pipelines for one target format.

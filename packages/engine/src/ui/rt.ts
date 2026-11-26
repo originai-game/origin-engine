@@ -374,6 +374,7 @@ export function prop(node: UiNode, name: string, value: unknown): void {
     return;
   }
   if (name === "style") { ui.setStyle(node, styleText(value)); return; }
+  if (name === "material") { ui.setProp(node, name, value == null ? "" : JSON.stringify(value)); return; }
   if (name === "onAction") {
     // Input actions where focus is: their names as one prop, one listener.
     const actions = (value ?? {}) as Record<string, ((e: UiEvent) => void) | undefined>;

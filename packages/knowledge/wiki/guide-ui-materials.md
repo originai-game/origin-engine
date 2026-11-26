@@ -3,10 +3,9 @@
 # The `ui-materials` guide: UI materials
 
 Shader resource presets for UI finishes: foil, holo, burn and rarity.
-The assets remain cookable and loadable, but the TSX UI currently exposes
-no custom-material attachment prop or pack slot field. Loading a material
-does not apply it to a component. Do not use the former document CSS
-`-og-material` or `<og-overlay>` syntax: neither is a TSX API.
+Load a material, then attach it to a TSX primitive's `material` prop.
+Loading alone does not apply it. The material processes the node and its
+children after their filters, before the group's mask and opacity.
 
 ### Backdrop glass is optional
 
@@ -57,19 +56,33 @@ if (!material.ok) throw new Error(material.reason);
 ```
 
 The result is a material handle, not a class, texture or TSX child.
-`HostProps` and the typed style record have no material attachment field;
-pack `variants` expand class strings and cannot attach one either.
+Pack variants expand classes; attach the material explicitly to a primitive.
 
 <a id="guide-ui-materials-3"></a>
-### `ui-materials §3` Finishes available to TSX
+### `ui-materials §3` Attach and bind parameters
 
-Use pack artwork (`nine-*`), gradients, supported filters/backdrop classes
-and class-based motion for component finishes. Use `Particles` or the
-library's `Flourish` for emitter effects. Those mechanisms do not claim to
-reproduce a custom shader's foil or burn: per-subtree material compositing
-needs an explicit supported attachment API before a game can use these
-presets that way. Do not substitute arbitrary inline CSS or cast an
-unsupported `material` prop past TypeScript.
+```tsx
+import { Text, View } from "@origingame/engine/ui";
+
+<View class="rounded-card bg-surface text-fg p-4"
+  material={{ shader: material.value, params: { strength: 0.7, color: [0.6, 0.2, 0.9] } }}>
+  <Text>A material over the entire subtree</Text>
+</View>
+```
+
+Parameters use the shader's declared names and finite scalar/vector values;
+unknown names, wrong vector widths and unloaded handles are errors. Omitted
+parameters follow the loaded asset's tuned defaults. JSX expressions are
+reactive: bind a progress signal in `params` rather than generating classes
+or recompiling the shader. Set `material={undefined}` to remove it.
+
+Nested materials compose from the inside out. Blur and drop shadow run
+before the node's material; its mask, opacity and ancestor filters compose
+afterward. Backdrop glass remains separate. Materials share the filter
+layer/area budget; exceeding it reports a warning, not silent success.
+`m.time` advances with the unscaled UI clock without rebuilding static UI.
+The game controls animation parameters and reduced-motion alternatives;
+do not bake essential information into a moving sheen alone.
 
 <a id="guide-ui-materials-4"></a>
 ### `ui-materials §4` Tuning and review
@@ -79,10 +92,9 @@ then cook to validate the resource. `og dev` reloads changed material
 resources. A loaded material's defaults can also be tuned through
 `ui:material:<path>.<param>=<numbers>` on the command channel; the dump
 lists the loaded declarations and current values. Save chosen defaults in
-the asset's `param` lines. This tunes the resource, not a TSX attachment:
-there is no store/custom-property binding to per-element parameter vectors.
-Loading/cooking alone proves no visual finish; review actual compositing
-once an attachment path is available. Judge a finish on a plain ground by
+the asset's `param` lines. Explicit per-node `params` override tuned defaults.
+Loading/cooking alone proves no visual finish; review actual compositing.
+Judge a finish on a plain ground by
 the card it decorates (screens §5), then check it over the game's scene.
 
 <a id="guide-ui-materials-5"></a>
@@ -95,4 +107,4 @@ straight alpha), `layer_texel()` is one CSS px in uv, `m.pixel` and
 `value_noise(p)` and `hash12(p)` are lattice noise. At most four `param`
 lines; the cook validates the WGSL for Metal, Vulkan and DX12. Keep
 shader-resource validation distinct from TSX integration and visual
-acceptance; a new preset still needs a review card when it can be drawn.
+acceptance; a new preset still needs a rendered review card.

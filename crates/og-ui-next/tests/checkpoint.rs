@@ -280,3 +280,60 @@ fn world_anchor_honours_max_distance_scale_at_and_lod() {
         "anchor past maxDistance must paint no quads"
     );
 }
+
+#[test]
+fn subtree_materials_keep_nested_parameters_filters_and_can_be_removed() {
+    use og_draw::paint::{PaintEffect, PaintMaterial};
+    let mut tree = pack_tree();
+    tree.set_materials(Box::new(|text| {
+        Ok(PaintMaterial {
+            shader: og_draw::ui::UiMaterialHandle(0),
+            params: [[
+                text.parse::<f32>().map_err(|e| e.to_string())?,
+                0.0,
+                0.0,
+                0.0,
+            ]; 4],
+        })
+    }));
+    let mut b = Batch::default();
+    b.op(1).u32(1).u8(0);
+    b.op(4)
+        .u32(1)
+        .str("w-64 h-32 bg-surface opacity-50 blur-sm");
+    b.op(6).u32(1).str("material").str("0.2");
+    b.op(1).u32(2).u8(0);
+    b.op(4).u32(2).str("w-16 h-8 bg-tile");
+    b.op(6).u32(2).str("material").str("0.8");
+    b.op(8).u32(1).u32(2).u32(u32::MAX);
+    b.op(8).u32(0).u32(1).u32(u32::MAX);
+    tree.apply(&b.bytes()).unwrap();
+    let mut fonts = face();
+    let mut atlas = Atlas::default();
+    let icons = IconAtlas::default();
+    tree.present(&mut fonts, &mut atlas, &icons);
+    assert_eq!(tree.drawn.groups.len(), 2);
+    let inner = tree.drawn.groups[0];
+    let outer = tree.drawn.groups[1];
+    assert_eq!(inner.material.unwrap().params[0][0], 0.8);
+    assert_eq!(outer.material.unwrap().params[0][0], 0.2);
+    assert!(inner.quad > outer.quad && inner.end <= outer.end);
+    assert!(
+        tree.drawn
+            .effects
+            .iter()
+            .any(|f| matches!(f, PaintEffect::Blur(s) if *s > 0.0))
+    );
+    assert!((tree.drawn.quads[outer.quad as usize].color[3] - 0.5).abs() < 0.001);
+
+    let mut clear = Batch::default();
+    clear.op(6).u32(1).str("material").str("");
+    clear.op(6).u32(2).str("material").str("");
+    tree.apply(&clear.bytes()).unwrap();
+    tree.present(&mut fonts, &mut atlas, &icons);
+    assert!(tree.drawn.groups.iter().all(|g| g.material.is_none()));
+    assert!(
+        !tree.drawn.effects.is_empty(),
+        "removing materials keeps the blur"
+    );
+}

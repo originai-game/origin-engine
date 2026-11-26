@@ -110,6 +110,7 @@ What every host element takes. Every optional prop also takes `undefined`.
 | Field | Type | What |
 |---|---|---|
 | `class?` | `string \| undefined` |  |
+| `material?` | `UiMaterialBinding \| undefined` |  |
 | `classList?` | `Record<string, boolean \| undefined> \| undefined` |  |
 | `style?` | `string \| Record<string, string \| number \| undefined> \| undefined` |  |
 | `ref?` | `((node: UiNode) => void) \| { set(node: UiNode): void } \| undefined` |  |
@@ -193,6 +194,15 @@ What every host element takes. Every optional prop also takes `undefined`.
 | `name?` | `string \| undefined` | What `anchor` and `spotlight` find it by. Of the live nodes that share a name, the last made answers. An `Icon`'s `name` is its icon: name a `View` around it. |
 | `spotlight?` | `string \| undefined` | A tutorial's spotlight: the `name` of the node it lights. Its own `bg-*` covers the whole surface outside that node's box, and it takes every press there (whether it listens or not: nothing under it gets one), so the lit node keeps its own presses. Its children paint as laid out. While no node of that name shows, it is an ordinary box. It carries `data-lit` while its node shows (`data-lit:bg-scrim`, and `group-data-lit/<g>:hidden` for a fallback without a target). |
 | ``[data: `data-${string}`]`` | `string \| number \| boolean \| undefined` | `data-*` states class variants read (`data-ready:`). |
+
+### `UiMaterialBinding`
+
+A loaded custom material over this node and its children, after filters and before mask/opacity.
+
+| Field | Type | What |
+|---|---|---|
+| `shader` | `UiMaterial` |  |
+| `params?` | `Readonly<Record<string, number \| readonly number[]>> \| undefined` | Named finite scalars/vectors. Omitted parameters follow the asset's tuned defaults. |
 
 ## 6. UiEvent and node types
 

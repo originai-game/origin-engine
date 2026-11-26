@@ -44,7 +44,13 @@ fn layer_premultiplied(uv: vec2<f32>) -> vec4<f32> {
   // Clamp to the used texels, just as an exact-size target's sampler
   // clamps to its edge: neither padding nor the preceding frame can bleed in.
   let r = layer_params.sample_uv;
-  return textureSampleLevel(layer_tex, layer_sampler, clamp(uv * r.xy, r.zw, r.xy - r.zw), 0.0);
+  let c = textureSampleLevel(layer_tex, layer_sampler, clamp(uv * r.xy, r.zw, r.xy - r.zw), 0.0);
+  // Retained paint blends encoded, premultiplied colours. Materials always
+  // read linear light: divide before decoding, never decode premultiplied RGB.
+  if (layer_params.info.x < 0.0) {
+    return vec4<f32>(srgb_decode(c.rgb / max(c.a, 1e-5)) * c.a, c.a);
+  }
+  return c;
 }
 
 // The layer at `uv`: linear colour, straight alpha.
@@ -218,4 +224,32 @@ fn material_input(in: UiOut) -> MaterialInput {
 fn fs_layer(in: UiOut) -> @location(0) vec4<f32> {
   let c = material(material_input(in), material_params());
   return composite(in, c);
+}
+
+// The retained paint group's material pass: the same material function and
+// parameter ABI, over a filtered subtree rather than an overlay UiLayer.
+struct MaterialVertex {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_paint_material(@builtin(vertex_index) index: u32) -> MaterialVertex {
+  let uv = vec2<f32>(f32((index << 1u) & 2u), f32(index & 2u));
+  var out: MaterialVertex;
+  out.position = vec4<f32>(uv * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+  out.uv = uv;
+  return out;
+}
+
+@fragment
+fn fs_paint_material(in: MaterialVertex) -> @location(0) vec4<f32> {
+  var m: MaterialInput;
+  m.uv = in.uv;
+  m.size = layer_params.rect.zw;
+  m.pixel = m.uv * m.size;
+  m.time = layer_params.info.z;
+  let c = material(m, material_params());
+  let alpha = clamp(c.a, 0.0, 1.0);
+  return vec4<f32>(srgb_encode(c.rgb) * alpha, alpha);
 }

@@ -317,6 +317,8 @@ impl Pass for OverlayPass {
             group1: &group1,
             layout: &r.sprite.sprite_layout,
             sampler: &r.sprite.sprite_sampler,
+            materials: &plan.scene.ui.ui_materials,
+            time: plan.scene.ui.paint.time,
         };
         // The groups' layers and their filters, before anything reads them.
         if paint {

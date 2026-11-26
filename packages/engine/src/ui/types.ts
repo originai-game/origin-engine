@@ -2,7 +2,7 @@
 // and props of the host elements (crates/og-ui-next/CONVENTIONS.md §Ops).
 // og api gen emits types/ui.d.ts from src/ui/index.ts, which re-exports these.
 
-import type { Entity, Texture, World } from "@origingame/engine";
+import type { Entity, Texture, UiMaterial, World } from "@origingame/engine";
 
 declare global {
   namespace JSX {
@@ -39,9 +39,17 @@ export interface UiEvent {
 
 type Handler = ((e: UiEvent) => void) | undefined;
 
+/** A loaded custom material over this node and its children, after filters and before mask/opacity. */
+export interface UiMaterialBinding {
+  shader: UiMaterial;
+  /** Named finite scalars/vectors. Omitted parameters follow the asset's tuned defaults. */
+  params?: Readonly<Record<string, number | readonly number[]>> | undefined;
+}
+
 /** What every host element takes. Every optional prop also takes `undefined`. */
 export interface HostProps {
   class?: string | undefined;
+  material?: UiMaterialBinding | undefined;
   classList?: Record<string, boolean | undefined> | undefined;
   style?: string | Record<string, string | number | undefined> | undefined;
   ref?: ((node: UiNode) => void) | { set(node: UiNode): void } | undefined;

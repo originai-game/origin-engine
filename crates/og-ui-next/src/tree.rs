@@ -90,6 +90,8 @@ struct El {
     /// An op node's own image props over its classes' box image; `None`
     /// for a node that sets none.
     image: Option<Box<ImageProps>>,
+    /// The serialized material binding and its resolved parameters.
+    material: Option<Box<(String, og_draw::paint::PaintMaterial)>>,
     /// An op node's `data-*` props that are on (names without `data-`,
     /// sorted), and its data context's entry ([`ops::Classes::data_id`]):
     /// these and its nearest groups', which its classes' `data-*:` and
@@ -216,6 +218,7 @@ pub struct Tree {
     /// The host's: an image's source (a texture handle) as the slot it
     /// draws, read as the tree paints, so a replaced texture follows.
     textures: Option<Textures>,
+    materials: Option<Materials>,
     /// The live elements depth first, a parent before its children, made
     /// again when the structure changes; `el_of` maps
     /// an arena node to its element, `walk` is its stack.
@@ -320,6 +323,9 @@ pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc}
 /// texels (0 unknown) ([`Tree::set_textures`]).
 pub type Textures = Box<dyn Fn(f64) -> (u32, [f32; 2])>;
 
+/// Resolves a serialized TSX material binding against the host's loaded assets.
+pub type Materials = Box<dyn Fn(&str) -> Result<og_draw::paint::PaintMaterial, String>>;
+
 impl Default for Tree {
     fn default() -> Self {
         Tree::new()
@@ -331,6 +337,32 @@ impl Tree {
     pub fn set_textures(&mut self, textures: Textures) {
         self.textures = Some(textures);
         self.paint = true;
+    }
+
+    /// The loaded custom materials a `material` prop can name.
+    pub fn set_materials(&mut self, materials: Materials) {
+        self.materials = Some(materials);
+    }
+
+    /// Refresh tuned defaults without changing explicit per-node parameters.
+    pub fn refresh_materials(&mut self) -> Result<(), String> {
+        for el in &mut self.els {
+            if el.dead {
+                continue;
+            }
+            if let Some(binding) = &mut el.material {
+                let resolve = self
+                    .materials
+                    .as_ref()
+                    .ok_or("UI materials are unavailable")?;
+                let next = resolve(&binding.0)?;
+                if next != binding.1 {
+                    binding.1 = next;
+                    self.paint = true;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// The textures [`Tree::set_textures`] resolves against changed: the
@@ -380,6 +412,7 @@ impl Tree {
             blends: Vec::new(),
             painted_transforms: Vec::new(),
             textures: None,
+            materials: None,
             order: Vec::new(),
             ordered: false,
             el_of: Vec::new(),

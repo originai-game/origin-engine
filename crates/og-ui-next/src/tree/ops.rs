@@ -656,6 +656,19 @@ impl Tree {
                         // The box image's own props over its classes':
                         // `src` a texture handle, the wipe a number per tick.
                         "src" => self.set_src(e, value),
+                        "material" => {
+                            let binding = if value.is_empty() {
+                                None
+                            } else {
+                                let resolve = self
+                                    .materials
+                                    .as_ref()
+                                    .ok_or("UI materials are unavailable")?;
+                                Some(Box::new((value.to_string(), resolve(value)?)))
+                            };
+                            self.els[e as usize].material = binding;
+                            self.paint = true;
+                        }
                         "wipe" | "wipeStart" | "wipeCcw" => {
                             let props = self.els[e as usize].image.get_or_insert_with(|| {
                                 Box::new(super::ImageProps {

@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "HostProps.material",
+      "change": "Loaded custom UI materials now attach explicitly to TSX primitives and composite their entire subtree after filters, before masks and opacity. Parameters are named finite scalars or vectors; unknown names, wrong widths and unloaded handles are refused.",
+      "fix": "Pass material={{ shader: loaded.value, params: { progress } }} to View or another primitive. Omit params to follow tuned defaults; set material={undefined} to remove it. Loading alone still does not apply a finish."
+    }
+  ]
+}

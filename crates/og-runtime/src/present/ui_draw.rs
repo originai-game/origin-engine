@@ -19,6 +19,90 @@ pub(crate) struct UiDrawState {
     material_paths: BTreeMap<String, (usize, u64)>,
 }
 
+/// Loaded material handles, declarations and tuned defaults for retained UI.
+pub(super) type MaterialAssets = Vec<(
+    UiMaterialHandle,
+    og_render::UiMaterialShader,
+    [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+)>;
+
+impl UiDrawState {
+    pub(super) fn sync_materials(
+        &self,
+        scene: &og_render::RenderScene,
+        out: &mut MaterialAssets,
+    ) -> bool {
+        let same = self.materials.len() == out.len()
+            && self.materials.iter().zip(out.iter()).all(
+                |((h, defaults), (old, shader, values))| {
+                    h == old && defaults == values && scene.ui.ui_materials[h.index()] == *shader
+                },
+            );
+        if same {
+            return false;
+        }
+        out.clear();
+        out.extend(
+            self.materials
+                .iter()
+                .map(|(h, values)| (*h, scene.ui.ui_materials[h.index()].clone(), *values)),
+        );
+        true
+    }
+}
+
+/// Resolve the public binding once on a prop change, or after tuning/reload.
+pub(super) fn resolve_material(
+    assets: &MaterialAssets,
+    text: &str,
+) -> Result<og_render::paint::PaintMaterial, String> {
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Binding {
+        shader: f64,
+        #[serde(default)]
+        params: BTreeMap<String, Value>,
+    }
+    let binding: Binding =
+        serde_json::from_str(text).map_err(|e| format!("UI material binding: {e}"))?;
+    let (handle, shader, defaults) = crate::world::assets::index_of(binding.shader)
+        .and_then(|i| assets.get(i))
+        .ok_or("UI material binding: shader is not a loaded UiMaterial")?;
+    let mut params = *defaults;
+    for (name, value) in binding.params {
+        let (slot, kind) = shader
+            .param(&name)
+            .ok_or_else(|| format!("UI material '{}': unknown parameter '{name}'", shader.name))?;
+        let values = match value {
+            Value::Number(_) if kind.count() == 1 => vec![value],
+            Value::Array(values) => values,
+            _ => {
+                return Err(format!(
+                    "UI material '{name}' takes {} finite numbers",
+                    kind.count()
+                ));
+            }
+        };
+        if values.len() != kind.count() {
+            return Err(format!(
+                "UI material '{name}' takes {} finite numbers",
+                kind.count()
+            ));
+        }
+        for (dest, value) in params[slot].iter_mut().zip(values) {
+            *dest = value
+                .as_f64()
+                .map(|v| v as f32)
+                .filter(|n| n.is_finite())
+                .ok_or_else(|| format!("UI material '{name}' takes finite numbers"))?;
+        }
+    }
+    Ok(og_render::paint::PaintMaterial {
+        shader: *handle,
+        params,
+    })
+}
+
 /// Engine `engine`'s UI as the probe reads it: the core's tree, the
 /// surface and style it lays out in, and the loaded materials' own
 /// parameter declarations.

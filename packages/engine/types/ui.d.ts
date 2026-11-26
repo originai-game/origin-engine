@@ -5,7 +5,7 @@ import { type Accessor } from "./ui/signals.js";
 export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./ui/signals.js";
 export type { Accessor, Context, Signal } from "./ui/signals.js";
 import type { HostProps, UiChild, UiNode } from "./ui/types.js";
-export type { HostProps, UiChild, UiEvent, UiNode } from "./ui/types.js";
+export type { HostProps, UiChild, UiEvent, UiMaterialBinding, UiNode } from "./ui/types.js";
 export declare const View: (props: HostProps) => UiNode;
 /**
  * A paragraph: its strings, the `<Text>` spans nested in it and the `<Icon>` and `<Image>` in it are laid out as one

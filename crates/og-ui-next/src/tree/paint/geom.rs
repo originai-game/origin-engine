@@ -13,6 +13,7 @@ pub(super) struct Open {
     pub(super) first: u32,
     pub(super) count: u32,
     pub(super) xf: u32,
+    pub(super) material: Option<og_draw::paint::PaintMaterial>,
     pub(super) composite: PaintQuad,
 }
 
@@ -164,6 +165,8 @@ pub(super) fn close_group(
     if let Some(&last) = p.groups.last()
         && let Some(members) = members.as_deref_mut()
         && !last.backdrop
+        && last.material.is_none()
+        && o.material.is_none()
         && last.end == o.quad as u32
         && last.xf == o.xf
         && p.effects[last.first as usize..(last.first + last.count) as usize] == *effects
@@ -223,6 +226,7 @@ pub(super) fn close_group(
         count: o.count,
         xf: o.xf,
         backdrop: false,
+        material: o.material,
     });
     p.quads[o.quad] = PaintQuad {
         rect,

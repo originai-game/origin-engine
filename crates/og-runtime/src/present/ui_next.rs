@@ -89,6 +89,9 @@ pub(crate) struct Next {
     /// frame: what the tree's images resolve their sources against (the
     /// tree paints while the render state is borrowed).
     textures: Rc<RefCell<Vec<og_render::TextureHandle>>>,
+    materials: Rc<RefCell<super::ui_draw::MaterialAssets>>,
+    /// Unscaled UI clock, also advanced when the retained paint is unchanged.
+    pub(crate) time: f32,
     /// Each of `textures`' size in texels (0 unknown): `object-*` fits an
     /// image's source by it.
     texture_sizes: Rc<RefCell<Vec<[f32; 2]>>>,
@@ -181,6 +184,8 @@ impl Next {
             haptic_strength: 1.0,
             a11y: og_ui_next::a11y::Tree::new(),
             textures: Rc::default(),
+            materials: Rc::default(),
+            time: 0.0,
             texture_sizes: Rc::default(),
             generation: 0,
             zones: Vec::new(),
@@ -216,6 +221,10 @@ impl Next {
                     Some((slot, sizes.borrow().get(i).copied().unwrap_or_default()))
                 })
                 .unwrap_or_default()
+        }));
+        let materials = self.materials.clone();
+        tree.set_materials(Box::new(move |text| {
+            super::ui_draw::resolve_material(&materials.borrow(), text)
         }));
         self.tree = Some(tree);
         // Before the first op batch, so its records are the pack's from
@@ -394,6 +403,7 @@ impl Next {
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
         occluded: &mut dyn FnMut(og_core::glam::Vec3, og_core::glam::Vec3, Option<u64>) -> bool,
     ) -> Vec<String> {
+        self.time = time as f32;
         let mut warnings = std::mem::take(&mut self.held);
         let settings = settings_of(engine);
         // The game's pack over the defaults and the scheme: a switch
@@ -705,7 +715,14 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
             }
             let (reply, tables) = {
                 let mut rs = eng.render.borrow_mut();
-                let next = rs.ui_next.get_or_insert_with(|| Box::new(Next::new()));
+                let super::extract::RenderState {
+                    ui_next,
+                    ui_draw,
+                    scene,
+                    ..
+                } = &mut *rs;
+                let next = ui_next.get_or_insert_with(|| Box::new(Next::new()));
+                next.sync_materials(ui_draw, scene);
                 // The TS renderer's op batches, beside the store's commands.
                 match ops {
                     Some(ops) => {
@@ -724,5 +741,21 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
             "ok": false, "reason": reason
         }))
         .expect("bounded error reply"),
+    }
+}
+
+impl Next {
+    pub(crate) fn sync_materials(
+        &mut self,
+        draw: &super::ui_draw::UiDrawState,
+        scene: &og_render::RenderScene,
+    ) {
+        let changed = draw.sync_materials(scene, &mut self.materials.borrow_mut());
+        if changed
+            && let Some(tree) = &mut self.tree
+            && let Err(error) = tree.refresh_materials()
+        {
+            self.held.push(error);
+        }
     }
 }

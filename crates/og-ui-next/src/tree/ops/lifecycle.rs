@@ -251,6 +251,7 @@ impl Tree {
             data: 0,
             other: false,
             image: None,
+            material: None,
             entering: Some(false),
             eff: self.root,
             inline: NONE,
