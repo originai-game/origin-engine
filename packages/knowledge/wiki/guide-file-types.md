@@ -136,7 +136,22 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 
 An authored `environment` asset, cooked by `environment`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<image or KTX2 cube>"` | `` | Exclusive with faces; paths resolve beside this file, then under assets/. |
+| `faces "<+x>" "<-x>" "<+y>" "<-y>" "<+z>" "<-z>"` | `` | Six square faces, all HDR/EXR or all sRGB images; exclusive with source. |
+| `size <power of two, 16..2048>` | `128 or prefiltered cube size` | Radiance face side. A prefiltered cube must keep its own size. |
+| `intensity <number >= 0>` | `1` | Multiply input radiance. |
+| `rotation <degrees>` | `0` | Turn about +Y, +X toward -Z. |
+| `samples <16..4096>` | `256` | GGX samples per filtered texel; forbidden with prefiltered true. |
+| `prefiltered true \| false` | `false` | Use an existing GGX KTX2 cube mip chain without filtering again. |
+| `sun keep \| extract` | `extract for LDR, keep for HDR` | Extraction removes the sun from the map and records it as a light fact. |
+| `hemisphere upper` | `` | Treat the image bottom edge as the horizon and fill the lower half. |
+| `ground <linear r> <g> <b>` | `horizon mean` | Each channel 0..1; requires hemisphere upper. |
+| `expand <0..0.9>` | `0.25` | Inverse tone expansion, applied to LDR only. |
+| `sunBoost <0..100>` | `1` | Multiply the estimated LDR sun. |
 
 <a id="file-field"></a>
 ### `file:field`
@@ -184,7 +199,16 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `icons` asset, cooked by `icons`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<directory>"` | `.` | SVG directory, relative to this file. |
+| `size <integer, 1..512>` | `48` | Distance-field em size in pixels. |
+| `range <integer, 1..512>` | `8` | Distance-field range in pixels. |
+| `join miter \| round \| bevel` | `miter` | Join used by stroked SVG paths without their own join. |
+| `icon "<name>" ["<SVG stem>"]` | `` | Repeat named glyphs in index order; omitted stem uses name. Names must be unique. |
+| `sticker <outline> <dx> <dy>` | `0 0 0` | Outline 0..4 and offsets -4..4, in 24ths of the em. |
 
 <a id="file-lightmap"></a>
 ### `file:lightmap`
@@ -699,6 +723,8 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `growth deciduous \| evergreen` | `Plant default or kind` | Branch growth mechanism. |
 | `levels <0..3>` | `Plant default or kind` | Branch levels after the trunk. |
 | `path <x y z> ...` | `` | 2..1025 authored trunk ring centres in metres; replaces trunk wandering and sections. Children grow from this curve. |
+| `branch { ... }` | `` | Repeat parent-first complete skeleton limbs, exclusive with path. No procedural branches are added; terminal limbs receive foliage. |
+| `bounds <min x y z> <max x y z>` | `` | Centreline box in metres, min < max on every axis. Procedural limbs stop before their first outside ring; explicit skeletons must fit. Does not clip wood radii or foliage. |
 | `leafGeometry { <geometry> { ... } }` | `` | Unit custom leaf, x across, y along, z facing; transformed by leaf size and width with generated wind. Uses the normal geometry and model operand parser. |
 | `flowerGeometry { <geometry> { ... } }` | `` | Unit custom whole flower replacing procedural petals and centre; transformed by flower size and width. |
 | `force <x> <y> <z> <strength>` | `Plant default or kind` | Tropism direction and strength. |
@@ -710,6 +736,16 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `flowers { ... }` | `none without kind` | Enable flowers or override kind flowers. |
 | `material "<name>"` | `generated bark material` | Previously declared wood material. |
 | `barkColor <r> <g> <b>` | `0.13 0.085 0.05 without kind` | Nonnegative linear bark colour. |
+
+<a id="file-model-plant-branch"></a>
+### `file:model.plant.branch`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `parent <-1 or earlier index>` | `-1` | First limb is sole root (-1); every other limb names an earlier limb. |
+| `path <x y z> ...` | `required` | 2..1025 finite ring centres; child starts on its parent's centreline within 0.000001 m. |
+| `radii <metres> ...` | `required` | One radius >= 0.0001 per ring; replaces taper. |
+| `segments <3..32>` | `6` | Ring sides. |
 
 <a id="file-model-plant-leaves"></a>
 ### `file:model.plant.leaves`
@@ -843,6 +879,7 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `decimate { ... }` | `off` | Explicit triangle/error budget, independently per material primitive. |
 | `unwrap { ... }` | `off` | Replace UVs. Existing maps require bake so their appearance is not silently lost. |
 | `bake { ... }` | `off` | Transfer the source material and normals to a fresh low-mesh atlas. No image generation. |
+| `project { ... }` | `off` | Project registered authored views into prepared UVs through og-bake, preserving other material channels. See model.process.project. |
 | `rig { ... }` | `off` | Bind explicit joints, or explicitly request the existing humanoid finder, after static processing. |
 
 <a id="file-model-process-repair"></a>
@@ -895,6 +932,25 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `padding <integer, 0..8192>` | `4` | Atlas gutters. |
 | `dilate <integer >= 0>` | `0` | Dilation layers; zero fills all uncovered texels. |
 | `normals true \| false` | `true` | Transfer source shading normals as a tangent-space normal map. |
+
+<a id="file-model-process-project"></a>
+### `file:model.process.project`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <1..8192>` | `1024` | Output map side in texels per primitive. |
+| `padding <0..8192>` | `4` | Grow UV chart gutters after filling unseen texels. |
+| `view "<image>" { ... }` | `required` | Repeat square RGBA images registered to explicit cameras. Paths are model-relative; alpha zero leaves a pixel unpainted. No implicit silhouette fitting. |
+
+<a id="file-model-process-project-view"></a>
+### `file:model.process.project.view`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `required` | Camera position in model-local metres, Y up. |
+| `target <x> <y> <z>` | `required` | Camera target, distinct from position. Vertical views use the kernel's fixed X right axis. |
+| `fov <degrees, 0..179>` | `0` | Positive perspective vertical field of view; exclusive with ortho. |
+| `ortho <metres > 0>` | `0` | Orthographic half-height and half-width; exclusive with positive fov. One projection size is required. |
 
 <a id="file-model-process-rig"></a>
 ### `file:model.process.rig`
@@ -949,14 +1005,113 @@ Returns MeshSource: positions, and optional normals/uvs/colors/tangents/indices.
 
 An authored `motion-action` asset, cooked by `motion-action`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete shared action parser line table. Defines an existing authored clip's hold interval/contact, not offline neural motion inference.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<model asset>"` | `required` | Source animation model, checked by cook. |
+| `clip "<clip name>"` | `required` | Authored clip name, not a runtime handle. |
+| `rig "<rig asset>"` | `detected` | Optional humanoid map, checked by cook. |
+| `holdStart <seconds >= 0>` | `0` | Beginning of the authored hold interval. |
+| `holdEnd <seconds > holdStart>` | `required` | End of the authored hold interval. |
+| `hand left \| right` | `` | Optional hand contact. |
+| `handTarget <x> <y> <z>` | `0 0 0` | Finite target in the head's local frame. |
 
 <a id="file-navmesh"></a>
 ### `file:navmesh`
 
 An authored `navmesh` asset, cooked by `navmesh`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `scene "<scene asset>"` | `` | Static scene geometry; asset-root relative path. |
+| `agent [<name>] { ... }` | `unnamed default profile` | Repeat agent profiles; names contain letters, digits, underscore or hyphen. The unnamed profile, otherwise first, is the default. |
+| `cellSize <metres>` | `0.2` | Horizontal voxel size. |
+| `cellHeight <metres>` | `0.1` | Vertical voxel size. |
+| `tileSize <number>` | `32` | Tile side in cells; clamped to 8..256 and truncated to an integer. |
+| `maxError <number>` | `1.3` | Contour simplification error. |
+| `box { ... }` | `` | Repeat additional static boxes. |
+| `model "<model asset>" { ... }` | `` | Repeat additional placed static models; paths are asset-root relative. |
+| `terrain "<terrain asset>" { ... }` | `` | Repeat terrain surfaces; their source and height data are cook dependencies. |
+| `bounds { ... }` | `unbounded` | Optional bake region. |
+| `area { ... }` | `` | Repeat area shapes; later shapes override earlier shapes in overlaps. Radius selects cylinder, otherwise points select prism, otherwise box. |
+| `link { ... }` | `` | Repeat explicitly authored off-mesh links. |
+
+<a id="file-navmesh-agent"></a>
+### `file:navmesh.agent`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres>` | `0.4` | Agent radius. |
+| `height <metres>` | `1.8` | Agent height. |
+| `climb <metres>` | `0.4` | Maximum step height. |
+| `slope <degrees>` | `45` | Maximum walkable slope. |
+
+<a id="file-navmesh-box"></a>
+### `file:navmesh.box`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `center <x> <y> <z>` | `0 0 0` | Box centre in metres. |
+| `size <x> <y> <z>` | `1 1 1` | Full box dimensions in metres. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Box rotation; normalized on read. |
+
+<a id="file-navmesh-model"></a>
+### `file:navmesh.model`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `0 0 0` | Model translation in metres. |
+| `scale <x> <y> <z>` | `1 1 1` | Model scale. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Model rotation; normalized on read. |
+
+<a id="file-navmesh-terrain"></a>
+### `file:navmesh.terrain`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `0 0 0` | Terrain translation in metres. |
+| `step <number>` | `1` | Sampling stride; clamped to at least one and truncated to an integer. |
+
+<a id="file-navmesh-bounds"></a>
+### `file:navmesh.bounds`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `min <x> <y> <z>` | `-10 -10 -10` | Bake region minimum in metres. |
+| `max <x> <y> <z>` | `10 10 10` | Bake region maximum in metres. |
+
+<a id="file-navmesh-area"></a>
+### `file:navmesh.area`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <integer, 1..63>` | `required` | Area id; zero is the ground. |
+| `center <x> <y> <z>` | `0 0 0` | Box centre or cylinder base in metres. |
+| `size <x> <y> <z>` | `1 1 1` | Full box dimensions. |
+| `yaw <radians>` | `0` | Box rotation about +Y. |
+| `radius <metres>` | `` | Presence selects a cylinder; negative values clamp to zero. |
+| `height <metres>` | `2` | Cylinder height; negative values clamp to zero. |
+| `point <x> <y> <z>` | `` | Repeat at least three points for a convex prism; only x and z are used. |
+| `bottom <metres>` | `-1` | Prism lower Y. |
+| `top <metres>` | `2` | Prism upper Y. |
+
+<a id="file-navmesh-link"></a>
+### `file:navmesh.link`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `id <integer >= 1>` | `required` | Unique link id. |
+| `start <x> <y> <z>` | `required` | Start in metres. |
+| `end <x> <y> <z>` | `required` | End in metres. |
+| `kind jump \| ladder \| door \| teleport` | `jump` | Traversal kind chosen by the author. |
+| `bidirectional true \| false` | `true` | Allow reverse traversal. |
+| `cost <number>` | `0` | Traversal cost; negative values clamp to zero. |
+| `duration <seconds>` | `0` | Traversal duration; negative values clamp to zero. |
+| `open true \| false` | `true` | Initial availability. |
+| `traverse engine \| game` | `engine` | Who moves the agent while traversing. |
 
 <a id="file-particles"></a>
 ### `file:particles`
@@ -1020,7 +1175,13 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 
 An authored `post` asset, cooked by `post`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<WGSL file>"` | `` | One source file; exclusive with code. Cook tracks its bytes and inlines it. |
+| `code "<WGSL text>"` | `` | Inline WGSL; exclusive with source. One input is required. |
+| `param <name> <float \| vec2 \| vec3 \| vec4 \| color> [<defaults> ...]` | `zero components` | Repeat shader parameters; defaults are absent or exactly the type's finite component count. Color is linear RGB. Backend checks validate names, count and WGSL contract. |
 
 <a id="file-prefab"></a>
 ### `file:prefab`
@@ -1041,7 +1202,67 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `rig` asset, cooked by `rig`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: parser-owned rig fields and every standard humanoid bone name accepted by the same reader. This maps a skeleton; it does not generate one.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `scheme <naming scheme>` | `auto` | Node naming scheme. Explicit bone mappings override it. |
+| `footHeight <left> [<right>]` | `rest foot heights` | Ankle heights above ground, -10..10 metres; one value applies to both feet. |
+| `hips "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `spine "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `chest "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `upperChest "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `neck "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `head "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftShoulder "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftUpperArm "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftLowerArm "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftHand "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightShoulder "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightUpperArm "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightLowerArm "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightHand "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftUpperLeg "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftLowerLeg "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftFoot "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftToes "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightUpperLeg "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightLowerLeg "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightFoot "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightToes "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftThumbMetacarpal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftThumbProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftThumbDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftIndexProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftIndexIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftIndexDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftMiddleProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftMiddleIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftMiddleDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftRingProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftRingIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftRingDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftLittleProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftLittleIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `leftLittleDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightThumbMetacarpal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightThumbProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightThumbDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightIndexProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightIndexIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightIndexDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightMiddleProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightMiddleIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightMiddleDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightRingProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightRingIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightRingDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightLittleProximal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightLittleIntermediate "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+| `rightLittleDistal "<node name>" \| none` | `scheme mapping` | Explicit node override, or no such bone; each standard bone occurs once. |
+
+Accepted schemes: `auto`, `mixamo`, `vrm`, `unity`, `rigify`, `ue`, `blender`, `soma`.
+
 
 <a id="file-rig2d"></a>
 ### `file:rig2d`
@@ -1169,7 +1390,14 @@ Field coverage: complete parser line tables. Output: ordinary cooked sound throu
 
 An authored `shader` asset, cooked by `shader`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<WGSL file>"` | `` | One source file; exclusive with code. Cook tracks its bytes and inlines it. |
+| `code "<WGSL text>"` | `` | Inline WGSL; exclusive with source. One input is required. |
+| `param <name> <float \| vec2 \| vec3 \| vec4 \| color> [<defaults> ...]` | `zero components` | Repeat shader parameters; defaults are absent or exactly the type's finite component count. Color is linear RGB. Backend checks validate names, count and WGSL contract. |
+| `mode hooks \| sprite \| full [lit \| unlit]` | `hooks` | Select the material shader contract. Full defaults to lit. Post and UI material types do not accept mode. |
 
 <a id="file-sound"></a>
 ### `file:sound`
@@ -1193,14 +1421,38 @@ Field coverage: complete. Version 1 contains one generate block, which returns {
 
 An authored `strings` asset, cooked by `strings`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete shared string-table parser line table. Messages use the existing ICU subset; locale key/argument checks still run in cook.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `locale "<language tag>"` | `required` | Locale, canonicalized on read. |
+| `fallback "<language tag>"` | `base table` | Fallback locale, canonicalized on read. |
+| `base true \| false` | `false` | Marks the reference table for key and argument checks. |
+| `direction ltr \| rtl` | `locale direction` | Explicit text direction override. |
+| `fonts "<font asset>" ...` | `` | Ordered font fallback chain for this locale. |
+| `string "<key>" "<message>"` | `` | Repeat unique keys with ICU-subset messages; see localization for argument and plural syntax. |
 
 <a id="file-table"></a>
 ### `file:table`
 
 An authored `table` asset, cooked by `table`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `locale "<language tag>"` | `en` | One non-empty tag for text fields' base language. |
+| `row "<id>" { ... }` | `` | Repeat unique, non-empty row ids. Each row field occurs once, has values and has no block. |
+
+<a id="file-table-row"></a>
+### `file:table.row`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `<field> <number \| string \| word> ...` | `` | Plain values are checked against the game's record when loaded. |
+| `<field> asset "<path>"` | `` | One asset-root path checked by cook. |
+| `<field> text "<key>" "<base message>"` | `` | Localized text; a key cannot have conflicting base messages. |
+| `<field> row ["<table asset>"] "<id>" ...` | `` | One or more row references; omitted table refers to this table. Cook checks referenced rows. |
 
 <a id="file-terrain"></a>
 ### `file:terrain`
@@ -1448,7 +1700,12 @@ Terrain `generate.biome` block fields.
 
 An authored `texture-array` asset, cooked by `texture-array`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind color \| normal \| linear \| single \| pixel` | `color` | Shared texture encoding and sampling kind for all layers. |
+| `layer "<image>"` | `required, 1..256` | Repeat same-sized images in layer order; paths resolve beside this file, then under assets/. |
 
 <a id="file-tilemap"></a>
 ### `file:tilemap`
@@ -1562,14 +1819,26 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `ui-material` asset, cooked by `ui-material`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<WGSL file>"` | `` | One source file; exclusive with code. Cook tracks its bytes and inlines it. |
+| `code "<WGSL text>"` | `` | Inline WGSL; exclusive with source. One input is required. |
+| `param <name> <float \| vec2 \| vec3 \| vec4 \| color> [<defaults> ...]` | `zero components` | Repeat shader parameters; defaults are absent or exactly the type's finite component count. Color is linear RGB. Backend checks validate names, count and WGSL contract. |
 
 <a id="file-vector"></a>
 ### `file:vector`
 
 An authored `vector` asset, cooked by `vector`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<SVG asset path>"` | `` | One SVG file; exclusive with svg. |
+| `svg "<SVG text>"` | `` | Inline SVG string; exclusive with source. One input is required. |
+| `tolerance <number > 0>` | `SVG tessellator default` | Curve flattening tolerance. |
 
 <a id="file-vfx"></a>
 ### `file:vfx`

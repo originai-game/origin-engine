@@ -56,6 +56,30 @@ use tessellation::*;
 /// The `.ogt` type of a vector.
 pub const VECTOR_TYPE: &str = "vector";
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "source",
+        "\"<SVG asset path>\"",
+        "",
+        "One SVG file; exclusive with svg.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "svg",
+        "\"<SVG text>\"",
+        "",
+        "Inline SVG string; exclusive with source. One input is required.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "tolerance",
+        "<number > 0>",
+        "SVG tessellator default",
+        "Curve flattening tolerance.",
+        "",
+    ),
+];
+
 /// The most triangles a vector cooks to.
 const MAX_TRIANGLES: usize = 400_000;
 
@@ -84,6 +108,9 @@ pub fn parse(text: &str) -> Result<VectorFile, String> {
     let mut out = VectorFile::default();
     for e in &doc.body.entries {
         let line = e.line;
+        if !LINES.iter().any(|f| f.key == e.key) {
+            return Err(format!("line {line}: unknown vector entry `{}`", e.key));
+        }
         match e.key.as_str() {
             "source" | "svg" => {
                 if out.source.is_some() || out.svg.is_some() {

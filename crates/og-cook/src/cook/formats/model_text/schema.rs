@@ -291,6 +291,8 @@ pub const BLOCKS: &[(&str, &[Line])] = &[
             "growth", "deciduous | evergreen", "Plant default or kind", "Branch growth mechanism.";
             "levels", "<0..3>", "Plant default or kind", "Branch levels after the trunk.";
             "path", "<x y z> ...", "", "2..1025 authored trunk ring centres in metres; replaces trunk wandering and sections. Children grow from this curve.";
+            "branch", "{ ... }", "", "Repeat parent-first complete skeleton limbs, exclusive with path. No procedural branches are added; terminal limbs receive foliage.";
+            "bounds", "<min x y z> <max x y z>", "", "Centreline box in metres, min < max on every axis. Procedural limbs stop before their first outside ring; explicit skeletons must fit. Does not clip wood radii or foliage.";
             "leafGeometry", "{ <geometry> { ... } }", "", "Unit custom leaf, x across, y along, z facing; transformed by leaf size and width with generated wind. Uses the normal geometry and model operand parser.";
             "flowerGeometry", "{ <geometry> { ... } }", "", "Unit custom whole flower replacing procedural petals and centre; transformed by flower size and width.";
             "force", "<x> <y> <z> <strength>", "Plant default or kind", "Tropism direction and strength.";
@@ -302,6 +304,15 @@ pub const BLOCKS: &[(&str, &[Line])] = &[
             "flowers", "{ ... }", "none without kind", "Enable flowers or override kind flowers.";
             "material", "\"<name>\"", "generated bark material", "Previously declared wood material.";
             "barkColor", "<r> <g> <b>", "0.13 0.085 0.05 without kind", "Nonnegative linear bark colour."
+        ],
+    ),
+    (
+        "plant.branch",
+        rows![
+            "parent", "<-1 or earlier index>", "-1", "First limb is sole root (-1); every other limb names an earlier limb.";
+            "path", "<x y z> ...", "required", "2..1025 finite ring centres; child starts on its parent's centreline within 0.000001 m.";
+            "radii", "<metres> ...", "required", "One radius >= 0.0001 per ring; replaces taper.";
+            "segments", "<3..32>", "6", "Ring sides."
         ],
     ),
     (

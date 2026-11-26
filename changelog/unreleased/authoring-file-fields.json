@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "og api file directory",
+    "change": "File field discovery now includes environment, vector, icons, texture arrays, navmesh profiles/areas/links, string tables, game-defined table value forms, humanoid rig mappings, motion-action and shader/post/ui-material fields from parser-owned metadata.",
+    "fix": "Query file:environment, file:navmesh.link, file:strings, file:table.row, file:rig or file:shader rather than guessing file fields from runtime records. Table row schemas remain the game's own reflected records."
+  }]
+}

@@ -789,6 +789,26 @@ module procgen {
     }
   }
 
+  struct PlantBranchDesc {
+    doc "One limb of an explicit parent-first plant skeleton. No procedural branches are added."
+    desc true
+    field parent i32 "Earlier branch index; -1 only for the first, sole root." {
+      default -1
+    }
+    field path List.Vector3 "2..1025 ring centres in metres. The first child centre lies on its parent's centreline within 0.000001 m. Consecutive centres differ."
+    field radii Float32Array "Radius per ring, in metres, each finite and at least 0.0001. Exact authored radii replace taper."
+    field segments u32 "Sides per ring, 3..32." {
+      default 6
+    }
+  }
+
+  struct PlantBoundsDesc {
+    doc "Optional centreline growth box in local metres, min < max on every axis."
+    desc true
+    field min Vector3 "Inclusive minimum corner."
+    field max Vector3 "Inclusive maximum corner."
+  }
+
   struct PlantDesc {
     doc "Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). Omitting `levelsSpec` uses a default ~6 m broadleaf tree."
     desc true
@@ -802,6 +822,8 @@ module procgen {
     }
     field levelsSpec List.PlantLevelDesc "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults)."
     field path List.Vector3 "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ."
+    field branches List.PlantBranchDesc "Optional complete parent-first skeleton; exclusive with path. Leaves and flowers grow on terminal limbs with the existing rules. At most 20000 limbs; no procedural continuation is added."
+    field bounds Option.PlantBoundsDesc "Optional centreline box. Procedural limbs stop before their first outside ring, becoming terminal; fewer than two inside rings discard the limb. Explicit skeleton rings must all lie inside. Leaf/wood radii can extend outside; this is not triangle clipping."
     field leafMesh Option.BufferGeometryDesc "Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply."
     field flowerMesh Option.BufferGeometryDesc "Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width."
     field forceDirection Vector3 "Tropism / gravity bend direction." {

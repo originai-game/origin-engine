@@ -3786,6 +3786,8 @@
         "PlantLevelDesc",
         "PlantLeavesDesc",
         "PlantFlowersDesc",
+        "PlantBranchDesc",
+        "PlantBoundsDesc",
         "PlantDesc",
         "PlantMeshPart",
         "PlantMeshResult",
@@ -21488,6 +21490,71 @@
       },
       "additionalProperties": false
     },
+    "PlantBranchDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "One limb of an explicit parent-first plant skeleton. No procedural branches are added.",
+      "type": "object",
+      "properties": {
+        "parent": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Earlier branch index; -1 only for the first, sole root.",
+          "default": -1
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "2..1025 ring centres in metres. The first child centre lies on its parent's centreline within 0.000001 m. Consecutive centres differ.",
+          "default": []
+        },
+        "radii": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Radius per ring, in metres, each finite and at least 0.0001. Exact authored radii replace taper."
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Sides per ring, 3..32.",
+          "default": 6
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlantBoundsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Optional centreline growth box in local metres, min < max on every axis.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Inclusive minimum corner.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Inclusive maximum corner.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "PlantDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
@@ -21529,6 +21596,26 @@
           },
           "description": "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ.",
           "default": []
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlantBranchDesc"
+          },
+          "description": "Optional complete parent-first skeleton; exclusive with path. Leaves and flowers grow on terminal limbs with the existing rules. At most 20000 limbs; no procedural continuation is added.",
+          "default": []
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlantBoundsDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional centreline box. Procedural limbs stop before their first outside ring, becoming terminal; fewer than two inside rings discard the limb. Explicit skeleton rings must all lie inside. Leaf/wood radii can extend outside; this is not triangle clipping.",
+          "default": null
         },
         "leafMesh": {
           "anyOf": [

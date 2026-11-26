@@ -75,6 +75,45 @@ pub fn markdown() -> Result<String, String> {
                 block(&mut out, "materials.material.generate", super::systems::district::parse::MATERIAL_GENERATE_LINES);
                 block(&mut out, "materials.material.vary", super::systems::district::parse::VARY_LINES);
             }
+            "environment" | "icons" | "vector" | "texture-array" => {
+                out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
+                table(&mut out, match ty {
+                    "environment" => super::environment::LINES,
+                    "icons" => super::icons::LINES,
+                    "vector" => super::vector::LINES,
+                    _ => super::texture_array::LINES,
+                });
+            }
+            "navmesh" => {
+                out.push_str("Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.\n\n");
+                table(&mut out, super::navmesh::LINES);
+                for (name, fields) in super::navmesh::BLOCKS {
+                    block(&mut out, &format!("navmesh.{name}"), fields);
+                }
+            }
+            "strings" => {
+                out.push_str("Field coverage: complete shared string-table parser line table. Messages use the existing ICU subset; locale key/argument checks still run in cook.\n\n");
+                table(&mut out, og_i18n::table::LINES);
+            }
+            "rig" => {
+                out.push_str("Field coverage: parser-owned rig fields and every standard humanoid bone name accepted by the same reader. This maps a skeleton; it does not generate one.\n\n");
+                table(&mut out, &og_anim::RigAsset::lines());
+                let _ = writeln!(out, "\nAccepted schemes: `auto`, {}.\n", og_anim::SCHEMES.map(|s| format!("`{s}`")).join(", "));
+            }
+            "motion-action" => {
+                out.push_str("Field coverage: complete shared action parser line table. Defines an existing authored clip's hold interval/contact, not offline neural motion inference.\n\n");
+                table(&mut out, og_bundle::motion_action::LINES);
+            }
+            "shader" | "post" | "ui-material" => {
+                out.push_str("Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.\n\n");
+                let fields: Vec<_> = og_bundle::shader::LINES.iter().filter(|f| f.within.is_empty() || f.within.contains(&ty)).copied().collect();
+                table(&mut out, &fields);
+            }
+            "table" => {
+                out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");
+                table(&mut out, og_core::table::LINES);
+                block(&mut out, "table.row", og_core::table::ROW_LINES);
+            }
             "field" => {
                 out.push_str("Field coverage: complete parser line table. Output: lossless f32 lattice, loaded with og.load.field. Authored data and generate are exclusive. No implicit normalization, resampling or image encoding.\n\n");
                 table(&mut out, og_bundle::field::LINES);
@@ -134,6 +173,8 @@ pub fn markdown() -> Result<String, String> {
                     ("decimate", super::model::process::DECIMATE),
                     ("unwrap", super::model::process::UNWRAP),
                     ("bake", super::model::process::BAKE),
+                    ("project", super::model::process::projection::LINES),
+                    ("project.view", super::model::process::projection::VIEW),
                     ("rig", super::model::process::RIG),
                 ] {
                     block(&mut out, &format!("model.process.{name}"), fields);

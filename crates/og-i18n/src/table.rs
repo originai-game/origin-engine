@@ -10,6 +10,52 @@ use std::collections::{BTreeMap, BTreeSet};
 /// The `.ogt` type of a string table.
 pub const STRINGS_TYPE: &str = "strings";
 
+/// The shared string-table parser's file fields.
+pub const LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new(
+        "locale",
+        "\"<language tag>\"",
+        "required",
+        "Locale, canonicalized on read.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "fallback",
+        "\"<language tag>\"",
+        "base table",
+        "Fallback locale, canonicalized on read.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "base",
+        "true | false",
+        "false",
+        "Marks the reference table for key and argument checks.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "direction",
+        "ltr | rtl",
+        "locale direction",
+        "Explicit text direction override.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "fonts",
+        "\"<font asset>\" ...",
+        "",
+        "Ordered font fallback chain for this locale.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "string",
+        "\"<key>\" \"<message>\"",
+        "",
+        "Repeat unique keys with ICU-subset messages; see localization for argument and plural syntax.",
+        "",
+    ),
+];
+
 /// One locale's strings.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StringTable {
@@ -51,6 +97,12 @@ impl StringTable {
         };
         let mut direction = None;
         for e in &doc.body.entries {
+            if !LINES.iter().any(|f| f.key == e.key) {
+                return Err(format!(
+                    "line {}: '{}' is not a string table entry: locale, fallback, base, direction, fonts or string",
+                    e.line, e.key
+                ));
+            }
             let first = e.values.first().and_then(string_of);
             match e.key.as_str() {
                 "locale" => locale = first.map(canonical),

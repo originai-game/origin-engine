@@ -467,12 +467,23 @@ fn foliage_mesh(
 
 pub fn og_procgen_plant(desc: Option<Vec<u8>>) -> Result<wire::PlantMeshResult, String> {
     use og_shape::generators::plant::{
-        Flowers, Growth, LEVELS, LeafShape, Leaves, Level, Plant, plant,
+        Branch, Flowers, Growth, LEVELS, LeafShape, Leaves, Level, Plant, plant,
     };
     let d: wire::PlantDesc = og_api::bin::arg(desc, "desc")?;
     let mut spec = Plant {
         seed: d.seed,
         path: d.path.iter().map(|p| p.as_dvec3()).collect(),
+        branches: d
+            .branches
+            .into_iter()
+            .map(|b| Branch {
+                parent: b.parent,
+                path: b.path.iter().map(|p| p.as_dvec3()).collect(),
+                radii: b.radii.into_iter().map(f64::from).collect(),
+                segments: b.segments,
+            })
+            .collect(),
+        bounds: d.bounds.map(|b| [b.min.as_dvec3(), b.max.as_dvec3()]),
         leaf_mesh: foliage_mesh(d.leaf_mesh)?,
         flower_mesh: foliage_mesh(d.flower_mesh)?,
         growth: match d.growth {

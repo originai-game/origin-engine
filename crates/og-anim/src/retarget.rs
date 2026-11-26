@@ -688,6 +688,37 @@ fn parse_err(e: &Entry, reason: impl std::fmt::Display) -> Error {
 }
 
 impl RigAsset {
+    /// File fields from the same naming schemes and bone list the reader accepts.
+    pub fn lines() -> Vec<og_core::ogt::line::Line> {
+        use og_core::ogt::line::Line;
+        let mut lines = vec![
+            Line::new(
+                "scheme",
+                "<naming scheme>",
+                "auto",
+                "Node naming scheme. Explicit bone mappings override it.",
+                "",
+            ),
+            Line::new(
+                "footHeight",
+                "<left> [<right>]",
+                "rest foot heights",
+                "Ankle heights above ground, -10..10 metres; one value applies to both feet.",
+                "",
+            ),
+        ];
+        lines.extend(HUMAN_BONES.iter().map(|name| {
+            Line::new(
+                name,
+                "\"<node name>\" | none",
+                "scheme mapping",
+                "Explicit node override, or no such bone; each standard bone occurs once.",
+                "",
+            )
+        }));
+        lines
+    }
+
     /// Parses `type rig` text; errors name the line.
     pub fn parse(text: &str) -> Result<RigAsset> {
         let doc = Document::parse(text)?;

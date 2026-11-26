@@ -32,6 +32,39 @@ use og_render_data::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
 /// The `.ogt` type of a shader file.
 pub const SHADER_TYPE: &str = "shader";
 
+/// Fields of the one shader-family reader. `within` limits a line to its type.
+pub const LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new(
+        "source",
+        "\"<WGSL file>\"",
+        "",
+        "One source file; exclusive with code. Cook tracks its bytes and inlines it.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "code",
+        "\"<WGSL text>\"",
+        "",
+        "Inline WGSL; exclusive with source. One input is required.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "param",
+        "<name> <float | vec2 | vec3 | vec4 | color> [<defaults> ...]",
+        "zero components",
+        "Repeat shader parameters; defaults are absent or exactly the type's finite component count. Color is linear RGB. Backend checks validate names, count and WGSL contract.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &[SHADER_TYPE],
+        "mode",
+        "hooks | sprite | full [lit | unlit]",
+        "hooks",
+        "Select the material shader contract. Full defaults to lit. Post and UI material types do not accept mode.",
+        "",
+    ),
+];
+
 /// The `.ogt` type of a custom post pass (og-render `post_custom.rs`): the
 /// same `code`/`source` and `param` lines as a shader, the code defining
 /// `fn post(f: PostInput, p: Params) -> vec4<f32>`.
@@ -153,6 +186,12 @@ fn parse_entries(
     let mut mode = ShaderMode::Hooks;
     for e in &doc.body.entries {
         let line = e.line;
+        if !LINES
+            .iter()
+            .any(|f| f.key == e.key && (f.within.is_empty() || f.within.contains(&ty)))
+        {
+            return Err(format!("line {line}: unknown {ty} entry `{}`", e.key));
+        }
         match e.key.as_str() {
             "mode" if ty == SHADER_TYPE => {
                 let word = |i: usize| e.values.get(i).and_then(Value::as_word);

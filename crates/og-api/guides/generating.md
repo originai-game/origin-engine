@@ -98,12 +98,41 @@ export default og.game({
     og.assert.always(foliage.value.parts.length === 2, "guided plant cooks wood and custom foliage", {});
     const counts = foliage.value.parts.map(part => og.render.geometryInfo(world, part.geometry));
     og.assert.always(counts.every(v => v.ok) && counts.reduce((n, v) => n + v.value!.triangles, 0) === 17, "two trunk sections and one custom leaf triangle survive cook", {});
+    const branches = [
+      { parent: -1, path: [{x:0,y:0,z:0},{x:0,y:2,z:0},{x:0,y:4,z:0}], radii: new Float32Array([0.2,0.15,0.05]), segments: 6 },
+      { parent: 0, path: [{x:0,y:2,z:0},{x:-2,y:3,z:0},{x:-3,y:3,z:1}], radii: new Float32Array([0.1,0.06,0.02]), segments: 5 },
+      { parent: 0, path: [{x:0,y:1,z:0},{x:2,y:2,z:-1}], radii: new Float32Array([0.12,0.03]), segments: 4 },
+    ];
+    const skeleton = og.procgen.plant({branches});
+    if (!skeleton.ok) throw new Error(skeleton.reason);
+    const skeletonModel = og.load.gltf(world, "skeleton.ogt", {});
+    if (!skeletonModel.ok) throw new Error(skeletonModel.reason);
+    const skeletonInfo = og.load.gltfInfo(world, skeletonModel.value);
+    if (!skeletonInfo.ok) throw new Error(skeletonInfo.reason);
+    const skeletonGeometry = og.render.geometryInfo(world, skeletonInfo.value.parts[0]!.geometry);
+    og.assert.always(skeleton.value.branches === 3 && skeleton.value.wood.indices.length === 156 && skeletonGeometry.ok && skeletonGeometry.value.triangles === 52, "cook and runtime preserve the explicit asymmetric branch topology", {});
+    const terminal = og.procgen.plant({branches, leaves:{count:0,end:1,sizeVariance:0}});
+    og.assert.always(terminal.ok && terminal.value.leafCount === 2, "only the two terminal skeleton limbs receive end leaves", {});
+    const unattached = og.procgen.plant({branches: [branches[0]!, {...branches[1]!, path: [{x:1,y:2,z:0},{x:-2,y:3,z:0},{x:-3,y:3,z:1}]}]});
+    og.assert.always(!unattached.ok, "disconnected authored branches are refused", {});
+    const pruned = og.procgen.plant({levels:0, forceStrength:0,
+      levelsSpec:[{length:4,radius:0.1,sections:4,segments:6,taper:0,gnarliness:0}],
+      bounds:{min:{x:-1,y:-0.1,z:-1},max:{x:1,y:2.5,z:1}},
+    });
+    if (!pruned.ok) throw new Error(pruned.reason);
+    let top = -Infinity;
+    for (let i=1; i<pruned.value.wood.positions.length; i+=3) top = Math.max(top, pruned.value.wood.positions[i]!);
+    og.assert.always(Math.abs(top - 2) < 0.00001, "growth stops before the first outside centreline ring", {});
     const processed = og.load.gltf(world, "processed.ogt", {});
     if (!processed.ok) throw new Error(processed.reason);
     const prepared = og.load.gltfInfo(world, processed.value);
     if (!prepared.ok) throw new Error(prepared.reason);
     const reduced = og.render.geometryInfo(world, prepared.value.parts[0]!.geometry);
     og.assert.always(reduced.ok && reduced.value!.triangles > 0 && reduced.value!.triangles < 168, "authored repair, reduction and atlas baking produce a loadable mesh", {});
+    const projectedModel = og.load.gltf(world, "projected.ogt", {});
+    if (!projectedModel.ok) throw new Error(projectedModel.reason);
+    const projectionInfo = og.load.gltfInfo(world, projectedModel.value);
+    og.assert.always(projectionInfo.ok && projectionInfo.value.parts.length === 1, "registered image projection cooks a normal model", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
@@ -148,6 +177,36 @@ process {
 ```
 
 The model's `process` block runs repair, decimation, UV preparation/material baking and skin binding in that order, through the existing mesh kernels. It accepts static meshes only; it refuses existing animation, skins and morphs rather than discarding them. An explicit skeleton uses model-local metres, Y up. Unwrapping a textured input requires baking so its authored appearance survives the UV replacement. Processed maps are embedded and their source bytes remain cook dependencies.
+
+`process.project` projects author-supplied, camera-registered square images into the prepared UVs with the existing projection kernel. It is a deterministic processing step, not image generation: there is no implicit silhouette fitting, view selection or network request. Camera positions use local metres, Y up; `ortho` is half the image's height in metres. All image bytes join the action's dependency key. Unseen texels use the existing nearest-painted-surface fill. Other material channels stay unchanged.
+
+```ogt recipe file=assets/projected.ogt
+type model
+version 1
+---
+conform off
+part "panel" {
+  planeGeometry {
+    width 2
+    height 2
+  }
+}
+process {
+  project {
+    size 32
+    padding 2
+    view "registered.svg" {
+      position 0 0 4
+      target 0 0 0
+      ortho 1
+    }
+  }
+}
+```
+
+```text recipe file=assets/registered.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#e34a2c"/><rect x="24" width="8" height="32" fill="#2c69df"/></svg>
+```
 
 A material library's explicit `generate` block invokes the existing periodic/PBR map preparation during cook. Destinations must not collide with authored files or other outputs. Generated PNG inputs exist in the cook graph, not in `assets/`; model, processing and fracture consumers resolve the same bytes. The image and every processing parameter form the action key. `og materials make` remains the explicit authoring command when source files are wanted.
 
@@ -316,6 +375,36 @@ plant "guided" {
         script "leaf.ts"
       }
     }
+  }
+}
+```
+
+An explicit `branch` list replaces procedural growth altogether. The first limb is the root; children name an earlier limb and start on its centreline. Per-ring radii retain the authored silhouette, and terminal limbs receive the same leaves, flowers and wind data. `bounds` limits centreline growth, not the triangles of wood or foliage; it rejects an outside explicit skeleton rather than silently changing that design.
+
+```ogt recipe file=assets/skeleton.ogt
+type model
+version 1
+---
+conform off
+plant "skeleton" {
+  bounds -4 -1 -2 3 5 2
+  branch {
+    parent -1
+    path 0 0 0 0 2 0 0 4 0
+    radii 0.2 0.15 0.05
+    segments 6
+  }
+  branch {
+    parent 0
+    path 0 2 0 -2 3 0 -3 3 1
+    radii 0.1 0.06 0.02
+    segments 5
+  }
+  branch {
+    parent 0
+    path 0 1 0 2 2 -1
+    radii 0.12 0.03
+    segments 4
   }
 }
 ```

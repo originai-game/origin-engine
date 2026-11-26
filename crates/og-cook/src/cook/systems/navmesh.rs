@@ -49,6 +49,258 @@ use std::path::Path;
 
 pub(crate) const NAVMESH_TYPE: &str = "navmesh";
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "scene",
+        "\"<scene asset>\"",
+        "",
+        "Static scene geometry; asset-root relative path.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "agent",
+        "[<name>] { ... }",
+        "unnamed default profile",
+        "Repeat agent profiles; names contain letters, digits, underscore or hyphen. The unnamed profile, otherwise first, is the default.",
+        "",
+    ),
+    crate::grammar::Line::new("cellSize", "<metres>", "0.2", "Horizontal voxel size.", ""),
+    crate::grammar::Line::new("cellHeight", "<metres>", "0.1", "Vertical voxel size.", ""),
+    crate::grammar::Line::new(
+        "tileSize",
+        "<number>",
+        "32",
+        "Tile side in cells; clamped to 8..256 and truncated to an integer.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "maxError",
+        "<number>",
+        "1.3",
+        "Contour simplification error.",
+        "",
+    ),
+    crate::grammar::Line::new("box", "{ ... }", "", "Repeat additional static boxes.", ""),
+    crate::grammar::Line::new(
+        "model",
+        "\"<model asset>\" { ... }",
+        "",
+        "Repeat additional placed static models; paths are asset-root relative.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "terrain",
+        "\"<terrain asset>\" { ... }",
+        "",
+        "Repeat terrain surfaces; their source and height data are cook dependencies.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "bounds",
+        "{ ... }",
+        "unbounded",
+        "Optional bake region.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "area",
+        "{ ... }",
+        "",
+        "Repeat area shapes; later shapes override earlier shapes in overlaps. Radius selects cylinder, otherwise points select prism, otherwise box.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "link",
+        "{ ... }",
+        "",
+        "Repeat explicitly authored off-mesh links.",
+        "",
+    ),
+];
+pub(crate) const BLOCKS: &[(&str, &[crate::grammar::Line])] = &[
+    (
+        "agent",
+        &[
+            crate::grammar::Line::new("radius", "<metres>", "0.4", "Agent radius.", ""),
+            crate::grammar::Line::new("height", "<metres>", "1.8", "Agent height.", ""),
+            crate::grammar::Line::new("climb", "<metres>", "0.4", "Maximum step height.", ""),
+            crate::grammar::Line::new("slope", "<degrees>", "45", "Maximum walkable slope.", ""),
+        ],
+    ),
+    (
+        "box",
+        &[
+            crate::grammar::Line::new(
+                "center",
+                "<x> <y> <z>",
+                "0 0 0",
+                "Box centre in metres.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "size",
+                "<x> <y> <z>",
+                "1 1 1",
+                "Full box dimensions in metres.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "quaternion",
+                "<x> <y> <z> <w>",
+                "0 0 0 1",
+                "Box rotation; normalized on read.",
+                "",
+            ),
+        ],
+    ),
+    (
+        "model",
+        &[
+            crate::grammar::Line::new(
+                "position",
+                "<x> <y> <z>",
+                "0 0 0",
+                "Model translation in metres.",
+                "",
+            ),
+            crate::grammar::Line::new("scale", "<x> <y> <z>", "1 1 1", "Model scale.", ""),
+            crate::grammar::Line::new(
+                "quaternion",
+                "<x> <y> <z> <w>",
+                "0 0 0 1",
+                "Model rotation; normalized on read.",
+                "",
+            ),
+        ],
+    ),
+    (
+        "terrain",
+        &[
+            crate::grammar::Line::new(
+                "position",
+                "<x> <y> <z>",
+                "0 0 0",
+                "Terrain translation in metres.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "step",
+                "<number>",
+                "1",
+                "Sampling stride; clamped to at least one and truncated to an integer.",
+                "",
+            ),
+        ],
+    ),
+    (
+        "bounds",
+        &[
+            crate::grammar::Line::new(
+                "min",
+                "<x> <y> <z>",
+                "-10 -10 -10",
+                "Bake region minimum in metres.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "max",
+                "<x> <y> <z>",
+                "10 10 10",
+                "Bake region maximum in metres.",
+                "",
+            ),
+        ],
+    ),
+    (
+        "area",
+        &[
+            crate::grammar::Line::new(
+                "id",
+                "<integer, 1..63>",
+                "required",
+                "Area id; zero is the ground.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "center",
+                "<x> <y> <z>",
+                "0 0 0",
+                "Box centre or cylinder base in metres.",
+                "",
+            ),
+            crate::grammar::Line::new("size", "<x> <y> <z>", "1 1 1", "Full box dimensions.", ""),
+            crate::grammar::Line::new("yaw", "<radians>", "0", "Box rotation about +Y.", ""),
+            crate::grammar::Line::new(
+                "radius",
+                "<metres>",
+                "",
+                "Presence selects a cylinder; negative values clamp to zero.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "height",
+                "<metres>",
+                "2",
+                "Cylinder height; negative values clamp to zero.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "point",
+                "<x> <y> <z>",
+                "",
+                "Repeat at least three points for a convex prism; only x and z are used.",
+                "",
+            ),
+            crate::grammar::Line::new("bottom", "<metres>", "-1", "Prism lower Y.", ""),
+            crate::grammar::Line::new("top", "<metres>", "2", "Prism upper Y.", ""),
+        ],
+    ),
+    (
+        "link",
+        &[
+            crate::grammar::Line::new("id", "<integer >= 1>", "required", "Unique link id.", ""),
+            crate::grammar::Line::new("start", "<x> <y> <z>", "required", "Start in metres.", ""),
+            crate::grammar::Line::new("end", "<x> <y> <z>", "required", "End in metres.", ""),
+            crate::grammar::Line::new(
+                "kind",
+                "jump | ladder | door | teleport",
+                "jump",
+                "Traversal kind chosen by the author.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "bidirectional",
+                "true | false",
+                "true",
+                "Allow reverse traversal.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "cost",
+                "<number>",
+                "0",
+                "Traversal cost; negative values clamp to zero.",
+                "",
+            ),
+            crate::grammar::Line::new(
+                "duration",
+                "<seconds>",
+                "0",
+                "Traversal duration; negative values clamp to zero.",
+                "",
+            ),
+            crate::grammar::Line::new("open", "true | false", "true", "Initial availability.", ""),
+            crate::grammar::Line::new(
+                "traverse",
+                "engine | game",
+                "engine",
+                "Who moves the agent while traversing.",
+                "",
+            ),
+        ],
+    ),
+];
+
 fn string_of(b: &Block, key: &str) -> Option<String> {
     b.get(key)
         .and_then(|e| e.values.first())
@@ -346,22 +598,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
     let body = &doc.body;
     for e in &body.entries {
-        if ![
-            "scene",
-            "agent",
-            "cellSize",
-            "cellHeight",
-            "tileSize",
-            "maxError",
-            "box",
-            "model",
-            "terrain",
-            "bounds",
-            "area",
-            "link",
-        ]
-        .contains(&e.key.as_str())
-        {
+        if !LINES.iter().any(|f| f.key == e.key) {
             return Err(CookError(format!(
                 "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain, bounds, area or link",
                 e.line, e.key

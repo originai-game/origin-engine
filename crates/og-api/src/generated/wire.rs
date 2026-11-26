@@ -2566,6 +2566,90 @@ pub mod procgen {
         }
     }
 
+    /// `PlantBranchDesc`: packages/knowledge/wiki/procgen.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlantBranchDesc {
+        pub parent: i32,
+        pub path: Vec<Vec3>,
+        pub radii: Vec<f32>,
+        pub segments: u32,
+    }
+
+    impl Default for PlantBranchDesc {
+        fn default() -> Self {
+            Self {
+                parent: -1,
+                path: Default::default(),
+                radii: Default::default(),
+                segments: 6,
+            }
+        }
+    }
+
+    impl FromJson for PlantBranchDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                parent: field(o, "parent", d.parent)?,
+                path: field(o, "path", d.path)?,
+                radii: field(o, "radii", d.radii)?,
+                segments: field(o, "segments", d.segments)?,
+            })
+        }
+    }
+
+    impl ToJson for PlantBranchDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("parent".into(), self.parent.to_json());
+            o.insert("path".into(), self.path.to_json());
+            o.insert("radii".into(), to_bin_f32(&self.radii));
+            o.insert("segments".into(), self.segments.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `PlantBoundsDesc`: packages/knowledge/wiki/procgen.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlantBoundsDesc {
+        pub min: Vec3,
+        pub max: Vec3,
+    }
+
+    impl Default for PlantBoundsDesc {
+        fn default() -> Self {
+            Self {
+                min: Default::default(),
+                max: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlantBoundsDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                min: field(o, "min", d.min)?,
+                max: field(o, "max", d.max)?,
+            })
+        }
+    }
+
+    impl ToJson for PlantBoundsDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("min".into(), self.min.to_json());
+            o.insert("max".into(), self.max.to_json());
+            Value::Object(o)
+        }
+    }
+
     /// `PlantDesc`: packages/knowledge/wiki/procgen.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct PlantDesc {
@@ -2574,6 +2658,8 @@ pub mod procgen {
         pub levels: u32,
         pub levels_spec: Vec<PlantLevelDesc>,
         pub path: Vec<Vec3>,
+        pub branches: Vec<PlantBranchDesc>,
+        pub bounds: Option<PlantBoundsDesc>,
         pub leaf_mesh: Option<BufferGeometryDesc>,
         pub flower_mesh: Option<BufferGeometryDesc>,
         pub force_direction: Vec3,
@@ -2590,6 +2676,8 @@ pub mod procgen {
                 levels: 2,
                 levels_spec: Default::default(),
                 path: Default::default(),
+                branches: Default::default(),
+                bounds: Default::default(),
                 leaf_mesh: Default::default(),
                 flower_mesh: Default::default(),
                 force_direction: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
@@ -2612,6 +2700,8 @@ pub mod procgen {
                 levels: field(o, "levels", d.levels)?,
                 levels_spec: field(o, "levelsSpec", d.levels_spec)?,
                 path: field(o, "path", d.path)?,
+                branches: field(o, "branches", d.branches)?,
+                bounds: field(o, "bounds", d.bounds)?,
                 leaf_mesh: field(o, "leafMesh", d.leaf_mesh)?,
                 flower_mesh: field(o, "flowerMesh", d.flower_mesh)?,
                 force_direction: field(o, "forceDirection", d.force_direction)?,
@@ -2630,6 +2720,8 @@ pub mod procgen {
             o.insert("levels".into(), self.levels.to_json());
             o.insert("levelsSpec".into(), self.levels_spec.to_json());
             o.insert("path".into(), self.path.to_json());
+            o.insert("branches".into(), self.branches.to_json());
+            o.insert("bounds".into(), self.bounds.to_json());
             o.insert("leafMesh".into(), self.leaf_mesh.to_json());
             o.insert("flowerMesh".into(), self.flower_mesh.to_json());
             o.insert("forceDirection".into(), self.force_direction.to_json());

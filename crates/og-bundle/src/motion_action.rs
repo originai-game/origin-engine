@@ -3,6 +3,53 @@
 
 use og_core::ogt::Document;
 
+/// Authored action fields, shared by the reader and file directory.
+pub const LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new(
+        "source",
+        "\"<model asset>\"",
+        "required",
+        "Source animation model, checked by cook.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "clip",
+        "\"<clip name>\"",
+        "required",
+        "Authored clip name, not a runtime handle.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "rig",
+        "\"<rig asset>\"",
+        "detected",
+        "Optional humanoid map, checked by cook.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "holdStart",
+        "<seconds >= 0>",
+        "0",
+        "Beginning of the authored hold interval.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "holdEnd",
+        "<seconds > holdStart>",
+        "required",
+        "End of the authored hold interval.",
+        "",
+    ),
+    og_core::ogt::line::Line::new("hand", "left | right", "", "Optional hand contact.", ""),
+    og_core::ogt::line::Line::new(
+        "handTarget",
+        "<x> <y> <z>",
+        "0 0 0",
+        "Finite target in the head's local frame.",
+        "",
+    ),
+];
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct MotionAction {
     pub source: String,
@@ -32,6 +79,12 @@ impl MotionAction {
         };
         for e in &doc.body.entries {
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
+            if !LINES.iter().any(|f| f.key == e.key) {
+                return Err(format!(
+                    "line {}: unknown motion-action field '{}'",
+                    e.line, e.key
+                ));
+            }
             match e.key.as_str() {
                 "source" => action.source = e.string(0).map_err(err)?.into(),
                 "clip" => action.clip = e.string(0).map_err(err)?.into(),

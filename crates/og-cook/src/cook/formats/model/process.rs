@@ -5,6 +5,8 @@ use og_core::ogt::{Block, Document};
 use og_shape::tools::{self, Atlas, Bake, BakeSource, Decimate, Part, Repair, Scene, Unwrap};
 use std::{cell::RefCell, path::Path};
 
+pub(crate) mod projection;
+
 macro_rules! lines {
     ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
         &[$(Line::new($key, $args, $default, $doc, "")),*]
@@ -16,6 +18,7 @@ pub(crate) const LINES: &[Line] = lines![
     "decimate", "{ ... }", "off", "Explicit triangle/error budget, independently per material primitive.";
     "unwrap", "{ ... }", "off", "Replace UVs. Existing maps require bake so their appearance is not silently lost.";
     "bake", "{ ... }", "off", "Transfer the source material and normals to a fresh low-mesh atlas. No image generation.";
+    "project", "{ ... }", "off", "Project registered authored views into prepared UVs through og-bake, preserving other material channels. See model.process.project.";
     "rig", "{ ... }", "off", "Bind explicit joints, or explicitly request the existing humanoid finder, after static processing."
 ];
 pub(crate) const REPAIR: &[Line] = lines![
@@ -66,7 +69,9 @@ fn check(b: &Block, fields: &[Line]) -> Result<(), String> {
                 e.line, e.key
             ));
         }
-        if e.key != "joint" && b.entries[..i].iter().any(|v| v.key == e.key) {
+        if !matches!(e.key.as_str(), "joint" | "view")
+            && b.entries[..i].iter().any(|v| v.key == e.key)
+        {
             return Err(format!("line {}: '{}' is set twice", e.line, e.key));
         }
     }
@@ -194,6 +199,9 @@ pub(crate) fn apply(
     {
         return Err("process requires static mesh primitives without skins, clips, morphs or skipped input; animation import remains the animation pipeline".into());
     }
+    let projection = sub(b, "project", projection::LINES)?
+        .map(|b| projection::read(b, &resolve_tracked))
+        .transpose()?;
     let mut read = read.into_inner();
     read.sort_by(|a, b| a.0.cmp(&b.0));
     read.dedup();
@@ -356,7 +364,7 @@ pub(crate) fn apply(
                 .0;
         }
     }
-    let scene = Scene {
+    let mut scene = Scene {
         name: String::new(),
         parts: solids
             .iter()
@@ -369,6 +377,9 @@ pub(crate) fn apply(
             })
             .collect(),
     };
+    if let Some(projection) = &projection {
+        projection::apply(&mut scene, projection)?;
+    }
     let bytes = og_shape_formats::gltf::write::glb(&scene).map_err(|e| e.to_string())?;
     if let Some(store) = store {
         let _ = store.put_action(&key, &bytes, &[]);

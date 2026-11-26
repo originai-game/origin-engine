@@ -684,6 +684,40 @@ part "mixed" {
         // gives an image-up bitangent along +Y, hence +1 for N=Z, T=X.
         assert_eq!(t[3], if v.position[0] > 9.0 { 1.0 } else { -1.0 });
     }
+    // An explicit image/camera recipe must retain its asymmetric source
+    // placement, and changing only the image must invalidate the cooked map.
+    std::fs::write(assets.join("projection.ogt"), "type model\nversion 1\n---\nconform off\npart \"panel\" {\nplaneGeometry {\nwidth 2\nheight 2\n}\n}\nprocess {\nproject {\nsize 32\npadding 2\nview \"view.svg\" {\nposition 0 0 4\ntarget 0 0 0\northo 1\n}\n}\n}\n").unwrap();
+    let image = r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#e34a2c"/><rect x="24" width="8" height="32" fill="#2c69df"/></svg>"##;
+    std::fs::write(assets.join("view.svg"), image).unwrap();
+    let projected = || {
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let model = bundle.load_model("projection.ogt").unwrap();
+        let index = model
+            .materials
+            .iter()
+            .find_map(|m| m.base_color_texture)
+            .unwrap();
+        bundle
+            .load_texture(&model.textures[index].id)
+            .unwrap()
+            .to_texture_data()
+            .unwrap()
+    };
+    let first = projected();
+    assert_eq!((first.width, first.height), (32, 32));
+    let pixel = |rgba: &[u8], x: usize| rgba[(16 * 32 + x) * 4..(16 * 32 + x) * 4 + 3].to_vec();
+    let left = pixel(&first.rgba, 8);
+    let right = pixel(&first.rgba, 28);
+    assert!(left[0] > 180 && left[2] < 90, "{left:?}");
+    assert!(right[2] > 180 && right[0] < 90, "{right:?}");
+    assert_eq!(projected().rgba, first.rgba);
+    std::fs::write(assets.join("view.svg"), image.replace("#e34a2c", "#2ce34a")).unwrap();
+    let changed = projected();
+    let left = pixel(&changed.rgba, 8);
+    assert!(left[1] > 180 && left[0] < 90, "{left:?}");
+    assert_eq!(pixel(&changed.rgba, 28), right);
     // The consumer sorts before its source. Import order is a dependency,
     // not filename order, and a selected node keeps its rest placement.
     let operand = "type model\nversion 1\n---\nconform off\npart \"copy\" {\nmergeGeometries {\npart {\nmodelGeometry {\nsource \"mesh.ogt\"\nnode \"placed\"\n}\nposition 0 2 0\n}\n}\n}\n";

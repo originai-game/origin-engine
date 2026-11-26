@@ -67,6 +67,51 @@ pub const ICONS_TYPE: &str = "icons";
 /// The code point of the first icon.
 pub const ICON_PUA: u32 = 0xE000;
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "source",
+        "\"<directory>\"",
+        ".",
+        "SVG directory, relative to this file.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "size",
+        "<integer, 1..512>",
+        "48",
+        "Distance-field em size in pixels.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "range",
+        "<integer, 1..512>",
+        "8",
+        "Distance-field range in pixels.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "join",
+        "miter | round | bevel",
+        "miter",
+        "Join used by stroked SVG paths without their own join.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "icon",
+        "\"<name>\" [\"<SVG stem>\"]",
+        "",
+        "Repeat named glyphs in index order; omitted stem uses name. Names must be unique.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "sticker",
+        "<outline> <dx> <dy>",
+        "0 0 0",
+        "Outline 0..4 and offsets -4..4, in 24ths of the em.",
+        "",
+    ),
+];
+
 /// A parsed icon set file.
 #[derive(Clone, Debug, PartialEq)]
 pub struct IconSet {
@@ -120,6 +165,9 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
     };
     for e in &doc.body.entries {
         let at = |m: String| format!("line {}: {m}", e.line);
+        if !LINES.iter().any(|f| f.key == e.key) {
+            return Err(at(format!("unknown icons field '{}'", e.key)));
+        }
         match e.key.as_str() {
             "source" => set.source = e.string(0).map_err(|x| at(x.to_string()))?.to_owned(),
             "size" | "range" => {

@@ -63,19 +63,91 @@ mod prepare;
 
 pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 12] = [
-    "source",
-    "faces",
-    "size",
-    "intensity",
-    "rotation",
-    "samples",
-    "prefiltered",
-    "sun",
-    "hemisphere",
-    "ground",
-    "expand",
-    "sunBoost",
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "source",
+        "\"<image or KTX2 cube>\"",
+        "",
+        "Exclusive with faces; paths resolve beside this file, then under assets/.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "faces",
+        "\"<+x>\" \"<-x>\" \"<+y>\" \"<-y>\" \"<+z>\" \"<-z>\"",
+        "",
+        "Six square faces, all HDR/EXR or all sRGB images; exclusive with source.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "size",
+        "<power of two, 16..2048>",
+        "128 or prefiltered cube size",
+        "Radiance face side. A prefiltered cube must keep its own size.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "intensity",
+        "<number >= 0>",
+        "1",
+        "Multiply input radiance.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "rotation",
+        "<degrees>",
+        "0",
+        "Turn about +Y, +X toward -Z.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "samples",
+        "<16..4096>",
+        "256",
+        "GGX samples per filtered texel; forbidden with prefiltered true.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "prefiltered",
+        "true | false",
+        "false",
+        "Use an existing GGX KTX2 cube mip chain without filtering again.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "sun",
+        "keep | extract",
+        "extract for LDR, keep for HDR",
+        "Extraction removes the sun from the map and records it as a light fact.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "hemisphere",
+        "upper",
+        "",
+        "Treat the image bottom edge as the horizon and fill the lower half.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "ground",
+        "<linear r> <g> <b>",
+        "horizon mean",
+        "Each channel 0..1; requires hemisphere upper.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "expand",
+        "<0..0.9>",
+        "0.25",
+        "Inverse tone expansion, applied to LDR only.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "sunBoost",
+        "<0..100>",
+        "1",
+        "Multiply the estimated LDR sun.",
+        "",
+    ),
 ];
 
 /// What an environment bakes from.
@@ -172,12 +244,12 @@ fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
 pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     for e in &doc.body.entries {
-        if !KEYS.contains(&e.key.as_str()) || e.block.is_some() {
+        if !LINES.iter().any(|f| f.key == e.key) || e.block.is_some() {
             return Err(format!(
                 "line {}: '{}' is not an environment entry: {}",
                 e.line,
                 e.key,
-                KEYS.join(", ")
+                LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
             ));
         }
     }

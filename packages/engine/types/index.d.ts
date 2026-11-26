@@ -4167,6 +4167,56 @@ export interface PlantFlowersDesc {
 }
 
 /**
+ * One limb of an explicit parent-first plant skeleton. No procedural branches are added.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantBranchDesc {
+  /**
+   * Earlier branch index; -1 only for the first, sole root.
+   *
+   * @default -1
+   */
+  readonly parent?: number;
+  /**
+   * 2..1025 ring centres in metres. The first child centre lies on its parent's centreline within 0.000001 m. Consecutive centres differ.
+   *
+   * @default []
+   */
+  readonly path?: readonly Vector3[];
+  /**
+   * Radius per ring, in metres, each finite and at least 0.0001. Exact authored radii replace taper.
+   */
+  readonly radii?: Float32Array;
+  /**
+   * Sides per ring, 3..32.
+   *
+   * @default 6
+   */
+  readonly segments?: number;
+}
+
+/**
+ * Optional centreline growth box in local metres, min < max on every axis.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantBoundsDesc {
+  /**
+   * Inclusive minimum corner.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly min?: Vector3;
+  /**
+   * Inclusive maximum corner.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly max?: Vector3;
+}
+
+/**
  * Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). Omitting `levelsSpec` uses a default ~6 m broadleaf tree.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -4203,6 +4253,18 @@ export interface PlantDesc {
    * @default []
    */
   readonly path?: readonly Vector3[];
+  /**
+   * Optional complete parent-first skeleton; exclusive with path. Leaves and flowers grow on terminal limbs with the existing rules. At most 20000 limbs; no procedural continuation is added.
+   *
+   * @default []
+   */
+  readonly branches?: readonly PlantBranchDesc[];
+  /**
+   * Optional centreline box. Procedural limbs stop before their first outside ring, becoming terminal; fewer than two inside rings discard the limb. Explicit skeleton rings must all lie inside. Leaf/wood radii can extend outside; this is not triangle clipping.
+   *
+   * @default null
+   */
+  readonly bounds?: PlantBoundsDesc | null;
   /**
    * Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply.
    *

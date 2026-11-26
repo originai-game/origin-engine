@@ -134,6 +134,15 @@ pub struct Flowers {
     pub center_color: [f32; 3],
 }
 
+/// An authored limb, parent before child. Radii and centres share ring indices.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Branch {
+    pub parent: i32,
+    pub path: Vec<DVec3>,
+    pub radii: Vec<f64>,
+    pub segments: u32,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Plant {
     pub seed: u32,
@@ -150,6 +159,10 @@ pub struct Plant {
     /// Authored trunk ring centres in metres; children grow from this
     /// curve instead of a wandering trunk. Empty uses procedural growth.
     pub path: Vec<DVec3>,
+    /// Complete authored skeleton, exclusive with `path` and procedural growth.
+    pub branches: Vec<Branch>,
+    /// Optional box that keeps centreline rings; foliage can extend beyond it.
+    pub bounds: Option<[DVec3; 2]>,
     /// Unit foliage pieces: x across, y along, z facing; transformed by
     /// each leaf/flower's declared length and width. Wind stays generated.
     pub leaf_mesh: Option<Mesh>,
@@ -239,6 +252,8 @@ impl Default for Plant {
             leaves: Some(Leaves::default()),
             flowers: None,
             path: Vec::new(),
+            branches: Vec::new(),
+            bounds: None,
             leaf_mesh: None,
             flower_mesh: None,
         }
@@ -281,6 +296,7 @@ struct Bud {
     sections: u32,
     segments: u32,
     sway: Sway,
+    authored: Option<usize>,
 }
 
 struct Limb {
@@ -389,6 +405,21 @@ fn counts(p: &Plant) -> (u64, u64) {
     let per = p.leaves.map_or(0, |l| u64::from(l.count) + own)
         + p.flowers
             .map_or(0, |f| (u64::from(f.count) + 1) * (u64::from(f.petals) + 1));
+    if !p.branches.is_empty() {
+        let mut terminal = vec![true; p.branches.len()];
+        for b in &p.branches {
+            if let Some(parent) = usize::try_from(b.parent)
+                .ok()
+                .and_then(|i| terminal.get_mut(i))
+            {
+                *parent = false;
+            }
+        }
+        return (
+            p.branches.len() as u64,
+            terminal.iter().filter(|b| **b).count() as u64 * per,
+        );
+    }
     (branches, at.saturating_mul(per))
 }
 
@@ -429,6 +460,64 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
     {
         return Err("plant path needs 2..1025 finite, distinct consecutive ring centres".into());
     }
+    if let Some([min, max]) = p.bounds
+        && (!min.is_finite() || !max.is_finite() || min.cmpge(max).any())
+    {
+        return Err("plant bounds need finite min < max on every axis".into());
+    }
+    if !p.branches.is_empty() && !p.path.is_empty() {
+        return Err("plant branches and trunk path are exclusive".into());
+    }
+    if p.branches.len() > MAX_BRANCHES as usize {
+        return Err(format!(
+            "plant accepts at most {MAX_BRANCHES} authored branches"
+        ));
+    }
+    let inside = |v: DVec3| {
+        p.bounds
+            .is_none_or(|[lo, hi]| v.cmpge(lo).all() && v.cmple(hi).all())
+    };
+    let mut depths = Vec::new();
+    let mut children = vec![Vec::new(); p.branches.len()];
+    for (i, b) in p.branches.iter().enumerate() {
+        if b.path.len() < 2
+            || b.path.len() > 1025
+            || b.path.len() != b.radii.len()
+            || b.path.iter().any(|p| !p.is_finite() || !inside(*p))
+            || b.path
+                .windows(2)
+                .any(|p| p[0].distance_squared(p[1]) <= 1e-16)
+            || b.radii.iter().any(|r| !r.is_finite() || *r < 1e-4)
+            || !(3..=32).contains(&b.segments)
+        {
+            return Err(format!(
+                "plant branch {i}: needs 2..1025 finite distinct centres inside bounds, a radius >= 0.0001 m per ring, and 3..32 sides"
+            ));
+        }
+        if i == 0 {
+            if b.parent != -1 {
+                return Err("plant first branch is its sole root (parent -1)".into());
+            }
+            depths.push(0usize);
+        } else {
+            let parent = usize::try_from(b.parent)
+                .ok()
+                .filter(|n| *n < i)
+                .ok_or_else(|| format!("plant branch {i}: parent must precede child"))?;
+            let attached = p.branches[parent].path.windows(2).any(|p| {
+                let d = p[1] - p[0];
+                let t = ((b.path[0] - p[0]).dot(d) / d.length_squared()).clamp(0.0, 1.0);
+                b.path[0].distance_squared(p[0] + d * t) <= 1e-12
+            });
+            if !attached {
+                return Err(format!(
+                    "plant branch {i}: first centre must lie on its parent centreline"
+                ));
+            }
+            children[parent].push(i);
+            depths.push(depths[parent] + 1);
+        }
+    }
     let levels = (p.levels as usize).min(LEVELS - 1);
     let (branches, leaves) = counts(p);
     if branches > MAX_BRANCHES || leaves > MAX_LEAVES {
@@ -444,42 +533,62 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
     let mut rolling = rng.fork("plant leaf roll");
     let target = p.force_direction.normalize_or(DVec3::Y);
     let trunk = p.level[0];
-    let root = p.path.first().copied().unwrap_or(DVec3::ZERO);
+    let authored = p.branches.first();
+    let root = authored.map_or_else(
+        || p.path.first().copied().unwrap_or(DVec3::ZERO),
+        |b| b.path[0],
+    );
     let mut queue = std::collections::VecDeque::new();
     queue.push_back(Bud {
         origin: root,
         q: DQuat::IDENTITY,
         length: trunk.length.max(0.0),
-        radius: trunk.radius.max(1e-4),
+        radius: authored.map_or(trunk.radius.max(1e-4), |b| b.radii[0]),
         level: 0,
-        sections: if p.path.is_empty() {
+        sections: if let Some(b) = authored {
+            b.path.len() as u32 - 1
+        } else if p.path.is_empty() {
             trunk.sections.max(1)
         } else {
             p.path.len() as u32 - 1
         },
-        segments: trunk.segments.max(3),
+        segments: authored.map_or(trunk.segments.max(3), |b| b.segments),
         sway: Sway {
             pivot: root,
             stiffness: 1.0,
         },
+        authored: authored.map(|_| 0),
     });
     let mut limbs: Vec<Limb> = Vec::new();
     let mut leaf_list: Vec<Leaf> = Vec::new();
     // Flowers: where, and whether along the branch (smaller) or at its end.
     let mut flower_list: Vec<Leaf> = Vec::new();
     while let Some(bud) = queue.pop_front() {
-        let l = p.level[bud.level];
-        let last_level = bud.level == levels;
+        let l = p.level[bud.level.min(LEVELS - 1)];
+        let authored = bud.authored.map(|i| &p.branches[i]);
+        let path = authored.map_or(
+            {
+                if bud.level == 0 {
+                    p.path.as_slice()
+                } else {
+                    &[]
+                }
+            },
+            |b| b.path.as_slice(),
+        );
+        let last_level = bud
+            .authored
+            .map_or(bud.level == levels, |i| children[i].is_empty());
         let step = bud.length / bud.sections as f64;
         let mut sections = Vec::with_capacity(bud.sections as usize + 1);
         let (mut origin, mut q) = (bud.origin, bud.q);
         for i in 0..=bud.sections {
             let t = i as f64 / bud.sections as f64;
-            let guided = bud.level == 0 && !p.path.is_empty();
+            let guided = !path.is_empty();
             if guided {
-                origin = p.path[i as usize];
-                let k = (i as usize).min(p.path.len() - 2);
-                let direction = (p.path[k + 1] - p.path[k]).normalize();
+                origin = path[i as usize];
+                let k = (i as usize).min(path.len() - 2);
+                let direction = (path[k + 1] - path[k]).normalize();
                 let axis = DVec3::Y.cross(direction);
                 q = if axis.length_squared() > 1e-16 {
                     turn(axis.normalize(), double::atan2(axis.length(), direction.y))
@@ -489,7 +598,9 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
                     DQuat::IDENTITY
                 };
             }
-            let radius = if i == bud.sections && last_level {
+            let radius = if let Some(b) = authored {
+                b.radii[i as usize]
+            } else if i == bud.sections && last_level {
                 1e-4
             } else {
                 bud.radius * (1.0 - l.taper.clamp(0.0, 1.0) * t)
@@ -517,6 +628,16 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             }
             q = q.normalize();
         }
+        let kept = sections
+            .iter()
+            .position(|s| !inside(s.origin))
+            .unwrap_or(sections.len());
+        let clipped = kept != sections.len();
+        sections.truncate(kept);
+        if sections.len() < 2 {
+            continue;
+        }
+        let last_level = last_level || clipped;
         let end = sections
             .last()
             .map(|s| (s.origin, s.q, s.radius))
@@ -527,14 +648,14 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             if bud.level == 0 {
                 Sway {
                     pivot: origin,
-                    stiffness: (0.3 + 0.6 * radius / trunk.radius.max(1e-4)).clamp(0.3, 0.9),
+                    stiffness: (0.3 + 0.6 * radius / bud.radius.max(1e-4)).clamp(0.3, 0.9),
                 }
             } else {
                 bud.sway
             }
         };
         if p.growth == Growth::Deciduous {
-            if !last_level {
+            if !last_level && authored.is_none() {
                 queue.push_back(Bud {
                     origin: end.0,
                     q: end.1,
@@ -545,8 +666,9 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
                     sections: bud.sections,
                     segments: bud.segments,
                     sway: child_sway(end.0, end.2),
+                    authored: None,
                 });
-            } else if let Some(lv) = p.leaves.as_ref().filter(|lv| lv.end >= 1.0) {
+            } else if last_level && let Some(lv) = p.leaves.as_ref().filter(|lv| lv.end >= 1.0) {
                 let v = lv.size_variance.clamp(0.0, 1.0);
                 leaf_list.push(Leaf {
                     origin: end.0,
@@ -593,6 +715,21 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
                     });
                 }
             }
+        } else if let Some(i) = bud.authored {
+            for &child in &children[i] {
+                let b = &p.branches[child];
+                queue.push_back(Bud {
+                    origin: b.path[0],
+                    q: DQuat::IDENTITY,
+                    length: 0.0,
+                    radius: b.radii[0],
+                    level: depths[child],
+                    sections: b.path.len() as u32 - 1,
+                    segments: b.segments,
+                    sway: child_sway(b.path[0], b.radii[0]),
+                    authored: Some(child),
+                });
+            }
         } else {
             let c = p.level[bud.level + 1];
             for (at, s) in spread(&sections, l.children, (c.start, 1.0), c.angle, 0, &mut rng) {
@@ -611,6 +748,7 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
                     sections: c.sections.max(1),
                     segments: c.segments.max(3),
                     sway: child_sway(s.origin, radius),
+                    authored: None,
                 });
             }
         }

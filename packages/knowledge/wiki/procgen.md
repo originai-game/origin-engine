@@ -60,6 +60,8 @@ module procgen {
 | [`PlantLevelDesc`](procgen/type-PlantLevelDesc.md) | desc struct |  | Growth parameters for one branch level (level 0 is the trunk). |
 | [`PlantLeavesDesc`](procgen/type-PlantLeavesDesc.md) | desc struct |  | Leaf foliage configuration on terminal branches. |
 | [`PlantFlowersDesc`](procgen/type-PlantFlowersDesc.md) | desc struct |  | Blossom/flower configuration on terminal branches. |
+| [`PlantBranchDesc`](procgen/type-PlantBranchDesc.md) | desc struct |  | One limb of an explicit parent-first plant skeleton. |
+| [`PlantBoundsDesc`](procgen/type-PlantBoundsDesc.md) | desc struct |  | Optional centreline growth box in local metres, min < max on every axis. |
 | [`PlantDesc`](procgen/type-PlantDesc.md) | desc struct |  | Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). |
 | [`PlantMeshPart`](procgen/type-PlantMeshPart.md) | struct |  | One mesh part of a procedural plant (wood or foliage) with vertex and foliage-wind TypedArrays ready for og.render.bufferGeometry. |
 | [`PlantMeshResult`](procgen/type-PlantMeshResult.md) | struct |  | Generated procedural plant meshes and statistics. |

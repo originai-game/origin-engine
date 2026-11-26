@@ -32,6 +32,56 @@ pub const TABLE_TYPE: &str = "table";
 /// A table's locale when it names none.
 pub const DEFAULT_LOCALE: &str = "en";
 
+/// The shared table reader's structural fields. Row contents belong to
+/// the game's reflected record, not to an engine-defined data template.
+pub const LINES: &[crate::ogt::line::Line] = &[
+    crate::ogt::line::Line::new(
+        "locale",
+        "\"<language tag>\"",
+        DEFAULT_LOCALE,
+        "One non-empty tag for text fields' base language.",
+        "",
+    ),
+    crate::ogt::line::Line::new(
+        "row",
+        "\"<id>\" { ... }",
+        "",
+        "Repeat unique, non-empty row ids. Each row field occurs once, has values and has no block.",
+        "",
+    ),
+];
+/// Value forms accepted by the row parser, in addition to plain values.
+pub const ROW_LINES: &[crate::ogt::line::Line] = &[
+    crate::ogt::line::Line::new(
+        "<field>",
+        "<number | string | word> ...",
+        "",
+        "Plain values are checked against the game's record when loaded.",
+        "",
+    ),
+    crate::ogt::line::Line::new(
+        "<field>",
+        "asset \"<path>\"",
+        "",
+        "One asset-root path checked by cook.",
+        "",
+    ),
+    crate::ogt::line::Line::new(
+        "<field>",
+        "text \"<key>\" \"<base message>\"",
+        "",
+        "Localized text; a key cannot have conflicting base messages.",
+        "",
+    ),
+    crate::ogt::line::Line::new(
+        "<field>",
+        "row [\"<table asset>\"] \"<id>\" ...",
+        "",
+        "One or more row references; omitted table refers to this table. Cook checks referenced rows.",
+        "",
+    ),
+];
+
 /// A parsed table: its rows in file order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Table {
@@ -105,6 +155,12 @@ impl Table {
         let mut rows: Vec<Row> = Vec::new();
         let mut seen: BTreeMap<String, usize> = BTreeMap::new();
         for e in &doc.body.entries {
+            if !LINES.iter().any(|f| f.key == e.key) {
+                return Err(at(
+                    e.line,
+                    format!("'{}' is not a table entry (locale, row)", e.key),
+                ));
+            }
             match e.key.as_str() {
                 "locale" => {
                     if locale.is_some() {

@@ -17,6 +17,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `levels` | `number` | `2` | ≤ 3 | — | — | Branching levels beyond the trunk (0 to 3). |
 | `levelsSpec` | `readonly PlantLevelDesc[]` | `[]` | — | — | — | Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults). |
 | `path` | `readonly Vector3[]` | `[]` | — | — | — | Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ. |
+| `branches` | `readonly PlantBranchDesc[]` | `[]` | — | — | — | Optional complete parent-first skeleton; exclusive with path. Leaves and flowers grow on terminal limbs with the existing rules. At most 20000 limbs; no procedural continuation is added. |
+| `bounds` | `PlantBoundsDesc \| null` | `null` | — | — | — | Optional centreline box. Procedural limbs stop before their first outside ring, becoming terminal; fewer than two inside rings discard the limb. Explicit skeleton rings must all lie inside. Leaf/wood radii can extend outside; this is not triangle clipping. |
 | `leafMesh` | `BufferGeometryDesc \| null` | `null` | — | — | — | Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply. |
 | `flowerMesh` | `BufferGeometryDesc \| null` | `null` | — | — | — | Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width. |
 | `forceDirection` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | Tropism / gravity bend direction. |
@@ -38,6 +40,8 @@ struct PlantDesc {
   }
   field levelsSpec List.PlantLevelDesc "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults)."
   field path List.Vector3 "Optional 2..1025 authored trunk ring centres in metres; replaces trunk wandering and section count. Branches and foliage grow from these exact centres with the existing rules. Consecutive centres must differ."
+  field branches List.PlantBranchDesc "Optional complete parent-first skeleton; exclusive with path. Leaves and flowers grow on terminal limbs with the existing rules. At most 20000 limbs; no procedural continuation is added."
+  field bounds Option.PlantBoundsDesc "Optional centreline box. Procedural limbs stop before their first outside ring, becoming terminal; fewer than two inside rings discard the limb. Explicit skeleton rings must all lie inside. Leaf/wood radii can extend outside; this is not triangle clipping."
   field leafMesh Option.BufferGeometryDesc "Optional unit leaf geometry, replacing the built-in blade/card/cross. x is width, y is length, z faces out; scaled by each leaf's declared size and width. Buffer geometry validation, colours, UVs and generated wind apply."
   field flowerMesh Option.BufferGeometryDesc "Optional unit flower geometry replacing generated petals and centre; same axes and attributes as leafMesh, scaled by flower size and width."
   field forceDirection Vector3 "Tropism / gravity bend direction." {
@@ -53,4 +57,4 @@ struct PlantDesc {
 }
 ```
 
-<sub>Module `procgen` line 792</sub>
+<sub>Module `procgen` line 812</sub>

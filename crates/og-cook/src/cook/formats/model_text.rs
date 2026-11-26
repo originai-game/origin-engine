@@ -250,6 +250,7 @@ impl<'a> Fields<'a> {
                     | ("mergeGeometries", "part")
                     | ("sweepGeometry", "scale" | "twist")
                     | ("part", "at")
+                    | ("plant", "branch")
             );
             if !repeats && !seen.insert(e.key.as_str()) {
                 return Err(format!("line {}: {what}.{} is given twice", e.line, e.key));

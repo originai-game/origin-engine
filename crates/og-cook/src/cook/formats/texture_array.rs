@@ -22,6 +22,23 @@ use std::path::Path;
 /// The `.ogt` type of a texture array.
 pub const ARRAY_TYPE: &str = "texture-array";
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "kind",
+        "color | normal | linear | single | pixel",
+        "color",
+        "Shared texture encoding and sampling kind for all layers.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "layer",
+        "\"<image>\"",
+        "required, 1..256",
+        "Repeat same-sized images in layer order; paths resolve beside this file, then under assets/.",
+        "",
+    ),
+];
+
 /// The most layers an array holds (WebGPU's guaranteed
 /// `maxTextureArrayLayers` is 256).
 pub const MAX_LAYERS: usize = 256;
@@ -54,6 +71,12 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Arr
     };
     for e in &doc.body.entries {
         let err = |x: og_core::Error| format!("line {}: {x}", e.line);
+        if !LINES.iter().any(|f| f.key == e.key) {
+            return Err(format!(
+                "line {}: unknown texture-array field '{}'",
+                e.line, e.key
+            ));
+        }
         match e.key.as_str() {
             "kind" => {
                 out.kind = match e.word(0).map_err(err)? {

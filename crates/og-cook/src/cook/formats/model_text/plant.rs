@@ -114,7 +114,7 @@ fn plant_kind(kind: &str) -> Result<(og_shape::generators::Plant, PlantLook), St
 /// What it leaves out is its `kind`'s; without one the defaults', with
 /// `leaves` and `flowers` only when their block is there.
 pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, PlantLook), String> {
-    use og_shape::generators::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
+    use og_shape::generators::plant::{Branch, Flowers, Growth, LeafShape, Leaves, Level, Plant};
     let f = Fields::schema(b, "plant")?;
     let kinds: Vec<&str> = PLANT_KINDS.iter().map(|(k, _)| *k).collect();
     let (d, mut look) = match word_of(&f, "kind", &kinds)? {
@@ -271,6 +271,43 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, Plan
         force_strength,
         leaves,
         flowers,
+        branches: b
+            .get_all("branch")
+            .map(|e| {
+                if !e.values.is_empty() {
+                    return Err(at(e, "takes a block, without arguments"));
+                }
+                let block = e.block.as_ref().ok_or_else(|| at(e, "needs a block"))?;
+                let bf = Fields::schema(block, "plant.branch")?;
+                let parent = bf.num("parent", -1.0)?;
+                if parent.fract() != 0.0 || !(-1.0..=19999.0).contains(&parent) {
+                    return Err(at(e, "parent is -1 or an earlier integer branch index"));
+                }
+                let path = bf.get("path").ok_or_else(|| at(e, "needs path"))?;
+                let points = numbers(path)?;
+                if !points.len().is_multiple_of(3) {
+                    return Err(at(path, "takes xyz ring centres"));
+                }
+                Ok(Branch {
+                    parent: parent as i32,
+                    path: points
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
+                        .map(|p| DVec3::from_array(*p))
+                        .collect(),
+                    radii: numbers(bf.get("radii").ok_or_else(|| at(e, "needs radii"))?)?,
+                    segments: bf.uint("segments", 6, 3, 32)?,
+                })
+            })
+            .collect::<Result<_, String>>()?,
+        bounds: f
+            .get("bounds")
+            .map(|e| {
+                let p = exactly(e, 6)?;
+                Ok::<_, String>([DVec3::new(p[0], p[1], p[2]), DVec3::new(p[3], p[4], p[5])])
+            })
+            .transpose()?,
         path: f
             .get("path")
             .map(|e| {
