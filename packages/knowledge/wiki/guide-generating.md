@@ -6,6 +6,8 @@ Keep the recipe in the project: use an asset's existing generation mechanism whe
 
 For emitter/material/timeline families, `type particles`, `type effect` and `type vfx` accept one exclusive script `generate` block. Return `EffectSource {text}` containing the target format's body declarations. The same executor, import/input tracking and BLAKE3 cache described here run it; ordinary effect parsers validate and link the result. `effects §5` contains a checked recipe that generates all three and composes them with a cook-generated `type effect-texture` volume. Noise/dissolve/flow textures use the shared procgen noise, Worley and curl kernels; smoke, fire and explosions use offline density/heat transport. No source generator needs to write PNG files or encode cooked assets itself.
 
+Cook scripts may import `{ input, procgen }` from `@origingame/engine/author`. Call `input.bytes("height.bin")` or `input.text("layout.csv")` directly with a string literal; paths are relative to the evaluator's input root, currently `assets/` for asset generators, even from a nested helper. Cook captures these files before evaluation and tracks their bytes with the helper imports. Bytes calls return independent `Uint8Array` copies; text requires UTF-8 and preserves BOM/line endings. Named import aliases work, but assigning the input capability to another variable, re-exporting it, or computing a path does not. Missing files, symlinks and paths outside the root fail. This module does not yet replace the asset declarations described below.
+
 <a id="guide-generating-1"></a>
 ### `generating §1` Find the file contract
 

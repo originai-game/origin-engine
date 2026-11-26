@@ -4,6 +4,21 @@
 import { og, defineComponent, defineResource, defineSystem, f32, u32, bool, Vector3 } from "@origingame/engine";
 import type { World, EngineProbe, RuntimeProbe, InjectedInput, Entity, Value, View } from "@origingame/engine";
 import { PROBE_VERSION } from "@origingame/engine";
+import { input as authorInput, procgen as authorProcgen } from "@origingame/engine/author";
+
+function authorInputs(): void {
+  const bytes: Uint8Array = authorInput.bytes("assets/heights.bin");
+  const text: string = authorInput.text("sources/layout.csv");
+  const mechanisms: typeof og.procgen = authorProcgen;
+  // @ts-expect-error input text is synchronous text, not a byte array
+  const wrong: Uint8Array = authorInput.text("sources/layout.csv");
+  // @ts-expect-error inputs take an explicit path
+  authorInput.bytes();
+  // @ts-expect-error replacing the input capability is not allowed
+  authorInput.bytes = () => new Uint8Array();
+  void [bytes, text, mechanisms, wrong];
+}
+void authorInputs;
 
 const Counter = defineComponent("Counter", { n: u32(0), alive: bool(true), at: Vector3({ x: 0, y: 1, z: 0 }) });
 const Tuning = defineResource("Tuning", { speed: f32(4, { min: 0, max: 20, unit: "m", tunable: true }) });

@@ -258,8 +258,12 @@ fn generated_fields_load_losslessly_and_feed_particles() {
         "type project\nversion 1\n---\nname \"Field\"\n",
     )
     .unwrap();
-    std::fs::write(assets.join("source.ogt"), "type field\nversion 1\n---\ngenerate {\nscript \"field.ts\"\ninput \"amplitude\" \"input.bin\"\n}\n").unwrap();
-    std::fs::write(assets.join("field.ts"), "export default ({inputs}) => ({dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: Float32Array.from({length: 24}, (_, i) => inputs.amplitude[0] + i / 32)});").unwrap();
+    std::fs::write(
+        assets.join("source.ogt"),
+        "type field\nversion 1\n---\ngenerate {\nscript \"field.ts\"\n}\n",
+    )
+    .unwrap();
+    std::fs::write(assets.join("field.ts"), "import {input} from '@origingame/engine/author'; export default () => {const amplitude = input.bytes('input.bin')[0]; return {dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: Float32Array.from({length: 24}, (_, i) => amplitude + i / 32)};};").unwrap();
     std::fs::write(assets.join("input.bin"), [7]).unwrap();
     std::fs::write(
         assets.join("particles.ogt"),
@@ -656,6 +660,107 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
     let data = Program::prepare_value(&root, "call.ts").unwrap();
     assert_ne!(callable.key, data.key);
     assert!(data.run().is_err());
+}
+
+/// The author input capability snapshots only literal, tracked dependencies;
+/// helpers, cache hits and separate realms observe the same closed inputs.
+#[test]
+fn author_inputs_are_captured_before_evaluation() {
+    use og_cook::cook::generator::Program;
+    let root = TempDir::new("og-author-inputs");
+    let moved = TempDir::new("og-author-inputs-moved");
+    let helper = "import {input as source} from '@origingame/engine/author'; export {procgen as pure} from '@origingame/engine/author'; export const lines = () => source.text('lines.csv'); export const local = (input: {bytes(p: string): number}) => input.bytes('not-a-file');";
+    let entry = "import * as og from '@origingame/engine/author'; import {lines, local} from './lib/helper.ts'; const bytes = og.input.bytes('./samples.bin'); bytes[0] = 99; export default {bytes: og.input.bytes('samples.bin'), lines: lines(), local: local({bytes: () => 37}), distance: og.procgen.worley(0, 0, 0, 0, false, [{x:3,y:4,z:0},{x:8,y:15,z:0}]).x};";
+    let expected = serde_json::json!({"bytes": [5, 191, 7, 255], "lines": "\u{feff}北,17\r\n", "local": 37, "distance": 5});
+    for dir in [&root, &moved] {
+        std::fs::create_dir_all(dir.join("lib")).unwrap();
+        std::fs::write(dir.join("lib/helper.ts"), helper).unwrap();
+        std::fs::write(dir.join("value.ts"), entry).unwrap();
+        std::fs::write(dir.join("samples.bin"), [5, 191, 7, 255]).unwrap();
+        std::fs::write(dir.join("lines.csv"), "\u{feff}北,17\r\n").unwrap();
+    }
+    let first = Program::prepare_value(&root, "value.ts").unwrap();
+    assert_eq!(
+        first.dependencies,
+        ["lib/helper.ts", "lines.csv", "samples.bin", "value.ts"]
+    );
+    // Even removing the files cannot make an already prepared realm do I/O.
+    std::fs::remove_file(root.join("samples.bin")).unwrap();
+    assert_eq!(first.run().unwrap(), expected);
+    assert_eq!(first.run().unwrap(), expected);
+    let relocated = Program::prepare_value(&moved, "value.ts").unwrap();
+    assert_eq!(first.key, relocated.key);
+    assert_eq!(relocated.run().unwrap(), expected);
+    std::fs::write(moved.join("unrelated.bin"), [81]).unwrap();
+    assert_eq!(
+        relocated.key,
+        Program::prepare_value(&moved, "value.ts").unwrap().key
+    );
+    std::fs::write(moved.join("samples.bin"), [13, 191, 7, 255]).unwrap();
+    let changed = Program::prepare_value(&moved, "value.ts").unwrap();
+    assert_ne!(changed.key, first.key);
+    assert_eq!(
+        changed.run().unwrap()["bytes"],
+        serde_json::json!([13, 191, 7, 255])
+    );
+    std::fs::write(moved.join("lines.csv"), "南,29\n").unwrap();
+    let changed_text = Program::prepare_value(&moved, "value.ts").unwrap();
+    assert_ne!(changed_text.key, changed.key);
+    assert_eq!(changed_text.run().unwrap()["lines"], "南,29\n");
+
+    for expression in [
+        "input.bytes('samples' + '.bin')",
+        "input.text(`lines.csv`)",
+        "input.bytes('samples.bin', 1)",
+        "input.bytes?.('samples.bin')",
+        "input['bytes']('samples.bin')",
+        "(() => {const read = input.bytes; return read('samples.bin')})()",
+        "(() => {const alias = input; return alias.text('lines.csv')})()",
+    ] {
+        std::fs::write(
+            root.join("denied.ts"),
+            format!(
+                "import {{input}} from '@origingame/engine/author';\nexport default {expression};"
+            ),
+        )
+        .unwrap();
+        let error = Program::prepare_value(&root, "denied.ts")
+            .err()
+            .expect(expression);
+        assert!(error.contains("denied.ts:2:"), "{expression}: {error}");
+    }
+    for code in [
+        "import * as og from '@origingame/engine/author'; const alias = og; export default alias.input.text('lines.csv');",
+        "import * as og from '@origingame/engine/author'; export default og['input'].text('lines.csv');",
+        "export {input} from '@origingame/engine/author';",
+        "export * from '@origingame/engine/author';",
+        "import {input} from '@origingame/engine/author'; export {input};",
+    ] {
+        std::fs::write(root.join("denied.ts"), code).unwrap();
+        assert!(
+            Program::prepare_value(&root, "denied.ts").is_err(),
+            "{code}"
+        );
+    }
+    for (path, reason) in [
+        ("../outside.bin", "leaves its input root"),
+        ("absent.bin", "absent.bin"),
+        ("lines.csv", "requires UTF-8"),
+    ] {
+        std::fs::write(root.join("lines.csv"), [0xff]).unwrap();
+        std::fs::write(root.join("denied.ts"), format!("import {{input}} from '@origingame/engine/author'; export default input.text('{path}');")).unwrap();
+        let error = Program::prepare_value(&root, "denied.ts")
+            .err()
+            .expect(path);
+        assert!(error.contains(reason), "{path}: {error}");
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(root.join("lines.csv"), root.join("linked.csv")).unwrap();
+        std::fs::write(root.join("denied.ts"), "import {input} from '@origingame/engine/author'; export default input.bytes('linked.csv');").unwrap();
+        let error = Program::prepare_value(&root, "denied.ts").err().unwrap();
+        assert!(error.contains("cannot follow symlinks"), "{error}");
+    }
 }
 
 /// Generated cells pass through the real map compiler, preserve authored

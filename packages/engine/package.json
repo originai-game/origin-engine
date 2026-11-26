@@ -33,6 +33,10 @@
       "types": "./src/generate.d.ts",
       "default": "./src/generate.ts"
     },
+    "./author": {
+      "types": "./src/author.d.ts",
+      "default": "./src/author.js"
+    },
     "./sourcemap": "./src/sourcemap.ts",
     "./ui": {
       "og-source": "./src/ui/index.ts",
