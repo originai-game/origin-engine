@@ -7,50 +7,7 @@
 //! the sought time's.
 
 use super::*;
-use og_timeline::{FieldValue, FieldsKind, FieldsTrack};
-
-/// The StandardMaterialDesc fields a material track sets by name (others
-/// are the material shader's parameters).
-const STANDARD: &[&str] = &[
-    "color",
-    "metalness",
-    "roughness",
-    "emissive",
-    "emissiveIntensity",
-    "opacity",
-    "transparent",
-    "alphaTest",
-    "envMapIntensity",
-    "normalScale",
-    "aoMapIntensity",
-    "rimColor",
-    "rimIntensity",
-    "rimPower",
-    "flashColor",
-    "flash",
-    "dissolve",
-    "dissolveEdgeColor",
-    "dissolveEdgeWidth",
-    "dissolveScale",
-    "outlineColor",
-    "outlineWidth",
-    "clearcoat",
-    "clearcoatRoughness",
-    "sheen",
-    "sheenColor",
-    "sheenRoughness",
-    "transmission",
-    "thickness",
-    "attenuationDistance",
-    "attenuationColor",
-    "ior",
-    "iridescence",
-    "anisotropy",
-    "anisotropyRotation",
-    "mapOffset",
-    "mapRepeat",
-    "mapRotation",
-];
+use og_timeline::{FieldValue, FieldsKind, FieldsTrack, MATERIAL_FIELDS};
 
 /// What one material is driven to this frame.
 type Driven = BTreeMap<u32, (og_render::MaterialHandle, Vec<(String, FieldValue)>)>;
@@ -126,7 +83,7 @@ fn apply(
         let mut desc = serde_json::Map::new();
         let mut params = Vec::new();
         for (name, v) in values {
-            if STANDARD.contains(&name.as_str()) {
+            if MATERIAL_FIELDS.contains(&name.as_str()) {
                 let j = match &v {
                     FieldValue::Word(w) => json!(w == "true"),
                     FieldValue::Numbers(n) => match n.as_slice() {

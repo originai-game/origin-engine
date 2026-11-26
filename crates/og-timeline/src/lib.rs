@@ -27,3 +27,47 @@ pub mod segment;
 
 pub use model::*;
 pub use path::{Nearest, Path, PathDesc, PathKind, PathSample, SAMPLES, up_of};
+
+/// Standard material and UV controls a timeline drives; all other material
+/// track names address shader parameters. Shared by author validation and
+/// presentation, not inferred from the full material's reflected layout.
+pub const MATERIAL_FIELDS: &[&str] = &[
+    "color",
+    "metalness",
+    "roughness",
+    "emissive",
+    "emissiveIntensity",
+    "opacity",
+    "transparent",
+    "alphaTest",
+    "envMapIntensity",
+    "normalScale",
+    "aoMapIntensity",
+    "rimColor",
+    "rimIntensity",
+    "rimPower",
+    "flashColor",
+    "flash",
+    "dissolve",
+    "dissolveEdgeColor",
+    "dissolveEdgeWidth",
+    "dissolveScale",
+    "outlineColor",
+    "outlineWidth",
+    "clearcoat",
+    "clearcoatRoughness",
+    "sheen",
+    "sheenColor",
+    "sheenRoughness",
+    "transmission",
+    "thickness",
+    "attenuationDistance",
+    "attenuationColor",
+    "ior",
+    "iridescence",
+    "anisotropy",
+    "anisotropyRotation",
+    "mapOffset",
+    "mapRepeat",
+    "mapRotation",
+];
