@@ -149,7 +149,7 @@ impl Area {
             Area::Blob => ("blob", 1),
             Area::Texture => ("texture", 1),
             // Preserve authored tangent frames even without a normal map.
-            Area::Model => ("model", 2),
+            Area::Model => ("model", 3),
             Area::Anim => ("anim", 1),
             Area::Fracture => ("fracture", 1),
             Area::Audio => ("audio", 1),
