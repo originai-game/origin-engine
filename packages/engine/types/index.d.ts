@@ -9082,7 +9082,7 @@ export interface RenderSettings {
    */
   rectShadows: boolean;
   /**
-   * At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted.
+   * At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.maxShadowedLights caps it); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted.
    *
    * @default 8
    * @range 0..16
@@ -9096,14 +9096,14 @@ export interface RenderSettings {
    */
   shadowCascades: number;
   /**
-   * The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn.
+   * The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame.
    *
    * @default 1
    * @range 0.125..4
    */
   shadowMapScale: number;
   /**
-   * An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even.
+   * A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even.
    *
    * @default true
    */
@@ -9158,7 +9158,7 @@ export interface RenderSettings {
    */
   ssrStepScale: number;
   /**
-   * An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame.
+   * Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame.
    * See `render §7`.
    *
    * @default 1

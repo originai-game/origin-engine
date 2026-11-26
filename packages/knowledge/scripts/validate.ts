@@ -337,7 +337,7 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
  * armature's setup pose), or a surface (a skin tone, peach skin, a crowd's or
  * a tile set's looks).
  */
-export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|backstop|\bpose\b|garment|cloth|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
+export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|rig2d|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|backstop|\bpose\b|garment|cloth|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
 
 /**
  * A wiki page never calls a UI style a "skin": og-ui's word is

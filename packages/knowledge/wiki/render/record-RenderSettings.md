@@ -60,10 +60,10 @@ The fields og.render.applyQuality writes from a graphics preset.
 |---|---|---|---|---|---|---|
 | `quality` | `QualityPreset` | `"none"` | — | — | — | The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set. |
 | `rectShadows` | `boolean` | `true` | — | — | — | Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off. See `render §3`. |
-| `shadowedLights` | `number` | `8` | 0 … 16 | — | — | At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted. |
+| `shadowedLights` | `number` | `8` | 0 … 16 | — | — | At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.maxShadowedLights caps it); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted. |
 | `shadowCascades` | `number` | `3` | 1 … 4 | — | — | The directional light's shadow cascades, 1 to 4: more cover the same shadowDistance with finer shadows near the camera, at one more shadow pass and one more map each. The high preset draws 4, medium 3, low 2. Changing it makes the cascade maps again at the next frame. |
-| `shadowMapScale` | `number` | `1` | 0.125 … 4 | — | — | The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn. |
-| `volumetricFog` | `boolean` | `true` | — | — | — | An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even. |
+| `shadowMapScale` | `number` | `1` | 0.125 … 4 | — | — | The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame. |
+| `volumetricFog` | `boolean` | `true` | — | — | — | A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even. |
 | `softParticles` | `boolean` | `true` | — | — | — | Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them. |
 | `particleEmission` | `number` | `1` | 0 … 1 | — | — | Every particle system's emission times this (0 to 1); an emitter left with fewer than 8 particles alive at once keeps more, so a flash or a ring stays whole. The low preset draws 0.5. Drawing only: particle events and collisions are the full emitter's. |
 | `maxVfx` | `number` | `64` | — | — | — | At most this many composed effects (og.Vfx) drawn at once: past it the oldest one-shot effects are left out, then the oldest looping ones, and the probe's dump_render counts them (vfx.dropped). 64; the low preset 32, high 128. Drawing only: their events, shakes and sounds still come. |
@@ -72,7 +72,7 @@ The fields og.render.applyQuality writes from a graphics preset.
 | `ambientOcclusion` | `boolean` | `true` | — | — | — | PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. |
 | `aoResolution` | `AoResolutionSetting` | `"postEffects"` | — | — | — | The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. See `render §5`. |
 | `ssrStepScale` | `number` | `1` | 0 … 32 | — | — | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps. |
-| `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. See `render §7`. |
+| `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. See `render §7`. |
 | `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame. See `render §2`. |
 | `upscaler` | `Upscaler` | `"auto"` | — | — | — | Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. See `render §1`. |
 
@@ -188,7 +188,7 @@ resource RenderSettings {
     default true
     guide "render §3"
   }
-  field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted." {
+  field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.maxShadowedLights caps it); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted." {
     default 8
     min 0
     max 16
@@ -198,12 +198,12 @@ resource RenderSettings {
     min 1
     max 4
   }
-  field shadowMapScale f32 "The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn." {
+  field shadowMapScale f32 "The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame." {
     default 1
     min 0.125
     max 4
   }
-  field volumetricFog bool "An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even." {
+  field volumetricFog bool "A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even." {
     default true
   }
   field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {
@@ -234,7 +234,7 @@ resource RenderSettings {
     min 0
     max 32
   }
-  field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame." {
+  field volumetricStepScale f32 "Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame." {
     default 1
     min 0
     max 4
