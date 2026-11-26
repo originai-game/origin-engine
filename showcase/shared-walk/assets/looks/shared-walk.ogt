@@ -1,6 +1,0 @@
-type look
-version 1
----
-extends "faceted-low-poly"
-mood "soft"
-ui "default"

@@ -1,4 +1,0 @@
-# Text stays diffable (.ogt scenes and settings are line-based text by design).
-# Binary assets are pinned in og-assets.json (docs/ci.md §The asset store).
-*.ogt text eol=lf
-*.ts text eol=lf

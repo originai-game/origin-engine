@@ -1,6 +1,0 @@
-type look
-version 1
----
-extends "cinematic-realism"
-mood "warm"
-ui "default"

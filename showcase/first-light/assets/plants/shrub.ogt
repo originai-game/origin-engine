@@ -1,6 +1,0 @@
-type model
-version 1
----
-plant "shrub" {
-  kind shrub
-}
