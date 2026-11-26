@@ -4,7 +4,8 @@
 use super::cache;
 use og_core::ogt::{Block, Value};
 use oxc_allocator::Allocator;
-use oxc_ast::ast::Statement;
+use oxc_ast::ast::{AwaitExpression, ForOfStatement, ImportExpression, Statement};
+use oxc_ast_visit::{Visit, walk};
 use oxc_codegen::Codegen;
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
@@ -207,6 +208,36 @@ pub struct Program {
     modules: BTreeMap<String, String>,
     pub key: String,
     context: String,
+    export: Export,
+}
+
+#[derive(Clone, Copy)]
+enum Export {
+    Call,
+    Value,
+}
+
+#[derive(Default)]
+struct Synchronous {
+    forbidden: Option<(u32, &'static str)>,
+}
+
+impl<'a> Visit<'a> for Synchronous {
+    fn visit_import_expression(&mut self, expr: &ImportExpression<'a>) {
+        self.forbidden
+            .get_or_insert((expr.span.start, "dynamic import"));
+    }
+
+    fn visit_await_expression(&mut self, expr: &AwaitExpression<'a>) {
+        self.forbidden.get_or_insert((expr.span.start, "await"));
+    }
+
+    fn visit_for_of_statement(&mut self, stmt: &ForOfStatement<'a>) {
+        if stmt.r#await {
+            self.forbidden.get_or_insert((stmt.span.start, "for await"));
+        }
+        walk::walk_for_of_statement(self, stmt);
+    }
 }
 
 fn module(
@@ -238,6 +269,29 @@ fn module(
         return Err(format!("{path}: {:?}", parsed.diagnostics));
     }
     let mut program = parsed.program;
+    let mut synchronous = Synchronous::default();
+    synchronous.visit_program(&program);
+    if let Some((offset, feature)) = synchronous.forbidden {
+        let before = &text[..offset as usize];
+        let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
+        let column = before.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+        return Err(format!(
+            "{path}:{line}:{column}: {feature} is not allowed in synchronous cook modules"
+        ));
+    }
+    let semantics = SemanticBuilder::new().build(&program);
+    if !semantics.diagnostics.is_empty() {
+        return Err(format!("{path}: {:?}", semantics.diagnostics));
+    }
+    let mut options = TransformOptions::default();
+    options.env.es2016.exponentiation_operator = true;
+    let transformed = Transformer::new(&allocator, Path::new(path), &options)
+        .build_with_scoping(semantics.semantic.into_scoping(), &mut program);
+    if !transformed.diagnostics.is_empty() {
+        return Err(format!("{path}: {:?}", transformed.diagnostics));
+    }
+    // Only executable imports enter the realm. Type-only imports are erased
+    // by OXC; their resolution belongs to the project's type checker.
     let mut imports = Vec::new();
     for s in &program.body {
         let source = match s {
@@ -258,17 +312,6 @@ fn module(
             imports.push(relative(path, name)?);
         }
     }
-    let semantics = SemanticBuilder::new().build(&program);
-    if !semantics.diagnostics.is_empty() {
-        return Err(format!("{path}: {:?}", semantics.diagnostics));
-    }
-    let mut options = TransformOptions::default();
-    options.env.es2016.exponentiation_operator = true;
-    let transformed = Transformer::new(&allocator, Path::new(path), &options)
-        .build_with_scoping(semantics.semantic.into_scoping(), &mut program);
-    if !transformed.diagnostics.is_empty() {
-        return Err(format!("{path}: {:?}", transformed.diagnostics));
-    }
     modules.insert(path.to_string(), Codegen::new().build(&program).code);
     for name in imports {
         module(root, &name, modules, hash)?;
@@ -278,9 +321,40 @@ fn module(
 
 impl Program {
     pub fn prepare(root: &Path, source: &str, spec: &Spec) -> Result<Self, String> {
+        Self::prepare_export(root, source, spec, Export::Call)
+    }
+
+    /// Evaluate an authored module's default data export, without calling it.
+    /// Uses the same closed imports, isolated realm, budgets and action cache
+    /// as generators. Domain schema validation belongs to the consuming cook.
+    pub fn prepare_value(root: &Path, script: &str) -> Result<Self, String> {
+        Self::prepare_export(
+            root,
+            "",
+            &Spec {
+                script: script.into(),
+                params: json!({}),
+                seed: 0,
+                inputs: BTreeMap::new(),
+            },
+            Export::Value,
+        )
+    }
+
+    fn prepare_export(
+        root: &Path,
+        source: &str,
+        spec: &Spec,
+        export: Export,
+    ) -> Result<Self, String> {
         let entry = relative(source, &spec.script)?;
         let mut hash = blake3::Hasher::new();
+        hash.update(match export {
+            Export::Call => b"call",
+            Export::Value => b"data",
+        });
         hash.update(include_bytes!("generator.rs"));
+        hash.update(include_bytes!("generator_value.js"));
         hash.update(include_bytes!(
             "../../../../crates/og-generation/src/lib.rs"
         ));
@@ -324,6 +398,7 @@ impl Program {
             modules,
             key: hash.finalize().to_hex().to_string(),
             context,
+            export,
         })
     }
 
@@ -394,12 +469,19 @@ impl Program {
                     call().map_err(|e| rquickjs::Exception::throw_message(&ctx, &e))
                 })?)?;
                 ctx.globals().set("__context", ctx.json_parse(self.context.as_bytes())?)?;
+                let encode: Function = ctx.eval(include_str!("generator_value.js"))?;
                 let source = self.modules.get(&self.entry).expect("prepared entry");
                 let (m, p) = Module::declare(ctx.clone(), self.entry.as_str(), source.as_bytes())?.eval()?;
                 p.finish::<()>()?;
-                let f: Function = m.get("default")?;
-                ctx.globals().set("__generate", f)?;
-                ctx.eval("(() => { const value = __generate(Object.freeze(__context)); if (value && typeof value.then === 'function') throw new Error('a generator must return synchronously'); return JSON.stringify(value, (_, v) => { if (typeof v === 'number' && !Number.isFinite(v)) throw new Error('non-finite generator output'); return ArrayBuffer.isView(v) ? Array.from(v) : v; }); })()")
+                let value: rquickjs::Value = match self.export {
+                    Export::Value => m.get("default")?,
+                    Export::Call => {
+                        let f: Function = m.get("default")?;
+                        let context: rquickjs::Value = ctx.eval("Object.freeze(__context)")?;
+                        f.call((context,))?
+                    }
+                };
+                encode.call((value,))
             };
             run().catch(&ctx).map_err(|e| format!("{}: {e}", self.entry))
         })?;

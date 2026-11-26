@@ -286,6 +286,32 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
         .unwrap();
     assert_eq!(input, value(&output));
 
+    // Type declarations have no executable dependency in the cook realm.
+    std::fs::write(
+        root.join("types.d.ts"),
+        "export interface Point { x: number }\n",
+    )
+    .unwrap();
+    std::fs::write(root.join("data.ts"), r#"
+        import type {Point} from './types.d.ts';
+        export default () => {
+            const point: Point = {x: 7};
+            const shared = {x: point.x};
+            const record = Object.assign(Object.create(null), {z: null, a: false});
+            return {second: shared, first: shared, record, samples: new Float32Array([3, -7, 11]).subarray(1)};
+        };
+    "#).unwrap();
+    let data = value(&run("data.ts", "{}"));
+    assert_eq!(
+        data["data"],
+        serde_json::json!({
+            "first": {"x": 7}, "second": {"x": 7},
+            "record": {"a": false, "z": null}, "samples": [-7, 11]
+        })
+    );
+    std::fs::remove_file(root.join("types.d.ts")).unwrap();
+    assert_eq!(data, value(&run("data.ts", "{}")));
+
     std::fs::write(root.join("mechanisms.ts"), r#"
         import {procgen} from '@origingame/engine/generate';
         export default () => {
@@ -412,6 +438,28 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
         "export default () => eval('2 ** 0.3')",
         "export default async () => [1]",
         "export default () => [Infinity]",
+        "export default () => ({nested: {missing: undefined}})",
+        "export default () => [undefined]",
+        "export default () => ({nested: () => 1})",
+        "export default () => ({nested: Symbol('lost')})",
+        "export default () => ({nested: 1n})",
+        "export default () => ({nested: new Map([['lost', 7]])})",
+        "export default () => ({nested: new Set([7])})",
+        "export default () => ({nested: new (class {x = 7})()})",
+        "export default () => ({nested: Promise.resolve(7)})",
+        "export default () => ({nested: new DataView(new ArrayBuffer(8))})",
+        "export default () => new (class extends Float32Array {})([7])",
+        "export default () => Object.assign(new Float32Array([7]), {lost: 11})",
+        "export default () => ({nested: {[Symbol('lost')]: 7}})",
+        "export default () => ({nested: {get x() {return 7}}})",
+        "export default () => ({nested: {toJSON() {return 7}}})",
+        "export default () => ({nested: Object.defineProperty({}, 'lost', {value: 7})})",
+        "export default () => {const a = {}; a.self = a; return a}",
+        "export default () => Array(2)",
+        "export default () => Object.assign([7], {lost: 11})",
+        "export default () => {if (false) import('./shape.ts'); return 7}",
+        "await Promise.resolve(); export default () => 7",
+        "for await (const x of []) {} export default () => 7",
         "export default () => { while (true) {} }",
     ] {
         std::fs::write(root.join("denied.ts"), code).unwrap();
@@ -423,6 +471,18 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
         );
         assert!(out.stdout.is_empty(), "partial result for {code}");
     }
+    std::fs::write(
+        root.join("denied.ts"),
+        "export default () => ({nested: {missing: undefined}})",
+    )
+    .unwrap();
+    assert!(text(&run("denied.ts", "{}")).contains("denied.ts: Error: $[\"nested\"][\"missing\"]"));
+    std::fs::write(
+        root.join("denied.ts"),
+        "// source position\nexport default () => import('./shape.ts')",
+    )
+    .unwrap();
+    assert!(text(&run("denied.ts", "{}")).contains("denied.ts:2:22: dynamic import"));
     let refused = og()
         .args([
             "script",
@@ -442,6 +502,50 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
     let out = run("../outside.ts", "{}");
     assert!(!out.status.success());
     assert!(text(&out).contains("leaves its input root"));
+
+    // A descriptor is evaluated, never called, in the same closed realm.
+    use og_cook::cook::generator::{Program, Spec};
+    let authored = "import {offset} from './shape.ts'; globalThis.count = (globalThis.count ?? 0) + 1; export default {offset, count: globalThis.count, samples: new Float32Array([3, -7])};";
+    std::fs::write(root.join("value.ts"), authored).unwrap();
+    let first = Program::prepare_value(&root, "value.ts").unwrap();
+    let expected = serde_json::json!({"offset": 5, "count": 1, "samples": [3, -7]});
+    assert_eq!(first.run().unwrap(), expected);
+    assert_eq!(first.run().unwrap(), expected);
+    std::fs::write(root.join("other.ts"), authored).unwrap();
+    assert_eq!(
+        Program::prepare_value(&root, "other.ts")
+            .unwrap()
+            .run()
+            .unwrap(),
+        expected
+    );
+    std::fs::copy(root.join("value.ts"), moved.join("value.ts")).unwrap();
+    assert_eq!(
+        first.key,
+        Program::prepare_value(&moved, "value.ts").unwrap().key
+    );
+    std::fs::write(root.join("shape.ts"), "export const offset = 19;").unwrap();
+    let changed = Program::prepare_value(&root, "value.ts").unwrap();
+    assert_ne!(first.key, changed.key);
+    assert_eq!(changed.run().unwrap()["offset"], 19);
+
+    // Warming the callable cache must not let a function pass as source data.
+    std::fs::write(root.join("call.ts"), "export default () => ({x: 7});").unwrap();
+    let callable = Program::prepare(
+        &root,
+        "",
+        &Spec {
+            script: "call.ts".into(),
+            params: serde_json::json!({}),
+            seed: 0,
+            inputs: Default::default(),
+        },
+    )
+    .unwrap();
+    assert_eq!(callable.run().unwrap(), serde_json::json!({"x": 7}));
+    let data = Program::prepare_value(&root, "call.ts").unwrap();
+    assert_ne!(callable.key, data.key);
+    assert!(data.run().is_err());
 }
 
 /// Generated cells pass through the real map compiler, preserve authored
