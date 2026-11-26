@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# MIT Origin Engine. One drop let go every second and a half; it falls 2.2
+# m, or until it meets something.
+maxParticles 4
+shape point
+rate 0
+burst 0 1
+duration 1.5
+looping true
+lifetime 0.67
+speed 0
+size 0.014
+align velocity 0.035
+gravity 0 -9.8 0
+blend alpha
+color 0.88 0.94 1
+colorOverLife {
+  key 0 1 1 1 0
+  key 0.05 1 1 1 0.85
+  key 1 1 1 1 0.85
+}
+collision 0 0 depth die
+subEmitter death "vfx/cinematic-realism/emitters/drip-plip.ogt" 9 0

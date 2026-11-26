@@ -1,0 +1,64 @@
+type vfx
+version 2
+---
+duration 12
+impact 0
+param mark 1
+emitter "vfx/cinematic-realism/emitters/fireball-small.ogt" {
+  offset 0 0.7 0
+}
+emitter "vfx/cinematic-realism/emitters/smoke-puff.ogt" {
+  offset 0 0.8 0
+}
+emitter "vfx/cinematic-realism/emitters/dust-ring.ogt" {
+  offset 0 0.1 0
+}
+emitter "vfx/cinematic-realism/emitters/debris.ogt" {
+  offset 0 0.15 0
+}
+emitter "vfx/cinematic-realism/emitters/sparks.ogt" {
+  offset 0 0.3 0
+}
+glow {
+  life 0.14
+  offset 0 0.5 0
+  size curve 0 0.8 0.3 1.7 1 1
+  color 2.2 1.1 0.4 0.7
+}
+light {
+  life 0.4
+  offset 0 0.7 0
+  color 1 0.5 0.18
+  intensity curve 0 4 0.15 2.5 1 0
+  distance 5
+}
+shake {
+  trauma 0.25
+}
+decal {
+  at 0.04
+  until 12
+  fade 4
+  when mark
+  texture "vfx/cinematic-realism/textures/scorch.png"
+  normal "vfx/cinematic-realism/textures/scorch-normal.png"
+  size 3 0.8 3
+  roughness 0.96
+  angleFade 80
+  turn 0 360
+}
+decal {
+  at 0.1
+  life 4
+  fade 3.6
+  when mark
+  texture "vfx/cinematic-realism/textures/embers.png"
+  size 1.4 0.8 1.4
+  color 0.06 0.05 0.045 1
+  emissive 3 1.7 0.9
+  angleFade 80
+  turn 0 360
+}
+sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+  playbackRate 0.95 1.05
+}

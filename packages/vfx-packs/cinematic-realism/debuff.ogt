@@ -1,0 +1,47 @@
+type vfx
+version 2
+---
+duration 1.6
+impact 0.2
+trail {
+  life 0.9
+  offset 0 1.9 0
+  orbit 0.45 -1.2
+  rise -1.8
+  width 0.035 0
+  lifetime 0.45
+  effect "vfx/cinematic-realism/tracer-body.ogt"
+  color 1.2 0.5 1.8 1
+}
+trail {
+  life 0.9
+  offset 0 1.9 0
+  rotate 0 180 0
+  orbit 0.45 -1.2
+  rise -1.8
+  width 0.035 0
+  lifetime 0.45
+  effect "vfx/cinematic-realism/tracer-body.ogt"
+  color 1.2 0.5 1.8 1
+}
+emitter "vfx/cinematic-realism/emitters/frost-mist.ogt" {
+  offset 0 0.9 0
+  until 1
+}
+glow {
+  at 0.5
+  life 0.5
+  offset 0 0.3 0
+  size curve 0 0.3 0.4 0.9 1 0.4
+  color 0.9 0.35 1.4 0.45
+}
+light {
+  life 1.2
+  offset 0 0.8 0
+  color 0.7 0.4 1
+  intensity curve 0 0 0.4 1.2 1 0
+  distance 4
+}
+sound "vfx/cinematic-realism/sounds/swell.ogt" {
+  playbackRate 0.55 0.6
+}

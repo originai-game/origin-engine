@@ -28,3 +28,6 @@ light {
 shake {
   trauma 0.12
 }
+sound "vfx/cinematic-realism/sounds/shot.ogt" {
+  playbackRate 0.96 1.04
+}

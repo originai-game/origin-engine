@@ -9,28 +9,53 @@
     "style": "realistic",
     "dim": "3d",
     "category": [
+      "ambient",
+      "beam",
       "buff",
+      "decal",
+      "destruction",
       "explosion",
       "fire",
       "gunfire",
+      "heal",
       "hit-spark",
+      "level-up",
       "magic-impact",
+      "magic-projectile",
+      "marker",
+      "movement",
+      "portal",
+      "projectile",
+      "shield",
+      "slash",
       "smoke",
       "splash",
-      "ui"
+      "status",
+      "ui",
+      "vehicle"
     ],
     "element": [
+      "arcane",
+      "dark",
       "earth",
       "fire",
-      "water"
+      "ice",
+      "lightning",
+      "nature",
+      "water",
+      "wind"
     ]
   },
   "keywords": [
+    "ballistics",
     "cinematic-realism",
+    "decals",
     "exhaust",
     "muted",
     "particles",
     "realistic",
-    "smoke"
+    "smoke",
+    "sound",
+    "vehicles"
   ]
 }

@@ -1,8 +1,9 @@
 type vfx
 version 2
 ---
-duration 4.5
+duration 14
 impact 0
+param mark 1
 emitter "vfx/cinematic-realism/emitters/fireball.ogt" {
   offset 0 1.45 0
 }
@@ -36,4 +37,31 @@ light {
 }
 shake {
   trauma 0.4
+}
+decal {
+  at 0.04
+  until 14
+  fade 5
+  when mark
+  texture "vfx/cinematic-realism/textures/scorch.png"
+  normal "vfx/cinematic-realism/textures/scorch-normal.png"
+  size 8 1.4 8
+  roughness 0.96
+  angleFade 80
+  turn 0 360
+}
+decal {
+  at 0.12
+  life 6
+  fade 5.4
+  when mark
+  texture "vfx/cinematic-realism/textures/embers.png"
+  size 3.6 1.4 3.6
+  color 0.06 0.05 0.045 1
+  emissive 3 1.7 0.9
+  angleFade 80
+  turn 0 360
+}
+sound "vfx/cinematic-realism/sounds/blast.ogt" {
+  playbackRate 0.95 1.05
 }

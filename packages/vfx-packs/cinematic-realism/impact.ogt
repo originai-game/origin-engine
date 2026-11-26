@@ -1,8 +1,9 @@
 type vfx
 version 2
 ---
-duration 1.2
+duration 10
 impact 0
+param mark 1
 emitter "vfx/cinematic-realism/emitters/impact-sparks.ogt" {
 }
 emitter "vfx/cinematic-realism/emitters/impact-dust.ogt" {
@@ -26,4 +27,19 @@ light {
 }
 shake {
   trauma 0.18
+}
+decal {
+  until 10
+  fade 3
+  when mark
+  texture "vfx/cinematic-realism/textures/dent.png"
+  normal "vfx/cinematic-realism/textures/dent-normal.png"
+  normalScale 1.5
+  size 0.14 0.1 0.14
+  roughness 0.5
+  turn 0 360
+}
+sound "vfx/cinematic-realism/sounds/tick.ogt" {
+  volume 0.9
+  playbackRate 1 1.25
 }

@@ -16,6 +16,12 @@ copies to `assets/vfx/<name>/` (hidden files skipped, symlinks refused, an
 existing install never replaced). Its effects name their assets as
 `vfx/<name>/<path>`.
 
+A pack is whole in its directory: nothing it draws or plays needs a line
+in the game. The marks its effects leave (a scorch, a bullet hole, a wet
+patch) are `decal` elements naming textures of the pack (`texture`,
+`normal`), and its sounds are `type sfx` files of the pack, synthesised
+by the cook, which `sound` elements name. A pack ships no recorded audio.
+
 `extension.json`: `format` 1, `kind` `"vfx"`, `name` (lowercase letters,
 digits and `-`, unique in the library: `effekseer-<contributor>`,
 `pixel-scenario`), `version` x.y.z, `description`, no `entry` or `types`,
@@ -55,8 +61,11 @@ Inside the pack, stored by the library and never installed:
 
 - `preview/<effect>.png`: six 960×540 frames in time order, the impact
   frame among them, 3 columns × 2 rows (2880×1080), the effect alone at
-  the origin of a dark stage with the camera placed so its measured core
-  fills the view (`og vfx preview`, below).
+  the origin of a dark stage at dusk, or of a grey one in daylight for an
+  effect that is lit (smoke, dust, debris, water, marks:
+  `preview --stage day --only <those>` after the pack's dusk run), with
+  the camera placed so its measured core fills the view (a mark on the
+  ground is looked down on; `og vfx preview`, below).
 - `preview/<effect>.cost.json`: `{ "format": 1, "engine", "device",
   "peakFrameMs": { "total", "sim", "transparent" }, "peakParticles",
   "draws", "bounds" }`. `total` is the 90th percentile of the effect's GPU frame
@@ -73,16 +82,18 @@ Inside the pack, stored by the library and never installed:
   that lies below its origin; `anchor` is `centre` from a tenth, an effect
   whose origin is inside it, such as a ring or a shield, which the shots
   raise to stand on the ground, and `ground` for one that stands on its
-  origin; `clipped`: it reached past the widest measuring view, so
-  the box is at least this), or null for an effect that draws nothing
-  over black and for a `vfx2d`.
+  origin, as every effect with a `decal` does (the decal lands on the
+  surface there); `clipped`: it reached past the widest measuring view, so
+  the box is at least this; an effect of decals alone has a flat box,
+  what it left on a lit ground), or null for an effect that draws nothing
+  and for a `vfx2d`.
 - `preview/cover.png`: one 960×540 frame, the search thumbnail.
 
 ## 4. Making a pack
 
 ```sh
 python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json>   # assets.json, catalog fields
-python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
+python3 scripts/vfx-pack.py preview <pack> [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
 ```
 
 The spec names the provenance of each file by glob and each effect's

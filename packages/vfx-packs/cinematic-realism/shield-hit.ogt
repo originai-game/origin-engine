@@ -1,0 +1,48 @@
+type vfx
+version 2
+---
+duration 0.8
+impact 0
+mesh ring {
+  life 0.45
+  offset 0 0.02 0
+  rotate -90 0 0
+  segments 48
+  inner 0.72
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  effect "vfx/cinematic-realism/shield-ripple.ogt"
+  scale curve 0 0.1 0.5 0.5 1 0.7
+  color 0.5 1.1 2.6
+}
+mesh ring {
+  at 0.05
+  life 0.5
+  offset 0 0.02 0
+  rotate -90 0 0
+  segments 48
+  inner 0.85
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  effect "vfx/cinematic-realism/shield-ripple.ogt"
+  scale curve 0 0.05 0.5 0.3 1 0.45
+  color 0.4 0.9 2.2
+}
+emitter "vfx/cinematic-realism/emitters/shield-flecks.ogt" {
+  offset 0 0.02 0
+}
+glow {
+  life 0.12
+  offset 0 0.05 0
+  size curve 0 0.5 1 0.2
+  color 0.8 1.6 3.2 0.7
+}
+light {
+  life 0.2
+  offset 0 0.3 0
+  color 0.4 0.7 1
+  intensity curve 0 1.5 1 0
+  distance 3
+}
+sound "vfx/cinematic-realism/sounds/zap.ogt" {
+  volume 0.6
+  playbackRate 1.1 1.3
+}

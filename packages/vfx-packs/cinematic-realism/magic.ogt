@@ -18,3 +18,7 @@ light {
   intensity curve 0 0 0.2 0.3 1 0
   distance 2
 }
+sound "vfx/cinematic-realism/sounds/swell.ogt" {
+  volume 0.7
+  playbackRate 1.2 1.3
+}

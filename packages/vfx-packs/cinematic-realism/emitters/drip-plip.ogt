@@ -1,0 +1,17 @@
+type particles
+version 1
+---
+# MIT Origin Engine. The crown of tiny drops where a drip lands.
+maxParticles 40
+shape cone 55 0.006
+rate 0
+lifetime 0.16 0.32
+speed 0.5 1.2
+size 0.006 0.012
+gravity 0 -9.8 0
+blend alpha
+color 0.88 0.94 1
+colorOverLife {
+  key 0 1 1 1 0.8
+  key 1 1 1 1 0
+}

@@ -1,0 +1,64 @@
+type vfx
+version 2
+---
+duration 0.6
+loop true
+beam {
+  at 0
+  life 0.06
+  offset -0.2 0.5 0
+  to 0.3 0.7 0.1
+  segments 10
+  jitter 0.05
+  width 0.022
+  effect "vfx/cinematic-realism/beam.ogt"
+  color 2 3 5 1
+}
+beam {
+  at 0.12
+  life 0.06
+  offset 0.2 1.4 0
+  to -0.35 -0.6 0.1
+  segments 10
+  jitter 0.05
+  width 0.022
+  effect "vfx/cinematic-realism/beam.ogt"
+  color 2 3 5 1
+}
+beam {
+  at 0.3
+  life 0.07
+  offset 0 0.3 0.15
+  to 0.1 1.1 -0.25
+  segments 10
+  jitter 0.05
+  width 0.022
+  effect "vfx/cinematic-realism/beam.ogt"
+  color 2 3 5 1
+}
+beam {
+  at 0.44
+  life 0.05
+  offset -0.15 1.5 0
+  to 0.3 -0.5 0
+  segments 10
+  jitter 0.05
+  width 0.018
+  effect "vfx/cinematic-realism/beam.ogt"
+  color 2 3 5 1
+}
+emitter "vfx/cinematic-realism/emitters/shield-flecks.ogt" {
+  offset 0 1 0
+  rotate 90 0 0
+}
+light {
+  life 0.6
+  offset 0 1 0
+  color 0.6 0.8 1
+  intensity curve 0 2 0.1 0.2 0.2 1.6 0.35 0.2 0.5 1.8 0.6 0.3 0.75 1.4 1 0.4
+  distance 4
+}
+sound "vfx/cinematic-realism/sounds/zap.ogt" {
+  volume 0.3
+  playbackRate 1.4 1.8
+}

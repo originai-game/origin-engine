@@ -1,0 +1,31 @@
+type vfx
+version 2
+---
+duration 5
+impact 0
+emitter "vfx/cinematic-realism/emitters/fireball-small.ogt" {
+}
+emitter "vfx/cinematic-realism/emitters/flak-smoke.ogt" {
+  at 0.08
+}
+emitter "vfx/cinematic-realism/emitters/flak-sparks.ogt" {
+}
+emitter "vfx/cinematic-realism/emitters/flak-streamers.ogt" {
+}
+glow {
+  life 0.12
+  size curve 0 0.8 0.3 1.8 1 1
+  color 2.2 1.2 0.5 0.7
+}
+light {
+  life 0.3
+  color 1 0.55 0.2
+  intensity curve 0 4 1 0
+  distance 6
+}
+shake {
+  trauma 0.2
+}
+sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+  playbackRate 1.15 1.3
+}

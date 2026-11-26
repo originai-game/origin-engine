@@ -10,7 +10,7 @@ in `packages/engine/extensions/` instead; a pack is in one place, never both.
 
 | Pack | Effects |
 |---|---|
-| `cinematic-realism` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, fire/exhaust, ui); cinematic-realism and muted |
+| `cinematic-realism` | 89 (weapons and projectiles, impacts by material with their marks, explosions, vehicles, fire, smoke and water, character states, interaction and destruction, magic, ambience, ui; one-shot effects carry a synthesised sound); cinematic-realism and muted |
 | `geometric` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, ambient/trail, ui); minimal-geometric and faceted-low-poly |
 | `effekseer-andrewfm01` | 15 (beam, explosion, fire, hit-spark, magic-impact, magic-projectile, portal, smoke, ui) |
 | `effekseer-effekseer01` | 15 (basic, beam) |

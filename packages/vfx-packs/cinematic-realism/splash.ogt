@@ -49,3 +49,6 @@ mesh ring {
   color 0.8 0.88 0.95
   blend alpha
 }
+sound "vfx/cinematic-realism/sounds/splash.ogt" {
+  playbackRate 0.9 1.1
+}
