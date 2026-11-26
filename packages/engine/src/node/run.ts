@@ -70,7 +70,10 @@
 //   within their component set, handle fields and every module's state
 //   block (its per-entity form) read through that pairing, the allocator
 //   and the clock left out (og.Time and
-//   og.TimeScale.elapsed: a restart cannot turn it back). --json's
+//   og.TimeScale.elapsed: a restart cannot turn it back), as are og.audio's
+//   own counters (the mixer's command log and voice ids, the audio events'
+//   random stream and play counts), and of each event queue only what the
+//   compared tick sent is compared. --json's
 //   `restart` is the result; a world that differs, or an extra or missing
 //   entity, fails the run, naming the first difference by entity path.
 // - --json's `timings`: each frame's step + render milliseconds (p50, p95)
@@ -593,7 +596,19 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     };
     let startWorld: string | null = null;
     // The clock: og.Time and og.TimeScale's elapsed (its scaled elapsed time); scale and hitStop are the game's.
-    const restartIgnore = JSON.stringify({ "og.Time": [], "og.TimeScale": ["elapsed"] });
+    // The mixer's own counters, as the allocator: og.audio's command log and voice ids, the audio events'
+    // random stream and play counts. og.audio writes them and keeps them across a restart; no game can turn them back.
+    const restartIgnore = JSON.stringify({
+      "og.Time": [],
+      "og.TimeScale": ["elapsed"],
+      "og.AudioStream": ["hash", "commands", "nextVoice"],
+      "og.AudioMix": ["rng"],
+      "og.AudioPlayback": ["voice"],
+      "og.AudioEvent": ["played", "last"],
+      "og.AudioEventVoice": ["play"],
+      "og.SoundStarted": ["voice"],
+      "og.SoundEnded": ["voice"],
+    });
     /** The world now against the start's, structurally (og-net's restart_diff): entities paired in spawn order, handles through the pairing. */
     const checkRestart = (tick: number): Restart => {
       type Fields = Array<{ field: string; start: unknown; now: unknown }>;
