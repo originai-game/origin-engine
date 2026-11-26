@@ -8,6 +8,147 @@ use og_core::reflect::source::typescript;
 use serde_json::json;
 
 #[test]
+fn bake_and_localization_author_contracts() {
+    let nav = json!({"scene":{"$ogRef":"base/scene/world"},"agents":[{}, {"name":"small","radius":0.2}],
+        "cellSize":0.25,"cellHeight":0.1,"tileSize":32.5,
+        "boxes":[{"center":[1,2,3],"size":[4,1,2]}],
+        "models":[{"model":{"$ogRef":"base/model/gate"},"transform":{"position":[1,2,3]}}],
+        "terrains":[{"terrain":{"$ogRef":"base/terrain/north"},"step":2}],
+        "bounds":{"min":[-10,-1,-20],"max":[15,5,25]},
+        "areas":[{"id":1,"shape":{"kind":"box","yaw":0.3}},
+            {"id":2,"shape":{"kind":"cylinder","radius":2}},
+            {"id":3,"shape":{"kind":"convex","points":[[0,0],[2,0],[0,3]],"bottom":-1,"top":2}}],
+        "links":[{"id":1,"start":[1,2,3],"end":[5,6,7],"kind":"door","traverse":"game"}]});
+    let lightmap = json!({"scene":{"$ogRef":"base/scene/world"},"sceneHash":"ffffffffffffffff","pages":"world.ktx2",
+        "samples":256,"seconds":12.5,"models":[{"entity":"Gate","asset":{"$ogRef":"base/model/gate"},"hash":"0123456789abcdef",
+            "parts":[{"vertices":3,"xref":[0,1,2],"indices":[0,1,2],"uv":[[0,0,0],[1,0,0],[0,1,0]]}]}],
+        "volumes":[{"entity":"Probe","min":[-1,0,-2],"max":[1,3,2],"counts":[1,1,1],"probes":[[[1,2,3,4],[5,6,7,8],[9,10,11,12]]]}]});
+    let strings = json!({"locale":"ar","base":true,"direction":"rtl","fallback":"en",
+        "fonts":[{"$ogRef":"base/font/arabic"}],"entries":{"items":"{count, plural, one {One item} other {{count} items}}"}});
+    let font = json!({"kind":"font","name":"Arabic","languages":["ar"],"scripts":["Arab"],
+        "faces":[{"$ogRef":"base/font/arabic"}],"hyphenation":["ar.hyph"]});
+    let mut ts = String::new();
+    for (kind, name, value) in [
+        ("navmesh", "Navmesh", nav),
+        ("lightmap", "Lightmap", lightmap),
+        ("strings", "Strings", strings),
+        ("font-extension", "FontExtension", font),
+    ] {
+        let schema = (source_schemas::get(kind).unwrap().schema)();
+        schema
+            .check(&value)
+            .unwrap_or_else(|e| panic!("{kind}: {e}"));
+        ts.push_str(&typescript(schema.document(), name).unwrap());
+        ts.push_str(&format!("const value{name}: {name} = {value};\n"));
+    }
+    for (kind, wrong) in [
+        ("navmesh", json!({"cellSize":0})),
+        ("navmesh", json!({"agents":[{"name":"has/slash"}]})),
+        ("navmesh", json!({"models":[{"model":34}]})),
+        (
+            "navmesh",
+            json!({"models":[{"model":{"$ogRef":"base/model/a"},"transform":{"typo":3}}]}),
+        ),
+        (
+            "navmesh",
+            json!({"areas":[{"id":0,"shape":{"kind":"box"}}]}),
+        ),
+        (
+            "navmesh",
+            json!({"areas":[{"id":2,"shape":{"kind":"convex","points":[[0,0],[2,0]]}}]}),
+        ),
+        (
+            "navmesh",
+            json!({"areas":[{"id":2,"shape":{"kind":"box","radius":2}}]}),
+        ),
+        ("navmesh", json!({"links":[{"id":1,"start":[0,0,0]}]})),
+        (
+            "navmesh",
+            json!({"links":[{"id":1,"start":[0,0,0],"end":[1,2,3],"traverse":"automatic"}]}),
+        ),
+        (
+            "lightmap",
+            json!({"scene":{"$ogRef":"base/scene/a"},"sceneHash":34,"pages":"a.ktx2"}),
+        ),
+        (
+            "lightmap",
+            json!({"scene":{"$ogRef":"base/scene/a"},"sceneHash":"10000000000000000","pages":"a.ktx2"}),
+        ),
+        (
+            "lightmap",
+            json!({"scene":{"$ogRef":"base/scene/a"},"sceneHash":"zz","pages":"a.ktx2"}),
+        ),
+        (
+            "lightmap",
+            json!({"scene":{"$ogRef":"base/scene/a"},"sceneHash":"ab","pages":"a.ktx2","models":[{"entity":"x","asset":{"$ogRef":"base/model/a"},"hash":"ab","parts":[{"uv":[[0,1]]}]}]}),
+        ),
+        (
+            "lightmap",
+            json!({"scene":{"$ogRef":"base/scene/a"},"sceneHash":"ab","pages":"a.ktx2","seconds":1e39}),
+        ),
+        ("strings", json!({"locale":"en","entries":{"x":4}})),
+        (
+            "strings",
+            json!({"locale":"en","entries":{},"direction":"auto"}),
+        ),
+        (
+            "strings",
+            json!({"locale":"en","entries":{},"fonts":["fonts/body.ttf"]}),
+        ),
+        (
+            "font-extension",
+            json!({"kind":"sound","name":"x","faces":[{"$ogRef":"base/font/a"}]}),
+        ),
+        (
+            "font-extension",
+            json!({"kind":"font","name":"x","faces":[]}),
+        ),
+    ] {
+        assert!(
+            (source_schemas::get(kind).unwrap().schema)()
+                .check(&wrong)
+                .is_err(),
+            "{kind} accepted {wrong}"
+        );
+    }
+    ts.push_str(r#"
+const minimal: Navmesh = {boxes:[{}]};
+const scriptOnly: FontExtension = {kind:"font",name:"Emoji",scripts:["Zsye"],faces:[{$ogRef:"base/font/emoji"}]};
+// @ts-expect-error Area variants cannot mix branch keys.
+const mixed: Navmesh = {areas:[{id:1,shape:{kind:"box",radius:2}}]};
+// @ts-expect-error Navigation uses actual reflected Transform fields.
+const transform: Navmesh = {models:[{model:{$ogRef:"base/model/a"},transform:{typo:1}}]};
+// @ts-expect-error Convex points are x/z pairs, not arbitrary vectors.
+const points: Navmesh = {areas:[{id:1,shape:{kind:"convex",points:[[0,1,2],[0,2,3],[0,3,4]]}}]};
+// @ts-expect-error Hashes are lossless hex text, not numeric handles.
+const hash: Lightmap = {scene:{$ogRef:"base/scene/a"},sceneHash:42,pages:"a.ktx2"};
+// @ts-expect-error A lightmap UV includes its page.
+const uv: Lightmap = {scene:{$ogRef:"base/scene/a"},sceneHash:"ab",pages:"a.ktx2",models:[{entity:"x",asset:{$ogRef:"base/model/a"},hash:"ab",parts:[{uv:[[0,1]]}]}]};
+// @ts-expect-error Message values are ICU source strings.
+const message: Strings = {locale:"en",entries:{x:{message:"Hi"}}};
+// @ts-expect-error Locale direction uses the explicit domain vocabulary.
+const direction: Strings = {locale:"ar",entries:{},direction:"auto"};
+// @ts-expect-error Font faces are content references, not raw paths.
+const face: FontExtension = {kind:"font",name:"x",faces:["body.ttf"]};
+// @ts-expect-error Nested derived coefficients stay readonly.
+valueLightmap.volumes[0].probes[0][1][2] = 0;
+"#);
+    let dir = temp::TempDir::new("bake-locale-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .expect("pinned tsrs checker");
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
 fn contextual_world_author_contracts() {
     use og_cook::cook::source_schemas::world::{
         scene::{PrefabInput, SceneInput},
