@@ -8,7 +8,8 @@
 //     g: ridged C2 periodic gradient noise at 4, 8 and 16 cells (cirrus fibres)
 //     b: inverted Worley fBm at 8, 16 and 32 cells (cirrus patches)
 //     a: smooth-minimum Worley wisps for ragged cloud undersides
-//   detail, 64³ rgba16float (one tile a thirty-second of the scale):
+//   detail, 64³ rgba16float (read on two lattices of the field, some 128 and
+//   79 tiles to its period: clouds_shape.wgsl cloud_detail_at):
 //     r: fine multi-octave Worley billows
 //     g: divergence-free curl-warped billows (Nubis³ wispy edges)
 //     b: inverted Worley web at 8 and 16 cells

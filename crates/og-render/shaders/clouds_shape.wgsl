@@ -194,6 +194,51 @@ fn cloud_detail_share() -> f32 {
   return 0.38 + 0.24 * clamp((frame.clouds[2].w - 0.35) / 0.65, 0.0, 1.0);
 }
 
+// The detail's two lattices of the field: each (a, b, v), a whole-number
+// vector of the detail volume's tiles across one period of the field
+// (cloud_noise_at): a tiles along the volume's x and b along its y for a
+// period along the world's x, (-b, a) for one along z, v up, so the volume
+// lies turned by atan(b / a) about the vertical, sqrt(a² + b²) tiles to the
+// period, and still wraps where the field does. 128.1 tiles turned 30° and
+// 78.8 turned 75°: their billows 1.6 times apart in size (the golden
+// ratio, which no low multiples of the two approach), turned 45° against
+// each other (the furthest two square lattices lie apart), and as Gaussian
+// integers (111 + 64i, 21 + 76i) of coprime norms (16417 and 6217, both
+// prime), so the two together repeat only where the field does.
+const CLOUD_DETAIL_FINE: vec3<f32> = vec3<f32>(111.0, 64.0, 128.0);
+const CLOUD_DETAIL_WIDE: vec3<f32> = vec3<f32>(21.0, 76.0, 79.0);
+// The wider lattice's share of the detail: its billows carry most of the
+// relief and the finer ones roughen them.
+const CLOUD_DETAIL_WIDE_SHARE: f32 = 0.62;
+
+// The detail volume on the lattice `m` at `p` (the field's point over the
+// scale: x, z, height), read over `texel` metres.
+fn cloud_detail_on(m: vec3<f32>, p: vec3<f32>, texel: f32) -> vec4<f32> {
+  let q = vec3<f32>(m.x * p.x - m.y * p.y, m.y * p.x + m.x * p.y, m.z * p.z) * 0.25;
+  // A texel of the volume is the scale over 16 times the lattice's tiles
+  // to the period (64 texels a tile, four scales a period).
+  let mip = clamp(log2(max(texel / frame.clouds[1].w * 16.0 * length(m.xy), 1.0)), 0.0, 1.75);
+  return textureSampleLevel(cloud_detail, cloud_sampler, q, mip);
+}
+
+// The detail at `p` (as cloud_detail_on's): the volume on its two lattices,
+// weighed and spread back to one read's variance about its middle (two
+// unrelated reads' weighted mean varies by the root of the weights'
+// squares: 0.73 of one).
+//
+// One read of the volume, a tile a thirty-second of the scale along the
+// world's axes, drew the same four-by-four billows in every tile: over a
+// deck seen from above, where the detail is the surface's relief out to
+// the horizon, rows of equal bumps, a grid (turned as one lattice, the same
+// grid turned). A volume that tiles can only repeat; two of them that
+// share no period do not, and their billows are of two sizes.
+fn cloud_detail_at(p: vec3<f32>, texel: f32) -> vec4<f32> {
+  let wide = CLOUD_DETAIL_WIDE_SHARE;
+  let fine = 1.0 - wide;
+  let d = cloud_detail_on(CLOUD_DETAIL_WIDE, p, texel) * wide + cloud_detail_on(CLOUD_DETAIL_FINE, p, texel) * fine;
+  return clamp(vec4<f32>(0.5) + (d - vec4<f32>(0.5)) / sqrt(wide * wide + fine * fine), vec4<f32>(0.0), vec4<f32>(1.0));
+}
+
 // The cloud at the field's point `at`, `hf` of the way up the layer in the
 // column `col`, of the dimensional profile `profile` there:
 //   x: extinction per metre
@@ -215,9 +260,8 @@ fn cloud_density_from(at: vec3<f32>, col: CloudColumn, hf: f32, profile: f32, te
   let detail_fade = 1.0 - smoothstep(0.45, 1.6, detail_ratio);
   if (fine && detail_fade > 0.01 && profile - most < edge * (1.0 - most)) {
     let lean = cloud_wind_lean(up);
-    let dq = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w) * 32.0;
-    let dmip = clamp(log2(max(texel / c[1].w * 2048.0, 1.0)), 0.0, 1.75);
-    let d = textureSampleLevel(cloud_detail, cloud_sampler, dq, dmip);
+    let dp = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w);
+    let d = cloud_detail_at(dp, texel);
     let web = clamp((d.b - 0.24) / 0.49, 0.0, 1.0);
     // Curl-warped billows (d.g) dominate wispy flanks & mid-heights; crisp
     // cauliflower billows (d.r) define upper domes; soft web erodes bases.
