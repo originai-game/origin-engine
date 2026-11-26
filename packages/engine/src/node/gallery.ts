@@ -25,7 +25,8 @@ declare const Bun: {
 
 const here = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const pkg = resolve(here, "../..");
-const repo = resolve(pkg, "../..");
+/** The checkout whose templates/ the gallery draws from: OG_REPO when the package runs outside it (a release's previews). */
+const repo = process.env.OG_REPO ? resolve(process.env.OG_REPO) : resolve(pkg, "../..");
 const ui = join(pkg, "src", "ui");
 const sheets = join(here, "gallery-sheets");
 

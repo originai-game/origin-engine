@@ -110,7 +110,7 @@ function toWebp(frame: string, preview: string): boolean {
   mkdirSync(join(preview, ".."), { recursive: true });
   const m = spawnSync(magick, [frame, "-resize", "960x540^", "-gravity", "center", "-extent", "960x540", "-quality", "82", "-define", "webp:method=6", preview], { encoding: "utf8" });
   if (m.status !== 0) {
-    console.log(`${preview}: magick failed: ${m.stderr.trim()}`);
+    console.log(`${preview}: magick failed: ${m.error?.message ?? m.stderr.trim()}`);
     return false;
   }
   console.log(`  ${preview}`);
@@ -121,7 +121,7 @@ const env = gpu ? { ...process.env, OG_RENDERER: "hardware" } : process.env;
 function drawUi(slot: Slot, file: string): string | null {
   const at = join(repo, "target/look-previews", `ui@${slot.pack}`);
   rmSync(at, { recursive: true, force: true });
-  const run = spawnSync("bun", [join(engine, "src/node/gallery.ts"), "--only", "panels/item-card · default", "--packs", slot.pack!, "--out", at, "--og", og], { encoding: "utf8", timeout: 600_000, env: { ...env, OG_ENGINE_PACKAGE: engine } });
+  const run = spawnSync("bun", [join(engine, "src/node/gallery.ts"), "--only", "panels/item-card · default", "--packs", slot.pack!, "--out", at, "--og", og], { encoding: "utf8", timeout: 600_000, env: { ...env, OG_ENGINE_PACKAGE: engine, OG_REPO: repo } });
   const frame = join(at, slot.pack!, "0000.png");
   if (run.status !== 0 || !existsSync(frame)) {
     console.log(`${slot.path}: the gallery failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
