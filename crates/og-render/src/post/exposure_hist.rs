@@ -1,7 +1,7 @@
-//! Compute 256-bin trimmed luminance histogram auto-exposure
+//! Compute 256-bin luminance histogram auto-exposure
 //! (`exposure_hist.wgsl`): replaces the 3-pass fragment meter + reductions
-//! with a single compute pass (histogram + trimmed average) that discards
-//! darkest 10% and brightest 5% outliers.
+//! with a single compute pass (histogram + its mean over every bin, the
+//! fragment meter's mean: nothing is trimmed).
 
 use super::fsr::{self, B};
 use crate::deferred::Deferred;
