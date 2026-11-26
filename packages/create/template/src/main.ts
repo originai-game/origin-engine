@@ -7,7 +7,7 @@ export default og.game({
   systems: [Shell],
   start(world) {
     // Initialize the game's world here, before startShell captures New game's reset point.
-    // Menu art: setShellArt(world, { keyArt, logo, liveScene }) with og.load.texture handles.
+    // Menu art: setShellArt(world, { keyArt, logo }) with og.load.texture handles.
     startShell(world);
   },
   ui: mountShell,

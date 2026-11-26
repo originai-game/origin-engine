@@ -31,8 +31,8 @@ translations (otherwise English for the author to translate), and selects
 the first requested language. Settings apply immediately and persist through
 og.platform; progress uses the `progress` slot. Start initializes gameplay
 before startShell captures the New game reset point. Rebuilding the entire
-screen in View/Text is unnecessary: change strings, and give the menus key art,
-a logo or the live scene with `setShellArt`. See the start guide §1/§2 for the author workflow.
+screen in View/Text is unnecessary: change strings, and give the title and
+main menu key art and a logo with `setShellArt`. See the start guide §1/§2 for the author workflow.
 
 ## Options and return value
 

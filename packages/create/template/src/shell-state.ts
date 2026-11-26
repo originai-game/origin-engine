@@ -23,8 +23,8 @@ export function shellStores(world: World) {
     played: scope.writable("played", 0),
     // The saved slot's meta, for Continue and the slot row.
     slot: scope.writable("slot", { played: 0 }),
-    // What menus stand on: key art first, else the live scene, else the dark ground.
-    art: scope.writable("art", { keyArt: 0, logo: 0, liveScene: false }),
+    // The title's and main menu's key art and logo (0: none).
+    art: scope.writable("art", { keyArt: 0, logo: 0 }),
   };
 }
 
@@ -41,12 +41,11 @@ function must<T>(result: Result<T>): T {
 
 /**
  * Give the menus their art, in GameDesc.start before startShell: `keyArt` and
- * `logo` are og.load.texture handles (0: none); `liveScene` shows the game's
- * own scene behind the title and main menu when there is no key art. Without
- * either, menus stand on the dark ground. Paused menus always show the
- * frozen game frame.
+ * `logo` are og.load.texture handles (0: none). Without key art the title and
+ * main menu stand on whatever the game draws, its scene included; paused
+ * menus stand on the frozen game frame.
  */
-export function setShellArt(world: World, art: { keyArt?: number; logo?: number; liveScene?: boolean }) {
+export function setShellArt(world: World, art: { keyArt?: number; logo?: number }) {
   const s = shellStores(world);
   must(s.art.set({ ...s.scope.get(s.art), ...art }));
 }

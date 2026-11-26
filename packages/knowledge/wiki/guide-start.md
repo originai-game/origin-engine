@@ -13,17 +13,15 @@ with a connected UI shell for every genre and view: `project.ogt`,
 `src/shell-locales.ts`, string tables, `tests/smoke.og.ts`, `package.json`
 and `tsconfig.json`. Title, main menu, pause, settings and save/load are
 built-in screens with working navigation, world-snapshot saves and
-persistent volume, text size, motion and language settings. Every page is
-dark and fades in as it opens. Title and main menu stand on the game's key art, else its live scene, else a dark ground;
-pause, settings and save/load during play stand on the frozen game frame,
-blurred or dimmed. There is no
-sample level, gameplay, rule set or balance to adapt.
+persistent volume, text size, motion and language settings. The shell is
+only built-in screens and controls, in the dark scheme: title and main menu
+stand on the game's key art, else on whatever the game draws; pause,
+settings and save/load stand on the frozen game frame. There is no sample
+level, gameplay, rule set or balance to adapt.
 
 Keep this shell and customize it first: change copy in `assets/strings/`,
 load key art and a logo in `start` and pass their texture handles to
-`setShellArt(world, { keyArt, logo })` before `startShell`, or
-`setShellArt(world, { liveScene: true })` once the scene is worth showing
-behind the menus. Layout and focus come from the built-in screens; avoid
+`setShellArt(world, { keyArt, logo })` before `startShell`. Layout and focus come from the built-in screens; avoid
 rebuilding entire screens with View/Text. Add game-specific screens beside
 them. Initialize gameplay before `startShell(world)` in `src/main.ts`:
 that call captures the New game reset point. Bind gameplay systems to

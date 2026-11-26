@@ -1,9 +1,9 @@
-// Customize copy in assets/strings/; give the menus key art, a logo or the live scene with setShellArt.
+// Customize copy in assets/strings/; give the title and main menu key art and a logo with setShellArt.
 // Keep the built-in screens: they supply responsive layout, focus and input semantics.
 import { og, type World, type Texture } from "@origingame/engine";
 import { View, Text, Show, mount, useStore, t, formatDuration } from "@origingame/engine/ui";
 import { Button } from "@origingame/engine/ui/controls/button.tsx";
-import { Art } from "@origingame/engine/ui/controls/art.tsx";
+import { ToastStack } from "@origingame/engine/ui/controls/toast.tsx";
 import { TitleScreen } from "@origingame/engine/ui/screens/title.tsx";
 import { MainMenuScreen } from "@origingame/engine/ui/screens/main-menu.tsx";
 import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
@@ -13,51 +13,30 @@ import { shellConfig } from "./shell-config.ts";
 import { shellStores, shellReset, sendShell } from "./shell-state.ts";
 import "./shell-locales.ts";
 
-/** The dark ground menus stand on when the game gives no key art and no live scene: night falling into the pack's accent glow at the horizon. */
-function Backdrop() {
-  return <View class="absolute inset-0 scheme-dark bg-bg pointer-events-none">
-    <View class="absolute inset-0 bg-linear-to-b from-surface-raised via-surface via-45% to-bg" />
-    <View class="absolute -inset-x-1/4 -bottom-1/3 h-2/3 bg-radial from-accent via-accent-soft via-25% to-transparent to-70% opacity-dim" />
-    <View class="absolute -inset-x-1/4 -top-1/3 h-2/3 bg-radial from-surface-hover to-transparent to-70%" />
-  </View>;
-}
-
 export function mountShell(world: World) {
   const stores = shellStores(world);
   shellReset(world);
   mount(world, () => {
     const view = useStore(stores.view), saved = useStore(stores.saved);
-    const settings = useStore(stores.settings), notice = useStore(stores.notice);
+    const settings = useStore(stores.settings);
     const played = useStore(stores.played), slot = useStore(stores.slot);
     // Language tags as their own names (English, 中文); the setting keeps the tag.
     const names = shellConfig.languageNames as Record<string, string>;
     const tagOf = (name: string) => shellConfig.lang.find((l) => names[l] === name) ?? name;
     const send = (action: string, value = "") => sendShell(world, action, value);
-    const art = useStore(stores.art), back = useStore(stores.back);
+    const art = useStore(stores.art);
     const keyArt = () => art().keyArt as Texture | 0;
-    // Before play the menus stand on key art, the live scene or the dark
-    // ground; once a session started they stand on its frozen frame.
-    const beforePlay = () => view() === "title" || view() === "menu" || (view() === "settings" && back() === "menu");
-    const identity = () => ({ keyArt: 0 as const, logo: art().logo as Texture | 0, name: shellConfig.name, version: "" });
-    // Every page is dark, the built-in components in the theme's dark
-    // tokens over the game, and arrives the same way: it fades up and settles.
-    const page = "absolute inset-0 transition duration-slow ease-out starting:opacity-0 starting:translate-y-2";
+    const identity = () => ({ keyArt: keyArt(), logo: art().logo as Texture | 0, name: shellConfig.name, version: "" });
+    // Only built-in screens and controls: each brings its own ground, motion
+    // and focus. The pages are dark over the game's frame or key art.
     return <View class="absolute inset-0 overflow-hidden scheme-dark" focusGroup="wrap" focusMemory label={shellConfig.name}>
-      <Show when={beforePlay() && view() !== "title" && keyArt() !== 0}>
-        <Art class="absolute object-cover inset-0 size-full pointer-events-none" kind="keyArt" src={keyArt()} />
-      </Show>
-      <Show when={beforePlay() && view() !== "title" && keyArt() === 0 && !art().liveScene}><Backdrop /></Show>
-      <Show when={!beforePlay() && view() !== "playing"}>
-        <View class={`absolute inset-0 pointer-events-none bg-scrim transition-opacity duration-slow ease-out starting:opacity-0 ${view() === "save" || view() === "load" ? "" : "backdrop-blur-regular"}`} />
-      </Show>
       <Show when={view() === "title"}>
         <View class="absolute inset-0" modal>
-          <TitleScreen {...identity()} keyArt={keyArt()} legal="" onStart={() => send("menu")}
-            background={() => <Show when={keyArt() === 0 && !art().liveScene}><Backdrop /></Show>} />
+          <TitleScreen {...identity()} legal="" onStart={() => send("menu")} />
         </View>
       </Show>
       <Show when={view() === "menu"}>
-        <View class={page} modal>
+        <View class="absolute inset-0" modal>
           <MainMenuScreen {...identity()} canContinue={saved()} saveLine={t("screen.pause.Played", { played: formatDuration(slot().played) })} news=""
             onNewGame={() => send("new")} onContinue={() => send("load")}
             onSettings={() => send("settings")} />
@@ -69,7 +48,7 @@ export function mountShell(world: World) {
         </View>
       </Show>
       <Show when={view() === "paused"}>
-        <View class={page} modal>
+        <View class="absolute inset-0" modal>
           <PauseScreen objective="" played={played()} canSave={og.platform.supports(world, "store.set")}
             onResume={() => send("resume")} onSettings={() => send("settings")}
             onSave={() => send("save-menu")} onLoad={() => send("load-menu")}
@@ -77,7 +56,7 @@ export function mountShell(world: World) {
         </View>
       </Show>
       <Show when={view() === "settings"}>
-        <View class={page} modal>
+        <View class="absolute inset-0" modal>
           <SettingsScreen note="" pages={[{ id: "general", name: t("shell.general") }]} page="general" pending={false}
             entries={[
               { id: "volume", page: "general", name: t("shell.volume"), description: t("shell.volume.about"), kind: "range", value: settings().volume, min: 0, max: 1, step: 0.05 },
@@ -90,16 +69,18 @@ export function mountShell(world: World) {
         </View>
       </Show>
       <Show when={view() === "save" || view() === "load"}>
-        <View class={page} modal>
+        <View class="absolute inset-0" modal>
           <SaveLoadScreen mode={view()} selected="progress"
             slots={[{ id: "progress", title: shellConfig.name, place: "", played: slot().played, date: "", auto: false, empty: !saved(), thumb: keyArt() }]}
             onBack={() => send("back")} onSelect={() => {}}
             onSave={() => send("save")} onLoad={() => send("load")} />
         </View>
       </Show>
-      <Show when={notice() !== ""}>
-        <View class="absolute bottom-4 inset-x-4 items-center pointer-events-none"><Text class="bg-bg text-fg px-4 py-2 rounded-panel">{t(notice())}</Text></View>
-      </Show>
     </View>;
   }, {}, { layer: "menu" });
+  mount(world, () => {
+    const notice = useStore(stores.notice);
+    return <ToastStack class="scheme-dark" toasts={notice() === "" ? [] : [{ id: notice(), title: t(notice()), tone: notice() === "shell.failed" ? "danger" : undefined }]}
+      onDismiss={() => sendShell(world, "dismiss")} />;
+  }, {}, { layer: "toast" });
 }
