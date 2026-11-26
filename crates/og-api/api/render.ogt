@@ -888,6 +888,7 @@ module render {
     field volumetricFog bool "A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even." {
       default true
     }
+    field skyCaptureSliced bool "Spread live sky capture and filtering over 13 rendered frames instead of completing each frame. Low sets true; medium, high and the default keep false so terrain ambient and reflections follow the current sky. Slicing lowers peak GPU cost but retains older lighting during fast sky changes."
     field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {
       default true
     }

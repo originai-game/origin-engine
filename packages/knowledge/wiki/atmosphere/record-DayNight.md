@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.DayNight` (resource)
 
-A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
+A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
 
 See `render §7`.
 
@@ -21,13 +21,12 @@ Token `og.DayNight`, registered under the schema name `og.DayNight`; its value t
 | `azimuth` | `number` | `90` | — | `deg` | tunable | The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90. |
 | `lightIntensity` | `number` | `1` | 0 … 10 | — | tunable | A multiplier on the sun and moon light. |
 | `tintFog` | `boolean` | `true` | — | — | — | Turn the og.Fog colour towards the horizon's. |
-| `step` | `number` | `10` | 1 … 120 | — | tunable | Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn). |
 | `moonSize` | `number` | `1.6` | 0 … 20 | `deg` | tunable | The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon). |
 | `moonPhase` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001). |
 
 ```ogt
 resource DayNight {
-  doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn."
+  doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn."
   guide "render §7"
   field enabled bool "Run the cycle."
   field start f64 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written." {
@@ -62,12 +61,6 @@ resource DayNight {
   }
   field tintFog bool "Turn the og.Fog colour towards the horizon's." {
     default true
-  }
-  field step f32 "Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn)." {
-    default 10
-    min 1
-    max 120
-    tunable true
   }
   field moonSize f32 "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon)." {
     default 1.6

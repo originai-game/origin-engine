@@ -27834,6 +27834,11 @@
           "description": "A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even.",
           "default": true
         },
+        "skyCaptureSliced": {
+          "type": "boolean",
+          "description": "Spread live sky capture and filtering over 13 rendered frames instead of completing each frame. Low sets true; medium, high and the default keep false so terrain ambient and reflections follow the current sky. Slicing lowers peak GPU cost but retains older lighting during fast sky changes.",
+          "default": false
+        },
         "softParticles": {
           "type": "boolean",
           "description": "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them.",
@@ -40268,7 +40273,7 @@
     "DayNight": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.\nSee `render §7`.",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -40320,14 +40325,6 @@
           "type": "boolean",
           "description": "Turn the og.Fog colour towards the horizon's.",
           "default": true
-        },
-        "step": {
-          "type": "number",
-          "description": "Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn).",
-          "default": 10,
-          "minimum": 1,
-          "maximum": 120,
-          "x-og-tunable": true
         },
         "moonSize": {
           "type": "number",

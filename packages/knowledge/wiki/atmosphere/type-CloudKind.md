@@ -27,4 +27,4 @@ enum CloudKind {
 }
 ```
 
-<sub>Module `atmosphere` line 351</sub>
+<sub>Module `atmosphere` line 345</sub>

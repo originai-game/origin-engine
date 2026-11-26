@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight."
 ```
 
-<sub>Module `render` line 986</sub>
+<sub>Module `render` line 987</sub>

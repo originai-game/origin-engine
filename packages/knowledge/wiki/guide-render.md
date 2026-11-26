@@ -26,6 +26,10 @@ feeds back into the simulation.
   set.
 - Low turns off the costly effects. A game that turns one back on under
   low gets it at half resolution or half its steps.
+- Live sky lighting completes its capture each frame by default, so terrain
+  ambient and reflections follow a fast sunset with the visible sky. Low
+  slices the capture over 13 rendered frames, reducing peak GPU cost at the
+  expense of lighting latency. Keep the current-frame path for fast sky changes.
 - The default upscaler, `auto`, draws FSR 3.1 while the render scale is
   below 1 (automatic quality's too) and TAAU at 1: below 1 FSR keeps the
   thin geometry and moving detail TAAU's one sample a pixel loses, at

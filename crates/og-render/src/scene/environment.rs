@@ -501,6 +501,10 @@ pub(crate) struct SkyParams {
     /// xy: box-mip blur biases for the two authored backgrounds;
     /// zw: whether each map has authored box mips instead of GGX levels.
     pub authored: [f32; 4],
+    /// x: baked Sky-View LUT altitude (km, negative: unavailable),
+    /// y: the frame tick it is valid for. A sliced capture's older
+    /// snapshot marches its own sky rather than reading today's LUT.
+    pub lut: [f32; 4],
 }
 
 /// The map the sky pass draws as the background: its turn, its
@@ -532,6 +536,7 @@ impl SkyParams {
                 look: [-1.0, 0.0, 1.0, 0.0],
                 turn: color.extend(0.0).to_array(),
                 authored: [0.0; 4],
+                lut: [-1.0, 0.0, 0.0, 0.0],
             };
         }
         match map {
@@ -544,11 +549,13 @@ impl SkyParams {
                     u32::from(m.background_levels[0] > 0) as f32,
                     u32::from(m.background_levels[1] > 0) as f32,
                 ],
+                lut: [-1.0, 0.0, 0.0, 0.0],
             },
             None => SkyParams {
                 look: [0.0, level, 1.0, 0.0],
                 turn: [1.0, 0.0, 0.0, 0.0],
                 authored: [0.0; 4],
+                lut: [-1.0, 0.0, 0.0, 0.0],
             },
         }
     }

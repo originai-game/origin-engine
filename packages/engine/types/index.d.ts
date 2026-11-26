@@ -9117,6 +9117,10 @@ export interface RenderSettings {
    */
   volumetricFog: boolean;
   /**
+   * Spread live sky capture and filtering over 13 rendered frames instead of completing each frame. Low sets true; medium, high and the default keep false so terrain ambient and reflections follow the current sky. Slicing lowers peak GPU cost but retains older lighting during fast sky changes.
+   */
+  skyCaptureSliced: boolean;
+  /**
    * Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them.
    *
    * @default true
@@ -20147,7 +20151,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
  * See `render §7`.
  *
  * The `DayNight` resource (token `og.DayNight`).
@@ -20202,14 +20206,6 @@ export interface DayNight {
    * @default true
    */
   tintFog: boolean;
-  /**
-   * Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn).
-   *
-   * @default 10
-   * @range 1..120
-   * @tunable
-   */
-  step: number;
   /**
    * The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).
    *
@@ -38972,7 +38968,7 @@ export declare namespace og {
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly skyCaptureSliced: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    * See `render §9`.
@@ -40430,10 +40426,10 @@ export declare namespace og {
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
    * See `render §7`.
    */
-  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f64">; readonly speed: FieldSpec<"f64">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
+  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f64">; readonly speed: FieldSpec<"f64">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
    * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
    * See `seasons §1`.

@@ -31871,6 +31871,7 @@ pub mod record {
             pub shadow_cascades: u32,
             pub shadow_map_scale: f32,
             pub volumetric_fog: bool,
+            pub sky_capture_sliced: bool,
             pub soft_particles: bool,
             pub particle_emission: f32,
             pub max_vfx: u32,
@@ -31915,6 +31916,7 @@ pub mod record {
                     shadow_cascades: 3,
                     shadow_map_scale: 1.0_f32,
                     volumetric_fog: true,
+                    sky_capture_sliced: Default::default(),
                     soft_particles: true,
                     particle_emission: 1.0_f32,
                     max_vfx: 64,
@@ -31965,6 +31967,7 @@ pub mod record {
                     shadow_cascades: field(o, "shadowCascades", d.shadow_cascades)?,
                     shadow_map_scale: field(o, "shadowMapScale", d.shadow_map_scale)?,
                     volumetric_fog: field(o, "volumetricFog", d.volumetric_fog)?,
+                    sky_capture_sliced: field(o, "skyCaptureSliced", d.sky_capture_sliced)?,
                     soft_particles: field(o, "softParticles", d.soft_particles)?,
                     particle_emission: field(o, "particleEmission", d.particle_emission)?,
                     max_vfx: field(o, "maxVfx", d.max_vfx)?,
@@ -36124,7 +36127,6 @@ pub mod record {
             pub azimuth: f32,
             pub light_intensity: f32,
             pub tint_fog: bool,
-            pub step: f32,
             pub moon_size: f32,
             pub moon_phase: f32,
         }
@@ -36139,7 +36141,6 @@ pub mod record {
                     azimuth: 90.0_f32,
                     light_intensity: 1.0_f32,
                     tint_fog: true,
-                    step: 10.0_f32,
                     moon_size: 1.6_f32,
                     moon_phase: 0.5_f32,
                 }
@@ -36160,7 +36161,6 @@ pub mod record {
                     azimuth: field(o, "azimuth", d.azimuth)?,
                     light_intensity: field(o, "lightIntensity", d.light_intensity)?,
                     tint_fog: field(o, "tintFog", d.tint_fog)?,
-                    step: field(o, "step", d.step)?,
                     moon_size: field(o, "moonSize", d.moon_size)?,
                     moon_phase: field(o, "moonPhase", d.moon_phase)?,
                 })

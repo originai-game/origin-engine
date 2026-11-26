@@ -138,6 +138,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> Result<(), String>
         "shadowCascades": q.shadow_cascades,
         "shadowMapScale": q.shadow_map_scale,
         "volumetricFog": q.volumetric_fog,
+        "skyCaptureSliced": q.sky_capture_sliced,
         "softParticles": q.soft_particles,
         "particleEmission": q.particle_emission,
         "maxVfx": q.max_vfx,

@@ -155,7 +155,12 @@ impl Renderer {
         });
         let mut params =
             SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
-        params.turn[3] = self.sky.sky_lut.baked_altitude_km();
+        params.lut = [
+            self.sky.sky_lut.baked_altitude_km(),
+            scene.frame.tick as f32,
+            0.0,
+            0.0,
+        ];
         crate::traffic::write_buffer(
             &self.queue,
             &self.sky.sky_params,

@@ -26,6 +26,10 @@ use crate::volumetric::{FROXELS, RAYMARCH_STEPS};
 /// frame; the switches and the other scales cost nothing to change.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderQuality {
+    /// Spread live sky capture and filtering over 13 frames (low preset).
+    /// False keeps environment light and reflections on the current frame;
+    /// slicing trades lighting latency for lower peak GPU cost.
+    pub sky_capture_sliced: bool,
     /// Rect lights with `cast_shadows` cast them; false draws every rect
     /// light unshadowed (each keeps its flag for when it is true again).
     pub rect_shadows: bool,
@@ -107,6 +111,7 @@ pub struct RenderQuality {
 impl Default for RenderQuality {
     fn default() -> Self {
         RenderQuality {
+            sky_capture_sliced: false,
             rect_shadows: true,
             shadowed_lights: DEFAULT_SHADOWED_LIGHTS as u32,
             shadow_cascades: 3,
@@ -155,6 +160,7 @@ impl RenderQuality {
     pub fn preset(preset: QualityPreset) -> RenderQuality {
         match preset {
             QualityPreset::Low => RenderQuality {
+                sky_capture_sliced: true,
                 rect_shadows: false,
                 shadowed_lights: 2,
                 shadow_cascades: 2,
@@ -201,6 +207,7 @@ impl RenderQuality {
             Some(AoResolution::Full) => 2,
         };
         RenderQuality {
+            sky_capture_sliced: self.sky_capture_sliced || row.sky_capture_sliced,
             rect_shadows: self.rect_shadows && row.rect_shadows,
             shadowed_lights: self.shadowed_lights.min(row.shadowed_lights),
             shadow_cascades: self.shadow_cascades.min(row.shadow_cascades),

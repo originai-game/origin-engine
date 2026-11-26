@@ -25,4 +25,4 @@ enum Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2233</sub>
+<sub>Module `render` line 2234</sub>

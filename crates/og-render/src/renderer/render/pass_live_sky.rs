@@ -60,9 +60,10 @@ impl LiveSkyPass {
         queue: &wgpu::Queue,
         uniform: &crate::frame::FrameUniform,
         camera: &Camera,
+        sliced: bool,
     ) {
         if let Some(c) = st {
-            c.write(queue, uniform, camera);
+            c.write(queue, uniform, camera, sliced);
         }
     }
 }

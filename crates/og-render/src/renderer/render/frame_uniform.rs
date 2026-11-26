@@ -328,7 +328,13 @@ impl Renderer {
             bytemuck::bytes_of(&uniform),
         );
         // The live sky's faces due this frame see the sky as it is drawn.
-        LiveSkyPass::write(&self.sky.sky_capture, &self.queue, &uniform, camera);
+        LiveSkyPass::write(
+            &self.sky.sky_capture,
+            &self.queue,
+            &uniform,
+            camera,
+            scene.frame.quality.sky_capture_sliced,
+        );
         let probe_positions: Vec<Vec3> = probe_frame
             .due
             .iter()

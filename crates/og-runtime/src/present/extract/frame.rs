@@ -270,6 +270,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
             shadow_cascades: (s.shadow_cascades as f32).max(1.0) as u32,
             shadow_map_scale: s.shadow_map_scale,
             volumetric_fog: s.volumetric_fog,
+            sky_capture_sliced: s.sky_capture_sliced,
             soft_particles: s.soft_particles,
             particle_emission: s.particle_emission.clamp(0.0, 1.0),
             max_vfx: s.max_vfx,

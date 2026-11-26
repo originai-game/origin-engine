@@ -12,14 +12,13 @@
 //! convolution and the GGX-prefiltered levels) into cubes of its own, and
 //! copied into the cubes the frame binds when they are complete, so a
 //! frame never samples a half-made sky and no binding is added. The work
-//! is spread over [`STEPS`] frames, each about an eighth of it (Unreal
-//! slices it over nine): a capture is at most that many frames old, and a
-//! frame's cost stays bounded whatever the sky draws. The first frame of a
-//! live sky draws every step at once, so it never starts on a stale one.
+//! completes in the current frame by default: delayed daylight otherwise
+//! keeps terrain bright after sunset while the visible sky has darkened.
+//! Low quality may spread it over [`STEPS`] frames, trading lighting
+//! latency for peak GPU cost. The first capture always completes at once.
 //!
-//! The capture draws the clouds with the bound irradiance as their
-//! ambient light, the last capture's: the clouds light the sky they lit,
-//! converging over a few captures, as Unreal's does.
+//! Clouds use the current clear sky's ambient, not the previous capture,
+//! so their lighting does not feed back into itself.
 
 use crate::frame::FrameUniform;
 use crate::ibl::{IblGenerator, PREFILTER_MIPS, PREFILTER_SIZE, ProbeFilter};
@@ -245,10 +244,12 @@ impl SkyCapture {
         step(self.next.get(), self.mips)
     }
 
-    /// Writes all six faces' frame uniforms as one coherent temporal snapshot
-    /// when starting a capture cycle (`None` or `Some(0)`), so amortized
-    /// single-face steps `0..=5` share the exact same sun, cloud and flash state.
-    pub fn write(&self, queue: &wgpu::Queue, base: &FrameUniform, camera: &Camera) {
+    /// Writes one coherent snapshot for every face. Unsliced captures
+    /// complete now; sliced captures retain that snapshot for their cycle.
+    pub fn write(&self, queue: &wgpu::Queue, base: &FrameUniform, camera: &Camera, sliced: bool) {
+        if !sliced {
+            self.next.set(None);
+        }
         if !matches!(self.next.get(), None | Some(0)) {
             return;
         }

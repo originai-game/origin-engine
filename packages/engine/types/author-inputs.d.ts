@@ -1826,6 +1826,8 @@ readonly "shadowMapScale"?: (number);
 readonly "shadowedLights"?: (number);
 /** Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). */
 readonly "sky"?: (boolean);
+/** Spread live sky capture and filtering over 13 rendered frames instead of completing each frame. Low sets true; medium, high and the default keep false so terrain ambient and reflections follow the current sky. Slicing lowers peak GPU cost but retains older lighting during fast sky changes. */
+readonly "skyCaptureSliced"?: (boolean);
 /** An entity or og.Camera that moved further than this between the last two ticks is drawn at the last tick, not blended: a teleport or a respawn this far needs no og.render.snap. 0 never snaps by distance. */
 readonly "snapDistance"?: (number);
 /** Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them. */

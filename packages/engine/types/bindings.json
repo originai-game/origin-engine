@@ -12026,6 +12026,11 @@
           "default": true
         },
         {
+          "name": "skyCaptureSliced",
+          "column": "bool",
+          "default": false
+        },
+        {
           "name": "softParticles",
           "column": "bool",
           "default": true
@@ -13736,12 +13741,6 @@
           "name": "tintFog",
           "column": "bool",
           "default": true
-        },
-        {
-          "name": "step",
-          "column": "f32",
-          "default": 10,
-          "tunable": true
         },
         {
           "name": "moonSize",

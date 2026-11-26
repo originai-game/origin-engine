@@ -10,6 +10,7 @@ struct SkyParams {
   look: vec4<f32>,  // x: 1 when an environment map is drawn from map_cube, y: the blurriness's prefiltered level (0: sharp), z: the map's scale, w: the blended map's weight
   turn: vec4<f32>,  // xy: (cos, sin) of the map's turn about +y
   authored: vec4<f32>, // xy: box-mip blur biases, zw: authored flags, for map and blend
+  lut: vec4<f32>, // x: baked altitude (km), y: frame tick; older captures march their own snapshot
 };
 @group(1) @binding(3) var<uniform> sky_params: SkyParams;
 // An environment map behind the scene, drawn from its own cube at its full
@@ -190,7 +191,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let moon_light = sky_moon_light();
   let moon_dir = select(sun, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
   var raw_sky: vec3<f32>;
-  if (sky_params.turn.w >= 0.0 && abs(h0 - sky_params.turn.w) < 0.05 && textureDimensions(sky_view_lut).x > 1u) {
+  if (sky_params.lut.x >= 0.0 && frame.time.y == sky_params.lut.y && abs(h0 - sky_params.lut.x) < 0.05 && textureDimensions(sky_view_lut).x > 1u) {
     raw_sky = sky_view_lut_sample(d, h0);
   } else {
     raw_sky = physical_sky_lit(d, sun, light, moon_dir, moon_light, h0, 24u);

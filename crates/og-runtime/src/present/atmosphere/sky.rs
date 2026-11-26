@@ -28,8 +28,6 @@ fn hours(d: &record::DayNight, time: &og_core::Time) -> f64 {
 /// look, and lightIntensity, the multiplier on its sun and moon.
 struct DayNightNow {
     d: record::DayNight,
-    /// The og.Season that sets the sun's path, if one does.
-    season: Option<SeasonNow>,
     hours: f64,
     look: og_render::DayNightLook,
     intensity: f32,
@@ -61,7 +59,6 @@ fn day_night_now(
     let intensity = d.light_intensity.max(0.0);
     Some(DayNightNow {
         d,
-        season,
         hours: now,
         look,
         intensity,
@@ -233,32 +230,21 @@ pub(super) fn extract(
 
     // The day-night cycle: light, sky and ambient from the clock.
     let mut fog_tint = None;
-    if let Some(DayNightNow {
-        d,
-        season,
-        hours: now,
-        look,
-        intensity: _,
-    }) = day_night_now(
+    if let Some(DayNightNow { d, look, .. }) = day_night_now(
         world,
         layouts.day_night.as_ref(),
         layouts.physical_sky.as_ref(),
         layouts.season.as_ref(),
     ) {
-        // The image-based light steps every `step` game minutes.
-        let step = f64::from(d.step.clamp(1.0, 120.0)) / 60.0;
-        let mut stepped = look_at(&d, season.as_ref(), (now / step).floor() * step);
-        if let Some(a) = &air {
-            stepped = stepped.with_atmosphere(a);
-        }
-        // The light itself is the key light's (`lights`, which takes the
-        // cycle's sun and moon among its candidates).
+        // Background, Sky-View LUT and environment use the same clock as
+        // the key light. A separately stepped sky left daylight in the
+        // terrain's ambient while the background was already in twilight.
         scene.lighting.environment.intensity = look.ambient;
         scene.atmosphere.adaptation = look.adaptation;
         scene.lighting.environment.sky = ProceduralSky {
-            sun_direction: stepped.sun_direction,
-            sun_color: stepped.sun_color,
-            look: Some(stepped.sky),
+            sun_direction: look.sun_direction,
+            sun_color: look.sun_color,
+            look: Some(look.sky),
         };
         scene.lighting.environment.background = Background::Procedural {
             sun_direction: look.sun_direction,

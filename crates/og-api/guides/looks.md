@@ -435,6 +435,7 @@ The quality rows:
 | shadowCascades | 2 | 3 | 4 |
 | shadowMapScale | 0.5 | 1 | 2 |
 | volumetricFog | false | true | true |
+| skyCaptureSliced | true | false | false |
 | softParticles | false | true | true |
 | particleEmission | 0.5 | 1 | 1 |
 | maxVfx | 32 | 64 | 128 |

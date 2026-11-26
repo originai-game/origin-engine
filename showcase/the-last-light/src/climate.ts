@@ -137,7 +137,6 @@ export function buildClimate(world: World): void {
   state.snowfall = 0.45;
   state.lightningCenter = { x: 60, y: 0, z: -160 };
   state.lightningRadius = 220;
-  must(world.resource(og.DayNight)).step = 1;
   const weather = must(world.resource(og.Weather));
   weather.change = CHANGE;
   weather.kind = KINDS[0].kind;

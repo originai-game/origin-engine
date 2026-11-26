@@ -1,0 +1,15 @@
+{
+  "breaking": [{
+    "member": "DayNight.step",
+    "change": "Removed separately stepped environment sun updates; the visible sky, Sky-View LUT, key light and default live environment capture now share the current sun.",
+    "fix": "Remove DayNight.step assignments. To trade lighting freshness for lower peak live-sky GPU cost with 13-frame capture cycles, set RenderSettings.skyCaptureSliced to true or apply the low quality preset."
+  }],
+  "added": [{
+    "member": "RenderSettings.skyCaptureSliced",
+    "summary": "Explicit live sky capture latency/cost choice: false by default and on medium/high; true on low. Sliced faces retain their coherent sky snapshot rather than sampling a newer Sky-View LUT."
+  }],
+  "fixed": [{
+    "member": "DayNight",
+    "summary": "Keep sunset terrain ambient and reflections current with the visible sky instead of retaining daylight across rapid dusk transitions."
+  }]
+}
