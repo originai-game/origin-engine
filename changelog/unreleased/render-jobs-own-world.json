@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og render --jobs",
+      "summary": "Each part of `og render --jobs N` runs the script from tick 0 without drawing up to its range instead of restoring a leader's world snapshot, so a terrain or other asset the script loaded on a later step is drawn in every part, not only the first (it warned `og.Terrain on entity ... names no loaded terrain`). The parts run at once; a leader process runs only with `--audio`."
+    }
+  ]
+}

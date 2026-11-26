@@ -24,12 +24,15 @@
 //! `--contact-sheet COLS` writes a grid PNG of frames spaced over the range
 //! with their times and ticks (`contact_sheet.rs`): the review surface.
 //!
-//! `--jobs N` splits the range in N parts. A leader process simulates the
-//! script without drawing and writes a render snapshot (the world exactly,
-//! og-probe's `render_snapshot`) a few frames before each part; each part
-//! restores its snapshot, draws those warm-up frames (so the renderer's
-//! history, TAA and adapted exposure, has settled) and renders its frames;
-//! ffmpeg concatenates the parts. The leader also renders the audio.
+//! `--jobs N` splits the range in N parts, run at once. Each part runs the
+//! script from tick 0, simulating without drawing up to a few frames before
+//! its range, draws those warm-up frames (so the renderer's history, TAA
+//! and adapted exposure, has settled) and renders its frames; ffmpeg
+//! concatenates the parts. A part never starts from another process's
+//! world: what lives outside the world (terrains and other assets the
+//! script loaded, the UI) would be missing from it. With `--audio`, a
+//! leader process simulates the whole range without drawing and renders
+//! the audio.
 //!
 //! `--keyframes` also writes the frames where something happened, a sheet
 //! of them and `timeline.json` (`keyframes.rs`): each frame record carries
@@ -647,19 +650,18 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
     let wav = a.audio.then(|| layout.file("audio.wav"));
     let t0 = std::time::Instant::now();
 
-    // The leader, for --jobs N: snapshots and the audio.
+    // The leader, for --jobs N with --audio: the audio of the whole range.
     let mut leader = None;
-    let snapshot = |j: u32| work.join(format!("job{j}.ogrs"));
-    if jobs > 1 {
-        let mut extra = vec!["--leader".to_string(), "--end".into(), total.to_string()];
-        for j in 1..jobs {
-            extra.push("--snapshot".into());
-            extra.push(format!("{}:{}", j * per, snapshot(j).display()));
-        }
-        if let Some(w) = &wav {
-            extra.push("--audio".into());
-            extra.push(w.display().to_string());
-        }
+    if jobs > 1
+        && let Some(w) = &wav
+    {
+        let extra = vec![
+            "--leader".to_string(),
+            "--end".into(),
+            total.to_string(),
+            "--audio".into(),
+            w.display().to_string(),
+        ];
         let mut cmd = base(&extra);
         cmd.stdout(Stdio::piped());
         leader = Some(
@@ -676,10 +678,6 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
             "--count".into(),
             count.to_string(),
         ];
-        if j > 0 {
-            extra.push("--restore".into());
-            extra.push(snapshot(j).display().to_string());
-        }
         if jobs == 1
             && let Some(w) = &wav
         {
@@ -706,11 +704,13 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
             picker: a.keyframes.map(|k| Picker::new(k, &layout.dir)),
         }
     };
-    // Job 0 starts at tick 0 and needs no snapshot: it runs beside the leader.
-    let first_job = {
-        let p0 = plan(0);
-        std::thread::spawn(move || run_job(p0))
-    };
+    // Every job runs at once, beside the leader.
+    let handles: Vec<_> = (0..jobs)
+        .map(|j| {
+            let pj = plan(j);
+            std::thread::spawn(move || run_job(pj))
+        })
+        .collect();
     let mut leader_end = Value::Null;
     if let Some(mut l) = leader {
         let mut stdout = l.stdout.take().expect("piped");
@@ -726,19 +726,8 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
             )));
         }
     }
-    let rest: Vec<_> = (1..jobs)
-        .map(|j| {
-            let pj = plan(j);
-            std::thread::spawn(move || run_job(pj))
-        })
-        .collect();
-    let mut outs = vec![
-        first_job
-            .join()
-            .map_err(|_| fail("a job thread panicked".into()))?
-            .map_err(fail)?,
-    ];
-    for h in rest {
+    let mut outs = Vec::new();
+    for h in handles {
         outs.push(
             h.join()
                 .map_err(|_| fail("a job thread panicked".into()))?
@@ -747,10 +736,12 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
     }
     let elapsed = t0.elapsed().as_secs_f64();
 
-    let end = if jobs > 1 {
-        leader_end.clone()
+    // The last part ends where a single job would; with --audio the leader
+    // ran on through the last frame's span, as a single job does.
+    let end = if leader_end.is_null() {
+        outs.last().expect("one job at least").end.clone()
     } else {
-        outs[0].end.clone()
+        leader_end.clone()
     };
     let mut warnings: Vec<String> = Vec::new();
     for o in &outs {

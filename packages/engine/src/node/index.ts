@@ -57,10 +57,6 @@ export interface NativeExtras {
   og_node_relay_start(port: number): string;
   /** Last drawn RGBA8 rows (empty without a frame). `header` prefixes width and height as little-endian u32s. Development only. */
   og_node_render_frame(engine: number, header?: boolean): Uint8Array;
-  /** `og render --jobs`: the world as a render snapshot (empty when refused). */
-  og_node_render_snapshot(engine: number): Uint8Array;
-  /** Restores a render snapshot another process took: a wire Result of its tick. */
-  og_node_render_restore(engine: number, snapshot: Uint8Array): string;
   /** Waits for every pipeline compile the process started (the full lit variants included), so the display frames after it repeat byte for byte. Development only. */
   og_node_settle_pipelines(): void;
   /** `og replay`: the world's portable hash within a `{ type: [field, ...] }` table, `{ hash }` (016x); with an empty table within the world's own, `{ hash, table }`; `{ error }` when refused. Not in publish builds. */

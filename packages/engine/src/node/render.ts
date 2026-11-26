@@ -6,21 +6,20 @@
 //   bun src/node/render.ts --entry <game.js> [--root <project>] [--seed S] [--size WxH]
 //       [--commands "t:action[:args];..." | --commands-file <f>] --fps F [--from <seconds>] [--warmup W]
 //       [--clock <UTC ms>] [--locale <tag>] [--out <dir>]
-//       a range:    --first I --count N [--restore <snapshot>] [--audio <out.wav>]
-//       the leader: --leader --end N [--snapshot <frame>:<file>]... [--audio <out.wav>]
+//       a range:    --first I --count N [--audio <out.wav>]
+//       the leader: --leader --end N --audio <out.wav>
 //
 // Frame i of the render shows the world at tick T0 + i·k, where T0 is
 // round(from · rate) and k = rate / fps (the fps must divide the tick rate).
 // - A range sends frames I to I + N - 1, after W warm-up frames on the same
 //   grid before it (drawn, not sent: the renderer's history, TAA and the
 //   adapted exposure, is then that of a run that drew them). Ticks between
-//   frames are simulated without drawing. With --restore it starts from the
-//   leader's render snapshot, taken at the first warm-up frame's tick,
-//   instead of simulating from tick 0. With --audio the capture mixer's
+//   frames are simulated without drawing, from tick 0: a range never starts
+//   from another process's world, which would lack what lives outside it
+//   (the terrains and assets the script loaded). With --audio the capture mixer's
 //   WAV from tick 0 to the range's end is written there.
-// - The leader (`og render --jobs N`) simulates to frame N's tick without
-//   drawing, writing a render snapshot at the first warm-up tick of each
-//   --snapshot frame, and the WAV.
+// - The leader (`og render --jobs N --audio`) simulates to frame N's tick
+//   without drawing and writes the WAV.
 //
 // Stdout carries records only: a little-endian u32 length, that many bytes
 // of JSON, then the JSON's `bytes` of payload. A frame is
@@ -51,14 +50,12 @@ let fromSeconds = 0;
 let first: number | undefined;
 let count: number | undefined;
 let warmup = 0;
-let restore: string | undefined;
 let audioOut: string | undefined;
 let leader = false;
 let end: number | undefined;
 let clock: number | undefined;
 let locale: string | undefined;
 let out: string | undefined;
-const snapshots: { frame: number; file: string }[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
   const next = () => {
@@ -87,16 +84,10 @@ for (let i = 0; i < argv.length; i++) {
   } else if (a === "--first") first = whole(next());
   else if (a === "--count") count = whole(next());
   else if (a === "--warmup") warmup = whole(next());
-  else if (a === "--restore") restore = resolve(next());
   else if (a === "--audio") audioOut = resolve(next());
   else if (a === "--leader") leader = true;
   else if (a === "--end") end = whole(next());
-  else if (a === "--snapshot") {
-    const v = next();
-    const at = v.indexOf(":");
-    if (at <= 0) fail("--snapshot takes <frame>:<file>");
-    snapshots.push({ frame: whole(v.slice(0, at)), file: resolve(v.slice(at + 1)) });
-  } else if (a === "--clock") clock = Number(next());
+  else if (a === "--clock") clock = Number(next());
   else if (a === "--locale") locale = next();
   else if (a === "--out") out = resolve(next());
   else fail(`unknown argument '${a}'`);
@@ -221,10 +212,6 @@ if (commands !== undefined) {
     process.stderr.write(`WARN ${w}\n`);
   }
 }
-if (restore) {
-  const r = JSON.parse(extras.og_node_render_restore(engine.id, readFileSync(restore))) as { ok: boolean; value?: number; reason?: string };
-  if (!r.ok) fail(`--restore ${restore}: ${r.reason}`);
-}
 
 let quit = false;
 const tick = (): number => engine.probe.tick();
@@ -254,14 +241,6 @@ function drawAt(t: number): void {
 }
 
 if (leader) {
-  for (const s of [...snapshots].sort((a, b) => a.frame - b.frame)) {
-    const at = warmTick(s.frame);
-    simulate(at);
-    if (tick() !== at) fail(`the world stopped at tick ${tick()} before snapshot tick ${at} (a quit step?)`);
-    const blob = extras.og_node_render_snapshot(engine.id);
-    if (blob.length === 0) fail(`the engine refused a snapshot at tick ${at}`);
-    writeFileSync(s.file, blob);
-  }
   simulate(tickOf(end!));
 } else {
   const from = tickOf(first!);

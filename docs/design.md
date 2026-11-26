@@ -690,9 +690,11 @@ tick, exact seeking by snapshot, headless runs and the offline mixer.
 - **Determinism is the contract.** `frames.json` lists every frame's tick,
   time and the SHA-256 of its RGBA bytes and the audio's; two runs of one
   script give the same list. A changed hash is a changed frame.
-- **Jobs.** `--jobs N` splits the range; each part restores a leader's
-  render snapshot and warms up before its first frame, so the frames equal a
-  one-job render's.
+- **Jobs.** `--jobs N` splits the range; each part runs the script from
+  tick 0 without drawing and warms up before its first frame, so the frames
+  equal a one-job render's. A part never starts from another process's
+  world, which lacks what lives outside it (the terrains and other assets
+  the script loaded).
 - **Review.** `--contact-sheet` writes a labelled grid; `--timeline <name>`
   plays a timeline over its duration (§2.7). Agents iterate small and review
   the sheet.
