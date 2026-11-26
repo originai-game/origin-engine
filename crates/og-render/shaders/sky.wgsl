@@ -614,8 +614,15 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
   let viewer = cloud_viewer();
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
   // A ray that meets the ground from below the cloud base sees no clouds.
-  // From above the base (mountain or flight) it looks down onto the layer
-  // and stops before the planet surface.
+  // From above the base (mountain or flight) it looks down onto the layer,
+  // whose base ends the march (`end` below): the ground lies under the
+  // base, or, for a deck under world y 0 with no altitude to put the sea
+  // level below it (a cloud sea under og.Sky), over a layer it must not
+  // hide. Ending that march at the ground hid the whole deck from an eye
+  // over y 0, and at y 0, on the ground's sphere, cut single pixels out of
+  // it: the hit there is the difference of two numbers of the planet's
+  // size, 0 or half a metre by the GPU's square root, in rings about the
+  // nadir.
   let earth = cloud_sphere(o, d, radius - c[6].w);
   if (viewer <= c[0].z && earth.x > 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   // Under the physical sky the clouds are lit by their key, the sun or by
@@ -711,9 +718,6 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
     if (inner.x > 0.0) { end = inner.x; }
   } else if (inner.x > 0.0) {
     end = inner.x;
-  }
-  if (viewer > c[0].z && earth.x > 0.0) {
-    end = min(end, earth.x);
   }
   let fallback = cloud_layer_mix(color, deck, deck_cover);
   if (start >= CLOUD_REACH) { return fallback; }

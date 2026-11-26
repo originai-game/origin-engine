@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Clouds.base",
+      "summary": "A cloud layer whose base is below world y 0 without og.PhysicalSky's altitude to put the sea level under it (a cloud sea under og.Sky) is drawn from any height above it. The march from above the base stopped at the sea level's sphere, which lies over such a deck: an eye above y 0 looking down saw no clouds at all, only the sky's ground colour, and an eye at y 0 exactly saw the deck with rings of dark dots about the point straight below. The layer's own base ends that march now; a layer over the sea level draws as it did."
+    }
+  ]
+}
