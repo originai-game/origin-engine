@@ -1,4 +1,16 @@
 # og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/cinematic-realism/preview/celebration.png
+/cinematic-realism/preview/cover.png
+/cinematic-realism/preview/dust.png
+/cinematic-realism/preview/exhaust.png
+/cinematic-realism/preview/explosion.png
+/cinematic-realism/preview/impact.png
+/cinematic-realism/preview/magic.png
+/cinematic-realism/preview/muzzle.png
+/cinematic-realism/preview/pickup.png
+/cinematic-realism/preview/splash.png
+/cinematic-realism/textures/dust.png
+/cinematic-realism/textures/explosion.png
 /effekseer-andrewfm01/preview/actionLines_halo.png
 /effekseer-andrewfm01/preview/actionLines_halo2.png
 /effekseer-andrewfm01/preview/actionLines_radial.png
@@ -578,4 +590,14 @@
 /effekseer-tktk02/textures/glowRGB.png
 /effekseer-tktk02/textures/shield1.png
 /effekseer-tktk02/textures/star.png
+/geometric/preview/celebration.png
+/geometric/preview/cover.png
+/geometric/preview/dust.png
+/geometric/preview/explosion.png
+/geometric/preview/impact.png
+/geometric/preview/magic.png
+/geometric/preview/muzzle.png
+/geometric/preview/pickup.png
+/geometric/preview/splash.png
+/geometric/preview/trail.png
 # og-assets end

@@ -1,0 +1,392 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.9.0",
+    "revision": "1b07fa82cd087416da9091c4d9449982265c1ff6"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "abd7eabc035a0663c72e90fec5ff05f815bf03d28581c4eed339c418a40a86cb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "celebration.ogt",
+      "sha256": "03da2874d5fadc1354873c23dffd77908217cd7c4ed892daa8bb81cf4949bb63",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "dust.ogt",
+      "sha256": "9a96e430a634c0f4fced89ce1b54f322cbbdf9d4272a028a9884e19629591bec",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/aether.ogt",
+      "sha256": "036d9c4c9ca4b5e7f145dd51562259605dac4aacf9d6f4a47c2e44b825203ed9",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/confetti.ogt",
+      "sha256": "87d6047d2ddb598699c0ca5af8037025787e4de2fda31d1cdc8f193ab385ee53",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/dust.ogt",
+      "sha256": "899a12604aee1de8fb4dabe23b0400e971d4efff3cfce05c694a861ba7ec9626",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/exhaust.ogt",
+      "sha256": "3fd7587e73ff6b7f8eab10cccd77689139c1b69454f7da0bfcffbbb456ba5ba9",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/fireball.ogt",
+      "sha256": "3cc26029c02a4a7801cda788ce3a8d9cd4604652724715ee7bd31e19cb398721",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/impact-dust.ogt",
+      "sha256": "0117b17abc5465c7b56d165dda5e157e8460b37257b894f04c1bb816933f9e44",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/impact-sparks.ogt",
+      "sha256": "881b364842c5c59bbe9888b37e6ceecd26ad1b4f1e19788f402e6992e597f219",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/mist.ogt",
+      "sha256": "9516ce0209cd325696a37b786d1c446191697b819f467ea0417c2d71223cf948",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/motes.ogt",
+      "sha256": "bfaa9b40ee34e923f6b0de8a0e65ea857cfc917f70761066a0d74b01d71035d6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/muzzle.ogt",
+      "sha256": "864e1134ea42062c528acbd740a806383ef3744dd67f2d2e0d392fde9d6b1f11",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/sparks.ogt",
+      "sha256": "d586256440543dfed6acd990086ed71b5bfcc41100b95f30f99fd422eb3caa8f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/spray.ogt",
+      "sha256": "297854b92d5ba05895d1b947833165933567f5fc279b96d7c4e552272e4d9658",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "exhaust.ogt",
+      "sha256": "677985e12daaaed6238ca6672bc2de6ab250e5f5b7f964491c5989e8ef7a9623",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "explosion.ogt",
+      "sha256": "702159f2e5676d44676fd9d5fc12c7495ec89f214c2f07be94f3f81f98d663ca",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "extension.json",
+      "sha256": "9dc23126fcd785c0f0b869647c530c47fd66a590b49cfb0a071387a3be37fecb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "impact.ogt",
+      "sha256": "90ef7eb6e4d10c784f7eb73c8a7fd7beb2f615f323717edd822349844a6deb75",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "magic.ogt",
+      "sha256": "75a1c8ae1255490ac3829eea1bf58237ab19666a62be7bdcf4f6e6ff405655d3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "muzzle.ogt",
+      "sha256": "6848d8dc071be95b94d5438d9fb30eddcaec58dc8da3d4b34a61bc770663dd12",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "pickup.ogt",
+      "sha256": "4a839d7c62c36407185ddd8d861dfdc349d37e1a63e4a901098b941ce82c2904",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "splash.ogt",
+      "sha256": "47452c00509ae556a78f339c7150c408eefd23515fe3ec55a98ae00b47a78d90",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "textures/dust.png",
+      "sha256": "2c4283a7e381e1ac458c9a5d5beefdc3033bc2fde8b8241bc741bdf36397d4f9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/DiscSmoke01/DiscSmoke01-flipbooks.zip",
+        "file": "DiscSmoke01_16x4.tga"
+      },
+      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
+      "derived": "Archive SHA256 e749a28e436c592f35b40a1da47a761602b3323c7d34f72965e6b2b63c7a6723; Pillow RGBA Lanczos resize 2048x1024 to 1024x512, original 16x4 layout. Per-cell elliptical alpha feather: radius normalized by half-extent minus 2px; alpha times 1-smoothstep(0.65,1,r), giving a transparent 2px gutter. RGB unchanged."
+    },
+    {
+      "path": "textures/explosion.png",
+      "sha256": "3b4e9dd52598f5d0ede4dc00223646cd3cd96fdf064a46c8979143b0f57ae0f4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/Explosion02/Explosion02-flipbooks.zip",
+        "file": "Explosion02_5x5.exr"
+      },
+      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
+      "derived": "Archive SHA256 1426be2dcfc9008b8b8f0c7d54a241da3f611725aa3c84fc33f919f56036f538; ImageMagick linear HDR RGB clamped nonnegative and divided by 1 + max(R,G,B), encoded sRGB PNG RGBA, resized 1024x1024 to 1000x1000 (25 integral 200x200 cells); alpha preserved."
+    },
+    {
+      "path": "water.ogt",
+      "sha256": "a0dc2eaa924b187f3a2a6d7200856934eb5603b4554e7a1699420ab113790a91",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    }
+  ],
+  "effects": [
+    {
+      "path": "celebration.ogt",
+      "type": "vfx",
+      "title": "Satin Confetti",
+      "loop": false,
+      "durationSeconds": 3.0,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "celebration",
+        "confetti"
+      ]
+    },
+    {
+      "path": "dust.ogt",
+      "type": "vfx",
+      "title": "Rolling Dust",
+      "loop": false,
+      "durationSeconds": 2.6,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "dust"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "exhaust.ogt",
+      "type": "vfx",
+      "title": "Ion Exhaust",
+      "loop": true,
+      "durationSeconds": 2.0,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "engine",
+        "exhaust",
+        "trail"
+      ]
+    },
+    {
+      "path": "explosion.ogt",
+      "type": "vfx",
+      "title": "Cinematic Explosion",
+      "loop": false,
+      "durationSeconds": 3.2,
+      "impact": true,
+      "category": "explosion",
+      "keywords": [
+        "fireball",
+        "smoke"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "impact.ogt",
+      "type": "vfx",
+      "title": "Steel Impact",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "impact",
+        "sparks"
+      ]
+    },
+    {
+      "path": "magic.ogt",
+      "type": "vfx",
+      "title": "Aether Wisps",
+      "loop": false,
+      "durationSeconds": 1.8,
+      "impact": true,
+      "category": "magic-impact",
+      "keywords": [
+        "magic",
+        "wisps"
+      ]
+    },
+    {
+      "path": "muzzle.ogt",
+      "type": "vfx",
+      "title": "Powder Flash",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "gunfire",
+      "keywords": [
+        "muzzle"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "pickup.ogt",
+      "type": "vfx",
+      "title": "Amber Motes",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "buff",
+      "keywords": [
+        "pickup"
+      ]
+    },
+    {
+      "path": "splash.ogt",
+      "type": "vfx",
+      "title": "Ballistic Spray",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "splash",
+      "keywords": [
+        "splash",
+        "spray"
+      ],
+      "element": "water"
+    }
+  ]
+}

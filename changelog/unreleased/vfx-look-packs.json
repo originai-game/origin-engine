@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og vfx add",
+      "change": "Add downloadable cinematic-realism and geometric effect packs covering explosions, impacts, muzzle flashes, pickups, magic, dust, splashes, trails and celebrations without gameplay logic.",
+      "fix": "Install the pack matching the look with og vfx add cinematic-realism or og vfx add geometric, then spawn its named vfx asset; no pack is added to games automatically."
+    }
+  ]
+}

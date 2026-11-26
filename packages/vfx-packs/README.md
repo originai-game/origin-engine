@@ -3,12 +3,15 @@
 Each `<pack>/` here (an `extension.json` of `kind` `"vfx"`, docs/vfx-packs.md
 §1) ships with every engine release as `<version>/vfx/<pack>.tar.gz`, not in
 the engine archives, and a game installs it with `og vfx add <pack>`
-(docs/vfx-packs.md §5, docs/release.md §1). Plain Git files, no LFS; nothing
-under a pack's `preview/` is archived. The few packs every engine carries are
+(docs/vfx-packs.md §5, docs/release.md §1). Text lives in Git; binary textures
+and previews are pinned in `og-assets.json` (docs/ci.md §The asset store).
+Nothing under a pack's `preview/` is archived. The few packs every engine carries are
 in `packages/engine/extensions/` instead; a pack is in one place, never both.
 
 | Pack | Effects |
 |---|---|
+| `cinematic-realism` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, fire/exhaust, ui); cinematic-realism and muted |
+| `geometric` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, ambient/trail, ui); minimal-geometric and faceted-low-poly |
 | `effekseer-andrewfm01` | 15 (beam, explosion, fire, hit-spark, magic-impact, magic-projectile, portal, smoke, ui) |
 | `effekseer-effekseer01` | 15 (basic, beam) |
 | `effekseer-hato01` | 4 (ambient) |

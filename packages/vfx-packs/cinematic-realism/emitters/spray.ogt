@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+maxParticles 128
+shape cone 50 0.15
+rate 0
+burst 0 112
+duration 0.05
+looping false
+lifetime 0.4 1.3
+speed 1.6 4
+size 0.025 0.05
+align velocity 0.015
+gravity 0 -9.8 0
+drag 0.5
+blend alpha
+color 0.8 0.9 1
+colorOverLife {
+  key 0 1 1 1 0.8
+  key 0.5 1 1 1 0.6
+  key 1 1 1 1 0
+}
