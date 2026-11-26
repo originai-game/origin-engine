@@ -40,6 +40,8 @@
 use crate::error::{Error, ErrorKind, Result};
 use std::fmt::Write as _;
 
+pub mod line;
+
 /// A number exactly as written (validated). Converting to `f32`/`f64` parses
 /// the text directly, so `0.1` read as `f32` is the nearest `f32` to 0.1.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
