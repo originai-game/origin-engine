@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Clouds.wind",
+      "summary": "The clouds' billows no longer lean along the wind as they rise. The lean went by each cloud's own height, so low clouds were sheared three to ten times as steeply as tall ones: their billows were drawn out into brushed streaks, and the edge of a gap in a deck read as a row of teeth. The noise that shapes a cloud is now read the same at every height, and billows are round. The wind still moves the clouds and streaks the high layer. Every cloud's shape moves a little; nothing needs rewriting."
+    }
+  ]
+}
