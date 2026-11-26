@@ -70,13 +70,21 @@ impl UiSettings {
 /// viewport `v`, with the UI unit `unit` laid out in.
 pub(crate) fn settings(eng: &Engine, v: &Viewport, unit: f32) -> UiSettings {
     let style = crate::present::ui_next::style_id(eng.id).unwrap_or_default();
+    let desc = eng.state.borrow().ui_desc.clone();
+    // A game that names no scheme takes its style pack's: a pack drawn for
+    // a light page keeps its art's inks on the ground it was solved for.
+    let light = desc.get("scheme").is_none_or(Value::is_null)
+        && eng
+            .assets
+            .borrow()
+            .styles
+            .iter()
+            .any(|s| s.id == style && s.light);
+    let of = UiSettings::of(&desc, style, (v.reduced_motion, v.high_contrast));
     UiSettings {
         unit,
-        ..UiSettings::of(
-            &eng.state.borrow().ui_desc,
-            style,
-            (v.reduced_motion, v.high_contrast),
-        )
+        dark: of.dark && !light,
+        ..of
     }
 }
 
@@ -199,6 +207,9 @@ pub(crate) struct LoadedStyle {
     /// once it is fetched (the web reads them after the boot,
     /// `bind::i18n::apply`).
     pub files: Vec<String>,
+    /// Its pack's `scheme` is light: its art was drawn for a light page,
+    /// which the UI takes while the game names no scheme of its own.
+    pub light: bool,
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -248,5 +259,6 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     Ok(LoadedStyle {
         id: id.to_owned(),
         files: layer.fonts,
+        light: layer.scheme == Some(og_ui_next::pack::Scheme::Light),
     })
 }
