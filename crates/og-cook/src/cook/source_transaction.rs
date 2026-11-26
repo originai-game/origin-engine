@@ -20,11 +20,12 @@
 //! durability of renames there depends on the filesystem.
 
 use super::generator::source::{Diagnostic, Location};
+use super::source_path::{checked, relative};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// A project-root-relative, canonical slash path, its original byte identity,
@@ -84,41 +85,6 @@ fn io_error(file: &str, error: impl ToString) -> Vec<Diagnostic> {
 
 fn digest(bytes: &[u8]) -> String {
     blake3::hash(bytes).to_hex().to_string()
-}
-
-// Reject aliases rather than normalizing them: caller identities and results
-// must name one stable project path, independently of the host OS.
-fn relative(file: &str) -> io::Result<&Path> {
-    let path = Path::new(file);
-    if file.is_empty()
-        || file.contains(['\\', ':', '\0'])
-        || file
-            .split('/')
-            .any(|s| s.is_empty() || s == "." || s == ".." || s.ends_with(['.', ' ']))
-        || !path.components().all(|c| matches!(c, Component::Normal(_)))
-        || file
-            .split('/')
-            .next()
-            .is_some_and(|s| s.eq_ignore_ascii_case(".og"))
-    {
-        return Err(io::Error::other(
-            "expected a canonical project-relative source path outside .og",
-        ));
-    }
-    Ok(path)
-}
-
-fn checked(root: &Path, file: &str) -> io::Result<PathBuf> {
-    let mut path = root.to_path_buf();
-    for component in relative(file)?.components() {
-        path.push(component);
-        if fs::symlink_metadata(&path)?.file_type().is_symlink() {
-            return Err(io::Error::other(
-                "symlink sources and parent directories are not writable",
-            ));
-        }
-    }
-    Ok(path)
 }
 
 fn read_source(root: &Path, file: &str) -> io::Result<Vec<u8>> {
