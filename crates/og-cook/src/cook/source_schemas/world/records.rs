@@ -26,7 +26,7 @@ pub(super) fn patches(layouts: &[Schema]) -> Result<Value, String> {
     Ok(json!({"type":"object", "properties":properties, "additionalProperties":false}))
 }
 
-pub(super) fn bind<T: JsonSchema>(roles: &[(&str, Value)]) -> Result<InputSchema<T>, String> {
+pub(crate) fn bind<T: JsonSchema>(roles: &[(&str, Value)]) -> Result<InputSchema<T>, String> {
     let mut document = schemars::generate::SchemaSettings::draft2020_12()
         .for_deserialize()
         .into_generator()

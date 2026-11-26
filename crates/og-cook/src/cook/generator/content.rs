@@ -4,10 +4,19 @@ use super::super::{source_index::Entry, source_path::relative, source_project::P
 
 pub(super) struct Scope<'a> {
     pub project: &'a Project,
-    pub entry: &'a Entry,
+    pub root: Root<'a>,
+}
+
+pub(super) enum Root<'a> {
+    Content(&'a Entry),
+    Records(&'a str),
 }
 
 impl Scope<'_> {
+    pub fn stale(&self, bytes: &[u8]) -> bool {
+        matches!(&self.root, Root::Content(entry) if blake3::hash(bytes).to_hex().as_str() != entry.digest)
+    }
+
     /// Check every edge before memoization: a previously captured helper does
     /// not grant a later importer permission to read another module's code.
     pub fn source(&self, from: Option<&str>, file: &str) -> Result<(), String> {
@@ -27,16 +36,20 @@ impl Scope<'_> {
                     )
             });
         let Some(from) = from else {
-            let stem = local
-                .strip_prefix("content/")
-                .and_then(|s| s.strip_suffix(".ts"));
-            if !source
-                || file != self.entry.file
-                || module.id != self.entry.module
-                || stem.is_none_or(|stem| self.entry.id != format!("{}/{stem}", module.id))
-            {
+            let valid = match &self.root {
+                Root::Content(entry) => {
+                    let stem = local
+                        .strip_prefix("content/")
+                        .and_then(|s| s.strip_suffix(".ts"));
+                    file == entry.file
+                        && module.id == entry.module
+                        && stem.is_some_and(|stem| entry.id == format!("{}/{stem}", module.id))
+                }
+                Root::Records(entry) => file == *entry && local.starts_with("src/schema/"),
+            };
+            if !source || !valid {
                 return Err(format!(
-                    "{file}: content entry identity does not match its declared module"
+                    "{file}: source entry identity does not match its declared module and role"
                 ));
             }
             return Ok(());
@@ -60,14 +73,17 @@ impl Scope<'_> {
     /// helper's directory or module. Helpers are reusable code, not raw-asset
     /// exports. A different module's assets must be exposed as content refs.
     pub fn input(&self, path: &str) -> Result<String, String> {
-        relative(path).map_err(|e| format!("{}: input {path}: {e}", self.entry.file))?;
+        let Root::Content(entry) = &self.root else {
+            return Err("record declarations cannot read raw inputs".into());
+        };
+        relative(path).map_err(|e| format!("{}: input {path}: {e}", entry.file))?;
         if !(path.starts_with("assets/") || path.starts_with("sources/")) {
             return Err(format!(
                 "{}: input {path} must be inside this content module's assets/ or sources/; use og.ref for another module's content",
-                self.entry.file
+                entry.file
             ));
         }
-        let module = &self.project.modules[&self.entry.module];
+        let module = &self.project.modules[&entry.module];
         Ok(if module.root.is_empty() {
             path.into()
         } else {

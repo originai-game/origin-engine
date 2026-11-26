@@ -47,6 +47,7 @@ pub mod source_content;
 pub mod source_index;
 mod source_path;
 pub mod source_project;
+pub mod source_records;
 pub mod source_schemas;
 pub mod source_transaction;
 pub use conform::{ConformAction, ConformEntry};

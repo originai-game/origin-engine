@@ -179,7 +179,7 @@ fn scalar(ty: og_core::reflect::Scalar) -> Value {
     }
 }
 
-fn numeric_range(value: &mut Value, min: Option<f64>, max: Option<f64>) {
+pub(crate) fn numeric_range(value: &mut Value, min: Option<f64>, max: Option<f64>) {
     if let Some(min) = min {
         let existing = value["minimum"].as_f64().unwrap_or(f64::NEG_INFINITY);
         value["minimum"] = json!(min.max(existing));
@@ -191,19 +191,48 @@ fn numeric_range(value: &mut Value, min: Option<f64>, max: Option<f64>) {
 }
 
 fn field(f: &FieldDecl) -> Result<Value, String> {
-    let mut value = if !f.variants.is_empty() {
-        json!({"type": "string", "enum": f.variants})
+    let mut value =
+        column_schema(f.column, f.variants, f.capacity).map_err(|e| format!("{}: {e}", f.name))?;
+    if matches!(f.column, "f32" | "f64" | "u32" | "i32") {
+        numeric_range(&mut value, f.min, f.max);
+    } else if matches!(f.column, "Vector2" | "Vector3" | "Quaternion" | "Matrix4") {
+        numeric_range(&mut value["items"], f.min, f.max);
+    } else if f.column == "Color" {
+        numeric_range(&mut value["anyOf"][0]["items"], f.min, f.max);
+    }
+    if f.list > 0 {
+        value = json!({"type": "array", "items": value, "maxItems": f.list});
+    }
+    value["description"] = json!(f.doc);
+    if !f.unit.is_empty() {
+        value["x-og-unit"] = json!(f.unit);
+    }
+    if let Some(step) = f.step {
+        value["x-og-step"] = json!(step);
+    }
+    Ok(value)
+}
+
+/// The same author column semantics for IDL records and pure game declarations.
+/// Packed layouts alone cannot distinguish e.g. Texture from an ordinary u64.
+pub(crate) fn column_schema(
+    column: &str,
+    variants: &[&str],
+    capacity: u32,
+) -> Result<Value, String> {
+    Ok(if !variants.is_empty() {
+        json!({"type": "string", "enum": variants})
     } else {
-        match f.column {
+        match column {
             "bool" => json!({"type": "boolean"}),
             "f32" => number(),
             "f64" => json!({"type": "number"}),
             "u32" => json!({"type": "integer", "minimum": 0, "maximum": u32::MAX}),
             "i32" => json!({"type": "integer", "minimum": i32::MIN, "maximum": i32::MAX}),
             "str" | "String" => {
-                let mut text = json!({"type": "string", "x-og-capacity-bytes": f.capacity});
-                if f.capacity > 0 {
-                    text["maxLength"] = json!(f.capacity);
+                let mut text = json!({"type": "string", "x-og-capacity-bytes": capacity});
+                if capacity > 0 {
+                    text["maxLength"] = json!(capacity);
                     text["pattern"] = json!("^[^\\u0000]*$");
                 }
                 text
@@ -226,29 +255,11 @@ fn field(f: &FieldDecl) -> Result<Value, String> {
                     json!({"type": "integer", "minimum": 0, "maximum": u64::MAX,
                         "x-og-handle-column": column})
                 } else {
-                    return Err(format!("{}: unsupported reflected column {column}", f.name));
+                    return Err(format!("unsupported reflected column {column}"));
                 }
             }
         }
-    };
-    if matches!(f.column, "f32" | "f64" | "u32" | "i32") {
-        numeric_range(&mut value, f.min, f.max);
-    } else if matches!(f.column, "Vector2" | "Vector3" | "Quaternion" | "Matrix4") {
-        numeric_range(&mut value["items"], f.min, f.max);
-    } else if f.column == "Color" {
-        numeric_range(&mut value["anyOf"][0]["items"], f.min, f.max);
-    }
-    if f.list > 0 {
-        value = json!({"type": "array", "items": value, "maxItems": f.list});
-    }
-    value["description"] = json!(f.doc);
-    if !f.unit.is_empty() {
-        value["x-og-unit"] = json!(f.unit);
-    }
-    if let Some(step) = f.step {
-        value["x-og-step"] = json!(step);
-    }
-    Ok(value)
+    })
 }
 
 fn vector(count: usize) -> Value {

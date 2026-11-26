@@ -23,6 +23,7 @@ use std::sync::{
 
 pub(super) mod author;
 mod content;
+mod records;
 pub mod source;
 pub mod value;
 
@@ -241,6 +242,7 @@ pub struct Program {
 enum Export {
     Call,
     Value,
+    Records,
 }
 
 #[derive(Default)]
@@ -299,12 +301,7 @@ impl ModuleGraph<'_> {
             return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
         }
         let text = std::str::from_utf8(&bytes).map_err(|e| format!("{path}: {e}"))?;
-        if from.is_none()
-            && self
-                .scope
-                .as_ref()
-                .is_some_and(|scope| blake3::hash(&bytes).to_hex().as_str() != scope.entry.digest)
-        {
+        if from.is_none() && self.scope.as_ref().is_some_and(|scope| scope.stale(&bytes)) {
             return Err(format!(
                 "{path}: content index is stale; rediscover source before evaluation"
             ));
@@ -368,7 +365,7 @@ impl ModuleGraph<'_> {
                 _ => None,
             };
             if let Some(name) = source {
-                if name == BUILTIN || name == author::MODULE {
+                if name == BUILTIN || name == author::MODULE || name == records::MODULE {
                     continue;
                 }
                 if !name.starts_with("./") && !name.starts_with("../") {
@@ -450,7 +447,36 @@ impl Program {
             },
             Export::Value,
             overlay,
-            Some(content::Scope { project, entry }),
+            Some(content::Scope {
+                project,
+                root: content::Root::Content(entry),
+            }),
+        )
+    }
+
+    /// Named pure record exports, with the same module boundaries as content.
+    /// Every exported runtime value must be a record; put other helpers in lib/.
+    pub fn prepare_records(
+        root: &Path,
+        project: &super::source_project::Project,
+        file: &str,
+        overlay: &BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        Self::prepare_export(
+            root,
+            "",
+            &Spec {
+                script: file.into(),
+                params: json!({}),
+                seed: 0,
+                inputs: BTreeMap::new(),
+            },
+            Export::Records,
+            overlay,
+            Some(content::Scope {
+                project,
+                root: content::Root::Records(file),
+            }),
         )
     }
 
@@ -479,12 +505,19 @@ impl Program {
         hash.update(match export {
             Export::Call => b"call",
             Export::Value => b"data",
+            Export::Records => b"records",
         });
         hash.update(include_bytes!("generator.rs"));
         hash.update(include_bytes!("generator_value.js"));
         hash.update(include_bytes!("generator/value.rs"));
         hash.update(include_bytes!("generator/author.rs"));
         hash.update(include_bytes!("generator/content.rs"));
+        hash.update(include_bytes!("generator/records.rs"));
+        for (path, code) in records::modules()? {
+            hash.update(&(path.len() as u64).to_le_bytes());
+            hash.update(path.as_bytes());
+            hash.update(blake3::hash(code.as_bytes()).as_bytes());
+        }
         hash.update(author::SOURCE.as_bytes());
         hash.update(&serde_json::to_vec(&author::kinds()).expect("kind names serialize"));
         hash.update(include_bytes!("../../../og-core/src/rng.rs"));
@@ -497,13 +530,14 @@ impl Program {
         hash.update(og_generation::MODULE_SOURCE.as_bytes());
         hash.update(include_bytes!("../../../../Cargo.lock"));
         hash.update(&crate::format::revisions(&crate::format::Area::ALL).to_le_bytes());
-        let modules = BTreeMap::from([
+        let mut modules = BTreeMap::from([
             (
                 BUILTIN.to_string(),
                 og_generation::MODULE_SOURCE.to_string(),
             ),
             (author::MODULE.to_string(), author::SOURCE.to_string()),
         ]);
+        modules.extend(records::modules()?.clone());
         let mut graph = ModuleGraph {
             modules,
             inputs: BTreeMap::new(),
@@ -523,7 +557,7 @@ impl Program {
         } = graph;
         let mut dependencies: std::collections::BTreeSet<String> = modules
             .keys()
-            .filter(|p| *p != BUILTIN && *p != author::MODULE)
+            .filter(|p| !records::builtin(p))
             .cloned()
             .collect();
         let mut inputs = BTreeMap::new();
@@ -673,6 +707,23 @@ impl Program {
                 p.finish::<()>()?;
                 let value: rquickjs::Value = match self.export {
                     Export::Value => m.get("default")?,
+                    Export::Records => {
+                        // Canonical IR sorts object keys. Preserve declaration
+                        // order explicitly, as the runtime's wire layout does.
+                        let registry: rquickjs::Object = Module::import(&ctx, "@origingame/engine/records.ts")?.finish()?;
+                        let consume: Function = registry.get("consumeRecords")?;
+                        let snapshot: Function = ctx.eval(r#"(exports, consume) => {
+                            const declared = [];
+                            consume(token => declared.push(token));
+                            const entries = Object.entries(exports);
+                            return Object.fromEntries(entries.map(([name, token]) => {
+                                if (name === 'default' || !declared.includes(token))
+                                    throw new Error('schema entries export only named record tokens; put helpers in lib/');
+                                return [name, {...token, fields: Object.entries(token.fields).map(([name, spec]) => ({name, ...spec}))}];
+                            }));
+                        }"#)?;
+                        snapshot.call((m.namespace()?, consume))?
+                    }
                     Export::Call => {
                         let f: Function = m.get("default")?;
                         let context: rquickjs::Value = ctx.eval("Object.freeze(__context)")?;

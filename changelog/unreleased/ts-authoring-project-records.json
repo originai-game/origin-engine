@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "project.schemas",
+      "summary": "Discover named pure record declarations without importing the game entry. Bind scene, prefab and table input schemas to engine records plus records from the owning module and its direct dependencies; retain field order, defaults and handle-reference metadata."
+    }
+  ]
+}

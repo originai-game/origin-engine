@@ -10,6 +10,159 @@ use og_core::reflect::source::AuthorSchema;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[test]
+fn project_records_bind_module_scoped_world_inputs() {
+    use og_cook::cook::source_records::Records;
+    use serde_json::json;
+    let dir = temp::TempDir::new("project-records");
+    let write = |file: &str, text: &str| {
+        let at = dir.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write(
+        "project.ts",
+        &format!(
+            "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
+            json!({"name":"Records","id":"records","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+        "schemas":["src/schema/base.ts","modules/north/src/schema/local.ts"],
+        "modules":[{"id":"north","root":"modules/north","dependsOn":["base"]}]})
+        ),
+    );
+    let base = "import * as s from '@origingame/engine/schema'; export const Health = s.defineComponent('game.Health', {z:s.u32(83,{min:1,max:100}), a:s.Texture(), label:s.str(8,'北'), pos:s.Vector3({x:1,y:2,z:3}), ammo:s.list(s.u32(),4)}); export const Settings=s.defineResource('game.Settings',{volume:s.f32(0.3)});";
+    write("src/schema/base.ts", base);
+    let local = "import {defineComponent,f32} from '@origingame/engine/schema'; export const Local=defineComponent('north.Local',{power:f32(7)});";
+    write("modules/north/src/schema/local.ts", local);
+    let project = Project::open(&dir).unwrap();
+    let records = Records::open(&dir, &project).unwrap();
+    assert_eq!(
+        records.declarations["game.Health"]
+            .record
+            .fields
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect::<Vec<_>>(),
+        ["z", "a", "label", "pos", "ammo"]
+    );
+    let north = &records.contexts["north"];
+    for (kind, name) in [("scene", "Scene"), ("prefab", "Prefab"), ("table", "Table")] {
+        og_core::reflect::source::typescript(north.schema(kind).unwrap().document(), name).unwrap();
+    }
+    let scene = json!({"entities":[{"name":"北😀","components":{"game.Health":{"z":11,"a":{"$ogRef":"base/texture"},"pos":[3,7,2],"ammo":[3,11]},"north.Local":{"power":13},"og.Transform":{"position":[1,3,7]}}}],"resources":{"game.Settings":{"volume":0.7}}});
+    north.scene.check(&scene).unwrap();
+    assert!(records.contexts["base"].scene.check(&scene).is_err());
+    let table = json!({"record":"game.Health","rows":[{"id":"one","values":{"z":21,"a":{"$ogRef":"base/texture"}}}]});
+    north.table.check(&table).unwrap();
+    write(
+        "content/texture.ts",
+        "import {file} from '@origingame/engine/author'; export default file.import({kind:'texture',source:'assets/leaf.png'});",
+    );
+    write(
+        "modules/north/content/table.ts",
+        &format!(
+            "import {{file}} from '@origingame/engine/author'; export default file.table({table});"
+        ),
+    );
+    let index = Index::open(&dir, &project).unwrap();
+    let mut evaluator = Evaluator::default();
+    let mut graph = GraphBuilder::new(&project, &index);
+    for entry in index.entries.values() {
+        let context = &records.contexts[&entry.module];
+        let content = evaluator
+            .evaluate(
+                &dir,
+                &project,
+                entry,
+                &BTreeMap::new(),
+                context.schema(&entry.factory),
+            )
+            .unwrap();
+        graph.insert(&content, &BTreeMap::new()).unwrap();
+    }
+    let graph = graph.finish().unwrap();
+    assert_eq!(
+        graph.nodes["north/table"].references[0].target,
+        "base/texture"
+    );
+    assert_eq!(graph.nodes["north/table"].references[0].kind, "texture");
+    let mut wrong = table.clone();
+    wrong["record"] = json!("north.Local");
+    assert!(north.table.check(&wrong).is_err());
+    for (path, bad) in [
+        ("/entities/0/components/game.Health/z", json!(101)),
+        ("/entities/0/components/game.Health/a", json!(0)),
+        (
+            "/entities/0/components/game.Health/ammo",
+            json!([1, 2, 3, 4, 5]),
+        ),
+    ] {
+        let mut wrong = scene.clone();
+        *wrong.pointer_mut(path).unwrap() = bad;
+        assert!(north.scene.check(&wrong).is_err(), "{path}");
+    }
+    assert_eq!(
+        records.evaluations["src/schema/base.ts"].1,
+        ["src/schema/base.ts"]
+    );
+    let overlay = BTreeMap::from([(
+        "src/schema/base.ts".into(),
+        base.replace("max:100", "max:10"),
+    )]);
+    let candidate = Records::open_with_overlay(&dir, &project, &overlay).unwrap();
+    assert!(candidate.contexts["north"].table.check(&table).is_err());
+    assert_ne!(
+        candidate.evaluations["src/schema/base.ts"].0,
+        records.evaluations["src/schema/base.ts"].0
+    );
+    for (file, text, message) in [
+        (
+            "src/schema/base.ts",
+            base.replace("game.Health", "og.Transform"),
+            "engine-owned",
+        ),
+        (
+            "src/schema/base.ts",
+            base.replace("game.Settings", "game.Health"),
+            "duplicate record",
+        ),
+        (
+            "src/schema/base.ts",
+            format!("import '../../modules/north/src/schema/local.ts'; {base}"),
+            "direct dependency",
+        ),
+        (
+            "modules/north/src/schema/local.ts",
+            format!("import '../../../..//src/main.ts'; {local}"),
+            "cannot import",
+        ),
+        (
+            "src/schema/base.ts",
+            format!(
+                "import {{input}} from '@origingame/engine/author'; input.text('assets/data'); {base}"
+            ),
+            "cannot read raw inputs",
+        ),
+        (
+            "src/schema/base.ts",
+            format!("Math.random(); {base}"),
+            "rng(seed)",
+        ),
+        (
+            "src/schema/base.ts",
+            format!("export const helper = 3; {base}"),
+            "only named record tokens",
+        ),
+    ] {
+        let overlay = BTreeMap::from([(file.into(), text)]);
+        let error = match Records::open_with_overlay(&dir, &project, &overlay) {
+            Ok(_) => panic!("accepted {message}"),
+            Err(error) => error,
+        };
+        assert!(error.contains(message), "{error}");
+    }
+}
+
+#[test]
 fn evaluated_content_resolves_snapshot_scoped_references() {
     let dir = temp::TempDir::new("evaluated-content");
     let write = |file: &str, text: &str| {

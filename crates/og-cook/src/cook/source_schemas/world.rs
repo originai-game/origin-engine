@@ -11,7 +11,7 @@ pub mod materials;
 pub mod model;
 pub mod model_program;
 pub mod pack;
-mod records;
+pub(crate) mod records;
 pub mod scene;
 pub mod source_data;
 pub mod table;
