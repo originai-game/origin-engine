@@ -9,6 +9,10 @@ import { MainMenuScreen } from "@origingame/engine/ui/screens/main-menu.tsx";
 import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
 import { SettingsScreen } from "@origingame/engine/ui/screens/settings.tsx";
 import { SaveLoadScreen } from "@origingame/engine/ui/screens/save-load.tsx";
+import { LoadingScreen } from "@origingame/engine/ui/screens/loading.tsx";
+import { ControlsScreen } from "@origingame/engine/ui/screens/controls.tsx";
+import { CreditsScreen } from "@origingame/engine/ui/screens/credits.tsx";
+import { Confirm } from "@origingame/engine/ui/screens/confirm.tsx";
 import { shellConfig } from "./shell-config.ts";
 import { shellStores, shellReset, sendShell } from "./shell-state.ts";
 import "./shell-locales.ts";
@@ -25,6 +29,14 @@ export function mountShell(world: World) {
     const tagOf = (name: string) => shellConfig.lang.find((l) => names[l] === name) ?? name;
     const send = (action: string, value = "") => sendShell(world, action, value);
     const art = useStore(stores.art);
+    const confirm = useStore(stores.confirm), loading = useStore(stores.loading);
+    const listening = useStore(stores.listening), credits = useStore(stores.credits);
+    // Every action but the UI's own, with its keyboard and pad glyphs.
+    const bindings = () => (listening(), settings(), og.input.actions(world)).filter((a) => a.actionMap !== "ui").map((a) => ({
+      id: a.name, label: a.label !== a.name ? a.label : t(a.name), locked: a.locked,
+      key: og.input.glyph(world, a.name, "keyboardMouse")?.text ?? "",
+      pad: og.input.glyph(world, a.name, "xbox")?.text ?? "",
+    }));
     const keyArt = () => art().keyArt as Texture | 0;
     const identity = () => ({ keyArt: keyArt(), logo: art().logo as Texture | 0, name: shellConfig.name, version: "" });
     // Only built-in screens and controls: each brings its own ground, motion
@@ -39,7 +51,7 @@ export function mountShell(world: World) {
         <View class="absolute inset-0" modal>
           <MainMenuScreen {...identity()} canContinue={saved()} saveLine={t("screen.pause.Played", { played: formatDuration(slot().played) })} news=""
             onNewGame={() => send("new")} onContinue={() => send("load")}
-            onSettings={() => send("settings")} />
+            onSettings={() => send("settings")} onCredits={() => send("credits")} />
         </View>
       </Show>
       <Show when={view() === "playing"}>
@@ -52,7 +64,10 @@ export function mountShell(world: World) {
           <PauseScreen objective="" played={played()} canSave={og.platform.supports(world, "store.set")}
             onResume={() => send("resume")} onSettings={() => send("settings")}
             onSave={() => send("save-menu")} onLoad={() => send("load-menu")}
-            onQuitToMenu={() => send("menu")} />
+            onControls={() => send("controls")} onQuitToMenu={() => send("ask", "quit-to-menu")} />
+          <Confirm open={confirm() === "quit-to-menu"} danger title={t("shell.quitToMenu")} body={t("shell.quitToMenu.about")}
+            confirm={t("shell.quitToMenu.confirm")} cancel={t("shell.cancel")}
+            onConfirm={() => send("confirm")} onCancel={() => send("cancel")} />
         </View>
       </Show>
       <Show when={view() === "settings"}>
@@ -66,6 +81,23 @@ export function mountShell(world: World) {
             ]}
             onChange={(_, id, value) => send("setting", JSON.stringify({ id, value: id === "language" ? tagOf(String(value)) : value }))}
             onDefaults={() => send("defaults")} onBack={() => send("back")} />
+        </View>
+      </Show>
+      <Show when={view() === "loading"}>
+        <View class="absolute inset-0" modal>
+          <LoadingScreen keyArt={keyArt()} place={shellConfig.name} tip={t("shell.tip")} progress={loading().progress} ready={loading().progress >= 1} />
+        </View>
+      </Show>
+      <Show when={view() === "controls"}>
+        <View class="absolute inset-0" modal>
+          <ControlsScreen bindings={bindings()} listening={listening()} hidePad={shellConfig.input === "touch"}
+            onRebind={(_, id, device) => send("rebind", `${id}:${device}`)} onReset={() => send("reset-bindings")} onBack={() => send("back")} />
+        </View>
+      </Show>
+      <Show when={view() === "credits"}>
+        <View class="absolute inset-0" modal>
+          <CreditsScreen sections={[]} offset={credits()} keyArt={keyArt()} logo={art().logo as Texture | 0}
+            onFaster={() => send("faster")} onBack={() => send("back")} />
         </View>
       </Show>
       <Show when={view() === "save" || view() === "load"}>

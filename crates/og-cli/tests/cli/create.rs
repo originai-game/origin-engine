@@ -41,11 +41,11 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
                 .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
                 .env("OG_RENDERER", "none")
                 .args(["run", dir.join(command).to_str().unwrap(), "--headless", "--json", "--commands",
-                    "0.1:key_down:Enter;0.12:key_up:Enter;0.4:expect:ui:text:=New game;0.5:gamepad:a;0.52:gamepad:-;0.8:expect:ui:text:=Pause;0.9:intent:ShellAction:{\"action\":\"menu\"};1:intent:ShellAction:{\"action\":\"new\"};1.2:gamepad:start;1.23:gamepad:-;1.5:expect:ui:text:=Paused;1.6:gamepad:a;1.63:gamepad:-;1.9:expect:ui:text:=Pause;2:gamepad:start;2.03:gamepad:-;2.4:gamepad:down;2.43:gamepad:-;2.6:gamepad:a;2.63:gamepad:-;2.9:expect:ui:text:=Settings;3:gamepad:b;3.03:gamepad:-;3.3:expect:ui:text:=Paused;3.4:quit"])
+                    "0.1:key_down:Enter;0.12:key_up:Enter;0.4:expect:ui:text:=New game;0.5:gamepad:a;0.52:gamepad:-;0.8:expect:ui:text:=Now entering;1.6:expect:ui:text:=Pause;1.7:intent:ShellAction:{\"action\":\"menu\"};1.8:intent:ShellAction:{\"action\":\"new\"};2.9:gamepad:start;2.93:gamepad:-;3.2:expect:ui:text:=Paused;3.3:gamepad:a;3.33:gamepad:-;3.6:expect:ui:text:=Pause;3.7:gamepad:start;3.73:gamepad:-;4.1:gamepad:down;4.13:gamepad:-;4.3:gamepad:a;4.33:gamepad:-;4.6:expect:ui:text:=Settings;4.7:gamepad:b;4.73:gamepad:-;5:expect:ui:text:=Paused;5.1:quit"])
                 .output()
                 .unwrap();
             assert!(run.status.success(), "{}", text(&run));
-            assert!(text(&run).contains("\"passed\":6"), "{}", text(&run));
+            assert!(text(&run).contains("\"passed\":7"), "{}", text(&run));
         }
         let refused = og()
             .current_dir(&dir)

@@ -11,9 +11,13 @@ Creation (`og create`, from `@origingame/create-game`) writes a project
 with a connected UI shell for every genre and view: `project.ogt`,
 `src/main.ts`, `src/shell.tsx`, `src/shell-state.ts`, `src/shell-config.ts`,
 `src/shell-locales.ts`, string tables, `tests/smoke.og.ts`, `package.json`
-and `tsconfig.json`. Title, main menu, pause, settings and save/load are
+and `tsconfig.json`. Title, main menu, loading, pause (with a Quit to menu
+confirmation), settings, controls rebinding, save/load and credits are
 built-in screens with working navigation, world-snapshot saves and
-persistent volume, text size, motion and language settings. The shell is
+persistent volume, text size, motion, language and binding settings. Their
+motion (screens fading in and out, entries entering in turn, the menu's
+bar gliding to the focused entry) comes from the
+pack's motion tokens and follows the player's Reduce motion setting. The shell is
 only built-in screens and controls, in the dark scheme: title and main menu
 stand on the game's key art, else on whatever the game draws; pause,
 settings and save/load stand on the frozen game frame. There is no sample
@@ -21,7 +25,7 @@ level, gameplay, rule set or balance to adapt.
 
 Keep this shell and customize it first: change copy in `assets/strings/`,
 load key art and a logo in `start` and pass their texture handles to
-`setShellArt(world, { keyArt, logo })` before `startShell`. Layout and focus come from the built-in screens; avoid
+`setShellArt(world, { keyArt, logo })` before `startShell`. Layout, focus and motion come from the built-in screens; restyle them through the look's UI pack and its tokens, not by hand. Avoid
 rebuilding entire screens with View/Text. Add game-specific screens beside
 them. Initialize gameplay before `startShell(world)` in `src/main.ts`:
 that call captures the New game reset point. Bind gameplay systems to

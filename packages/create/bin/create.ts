@@ -261,6 +261,8 @@ export function create(options: CreateOptions): Created {
     "shell.failed": "未能完成请求，请重试。", "shell.busy": "请稍候…",
     "shell.volume.about": "整个游戏的音量。", "shell.textScale.about": "放大所有菜单和字幕文字。",
     "shell.reducedMotion.about": "缩短过渡并关闭游玩不需要的动态效果。", "shell.language.about": "菜单和文本使用的语言。",
+    "shell.quitToMenu": "返回主菜单？", "shell.quitToMenu.about": "上次存档之后的进度将会丢失。", "shell.quitToMenu.confirm": "返回主菜单",
+    "shell.cancel": "取消", "shell.tip": "在 assets/strings 中修改这条提示。",
   };
   const screens = join(template, "../../engine/src/ui/screens");
   for (const locale of locales) {
@@ -274,7 +276,7 @@ export function create(options: CreateOptions): Created {
       }
     };
     read(english);
-    for (const screen of ["title", "main-menu", "pause", "settings", "save-load"]) {
+    for (const screen of ["title", "main-menu", "pause", "settings", "save-load", "confirm", "loading", "controls", "credits"]) {
       read(readFileSync(join(screens, `${screen}.en.ogt`), "utf8"));
       const translated = join(screens, `${screen}.${locale.startsWith("zh") && !/Hant|TW|HK/.test(locale) ? "zh-CN" : locale}.ogt`);
       if (existsSync(translated)) read(readFileSync(translated, "utf8"));
