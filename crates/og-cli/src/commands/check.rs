@@ -324,6 +324,43 @@ pub fn run(args: &[&str]) -> ExitCode {
         ExitCode::FAILURE
     };
     let path = Path::new(&path);
+    if let Some(root) = crate::author_types::root(path) {
+        let package = project::engine_package(Some(&root));
+        let result = (|| -> Result<Report, String> {
+            let targets = crate::author_types::ensure(&root)?;
+            let (checker, note) = Checker::find(package.as_deref(), tool)?;
+            if let Some(note) = note {
+                eprintln!("og check: {note}");
+            }
+            let mut reports = targets
+                .iter()
+                .map(|target| checker.check(target, checkers.unwrap_or_else(default_checkers)));
+            let mut report = reports.next().expect("every project has a base module")?;
+            for other in reports {
+                let other = other?;
+                report.ms += other.ms;
+                report.diagnostics.extend(other.diagnostics);
+                report.raw.push_str(&other.raw);
+            }
+            report.config = "project.ts (isolated module configurations)".into();
+            Ok(report)
+        })();
+        let report = match result {
+            Ok(report) => report,
+            Err(e) => return fail(e),
+        };
+        if json {
+            println!("{}", report.json());
+        } else {
+            print!("{}", report.raw);
+            println!("{}", report.summary());
+        }
+        return if report.ok() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        };
+    }
     // A tsconfig, or a directory with one and no project.ogt (packages/engine):
     // the configuration as is. Otherwise a project or an entry.
     let as_config = path.extension().is_some_and(|e| e == "json")

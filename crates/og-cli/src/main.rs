@@ -15,6 +15,7 @@ use commands::{
     test, ui, upgrade, vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
+mod author_types;
 mod bundle_cache;
 mod contact_sheet;
 mod device;

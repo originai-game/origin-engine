@@ -1,5 +1,93 @@
 use super::*;
 
+#[test]
+fn project_types_refresh_without_merging_module_roles() {
+    let root = TempDir::new("og-project-types");
+    let write = |file: &str, text: &str| {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    write(
+        "project.ts",
+        &format!(
+            "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
+            serde_json::json!({"name":"Types","id":"types","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+        "schemas":["src/schema/base.ts","modules/north/src/schema/local.ts"],
+        "modules":[{"id":"north","root":"modules/north","dependsOn":["base"]}]})
+        ),
+    );
+    write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write(
+        "src/schema/base.ts",
+        "import {defineComponent,u32} from '@origingame/engine/schema'; export const Base=defineComponent('game.Base',{hp:u32(83)});",
+    );
+    let local = "import {defineComponent,f32} from '@origingame/engine/schema'; export const Local=defineComponent('north.Local',{power:f32(7)});";
+    write("modules/north/src/schema/local.ts", local);
+    let base = "import {file} from '@origingame/engine/author'; throw new Error('CONTENT_EXECUTED'); export default file.scene({entities:[{name:'base',components:{'game.Base':{hp:11}}}]});";
+    write("content/main.ts", base);
+    let north = "import {file} from '@origingame/engine/author'; export default file.scene({entities:[{name:'north',components:{'game.Base':{hp:3},'north.Local':{power:13}}}]});";
+    write("modules/north/content/main.ts", north);
+    // A deliberately broad user include must not combine both generated
+    // augmentations. Each generated module config overrides files/include.
+    write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["**/*.ts",".og/types/**/*.d.ts"]}"#,
+    );
+    let check = || {
+        og().args(["check", "--json"])
+            .current_dir(&root)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    let positive = check();
+    assert!(positive.status.success(), "{}", text(&positive));
+    for module in ["base", "north"] {
+        assert!(
+            root.join(format!(".og/types/author/{module}/index.d.ts"))
+                .is_file()
+        );
+        assert!(
+            root.join(format!(".og/types/author/{module}/tsconfig.json"))
+                .is_file()
+        );
+    }
+    write(
+        "content/main.ts",
+        &base.replace("'game.Base':{hp:11}", "'north.Local':{power:11}"),
+    );
+    let leaked = check();
+    assert!(!leaked.status.success(), "base acquired north's records");
+    let report: serde_json::Value = serde_json::from_slice(&leaked.stdout).unwrap();
+    assert!(
+        report["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["message"].as_str().unwrap().contains("north.Local")),
+        "{}",
+        text(&leaked)
+    );
+    write("content/main.ts", base);
+    write(
+        "modules/north/src/schema/local.ts",
+        &local.replace("power:", "strength:"),
+    );
+    let stale = check();
+    assert!(
+        !stale.status.success(),
+        "a schema edit left stale author types"
+    );
+    assert!(text(&stale).contains("power"), "{}", text(&stale));
+    write(
+        "modules/north/content/main.ts",
+        &north.replace("power:", "strength:"),
+    );
+    let refreshed = check();
+    assert!(refreshed.status.success(), "{}", text(&refreshed));
+}
+
 /// Source-bound edits must change evaluated data without erasing code or
 /// following aliases. This is the source-edit boundary used by author tooling.
 #[test]

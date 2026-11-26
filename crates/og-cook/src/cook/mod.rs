@@ -50,6 +50,7 @@ pub mod source_project;
 pub mod source_records;
 pub mod source_schemas;
 pub mod source_transaction;
+pub mod source_types;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
 mod schemas;

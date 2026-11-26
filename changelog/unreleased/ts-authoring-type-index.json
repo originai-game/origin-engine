@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og check",
+      "summary": "TS projects refresh contextual author types under .og/types/author and check one isolated configuration per source module. Each module sees engine records, its own records and its direct dependencies without leaking other modules' ambient augmentations."
+    }
+  ]
+}
