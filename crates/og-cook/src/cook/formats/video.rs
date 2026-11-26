@@ -112,6 +112,146 @@ use std::sync::{Arc, Mutex, OnceLock};
 /// The `.ogt` type of a video.
 pub const VIDEO_TYPE: &str = "video";
 
+/// Video source fields, shared by validation and the generated file directory.
+pub(crate) const LINES: &[crate::grammar::Line] = {
+    use crate::grammar::Line;
+    &[
+        Line::new(
+            "source",
+            "\"<mp4/webm/mov>\"",
+            "required",
+            "Footage beside this file or under assets/; absolute and parent paths are refused.",
+            "",
+        ),
+        Line::new(
+            "fps",
+            "<integer 1..120>",
+            "30",
+            "Frames per second kept.",
+            "",
+        ),
+        Line::new(
+            "maxSeconds",
+            "<seconds > 0>",
+            "8 (clip); whole source (stream)",
+            "Keep source from its beginning for this duration.",
+            "",
+        ),
+        Line::new(
+            "size",
+            "<width> <height>",
+            "source capped at width 1024 (clip), 1920 (stream)",
+            "Each dimension 2..4096; explicit resize.",
+            "",
+        ),
+        Line::new(
+            "kind",
+            "color | pixel",
+            "color",
+            "Frame texture processing kind.",
+            "",
+        ),
+        Line::new(
+            "audio",
+            "true | false",
+            "true",
+            "Keep source audio as a sound subasset when present.",
+            "",
+        ),
+        Line::new(
+            "audioLocale",
+            "\"<locale>\" \"<audio file>\"",
+            "",
+            "Repeat alternate localized audio tracks; unique case-insensitive alphanumeric/hyphen/underscore tags.",
+            "",
+        ),
+        Line::new(
+            "loudness",
+            "<LUFS -30..0>",
+            "off",
+            "Normalize source sound with ffmpeg loudnorm.",
+            "",
+        ),
+        Line::new(
+            "aiGenerated",
+            "true | false",
+            "false",
+            "Recorded provenance flag, not a generation request.",
+            "",
+        ),
+        Line::new(
+            "placeholder",
+            "true | false",
+            "false",
+            "Recorded stand-in flag, reported by og flow.",
+            "",
+        ),
+        Line::new(
+            "alpha",
+            "true | false",
+            "false",
+            "Retain source alpha; refuses a source without alpha.",
+            "",
+        ),
+        Line::new(
+            "stream",
+            "true | false",
+            "false",
+            "Encode chunked AV1 instead of a clip frame array.",
+            "",
+        ),
+        Line::new(
+            "keyframe",
+            "<seconds 0.1..10>",
+            "1",
+            "Stream keyframe interval.",
+            "",
+        ),
+        Line::new(
+            "chunk",
+            "<seconds 0.5..60>",
+            "6",
+            "Stream chunk interval, rounded to whole keyframe intervals.",
+            "",
+        ),
+        Line::new(
+            "crf",
+            "<integer 0..63>",
+            "32",
+            "Stream AV1 constant rate factor.",
+            "",
+        ),
+        Line::new(
+            "crf720",
+            "<integer 0..63>",
+            "min(crf + 6, 63)",
+            "720p rendition constant rate factor.",
+            "",
+        ),
+        Line::new(
+            "posterSize",
+            "0 | <integer 64..4096>",
+            "480",
+            "Stream poster's longest side; zero keeps full resolution.",
+            "",
+        ),
+        Line::new(
+            "renditions",
+            "hevc h264 | none",
+            "hevc when encoder available",
+            "Explicit list of browser codec renditions beside AV1; none appears alone.",
+            "",
+        ),
+        Line::new(
+            "lowRendition",
+            "true | false",
+            "false",
+            "Also encode a 480p stream rendition.",
+            "",
+        ),
+    ]
+};
+
 /// The most frames a video keeps: a texture array's layers.
 pub const MAX_FRAMES: u32 = super::texture_array::MAX_LAYERS as u32;
 
@@ -387,6 +527,13 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
     for e in &doc.body.entries {
         let err = |x: og_core::Error| format!("line {}: {x}", e.line);
         let line = e.line;
+        if !LINES.iter().any(|f| f.key == e.key) {
+            return Err(format!(
+                "line {line}: unknown key '{}' ({})",
+                e.key,
+                LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
+            ));
+        }
         match e.key.as_str() {
             "source" => {
                 let p = e.string(0).map_err(err)?;
@@ -595,11 +742,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| format!("line {line}: alpha is true or false"))?;
             }
-            k => {
-                return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, audioLocale, aiGenerated, placeholder, alpha, loudness, stream, keyframe, chunk, crf, crf720, posterSize, renditions)"
-                ));
-            }
+            _ => unreachable!("video field table and parser agree"),
         }
     }
     if out.source.is_empty() {

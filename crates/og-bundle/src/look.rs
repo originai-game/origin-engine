@@ -117,7 +117,38 @@ pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-co
 pub const MAX_EXTENDS: usize = 8;
 
 /// The top-level keys of a look file.
-const TOP: [&str; 6] = ["name", "extends", "mood", "variant", "ui", "antialias"];
+pub const LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new("name", "\"<name>\"", "", "Display name.", ""),
+    og_core::ogt::line::Line::new(
+        "extends",
+        "\"<look>\" ...",
+        "",
+        "Base looks, nearest first; at most eight inheritance levels. Asset id or a look slug.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "mood",
+        "\"<mood>\"",
+        "",
+        "Mood from MOODS; applied as the existing preset's explicit layer.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "variant",
+        "\"<variant>\"",
+        "",
+        "Existing preset variant slug: lowercase alphanumeric words separated by hyphens.",
+        "",
+    ),
+    og_core::ogt::line::Line::new("ui", "\"<style>\"", "", "UI style slug or asset id.", ""),
+    og_core::ogt::line::Line::new(
+        "antialias",
+        "<mode>",
+        "",
+        "Antialias mode from ANTIALIAS.",
+        "",
+    ),
+];
 
 /// The seed colours a look gives the UI (`uiSeeds { primary "#rrggbb" }`):
 /// og-ui's `Seeds` (IDL `UiSeeds`), each an sRGB hex colour.
@@ -275,19 +306,25 @@ impl LookFile {
                     e.line
                 ));
             }
-            if !TOP.contains(&e.key.as_str()) {
+            if !LINES.iter().any(|f| f.key == e.key) {
                 return Err(format!(
                     "line {}: '{}' is not a look entry: {}, or a resource block ({})",
                     e.line,
                     e.key,
-                    TOP.join(", "),
+                    LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", "),
                     LOOK_RESOURCES.join(", ")
                 ));
             }
             if seen_top.contains(&e.key.as_str()) {
                 return Err(format!("line {}: '{}' is given twice", e.line, e.key));
             }
-            seen_top.push(TOP.iter().find(|k| **k == e.key).expect("a top key"));
+            seen_top.push(
+                LINES
+                    .iter()
+                    .find(|f| f.key == e.key)
+                    .expect("a top key")
+                    .key,
+            );
             match e.key.as_str() {
                 "name" => look.name = Some(one_string(e)?),
                 "mood" => {

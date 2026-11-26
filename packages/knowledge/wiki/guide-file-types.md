@@ -215,14 +215,1081 @@ Field coverage: complete parser line table. Source bytes remain tracked by the e
 
 An authored `lightmap` asset, cooked by `lightmap`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: derived bake record root and nested fields. Normally written by og bake lightmaps, not hand-authored; stale scene/geometry bindings require a new bake. Numeric arrays may span repeated lines. Unknown fields are refused.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `scene "<asset>"` | `required` | Scene asset id whose static lighting was baked. |
+| `scene-hash "<hex u64>"` | `required` | Scene source hash when baked. |
+| `pages "<file.ktx2>"` | `required` | RGBA16F array pages beside this record, consumed as a lightmap, not an independent texture. |
+| `samples <count>` | `0` | Recorded bake sample count. |
+| `seconds <seconds>` | `0` | Recorded elapsed bake time. |
+| `model "<entity>" { ... }` | `` | Repeat a static model's baked geometry binding. |
+| `volume "<entity>" { ... }` | `` | Repeat baked irradiance probes. |
+
+<a id="file-lightmap-model"></a>
+### `file:lightmap.model`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `asset "<model asset>"` | `required` | Model asset id. |
+| `hash "<hex u64>"` | `required` | Geometry hash, not cooked blob hash. |
+| `part { ... }` | `` | Parts in the model's order. |
+
+<a id="file-lightmap-model-part"></a>
+### `file:lightmap.model.part`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `vertices <count>` | `0` | Original vertex count, checked for stale bakes. |
+| `xref <index> ...` | `` | Original vertex per lightmap vertex; repeated lines concatenate. |
+| `indices <index> ...` | `` | Triangle indices; repeated lines concatenate. |
+| `uv <u> <v> <page> ...` | `` | One UV/page triple per xref; v down. Repeated lines concatenate. |
+
+<a id="file-lightmap-volume"></a>
+### `file:lightmap.volume`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `min <x> <y> <z>` | `required` | Volume minimum in scene metres. |
+| `max <x> <y> <z>` | `required` | Volume maximum in scene metres. |
+| `fade <metres>` | `0` | Light fade distance outside its box. |
+| `counts <x> <y> <z>` | `required` | Probe counts along each axis. |
+| `probes <number> ...` | `` | Twelve coefficients per probe, x fastest: RGB each as c1.x c1.y c1.z c0. Repeated lines concatenate. |
 
 <a id="file-look"></a>
 ### `file:look`
 
 An authored `look` asset, cooked by `look`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<name>"` | `` | Display name. |
+| `extends "<look>" ...` | `` | Base looks, nearest first; at most eight inheritance levels. Asset id or a look slug. |
+| `mood "<mood>"` | `` | Mood from MOODS; applied as the existing preset's explicit layer. |
+| `variant "<variant>"` | `` | Existing preset variant slug: lowercase alphanumeric words separated by hyphens. |
+| `ui "<style>"` | `` | UI style slug or asset id. |
+| `antialias <mode>` | `` | Antialias mode from ANTIALIAS. |
+
+Mood values: bright, dark, warm, cold, soft, high-contrast. Antialias values: tier, off, msaa4, taa.
+
+
+<a id="file-look-uiSeeds"></a>
+### `file:look.uiSeeds`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `primary "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `accent "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `neutral "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `danger "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `warn "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `success "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `info "#rrggbb"` | `` | UI seed colour, sRGB. |
+| `team "#rrggbb"` | `` | UI seed colour, sRGB. |
+
+<a id="file-look-RenderSettings"></a>
+### `file:look.RenderSettings`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `environmentIntensity f32` | `0.55` | The strength of the image-based ambient light from the sky on surfaces; og.Environment.intensity takes its place while an environment map is set. The sky and its clouds are drawn as they are whatever it is. |
+| `sky bool` | `false` | Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). |
+| `bloom bool` | `false` | Light above the threshold bleeds into its surroundings. |
+| `bloomThreshold f32` | `1` | Brightness after exposure where bloom starts; 1 is display white. |
+| `bloomKnee f32` | `0.5` | Softens the threshold over threshold plus or minus knee; 0 is a hard cut. |
+| `bloomIntensity f32` | `0.6` | How much of the blurred light is added back. |
+| `bloomRadius f32` | `-1` | Below 0 (the default) keeps Origin's bloom. 0 to 1 is three.js UnrealBloomPass at this radius: a half-resolution high pass from bloomThreshold to bloomThreshold + bloomKnee, five Gaussian mips mixed by mix(f, 1.2 - f, radius), added at bloomIntensity as EffectComposer's additive copy. See `render §5`. |
+| `bloomContrast f32` | `1` | With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit. |
+| `autoExposure bool` | `false` | Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick (earlier frames meter at once), so every host draws the same exposures. See `render §5`. |
+| `autoExposureMin f32` | `-10` | The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further. See `render §5`. |
+| `autoExposureMax f32` | `10` | The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays dark instead of metering to grey. Below autoExposureMin it is taken as autoExposureMin. See `render §5`. |
+| `adaptSpeedUp f32` | `0` | How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure. |
+| `adaptSpeedDown f32` | `0` | How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. See `render §5`. |
+| `toneMapped bool` | `true` | Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
+| `toneMapping ToneMapping` | `"aces"` | Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none. |
+| `exposure f32` | `1` | A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. |
+| `decalAtlas Texture` | `0` | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
+| `lodBias f32` | `1` | A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full. See `render §10`. |
+| `bakedLighting bool` | `true` | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. See `render §4`. |
+| `staticLightReach f32` | `0` | How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole. See `render §3`. |
+| `quality QualityPreset` | `"none"` | The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set. |
+| `rectShadows bool` | `true` | Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off. See `render §3`. |
+| `shadowedLights u32` | `8` | At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted. |
+| `shadowCascades u32` | `3` | The directional light's shadow cascades, 1 to 4: more cover the same shadowDistance with finer shadows near the camera, at one more shadow pass and one more map each. The high preset draws 4, medium 3, low 2. Changing it makes the cascade maps again at the next frame. |
+| `shadowMapScale f32` | `1` | The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn. |
+| `volumetricFog bool` | `true` | An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even. |
+| `softParticles bool` | `true` | Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them. |
+| `particleEmission f32` | `1` | Every particle system's emission times this (0 to 1); an emitter left with fewer than 8 particles alive at once keeps more, so a flash or a ring stays whole. The low preset draws 0.5. Drawing only: particle events and collisions are the full emitter's. |
+| `maxVfx u32` | `64` | At most this many composed effects (og.Vfx) drawn at once: past it the oldest one-shot effects are left out, then the oldest looping ones, and the probe's dump_render counts them (vfx.dropped). 64; the low preset 32, high 128. Drawing only: their events, shakes and sounds still come. |
+| `maxVfxParticles u32` | `65536` | At most this many particle slots (the emitters' maxParticles, summed) among the og.Vfx drawn: past it the oldest one-shot effects are left out, then the oldest looping ones, as with maxVfx. 65536; the low preset 32768, high 131072. |
+| `screenSpaceReflections bool` | `true` | PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. |
+| `ambientOcclusion bool` | `true` | PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. |
+| `aoResolution AoResolutionSetting` | `"postEffects"` | The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. See `render §5`. |
+| `ssrStepScale f32` | `1` | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps. |
+| `volumetricStepScale f32` | `1` | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. See `render §7`. |
+| `msaaSamples u32` | `4` | Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame. See `render §2`. |
+| `upscaler Upscaler` | `"auto"` | Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. See `render §1`. |
+| `interpolate bool` | `true` | Draw what moves between the last two ticks: a frame between ticks blends entities, og.Camera and skinned joints from the tick before the last to the last, showing the world up to one tick late. Frames on a tick boundary, screenshots and captures draw the last tick. Presentation only. See `render §9`. |
+| `snapDistance f32` | `10` | An entity or og.Camera that moved further than this between the last two ticks is drawn at the last tick, not blended: a teleport or a respawn this far needs no og.render.snap. 0 never snaps by distance. |
+
+`environmentIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`bloomThreshold` range: 0 .. unbounded; unit: unstated.
+
+
+`bloomKnee` range: 0 .. unbounded; unit: unstated.
+
+
+`bloomIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`bloomRadius` range: -1 .. 1; unit: unstated.
+
+
+`bloomContrast` range: 0.5 .. 2; unit: unstated.
+
+
+`autoExposureMin` range: -20 .. 20; unit: unstated.
+
+
+`autoExposureMax` range: -20 .. 20; unit: unstated.
+
+
+`adaptSpeedUp` range: 0 .. 100; unit: evPerSecond.
+
+
+`adaptSpeedDown` range: 0 .. 100; unit: evPerSecond.
+
+
+`toneMapping` variants: aces, agx, none, neutral.
+
+
+`exposure` range: 0 .. 16; unit: unstated.
+
+
+`lodBias` range: 0 .. 16; unit: unstated.
+
+
+`staticLightReach` range: 0 .. unbounded; unit: m.
+
+
+`quality` variants: none, low, medium, high.
+
+
+`shadowedLights` range: 0 .. 16; unit: unstated.
+
+
+`shadowCascades` range: 1 .. 4; unit: unstated.
+
+
+`shadowMapScale` range: 0.125 .. 4; unit: unstated.
+
+
+`particleEmission` range: 0 .. 1; unit: unstated.
+
+
+`aoResolution` variants: postEffects, full, half.
+
+
+`ssrStepScale` range: 0 .. 32; unit: unstated.
+
+
+`volumetricStepScale` range: 0 .. 4; unit: unstated.
+
+
+`msaaSamples` range: 1 .. 4; unit: unstated.
+
+
+`upscaler` variants: taau, fsr3, auto.
+
+
+`snapDistance` range: 0 .. unbounded; unit: m.
+
+
+<a id="file-look-PostEffects"></a>
+### `file:look.PostEffects`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ao bool` | `false` | Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. |
+| `aoRadius f32` | `0.6` | The world-space radius searched for occluders. |
+| `aoIntensity f32` | `1` | 0 none, 1 full; above 1 exaggerates. |
+| `aoMethod AoMethod` | `"auto"` | The algorithm. |
+| `aoResolution AoResolution` | `"half"` | Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full. |
+| `aoDirect f32` | `0` | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. |
+| `aoRadiusScale f32` | `0` | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. See `render §5`. |
+| `outline bool` | `false` | Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead). |
+| `outlineColor Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The line colour, linear. |
+| `outlineWidth f32` | `2` | Line width in pixels, drawn inside the silhouette. |
+| `outlineDepthThreshold f32` | `0.04` | The relative depth step that counts as a silhouette (0.04 is 4 %). |
+| `outlineNormalThreshold f32` | `0.4` | The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees). |
+| `depthOfField bool` | `false` | Bokeh depth of field: pixels away from the focus distance blur into discs. |
+| `dofFocusDistance f32` | `10` | The distance from the camera that is sharp. |
+| `dofFocusRange f32` | `2` | The half-width of the sharp band around it. |
+| `dofMaxBlur f32` | `0.012` | The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p). |
+| `dofFalloff f32` | `4` | How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away. |
+| `dofTiltShift f32` | `0` | Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. See `looks §19`. |
+| `dofQuality DofQuality` | `"low"` | Taps per pixel. |
+| `motionBlur bool` | `false` | Per-object and camera motion blur along the screen-space velocity. |
+| `motionBlurShutter f32` | `0.5` | The shutter as a fraction of the frame (0.5 is a 180 degree shutter). |
+| `motionBlurSamples u32` | `12` | Taps along the velocity. |
+| `motionBlurMaxPixels f32` | `40` | The longest blur in pixels. |
+| `screenBlur ScreenBlur` | `"none"` | A zoom, spin or directional blur of the whole frame (RedGPU's zoom, radial and directional blurs), weighted to the middle of its reach: one pass after motion blur and before bloom and the tone curve, so highlights streak and glow; the UI is not blurred. Off at none or at screenBlurStrength 0. |
+| `screenBlurStrength f32` | `0` | How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off. |
+| `screenBlurCenter Vector2` | `{"x":0.5,"y":0.5}` | Zoom's and spin's centre, in fractions of the frame from the top left. |
+| `screenBlurAngle f32` | `0` | Directional's direction, counter-clockwise from the right (90 is vertical). |
+| `screenBlurSamples u32` | `16` | Taps per pixel for spin and directional. Zoom exceeds this quality floor with three eight-tap stages (512 effective positions), or direct adaptive sampling when strength >= 1 crosses the centre. Both use stable per-pixel jitter. |
+| `godRays bool` | `false` | Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own. |
+| `godRaysIntensity f32` | `0.5` | How bright the shafts are. |
+| `godRaysDecay f32` | `0.965` | How fast the rays fade along their length. |
+| `godRaysDensity f32` | `1` | How far towards the sun each ray samples (a fraction of the distance). |
+| `godRaysTint Color` | `{"r":1,"g":1,"b":1}` | A linear tint on the light the rays carry. |
+| `godRaysSamples u32` | `48` | Taps per ray. |
+| `godRaysThreshold f32` | `2` | Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts. |
+| `glow bool` | `false` | Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom. |
+| `glowIntensity f32` | `1` | How much of the blurred glow is added back. |
+| `lut Lut` | `0` | Colour grading by a lookup table from og.load.lut; 0 is none (and so is a LUT whose streaming group is not resident). |
+| `lutIntensity f32` | `1` | 0 leaves the image as tone mapped, 1 applies the table fully. |
+| `temperature f32` | `0` | White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. See `render §5`. |
+| `tint f32` | `0` | White balance: towards magenta (positive) or green (negative), as Lightroom's and Unity's Tint divided by 100; 0 is off. |
+| `brightness f32` | `0` | Added to every channel of the display colour; 0 is off. |
+| `contrast f32` | `0` | Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off. |
+| `balanceShadows Vector3` | `{"x":0,"y":0,"z":0}` | The colour balance of the shadows (luminance below 0.5, fading out towards it): x shifts from cyan to red, y from magenta to green, z from yellow to blue, each -1 to 1 added to its channel; zero is off. |
+| `balanceMidtones Vector3` | `{"x":0,"y":0,"z":0}` | The colour balance of the mid-tones (what the shadows and highlights leave), as balanceShadows. |
+| `balanceHighlights Vector3` | `{"x":0,"y":0,"z":0}` | The colour balance of the highlights (luminance above 0.5, fading in from it), as balanceShadows. |
+| `preserveLuminosity bool` | `true` | The colour balance keeps each pixel's luminance, so it moves only the hue (Photoshop's Preserve Luminosity). |
+| `hue f32` | `0` | Turns every hue about the grey axis (red towards green at 120); 0 is off. |
+| `saturation f32` | `0` | -1 grey, 0 unchanged, 1 twice the colour (the chroma around the luminance scaled by 1 + saturation). |
+| `vibrance f32` | `0` | Saturation that spares colours already saturated and skin tones: positive livens dull colours, negative mutes them; 0 is off. |
+| `grayscale f32` | `0` | How far each colour goes towards its luminance (grey); 0 is off. |
+| `invert f32` | `0` | How far each colour goes towards its complement; 0 is off. |
+| `threshold f32` | `0` | Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off. |
+| `vignette bool` | `false` | Darkened (or tinted) edges of the frame. |
+| `vignetteIntensity f32` | `0.35` | 0 none, 1 black corners. |
+| `vignetteRadius f32` | `0.55` | Where darkening starts, as a fraction of the half-diagonal. |
+| `vignetteSmoothness f32` | `0.45` | The width of the fade. |
+| `vignetteColor Color` | `{"r":0,"g":0,"b":0}` | The linear colour the edges move towards. |
+| `chromaticAberration f32` | `0` | Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off. |
+| `lensDistortion f32` | `0` | Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. See `render §5`. |
+| `lensDistortionCenter Vector2` | `{"x":0.5,"y":0.5}` | The lens's centre, in fractions of the frame from the top left. |
+| `filmGrain f32` | `0` | Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off. |
+| `filmGrainSize f32` | `1.5` | The grain size in pixels. |
+| `sharpen f32` | `-1` | Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off. |
+| `flashColor Color` | `{"r":1,"g":1,"b":1}` | The flash's linear display colour. |
+| `shakeMaxOffset f32` | `0.05` | The largest offset at trauma 1, as a fraction of the view height. |
+| `shakeMaxRoll f32` | `3` | The largest roll at trauma 1. |
+| `shakeFrequency f32` | `12` | How fast the shake moves. |
+| `shakeSeed u32` | `0` | The shake's noise seed. |
+| `ssr bool` | `false` | Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. See `render §5`. |
+| `ssrMaxDistance f32` | `100` | How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance. |
+| `ssrThickness f32` | `0.3` | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
+| `ssrSteps u32` | `64` | The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. See `render §5`. |
+| `ssrFade f32` | `0.15` | The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). |
+| `ssrIntensity f32` | `1` | How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are). |
+| `ssrMaxRoughness f32` | `0.6` | The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. See `render §5`. |
+| `ssrResolution AoResolution` | `"half"` | Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. See `render §5`. |
+| `custom Post` | `[]` | Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. |
+
+`aoRadius` range: 0 .. unbounded; unit: m.
+
+
+`aoIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`aoMethod` variants: auto, gtao, ssao, screen.
+
+
+`aoResolution` variants: full, half.
+
+
+`aoDirect` range: 0 .. 1; unit: unstated.
+
+
+`aoRadiusScale` range: 0 .. unbounded; unit: unstated.
+
+
+`outlineWidth` range: 0 .. 31; unit: unstated.
+
+
+`outlineDepthThreshold` range: 0 .. unbounded; unit: unstated.
+
+
+`outlineNormalThreshold` range: 0 .. unbounded; unit: unstated.
+
+
+`dofFocusDistance` range: 0 .. unbounded; unit: m.
+
+
+`dofFocusRange` range: 0 .. unbounded; unit: m.
+
+
+`dofMaxBlur` range: 0 .. 0.1; unit: unstated.
+
+
+`dofFalloff` range: 0 .. unbounded; unit: unstated.
+
+
+`dofTiltShift` range: 0 .. 0.5; unit: unstated.
+
+
+`dofQuality` variants: low, high.
+
+
+`motionBlurShutter` range: 0 .. 2; unit: unstated.
+
+
+`motionBlurSamples` range: 4 .. 32; unit: unstated.
+
+
+`motionBlurMaxPixels` range: 1 .. unbounded; unit: unstated.
+
+
+`screenBlur` variants: none, zoom, spin, directional.
+
+
+`screenBlurStrength` range: 0 .. unbounded; unit: unstated.
+
+
+`screenBlurAngle` range: unbounded .. unbounded; unit: deg.
+
+
+`screenBlurSamples` range: 4 .. 64; unit: unstated.
+
+
+`godRaysIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`godRaysDecay` range: 0.5 .. 1; unit: unstated.
+
+
+`godRaysDensity` range: 0 .. unbounded; unit: unstated.
+
+
+`godRaysSamples` range: 8 .. 128; unit: unstated.
+
+
+`godRaysThreshold` range: 0 .. unbounded; unit: unstated.
+
+
+`glowIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`lutIntensity` range: 0 .. 1; unit: unstated.
+
+
+`temperature` range: -1 .. 1; unit: unstated.
+
+
+`tint` range: -1 .. 1; unit: unstated.
+
+
+`brightness` range: -1 .. 1; unit: unstated.
+
+
+`contrast` range: -1 .. 1; unit: unstated.
+
+
+`hue` range: -180 .. 180; unit: deg.
+
+
+`saturation` range: -1 .. 2; unit: unstated.
+
+
+`vibrance` range: -1 .. 1; unit: unstated.
+
+
+`grayscale` range: 0 .. 1; unit: unstated.
+
+
+`invert` range: 0 .. 1; unit: unstated.
+
+
+`threshold` range: 0 .. 1; unit: unstated.
+
+
+`vignetteIntensity` range: 0 .. 1; unit: unstated.
+
+
+`vignetteRadius` range: 0 .. 1; unit: unstated.
+
+
+`vignetteSmoothness` range: 0 .. 1; unit: unstated.
+
+
+`chromaticAberration` range: 0 .. 20; unit: unstated.
+
+
+`lensDistortion` range: -1 .. 1; unit: unstated.
+
+
+`filmGrain` range: 0 .. 1; unit: unstated.
+
+
+`filmGrainSize` range: 0.5 .. unbounded; unit: unstated.
+
+
+`sharpen` range: -1 .. 1; unit: unstated.
+
+
+`shakeMaxOffset` range: 0 .. unbounded; unit: unstated.
+
+
+`shakeMaxRoll` range: 0 .. unbounded; unit: deg.
+
+
+`shakeFrequency` range: 0 .. unbounded; unit: hz.
+
+
+`ssrMaxDistance` range: 0 .. unbounded; unit: m.
+
+
+`ssrThickness` range: 0 .. unbounded; unit: m.
+
+
+`ssrSteps` range: 4 .. 128; unit: unstated.
+
+
+`ssrFade` range: 0 .. 1; unit: ratio.
+
+
+`ssrIntensity` range: 0 .. 1; unit: unstated.
+
+
+`ssrMaxRoughness` range: 0 .. 1; unit: ratio.
+
+
+`ssrResolution` variants: full, half.
+
+
+<a id="file-look-Stylise"></a>
+### `file:look.Stylise`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `pixelHeight u32` | `0` | The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale. See `looks §7`. |
+| `pixelUpscale u32` | `0` | The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it. See `looks §7`. |
+| `pixelSnap bool` | `true` | Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets). |
+| `posterize u32` | `0` | Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off. |
+| `posterizeMode PosterizeMode` | `"channel"` | How posterize steps a colour: each channel apart (channel), or its value and its tint apart so light never changes its hue (tone). |
+| `palette Palette` | `0` | Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none. |
+| `dither DitherPattern` | `"none"` | How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion. |
+| `ditherStrength f32` | `1` | The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands. |
+| `ditherScale u32` | `1` | The size of one dither cell in logical pixels. |
+| `halftone f32` | `0` | Halftone print: tones become dots on a rotated grid, larger where the image is darker; 0 is off, 1 dots only. |
+| `halftoneSize f32` | `6` | The dot grid's pitch in logical pixels. |
+| `halftoneAngle f32` | `45` | The dot grid's angle. |
+| `halftoneColor Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The ink of the dots (linear). |
+| `halftoneSpace StyliseSpace` | `"screen"` | Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots. |
+| `hatching f32` | `0` | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground, each set thinning and fading in from clean paper at its tone; 0 is off, 1 strokes only. |
+| `hatchingScale f32` | `6` | The spacing of hatch lines in logical pixels. |
+| `hatchingLevels u32` | `4` | How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). |
+| `hatchingAngle f32` | `45` | The direction of the first stroke set. |
+| `hatchingColor Color` | `{"r":0.04,"g":0.035,"b":0.03}` | The stroke colour (linear): graphite, sepia or ink. |
+| `hatchingPaper Color` | `{"r":1,"g":1,"b":1}` | The paper the strokes lie on (linear): one-ink hatching lifts the ground's light tones towards it, and under hatchingKeepColor the wash lies on the paper's colour at the wash's own lightness (a cream sketchbook, a grey card, a blue print); white keeps the frame's own. |
+| `hatchingSpace StyliseSpace` | `"screen"` | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes on the surfaces that follow the tone and the form and stay on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same in each instance's own space. |
+| `hatchingDepth f32` | `0` | Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. See `looks §9`. |
+| `hatchingDistance f32` | `0` | Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. See `looks §9`. |
+| `paintRadius f32` | `0` | Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. See `looks §10`. |
+| `paintAnisotropy f32` | `0` | How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. See `looks §10`. |
+| `paintEdgeDarkening f32` | `0` | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
+| `paintBleed f32` | `0` | Colour bleeding across edges into its neighbours, wet in wet; 0 is none. |
+| `paintStrokes f32` | `0` | Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance. See `looks §10`. |
+| `paintCanvas Texture` | `0` | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
+| `paintCanvasStrength f32` | `0` | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
+| `paintCanvasScale f32` | `1` | Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky). |
+| `paintCanvasSpace StyliseSpace` | `"screen"` | Where the canvas lies: screen, over the frame (the scene slides under the paper as the camera moves); surface, on the surfaces, so the grain sticks to the scene, foreshortened with the floor and walls; object, in each instance's own space, so a moving object carries its grain. |
+| `paintCanvasWorldScale f32` | `128` | Canvas texels per metre with paintCanvasSpace surface: 128 repeats a 256-texel canvas every two metres. |
+| `ink bool` | `false` | Ink lines where the tone changes sharply (luminance edges), over every surface, sprite and texture alike: comic and storybook contours without PostEffects.outline's depth prepass. inkDepth adds the prepass's silhouettes and creases. |
+| `inkThreshold f32` | `0.1` | The luminance step that counts as an edge (0 to 1 in display units): lower draws more lines. |
+| `inkWidth f32` | `1` | The line width in logical pixels. |
+| `inkColor Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The line colour (linear). |
+| `inkDepth f32` | `0` | With ink: lines also where the depth-normal prepass breaks (silhouettes against what is behind, creases between faces), at this strength: comic contours round flat colours that luminance alone misses. 0 is luminance only; above 0 the frame runs the prepass PostEffects.outline uses. |
+| `inkDepthThreshold f32` | `0.04` | With inkDepth: the relative depth step to a farther neighbour that counts as a silhouette (0.04 is 4 %), as PostEffects.outlineDepthThreshold: lower inks smaller steps. |
+| `inkNormalThreshold f32` | `0.4` | With inkDepth: the normal change between neighbours of about the same depth that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees), as PostEffects.outlineNormalThreshold: lower inks gentler folds. |
+| `depthBands u32` | `0` | Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. See `looks §11`. |
+| `depthBandsFit bool` | `false` | Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it. |
+| `depthBandsNear f32` | `5` | Where the first band starts, unless depthBandsFit is true. |
+| `depthBandsFar f32` | `60` | Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true. |
+| `depthBandsNearColor Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The nearest band's colour (linear, before exposure). |
+| `depthBandsFarColor Color` | `{"r":0.55,"g":0.6,"b":0.7}` | The farthest band's colour (linear, before exposure). |
+| `depthBandsFlatten f32` | `1` | How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two. |
+| `vertexSnap f32` | `0` | Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off. |
+| `affineTexturing f32` | `0` | How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off. |
+| `depthBits u32` | `0` | Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision. |
+| `paintDetail f32` | `1` | How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike. See `looks §10`. |
+| `paintCharacterDetail f32` | `0.8` | The detail of a skinned mesh's pixels (a character's face and hands) where its material sets less: 0 painted as the rest, 1 kept as drawn. |
+| `watercolorEdgeDarkening f32` | `0` | The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none. See `looks §10`. |
+| `watercolorGranulation f32` | `0` | Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none. See `looks §10`. |
+| `watercolorTurbulence f32` | `0` | Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. See `looks §10`. |
+| `watercolorDryBrush f32` | `0` | A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none. |
+| `watercolorWobble f32` | `0` | The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none. |
+| `watercolorDilution f32` | `0` | The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. See `looks §10`. |
+| `watercolorPaper Color` | `{"r":1,"g":1,"b":1}` | The paper's colour (linear): what the wash thins towards and the dry brush leaves bare. |
+| `ditherSpace StyliseSpace` | `"screen"` | Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass. See `looks §8`. |
+| `halftoneMode HalftoneMode` | `"ink"` | How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk). |
+| `halftoneMisregistration f32` | `0` | With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register. |
+| `halftoneRegion HalftoneRegion` | `"all"` | Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera. See `looks §9`. |
+| `hatchingKeepColor bool` | `false` | Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. See `looks §9`. |
+
+`pixelHeight` range: 0 .. 2160; unit: unstated.
+
+
+`pixelUpscale` range: 0 .. 16; unit: unstated.
+
+
+`posterize` range: 0 .. 64; unit: unstated.
+
+
+`posterizeMode` variants: channel, tone.
+
+
+`dither` variants: none, bayer2, bayer4, bayer8, blueNoise, interleavedGradient.
+
+
+`ditherStrength` range: 0 .. 2; unit: unstated.
+
+
+`ditherScale` range: 1 .. 8; unit: unstated.
+
+
+`halftone` range: 0 .. 1; unit: ratio.
+
+
+`halftoneSize` range: 2 .. 64; unit: unstated.
+
+
+`halftoneAngle` range: unbounded .. unbounded; unit: deg.
+
+
+`halftoneSpace` variants: screen, surface, object.
+
+
+`hatching` range: 0 .. 1; unit: ratio.
+
+
+`hatchingScale` range: 2 .. 64; unit: unstated.
+
+
+`hatchingLevels` range: 1 .. 6; unit: unstated.
+
+
+`hatchingAngle` range: unbounded .. unbounded; unit: deg.
+
+
+`hatchingSpace` variants: screen, surface, object.
+
+
+`hatchingDepth` range: 0 .. 1; unit: ratio.
+
+
+`hatchingDistance` range: 0 .. unbounded; unit: m.
+
+
+`paintRadius` range: 0 .. 8; unit: unstated.
+
+
+`paintAnisotropy` range: 0 .. 1; unit: ratio.
+
+
+`paintEdgeDarkening` range: 0 .. 1; unit: ratio.
+
+
+`paintBleed` range: 0 .. 1; unit: ratio.
+
+
+`paintStrokes` range: 0 .. 1; unit: ratio.
+
+
+`paintCanvasStrength` range: 0 .. 1; unit: ratio.
+
+
+`paintCanvasScale` range: 0.125 .. 8; unit: unstated.
+
+
+`paintCanvasSpace` variants: screen, surface, object.
+
+
+`paintCanvasWorldScale` range: 1 .. 4096; unit: unstated.
+
+
+`inkThreshold` range: 0 .. 1; unit: unstated.
+
+
+`inkWidth` range: 0.5 .. 8; unit: unstated.
+
+
+`inkDepth` range: 0 .. 1; unit: ratio.
+
+
+`inkDepthThreshold` range: 0 .. unbounded; unit: unstated.
+
+
+`inkNormalThreshold` range: 0 .. 2; unit: unstated.
+
+
+`depthBands` range: 0 .. 8; unit: unstated.
+
+
+`depthBandsNear` range: 0 .. unbounded; unit: m.
+
+
+`depthBandsFar` range: 0 .. unbounded; unit: m.
+
+
+`depthBandsFlatten` range: 0 .. 1; unit: ratio.
+
+
+`vertexSnap` range: 0 .. 16; unit: unstated.
+
+
+`affineTexturing` range: 0 .. 1; unit: ratio.
+
+
+`depthBits` range: 0 .. 24; unit: unstated.
+
+
+`paintDetail` range: 0 .. 1; unit: ratio.
+
+
+`paintCharacterDetail` range: 0 .. 1; unit: ratio.
+
+
+`watercolorEdgeDarkening` range: 0 .. 1; unit: ratio.
+
+
+`watercolorGranulation` range: 0 .. 1; unit: ratio.
+
+
+`watercolorTurbulence` range: 0 .. 1; unit: ratio.
+
+
+`watercolorDryBrush` range: 0 .. 1; unit: ratio.
+
+
+`watercolorWobble` range: 0 .. 4; unit: unstated.
+
+
+`watercolorDilution` range: 0 .. 0.9; unit: ratio.
+
+
+`ditherSpace` variants: screen, surface, object.
+
+
+`halftoneMode` variants: ink, cmyk.
+
+
+`halftoneMisregistration` range: 0 .. 8; unit: unstated.
+
+
+`halftoneRegion` variants: all, shade, highlight.
+
+
+<a id="file-look-MaterialStyle"></a>
+### `file:look.MaterialStyle`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `toon bool` | `false` | Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway. |
+| `gradientMap Texture` | `0` | The toon ramp for materials without their own (StandardMaterialDesc.gradientMap, og.load.texture): its first row maps the light's angle to the light received, read without filtering; 0 is three built-in bands. |
+| `shadowTint Color` | `{"r":0.18,"g":0.16,"b":0.32}` | The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration. |
+| `shadowTintAmount f32` | `0` | How far shadowed light moves towards shadowTint; 0 is off. |
+| `shadowDarkness f32` | `0` | How far shadowed surfaces fall towards black: where the sun does not reach, a surface loses this share of the sun's ramp and of the ambient light (1: solid black shadows). Point, spot and rect lights and the emissive still show inside it; shadowTint's light is added after it. 0 is off. See `looks §12`. |
+| `rimColor Color` | `{"r":1,"g":1,"b":1}` | Rim (fresnel) light for materials without their own (linear). |
+| `rimIntensity f32` | `0` | The rim light's strength; 0 is none. |
+| `rimPower f32` | `3` | How tight the rim is (higher: thinner). |
+| `outlineColor Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The outline colour for materials without their own (linear). |
+| `outlineWidth f32` | `0` | The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one. A surface seen at a grazing angle is lined only where it ends. See `looks §12`. |
+| `outlineDistance f32` | `0` | Distance in metres at which outlines have their base width. Nearer they grow up to outlineNearCap times that width (default 4); farther they thin proportionally. 0 keeps a constant width. Foliage never grows beyond its base width and fades below a pixel. |
+| `outlineNearCap f32` | `4` | Near-camera width limit as a multiple of the base width, with outlineDistance > 0. Default 4 preserves existing growth; 1 caps near lines at base width while retaining far falloff. Also applies to material and ArtLine outlines. Foliage and orthographic cameras keep their existing rules. |
+| `flatShading bool` | `false` | Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks. |
+| `surface MaterialSurface` | `"none"` | A made surface on every lit material (clay, paper, plastic): its normal detail, colour grain and light response, in each mesh's own space; none is no change. Unlit materials, materials with StandardMaterialDesc.styled false and those with a MeshPhysicalMaterial lobe keep their own shading. |
+| `surfaceStrength f32` | `1` | How strongly the surface shows: its bumps, grain and wrapped light; 0 is none. |
+| `surfaceScale f32` | `0` | The size of the surface's pattern in metres of the mesh's own space (a clay lump, the paper's fibre); 0 takes the surface's own (clay 0.12, paper 0.15, plastic 0.3). |
+| `toonAmbient f32` | `0` | How smooth a toon material's ambient light (the Environment and its hemisphere light) and reflection stay: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), so the bands sit on flat colour; 1 the smooth PBR ambient and reflections. See `looks §12`. |
+| `toonSoftness f32` | `1` | The toon bands' and highlight's edges, anti-aliased over this many pixels (lilToon's screen-space smoothing); 0 hard steps that only TAA softens. |
+| `outlinePlace OutlinePlace` | `"inside"` | Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside. |
+| `wireframe bool` | `false` | Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's; this style's angle and colour where it sets none), in the colour the surface shows along each edge or wireframeColor; the faces hide the edges behind them. A material's own wireframe draws its edges alone. See `looks §12`. |
+| `wireframeAngle f32` | `30` | The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge. |
+| `wireframeColor Color` | `{"r":0,"g":0,"b":0}` | The look's line colour for wireframe (StandardMaterialDesc.wireframeColor), linear, above 1 blooms; black (the zero value) draws each edge in the colour its surface shows there. |
+
+`shadowTintAmount` range: 0 .. 1; unit: ratio.
+
+
+`shadowDarkness` range: 0 .. 1; unit: ratio.
+
+
+`rimIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`rimPower` range: 0.1 .. unbounded; unit: unstated.
+
+
+`outlineWidth` range: 0 .. 31; unit: unstated.
+
+
+`outlineDistance` range: 0 .. unbounded; unit: m.
+
+
+`outlineNearCap` range: 1 .. 4; unit: ratio.
+
+
+`surface` variants: none, clay, paper, plastic.
+
+
+`surfaceStrength` range: 0 .. 1; unit: ratio.
+
+
+`surfaceScale` range: 0 .. unbounded; unit: m.
+
+
+`toonAmbient` range: 0 .. 1; unit: ratio.
+
+
+`toonSoftness` range: 0 .. 4; unit: unstated.
+
+
+`outlinePlace` variants: inside, outside, both.
+
+
+`wireframeAngle` range: 0 .. 180; unit: deg.
+
+
+<a id="file-look-Fog"></a>
+### `file:look.Fog`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `enabled bool` | `false` | Draw the fog. |
+| `color Color` | `{"r":0.62,"g":0.68,"b":0.76}` | The colour the fog tends to (linear, before exposure). |
+| `density f32` | `0.02` | Exponential distance fog per metre past start, with or without end's ramp (0: none). |
+| `start f32` | `0` | The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start. |
+| `end f32` | `0` | The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp). |
+| `heightDensity f32` | `0` | Height fog at and below height (0: none). |
+| `height f32` | `0` | The world height below which height fog is densest. |
+| `falloff f32` | `0.5` | How fast height fog thins above height, per metre. |
+| `sunColor Color` | `{"r":1,"g":0.86,"b":0.62}` | Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread. |
+| `sunPower f32` | `8` | How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread. |
+| `maxOpacity f32` | `1` | The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media. |
+| `sky f32` | `1` | How much fog covers the sky and clouds (0: clear). Below a cumulus base, or without cumulus, the lower sky stands for distant land and takes land fog. Above a cumulus base it is cloud sea and keeps this share. |
+| `volumetric bool` | `false` | Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. See `render §7`. |
+| `scattering f32` | `0.8` | How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect. |
+| `anisotropy f32` | `0.6` | Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light. |
+| `volumetricDistance f32` | `48` | How far from the camera the fog shows shafts and the local lights; past it the fog goes on in its colour, with the sun's light in it unshadowed. |
+
+`density` range: 0 .. 2; unit: unstated.
+
+
+`start` range: 0 .. unbounded; unit: m.
+
+
+`end` range: 0 .. unbounded; unit: m.
+
+
+`heightDensity` range: 0 .. 10; unit: unstated.
+
+
+`height` range: unbounded .. unbounded; unit: m.
+
+
+`falloff` range: 0.0001 .. 20; unit: unstated.
+
+
+`sunPower` range: 0 .. 256; unit: unstated.
+
+
+`maxOpacity` range: 0 .. 1; unit: ratio.
+
+
+`sky` range: 0 .. 1; unit: ratio.
+
+
+`scattering` range: 0 .. 4; unit: unstated.
+
+
+`anisotropy` range: -0.95 .. 0.95; unit: unstated.
+
+
+`volumetricDistance` range: 4 .. 400; unit: m.
+
+
+<a id="file-look-Sky"></a>
+### `file:look.Sky`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `enabled bool` | `false` | Draw and light by this sky. |
+| `zenith Color` | `{"r":0.18,"g":0.36,"b":0.78}` | Overhead. |
+| `horizon Color` | `{"r":0.78,"g":0.84,"b":0.92}` | At the horizon. |
+| `ground Color` | `{"r":0.16,"g":0.14,"b":0.12}` | Below the horizon. |
+| `sunDirection Vector3` | `{"x":0,"y":0,"z":0}` | Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the DirectionalLight drawn (its entity's +Z; it shines down -Z; the brightest of several), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given. |
+| `sunColor Color` | `{"r":1,"g":0.95,"b":0.88}` | The sun's colour. |
+| `sunSize f32` | `1.8` | The sun disc's angular radius (0: no disc). |
+| `sunIntensity f32` | `40` | The disc's brightness. |
+| `glow f32` | `0.6` | The glow around the sun. |
+| `glowPower f32` | `24` | How tight the glow is. |
+| `stars f32` | `0` | Stars where the sky is dark: 0 none, 1 a full night sky. |
+| `brightness f32` | `1.1` | A multiplier on the whole sky. |
+| `moonSize f32` | `0` | The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it. |
+| `moonPhase f32` | `0.5` | How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half). |
+| `moonIntensity f32` | `1.4` | The lit moon's brightness. |
+| `moonColor Color` | `{"r":0.9,"g":0.92,"b":1}` | The moon's colour. |
+| `moonDirection Vector3` | `{"x":0,"y":0,"z":0}` | Towards the moon; zero puts it opposite sunDirection. |
+
+`sunSize` range: 0 .. 20; unit: deg.
+
+
+`sunIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`glow` range: 0 .. unbounded; unit: unstated.
+
+
+`glowPower` range: 1 .. unbounded; unit: unstated.
+
+
+`stars` range: 0 .. 1; unit: ratio.
+
+
+`brightness` range: 0 .. unbounded; unit: unstated.
+
+
+`moonSize` range: 0 .. 20; unit: deg.
+
+
+`moonPhase` range: 0 .. 1; unit: ratio.
+
+
+`moonIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+<a id="file-look-Environment"></a>
+### `file:look.Environment`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `map EnvironmentMap` | `0` | The map from og.load.environment; 0 lights by the sky. |
+| `intensity f32` | `1` | The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity. |
+| `rotation f32` | `0` | Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together. |
+| `background bool` | `false` | Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it. |
+| `backgroundIntensity f32` | `1` | Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed. |
+| `backgroundBlurriness f32` | `0` | Blurs only the background, as three.js scene.backgroundBlurriness: 0 sharp to 1 the coarsest mip. HDR and physical skies use GGX levels; authored LDR skies use their own source-resolution box mips. The light is not changed. |
+| `groundHeight f32` | `0` | Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. See `render §4`. |
+| `groundRadius f32` | `100` | The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance. |
+| `groundCenter Vector3` | `{"x":0,"y":0,"z":0}` | The ground point under where the map was photographed: the dome's centre is groundHeight above it. |
+| `groundShadows f32` | `1` | How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed). |
+| `blendTo EnvironmentMap` | `0` | A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity. |
+| `blendWeight f32` | `0` | How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once. |
+| `hemiSky Color` | `{"r":1,"g":1,"b":1}` | A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection. |
+| `hemiGround Color` | `{"r":0,"g":0,"b":0}` | The hemisphere light's ground colour (linear), as three.js HemisphereLight.groundColor. |
+| `hemiIntensity f32` | `0` | The hemisphere light's intensity, as three.js HemisphereLight.intensity; 0 (the default) is off. |
+
+`intensity` range: 0 .. unbounded; unit: unstated.
+
+
+`rotation` range: unbounded .. unbounded; unit: rad.
+
+
+`backgroundIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+`backgroundBlurriness` range: 0 .. 1; unit: unstated.
+
+
+`groundHeight` range: 0 .. unbounded; unit: m.
+
+
+`groundRadius` range: 0 .. unbounded; unit: m.
+
+
+`groundCenter` range: unbounded .. unbounded; unit: m.
+
+
+`groundShadows` range: 0 .. 1; unit: unstated.
+
+
+`blendWeight` range: 0 .. 1; unit: unstated.
+
+
+`hemiIntensity` range: 0 .. unbounded; unit: unstated.
+
+
+<a id="file-look-ArtPalette"></a>
+### `file:look.ArtPalette`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `colors Palette` | `0` | The palette (og.load.palette of a `.hex` or GIMP `.gpl` file; a look names one under assets/ or a built-in `@palettes/<name>`); 0 is none, any colour. |
+| `strict bool` | `false` | Every opaque texel is exactly a colour of colors (indexed colour, as hand-placed pixel art); false lets texels between them (shading, filtering) and holds only the hues to the palette. |
+| `maxColors u32` | `0` | The most distinct colours one asset (a sprite sheet, a texture, a model's colours) may use; 0 is no limit. |
+| `rampSteps u32` | `0` | The most shades one hue ramps through from its shadow to its highlight (3 or 4 for 8-bit art, 4 to 6 for 16-bit); 0 is no limit. |
+| `accents u32` | `[]` | The colours of colors kept for signals (the player, danger, the goal, a pickup), by their index in the palette (0 its first colour): scenery and backgrounds stay off them. A look gives them on one line (`accents 3 7`); empty keeps none. |
+| `dither DitherPattern` | `"none"` | How an asset mixes the two nearest colours where a tone falls between them: none in flat bands (the zero value), or an ordered or noise pattern as Stylise.dither. |
+
+`maxColors` range: 0 .. 256; unit: unstated.
+
+
+`rampSteps` range: 0 .. 32; unit: unstated.
+
+
+`dither` variants: none, bayer2, bayer4, bayer8, blueNoise, interleavedGradient.
+
+
+<a id="file-look-ArtPixels"></a>
+### `file:look.ArtPixels`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `unit f32` | `0` | Logical pixels per metre (per world unit in 2D): one pixel of every sprite, tile and backdrop covers 1/unit metres, so no two assets show pixels of different sizes (16 with 16-pixel tiles one metre wide); 0 is no constraint. |
+| `logicalHeight u32` | `0` | The rows of the logical resolution the art is drawn for, as Stylise.pixelHeight counts them (180, 224, 240); 0 is no constraint. |
+| `spriteSizes u32` | `[]` | The cell sizes, in logical pixels, a sprite, a flipbook frame or a tile may have: each side is one of them (`spriteSizes 16 32` takes 16 x 16, 16 x 32 and 32 x 32). A look gives them on one line; empty is any size. |
+| `rotation ArtRotation` | `"free"` | How pixel art turns: free (no constraint), nearest, cleanEdge, or prerotated in rotationSteps. |
+| `rotationSteps u32` | `0` | With rotation prerotated: the rotations baked per full turn (8 is one every 45 degrees); 0 is none. |
+| `snap bool` | `false` | Sprites and tiles stand on whole logical pixels: their positions are multiples of 1/unit metres, so no pixel of the art lies between two of the grid. |
+
+`unit` range: 0 .. 4096; unit: unstated.
+
+
+`logicalHeight` range: 0 .. 2160; unit: unstated.
+
+
+`rotation` variants: free, nearest, cleanEdge, prerotated.
+
+
+`rotationSteps` range: 0 .. 64; unit: unstated.
+
+
+<a id="file-look-ArtTexels"></a>
+### `file:look.ArtTexels`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `density f32` | `0` | Texels per metre on the surfaces of 3D models (a 2 m character at 64 texels per metre takes a 128-texel-tall texture); 0 is no constraint. |
+| `maxSize u32` | `0` | The longest side of any texture of the style, in texels (256 for low-resolution 3D); 0 is no limit. |
+| `filter ArtFilter` | `"any"` | How the style's textures are sampled: any (no constraint), nearest or linear. |
+| `mips ArtMips` | `"any"` | Their mip maps: any (no constraint), full or none. |
+
+`density` range: 0 .. 16384; unit: unstated.
+
+
+`maxSize` range: 0 .. 16384; unit: unstated.
+
+
+`filter` variants: any, nearest, linear.
+
+
+`mips` variants: any, full, none.
+
+
+<a id="file-look-ArtShape"></a>
+### `file:look.ArtShape`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `propFaces u32` | `0` | The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget. An effect's mesh (`conform effect` in its import settings, as og vfx import writes) has none. |
+| `characterFaces u32` | `0` | The most triangles one character may have; 0 is no budget. |
+| `normals ArtNormals` | `"any"` | How models are shaded across their faces: any (no constraint), smooth, flat, or angle (split past normalAngle). |
+| `normalAngle f32` | `30` | With normals angle: the angle between two faces past which their edge is shaded hard. |
+| `bevel f32` | `0` | Hard edges rounded by a chamfer of this radius (clay, toys, diorama pieces); 0 is none. |
+| `facetAngle f32` | `0` | With normals flat: neighbouring faces within this angle of their facet's normal shade as one facet, one normal and one baked colour, so a gently curved ground is a few broad planes, not a pattern of triangles. 0 is every triangle its own facet. |
+| `voxel f32` | `0` | Models built of cubes of this edge (voxel worlds); 0 is no voxel grid. |
+| `silhouette f32` | `0` | The thinnest feature a model's silhouette keeps at the style's scale: thinner detail does not read and is left out; 0 is no constraint. |
+
+`propFaces` range: 0 .. unbounded; unit: unstated.
+
+
+`characterFaces` range: 0 .. unbounded; unit: unstated.
+
+
+`normals` variants: any, smooth, flat, angle.
+
+
+`normalAngle` range: 0 .. 180; unit: deg.
+
+
+`bevel` range: 0 .. unbounded; unit: m.
+
+
+`facetAngle` range: 0 .. 90; unit: deg.
+
+
+`voxel` range: 0 .. unbounded; unit: m.
+
+
+`silhouette` range: 0 .. unbounded; unit: m.
+
+
+<a id="file-look-ArtLine"></a>
+### `file:look.ArtLine`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `width f32` | `0` | The line's width: in logical pixels round a sprite (1 is one dark pixel round the shape), in pixels at distanceFalloff round a mesh (as MaterialStyle.outlineWidth); 0 is no line. |
+| `color Color` | `{"r":0.02,"g":0.02,"b":0.03}` | The line's colour (linear; a look may write an sRGB "#rrggbb"). |
+| `place ArtLinePlace` | `"outside"` | Where the line lies against the shape: outside (the zero value), inside, or both. |
+| `distanceFalloff f32` | `0` | Round a mesh: the distance at which the line is width wide, nearer wider and farther thinner (as MaterialStyle.outlineDistance); 0 keeps one width. |
+| `brush ArtBrush` | `"diamond"` | Round a sprite: the brush the cook draws the line into its cells with: diamond (the zero value), circle or square (docs/art.md §2.3). |
+
+`width` range: 0 .. 32; unit: unstated.
+
+
+`place` variants: outside, inside, both.
+
+
+`distanceFalloff` range: 0 .. unbounded; unit: m.
+
+
+`brush` variants: diamond, circle, square.
+
+
+<a id="file-look-ArtMotion"></a>
+### `file:look.ArtMotion`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `stepFps f32` | `0` | Clips and flipbooks advance this many times a second whatever the tick, holding each pose between (12 is on twos at 24 fps, 8 on threes); 0 is smooth, no constraint. |
+| `maxFrames u32` | `0` | The most frames one clip or flipbook may hold; 0 is no limit. |
+| `squash f32` | `0` | The default squash and stretch of the style's movement: og.tween.squash's impact where a call leaves it out, 0.5 the preset's own (1.25, 0.8), 1 as rubber hose (1.5, 0.6); 0 is no constraint (the preset's own). |
+
+`stepFps` range: 0 .. 120; unit: hz.
+
+
+`maxFrames` range: 0 .. unbounded; unit: unstated.
+
+
+`squash` range: 0 .. 1; unit: ratio.
+
+
+<a id="file-look-ArtCamera"></a>
+### `file:look.ArtCamera`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `projection ArtProjection` | `"any"` | The projection: any (no constraint), perspective or orthographic. |
+| `fixedAngle bool` | `false` | The camera keeps one angle, pitch and yaw: false is no constraint. |
+| `pitch f32` | `0` | With fixedAngle: how far below the horizon the camera looks (0 side-on, 90 straight down, 30 the 2:1 pixel isometric, 35.264 true isometric). |
+| `yaw f32` | `0` | With fixedAngle: its turn about the vertical axis (45 for isometric). |
+| `fovMin f32` | `0` | The narrowest vertical field of view a perspective camera of the style takes; 0 is no limit. |
+| `fovMax f32` | `0` | The widest vertical field of view a perspective camera of the style takes; 0 is no limit. |
+| `pixelPerfect bool` | `false` | A 2D camera moves and zooms by whole logical pixels only (ArtPixels.unit), as Stylise.pixelSnap does the frame's: pixel art never shimmers as it scrolls. |
+
+`projection` variants: any, perspective, orthographic.
+
+
+`pitch` range: -90 .. 90; unit: deg.
+
+
+`yaw` range: -180 .. 180; unit: deg.
+
+
+`fovMin` range: 0 .. 179; unit: deg.
+
+
+`fovMax` range: 0 .. 179; unit: deg.
+
 
 <a id="file-materials"></a>
 ### `file:materials`
@@ -1877,7 +2944,29 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `video` asset, cooked by `video`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete video parser field table. Sources require ffmpeg/ffprobe. Clip output is an ordinary video with frames and optional sound; stream output is chunked AV1 with declared renditions. Stream-only controls are refused on clips.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<mp4/webm/mov>"` | `required` | Footage beside this file or under assets/; absolute and parent paths are refused. |
+| `fps <integer 1..120>` | `30` | Frames per second kept. |
+| `maxSeconds <seconds > 0>` | `8 (clip); whole source (stream)` | Keep source from its beginning for this duration. |
+| `size <width> <height>` | `source capped at width 1024 (clip), 1920 (stream)` | Each dimension 2..4096; explicit resize. |
+| `kind color \| pixel` | `color` | Frame texture processing kind. |
+| `audio true \| false` | `true` | Keep source audio as a sound subasset when present. |
+| `audioLocale "<locale>" "<audio file>"` | `` | Repeat alternate localized audio tracks; unique case-insensitive alphanumeric/hyphen/underscore tags. |
+| `loudness <LUFS -30..0>` | `off` | Normalize source sound with ffmpeg loudnorm. |
+| `aiGenerated true \| false` | `false` | Recorded provenance flag, not a generation request. |
+| `placeholder true \| false` | `false` | Recorded stand-in flag, reported by og flow. |
+| `alpha true \| false` | `false` | Retain source alpha; refuses a source without alpha. |
+| `stream true \| false` | `false` | Encode chunked AV1 instead of a clip frame array. |
+| `keyframe <seconds 0.1..10>` | `1` | Stream keyframe interval. |
+| `chunk <seconds 0.5..60>` | `6` | Stream chunk interval, rounded to whole keyframe intervals. |
+| `crf <integer 0..63>` | `32` | Stream AV1 constant rate factor. |
+| `crf720 <integer 0..63>` | `min(crf + 6, 63)` | 720p rendition constant rate factor. |
+| `posterSize 0 \| <integer 64..4096>` | `480` | Stream poster's longest side; zero keeps full resolution. |
+| `renditions hevc h264 \| none` | `hevc when encoder available` | Explicit list of browser codec renditions beside AV1; none appears alone. |
+| `lowRendition true \| false` | `false` | Also encode a 480p stream rendition. |
 
 <a id="guide-file-types-2"></a>
 ### `file-types §2` Other engineering sources

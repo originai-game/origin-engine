@@ -14,7 +14,7 @@ fn table(out: &mut String, fields: &[Line]) {
             f.key,
             f.args.replace('|', "\\|"),
             f.default,
-            f.doc
+            f.doc.replace('|', "\\|").replace('\n', " ")
         );
     }
 }
@@ -108,6 +108,37 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.\n\n");
                 let fields: Vec<_> = og_bundle::shader::LINES.iter().filter(|f| f.within.is_empty() || f.within.contains(&ty)).copied().collect();
                 table(&mut out, &fields);
+            }
+            "look" => {
+                out.push_str("Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.\n\n");
+                table(&mut out, og_bundle::look::LINES);
+                let _ = writeln!(out, "\nMood values: {}. Antialias values: {}.\n", og_bundle::look::MOODS.join(", "), og_bundle::look::ANTIALIAS.join(", "));
+                let seeds: Vec<_> = og_bundle::look::UI_SEEDS.iter().map(|key| Line::new(key, "\"#rrggbb\"", "", "UI seed colour, sRGB.", "")).collect();
+                block(&mut out, "look.uiSeeds", &seeds);
+                for resource in og_bundle::look::LOOK_RESOURCES {
+                    let record = og_records::RECORDS.iter().find(|r| r.kind == "resource" && r.name == resource).ok_or_else(|| format!("look resource {resource} has no reflected record"))?;
+                    let fields: Vec<_> = record.fields.iter().filter(|f| !f.readonly && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))).map(|f| Line::new(f.name, f.column, f.default, f.doc, "")).collect();
+                    block(&mut out, &format!("look.{resource}"), &fields);
+                    for f in record.fields.iter().filter(|f| !f.readonly && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))) {
+                        if !f.variants.is_empty() {
+                            let _ = writeln!(out, "\n`{}` variants: {}.\n", f.name, f.variants.join(", "));
+                        }
+                        if f.min.is_some() || f.max.is_some() || !f.unit.is_empty() {
+                            let _ = writeln!(out, "\n`{}` range: {} .. {}; unit: {}.\n", f.name, f.min.map_or("unbounded".into(), |n| n.to_string()), f.max.map_or("unbounded".into(), |n| n.to_string()), if f.unit.is_empty() { "unstated" } else { f.unit });
+                        }
+                    }
+                }
+            }
+            "lightmap" => {
+                out.push_str("Field coverage: derived bake record root and nested fields. Normally written by og bake lightmaps, not hand-authored; stale scene/geometry bindings require a new bake. Numeric arrays may span repeated lines. Unknown fields are refused.\n\n");
+                table(&mut out, og_bundle::lightmap::LINES);
+                block(&mut out, "lightmap.model", og_bundle::lightmap::MODEL_LINES);
+                block(&mut out, "lightmap.model.part", og_bundle::lightmap::PART_LINES);
+                block(&mut out, "lightmap.volume", og_bundle::lightmap::VOLUME_LINES);
+            }
+            "video" => {
+                out.push_str("Field coverage: complete video parser field table. Sources require ffmpeg/ffprobe. Clip output is an ordinary video with frames and optional sound; stream output is chunked AV1 with declared renditions. Stream-only controls are refused on clips.\n\n");
+                table(&mut out, super::video::LINES);
             }
             "table" => {
                 out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");

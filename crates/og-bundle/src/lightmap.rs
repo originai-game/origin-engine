@@ -41,7 +41,58 @@
 //! stales the bake; a re-cook that leaves both alone (a cooker revision,
 //! the raycast BVH cooked or left out, a texture option) keeps it.
 
+use og_core::ogt::line::Line;
 use og_core::ogt::{Block, Document, Value};
+
+macro_rules! lines {
+    ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
+        &[$(Line::new($key, $args, $default, $doc, "")),*]
+    };
+}
+
+/// Fields of the derived record written by `og bake lightmaps`.
+pub const LINES: &[Line] = lines![
+    "scene", "\"<asset>\"", "required", "Scene asset id whose static lighting was baked.";
+    "scene-hash", "\"<hex u64>\"", "required", "Scene source hash when baked.";
+    "pages", "\"<file.ktx2>\"", "required", "RGBA16F array pages beside this record, consumed as a lightmap, not an independent texture.";
+    "samples", "<count>", "0", "Recorded bake sample count.";
+    "seconds", "<seconds>", "0", "Recorded elapsed bake time.";
+    "model", "\"<entity>\" { ... }", "", "Repeat a static model's baked geometry binding.";
+    "volume", "\"<entity>\" { ... }", "", "Repeat baked irradiance probes."
+];
+/// A static model's binding fields.
+pub const MODEL_LINES: &[Line] = lines![
+    "asset", "\"<model asset>\"", "required", "Model asset id.";
+    "hash", "\"<hex u64>\"", "required", "Geometry hash, not cooked blob hash.";
+    "part", "{ ... }", "", "Parts in the model's order."
+];
+/// A part's derived vertex remapping and lightmap coordinates.
+pub const PART_LINES: &[Line] = lines![
+    "vertices", "<count>", "0", "Original vertex count, checked for stale bakes.";
+    "xref", "<index> ...", "", "Original vertex per lightmap vertex; repeated lines concatenate.";
+    "indices", "<index> ...", "", "Triangle indices; repeated lines concatenate.";
+    "uv", "<u> <v> <page> ...", "", "One UV/page triple per xref; v down. Repeated lines concatenate."
+];
+/// A volume's irradiance lattice fields.
+pub const VOLUME_LINES: &[Line] = lines![
+    "min", "<x> <y> <z>", "required", "Volume minimum in scene metres.";
+    "max", "<x> <y> <z>", "required", "Volume maximum in scene metres.";
+    "fade", "<metres>", "0", "Light fade distance outside its box.";
+    "counts", "<x> <y> <z>", "required", "Probe counts along each axis.";
+    "probes", "<number> ...", "", "Twelve coefficients per probe, x fastest: RGB each as c1.x c1.y c1.z c0. Repeated lines concatenate."
+];
+
+fn fields(b: &Block, lines: &[Line]) -> Result<(), String> {
+    for e in &b.entries {
+        if !lines.iter().any(|f| f.key == e.key) {
+            return Err(format!(
+                "line {}: unknown lightmap field '{}'",
+                e.line, e.key
+            ));
+        }
+    }
+    Ok(())
+}
 
 /// The hash a bake keys a static model on: the geometry of its parts as
 /// the runtime loads them (per part, in its order: the vertex count, every
@@ -192,6 +243,7 @@ impl LightmapFile {
             return Err(format!("type '{}' is not a lightmap", doc.ty));
         }
         let b = &doc.body;
+        fields(b, LINES)?;
         let s = |b: &Block, k: &str| -> Result<String, String> {
             b.get(k)
                 .and_then(|e| e.values.first())
@@ -229,6 +281,7 @@ impl LightmapFile {
         };
         for e in b.get_all("model") {
             let mb = block(e)?;
+            fields(&mb, MODEL_LINES)?;
             let mut m = BakedModel {
                 entity: e
                     .values
@@ -242,6 +295,7 @@ impl LightmapFile {
             };
             for pe in mb.get_all("part") {
                 let pb = block(pe)?;
+                fields(&pb, PART_LINES)?;
                 let uv = nums(&pb, "uv")?;
                 let p = BakedPart {
                     vertices: nums(&pb, "vertices")?.first().copied().unwrap_or(0.0) as u32,
@@ -271,6 +325,7 @@ impl LightmapFile {
         }
         for e in b.get_all("volume") {
             let vb = block(e)?;
+            fields(&vb, VOLUME_LINES)?;
             let v3 = |k: &str| -> Result<[f32; 3], String> {
                 match nums(&vb, k)?.as_slice() {
                     [x, y, z] => Ok([*x as f32, *y as f32, *z as f32]),

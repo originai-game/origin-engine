@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "og api file directory / lightmap",
+    "change": "The file directory includes look root/UI seed fields and writable reflected resource fields, derived lightmap binding fields and the full video source field table. Lightmap records now refuse unknown fields at every nesting level.",
+    "fix": "Query file:look.PostEffects, file:lightmap.model.part or file:video. Use og bake lightmaps to regenerate a lightmap record rather than adding unrecognized fields. Look field limits and enum names come from the same IDL records the cook validates."
+  }]
+}
