@@ -10,6 +10,8 @@ mod temp;
 mod scene_string;
 #[path = "../shader.rs"]
 mod shader;
+#[path = "../source_content.rs"]
+mod source_content;
 #[path = "../source_schemas.rs"]
 mod source_schemas;
 #[path = "../template.rs"]

@@ -228,6 +228,58 @@ impl Source {
         })
     }
 
+    /// Map many evaluated paths in one parse/tree walk. A computed/ambiguous
+    /// ancestor supplies its expression span, never a claim of writability or
+    /// an invented location in an imported helper. Does not decode literals.
+    pub fn locations(&self, paths: &[&str]) -> Result<Vec<Location>, Diagnostic> {
+        if paths.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.with_root("", |root, _, _| {
+            let mut wanted = Positions::default();
+            for (i, path) in paths.iter().enumerate() {
+                let mut node = &mut wanted;
+                for segment in segments(path)? {
+                    node = node.children.entry(segment).or_default();
+                }
+                node.indices.push(i);
+            }
+            let lines: Vec<_> = std::iter::once(0)
+                .chain(self.text.match_indices('\n').map(|(i, _)| i + 1))
+                .collect();
+            // Prefix counts avoid rescanning a long, single-line generated
+            // declaration for every reference. Columns still count scalars.
+            let mut extra = 0;
+            let wide: Vec<_> = self
+                .text
+                .char_indices()
+                .filter(|(_, c)| !c.is_ascii())
+                .map(|(i, c)| {
+                    extra += c.len_utf8() - 1;
+                    (i, extra)
+                })
+                .collect();
+            let extra_before = |at| {
+                let i = wide.partition_point(|&(start, _)| start < at);
+                if i == 0 { 0 } else { wide[i - 1].1 }
+            };
+            let location = |span: Span| {
+                let start = span.start as usize;
+                let line = lines.partition_point(|&i| i <= start) - 1;
+                Location {
+                    start: span.start,
+                    end: span.end,
+                    line: line + 1,
+                    column: start - lines[line] - (extra_before(start) - extra_before(lines[line]))
+                        + 1,
+                }
+            };
+            let mut out = vec![location(root.span()); paths.len()];
+            wanted.capture(root, &location, &mut out);
+            Ok(out)
+        })
+    }
+
     /// All edits refer to this snapshot, not to each other's intermediate
     /// results. Any conflict rejects the entire batch. No bytes are written.
     /// Text outside replaced value spans/insertion points is unchanged.
@@ -359,6 +411,69 @@ impl Source {
             Self::new(&self.file, &text).with_root("", |_, _, _| Ok(()))?;
             Ok(text)
         })
+    }
+}
+
+#[derive(Default)]
+struct Positions {
+    indices: Vec<usize>,
+    children: BTreeMap<String, Positions>,
+}
+
+impl Positions {
+    fn fill(&self, location: &Location, out: &mut [Location]) {
+        for &i in &self.indices {
+            out[i] = location.clone();
+        }
+        for child in self.children.values() {
+            child.fill(location, out);
+        }
+    }
+
+    fn capture(
+        &self,
+        expr: &Expression<'_>,
+        location: &impl Fn(Span) -> Location,
+        out: &mut [Location],
+    ) {
+        let expr = expr.get_inner_expression();
+        let at = location(expr.span());
+        for &i in &self.indices {
+            out[i] = at.clone();
+        }
+        if self.children.is_empty() {
+            return;
+        }
+        match expr {
+            Expression::ObjectExpression(object) => match properties(object) {
+                Ok(properties) => {
+                    for (key, child) in &self.children {
+                        match properties.get(key) {
+                            Some(p) => child.capture(&p.value, location, out),
+                            None => child.fill(&at, out),
+                        }
+                    }
+                }
+                Err(e) => self.fill(&location(e.span), out),
+            },
+            Expression::ArrayExpression(array)
+                if array.elements.iter().all(|e| e.as_expression().is_some()) =>
+            {
+                for (key, child) in &self.children {
+                    let value = key
+                        .parse::<usize>()
+                        .ok()
+                        .filter(|i| i.to_string() == *key)
+                        .and_then(|i| array.elements.get(i))
+                        .and_then(|e| e.as_expression());
+                    match value {
+                        Some(value) => child.capture(value, location, out),
+                        None => child.fill(&at, out),
+                    }
+                }
+            }
+            _ => self.fill(&at, out),
+        }
     }
 }
 

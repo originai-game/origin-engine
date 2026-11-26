@@ -16,7 +16,7 @@ use std::path::Path;
 /// One entry, not a cooked blob. `kind` is the primary content kind; for import
 /// factories it is the schema's literal discriminant, not the word "import".
 /// Keep only byte identity, not every entry's source text, in a large index.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub id: String,
     pub module: String,

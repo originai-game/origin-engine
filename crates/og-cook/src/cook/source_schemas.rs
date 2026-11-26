@@ -94,22 +94,26 @@ impl File {
     /// Contextual scene/prefab/table schemas belong to the current project,
     /// never to a global registry. Their caller supplies the bound decoder.
     /// Diagnostic paths remain relative to `value`, for original-source mapping.
-    pub fn check(&self, contextual: Option<&dyn AuthorSchema>) -> Result<(), Diagnostic> {
-        let schema = match get(&self.kind) {
-            Some(kind) => (kind.schema)(),
+    pub fn schema<'a>(
+        &self,
+        contextual: Option<&'a dyn AuthorSchema>,
+    ) -> Result<&'a dyn AuthorSchema, Diagnostic> {
+        match get(&self.kind) {
+            Some(kind) => Ok((kind.schema)()),
             None if matches!(self.kind.as_str(), "scene" | "prefab" | "table") => contextual
                 .ok_or_else(|| Diagnostic {
                     path: String::new(),
                     message: format!("{} needs the project's record schemas", self.kind),
-                })?,
-            None => {
-                return Err(Diagnostic {
-                    path: String::new(),
-                    message: format!("unknown author file kind {}", self.kind),
-                });
-            }
-        };
-        schema.check(&self.value)
+                }),
+            None => Err(Diagnostic {
+                path: String::new(),
+                message: format!("unknown author file kind {}", self.kind),
+            }),
+        }
+    }
+
+    pub fn check(&self, contextual: Option<&dyn AuthorSchema>) -> Result<(), Diagnostic> {
+        self.schema(contextual)?.check(&self.value)
     }
 }
 

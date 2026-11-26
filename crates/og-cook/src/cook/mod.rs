@@ -43,6 +43,7 @@ pub mod file_types;
 pub mod flow;
 pub mod generator;
 pub mod materials;
+pub mod source_content;
 pub mod source_index;
 mod source_path;
 pub mod source_project;
