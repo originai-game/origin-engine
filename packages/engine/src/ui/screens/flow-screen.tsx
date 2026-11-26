@@ -91,6 +91,7 @@ export interface FlowScreenProps {
  * `flow`: its picture with dissolve, subtitles lifted clear of active choices,
  * aspect-accurate hotspots (choice & inspect), swipe/drag touch gestures,
  * rich QTEs, and a subtle buffering badge while waiting on network chunks.
+ * It sits over a picture, so it resolves in the dark scheme in both schemes.
  */
 export function FlowScreen(props: FlowScreenProps) {
   const world = useWorld();
@@ -134,7 +135,7 @@ export function FlowScreen(props: FlowScreenProps) {
   };
 
   return (
-    <View class="absolute inset-0 pointer-events-none">
+    <View class="absolute inset-0 scheme-dark pointer-events-none">
       <FlowPicture
         picture={view()?.texture ?? 0}
         previous={view()?.previous ?? 0}

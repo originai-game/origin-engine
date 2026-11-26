@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    { "member": "FlowScreen", "summary": "It resolves in the dark scheme in both schemes, as the title and main menu do: it always sits over footage, so its choices, hotspots and QTE prompts are dark components over the picture rather than light plates." }
+  ]
+}
