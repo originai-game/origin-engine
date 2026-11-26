@@ -578,16 +578,8 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
             }))
         })
         .unwrap_or_default();
-    // The pseudo-locale lengthens the text, as a document's t() does.
-    let shown = |text: String| {
-        if og_i18n::is_pseudo_locale(&tag(world)) {
-            og_i18n::pseudo_text(&text)
-        } else {
-            text
-        }
-    };
     match with(world, |s| s.catalog.t(&key, &args)) {
-        Some(text) => shown(text),
+        Some(text) => shown(world, text),
         None => {
             note(
                 world,
@@ -595,9 +587,26 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
                     "og.i18n.t: no table has '{key}': add `string \"{key}\" \"...\"` to the base table"
                 ),
             );
-            shown(key)
+            shown(world, key)
         }
     }
+}
+
+/// The pseudo-locale lengthens the text, as a document's t() does.
+fn shown(world: u32, text: String) -> String {
+    if og_i18n::is_pseudo_locale(&tag(world)) {
+        og_i18n::pseudo_text(&text)
+    } else {
+        text
+    }
+}
+
+/// A label written either as a key or as the text itself (a flow node's
+/// `og-flow-title`): its translation when a table has it, else the text as
+/// written, without a warning.
+pub(crate) fn label(world: u32, text: &str) -> String {
+    let found = with(world, |s| s.catalog.t(text, &BTreeMap::new()));
+    shown(world, found.unwrap_or_else(|| text.to_string()))
 }
 
 pub fn og_i18n_has(world: u32, key: String) -> bool {

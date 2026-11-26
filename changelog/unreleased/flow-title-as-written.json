@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "FlowChartNode.title",
+      "summary": "A node's `og-flow-title` is translated when a string table has it and otherwise shown as written, without the `og.i18n.t: no table has` warning, so a story written in its own language needs no table for its titles."
+    }
+  ]
+}

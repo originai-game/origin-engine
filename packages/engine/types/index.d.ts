@@ -36372,7 +36372,9 @@ export interface FlowJumpDesc {
 export interface FlowChartNode {
   /** Its title. */
   readonly node: string;
-  /** Its display title (`og-flow-title` resolved through og.i18n, else `node`). */
+  /**
+   * Its display title: `og-flow-title` translated when a string table has it, else as written; `node` without one.
+   */
   readonly title: string;
   /** Its segment's asset id. */
   readonly segment: string;

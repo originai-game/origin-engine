@@ -11,7 +11,7 @@ A flow node on og.flow.chart's layout.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `node` | `string` | `""` | — | — | — | Its title. |
-| `title` | `string` | `""` | — | — | — | Its display title (`og-flow-title` resolved through og.i18n, else `node`). |
+| `title` | `string` | `""` | — | — | — | Its display title: `og-flow-title` translated when a string table has it, else as written; `node` without one. |
 | `segment` | `string` | `""` | — | — | — | Its segment's asset id. |
 | `poster` | `Texture` | `0` | — | — | — | Its segment's first video's poster texture handle (0 for live-only segments). |
 | `kind` | `string` | `""` | — | — | — | `footage`, `live`, or `both`. |
@@ -25,7 +25,7 @@ A flow node on og.flow.chart's layout.
 struct FlowChartNode {
   doc "A flow node on og.flow.chart's layout."
   field node String "Its title."
-  field title String "Its display title (`og-flow-title` resolved through og.i18n, else `node`)."
+  field title String "Its display title: `og-flow-title` translated when a string table has it, else as written; `node` without one."
   field segment String "Its segment's asset id."
   field poster Texture "Its segment's first video's poster texture handle (0 for live-only segments)."
   field kind String "`footage`, `live`, or `both`."

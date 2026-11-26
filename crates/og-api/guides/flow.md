@@ -69,7 +69,7 @@ og-flow-chapter: chapter.kitchen
 | Header or tag | Meaning |
 |---|---|
 | `og-flow: <timeline>` | The segment this node plays. A node without it is a logic node: it runs through at once (branch on variables there) |
-| `og-flow-title: <title>` | Human-readable node title surfaced in `FlowChartNode.title` |
+| `og-flow-title: <title>` | Human-readable node title surfaced in `FlowChartNode.title`: a string key or the text itself, shown as written when no table has it |
 | `og-flow-chapter: <key>` | Entering it sends og.FlowChapter: a chapter to list and to save at |
 | `og-flow-ending: <id>` | Its segment's cut with the conversation over sends og.FlowEnded with this id |
 | `og-flow-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), crossfading audio while suppressing the outgoing deck's captions and camera; without it the cut is hard |

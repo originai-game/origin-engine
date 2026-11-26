@@ -170,7 +170,7 @@ pub(super) fn build(engine_id: u32, p: &Prepared) -> FlowChart {
             title: if n.display_title.is_empty() {
                 n.title.clone()
             } else {
-                crate::bind::story::localize_key(engine_id, &n.display_title)
+                crate::bind::i18n::label(engine_id, &n.display_title)
             },
             segment: n.segment.clone(),
             poster: n.poster,
