@@ -25,6 +25,7 @@ pub mod plan;
 mod prepare;
 mod semantics;
 mod texels;
+mod transfer;
 mod view;
 
 pub use atlas::{Paint, Projected, Texel, fill_unpainted, padded, project, silhouette};
@@ -32,6 +33,7 @@ pub use level::{Level, SurfaceHit};
 pub use prepare::{Prepared, prepare, unpainted_pixels};
 pub use semantics::{Classes, Description, classify, describe};
 pub use texels::Texels;
+pub use transfer::{PartTransfer, Transfer};
 pub use view::{ClayLight, GBuffer, Sample, ViewKind, ViewSpec, clay};
 
 use std::sync::Mutex;
