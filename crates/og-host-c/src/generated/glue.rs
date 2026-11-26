@@ -399,6 +399,11 @@ unsafe extern "C" fn og_world_name_of(args: *const crate::OgValue, out: *mut cra
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_world_set_name(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as WorldApi>::og_world_set_name(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_world_query(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as WorldApi>::og_world_query(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3600,6 +3605,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_world_find", arity: 2, call: og_world_find },
     crate::Symbol { name: c"og_world_prefab_of", arity: 2, call: og_world_prefab_of },
     crate::Symbol { name: c"og_world_name_of", arity: 2, call: og_world_name_of },
+    crate::Symbol { name: c"og_world_set_name", arity: 3, call: og_world_set_name },
     crate::Symbol { name: c"og_world_query", arity: 2, call: og_world_query },
     crate::Symbol { name: c"og_world_events", arity: 2, call: og_world_events },
     crate::Symbol { name: c"og_world_emit", arity: 3, call: og_world_emit },

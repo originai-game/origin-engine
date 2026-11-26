@@ -399,6 +399,11 @@ pub fn og_world_name_of(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_world_set_name(world: u32, entity: f64, name: String) -> String {
+    <Host as WorldApi>::og_world_set_name(&Host, world, entity, name)
+}
+
+#[wasm_bindgen]
 pub fn og_world_query(world: u32, desc: Option<String>) -> String {
     <Host as WorldApi>::og_world_query(&Host, world, desc)
 }

@@ -111,6 +111,9 @@ macro_rules! __og_host_bindings_world {
             fn og_world_name_of(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::json($crate::og_world_name_of(world, entity))
             }
+            fn og_world_set_name(&self, world: u32, entity: f64, name: String) -> String {
+                $crate::host_impl::answer($crate::og_world_set_name(world, entity, name))
+            }
             fn og_world_query(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_world_query(world, desc))
             }

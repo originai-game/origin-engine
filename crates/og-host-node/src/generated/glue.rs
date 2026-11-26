@@ -477,6 +477,12 @@ pub fn og_world_name_of(env: Env, world: u32, entity: f64) -> String {
     <Host as WorldApi>::og_world_name_of(&Host, world, entity)
 }
 
+#[napi(js_name = "og_world_set_name")]
+pub fn og_world_set_name(env: Env, world: u32, entity: f64, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_set_name(&Host, world, entity, name)
+}
+
 #[napi(js_name = "og_world_query")]
 pub fn og_world_query(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -183,6 +183,8 @@ export interface HostAbi<A, V> {
   og_world_prefab_of(world: number, entity: number): string;
   /** `World.nameOf` */
   og_world_name_of(world: number, entity: number): string;
+  /** `World.setName` */
+  og_world_set_name(world: number, entity: number, name: string): string;
   /** `World.query` */
   og_world_query(world: number, desc: string | undefined): string;
   /** `World.events` */
@@ -1451,6 +1453,7 @@ export const SYMBOLS: readonly string[] = [
   "og_world_find",
   "og_world_prefab_of",
   "og_world_name_of",
+  "og_world_set_name",
   "og_world_query",
   "og_world_events",
   "og_world_emit",
@@ -2166,6 +2169,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);
       return abi.og_world_name_of(world, entity);
+    },
+    og_world_set_name(world: number, entity: number, name: string) {
+      if (typeof entity !== "number") notEntity("world.setName", "entity", entity);
+      return abi.og_world_set_name(world, entity, name);
     },
     og_transform_matrix_world(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.transform.matrixWorld", "entity", entity);

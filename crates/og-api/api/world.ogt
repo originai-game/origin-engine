@@ -359,7 +359,7 @@ module world {
 
     fn find {
       doc "The entity with a name."
-      param name String "The name given at spawn."
+      param name String "The current name, given at spawn or by setName."
       returns Option.Entity "Null when no live entity has the name."
     }
 
@@ -373,6 +373,14 @@ module world {
       doc "An entity's name."
       param entity Entity "The entity."
       returns Option.String "Null for an unnamed or dead entity."
+    }
+
+    fn setName {
+      doc "Name or rename a live entity without replacing it. find and nameOf see the new name immediately and the old name is freed. In a system the ECS change applies when the system returns, before later systems and their snapshots; any system may name. Names are saved and hashed."
+      aliases "rename entity, live rename, change entity name"
+      param entity Entity "The live entity."
+      param name String "Non-empty, at most 256 UTF-8 bytes, not starting with #; no whitespace, :, ; or =."
+      returns Result.Void "Refused for a dead entity, an invalid name, or a name held by another entity or a pending scene instance. Naming it with its own name succeeds."
     }
 
     fn query {

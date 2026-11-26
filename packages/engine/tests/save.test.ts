@@ -145,6 +145,57 @@ test("a save restored between ticks hashes as the saved world, and the world goe
   straight.destroy();
 });
 
+test("live names are unique, release the old name and survive deferred renames and restore", () => {
+  const rename = defineSystem("SvRename", {}, (_q, time, world) => {
+    if (time.tick !== 0) return;
+    const entity = world.find("renamed")!;
+    const result = world.setName(entity, "after-system");
+    if (!result.ok) throw new Error(result.reason);
+    expect(world.find("renamed")).toBeNull();
+    expect(world.find("after-system")).toBe(entity);
+    expect(world.nameOf(entity)).toBe("after-system");
+    expect(world.spawn({ name: "bad name", bare: true }).ok).toBeFalse();
+  });
+  const token = og.game({ systems: [rename], start(world) {
+    world.spawn({ name: "first" });
+    world.spawn({ name: "occupied" });
+  } });
+  const created = createEngine(token as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  try {
+    const world = engine.world;
+    const first = world.find("first")!;
+    expect(world.setName(first, "renamed").ok).toBeTrue();
+    expect(world.find("first")).toBeNull();
+    expect(world.nameOf(first)).toBe("renamed");
+    expect(world.setName(first, "renamed").ok).toBeTrue();
+    expect(world.setName(first, "occupied").ok).toBeFalse();
+    for (const name of ["", "bad name", "#probe", "a:b", "a;b", "a=b", "界".repeat(86)]) {
+      expect(world.setName(first, name).ok).toBeFalse();
+    }
+    expect(world.setName(first, "界".repeat(85) + "a").ok).toBeTrue();
+    expect(world.setName(first, "renamed").ok).toBeTrue();
+    expect(world.find("renamed")).toBe(first);
+    expect(world.spawn({ name: "first" }).ok).toBeTrue();
+    expect(engine.advance(1).ok).toBeTrue();
+    expect(world.find("after-system")).toBe(first);
+    const save = world.snapshot();
+    if (!save.ok) throw new Error(save.reason);
+    const hash = engine.hash();
+    expect(world.setName(first, "changed-after-save").ok).toBeTrue();
+    expect(engine.hash()).not.toBe(hash);
+    expect(world.restore(save.value).ok).toBeTrue();
+    expect(engine.hash()).toBe(hash);
+    expect(world.find("after-system")).toBe(first);
+    expect(world.find("changed-after-save")).toBeNull();
+    expect(world.despawn(first).ok).toBeTrue();
+    expect(world.setName(first, "dead").ok).toBeFalse();
+  } finally {
+    engine.destroy();
+  }
+});
+
 type Round = { host: string; save: string; hash: string; restored?: { ok: boolean; hash: string; tick: number } };
 
 function round(host: string, ...args: string[]): Round {

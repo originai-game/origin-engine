@@ -2519,7 +2519,7 @@
                   "name": "name",
                   "type": "String",
                   "optional": false,
-                  "doc": "The name given at spawn."
+                  "doc": "The current name, given at spawn or by setName."
                 }
               ],
               "returns": "Option<Entity>",
@@ -2554,6 +2554,27 @@
               ],
               "returns": "Option<String>",
               "returnsDoc": "Null for an unnamed or dead entity.",
+              "publish": true
+            },
+            {
+              "name": "setName",
+              "doc": "Name or rename a live entity without replacing it. find and nameOf see the new name immediately and the old name is freed. In a system the ECS change applies when the system returns, before later systems and their snapshots; any system may name. Names are saved and hashed.",
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The live entity."
+                },
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "Non-empty, at most 256 UTF-8 bytes, not starting with #; no whitespace, :, ; or =."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a dead entity, an invalid name, or a name held by another entity or a pending scene instance. Naming it with its own name succeeds.",
               "publish": true
             },
             {

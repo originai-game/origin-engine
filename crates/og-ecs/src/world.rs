@@ -986,20 +986,7 @@ impl World {
         if !self.is_alive(e) {
             return Err(dead(e));
         }
-        let addressable = !name.is_empty()
-            && name.len() <= MAX_NAME
-            && !name.starts_with('#')
-            && !name
-                .chars()
-                .any(|c| c == ':' || c == ';' || c == '=' || c.is_whitespace());
-        if !addressable {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!(
-                    "'{name}' is not an entity name: non-empty, at most {MAX_NAME} bytes, no whitespace, ':', ';' or '=', and not starting with '#'"
-                ),
-            ));
-        }
+        Self::validate_name(name)?;
         match self.by_name.get(name) {
             Some(&holder) if holder == e => return Ok(()),
             Some(&holder) => {
@@ -1014,6 +1001,26 @@ impl World {
             self.by_name.remove(&old);
         }
         self.by_name.insert(name.to_owned(), e);
+        Ok(())
+    }
+
+    /// Checks the addressable name grammar before a deferred spawn or rename.
+    /// Ownership of the name is checked against the caller's live world.
+    pub fn validate_name(name: &str) -> Result<()> {
+        let addressable = !name.is_empty()
+            && name.len() <= MAX_NAME
+            && !name.starts_with('#')
+            && !name
+                .chars()
+                .any(|c| c == ':' || c == ';' || c == '=' || c.is_whitespace());
+        if !addressable {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "'{name}' is not an entity name: non-empty, at most {MAX_NAME} bytes, no whitespace, ':', ';' or '=', and not starting with '#'"
+                ),
+            ));
+        }
         Ok(())
     }
 

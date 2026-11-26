@@ -480,7 +480,7 @@ World.find(name: string): Entity | null
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
-| `name` | `string` | no | The name given at spawn. |
+| `name` | `string` | no | The current name, given at spawn or by setName. |
 
 **Returns** `Entity | null`: Null when no live entity has the name.
 
@@ -489,7 +489,7 @@ Binding symbol `og_world_find` · publish builds: kept
 ```ogt
 fn find {
   doc "The entity with a name."
-  param name String "The name given at spawn."
+  param name String "The current name, given at spawn or by setName."
   returns Option.Entity "Null when no live entity has the name."
 }
 ```
@@ -552,6 +552,39 @@ fn nameOf {
 
 <sub>Module `world` line 372</sub>
 
+<a id="member-World-setName"></a>
+
+#### `World.setName`
+
+Name or rename a live entity without replacing it. find and nameOf see the new name immediately and the old name is freed. In a system the ECS change applies when the system returns, before later systems and their snapshots; any system may name. Names are saved and hashed.
+
+Also known as: rename entity, live rename, change entity name
+
+```ts
+World.setName(entity: Entity, name: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `entity` | `Entity` | no | The live entity. |
+| `name` | `string` | no | Non-empty, at most 256 UTF-8 bytes, not starting with #; no whitespace, :, ; or =. |
+
+**Returns** `Result<void>`: Refused for a dead entity, an invalid name, or a name held by another entity or a pending scene instance. Naming it with its own name succeeds.
+
+Binding symbol `og_world_set_name` · publish builds: kept
+
+```ogt
+fn setName {
+  doc "Name or rename a live entity without replacing it. find and nameOf see the new name immediately and the old name is freed. In a system the ECS change applies when the system returns, before later systems and their snapshots; any system may name. Names are saved and hashed."
+  aliases "rename entity, live rename, change entity name"
+  param entity Entity "The live entity."
+  param name String "Non-empty, at most 256 UTF-8 bytes, not starting with #; no whitespace, :, ; or =."
+  returns Result.Void "Refused for a dead entity, an invalid name, or a name held by another entity or a pending scene instance. Naming it with its own name succeeds."
+}
+```
+
+<sub>Module `world` line 378</sub>
+
 <a id="member-World-query"></a>
 
 #### `World.query`
@@ -579,7 +612,7 @@ fn query {
 }
 ```
 
-<sub>Module `world` line 378</sub>
+<sub>Module `world` line 386</sub>
 
 <a id="member-World-events"></a>
 
@@ -609,7 +642,7 @@ fn events {
 }
 ```
 
-<sub>Module `world` line 385</sub>
+<sub>Module `world` line 393</sub>
 
 <a id="member-World-emit"></a>
 
@@ -641,7 +674,7 @@ fn emit {
 }
 ```
 
-<sub>Module `world` line 393</sub>
+<sub>Module `world` line 401</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -678,7 +711,7 @@ fn instantiate {
 }
 ```
 
-<sub>Module `world` line 402</sub>
+<sub>Module `world` line 410</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -715,7 +748,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `world` line 412</sub>
+<sub>Module `world` line 420</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -744,7 +777,7 @@ fn openSave {
 }
 ```
 
-<sub>Module `world` line 423</sub>
+<sub>Module `world` line 431</sub>
 
 <a id="member-World-restore"></a>
 
@@ -778,4 +811,4 @@ fn restore {
 }
 ```
 
-<sub>Module `world` line 430</sub>
+<sub>Module `world` line 438</sub>

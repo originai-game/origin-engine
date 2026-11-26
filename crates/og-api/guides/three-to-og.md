@@ -68,7 +68,8 @@ world.insert(hull, og.Mesh, { geometry: must(og.render.boxGeometry(world, { widt
   the systems run, so there is no `updateMatrixWorld` to call.
 - `getObjectByName("hull")` is `world.find("hull")`. Names are unique and
   the probe, the command channel and the tests address entities by them:
-  name every entity anyone will ask about.
+  name every entity anyone will ask about. `world.setName(entity, name)`
+  changes that address without replacing the entity; check its Result.
 - `scene.traverse(fn)` over everything of a kind is a system's query over
   the components that kind has (og-core): `reads: [og.Mesh]` visits every
   drawn mesh, archetype by archetype.
@@ -91,7 +92,7 @@ world.insert(hull, og.Mesh, { geometry: must(og.render.boxGeometry(world, { widt
 | `rotation.z = Math.atan2(dy, dx)`, a sprite turned towards a point | `{ quaternion: og.transform.face2d(position, target) }`: a 2D thing's +X towards the target, about +Z; `og.transform.fromHeading2d(angle)` for the angle itself (`facing §2`) |
 | `matrixWorld` | og.MatrixWorld (read only; the engine writes it) |
 | `visible`, `castShadow`, `receiveShadow`, `layers` | og.Mesh's (and og.Model's) `visible`, `castShadow`, `receiveShadow`, `layers` |
-| `name` | `SpawnDesc.name` |
+| `name` | `SpawnDesc.name` initially; `world.nameOf(e)` / `world.setName(e, name)` afterward |
 | `userData` | your own component (`defineComponent`): reflected, saved, inspectable |
 
 Two defaults differ from three.js: `Mesh.receiveShadow` is on (three.js's

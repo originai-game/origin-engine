@@ -1932,7 +1932,7 @@ export interface World {
   /**
    * The entity with a name.
    *
-   * @param name The name given at spawn.
+   * @param name The current name, given at spawn or by setName.
    * @returns Null when no live entity has the name.
    */
   find(name: string): Entity | null;
@@ -1950,6 +1950,14 @@ export interface World {
    * @returns Null for an unnamed or dead entity.
    */
   nameOf(entity: Entity): string | null;
+  /**
+   * Name or rename a live entity without replacing it. find and nameOf see the new name immediately and the old name is freed. In a system the ECS change applies when the system returns, before later systems and their snapshots; any system may name. Names are saved and hashed.
+   *
+   * @param entity The live entity.
+   * @param name Non-empty, at most 256 UTF-8 bytes, not starting with #; no whitespace, :, ; or =.
+   * @returns Refused for a dead entity, an invalid name, or a name held by another entity or a pending scene instance. Naming it with its own name succeeds.
+   */
+  setName(entity: Entity, name: string): Result<void>;
   /**
    * A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own.
    *

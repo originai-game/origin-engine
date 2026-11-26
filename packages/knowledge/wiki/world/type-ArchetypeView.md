@@ -13,7 +13,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 454</sub>
+<sub>Module `world` line 462</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -31,7 +31,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>Module `world` line 457</sub>
+<sub>Module `world` line 465</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -49,7 +49,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>Module `world` line 458</sub>
+<sub>Module `world` line 466</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -67,7 +67,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>Module `world` line 459</sub>
+<sub>Module `world` line 467</sub>
 
 <a id="member-ArchetypeView-rows"></a>
 
@@ -85,7 +85,7 @@ Binding symbol `og_archetype_view_get_rows` · publish builds: kept
 prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
 ```
 
-<sub>Module `world` line 460</sub>
+<sub>Module `world` line 468</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -113,7 +113,7 @@ fn entity {
 }
 ```
 
-<sub>Module `world` line 461</sub>
+<sub>Module `world` line 469</sub>
 
 <a id="member-ArchetypeView-handle"></a>
 
@@ -151,7 +151,7 @@ fn handle {
 }
 ```
 
-<sub>Module `world` line 466</sub>
+<sub>Module `world` line 474</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -181,7 +181,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 477</sub>
+<sub>Module `world` line 485</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -214,7 +214,7 @@ fn column {
 }
 ```
 
-<sub>Module `world` line 484</sub>
+<sub>Module `world` line 492</sub>
 
 <a id="member-ArchetypeView-addScaled"></a>
 
@@ -256,4 +256,4 @@ fn addScaled {
 }
 ```
 
-<sub>Module `world` line 492</sub>
+<sub>Module `world` line 500</sub>

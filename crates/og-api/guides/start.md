@@ -129,6 +129,22 @@ mechanical and lists every line it is not, each with its section of the
 - Splitting `src/` by feature (player, enemies, ui) with one file per
   system group keeps hot reload fast and diffs small.
 
+An entity's name is an address, not its identity. Use `world.setName` to
+rename a live entity without replacing its components or handle; `find`
+and `nameOf` see it immediately. The ECS applies a system's name changes
+when that system returns, so later systems and their snapshots see them.
+
+A system's query matches entities carrying **all** component types in its
+`reads` and `writes`; those lists are not two independent populations.
+Do not add another kind's tag just to read it: that narrows the query.
+Process disjoint populations in separate ordered systems, passing facts
+through a reflected resource or event. Use `world.get` for a known entity
+with its component declared in the system's access, or `world.spatial`
+for nearby entities that have a Transform (`og api show World.spatial`).
+`world.query` is for callbacks and commands between ticks, not a second
+query inside a system. This restriction preserves the declared scheduler
+and column-borrow contract.
+
 Put gameplay initialization in `GameDesc.start` and named UI store
 registration in `GameDesc.ui`. The engine calls `ui` after `start` and
 again after a hot-reload restore, never per tick. It does not rerun

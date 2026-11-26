@@ -23,8 +23,10 @@ pub(crate) fn set_name(eng: &Engine, e: Entity, name: &str) {
 /// The runtime's own view of a name (og.world.find reads it at once).
 pub(super) fn runtime_name(eng: &Engine, e: Entity, name: &str) {
     let mut st = eng.state.borrow_mut();
+    if let Some(old) = st.name_of.insert(e.to_bits(), name.to_string()) {
+        st.names.remove(&old);
+    }
     st.names.insert(name.to_string(), e.to_bits());
-    st.name_of.insert(e.to_bits(), name.to_string());
 }
 
 /// Whether `name` is taken: the runtime's table gives it to an entity that
@@ -90,13 +92,9 @@ pub(crate) fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, St
     let d = spawn_desc(call, desc)?;
     let name = d.name;
     if !name.is_empty() {
+        World::validate_name(&name).map_err(err)?;
         if name_taken(eng, &name, |e| eng.world().is_ok_and(|w| w.is_alive(e))) {
             return Err(format!("an entity named '{name}' already exists"));
-        }
-        if name.starts_with('#') || name.chars().any(|c| c.is_whitespace() || ":;=".contains(c)) {
-            return Err(format!(
-                "'{name}' cannot be addressed by the probe: a name has no whitespace, ':', ';' or '=' and does not start with '#'"
-            ));
         }
     }
     let mut components = Vec::new();
@@ -144,6 +142,9 @@ pub(super) fn spawn_in_system(
 ) -> Result<Entity, String> {
     let d = spawn_desc(call, desc)?;
     let name = d.name;
+    if !name.is_empty() {
+        World::validate_name(&name).map_err(err)?;
+    }
     // SAFETY: the frame is published while its system runs.
     if !name.is_empty()
         && (name_taken(eng, &name, |e| unsafe { f.ctx() }.is_alive(e))
@@ -314,4 +315,36 @@ pub fn og_world_name_of(world: u32, entity_id: f64) -> Option<String> {
         st.name_of.get(&(entity_id as u64)).cloned()
     });
     name.filter(|_| og_world_alive(world, entity_id))
+}
+
+pub fn og_world_set_name(world: u32, entity_id: f64, name: String) -> Result<(), String> {
+    let eng = engine(world)?;
+    let e = live(&eng, "world.setName", entity_id, |e| {
+        if let Some(f) = running(world) {
+            // SAFETY: the frame is published while its system runs.
+            Ok(unsafe { f.ctx() }.is_alive(e))
+        } else {
+            Ok(eng.world()?.is_alive(e))
+        }
+    })?;
+    World::validate_name(&name).map_err(err)?;
+    {
+        let st = eng.state.borrow();
+        if st.held_names.contains(&name)
+            || st
+                .names
+                .get(&name)
+                .is_some_and(|&bits| bits != e.to_bits() && og_world_alive(world, bits as f64))
+        {
+            return Err(format!("an entity named '{name}' already exists"));
+        }
+    }
+    if let Some(f) = running(world) {
+        runtime_name(&eng, e, &name);
+        // SAFETY: as above. Names enter snapshots with the other queued commands.
+        unsafe { f.ctx() }.set_name(e, &name);
+    } else {
+        set_name(&eng, e, &name);
+    }
+    Ok(())
 }

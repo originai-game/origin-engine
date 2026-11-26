@@ -195,6 +195,8 @@ pub trait WorldApi: Wire {
     fn og_world_prefab_of(&self, world: u32, entity: f64) -> String;
     /// `World.nameOf`
     fn og_world_name_of(&self, world: u32, entity: f64) -> String;
+    /// `World.setName`
+    fn og_world_set_name(&self, world: u32, entity: f64, name: String) -> String;
     /// `World.query`
     fn og_world_query(&self, world: u32, desc: Option<String>) -> String;
     /// `World.events`
@@ -1636,6 +1638,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_world_find",
     "og_world_prefab_of",
     "og_world_name_of",
+    "og_world_set_name",
     "og_world_query",
     "og_world_events",
     "og_world_emit",

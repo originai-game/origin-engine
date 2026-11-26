@@ -143,6 +143,9 @@ export class World {
   nameOf(entity: number): unknown {
     return JSON.parse(abi().og_world_name_of(this.id, entity)) as unknown;
   }
+  setName(entity: number, name: string): unknown {
+    return JSON.parse(abi().og_world_set_name(this.id, entity, name)) as unknown;
+  }
   query(desc?: unknown): unknown {
     return custom.World.query(this, desc);
   }
