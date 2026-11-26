@@ -256,6 +256,7 @@ use media::volumetric;
 use media::weather;
 use mesh::skin;
 pub use og_render_data::shapes;
+pub use og_render_data::terrain::edit as terrain_edit;
 pub use og_render_data::terrain::generate as terrain_generate;
 use og_render_data::terrain_error;
 pub use og_render_data::terrain_stamp;

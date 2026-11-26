@@ -2,21 +2,6 @@
 
 use super::*;
 
-/// The brush's weight at distance `d` from its centre: 1 inside the
-/// unfaded part, smoothly to 0 at the radius.
-fn weight(d: f32, radius: f32, falloff: f32) -> f32 {
-    if d >= radius {
-        return 0.0;
-    }
-    let inner = radius * (1.0 - falloff.clamp(0.0, 1.0));
-    if d <= inner {
-        return 1.0;
-    }
-    let t = (d - inner) / (radius - inner).max(1e-6);
-    let s = 1.0 - t;
-    s * s * (3.0 - 2.0 * s)
-}
-
 /// Applies a brush to a terrain's data; answers the samples it touched
 /// and the rectangle of the terrain's space it can have changed.
 pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, Vec2), String> {
@@ -76,160 +61,19 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
     t.edited = true;
     t.generation = next_generation();
     let d = t.field.as_mut().expect("decoded above");
-    if mode == 4 {
-        let n = paint(
-            d,
-            c,
+    let touched = og_render::terrain_edit::apply(
+        d,
+        &og_render::terrain_edit::Brush {
+            mode: mode as u32,
+            center,
             radius,
             falloff,
-            strength.min(1.0),
-            b.layer as usize,
-            t.layers.len().div_ceil(4).max(1),
-        );
-        return Ok((n, lo, hi));
-    }
-    if mode >= 5 {
-        return Ok((
-            cut(d, c, radius, falloff, strength.min(1.0), mode == 5),
-            lo,
-            hi,
-        ));
-    }
-    let cell = d.cell();
-    let (cols, rows) = (d.columns as i64, d.rows as i64);
-    let to_grid = |p: Vec2| ((p + half) / cell).to_array();
-    let [gx0, gz0] = to_grid(c - Vec2::splat(radius));
-    let [gx1, gz1] = to_grid(c + Vec2::splat(radius));
-    let (c0, c1) = (
-        (gx0.floor() as i64).max(0),
-        (gx1.ceil() as i64).min(cols - 1),
+            strength,
+            layer: b.layer as usize,
+            pages: t.layers.len().div_ceil(4).max(1),
+        },
     );
-    let (r0, r1) = (
-        (gz0.floor() as i64).max(0),
-        (gz1.ceil() as i64).min(rows - 1),
-    );
-    // One copy of the field (the scene holds the other), read from the
-    // unedited one.
-    let old = d.heights.clone();
-    let heights = Arc::make_mut(&mut d.heights);
-    let mut touched = 0;
-    let target = center.y;
-    for r in r0..=r1 {
-        for col in c0..=c1 {
-            let p = Vec2::new(col as f32, r as f32) * cell - half;
-            let w = weight((p - c).length(), radius, falloff);
-            if w <= 0.0 {
-                continue;
-            }
-            let k = (r * cols + col) as usize;
-            let h = old[k];
-            heights[k] = match mode {
-                0 => h + strength * w,
-                1 => h - strength * w,
-                2 => h + (target - h) * (strength.min(1.0) * w),
-                _ => {
-                    let at = |c: i64, r: i64| {
-                        old[(r.clamp(0, rows - 1) * cols + c.clamp(0, cols - 1)) as usize]
-                    };
-                    let mean =
-                        (at(col - 1, r) + at(col + 1, r) + at(col, r - 1) + at(col, r + 1)) * 0.25;
-                    h + (mean - h) * (strength.min(1.0) * w)
-                }
-            };
-            touched += 1;
-        }
-    }
     Ok((touched, lo, hi))
-}
-
-/// Cuts holes (`hole`) or fills them in under the brush: every cell whose
-/// centre the brush weighs at least half (its falloff times `strength`).
-/// A terrain left with no hole has no hole map.
-fn cut(d: &mut TerrainData, c: Vec2, radius: f32, falloff: f32, strength: f32, hole: bool) -> u32 {
-    let (cx, cz) = d.cells();
-    let mut holes = d
-        .holes
-        .as_ref()
-        .map_or_else(|| vec![0u8; (cx * cz) as usize], |h| h.to_vec());
-    let cell = d.cell();
-    let half = d.size * 0.5;
-    let mut touched = 0;
-    let (c0, c1) = under(c.x - radius, c.x + radius, half.x, cell.x, cx);
-    let (r0, r1) = under(c.y - radius, c.y + radius, half.y, cell.y, cz);
-    for r in r0..r1 {
-        for col in c0..c1 {
-            let p = (Vec2::new(col as f32, r as f32) + 0.5) * cell - half;
-            if weight((p - c).length(), radius, falloff) * strength < 0.5 {
-                continue;
-            }
-            holes[(r * cx + col) as usize] = u8::from(hole);
-            touched += 1;
-        }
-    }
-    d.holes = holes.contains(&1).then(|| holes.into());
-    touched
-}
-
-/// Paints `layer` into the control map (made all first-layer when the
-/// terrain has none): the layer's channel raised towards 1 and the others
-/// lowered, keeping their sum. The map first grows to `pages` pages of
-/// four layers, a new page all 1 (what a layer past the pages read).
-fn paint(
-    d: &mut TerrainData,
-    c: Vec2,
-    radius: f32,
-    falloff: f32,
-    strength: f32,
-    layer: usize,
-    pages: usize,
-) -> u32 {
-    let control = d.control.get_or_insert_with(|| {
-        let (w, h) = (d.columns.clamp(2, 1024), d.rows.clamp(2, 1024));
-        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
-        for _ in 0..w * h {
-            rgba.extend_from_slice(&[255, 0, 0, 0]);
-        }
-        og_render::TerrainControl {
-            width: w,
-            height: h,
-            rgba: rgba.into(),
-        }
-    });
-    let mut rgba = control.rgba.to_vec();
-    let page = (control.width * control.height * 4) as usize;
-    let pages = pages.max(control.pages() as usize);
-    rgba.resize(page * pages, 0);
-    let px = d.size / Vec2::new(control.width as f32, control.height as f32);
-    let half = d.size * 0.5;
-    let mut touched = 0;
-    let (x0, x1) = under(c.x - radius, c.x + radius, half.x, px.x, control.width);
-    let (y0, y1) = under(c.y - radius, c.y + radius, half.y, px.y, control.height);
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let p = (Vec2::new(x as f32, y as f32) + 0.5) * px - half;
-            let w = weight((p - c).length(), radius, falloff) * strength;
-            if w <= 0.0 {
-                continue;
-            }
-            let k = ((y * control.width + x) * 4) as usize;
-            for ch in 0..4 * pages {
-                let at = (ch / 4) * page + k + ch % 4;
-                let v = rgba[at] as f32 / 255.0;
-                let to = if ch == layer { 1.0 } else { 0.0 };
-                rgba[at] = ((v + (to - v) * w) * 255.0).round().clamp(0.0, 255.0) as u8;
-            }
-            touched += 1;
-        }
-    }
-    control.rgba = rgba.into();
-    touched
-}
-
-/// The cells (of `size` from `-half`, `n` of them) whose centres can lie
-/// in `a`..`b`: a range to visit instead of every cell.
-fn under(a: f32, b: f32, half: f32, size: f32, n: u32) -> (u32, u32) {
-    let at = |v: f32| (((v + half) / size).max(0.0) as u32).min(n);
-    (at(a).saturating_sub(1), (at(b) + 2).min(n))
 }
 
 /// Loaded terrain `i`'s asset id, as the edit log names it.

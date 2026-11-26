@@ -1,5 +1,6 @@
 mod sampler;
 pub use sampler::*;
+pub mod edit;
 pub mod generate;
 pub mod stamp;
 
