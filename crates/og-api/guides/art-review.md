@@ -1,6 +1,6 @@
 # Art judgment
 
-Art judgment for an Origin Engine game. Choosing the style from the premise, requesting every asset through the art brief, the cook's conformance, and reviewing frames and models with measured thresholds. The engine measures; this guide says what is good enough.
+Art judgment for an Origin Engine game. Choose a style from the premise, request assets through its brief, inspect cook conformance, then review the actual frames and motion. Measurements help locate problems; neither conformance nor similarity to a previous frame proves quality.
 
 The API: `og api show art`. The style catalogue is the engine package's
 `knowledge/looks/catalogue.json`: every built-in look with its premise fit, palette
@@ -184,18 +184,19 @@ reference.
 
 ## 5. Reviewing a model against a reference
 
-For a model built or generated from a reference image, capture it at the
-reference's angle and compare: `og compare reference.png render.png
---mask mask.png --sheet sheet.png`.
+For a model built or generated from a reference image, first align the
+camera, framing, pose and light, then inspect the silhouette, proportions,
+identity details, materials and readability at the play camera. A model
+built to one image can collapse from the side: review front, side, back
+and three-quarter views, and a clip if it moves.
 
-- Silhouette IoU at least 0.90 at the reference's view; below 0.80 the
-  proportions are wrong, not the details.
-- ΔE00 per mask region at most 10, and at most 5 on the regions that
-  carry identity (face, emblem, signature colour).
-- Look at the sheet as well as the numbers: an IoU of 0.93 with the arms
-  in the wrong place is still wrong.
-- Review the turntable (front, side, back, three-quarter) before
-  accepting; a model built to one view collapses at the others.
+`og compare reference.png render.png --mask mask.png --sheet sheet.png`
+locates differences. Silhouette IoU measures overlap; ΔE00 measures colour
+distance in a mask. Neither determines whether the model is good: matching
+one outline can hide missing depth, and a deliberate pose or lighting
+change can lower similarity without lowering quality. Inspect the images
+and name the actual defect before changing the model. A previous engine
+frame is a record, not an artistic target to preserve.
 
 ## 6. The art contract's resources
 
@@ -229,3 +230,27 @@ Capture an effect's first frames, its impact and its last frames (captures §6),
 - **Agreement.** Its colours and shapes belong to the game's style and to the other effects: one set of sparks, one kind of smoke.
 
 An effect that fails is fixed in its files and previewed again. A warning in its preview (a decal with no atlas, say) is fixed first.
+
+## 8. Route a visible or audible problem to its mechanism
+
+Inspect the failing moment in the actual game before adding a generator
+or changing a renderer. Keep the seed, command sequence, play camera and
+target size so the same case can be replayed after the edit. Separate a
+missing asset, a failed load, a missing attachment and a drawn-but-wrong
+result (`start §5`, `captures`).
+
+| Observed problem | Inspect and change |
+|---|---|
+| Title art or logo is absent, or an icon is a placeholder | Source bytes, cook report, load Result and non-zero texture attached to the screen/image (`§2`, `screens §1`, `loading`). |
+| A distant ridge disappears or loses its shadow | Camera `far`, directional shadow distance, terrain detail and fog before replacing its height generator (`camera §1`, `render §3`, `world §2`; `og api find shadowDistance`). |
+| Snow, a face or the whole scene loses detail to white or black | Material albedo in linear colour, direct/environment light, exposure and tone curve (`render §4–§7`). Inspect a fixed exposure as well as adaptation; do not retune every material to compensate for the meter. |
+| A subject is cropped or too small, or a cut jumps | The active camera driver, aspect, shot framing, brain priorities and blends (`camera §1`, `§2`, `§5`). Use framing constraints rather than per-resolution magic offsets. |
+| A character slides, moves twice, uses the wrong pose or loses its held prop | Clip/graph selection, root-motion ownership, retargeting and node-versus-joint addressing (`animation §3`, `§7`, `§8`). Review the motion, not only a posed thumbnail. |
+| Music switches abruptly, dialogue is buried or a sound is silent | Loaded sound and source state, web input unlock, source fades, bus effects, ducking and mixer snapshots (`audio §1`, `§3–§5`). Listen to the transition; a deterministic command log is not an audition. |
+| A UI finish loads but never appears | Attach a material to a primitive, then inspect parameters, subtree filters/mask/opacity and layer-budget warnings (`ui-materials §3–§4`). Backdrop blur is not a custom foreground material. |
+| Smoke vanishes, a quad shows or an impact washes out | Inspect first/impact/last frames over both the preview stage and the game's ground; check texture alpha, blend, depth and look together (`§7`, `effects`, `captures §6`). Keep a renderer defect separate from an unconnected emitter. |
+
+Fix the owning source, cook or reload it, replay the same case and inspect
+new captures. Keep warnings and unchecked/missing-renderer results visible.
+A changed frame is not a failure by itself; a black, clipped, broken or
+unreadable result is not accepted because its measurements are close.

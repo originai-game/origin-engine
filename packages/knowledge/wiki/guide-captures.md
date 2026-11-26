@@ -69,6 +69,13 @@ The probe's `timeline` member answers the same events to any tool that steps a r
 
 A gfx reference frame that fails its test writes the same heat map and its three worst regions beside `.actual.png` and `.diff.png`, and prints FLIP's numbers with each region's box.
 
+These are difference measurements, not a quality gate. Use them to find
+where a frame moved, then inspect the actual images for composition,
+clipping, missing detail and the intended style (`art-review §4–§5`). A
+large intended change can improve the frame; a small black patch can hide
+the subject. Do not restore an old defect just to reduce a difference or
+accept a broken image because most of its pixels stayed the same.
+
 <a id="guide-captures-5"></a>
 ### `captures §5` Sizing for a model
 
