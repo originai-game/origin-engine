@@ -1,4 +1,162 @@
 // Generated from the cook's Rust input schemas by `og api gen`. Do not edit.
+/** One root manifest for small and large projects. Omitted simulation
+settings remain the game's responsibility, not inferred cook choices. */
+export type ProjectInput = ({
+readonly "budgets"?: (((ProjectInputDefinitions["Budgets"])) | ((null)));
+readonly "conform"?: (((ProjectInputDefinitions["Conform"])) | ((null)));
+readonly "cook"?: (((ProjectInputDefinitions["ProjectCook"])) | ((null)));
+readonly "create"?: (((ProjectInputDefinitions["Creation"])) | ((null)));
+/** Direct dependencies of the implicit base source module. */
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "engine": (string);
+/** Project-relative TypeScript game entry; bootstrap never executes it. */
+readonly "entry": (string);
+readonly "flow"?: (((ProjectInputDefinitions["ProjectFlow"])) | ((null)));
+readonly "id": (string);
+/** Explicit input globs for the base module, relative to its root. */
+readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "look"?: (((ProjectInputDefinitions["LookBase"])) | ((null)));
+readonly "modules"?: (ReadonlyArray<(ProjectInputDefinitions["ModuleInput"])> | (number extends ((ProjectInputDefinitions["ModuleInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "name": (string);
+readonly "packs"?: (ReadonlyArray<(ProjectInputDefinitions["DeliveryPack"])> | (number extends ((ProjectInputDefinitions["DeliveryPack"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Named median-time limits in milliseconds, not cook quality choices. */
+readonly "perf"?: (Readonly<Record<string, (number)>>);
+readonly "publish"?: (((ProjectInputDefinitions["Publish"])) | ((null)));
+readonly "roots"?: (ReadonlyArray<(ProjectInputDefinitions["ContentRef"])> | (number extends ((ProjectInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "saveVersion"?: ((number) | (null));
+readonly "scene"?: ((string) | (null));
+readonly "scenes"?: (Readonly<Record<string, (ProjectInputDefinitions["ContentRef"])>>);
+/** Pure record declaration files, never a running game entry. */
+readonly "schemas"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "seed"?: ((number) | (null));
+readonly "tick"?: ((number) | (null));
+});
+export interface ProjectInputDefinitions {
+/** Explicit overrides of the existing content-report limits. Absence leaves
+that limit's interpretation with the report, not the author evaluator. */
+readonly "Budgets": ({
+readonly "assetBytes"?: ((number) | (null));
+readonly "bones"?: ((number) | (null));
+readonly "bvhShare"?: ((number) | (null));
+readonly "clips"?: ((number) | (null));
+readonly "emitterParticles"?: ((number) | (null));
+readonly "gpuBytes"?: ((number) | (null));
+readonly "navPolygons"?: ((number) | (null));
+readonly "sceneEntities"?: ((number) | (null));
+readonly "soundSeconds"?: ((number) | (null));
+readonly "textureSize"?: ((number) | (null));
+readonly "totalBytes"?: ((number) | (null));
+readonly "triangles"?: ((number) | (null));
+readonly "vertices"?: ((number) | (null));
+readonly "videoSeconds"?: ((number) | (null));
+});
+readonly "ColorEncoding": ("etc1s" | "uastc") & (string);
+readonly "Conform": ({
+readonly "off"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+/** A content identity, never a runtime handle or an instruction to evaluate
+another entry. The project graph validates names, existence, subresources,
+module access and target kinds. A field declares its allowed kinds with
+`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+readonly "ContentRef": ({
+readonly "$ogRef": (string);
+});
+readonly "Controls": ("touch" | "keyboard-mouse" | "gamepad") & (string);
+/** Creation metadata describes the chosen shell. No genre composition or
+balancing is selected by bootstrap; open catalogue IDs remain strings. */
+readonly "Creation": ({
+readonly "form"?: (((ProjectInputDefinitions["Form"])) | ((null)));
+readonly "genre"?: ((string) | (null));
+readonly "input"?: (((ProjectInputDefinitions["Controls"])) | ((null)));
+readonly "lang"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "look"?: ((string) | (null));
+readonly "music"?: ((string) | (null));
+readonly "platform"?: (((ProjectInputDefinitions["Platform"])) | ((null)));
+readonly "players"?: (((ProjectInputDefinitions["Players"])) | ((null)));
+readonly "ui"?: ((string) | (null));
+readonly "variant"?: ((string) | (null));
+readonly "view"?: ((string) | (null));
+});
+/** An output delivery unit, not a module, stream group or world cell. */
+readonly "DeliveryPack": ({
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "id": (string);
+/** Namespaced content patterns. Overlap is an error, never first-wins. */
+readonly "include"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "optional"?: (boolean);
+readonly "roots"?: (ReadonlyArray<(ProjectInputDefinitions["ContentRef"])> | (number extends ((ProjectInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+readonly "Fit": ("fill" | "letterbox") & (string);
+readonly "FlowScreen": ("engine" | "game") & (string);
+readonly "Form": ("2d" | "2.5d" | "3d") & (string);
+readonly "Fullscreen": ("off" | "gesture") & (string);
+readonly "Gate": ("tap" | "none") & (string);
+readonly "Isolation": ("required" | "preferred" | "off") & (string);
+readonly "Loading": ("engine" | "game" | "page") & (string);
+readonly "LoadingLabels": ({
+readonly "fetch"?: ((string) | (null));
+readonly "present"?: ((string) | (null));
+readonly "prime"?: ((string) | (null));
+readonly "transcode"?: ((string) | (null));
+});
+readonly "LookBase": (((string)) | ((ProjectInputDefinitions["ContentRef"])));
+/** A namespace and source root, independent of delivery and streaming. */
+readonly "ModuleInput": ({
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "id": (string);
+readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Canonical project-relative directory. Moving it preserves IDs. */
+readonly "root": (string);
+});
+readonly "Orientation": ("any" | "landscape" | "portrait") & (string);
+readonly "Pipelines": ("auto" | "sync" | "async" | "prewarm") & (string);
+readonly "Platform": ("phone-portrait" | "phone-landscape" | "desktop" | "multi") & (string);
+readonly "Players": ("single" | "local-multiplayer" | "online-lockstep") & (string);
+readonly "Probe": ("player" | "all") & (string);
+readonly "ProjectCook": ({
+readonly "clusters"?: ((boolean) | (null));
+readonly "colorTextures"?: (((ProjectInputDefinitions["ColorEncoding"])) | ((null)));
+/** Explicit prebuilt bundle inputs. Names must remain globally unique. */
+readonly "uses"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+readonly "ProjectFlow": ({
+readonly "screen"?: (((ProjectInputDefinitions["FlowScreen"])) | ((null)));
+readonly "source": (ProjectInputDefinitions["ContentRef"]);
+});
+readonly "Publish": ({
+readonly "aspect"?: ((string) | (null));
+readonly "aspectMax"?: ((string) | (null));
+readonly "aspectMin"?: ((string) | (null));
+readonly "assets"?: ((string) | (null));
+readonly "colorTextures"?: (((ProjectInputDefinitions["ColorEncoding"])) | ((null)));
+readonly "content"?: ((string) | (null));
+readonly "dprCap"?: ((number) | (null));
+readonly "fit"?: (((ProjectInputDefinitions["Fit"])) | ((null)));
+readonly "fullscreen"?: (((ProjectInputDefinitions["Fullscreen"])) | ((null)));
+readonly "gate"?: (((ProjectInputDefinitions["Gate"])) | ((null)));
+readonly "icon"?: ((string) | (null));
+readonly "isolation"?: (((ProjectInputDefinitions["Isolation"])) | ((null)));
+readonly "keep"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "loading"?: (((ProjectInputDefinitions["Loading"])) | ((null)));
+readonly "loadingLabels"?: (((ProjectInputDefinitions["LoadingLabels"])) | ((null)));
+readonly "madeWith"?: ((boolean) | (null));
+readonly "orientation"?: (((ProjectInputDefinitions["Orientation"])) | ((null)));
+readonly "out"?: ((string) | (null));
+readonly "pipelines"?: (((ProjectInputDefinitions["Pipelines"])) | ((null)));
+readonly "probe"?: (((ProjectInputDefinitions["Probe"])) | ((null)));
+readonly "shortName"?: ((string) | (null));
+readonly "telemetry"?: (((ProjectInputDefinitions["Telemetry"])) | ((null)));
+});
+readonly "Telemetry": ("on" | "off") & (string);
+}
+/** A namespace and source root, independent of delivery and streaming. */
+export type ModuleInput = ({
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "id": (string);
+readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Canonical project-relative directory. Moving it preserves IDs. */
+readonly "root": (string);
+});
 export type Input_animgraph = ({
 readonly "bindings"?: (ReadonlyArray<(Input_animgraphDefinitions["Binding"])> | (number extends ((Input_animgraphDefinitions["Binding"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "layers": (ReadonlyArray<(Input_animgraphDefinitions["Layer"])> | (number extends ((Input_animgraphDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));

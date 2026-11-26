@@ -320,6 +320,24 @@ og.ref(42);
 data.value.entries.gate = 'Other';
 // @ts-expect-error Ref identity is immutable.
 id.$ogRef = 'north/model/other';
+const north = og.defineModule({id:'north',root:'modules/north',dependsOn:['base']});
+const project = og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',
+  modules:[north],scenes:{main:og.ref('base/scene/main')},
+  packs:[{id:'north',include:['north/**'],dependsOn:['base'],optional:true}],
+  publish:{fit:'letterbox',aspect:'16:9',dprCap:2,loadingLabels:{fetch:'Loading'}},
+});
+// @ts-expect-error Project fields are derived, not an arbitrary option bag.
+og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',typo:1});
+// @ts-expect-error Project scene paths use the shared reference wire.
+og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',scenes:{main:'scene/main'}});
+// @ts-expect-error Bootstrap output remains readonly.
+project.modules = [];
+// @ts-expect-error Modules cannot declare delivery options.
+og.defineModule({id:'north',root:'modules/north',optional:true});
+// @ts-expect-error A required project pin may not be omitted.
+og.defineProject({name:'World',id:'world',entry:'src/main.ts'});
+// @ts-expect-error The settings vocabulary is closed and typed.
+og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',publish:{fit:'stretch'}});
 "#,
     )
     .unwrap();
@@ -345,6 +363,295 @@ id.$ogRef = 'north/model/other';
         String::from_utf8_lossy(&check.stdout),
         String::from_utf8_lossy(&check.stderr)
     );
+}
+
+#[test]
+fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
+    use og_cook::cook::{
+        generator::source::{Edit, Source},
+        source_project::Project,
+    };
+    use std::collections::BTreeMap;
+    let dir = temp::TempDir::new("project-bootstrap");
+    let write = |file: &str, text: &str| {
+        let at = dir.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    let manifest = |value: &serde_json::Value| {
+        format!(
+            "import {{defineProject}} from '@origingame/engine/author';\nexport default defineProject({value});"
+        )
+    };
+    write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write(
+        "src/schema/records.ts",
+        "throw new Error('SCHEMA_EXECUTED');",
+    );
+    write(
+        "content/field/wind.ts",
+        "throw new Error('CONTENT_EXECUTED');",
+    );
+    let small =
+        json!({"name":"Room","id":"room","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts"});
+    write("project.ts", &manifest(&small));
+    let minimal = Project::open(&dir).unwrap();
+    assert_eq!(minimal.module_order, ["base"]);
+    assert_eq!(minimal.pack_order, ["base"]);
+    assert_eq!(minimal.module_for("content/field/wind.ts").id, "base");
+    assert_eq!(minimal.dependencies, ["project.ts"]);
+    assert_eq!(minimal.data, Project::open(&dir).unwrap().data);
+
+    write(
+        "modules/north/module.ts",
+        "import {defineModule} from '@origingame/engine/author'; export default defineModule({id:'north',root:'modules/north',dependsOn:['base'],inputs:['sources/**/*.csv']});",
+    );
+    write(
+        "modules/north/extra/lib/constants.ts",
+        "export const value = 1;",
+    );
+    write("modules/NORTH/lib/constants.ts", "export const value = 2;");
+    write(
+        "modules/north/src/schema/records.ts",
+        "throw new Error('MODULE_SCHEMA_EXECUTED');",
+    );
+    write("lib/title.ts", "export const title = 'World';");
+    let large = json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+        "schemas":["src/schema/records.ts","modules/north/src/schema/records.ts"],
+        "modules":[{"id":"nested","root":"modules/north/extra","dependsOn":["north"]},
+                   {"id":"north","root":"modules/north","dependsOn":["base"],"inputs":["sources/**/*.csv"]}],
+        "packs":[{"id":"north","include":["north/**"],"dependsOn":["shared"]},
+                 {"id":"base","dependsOn":["shared"]},
+                 {"id":"shared","include":["base/model/**"]},
+                 {"id":"dlc","optional":true,"dependsOn":["north"]}],
+        "scene":"menu","scenes":{"menu":{"$ogRef":"base/scene/menu"}},"tick":37,"seed":4294967295u32,
+        "perf":{"render":0.25},"publish":{"fit":"letterbox","aspect":"16:9"}
+    });
+    let imported = manifest(&large)
+        .replace("export default", "import north from './modules/north/module.ts'; import {title} from './lib/title.ts';\nexport default")
+        .replace(&large["modules"][1].to_string(), "north")
+        .replace("\"name\":\"World\"", "\"name\":title");
+    write("project.ts", &imported);
+    let world = Project::open(&dir).unwrap();
+    assert_eq!(world.module_order, ["base", "north", "nested"]);
+    assert_eq!(world.pack_order, ["shared", "base", "north", "dlc"]);
+    assert_eq!(
+        world.module_for("modules/north/content/field/wind.ts").id,
+        "north"
+    );
+    assert_eq!(
+        world
+            .module_for("modules/north/extra/content/field/wind.ts")
+            .id,
+        "nested"
+    );
+    assert_eq!(
+        world
+            .module_for("modules/northern/content/field/wind.ts")
+            .id,
+        "base"
+    );
+    assert_eq!(world.input.tick, Some(37));
+    assert_eq!(world.input.seed, Some(u32::MAX));
+    assert_eq!(
+        world.dependencies,
+        ["lib/title.ts", "modules/north/module.ts", "project.ts"]
+    );
+    let overlay = BTreeMap::from([(
+        "lib/title.ts".into(),
+        "export const title = 'Candidate';".into(),
+    )]);
+    let candidate = Project::open_with_overlay(&dir, &overlay).unwrap();
+    assert_eq!(candidate.input.name, "Candidate");
+    assert_ne!(candidate.evaluation_key, world.evaluation_key);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("lib/title.ts")).unwrap(),
+        "export const title = 'World';"
+    );
+
+    // Each rejected alternative differs at a boundary relevant to discovery,
+    // namespacing or delivery. Success on the small project is not sufficient.
+    for (key, value, path, message) in [
+        (
+            "engine",
+            json!("not-installed"),
+            "/engine",
+            "does not match",
+        ),
+        ("entry", json!("../src/main.ts"), "/entry", "canonical"),
+        (
+            "entry",
+            json!("content/field/wind.ts"),
+            "/entry",
+            "game code",
+        ),
+        (
+            "schemas",
+            json!(["src/main.ts"]),
+            "/schemas/0",
+            "src/schema",
+        ),
+        (
+            "modules",
+            json!([{"id":"base","root":"modules/north"}]),
+            "/modules/0/id",
+            "reserved",
+        ),
+        (
+            "modules",
+            json!([{"id":"north","root":"modules/north","dependsOn":["missing"]}]),
+            "/modules/0/dependsOn/0",
+            "unknown",
+        ),
+        (
+            "modules",
+            json!([{"id":"north","root":"modules/north","dependsOn":["base","base"]}]),
+            "/modules/0/dependsOn/1",
+            "duplicate",
+        ),
+        (
+            "modules",
+            json!([{"id":"north","root":"modules/north","dependsOn":["nested"]},{"id":"nested","root":"modules/north/extra","dependsOn":["north"]}]),
+            "/modules/1/dependsOn",
+            "cycle",
+        ),
+        (
+            "modules",
+            json!([{"id":"north","root":"modules/north"},{"id":"east","root":"modules/NORTH"}]),
+            "/modules/1/root",
+            "case folding",
+        ),
+        (
+            "modules",
+            json!([{"id":"north","root":"src"}]),
+            "/modules/0/root",
+            "reserved",
+        ),
+        (
+            "packs",
+            json!([{"id":"north"},{"id":"north"}]),
+            "/packs/1/id",
+            "duplicate",
+        ),
+        (
+            "packs",
+            json!([{"id":"base","optional":true}]),
+            "/packs/0/optional",
+            "boot pack",
+        ),
+        (
+            "packs",
+            json!([{"id":"north","dependsOn":["missing"]}]),
+            "/packs/0/dependsOn/0",
+            "unknown",
+        ),
+        (
+            "packs",
+            json!([{"id":"base","dependsOn":["dlc"]},{"id":"dlc","optional":true}]),
+            "/packs/0/dependsOn/0",
+            "optional",
+        ),
+        ("scene", json!("absent"), "/scene", "absent"),
+        ("perf", json!({"render":-1}), "/perf/render", "minimum"),
+        // The shared schema deliberately reports a nullable object's union root.
+        ("publish", json!({"dprCap":4.01}), "/publish", "anyOf"),
+    ] {
+        let mut wrong = small.clone();
+        wrong[key] = value;
+        write("project.ts", &manifest(&wrong));
+        let error = Project::open(&dir)
+            .err()
+            .unwrap_or_else(|| panic!("accepted {wrong}"));
+        assert_eq!(error.path, path, "{error}");
+        assert!(error.message.contains(message), "{error}");
+    }
+    for file in [
+        "content/field/wind.ts",
+        "src/main.ts",
+        "src/schema/../main.ts",
+    ] {
+        write(
+            "project.ts",
+            &format!("import './{file}';\n{}", manifest(&small)),
+        );
+        let error = Project::open(&dir)
+            .err()
+            .expect("forbidden bootstrap import");
+        assert!(error.message.contains("bootstrap cannot read"), "{error}");
+        assert!(!error.message.contains("EXECUTED"), "{error}");
+    }
+    write(
+        "project.ts",
+        &format!("import '@origingame/engine';\n{}", manifest(&small)),
+    );
+    assert!(
+        Project::open(&dir)
+            .err()
+            .unwrap()
+            .message
+            .contains("imports must be relative")
+    );
+
+    // Source diagnostics and edits unwrap only the real imported helpers.
+    let invalid = format!(
+        "import {{defineProject as project}} from '@origingame/engine/author';\nexport default project({{\nname:'Room',id:'room',engine:'{}',entry:'src/main.ts',\ntick:241\n}});",
+        env!("CARGO_PKG_VERSION")
+    );
+    write("project.ts", &invalid);
+    let error = Project::open(&dir).err().unwrap();
+    assert_eq!(error.path, "/tick");
+    assert_eq!(error.location.line, 4);
+    assert_eq!(error.location.column, 6);
+    let source = Source::new("project.ts", &invalid);
+    let patched = source
+        .patch(
+            &invalid,
+            &[Edit {
+                path: "/tick".into(),
+                expected: Some(json!(241)),
+                value: json!(37),
+            }],
+        )
+        .unwrap();
+    let overlay = BTreeMap::from([("project.ts".into(), patched)]);
+    assert_eq!(
+        Project::open_with_overlay(&dir, &overlay)
+            .unwrap()
+            .input
+            .tick,
+        Some(37)
+    );
+    for (imports, call, writable) in [
+        (
+            "import * as og from '@origingame/engine/author';",
+            "og['defineModule']({id:'north'})",
+            true,
+        ),
+        (
+            "import {defineModule as module} from '@origingame/engine/author';",
+            "module({id:'north'})",
+            true,
+        ),
+        (
+            "const defineModule = (v:unknown) => v;",
+            "defineModule({id:'north'})",
+            false,
+        ),
+        (
+            "import type {defineModule} from '@origingame/engine/author';",
+            "defineModule({id:'north'})",
+            false,
+        ),
+        (
+            "import {defineModule} from '@origingame/engine/author'; const alias=defineModule;",
+            "alias({id:'north'})",
+            false,
+        ),
+    ] {
+        let source = Source::new("module.ts", &format!("{imports}\nexport default {call};"));
+        assert_eq!(source.field("/id").is_ok(), writable, "{call}");
+        assert!(source.content_kind().is_err(), "a manifest is not content");
+    }
 }
 
 #[test]

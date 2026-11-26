@@ -12,6 +12,10 @@ export const input = Object.freeze({
   text(path) { return read(path, true); },
 });
 
+// Identity only. Bootstrap owns structural, path and dependency validation.
+export function defineProject(value) { return value; }
+export function defineModule(value) { return value; }
+
 // Kind names come from the Rust schema registry. A descriptor has no side
 // effects: constructing one never evaluates or cooks another content entry.
 export const file = Object.freeze(Object.fromEntries(

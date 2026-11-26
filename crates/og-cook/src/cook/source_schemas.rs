@@ -10,6 +10,7 @@ use std::sync::OnceLock;
 
 pub mod media;
 pub mod procedural;
+pub mod project;
 pub mod reflected;
 pub mod world;
 
@@ -118,6 +119,12 @@ pub fn declarations() -> Result<String, String> {
     let mut out = String::from(
         "// Generated from the cook's Rust input schemas by `og api gen`. Do not edit.\n",
     );
+    for (name, schema) in [
+        ("ProjectInput", project::ProjectInput::schema().document()),
+        ("ModuleInput", project::ModuleInput::schema().document()),
+    ] {
+        out.push_str(&og_core::reflect::source::typescript(schema, name)?);
+    }
     for kind in all() {
         let name = type_name(kind.name);
         out.push_str(&og_core::reflect::source::typescript(

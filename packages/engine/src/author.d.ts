@@ -1,5 +1,10 @@
 import type { og } from "../types/index.d.ts";
-import type { FileInputs } from "../types/author-inputs.d.ts";
+import type { FileInputs, ProjectInput, ModuleInput } from "../types/author-inputs.d.ts";
+
+/** Pure bootstrap data, checked before the game's entry or content is evaluated. */
+export declare function defineProject(value: ProjectInput): ProjectInput;
+/** A source namespace, separate from output packs and streaming groups. */
+export declare function defineModule(value: ModuleInput): ModuleInput;
 
 /** Project declarations augment this interface with contextual file inputs. */
 export interface ContextualFileInputs {}

@@ -191,8 +191,7 @@ impl Source {
                 .ok_or_else(|| computed(d.span))
                 .and_then(|root| {
                     let content = factory(root, &parsed.program, semantics.semantic.scoping());
-                    let (kind, value) =
-                        content.map_or((None, root), |(kind, value)| (Some(kind), value));
+                    let (kind, value) = content.unwrap_or((None, root));
                     f(value, &parsed.program.comments, kind)
                 }),
             _ => Err(fail(
@@ -367,7 +366,7 @@ fn factory<'a, 's>(
     root: &'s Expression<'a>,
     program: &oxc_ast::ast::Program<'a>,
     scoping: &Scoping,
-) -> Option<(&'s str, &'s Expression<'a>)> {
+) -> Option<(Option<&'s str>, &'s Expression<'a>)> {
     fn member<'a, 's>(expression: &'s Expression<'a>) -> Option<(&'s Expression<'a>, &'s str)> {
         match expression.get_inner_expression() {
             Expression::StaticMemberExpression(m) if !m.optional => {
@@ -388,38 +387,58 @@ fn factory<'a, 's>(
     if call.optional || call.arguments.len() != 1 {
         return None;
     }
-    let (object, kind) = member(&call.callee)?;
+    let argument = call.arguments[0].as_expression()?;
     let binding = |expression: &Expression<'_>, symbol: SymbolId| {
         matches!(expression.get_inner_expression(), Expression::Identifier(id)
             if id.reference_id.get().and_then(|r| scoping.get_reference(r).symbol_id()) == Some(symbol))
     };
-    let imported = program.body.iter().any(|statement| {
+    for statement in &program.body {
         let Statement::ImportDeclaration(import) = statement else {
-            return false;
+            continue;
         };
-        import.source.value == super::author::MODULE
-            && import.import_kind == ImportOrExportKind::Value
-            && import
-                .specifiers
-                .iter()
-                .flatten()
-                .any(|specifier| match specifier {
-                    ImportDeclarationSpecifier::ImportSpecifier(s) => {
-                        s.import_kind == ImportOrExportKind::Value
-                            && s.imported.name() == "file"
-                            && binding(object, s.local.symbol_id())
+        if import.source.value != super::author::MODULE
+            || import.import_kind != ImportOrExportKind::Value
+        {
+            continue;
+        }
+        for specifier in import.specifiers.iter().flatten() {
+            match specifier {
+                ImportDeclarationSpecifier::ImportSpecifier(s)
+                    if s.import_kind == ImportOrExportKind::Value =>
+                {
+                    // These helpers wrap manifest data, not content entries.
+                    if matches!(s.imported.name().as_str(), "defineProject" | "defineModule")
+                        && binding(&call.callee, s.local.symbol_id())
+                    {
+                        return Some((None, argument));
                     }
-                    ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => member(object)
-                        .is_some_and(|(namespace, name)| {
-                            name == "file" && binding(namespace, s.local.symbol_id())
-                        }),
-                    _ => false,
-                })
-    });
-    if !imported {
-        return None;
+                    if s.imported.name() == "file"
+                        && let Some((object, kind)) = member(&call.callee)
+                        && binding(object, s.local.symbol_id())
+                    {
+                        return Some((Some(kind), argument));
+                    }
+                }
+                ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
+                    let Some((object, kind)) = member(&call.callee) else {
+                        continue;
+                    };
+                    if matches!(kind, "defineProject" | "defineModule")
+                        && binding(object, s.local.symbol_id())
+                    {
+                        return Some((None, argument));
+                    }
+                    if let Some((namespace, "file")) = member(object)
+                        && binding(namespace, s.local.symbol_id())
+                    {
+                        return Some((Some(kind), argument));
+                    }
+                }
+                _ => {}
+            }
+        }
     }
-    Some((kind, call.arguments[0].as_expression()?))
+    None
 }
 
 enum Target<'a, 's> {
