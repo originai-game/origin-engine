@@ -6028,7 +6028,7 @@ Actions: `choose` (Open row).
 <a id="guide-components-254"></a>
 ### `components §254` TitleScreen
 
-The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen) when the game passes onStart, the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
+The title screen over the key art, staged like a console attract screen: it fades up from black while the art pushes in slowly, the logo (or the name as a wide-tracked wordmark) rises into the middle, then Press any button (Tap to start on a touch screen) arrives at the foot and pulses, the confirm binding's glyph beside it. The legal line and the version sit in the lower corners. Any press reports onStart. It resolves in the dark scheme in both schemes.
 
 `import { TitleScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/title.tsx`).
 

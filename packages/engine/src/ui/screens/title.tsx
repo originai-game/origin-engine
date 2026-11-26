@@ -1,6 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { Art } from "../controls/art";
+import { InputGlyph } from "../controls/input-glyph";
 import "./title.en.ogt";
 
 export interface TitleScreenProps {
@@ -23,44 +24,54 @@ export interface TitleScreenProps {
 }
 
 /**
- * The title screen over the key art: the logo or the name as a wordmark,
- * Press any button (Tap on a touch screen) when the game passes onStart,
- * the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both
- * schemes.
+ * The title screen over the key art, staged like a console attract screen:
+ * it fades up from black while the art pushes in slowly, the logo (or the
+ * name as a wide-tracked wordmark) rises into the middle, then Press any
+ * button (Tap to start on a touch screen) arrives at the foot and pulses,
+ * the confirm binding's glyph beside it. The legal line and the version sit in the lower corners. Any
+ * press reports onStart. It resolves in the dark scheme in both schemes.
  */
 export function TitleScreen(props: TitleScreenProps) {
   return (
     <View class={`absolute inset-0 scheme-dark text-fg p-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} autofocus onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
-      <Show when={props.keyArt !== 0}>
-        <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
-      </Show>
-      <View class="absolute inset-0">{props.background?.()}</View>
-      <View class="absolute inset-0 bg-linear-to-b from-material-thin via-transparent via-30% to-bg" />
-      <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto_auto] justify-items-center gap-y-3 h-full pt-12 pb-6 px-12 compact:gap-y-2 compact:pt-8 compact:pb-4 compact:px-4">
-        <Show when={props.logo === 0 && props.name !== ""} fallback={
-            <Art class={`row-[2] aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
-        }>
-          <Text class={`tracking-sm uppercase text-shadow-xs text-shadow-bg row-[2] max-w-full text-8xl leading-tight font-bold text-center m-0 compact:text-display-xl`}>
-            {props.name}
-          </Text>
+      <View class="absolute inset-0 transition-transform duration-orbit ease-out starting:scale-lift">
+        <Show when={props.keyArt !== 0}>
+          <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
         </Show>
+        <View class="absolute inset-0">{props.background?.()}</View>
+      </View>
+      <View class="absolute inset-0 bg-linear-to-b from-material-thin via-transparent via-30% to-transparent" />
+      <View class="absolute inset-0 bg-linear-to-t from-bg via-scrim via-25% to-transparent to-60%" />
+      <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto] justify-items-center h-full pt-12 pb-8 px-14 compact:pt-8 compact:pb-5 compact:px-5">
+        <View class="row-[2] items-center max-w-full transition duration-pulse delay-spring ease-out starting:opacity-0 starting:translate-y-6">
+          <View class="absolute -inset-x-24 -inset-y-16 bg-radial from-scrim to-transparent to-65% pointer-events-none compact:-inset-x-8" />
+          <Show when={props.logo === 0 && props.name !== ""} fallback={
+              <Art class={`aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
+          }>
+            <Text class={`font-display tracking-kicker uppercase text-shadow-sm text-shadow-bg max-w-full text-8xl leading-tight font-bold text-center m-0 compact:text-display-lg compact:tracking-wide`}>
+              {props.name}
+            </Text>
+          </Show>
+        </View>
         <Show when={props.onStart}>
-          <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
-            <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow compact:basis-8`} />
-            <View class={`grow shrink basis-0 text-lg font-semibold tracking-kicker uppercase text-center compact:text-base compact:tracking-wide`}>
-              <Text class="text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
-              <Text class="hidden text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex">
+          <View class="row-[4] mb-10 transition duration-bounce delay-breathe ease-out starting:opacity-0 starting:translate-y-3 compact:mb-8">
+            <View class="flex-row items-center gap-x-3 py-2 px-5 animate-pulse">
+              <InputGlyph class="pointer-coarse:hidden" action="confirm" />
+              <Text class="text-base font-semibold tracking-kicker uppercase text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden compact:text-sm compact:tracking-wide">
+                {t("screen.title.press")}
+              </Text>
+              <Text class="hidden text-base font-semibold tracking-kicker uppercase text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex compact:text-sm compact:tracking-wide">
                 {t("screen.title.tap")}
               </Text>
             </View>
-            <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow -scale-x-100 scale-y-100 compact:basis-8`} />
           </View>
         </Show>
-        <Text class="row-[5] text-xs tracking-sm text-fg-muted text-center m-0">{props.legal}</Text>
-        <Text class="row-[6] justify-self-end text-xs tabular-nums text-fg-muted m-0 compact:justify-self-center">
-          {props.version}
-        </Text>
+        <View class="row-[5] flex-row justify-between items-end self-stretch gap-x-6 transition-opacity duration-bounce delay-breathe ease-out starting:opacity-0 compact:flex-col compact:items-center compact:gap-y-1">
+          <Text class="text-xs tracking-sm text-fg-muted m-0 compact:text-center">{props.legal}</Text>
+          <Text class="text-xs tabular-nums text-fg-muted m-0">{props.version}</Text>
+        </View>
       </View>
+      <View class="absolute inset-0 pointer-events-none bg-bg opacity-0 transition-opacity duration-ping ease-out starting:opacity-100" />
     </View>
   );
 }
