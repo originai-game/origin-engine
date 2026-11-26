@@ -8,6 +8,137 @@ use og_core::reflect::source::typescript;
 use serde_json::json;
 
 #[test]
+fn model_and_materials_author_contracts() {
+    use source_schemas::world::{materials::MaterialsInput, model::ModelInput};
+    let surface = json!({"color":[0.2,0.4,0.6],"opacity":0.9,"metalness":0.7,"roughness":0.3,
+        "emissive":[1,2,3],"emissiveIntensity":2,"doubleSided":true,"alphaTest":0.4,
+        "map":"stone.png","normalMap":"n.png","normalScale":-1,"metalnessMap":"mr.png","aoMap":"ao.png",
+        "transmission":0.5,"ior":1.5,"thickness":0.2,"clearcoat":0.7,"clearcoatRoughness":0.2,
+        "translucency":0.4,"domeNormals":0.6,"season":1,"autumnColor":[0.3,0.1,0.01],
+        "autumnColor2":[0.4,0.2,0.01],"seasonShift":-10,"grime":0.1,"grimeColor":[0.1,0.02,0.03],
+        "grimeHeight":0.4,"stains":0.2,"stochastic":0.7});
+    let plant = json!({"kind":"oak","levels":3,"seed":7,"growth":"deciduous",
+            "trunk":{"length":3,"radius":0.2,"sections":8,"segments":6,"taper":0.5,"children":2},
+            "branch1":{"angle":45,"start":0.3,"gnarliness":0.1,"twist":0.2},"branch2":{},"branch3":{},
+            "force":[0,1,0,0.01],"barkColor":[0.1,0.2,0.03],"material":"stone",
+            "leaves":{"shape":"blade","count":20,"rows":3,"size":0.2,"width":0.5,"sizeVariance":0.3,
+                "start":0.1,"end":0.8,"angle":30,"facing":0.6,"color":[0.1,0.3,0.02],"color2":[0.2,0.4,0.03],
+                "colorVariation":0.2,"translucency":0.5,"domeNormals":0.3,"season":1,"seasonShift":3},
+            "flowers":{"share":0.5,"count":4,"petals":7,"size":0.1,"width":0.2,"cup":25,"color":[1,0.2,0.4],
+                "color2":[1,0.4,0.5],"centerColor":[1,0.8,0.1]},
+            "branches":[{"parent":-1,"path":[[0,0,0],[0,1,0]],"radii":[0.1,0.01],"segments":6}],
+            "bounds":[[-1,0,-2],[2,5,3]],"path":[[0,0,0],[0,3,0]],
+            "leafGeometry":{"kind":"planeGeometry","desc":{"width":0.1}},
+            "flowerGeometry":{"kind":"circleGeometry","desc":{}}});
+    let process = json!({"repair":{"weld":0.001,"weldAll":true,"floaters":0.1,"floaterFraction":0.02,"nonManifold":true,
+            "holeEdges":5,"holesThrough":true,"thicken":0.01,"fuse":true,"minEdge":0.001},
+            "decimate":{"target":50,"ratio":0.5,"maxError":0.01,"lockBorder":true,"mergeCharts":0.001,"crossColorBorders":true},
+            "unwrap":{"angle":60,"resolution":512,"padding":2,"shared":true,"conformal":true,"seams":true},
+            "bake":{"size":128,"distance":0.1,"padding":4,"dilate":2,"normals":true},
+            "project":{"size":128,"views":[{"image":"front.png","position":[0,2,5],"target":[0,1,0],
+                "projection":{"kind":"perspective","fov":45}},{"image":"top.png","position":[0,5,0],"target":[0,0,0],
+                "projection":{"kind":"orthographic","ortho":3}}]},
+            "transfer":{"source":{"$ogRef":"base/model/painted"},"size":128,"padding":4},
+            "rig":{"kind":"joints","joints":[{"name":"root","parent":"","position":[0,0,0]}]}});
+    let model = json!({"kind":"geometry","desc":{"conform":"character","items":[
+        {"name":"stone","input":{"kind":"material","desc":surface}},
+        {"name":"base","input":{"kind":"pivot","desc":{"transform":{"position":[1,2,3]}}}},
+        {"name":"upper","input":{"kind":"pivot","desc":{"parent":"base"}}},
+        {"name":"gate","input":{"kind":"part","desc":{"material":"stone","pivot":"upper",
+            "geometry":{"kind":"boxGeometry","desc":{"width":1,"height":3,"depth":0.4}},
+            "placements":[{"transform":{"position":[2,3,5]},"mirror":"x"},{}]}}},
+        {"name":"tree","input":{"kind":"plant","desc":plant}}],"process":process,
+        "fracture":{"style":"brick","chunks":8,"children":3,"seed":9,"pattern":"slab","brick":[0.2,0.1],"grain":"x",
+            "rings":2,"impact":{"position":[1,2,3],"radius":0.4},"anchor":{"kind":"supports","bottom":true,"ends":true},
+            "interiorScale":2,"interior":{},"mortar":{}}}});
+    let materials = json!({"materials":[{"name":"stone","labels":["wall","roof"],"weight":2,"tile":[2,3],
+        "vary":{"value":0.2,"warmth":0.1},"brief":"rough stone","generate":{"source":"stone-source.png"},
+        "facade":true,"relief":-0.3,"roughnessRange":[0.2,0.8],"occlusion":{"strength":0.7,"radius":5},"surface":surface}]});
+    ModelInput::schema().decode(model.clone()).unwrap();
+    MaterialsInput::schema().decode(materials.clone()).unwrap();
+    let program = json!({"kind":"program","desc":{"program":{"$ogRef":"base/model-program/gate"},"params":{"height":3},
+        "atlas":128,"process":{"rig":{"kind":"auto"}},"materials":[{"name":"stone","color":[0.2,0.3,0.4],
+            "normalMap":"n.png","normalScale":1,"roughnessMap":"mr.png","emissiveMap":"e.png","aoMapIntensity":0.5,
+            "sheen":[0.1,0.2,0.3],"sheenRoughness":0.4,"iridescence":0.3,"transparent":true}]}});
+    ModelInput::schema().decode(program.clone()).unwrap();
+    let mut ts = String::new();
+    for (kind, name, value) in [
+        ("model", "Model", model.clone()),
+        ("materials", "Materials", materials.clone()),
+    ] {
+        let schema = (source_schemas::get(kind).unwrap().schema)();
+        ts.push_str(&typescript(schema.document(), name).unwrap());
+        ts.push_str(&format!("const value{name}: {name} = {value};\n"));
+    }
+    ts.push_str(&format!("const program: Model = {program};\n"));
+    for (path, bad) in [
+        ("/desc/items/3/input/desc/placements", json!([])),
+        ("/desc/items/0/input/desc/ior", json!(3.01)),
+        ("/desc/items/0/input/desc/autumnColor", json!([1, -0.01, 0])),
+        ("/desc/items/4/input/desc/leaves/count", json!(2001)),
+        ("/desc/items/4/input/desc/trunk/segments", json!(2)),
+        ("/desc/items/4/input/desc/leaves/color", json!([1, 1e39, 0])),
+        (
+            "/desc/process/project/views/0/projection",
+            json!({"kind":"perspective","fov":45,"ortho":2}),
+        ),
+        ("/desc/process/project/views/0/projection/fov", json!(0)),
+        ("/desc/process/unwrap/angle", json!(90)),
+        ("/desc/fracture/chunks", json!(257)),
+        ("/desc/fracture/brick", json!([0.009, 0.1])),
+        ("/desc/fracture/impact/radius", json!(0)),
+        ("/desc/process/transfer/source", json!("base/model/a")),
+    ] {
+        let mut wrong = model.clone();
+        *wrong.pointer_mut(path).unwrap() = bad;
+        assert!(
+            ModelInput::schema().decode(wrong.clone()).is_err(),
+            "accepted {wrong}"
+        );
+    }
+    for (key, bad) in [
+        ("labels", json!([])),
+        ("tile", json!([2, 0])),
+        ("roughnessRange", json!([0.2, 1.01])),
+        ("occlusion", json!({"strength":0.5,"radius":2.5})),
+        ("vary", json!({"value":0.51})),
+    ] {
+        let mut wrong = materials.clone();
+        wrong["materials"][0][key] = bad;
+        assert!(MaterialsInput::schema().decode(wrong).is_err());
+    }
+    ts.push_str(r#"
+// @ts-expect-error Reflected Transform fields are shared, not an untyped patch.
+const badTransform: Model = {kind:"geometry",desc:{items:[{name:"p",input:{kind:"pivot",desc:{transform:{typo:3}}}}]}};
+// @ts-expect-error Program dependencies are content references, not paths.
+const pathProgram: Model = {kind:"program",desc:{program:"gate.shape.json"}};
+// @ts-expect-error Geometry and program branches cannot be mixed.
+const mixedModel: Model = {kind:"geometry",desc:{items:[],program:{$ogRef:"base/model-program/gate"}}};
+// @ts-expect-error A projection chooses one camera mechanism.
+const mixedProjection: Model = {kind:"geometry",desc:{items:[],process:{project:{views:[{image:"a.png",position:[0,1,2],target:[0,0,0],projection:{kind:"orthographic",ortho:2,fov:45}}]}}}};
+// @ts-expect-error Source material maps are image inputs, never runtime handles.
+const mapHandle: Materials = {materials:[{name:"a",labels:["wall"],surface:{map:3}}]};
+// @ts-expect-error glTF source materials do not accept runtime side fields.
+const runtimeMaterial: Materials = {materials:[{name:"a",labels:["wall"],surface:{side:2}}]};
+// @ts-expect-error Authored declarations are readonly and ordered.
+valueModel.desc.items.push({name:"p",input:{kind:"pivot",desc:{}}});
+"#);
+    let dir = temp::TempDir::new("model-materials-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
 fn district_and_grammar_author_contracts() {
     let grammar = json!({"params":{"floor":3.2},"start":"Lot","rules":{
         "Lot":[{"op":"recess","depth":0.1,"jamb":"Wall"},{"op":"detail","level":2},

@@ -6,15 +6,24 @@ pub mod district;
 pub mod geometry;
 pub mod grammar;
 pub mod localization;
+pub mod materials;
+pub mod model;
 pub mod pack;
 mod records;
 pub mod scene;
 pub mod source_data;
 pub mod table;
 
-// Geometry is a model/terrain input, not a top-level file kind. Register model
-// only when the model's remaining parts/materials/processing inputs are covered.
+// Geometry is a nested model/terrain input, not a top-level file kind.
 pub(super) const KINDS: &[Kind] = &[
+    Kind {
+        name: "model",
+        schema: || model::ModelInput::schema(),
+    },
+    Kind {
+        name: "materials",
+        schema: || materials::MaterialsInput::schema(),
+    },
     Kind {
         name: "district",
         schema: || district::DistrictInput::schema(),
