@@ -57,7 +57,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
       <View class="absolute inset-0 bg-linear-to-r from-bg via-material-thick via-26% to-transparent to-70% compact:hidden" />
       <View class="absolute inset-0 bg-linear-to-b from-transparent from-60% to-bg compact:hidden" />
       <View class="absolute inset-0 hidden compact:flex bg-linear-to-b from-material-regular via-material-regular via-48% to-bg to-70%" />
-      <Scroll class={`pt-12 pr-8 pb-8 pl-12 text-fg size-full compact:pt-8 compact:pb-6 compact:w-auto compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle`}>
+      <Scroll class={`pt-[calc(env(hud-inset-top)+3rem)] pr-[calc(env(hud-inset-right)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+3rem)] text-fg size-full compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:w-auto compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] short:pt-[calc(env(hud-inset-top)+0.75rem)] short:pb-[calc(env(hud-inset-bottom)+0.75rem)] short:pl-[calc(env(hud-inset-left)+1rem)] short:pr-[calc(env(hud-inset-right)+1rem)] disabled:text-fg-subtle`}>
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class={`self-start aspect-12/5 h-auto object-contain compact:self-center compact:w-39/50 short:hidden`} kind="logo" src={props.logo} />
         }>

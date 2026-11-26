@@ -80,7 +80,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-border-muted items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
-          <Button class={`text-fg-muted compact:-ml-2 shrink`} onPress={(e) => props.onBack?.(e)}>
+          <Button class={`text-fg-muted compact:-ml-2 shrink`} autofocus onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
               <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
               <Text class="shrink">{t("screen.common.back")}</Text>

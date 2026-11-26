@@ -1557,7 +1557,7 @@
     "Sheet.grabber": "self-center w-10 h-1.5 my-1 rounded-capsule bg-border-strong",
     "Slider.range": "absolute left-0 top-0 h-full rounded-capsule bg-accent",
     "Slider.thumb": "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-regular inset-ring-accent transition-transform duration-instant group-hover/slider:scale-105 group-active/slider:scale-110 disabled:opacity-50",
-    "Slider.track": "relative grow h-1.5 rounded-capsule bg-fill-strong disabled:opacity-50",
+    "Slider.track": "relative grow h-1.5 rounded-capsule bg-track disabled:opacity-50",
     "Slot.frame": "rounded-card bg-well text-fg shadow-sunk inset-ring-hairline inset-ring-border",
     "Switch.thumb": "absolute top-0.5 left-0.5 size-5 rounded-capsule bg-knob shadow-raise transition-transform duration-200 ease-out group-active/switch:scale-95 checked:translate-x-5 checked:bg-accent-fg",
     "Switch.track": "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-hairline inset-ring-border-strong transition duration-200 group-hover/switch:inset-ring-accent group-active/switch:scale-press checked:bg-accent checked:inset-ring-0 disabled:opacity-50",

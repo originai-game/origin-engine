@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "og new / og create / knowledge/scaffold/template",
+      "change": "New projects no longer export an empty og.game({}). They wire built-in title, main menu, pause, settings and save/load screens through a session state machine and named presentation stores. Platform/input choices configure device defaults; lang writes imported shell tables and fonts; the look still selects the UI pack. Each page fades up as it opens. Interactive films use the same shell over the engine FlowScreen.",
+      "fix": "Keep the generated src/shell.tsx and shell-state.ts. Customize strings, give menus key art, a logo or the live scene with setShellArt before startShell, initialize gameplay before startShell, and bind gameplay systems to state session / value playing. Complete locale entries seeded in English where the engine has no translation. Do not overwrite src/main.ts with an empty game. Existing og new --look --premise --no-prompt arguments, exit codes and manifest paths are unchanged."
+    }
+  ],
+  "fixed": [
+    "Title, pause, settings and save/load screens take their initial focus, so keyboard/gamepad confirm and back work immediately when they open. Main menu and save/load content respect device safe areas. The empty slider track uses the opaque track token rather than a low-contrast translucent fill."
+  ]
+}

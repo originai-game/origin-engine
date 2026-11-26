@@ -34,6 +34,19 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
         assert!(manifest.contains("name \"Installed Game\""), "{manifest}");
         assert!(manifest.contains("view \"side-2d\""), "{manifest}");
         assert!(dir.join(command).join("src/main.ts").is_file());
+        // One public creation path exercises the connected shell, including
+        // repeated New game restores and the first pause after the rewind.
+        if command == "new" {
+            let run = og()
+                .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+                .env("OG_RENDERER", "none")
+                .args(["run", dir.join(command).to_str().unwrap(), "--headless", "--json", "--commands",
+                    "0.1:key_down:Enter;0.12:key_up:Enter;0.4:expect:ui:text:=New game;0.5:gamepad:a;0.52:gamepad:-;0.8:expect:ui:text:=Pause;0.9:intent:ShellAction:{\"action\":\"menu\"};1:intent:ShellAction:{\"action\":\"new\"};1.2:gamepad:start;1.23:gamepad:-;1.5:expect:ui:text:=Paused;1.6:gamepad:a;1.63:gamepad:-;1.9:expect:ui:text:=Pause;2:gamepad:start;2.03:gamepad:-;2.4:gamepad:down;2.43:gamepad:-;2.6:gamepad:a;2.63:gamepad:-;2.9:expect:ui:text:=Settings;3:gamepad:b;3.03:gamepad:-;3.3:expect:ui:text:=Paused;3.4:quit"])
+                .output()
+                .unwrap();
+            assert!(run.status.success(), "{}", text(&run));
+            assert!(text(&run).contains("\"passed\":6"), "{}", text(&run));
+        }
         let refused = og()
             .current_dir(&dir)
             .env("OG_ENGINE_PACKAGE", &engine)

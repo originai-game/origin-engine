@@ -1,14 +1,31 @@
 # Making a game on Origin Engine
 
-Start here for any Origin Engine game: how a game begins from the empty skeleton and its create block, where the API is answered, the project's shape, and which guide covers what.
+Start here for any Origin Engine game: its connected menu shell and create block, where the API is answered, the project's shape, and which guide covers what.
 
 ## 1. The skeleton and the create block
 
-Creation (`og create`, from `@origingame/create-game`) writes one empty
-project for every genre and view: `project.ogt`, `src/main.ts` exporting
-`og.game({})`, `tests/smoke.og.ts`, `package.json`, `tsconfig.json` and an
-empty `assets/`. There is no sample scene, gameplay or art to adapt: the
-game is written from zero with the API.
+Creation (`og create`, from `@origingame/create-game`) writes a project
+with a connected UI shell for every genre and view: `project.ogt`,
+`src/main.ts`, `src/shell.tsx`, `src/shell-state.ts`, `src/shell-config.ts`,
+`src/shell-locales.ts`, string tables, `tests/smoke.og.ts`, `package.json`
+and `tsconfig.json`. Title, main menu, pause, settings and save/load are
+built-in screens with working navigation, world-snapshot saves and
+persistent volume, text size, motion and language settings. Title and main
+menu stand on the game's key art, else its live scene, else a dark ground;
+pause, settings and save/load during play stand on the frozen game frame,
+blurred or dimmed. There is no
+sample level, gameplay, rule set or balance to adapt.
+
+Keep this shell and customize it first: change copy in `assets/strings/`,
+load key art and a logo in `start` and pass their texture handles to
+`setShellArt(world, { keyArt, logo })` before `startShell`, or
+`setShellArt(world, { liveScene: true })` once the scene is worth showing
+behind the menus. Layout and focus come from the built-in screens; avoid
+rebuilding entire screens with View/Text. Add game-specific screens beside
+them. Initialize gameplay before `startShell(world)` in `src/main.ts`:
+that call captures the New game reset point. Bind gameplay systems to
+`state: "session", value: "playing"`; the shell freezes scaled simulation
+and pauses the flow outside play, while UI and platform answers keep ticking.
 
 A tool creates a game without questions: `og new <dir> --look <slug>
 --premise "<one line>" --no-prompt` (it never prompts without a terminal
@@ -31,7 +48,9 @@ The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
   replace: the story in `assets/story/film.yarn`, a segment per flow node
   in `assets/segments/` and a placeholder stream in `assets/clips/`, run
   by project.ogt's `flow "story/film.yarn"` line, which the engine starts
-  and draws with its FlowScreen (src/main.ts stays empty). Its form is 3d
+  and draws with its FlowScreen underneath the same shell. The shell holds
+  the flow at the opening frame until New game or Continue, and pauses it
+  in menus. Its form is 3d
   unless named, the world its live scenes and levels draw in, and its view
   may be left out. Read the flow guide next (`og api show flow`): it
   covers the story, segments, choices, saves and route tests.
@@ -47,11 +66,15 @@ The choices made at creation sit in project.ogt's `create` block: `form`,
 `genre`, `view`, `look`, `variant`, `ui`, `platform`, `input`,
 `players`, `lang`, `music` (a film's genre is `interactive-film`, and it
 has no `view` or `players`).
-They are constraints and hints, not settings:
+Creation turns some choices into configuration; the rest remain the brief:
 
-- Nothing reads them at run time. `view side-2d` does not make the game 2D,
-  `players online-lockstep` does not open a room, `lang zh` installs no
-  font. The game's code and assets implement each choice.
+- `form` selects the engine's 2D or 3D profile. `platform` and `input`
+  configure the generated shell's device defaults: phone/touch keeps the
+  UI at touch scale, keyboard and gamepad retain arrow/d-pad focus and
+  Escape/Start pause. Screens adapt to the actual viewport and device,
+  including safe areas, rather than forcing a fixed render resolution.
+  `players online-lockstep` does not open a room: the game implements its
+  rules and networking.
 - Treat them as the brief: a `platform phone-portrait` game is laid out
   for 390×844 and touch first; `input gamepad` means every screen is
   reachable by pad focus; `players online-lockstep` means the whole
@@ -61,22 +84,28 @@ They are constraints and hints, not settings:
 - `look`, `variant` and `ui` are also written into `assets/looks/<id>.ogt`,
   which project.ogt's `look` names; that file is real configuration
   (looks §1). `lang` installs each language's font pack, which og.i18n
-  chains with no code; each language still needs its string table
-  (screens §6). `og check` warns while a language has no font for its
-  script.
+  chains with no code. Creation writes and imports each requested locale's
+  shell table and selects the first language; available engine translations
+  seed the tables, otherwise English seeds the entries for translation.
+  Complete those translations and add the game's own strings before release.
+  Changing the block later does not regenerate authored files: update
+  `src/shell-config.ts`, locale imports and the look file with it.
 
 ## 2. The order of work
 
-1. Read the create block and restate the brief as the playable loop: what
-   the player does every few seconds, what ends a run.
-2. Write the smallest loop that plays: entities, one system, input, a
-   lose or win state. Run it (`og run --headless --commands ...`) before
-   adding art.
+1. Read the create block, customize the connected shell's copy and art,
+   and run title → main menu → play → pause → main menu. Check settings
+   and save/load at the target sizes and input modes before adding gameplay.
+   Restate the brief as the playable loop: what the player does every few
+   seconds, what ends a run.
+2. Write the smallest loop that plays inside the shell's `playing` state:
+   entities, one system, input, a lose or win state. Run it
+   (`og run --headless --commands ...`) before adding world art.
 3. Write its invariants and the playtest that drives it (testing §2)
    while the rules are fresh: the playtest is how every later change is
    known not to break the loop.
-4. Then the look (`looks`, `art-review`), the UI (`screens`), motion and
-   feel (`animation`), each checked as testing §5 describes.
+4. Refine the look (`looks`, `art-review`), add game-specific UI (`screens`),
+   motion and feel (`animation`), each checked as testing §5 describes.
 5. Keep `og check` and `og test` green after every step. A game is done
    when its loop, its screens and its look hold under testing §5, not
    when it compiles.

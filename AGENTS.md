@@ -53,8 +53,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   reports what it did; it never picks a value, ranks a play by taste or
   decides an outcome the game did not state.
 - **No gameplay templates; mechanisms by name.** `og create` writes one
-  project skeleton; the creation choices go into project.ogt's `create`
-  block. The engine ships mechanisms, never games: primitives report facts
+  project structure with a connected menu/navigation shell configured by
+  project.ogt's `create` choices (platform, input, languages and look/UI
+  pack). Interactive films use the same shell over the engine's FlowScreen.
+  The shell supplies no gameplay, levels, rules or balance. The engine
+  ships mechanisms, never games: primitives report facts
   (a hit, an overlap, a candidate) and the small systems in `og.systems`
   carry out the rules their components state (a window, a cooldown, a
   stack limit). A game lists each system it uses by name, sets every number

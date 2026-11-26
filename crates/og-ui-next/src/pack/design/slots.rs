@@ -202,7 +202,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Slider.track",
         "a slider's track",
-        "relative grow h-1.5 rounded-capsule bg-fill-strong disabled:opacity-50",
+        "relative grow h-1.5 rounded-capsule bg-track disabled:opacity-50",
     ),
     (
         "Slider.range",

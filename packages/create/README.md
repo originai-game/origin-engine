@@ -1,27 +1,38 @@
 # @origingame/create-game
 
-`og create` (also `og new`) writes one empty project from `template/`:
-`project.ogt`, `src/main.ts`, `tsconfig.json`, `package.json`, `tests/`,
-and `assets/`. The entry exports `og.game({})`. There is no 2D or 3D
-variant, sample scene, gameplay, or installed art.
+`og create` (also `og new`) writes one project structure from `template/`
+with a connected UI shell: `src/shell.tsx` mounts the built-in title, main
+menu, pause, settings and save/load screens; `src/shell-state.ts` connects
+their intents to the `session` state machine, world snapshots and platform
+persistence. `src/main.ts` wires setup, systems and retained UI registration.
+There is no sample level, gameplay, rule set or balance.
 
 ```sh
 og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 ```
 
 The agent chooses the form, genre, view, look and variant, UI style,
-platform, input, players, languages, and music. These choices are constraints and hints in
+platform, input, players, languages, and music. These choices are recorded in
 `project.ogt`'s `create` block. Creation also writes `assets/looks/<id>.ogt`
 with the chosen preset, variant and UI pack, named by the manifest's top-level
 `look`. It generates no gameplay or art, and changes no publish settings.
-The agent builds the game with the engine API and skills after creation.
-The block's `form` is also the game's profile, the one field it follows:
+The agent customizes shell copy and art, then builds gameplay inside its
+`session` / `playing` state. Phone/touch defaults keep touch scale; built-in
+screens adapt layout and focus to the actual viewport/input (Escape and pad
+Start pause, a visible Pause control works on touch). Shell configuration is
+authored in `src/shell-config.ts`, not reread from the create block at runtime.
+The block's `form` is also the game's profile:
 `form "2d"` is a 2D game (rapier2d physics, sprites in the art brief, the
 cook's 2D conformance); `2.5d` and `3d` are 3D (`profileOf(form)`). Each requested language installs its
 script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
-§3.4), which og.i18n chains with no generated code; the languages still need
-authored string tables. `og check` warns about a language with no font for
-its script.
+§3.4), which og.i18n chains with no generated code. Creation writes and
+imports each requested language's shell table, seeded from available engine
+translations (otherwise English for the author to translate), and selects
+the first requested language. Settings apply immediately and persist through
+og.platform; progress uses the `progress` slot. Start initializes gameplay
+before startShell captures the New game reset point. Rebuilding the entire
+screen in View/Text is unnecessary: change strings, and give the menus key art,
+a logo or the live scene with `setShellArt`. See the start guide §1/§2 for the author workflow.
 
 ## Options and return value
 
@@ -41,7 +52,8 @@ and its view may be left out, and creation writes the same skeleton plus
 `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
 runs `bun scripts/assets.ts ensure templates` first), and project.ogt's
 `flow "story/film.yarn"`, which the engine starts and draws with its
-FlowScreen. The look must draw the form (its catalogue `views`), and `--variant` must be one of the look's. Mood is not a
+FlowScreen under the same shell, held at the opening frame until play and
+paused in menus. The look must draw the form (its catalogue `views`), and `--variant` must be one of the look's. Mood is not a
 creation choice: the look draws in its preset's or variant's own mood, and
 `--mood` is refused (write `mood "<word>"` in the look file to change it).
 

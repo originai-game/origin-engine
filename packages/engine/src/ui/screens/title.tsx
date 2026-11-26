@@ -30,7 +30,7 @@ export interface TitleScreenProps {
  */
 export function TitleScreen(props: TitleScreenProps) {
   return (
-    <View class={`absolute inset-0 scheme-dark text-fg p-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
+    <View class={`absolute inset-0 scheme-dark text-fg p-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} autofocus onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

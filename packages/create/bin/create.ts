@@ -250,6 +250,41 @@ export function create(options: CreateOptions): Created {
   }
   // An interactive film adds its story, segments and placeholder clip, run by project.ogt's `flow` (og api show flow).
   if (film) copy(filmDir(), dir);
+  // One shell for every genre: only its identity, device defaults and locale tables differ.
+  const config = "src/shell-config.ts";
+  writeFileSync(join(dir, config), `// Creation choices configure the shell here; changing project.ogt alone does not regenerate code.\nexport const shellConfig = ${JSON.stringify({ name, platform: choices.platform, input: choices.input, lang: choices.lang, genre: choices.genre, languageNames: Object.fromEntries(choices.lang.map((l) => [l, new Intl.DisplayNames([l], { type: "language" }).of(l) ?? l])) }, null, 2)};\n`);
+  const locales = [...new Set(["en", ...choices.lang])];
+  const english = readFileSync(join(template, "assets/strings/shell.en.ogt"), "utf8");
+  const chinese: Record<string, string> = {
+    "shell.pause": "暂停", "shell.general": "通用", "shell.volume": "主音量", "shell.textScale": "文字大小",
+    "shell.reducedMotion": "减少动态效果", "shell.language": "语言", "shell.saved": "进度已保存",
+    "shell.failed": "未能完成请求，请重试。", "shell.busy": "请稍候…",
+    "shell.volume.about": "整个游戏的音量。", "shell.textScale.about": "放大所有菜单和字幕文字。",
+    "shell.reducedMotion.about": "缩短过渡并关闭游玩不需要的动态效果。", "shell.language.about": "菜单和文本使用的语言。",
+  };
+  const screens = join(template, "../../engine/src/ui/screens");
+  for (const locale of locales) {
+    // Seed every requested locale with the available built-in translation, otherwise English.
+    // These are ordinary authored tables: the author fills translations not shipped by the engine.
+    const messages = new Map<string, string>();
+    const read = (table: string) => {
+      for (const line of table.split("\n")) {
+        const m = /^string ("(?:[^"\\]|\\.)*") ("(?:[^"\\]|\\.)*")$/.exec(line);
+        if (m) messages.set(JSON.parse(m[1]!), JSON.parse(m[2]!));
+      }
+    };
+    read(english);
+    for (const screen of ["title", "main-menu", "pause", "settings", "save-load"]) {
+      read(readFileSync(join(screens, `${screen}.en.ogt`), "utf8"));
+      const translated = join(screens, `${screen}.${locale.startsWith("zh") && !/Hant|TW|HK/.test(locale) ? "zh-CN" : locale}.ogt`);
+      if (existsSync(translated)) read(readFileSync(translated, "utf8"));
+    }
+    if (locale.startsWith("zh") && !/Hant|TW|HK/.test(locale)) for (const [key, value] of Object.entries(chinese)) messages.set(key, value);
+    const path = `assets/strings/shell.${locale}.ogt`;
+    writeFileSync(join(dir, path), `type strings\nversion 1\n---\nlocale ${JSON.stringify(locale)}\n${[...messages].map(([key, value]) => `string ${JSON.stringify(key)} ${JSON.stringify(value)}`).join("\n")}\n`);
+    if (locale !== "en") written.push(path);
+  }
+  writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../assets/strings/shell.${l}.ogt";`).join("\n") + "\n");
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);
@@ -268,10 +303,9 @@ export function create(options: CreateOptions): Created {
 const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--form 2d|2.5d|3d] [--look slug] [--force]
        create --creation [--previews previews.json]
 
-Writes one empty Origin Engine project (default: ./origin-game).
-Choices are constraints and hints in project.ogt's create block.
-The look, variant and UI also configure its look file, which draws in the
-look's own mood; no gameplay is generated.
+Writes an Origin Engine project with a connected menu shell (default: ./origin-game).
+The create block configures the shell's platform, input and languages.
+The look, variant and UI configure its look file; no gameplay is generated.
   --form      2d, 2.5d or 3d: the world's form, the view one of the form's
   --genre     interactive-film adds a flow (og.flow): a Yarn story, two segments and a
               placeholder clip, run by project.ogt's \`flow\` and drawn by the engine's

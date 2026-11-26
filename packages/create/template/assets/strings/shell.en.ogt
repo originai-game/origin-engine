@@ -1,0 +1,17 @@
+type strings
+version 1
+---
+locale "en"
+string "shell.pause" "Pause"
+string "shell.general" "General"
+string "shell.volume" "Master volume"
+string "shell.textScale" "Text size"
+string "shell.reducedMotion" "Reduce motion"
+string "shell.language" "Language"
+string "shell.saved" "Progress saved"
+string "shell.failed" "Could not complete the request. Please try again."
+string "shell.busy" "Please wait…"
+string "shell.volume.about" "How loud the whole game plays."
+string "shell.textScale.about" "Makes every menu and caption larger."
+string "shell.reducedMotion.about" "Shortens transitions and turns off motion that is not needed to play."
+string "shell.language.about" "The language of menus and text."
