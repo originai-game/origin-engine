@@ -3,7 +3,10 @@ use super::Kind;
 
 pub mod geometry;
 pub mod pack;
+mod records;
+pub mod scene;
 pub mod source_data;
+pub mod table;
 
 // Geometry is a model/terrain input, not a top-level file kind. Register model
 // only when the model's remaining parts/materials/processing inputs are covered.

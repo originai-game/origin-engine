@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "scene, prefab and table author schemas",
+      "summary": "Tooling can bind typed scene/prefab shells to project component/resource layouts and table rows to a fixed record. Closed fields, recursive entities, prefab edits, streaming and stable ordered row ids generate readonly TS contracts. All table columns may be omitted; decoding preserves omissions for later canonical-default normalization. Context-dependent kinds are not registered as context-free factories. This establishes structural contracts only; formats, parsers, graph semantics and persistence are unchanged."
+    }
+  ]
+}

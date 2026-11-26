@@ -8,6 +8,190 @@ use og_core::reflect::source::typescript;
 use serde_json::json;
 
 #[test]
+fn contextual_world_author_contracts() {
+    use og_cook::cook::source_schemas::world::{
+        scene::{PrefabInput, SceneInput},
+        table::TableInput,
+    };
+    use og_core::reflect::source::InputSchema;
+    use og_core::{
+        Schema,
+        reflect::{FieldSchema, FieldType, Scalar},
+    };
+    let mut power = FieldSchema::new("power", FieldType::F32);
+    power.default = Some(vec![3.5]);
+    power.min = Some(-2.0);
+    power.max = Some(8.0);
+    let item = Schema {
+        name: "game.Item".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![
+            power,
+            FieldSchema::new("title", FieldType::Str(16)),
+            FieldSchema::new("tags", FieldType::List(Scalar::U32, 4)),
+            FieldSchema::enumeration("rarity", &["common", "rare"]),
+        ],
+    };
+    let resource = Schema {
+        name: "game.Settings".into(),
+        fields: vec![FieldSchema::new("enabled", FieldType::Bool)],
+        ..item.clone()
+    };
+    let scene = SceneInput::schema_with_records(
+        std::slice::from_ref(&item),
+        std::slice::from_ref(&resource),
+    )
+    .unwrap();
+    let prefab = PrefabInput::schema_with_records(std::slice::from_ref(&item)).unwrap();
+    let table = TableInput::schema_with_record(&item).unwrap();
+    for kind in ["scene", "prefab", "table"] {
+        assert!(
+            source_schemas::get(kind).is_none(),
+            "contextual kind must not masquerade as a static schema"
+        );
+    }
+    let valid = json!({"entities":[{"name":"Gate","components":{"game.Item":{"power":2.5}},
+        "children":[{"name":"Panel","prefab":{"$ogRef":"base/prefab/panel"},"edits":[
+            {"kind":"override","path":"","components":{"game.Item":{"title":"Wide"}}},
+            {"kind":"remove","path":"Latch","component":"game.Item"},
+            {"kind":"override","path":"Latch","static":true}
+        ]}]}], "resources":{"game.Settings":{"enabled":true}},
+        "streams":{"nearby":{"assets":[{"$ogRef":"north/scene/nearby"}],"trigger":{"kind":"distance","anchor":[1,2,-3],"radius":12,"unload":18}}},
+        "hlod":{"size":64,"texels":128},"paths":{"rail":{"points":[[0,0,0],[2,1,-3]],"kind":"linear"}}});
+    let decoded = scene.decode(valid.clone()).unwrap();
+    assert_eq!(decoded.entities[0].components["game.Item"].len(), 1);
+    assert_eq!(decoded.entities[0].children[0].edits.len(), 3);
+    for wrong in [
+        json!({"entities":[{"name":"Gate","components":{"game.Item":{"typo":3}}}]}),
+        json!({"entities":[{"name":"Gate","components":{"game.Settings":{}}}]}),
+        json!({"resources":{"game.Item":{}}}),
+        json!({"entities":[{"name":"Gate","children":[{"name":"Deep","components":{"Unknown":{}}}]}]}),
+        json!({"entities":[{"name":"Gate","edits":[{"kind":"remove","path":"Child","component":"Missing"}]}]}),
+        json!({"entities":[{"name":"Gate","edits":[{"kind":"override","path":"Child","components":{"game.Item":{"power":9}}}]}]}),
+        json!({"entities":[{"name":"Gate","edits":[{"kind":"override","path":"Child","prefab":{"$ogRef":"base/prefab/other"}}]}]}),
+        json!({"streams":{"bad/key":{}}}),
+        json!({"streams":{"near":{"trigger":{"kind":"distance","anchor":[0,0,0],"radius":0}}}}),
+        json!({"hlod":{"size":3}}),
+    ] {
+        assert!(scene.decode(wrong.clone()).is_err(), "accepted {wrong}");
+    }
+    let valid_prefab = json!({"base":{"$ogRef":"base/prefab/door"},"entity":{"name":"Root","components":{"game.Item":{}}}});
+    prefab.decode(valid_prefab.clone()).unwrap();
+    for wrong in [
+        json!({}),
+        json!({"entities":[{"name":"Root"}]}),
+        json!({"entity":{"name":"Root"},"resources":{}}),
+    ] {
+        assert!(prefab.decode(wrong.clone()).is_err(), "accepted {wrong}");
+    }
+    // No context accepts no dynamic value, rather than a widening map fallback.
+    assert!(
+        InputSchema::<TableInput>::new()
+            .unwrap()
+            .decode(json!({"record":"game.Item","rows":[]}))
+            .is_err()
+    );
+    assert!(
+        InputSchema::<SceneInput>::new()
+            .unwrap()
+            .decode(valid.clone())
+            .is_err()
+    );
+    SceneInput::schema_with_records(&[], &[])
+        .unwrap()
+        .decode(json!({"entities":[{"name":"Empty","components":{}}],"resources":{}}))
+        .unwrap();
+    assert!(SceneInput::schema_with_records(&[item.clone(), item.clone()], &[]).is_err());
+    // A second project owns a different layout with the same record name.
+    let other = Schema {
+        fields: vec![FieldSchema::new("enabled", FieldType::Bool)],
+        ..item.clone()
+    };
+    let project_b = TableInput::schema_with_record(&other).unwrap();
+    project_b
+        .decode(json!({"record":"game.Item","rows":[{"id":"one","values":{"enabled":true}}]}))
+        .unwrap();
+    assert!(
+        project_b
+            .decode(json!({"record":"game.Item","rows":[{"id":"one","values":{"power":2}}]}))
+            .is_err()
+    );
+    let valid_table = json!({"record":"game.Item","locale":"en","rows":[
+        {"id":"z-last","values":{"title":"Heavy","power":-1.5,"tags":[2,7],"rarity":"rare"}},
+        {"id":"a-first","values":{}}
+    ]});
+    let decoded = table.decode(valid_table.clone()).unwrap();
+    decoded.validate().unwrap();
+    assert_eq!(decoded.rows[0].id, "z-last");
+    assert_eq!(decoded.rows[1].id, "a-first");
+    assert!(
+        decoded.rows[1].values.is_empty(),
+        "omitted defaults, strings and lists stay absent"
+    );
+    for wrong in [
+        json!({"rows":[]}),
+        json!({"record":"other.Item","rows":[]}),
+        json!({"record":"game.Item"}),
+        json!({"record":"game.Item","rows":[{"id":"one"}]}),
+        json!({"record":"game.Item","rows":[{"id":"","values":{}}]}),
+        json!({"record":"game.Item","rows":[{"id":"one","values":{"enabled":true}}]}),
+        json!({"record":"game.Item","rows":[{"id":"one","values":{"power":8.1}}]}),
+        json!({"record":"game.Item","rows":[{"id":"one","values":{"tags":[1,2,3,4,5]}}]}),
+        json!({"record":"game.Item","rows":[{"id":"one","values":{"rarity":"mythic"}}]}),
+    ] {
+        assert!(table.decode(wrong.clone()).is_err(), "accepted {wrong}");
+    }
+    let duplicate = table.decode(json!({"record":"game.Item","rows":[{"id":"one","values":{}},{"id":"one","values":{}}]})).unwrap();
+    assert!(
+        duplicate
+            .validate()
+            .unwrap_err()
+            .contains("duplicate row id")
+    );
+    let mut ts = typescript(scene.document(), "Scene").unwrap();
+    ts.push_str(&typescript(prefab.document(), "Prefab").unwrap());
+    ts.push_str(&typescript(table.document(), "Table").unwrap());
+    ts.push_str(&format!("const scene: Scene = {valid};\nconst prefab: Prefab = {valid_prefab};\nconst table: Table = {valid_table};\n"));
+    ts.push_str(r#"
+const omitted: Table = {record:"game.Item",rows:[{id:"one",values:{}}]};
+// @ts-expect-error Record selection is a context-fixed identity.
+const record: Table = {record:"other.Item",rows:[]};
+// @ts-expect-error Structural values is required even when no columns are supplied.
+const missing: Table = {record:"game.Item",rows:[{id:"one"}]};
+// @ts-expect-error A row's actual layout closes its columns.
+const typo: Table = {record:"game.Item",rows:[{id:"one",values:{powre:2}}]};
+// @ts-expect-error Enum columns use declared names, not ordinals.
+const ordinal: Table = {record:"game.Item",rows:[{id:"one",values:{rarity:0}}]};
+// @ts-expect-error Roles are not interchangeable.
+const wrongRole: Scene = {resources:{"game.Item":{}}};
+// @ts-expect-error Recursive children retain the complete project schema.
+const child: Scene = {entities:[{name:"Root",children:[{name:"Child",components:{"Unknown":{}}}]}]};
+// @ts-expect-error Removal names come from the component role, not arbitrary strings.
+const removal: Prefab = {entity:{name:"Root",edits:[{kind:"remove",path:"Child",component:"Missing"}]}};
+// @ts-expect-error A prefab has exactly one root.
+const roots: Prefab = {entities:[{name:"Root"}]};
+// @ts-expect-error Prefabs do not declare top-level resources.
+const resources: Prefab = {entity:{name:"Root"},resources:{}};
+// @ts-expect-error Nested row columns are readonly.
+table.rows[0].values.power = 2;
+"#);
+    let dir = temp::TempDir::new("context-world-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .expect("pinned tsrs checker");
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
 fn geometry_and_pack_author_contracts() {
     let geometry = Geometry::schema();
     let pack = PackInput::schema();
@@ -371,10 +555,14 @@ const badJoin: Icons = {icons:[["a","b"]],join:"arcs"};
 const missingSvg: Vector = {tolerance:0.1};
 // @ts-expect-error No arbitrary parser block is exposed as an author escape hatch.
 const vectorBlock: Vector = {source:"a.svg",config:{}};
+// @ts-expect-error File and inline SVG branches are mutually exclusive.
+const mixedVector: Vector = {source:"a.svg",svg:"<svg/>"};
 // @ts-expect-error Texture kind names are not runtime numeric codes.
 const numericKind: TextureArray = {kind:5,layers:["a.png"]};
 // @ts-expect-error Six cubemap faces have fixed order and arity.
 const shortCube: Environment = {source:{faces:["px.hdr","nx.hdr"]}};
+// @ts-expect-error An environment has exactly one source branch.
+const mixedSky: Environment = {source:{ktx2:"a.ktx2",equirect:"a.hdr"}};
 // @ts-expect-error Sun selection uses the domain vocabulary.
 const badSun: Environment = {source:{equirect:"sky.png"},sun:true};
 // @ts-expect-error Author data is readonly, including nested arrays.
