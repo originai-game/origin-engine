@@ -604,15 +604,14 @@ step_looks() {
 # The showcases (showcase/*/ with tests/): `og test` in each whose inputs
 # changed since it last passed, as step_fixtures does. Each has a playtest
 # that reaches an og.assert.reachable site through its keys and ends two
-# runs on one hash. shared-walk is left out: without a world server it never
-# joins.
+# runs on one hash.
 step_showcase() {
   local dir name log rc ran="" unchanged="" unchecked="" bad=""
   require_ready showcase native-ready || return 1
   for dir in showcase/*/; do
     dir="${dir%/}"
     name="${dir##*/}"
-    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] && [ "$name" != shared-walk ] || continue
+    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] || continue
     if skip_unchanged "showcase.$name" "showcase $name" "$(rule_fixture "$dir")"; then
       unchanged="$unchanged $name"
       continue
@@ -697,7 +696,7 @@ web_video() { bun tests/web/video-alpha.ts; }
 # Runs on macOS with safaridriver enabled (`sudo safaridriver --enable`
 # once); anywhere else it fails, never passes.
 SAFARI_LANES="wire player export device motion-ticks"
-SAFARI_PROJECTS="showcase/first-light tests/fixtures/side-scroller"
+SAFARI_PROJECTS="showcase/the-last-light tests/fixtures/side-scroller"
 step_safari() {
   local dir="$GATE_LOGS/safari" failed="" name rc p
   if [ "$(uname -s)" != Darwin ] || [ ! -x /usr/bin/safaridriver ]; then

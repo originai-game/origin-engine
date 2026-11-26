@@ -62,8 +62,8 @@ conformed palette and the frame's posterize steps them again.
 
 ## The hero scenes in every look
 
-`heroes.ts` draws a showcase hero scene (`showcase/the-last-light`,
-`showcase/night-shift`) in every 3D look and variant: the game as it is,
+`heroes.ts` draws The Last Light (`showcase/the-last-light`)
+in every 3D look and variant: the game as it is,
 its set, camera, light and code, with only its look swapped. Each look gets
 a copy of the project under `target/look-previews/heroes/<hero>/` whose look
 file is the game's own with its `extends` line naming the preset (and a
@@ -91,7 +91,7 @@ draw it at `--size 1280x720`.
 
 What a hero's own code writes each tick is the scene's, not the look's: The
 Last Light sets the exposure, the colour temperature and the saturation
-(`src/climate.ts`), and both set their fog and sky, so a preset's own Fog,
+(`src/climate.ts`), and its fog and sky, so a preset's own Fog,
 Sky, exposure or saturation does not show in these frames.
 
 The sources: `sources/crate.jpg` and `sources/grass.jpg` are the textures

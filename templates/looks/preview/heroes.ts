@@ -39,9 +39,6 @@ const HEROES: Record<string, Hero> = {
   // The cover as the game starts (sunset, clear, summer), once the cloak
   // hangs and the sea runs.
   "the-last-light": { commands: "", hold: 4 },
-  // The HUD off (the UI is never stylised); rain on a spring night, held
-  // until the street has soaked and its puddles stand (tools/capture.sh).
-  "night-shift": { commands: "0:hud", hold: 20 },
 };
 
 const args = process.argv.slice(2);

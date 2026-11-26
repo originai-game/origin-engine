@@ -30,9 +30,9 @@ The store's SDK and credentials live there, never in the engine.
 
 ```sh
 cargo build --release -p og-host-c
-(cd packages/engine && bun src/hermes/package.ts ../../showcase/night-shift /tmp/pkg \
+(cd packages/engine && bun src/hermes/package.ts ../../showcase/the-last-light /tmp/pkg \
   --hermes hermes --hermes-build hermes/build)
-/tmp/pkg/night-shift/night-shift        # macOS: open /tmp/pkg/night-shift.app
+/tmp/pkg/the-last-light/the-last-light  # macOS: open /tmp/pkg/the-last-light.app
 ```
 
 The package is the shell, `libhermesvm` and `og_host_c` beside it, the
@@ -65,10 +65,10 @@ H=hermes; clang++ -std=c++17 -O2 -I$H/API -I$H/API/jsi -I$H/public \
 
 # a cooked project's bundle, compiled with block scoping (without it Hermes
 # gives a loop's let and const one binding for the whole function)
-(cd packages/engine && bun bench/game-frame/build.ts ../../showcase/night-shift /tmp/ns.js hermes)
-hermesc -O -Xes6-block-scoping -emit-binary -out /tmp/ns.hbc /tmp/ns.js
-OG_RENDERER=none ./og-hermes /tmp/ns.hbc OG_BENCH_ROOT=showcase/night-shift \
-  OG_BENCH_PROJECT=@showcase/night-shift/project.ogt
+(cd packages/engine && bun bench/game-frame/build.ts ../../showcase/the-last-light /tmp/tll.js hermes)
+hermesc -O -Xes6-block-scoping -emit-binary -out /tmp/tll.hbc /tmp/tll.js
+OG_RENDERER=none ./og-hermes /tmp/tll.hbc OG_BENCH_ROOT=showcase/the-last-light \
+  OG_BENCH_PROJECT=@showcase/the-last-light/project.ogt
 ```
 
 `OG_HERMES_PROFILE=<file>` writes Hermes's sampling profile (Chrome's trace

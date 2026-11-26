@@ -911,8 +911,7 @@ with the secret of an `og world-server --auth hs256` (or any issuer the
 server's `--auth jwks` trusts) and answers `{ url, token }`; a 401 or 403
 ends the session `unauthorized`, a network failure or a 5xx is tried
 again. A platform's provider is one more implementation: game code is the
-same under each. `showcase/shared-walk/tools/serve.ts` is a self-hosted
-page and token endpoint.
+same under each.
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
