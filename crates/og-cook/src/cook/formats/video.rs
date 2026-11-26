@@ -1720,7 +1720,7 @@ pub fn cook_stream(
     w.raw("config", e.config.clone(), 4);
     let kbps = bytes as f64 * 8.0 / 1000.0 / (f64::from(plan.frames) / f64::from(plan.decl.fps));
     let note = format!(
-        "the video's {}: {:.1} MiB ({kbps:.0} kb/s) in {} chunk(s) of {chunk_frames} frames, {keys} key frame(s)",
+        "the video's {}: {:.1} MiB ({kbps:.0} kb/s) in {} chunk(s) of up to {chunk_frames} frames, {keys} key frame(s)",
         codec_name(e.codec),
         bytes as f64 / f64::from(1u32 << 20),
         plan.chunks()
