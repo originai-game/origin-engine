@@ -8,6 +8,252 @@ use og_core::reflect::source::typescript;
 use serde_json::json;
 
 #[test]
+fn import_and_model_program_author_contracts() {
+    use source_schemas::world::{import::ImportInput, model_program::ModelProgramInput};
+    let animation = json!({"rate":60,"events":[{"clip":"walk","marker":"step","time":0.2}],
+            "rig":{"$ogRef":"base/rig/person"},"libraries":[{"$ogRef":"base/model/walk"}],"footIk":true,
+            "mirrors":[{"clip":"walk","name":"left"}],"compress":true,"tolerance":0.001,
+            "clips":[{"name":"blink","channels":[{"node":"lid","path":"visibility","interpolation":"step",
+                "keys":[{"time":0,"values":[1]},{"time":0.2,"values":[0]}]}]}]});
+    let model = json!({"kind":"model","source":"assets/person.glb","relaxSkin":true,
+        "lods":[1,0.6,0.2],"lodError":0.04,"raycast":true,"collider":"vhacd",
+        "impostor":true,"impostorGrid":8,"impostorSize":128,"impostorBelow":false,"streamTextures":true,
+        "process":{"unwrap":{"resolution":512}},"front":"-z","up":"+y","conform":"character",
+        "voxScale":0.02,"voxOrigin":"bottom","voxFps":12,"voxClips":[{"name":"walk","first":1,"last":7}],
+        "animation":animation});
+    let imports = [
+        model.clone(),
+        json!({"kind":"texture","source":"assets/leaf.png","usage":"color","stream":true,
+            "normal":{"kind":"image","source":"assets/leaf-n.png"},"sway":{"kind":"tiers","parts":"assets/leaf-p.png"}}),
+        json!({"kind":"sound","source":"assets/music.ogg","codec":"opus","bitrate":96,"stream":false,"chunk":4}),
+        json!({"kind":"font","source":"assets/grid.ttf","pixel":12}),
+        json!({"kind":"tilemap","source":"sources/city.ldtk","unit":2,"level":"North","solid":[-1,2],"tileset":{"$ogRef":"base/tileset/city"}}),
+        json!({"kind":"rive","source":"assets/menu.riv","artboards":["Menu"],"settings":{"Menu":{"stateMachine":"main","role":"button","name":"Open","fit":"scale-down","align":"top-right"}},"fonts":{"Body":{"source":"assets/body.ttf"}}}),
+    ];
+    let ImportInput::Model(defaults) = ImportInput::schema()
+        .decode(json!({"kind":"model","source":"assets/person.glb"}))
+        .unwrap()
+    else {
+        panic!()
+    };
+    assert!(!defaults.relax_skin);
+    for (path, bad) in [
+        ("/relaxSkin", json!(1)),
+        ("/lods", json!([1, 0])),
+        ("/lods", json!([1, 1.01])),
+        ("/lodError", json!(0)),
+        ("/impostorGrid", json!(33)),
+        ("/impostorSize", json!(15)),
+        ("/voxScale", json!(0)),
+        ("/voxScale", json!(1e39)),
+        ("/voxFps", json!(121)),
+        ("/animation/tolerance", json!(0)),
+        ("/animation/rate", json!(121)),
+        ("/animation/libraries/0", json!("base/model/a")),
+        ("/animation/clips/0/channels/0/keys/0/values", json!([1e39])),
+    ] {
+        let mut bad_model = model.clone();
+        *bad_model.pointer_mut(path).unwrap() = bad;
+        assert!(ImportInput::schema().decode(bad_model).is_err(), "{path}");
+    }
+    for bad in [
+        json!({"kind":"model","source":"a.glb","match":"**"}),
+        json!({"kind":"texture","source":"a.png","normal":{"kind":"auto","source":"b.png"}}),
+        json!({"kind":"sound","source":"a.wav","bitrate":257}),
+        json!({"kind":"font","source":"a.ttf","pixel":3}),
+        json!({"kind":"rive","source":"a.riv","settings":{"Main":{"role":"invented"}}}),
+    ] {
+        assert!(ImportInput::schema().decode(bad).is_err());
+    }
+
+    // Exercise every operation through the public input schema. These are
+    // independent structural examples, not a topologically valid single model.
+    let mut ops: Vec<serde_json::Value> = serde_json::from_str(r##"[
+        {"op":"frame","origin":[0,0,0],"normal":[0,0,1]},
+        {"op":"bbox","ids":[0,{"id":1}],"sides":"top"},
+        {"op":"face","id":0,"name":"top"},{"op":"edge","id":0,"name":"top"},
+        {"op":"anchor","id":0,"name":"front"},{"op":"placement","id":0},
+        {"op":"grid","nx":3,"ny":2,"px":1,"py":2,"stagger":true},
+        {"op":"ring","n":8,"radius":3},{"op":"along","path":{"points":[[0,0,0],[1,2,3]],"closed":false}},
+        {"op":"snap","ids":0,"points":[[1,2,3]],"direction":[0,0,-1]},
+        {"op":"names","id":0},{"op":"measure","posed":true},{"op":"units","unit":"m"},{"op":"uvs"},
+        {"op":"box","name":"b","width":"$width","depth":2,"height":3},
+        {"op":"cylinder","name":"c","radius":1,"radiusTop":0.5,"height":3,"segments":"$sides"},
+        {"op":"cone","name":"c","radius":1,"height":3},{"op":"sphere","name":"s","radius":2,"axis":"+Z"},
+        {"op":"dome","name":"d","radius":1},{"op":"tube","name":"t","outer":2,"inner":1,"height":3},
+        {"op":"torus","name":"t","radius":2,"tube":0.2,"tubeSegments":8},{"op":"wedge","name":"w","width":2,"depth":3,"height":4},
+        {"op":"extrude","name":"e","profile":{"rect":{"width":2,"height":3}},"height":4},
+        {"op":"extrude","name":"e","profile":{"circle":{"radius":1}},"until":{"part":0,"face":"top"}},
+        {"op":"revolve","name":"r","profile":{"slot":{"length":3,"width":1}}},
+        {"op":"sweep","name":"s","profile":{"circle":{"radius":0.1}},"path":[[0,0,0],{"arc":{"through":[1,1,0],"to":[2,0,0]}},{"tangentArc":{"to":[3,1,0]}},{"spline":{"points":[[4,2,0],[5,3,0]]}}]},
+        {"op":"loft","name":"l","sections":[{"profile":{"circle":{"radius":1}},"z":0},{"profile":{"circle":{"radius":2}},"z":3}]},
+        {"op":"thread","name":"t","radius":2,"pitch":0.2,"length":3,"depth":0.1},
+        {"op":"wire","name":"w","path":{"helix":{"radius":2,"pitch":1,"turns":3}},"diameter":0.1},
+        {"op":"body","name":"b","plan":2,"top":[[0,1],[3,2]],"bottom":{"points":[[0,0],[3,-1]],"smooth":true}},
+        {"op":"knurl","name":"k","diameter":2,"height":3},{"op":"gear","name":"g","teeth":12,"module":1,"width":2},
+        {"op":"group","name":"g","children":[0,1]},{"op":"wrap","name":"w","parts":0},
+        {"op":"attach","to":0,"name":"a","children":[1]},{"op":"copy","id":0,"name":"c"},
+        {"op":"cut","target":0,"tool":1},{"op":"join","target":0,"tool":1},{"op":"intersect","target":0,"tool":1},
+        {"op":"merge","target":0,"tool":1},{"op":"delete","id":0},{"op":"seat","host":0,"part":1},
+        {"op":"scale","id":0,"x":2,"y":3,"z":4},{"op":"pocket","id":0,"profile":{"rect":{"width":1,"height":2}},"depth":1},
+        {"op":"shell","id":0,"thickness":0.1,"open":["top"]},{"op":"dent","id":0,"at":[[1,2,3]],"radius":1,"depth":0.1},
+        {"op":"subdivide","id":0,"levels":2,"sharp":"top"},{"op":"displace","id":0,"noise":"ridged","scale":1,"amount":0.1,"seed":7},
+        {"op":"fillet","id":0,"radius":0.1,"edges":["top"]},{"op":"chamfer","id":0,"distance":0.1,"distance2":0.2},
+        {"op":"soften","id":0,"radius":0.2,"angle":0.5},
+        {"op":"material","ids":0,"color":"#abcdef","surface":{"density":64,"layers":[{"pattern":"veins","axis":"+X","color":[0.1,0.2,0.3],"relief":0.1}]}},
+        {"op":"pose","joint":"hinge","value":0.5},{"op":"pose","clip":"open","time":0.2},
+        {"op":"clip","name":"open","keys":[{"time":0,"pose":{"hinge":0}},{"time":1,"pose":{"hinge":0.5}}]},
+        {"op":"skin","id":0,"bones":[{"name":"root","pivot":[0,0,0],"regions":["body"]}],"blend":0.1},
+        {"op":"skin","id":0,"joints":[{"name":"root","at":[0,0,0]}]},
+        {"op":"humanoid","id":0,"bind":false},
+        {"op":"morph","id":0,"name":"target","target":1},{"op":"morph","id":0,"name":"delta","deltas":[[1,0,0]]},
+        {"op":"morph","id":0,"name":"region","regions":["top"],"offset":[0,1,0],"scale":[1,2,1]},
+        {"op":"morph","id":0,"name":"offset","offset":[0,1,0]},{"op":"morph","id":0,"name":"scale","scale":[1,2,1]}
+    ]"##).unwrap();
+    let frame = json!({"origin":[1,2,3],"x":[1,0,0],"y":[0,1,0],"z":[0,0,1]});
+    for op in [
+        "offset",
+        "translate",
+        "turn",
+        "local",
+        "at",
+        "transform",
+        "split",
+    ] {
+        let mut value = json!({"op":op,"frame":frame});
+        match op {
+            "offset" => value["distance"] = json!(2),
+            "translate" | "turn" => (),
+            _ => value["id"] = json!(0),
+        }
+        ops.push(value);
+    }
+    ops.extend([json!({"op":"compose","frame":frame,"local":frame}),
+        json!({"op":"assembly","name":"a","children":[0,1],"anchors":{"tip":frame}}),
+        json!({"op":"mirror","id":0,"plane":frame,"name":"m"}),
+        json!({"op":"hole","id":0,"diameter":1,"at":[frame],"counterbore":[2,0.1],"countersink":[3,0.5]}),
+        json!({"op":"joint","name":"hinge","child":1,"parent":0,"on":frame,"kind":"revolute","axis":[0,1,0],"range":[0,1],"mimic":{"joint":"other","multiplier":-1}}),
+    ]);
+    let profiles: Vec<serde_json::Value> = serde_json::from_str(r#"[
+        {"rect":{"width":2,"height":3,"radius":0.1}}, {"circle":{"radius":1,"segments":16}},
+        {"ellipse":{"rx":2,"ry":1,"segments":16}}, {"slot":{"length":3,"width":1}},
+        {"polygon":{"sides":6,"flats":2}}, {"poly":{"points":[[0,0],{"x":2,"y":0,"radius":0.1,"bulge":0.2},[0,3]]}},
+        {"gear":{"teeth":12,"module":1,"pressureAngle":0.3}},
+        {"union":[{"circle":{"radius":1}},{"rect":{"width":3,"height":1}}]},
+        {"subtract":[{"circle":{"radius":2}},{"circle":{"radius":1}}]},
+        {"intersect":[{"circle":{"radius":1}},{"rect":{"width":3,"height":1}}]},
+        {"offset":{"profile":{"circle":{"radius":1}},"distance":0.2}},
+        {"translate":{"profile":{"circle":{"radius":1}},"x":2,"y":3}},
+        {"rotate":{"profile":{"rect":{"width":2,"height":3}},"angle":0.5}},
+        {"scale":{"profile":{"circle":{"radius":1}},"x":2,"y":3}},
+        {"superellipse":{"rx":2,"ry":1,"exponent":3,"segments":16}},
+        {"spline":{"points":[[0,0],[2,1],[0,3]]}},
+        {"path":[[0,0],[2,0],{"arc":{"through":[3,1],"to":[2,2]}},{"tangentArc":{"to":[1,3]}},{"spline":{"points":[[0,3],[0,0]]}}]},
+        {"stroke":{"path":[[0,0],[2,1]],"width":0.2,"join":"miter","roundCaps":true,"closed":false}},
+        {"hull":[{"circle":{"radius":1}},{"rect":{"width":3,"height":1}}]},
+        {"mirror":{"profile":{"rect":{"width":2,"height":3}},"axis":"x"}},
+        {"text":{"text":"Origin","font":"assets/body.ttf","size":1,"spacing":0.1}}
+    ]"#).unwrap();
+    for (i, profile) in profiles.into_iter().enumerate() {
+        ops.push(json!({"op":"extrude","name":format!("profile{i}"),"profile":profile,"height":2}));
+    }
+    ops.extend([
+        json!({"op":"loft","name":"placed","sections":[{"profile":{"circle":{}},"at":frame}],"curve":"catmullRom","closed":true}),
+        json!({"op":"material","ids":0,"color":[0.1,0.2,0.3],"map":"assets/color.png","mapSize":2,"clearcoat":0.3,"sheenColor":"#123456","transmission":0.2,"iridescence":0.1}),
+        json!({"op":"material","ids":0,"color":"#fedcba"}),
+    ]);
+    let program = json!({"name":"vocabulary","params":{"width":2,"sides":16},"ops":ops});
+    let mut ts = typescript(ImportInput::schema().document(), "Import").unwrap();
+    ts.push_str(&typescript(ModelProgramInput::schema().document(), "Program").unwrap());
+    for (i, value) in imports.iter().enumerate() {
+        ImportInput::schema().decode(value.clone()).unwrap();
+        ts.push_str(&format!("const imported{i}: Import = {value};\n"));
+    }
+    ModelProgramInput::schema().decode(program.clone()).unwrap();
+    ts.push_str(&format!("const program: Program = {program};\n"));
+    // The structural value can enter the actual shared kernel unchanged.
+    let executable = json!({"name":"box","params":{"width":2},"ops":[
+        {"op":"units","unit":"m"},{"op":"box","name":"body","width":"$width * 2","height":3,"depth":5} ]});
+    ModelProgramInput::schema()
+        .decode(executable.clone())
+        .unwrap();
+    let resolved =
+        og_shape::model::program::with_params(&executable.to_string(), &Default::default())
+            .unwrap();
+    let executed = og_shape::model::program::run(&resolved).unwrap();
+    assert_eq!(executed.name(), "box");
+    let measured: serde_json::Value =
+        serde_json::from_str(&og_shape::model::program::measures_json(&executed).unwrap()).unwrap();
+    assert!((measured["volume"].as_f64().unwrap() - 60.0).abs() < 1e-10);
+    for bad in [
+        json!({"op":"box","name":"x","width":true,"depth":2,"height":3}),
+        json!({"op":"cylinder","name":"c","radius":1,"height":2,"segments":1.5}),
+        json!({"op":"wire","name":"w","diameter":1,"path":[[0,0,0],{"arc":{"through":[1,2],"to":[3,4,5]}}]}),
+        json!({"op":"pose","joint":"a","value":1,"clip":"c","time":2}),
+        json!({"op":"skin","id":0,"bones":[],"joints":[]}),
+        json!({"op":"morph","id":0,"name":"a","target":1,"deltas":[]}),
+        json!({"op":"extrude","name":"a","profile":{"circle":{}},"height":2,"until":{"part":0,"face":"top"}}),
+        json!({"op":"extrude","name":"a","profile":{"rect":{},"circle":{}},"height":2}),
+        json!({"op":"material","ids":0,"map":"a.png","surface":{}}),
+        json!({"op":"material","ids":0,"mapSize":2}),
+        json!({"op":"wire","name":"w","diameter":1,"path":[{"arc":{"through":[0,1,0],"to":[2,3,4]}}]}),
+        json!({"op":"loft","name":"l","sections":[{"profile":{"circle":{}},"z":0},{"profile":{"circle":{}},"at":frame}]}),
+    ] {
+        assert!(
+            ModelProgramInput::schema()
+                .decode(json!({"name":"bad","ops":[bad]}))
+                .is_err()
+        );
+    }
+    ts.push_str(r#"
+// @ts-expect-error Closed imported models do not take sound codec options.
+const badImport: Import = {kind:"model",source:"a.glb",codec:"opus"};
+// @ts-expect-error Skin relaxation is a boolean, not a pass count.
+const badRelax: Import = {kind:"model",source:"a.glb",relaxSkin:12};
+// @ts-expect-error Domain options do not create an implicit directory-matching import rule.
+const oldSidecar: Import = {kind:"model",source:"a.glb",match:"**"};
+// @ts-expect-error Ref targets are content identities, not cooked handles.
+const badRig: Import = {kind:"model",source:"a.glb",animation:{rig:7}};
+// @ts-expect-error No arbitrary operation payload or old JSON source escape.
+const oldProgram: Program = {name:"a",ops:[{op:"raw",text:"{}"}]};
+// @ts-expect-error Operation discriminants select closed fields.
+const badOp: Program = {name:"a",ops:[{op:"box",name:"b",width:1,height:2,depth:3,teeth:16}]};
+// @ts-expect-error 2D profile points are not 3D vectors.
+const badProfile: Program = {name:"a",ops:[{op:"extrude",name:"e",profile:{poly:{points:[[0,1,2]]}},height:3}]};
+// @ts-expect-error Pose modes are exclusive.
+const mixedPose: Program = {name:"a",ops:[{op:"pose",joint:"hinge",value:1,clip:"c",time:1}]};
+// @ts-expect-error Skin modes are exclusive.
+const mixedSkin: Program = {name:"a",ops:[{op:"skin",id:0,bones:[],joints:[]}]};
+// @ts-expect-error Profiles have exactly one tag.
+const mixedProfile: Program = {name:"a",ops:[{op:"extrude",name:"e",profile:{rect:{},circle:{}},height:3}]};
+// @ts-expect-error A path starts with a point, not a curve continuation.
+const noStart: Program = {name:"a",ops:[{op:"wire",name:"w",diameter:1,path:[{spline:{points:[[0,1,2]]}}]}]};
+const sharedPaint = {op:"material" as const,ids:0,map:"a.png",surface:{}};
+// @ts-expect-error Material map and surface are exclusive, even for a shared value.
+const mixedPaint: Program = {name:"a",ops:[sharedPaint]};
+// @ts-expect-error Extrusion height and until are exclusive.
+const mixedExtrude: Program = {name:"a",ops:[{op:"extrude",name:"e",profile:{circle:{}},height:2,until:{part:0,face:"top"}}]};
+// @ts-expect-error Sections cannot mix height and frame placement.
+const mixedSections: Program = {name:"a",ops:[{op:"loft",name:"l",sections:[{profile:{circle:{}},z:0},{profile:{circle:{}},at:{origin:[0,0,1],x:[1,0,0],y:[0,1,0],z:[0,0,1]}}]}]};
+// @ts-expect-error Generated programs are readonly.
+program.ops.push({op:"uvs"});
+"#);
+    let dir = temp::TempDir::new("import-program-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
 fn model_and_materials_author_contracts() {
     use source_schemas::world::{materials::MaterialsInput, model::ModelInput};
     let surface = json!({"color":[0.2,0.4,0.6],"opacity":0.9,"metalness":0.7,"roughness":0.3,

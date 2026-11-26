@@ -5,9 +5,11 @@ pub mod bake;
 pub mod district;
 pub mod geometry;
 pub mod grammar;
+pub mod import;
 pub mod localization;
 pub mod materials;
 pub mod model;
+pub mod model_program;
 pub mod pack;
 mod records;
 pub mod scene;
@@ -16,6 +18,14 @@ pub mod table;
 
 // Geometry is a nested model/terrain input, not a top-level file kind.
 pub(super) const KINDS: &[Kind] = &[
+    Kind {
+        name: "import",
+        schema: || import::ImportInput::schema(),
+    },
+    Kind {
+        name: "model-program",
+        schema: || model_program::ModelProgramInput::schema(),
+    },
     Kind {
         name: "model",
         schema: || model::ModelInput::schema(),
