@@ -31,6 +31,37 @@ mod scene;
 mod terrain;
 mod uncooked;
 
+impl Bundle {
+    /// A lossless scalar/vector lattice; no GPU allocation or normalization.
+    pub fn field(&self, id: &str, bytes: &[u8]) -> Result<crate::field::FieldData, LoadError> {
+        let blob = self.blob::<format::Field>(id, bytes)?;
+        let meta = one::<format::FieldMeta>(&blob)?;
+        let raw = blob.raw("values")?;
+        if !raw.len().is_multiple_of(4) {
+            return Err(invalid(&blob, "field values are cut short"));
+        }
+        let field = crate::field::FieldData {
+            dimensions: [meta.width, meta.height, meta.depth],
+            channels: meta.channels,
+            origin: [meta.origin_x, meta.origin_y, meta.origin_z],
+            spacing: [meta.spacing_x, meta.spacing_y, meta.spacing_z],
+            values: raw
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|v| f32::from_le_bytes(*v))
+                .collect(),
+        };
+        field.validate().map_err(|e| invalid(&blob, e))?;
+        Ok(field)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_field(&self, id: &str) -> Result<crate::field::FieldData, LoadError> {
+        self.field(id, &self.read(id)?)
+    }
+}
+
 pub use hdr::{HdrRows, exr_size, hdr_size, is_exr, is_hdr};
 pub use media::*;
 pub use model::*;

@@ -1,5 +1,41 @@
 use super::*;
 
+row!(
+    /// Validated animation graph source with tracked asset bindings.
+    AnimGraphMeta, "og.AnimGraph", 1 { text_bytes: u32 }
+);
+pub struct AnimGraph;
+impl BlobKind for AnimGraph {
+    const NAME: &'static str = "og.AnimGraph";
+    fn schemas() -> Vec<Schema> {
+        vec![AnimGraphMeta::schema()]
+    }
+}
+
+row!(
+    /// An authored scalar/vector lattice, values in the `values` section.
+    FieldMeta, "og.Field", 1 {
+        width: u32,
+        height: u32,
+        depth: u32,
+        channels: u32,
+        origin_x: f32,
+        origin_y: f32,
+        origin_z: f32,
+        spacing_x: f32,
+        spacing_y: f32,
+        spacing_z: f32,
+    }
+);
+
+pub struct Field;
+impl BlobKind for Field {
+    const NAME: &'static str = "og.Field";
+    fn schemas() -> Vec<Schema> {
+        vec![FieldMeta::schema()]
+    }
+}
+
 // ── tilemaps ─────────────────────────────────────────────────────────────
 
 row!(

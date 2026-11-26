@@ -2,6 +2,21 @@
 
 use super::*;
 
+pub fn og_load_field(world: u32, path: String) -> Result<wire::FieldData, String> {
+    let eng = engine(world)?;
+    let assets = eng.assets.borrow();
+    let id = og_bundle::runtime::asset_id(&path);
+    let (bytes, bundle) = assets.blob(id)?;
+    let data = bundle.field(id, bytes.bytes()).map_err(|e| e.to_string())?;
+    Ok(wire::FieldData {
+        dimensions: data.dimensions,
+        channels: data.channels,
+        origin: data.origin,
+        spacing: data.spacing,
+        values: data.values,
+    })
+}
+
 pub fn og_load_texture(world: u32, path: String) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| assets::load_texture(&eng, &path).map(asset_value))
 }

@@ -16,6 +16,7 @@ mod blob;
 pub(crate) mod ext;
 mod impostor;
 mod lod_bake;
+mod operand;
 pub(crate) mod orient;
 pub mod plain;
 mod primitive;
@@ -26,6 +27,7 @@ use super::conform;
 pub use blob::*;
 pub(crate) use ext::uv_plan;
 pub use impostor::{Baked, ImpostorBake};
+pub(crate) use operand::geometry as operand_geometry;
 pub(crate) use primitive::*;
 
 /// A texture the model needs: which image, cooked as which kind.

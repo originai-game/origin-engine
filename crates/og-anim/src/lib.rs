@@ -54,7 +54,8 @@ pub use flipbook::{
     SheetFilter, SheetFrame, install_flipbook,
 };
 pub use graph::{
-    Condition, GraphAsset, Interrupt, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State,
+    BLOCKS as GRAPH_BLOCKS, ClipBinding, Condition, GraphAsset, GraphSource, Interrupt, Layer,
+    LayerMode, MaskEntry, Motion, MotionNode, Op, SOURCE_LINES as GRAPH_SOURCE_LINES, State,
     Transition,
 };
 pub use graph2d::SpriteGraph;

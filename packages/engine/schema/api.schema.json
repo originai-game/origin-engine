@@ -6823,6 +6823,7 @@
       "place": "namespace",
       "publish": true,
       "types": [
+        "FieldData",
         "Asset",
         "Font",
         "Sound",
@@ -6863,6 +6864,27 @@
       ],
       "consts": [],
       "functions": [
+        {
+          "name": "field",
+          "doc": "Read a cooked type field lattice without allocating world or GPU handles.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose bundle holds the field."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The field asset path under assets/."
+            }
+          ],
+          "returns": "Result<FieldData>",
+          "returnsDoc": "Refused if missing, not resident, not a field, stale or invalid.",
+          "publish": true
+        },
         {
           "name": "bundle",
           "doc": "Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.\nScene, sub-scene and model dependencies resolve from their own bundle first, with loads cached per bundle and path. An id absent there falls back to the boot bundle, then ready bundles in open order. Direct og.load calls use that fallback order.\nSee `world §4`.",
@@ -7535,6 +7557,27 @@
           ],
           "returns": "Result<Animation>",
           "returnsDoc": "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.",
+          "publish": true
+        },
+        {
+          "name": "animgraph",
+          "doc": "Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the graph."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The animgraph asset id under assets/."
+            }
+          ],
+          "returns": "Result<GraphAsset>",
+          "returnsDoc": "Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip.",
           "publish": true
         },
         {
@@ -33868,6 +33911,64 @@
         "texels",
         "volumes",
         "probes"
+      ],
+      "additionalProperties": false
+    },
+    "FieldData": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling.",
+      "type": "object",
+      "properties": {
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Positive sample counts along x, y, z."
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "One to four scalar channels per cell; units and meaning belong to the author."
+        },
+        "origin": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Coordinates of the first lattice sample."
+        },
+        "spacing": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Positive distance between samples on each axis, in authored coordinate units."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Finite samples; dimensions product times channels, at most 16,777,216 scalars."
+        }
+      },
+      "required": [
+        "dimensions",
+        "channels",
+        "origin",
+        "spacing",
+        "values"
       ],
       "additionalProperties": false
     },

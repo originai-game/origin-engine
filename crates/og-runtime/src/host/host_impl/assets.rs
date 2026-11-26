@@ -6,6 +6,11 @@
 macro_rules! __og_host_bindings_assets {
     ($host:ty) => {
         impl $crate::host_impl::api::LoadApi for $host {
+            fn og_load_field(&self, world: u32, path: String) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_load_field(world, path),
+                ))
+            }
             fn og_load_shader(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_shader(world, path))
             }
@@ -57,6 +62,9 @@ macro_rules! __og_host_bindings_assets {
             }
             fn og_load_animation(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_animation(world, path))
+            }
+            fn og_load_animgraph(&self, world: u32, path: String) -> String {
+                $crate::host_impl::answer($crate::og_load_animgraph(world, path))
             }
             fn og_load_timeline(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_timeline(world, path))

@@ -3,12 +3,14 @@
 use super::*;
 
 pub mod animated;
+pub(super) mod animgraph;
 pub(super) mod autorig;
 pub(super) mod behaviour;
 pub(super) mod district;
 pub(super) mod effect;
 pub mod efk;
 pub(super) mod environment;
+pub(super) mod field;
 pub(super) mod flipbook;
 pub(super) mod fracture;
 pub(super) mod fracture_cache;

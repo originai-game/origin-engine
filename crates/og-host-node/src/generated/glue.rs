@@ -1599,6 +1599,12 @@ pub fn og_render_baked_lighting(env: Env, world: u32) -> String {
     <Host as RenderApi>::og_render_baked_lighting(&Host, world)
 }
 
+#[napi(js_name = "og_load_field")]
+pub fn og_load_field(env: Env, world: u32, path: String) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_field(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_bundle")]
 pub fn og_load_bundle(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1777,6 +1783,12 @@ pub fn og_load_gltf_info(env: Env, world: u32, asset: f64) -> String {
 pub fn og_load_animation(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_animation(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_animgraph")]
+pub fn og_load_animgraph(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_animgraph(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_rig")]

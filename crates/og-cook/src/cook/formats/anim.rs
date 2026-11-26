@@ -135,6 +135,65 @@ pub struct AnimSettings {
 /// metres; 0.011° of rotation).
 pub const DEFAULT_TOLERANCE: f32 = 1e-4;
 
+pub const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "rate",
+        "<1..120 Hz>",
+        "source key rate",
+        "Resample every clip at this rate.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "event",
+        "\"<clip>\" \"<marker>\" <seconds>",
+        "",
+        "Repeat explicit markers.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "rig",
+        "\"<asset>\"",
+        "detected",
+        "Humanoid rig map under assets/.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "library",
+        "\"<model>\"",
+        "",
+        "Repeat animation libraries to retarget to this skeleton; own clips win on name collisions.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "mirror",
+        "\"<clip>\" [\"<new name>\"]",
+        "",
+        "Repeat mirrored clips; default name is <clip>.mirrored.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "footIk",
+        "true | false",
+        "true",
+        "Retarget planted feet against the ground.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "compress",
+        "true | false",
+        "false",
+        "Quantize and reduce keys instead of storing f32 samples.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "tolerance",
+        "<number > 0, <= 0.1>",
+        "0.0001",
+        "Maximum compression error per channel lane in its units.",
+        "",
+    ),
+];
+
 impl Default for AnimSettings {
     fn default() -> Self {
         AnimSettings {
@@ -186,6 +245,12 @@ impl AnimSettings {
             return Ok(a);
         };
         for e in &b.entries {
+            if crate::grammar::find(LINES, &e.key, &[]).is_none() {
+                return Err(format!(
+                    "line {}: unknown animation setting '{}'",
+                    e.line, e.key
+                ));
+            }
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
             match e.key.as_str() {
                 "rate" => {
@@ -775,6 +840,42 @@ fn quantize_weights(w: [f32; 4]) -> [u16; 4] {
     q
 }
 
+fn clip_name(anim: &gltf::Animation<'_>) -> String {
+    anim.name()
+        .map_or_else(|| format!("clip{}", anim.index()), str::to_string)
+}
+
+/// Names available to file-bound graphs, including the existing library
+/// and mirror processing. The animation cook validates and builds them.
+pub(crate) fn clip_names(
+    src: &GltfSource,
+    settings: &AnimSettings,
+    root: &Path,
+) -> Result<Vec<String>, String> {
+    let mut names: Vec<_> = src.doc.animations().map(|a| clip_name(&a)).collect();
+    for lib in &settings.libraries {
+        let bytes = std::fs::read(root.join(lib)).map_err(|e| e.to_string())?;
+        let path = root.join(lib);
+        let model = model::load(&bytes, path.parent().unwrap_or(root))?;
+        for a in model.doc.animations() {
+            let name = clip_name(&a);
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+    }
+    for (source, name) in &settings.mirrors {
+        if !names.contains(source) {
+            return Err(format!("mirror source clip '{source}' does not exist"));
+        }
+        if names.contains(name) {
+            return Err(format!("mirrored clip '{name}' is already defined"));
+        }
+        names.push(name.clone());
+    }
+    Ok(names)
+}
+
 /// Cooks the animation blob of a parsed glTF. `bytes` is the source file
 /// (for `extras`); `root` is `assets/`, where the settings' rig and
 /// libraries are read from. A library's clips are retargeted onto the
@@ -951,9 +1052,7 @@ fn cook_with(
     let mut events: Vec<EventRow> = Vec::new();
     let mut clip_names: Vec<String> = Vec::new();
     for anim in doc.animations() {
-        let name = anim
-            .name()
-            .map_or_else(|| format!("clip{}", anim.index()), str::to_string);
+        let name = clip_name(&anim);
         if clip_names.contains(&name) {
             return Err(CookError(format!(
                 "two animations are called '{name}'; clips are found by name"

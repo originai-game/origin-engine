@@ -66,6 +66,76 @@ use std::path::Path;
 /// The `fracture` block's key, in a `type model` or import settings.
 pub const BLOCK: &str = "fracture";
 
+pub const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "style",
+        "voronoi | concrete | brick | wood | glass",
+        "voronoi",
+        "Fracture mechanism, not a gameplay rule.",
+        "",
+    ),
+    crate::grammar::Line::new("chunks", "<2..256>", "16", "Support chunk count.", ""),
+    crate::grammar::Line::new("seed", "<u32>", "1", "Deterministic cut pattern.", ""),
+    crate::grammar::Line::new(
+        "children",
+        "<0..32>",
+        "0",
+        "Child pieces per support chunk.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "pattern",
+        "auto | volume | slab",
+        "auto",
+        "3D cells or shards through the thinnest axis; auto detects thin input.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "brick",
+        "<length> <height>",
+        "0.25 0.1",
+        "Brick dimensions, each at least 0.01 metres.",
+        "",
+    ),
+    crate::grammar::Line::new("grain", "x | y | z", "longest axis", "Wood grain axis.", ""),
+    crate::grammar::Line::new("rings", "<1..8>", "2", "Glass concentric cracks.", ""),
+    crate::grammar::Line::new(
+        "impact",
+        "<x> <y> <z> <radius>",
+        "",
+        "Gather the pattern around an authored model-space impact; radius positive.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "anchor",
+        "bottom [ends] | ends | none | plane <nx> <ny> <nz> <distance>",
+        "bottom",
+        "Support surfaces; plane normal must be nonzero.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "interiorScale",
+        "<number > 0>",
+        "1",
+        "Cut-face UV repeats per metre.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "interior",
+        "{ ... }",
+        "darkened main material",
+        "Cut-face material using model.material fields.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "mortar",
+        "{ ... }",
+        "",
+        "Debris material using model.material fields.",
+        "",
+    ),
+];
+
 /// An outer triangle's material when its primitive names none (glTF's
 /// default material).
 const DEFAULT_MATERIAL: u32 = u32::MAX - 1;
@@ -139,28 +209,13 @@ fn count(b: &Block, k: &str, default: u32, min: u32, max: u32) -> Result<u32, St
 
 impl Settings {
     pub(crate) fn parse(b: &Block) -> Result<Settings, String> {
-        const KEYS: [&str; 13] = [
-            "style",
-            "chunks",
-            "seed",
-            "children",
-            "pattern",
-            "brick",
-            "grain",
-            "rings",
-            "impact",
-            "anchor",
-            "interiorScale",
-            "interior",
-            "mortar",
-        ];
         for e in &b.entries {
-            if !KEYS.contains(&e.key.as_str()) {
+            if crate::grammar::find(LINES, &e.key, &[]).is_none() {
                 return Err(format!(
                     "line {}: fracture has no '{}' (its keys: {})",
                     e.line,
                     e.key,
-                    KEYS.join(", ")
+                    crate::grammar::keys(LINES, &[])
                 ));
             }
         }

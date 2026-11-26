@@ -123,6 +123,7 @@ pub(crate) fn scan_sources(
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Typed script results enter the ordinary asset pipelines before planning.
+    field::expand(&mut sources);
     tilemap::expand(&mut sources);
     audio::expand(&mut sources);
     scene::expand(&mut sources);
@@ -165,22 +166,111 @@ struct Made {
 }
 
 /// Every model is made a glb and loaded (vox, FBX and OBJ, text models,
-/// fracture), and every source hashed: each source on its own, all at
-/// once (a model's load parses its file and reads every file it names).
+/// fracture), and every source hashed. Independent sources import in
+/// parallel; modelGeometry consumers wait for their imported operands.
 pub(crate) fn import(
     sources: &mut [Source],
     consumed: &mut BTreeSet<String>,
     texture_cache: Option<&Path>,
     threads: usize,
 ) -> Imported {
-    let slots: Vec<Mutex<&mut Source>> = sources.iter_mut().map(Mutex::new).collect();
-    let made = each(&slots, threads, |slot| {
-        let s: &mut Source = &mut slot.lock().expect("no poisoning");
-        let made = import_source(s, texture_cache)?;
-        s.hash = source_hash(s);
-        Some(made)
-    });
-    drop(slots);
+    let ids: BTreeMap<_, _> = sources
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.rel.clone(), i))
+        .collect();
+    let dependencies: Vec<_> = sources
+        .iter()
+        .map(|s| {
+            if s.kind == &model::MODEL && ext(&s.rel) == "ogt" {
+                model_text::operand_references(&s.bytes)
+            } else {
+                Vec::new()
+            }
+        })
+        .collect();
+    let mut pending: BTreeSet<_> = (0..sources.len()).collect();
+    let mut made: Vec<Option<Made>> = (0..sources.len()).map(|_| None).collect();
+    while !pending.is_empty() {
+        let ready: BTreeSet<_> = pending
+            .iter()
+            .copied()
+            .filter(|&i| {
+                dependencies[i]
+                    .iter()
+                    .all(|id| ids.get(id).is_none_or(|j| !pending.contains(j)))
+            })
+            .collect();
+        if ready.is_empty() {
+            let mut chain = Vec::new();
+            let mut i = *pending.first().unwrap();
+            loop {
+                chain.push(sources[i].rel.clone());
+                i = dependencies[i]
+                    .iter()
+                    .filter_map(|id| ids.get(id))
+                    .find(|j| pending.contains(j))
+                    .copied()
+                    .unwrap();
+                if chain.contains(&sources[i].rel) {
+                    chain.push(sources[i].rel.clone());
+                    break;
+                }
+            }
+            let reason = format!("modelGeometry dependency cycle: {}", chain.join(" -> "));
+            for i in pending {
+                sources[i].error = Some(reason.clone());
+            }
+            break;
+        }
+        // Resolve from already imported sources, so every supported model
+        // format, source settings and referenced generator has one path.
+        let expanded: Vec<_> = ready
+            .iter()
+            .filter(|&&i| !dependencies[i].is_empty())
+            .map(|&i| {
+                let bytes = model_text::expand_operands(&sources[i].bytes, |id, node| {
+                    let s = ids
+                        .get(id)
+                        .map(|&i| &sources[i])
+                        .ok_or_else(|| format!("modelGeometry source '{id}' is not an asset"))?;
+                    let gltf = s.gltf.as_ref().ok_or_else(|| {
+                        format!(
+                            "modelGeometry source '{id}' did not import as a model: {}",
+                            s.error.as_deref().unwrap_or("not a model")
+                        )
+                    })?;
+                    model::operand_geometry(gltf, node)
+                });
+                (i, bytes)
+            })
+            .collect();
+        for (i, bytes) in expanded {
+            match bytes {
+                Ok(bytes) => sources[i].bytes = bytes,
+                Err(e) => sources[i].error = Some(e),
+            }
+        }
+        let slots: Vec<_> = sources
+            .iter_mut()
+            .enumerate()
+            .filter(|(i, _)| ready.contains(i))
+            .map(|(i, s)| (i, Mutex::new(s)))
+            .collect();
+        for (i, result) in each(&slots, threads, |(i, slot)| {
+            let s: &mut Source = &mut slot.lock().expect("no poisoning");
+            let result = if s.error.is_some() {
+                None
+            } else {
+                import_source(s, texture_cache)
+            };
+            s.hash = source_hash(s);
+            (*i, result)
+        }) {
+            made[i] = result;
+        }
+        pending.retain(|i| !ready.contains(i));
+    }
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
     for (s, made) in sources.iter().zip(made) {

@@ -143,10 +143,15 @@
 //! willow, shrub, fern, reed) have `season` 1, the others 0.
 
 mod buffer;
+mod operand;
 mod plant;
+pub(crate) mod schema;
 
 pub use buffer::LINES as BUFFER_LINES;
 pub(crate) use buffer::expand;
+pub(crate) use operand::{
+    LINES as OPERAND_LINES, expand as expand_operands, references as operand_references,
+};
 
 use super::vox::Bin;
 use glam::{DQuat, DVec2, DVec3};
@@ -159,7 +164,8 @@ use std::collections::BTreeMap;
 pub const MODEL_TYPE: &str = "model";
 
 /// The geometry blocks a part may hold, by their `og.render` call.
-pub const GEOMETRIES: [&str; 21] = [
+pub const GEOMETRIES: [&str; 23] = [
+    "modelGeometry",
     "bufferGeometry",
     "boxGeometry",
     "planeGeometry",
@@ -181,6 +187,7 @@ pub const GEOMETRIES: [&str; 21] = [
     "tetrahedronGeometry",
     "sweepGeometry",
     "csgGeometry",
+    MERGE,
 ];
 
 const MERGE: &str = "mergeGeometries";
@@ -220,6 +227,12 @@ struct Fields<'a> {
 }
 
 impl<'a> Fields<'a> {
+    fn schema(block: &'a Block, what: &'a str) -> Result<Fields<'a>, String> {
+        let fields = schema::fields(what);
+        let keys: Vec<_> = fields.iter().map(|f| f.key).collect();
+        Self::new(block, what, &keys)
+    }
+
     fn new(block: &'a Block, what: &'a str, keys: &[&str]) -> Result<Fields<'a>, String> {
         let mut seen = std::collections::BTreeSet::new();
         for e in &block.entries {
@@ -380,7 +393,11 @@ fn args(e: &Entry, n: usize, max: usize) -> Result<Vec<f64>, String> {
 fn path2(block: &Block, holes: Option<&mut Vec<Path2>>) -> Result<Path2, String> {
     let mut p = Path2::new();
     let mut holes = holes;
+    let fields = schema::fields("shape");
     for e in &block.entries {
+        if crate::grammar::find(&fields, &e.key, &[]).is_none() {
+            return Err(at(e, "unknown shape field"));
+        }
         let v2 = |x: f64, y: f64| DVec2::new(x, y);
         match e.key.as_str() {
             "moveTo" => {
@@ -494,7 +511,11 @@ fn shapes(f: &Fields, divisions: u32, default: &[[f64; 2]]) -> Result<Vec<ShapeP
 /// An og.path from its `kind`, `closed`, `tension` and `point` lines.
 fn path(block: &Block) -> Result<og_timeline::Path, String> {
     let mut d = og_timeline::PathDesc::default();
+    let fields = schema::fields("path");
     for e in &block.entries {
+        if crate::grammar::find(&fields, &e.key, &[]).is_none() {
+            return Err(at(e, "unknown path field"));
+        }
         match e.key.as_str() {
             "kind" => {
                 let w = e.word(0).map_err(|x| at(e, x))?;
@@ -553,25 +574,17 @@ fn from_render(m: og_render_data::MeshData) -> Mesh {
     }
 }
 
-const PHYSICS: [&str; 3] = ["physics", "dynamic", "uvRepeat"];
-
-fn keys<'a>(own: &[&'a str]) -> Vec<&'a str> {
-    let mut k = own.to_vec();
-    k.extend(PHYSICS);
-    k
-}
-
 /// The one geometry block of `block` (a part, an operand or a merged part).
 fn geometry_entry<'a>(block: &'a Block, what: &str, line: usize) -> Result<&'a Entry, String> {
     let found: Vec<&Entry> = block
         .entries
         .iter()
-        .filter(|e| GEOMETRIES.contains(&e.key.as_str()) || e.key == MERGE)
+        .filter(|e| GEOMETRIES.contains(&e.key.as_str()))
         .collect();
     match found.as_slice() {
         [e] => Ok(e),
         [] => Err(format!(
-            "line {line}: {what} has no geometry: one block named by its og.render call ({}, {MERGE})",
+            "line {line}: {what} has no geometry: one block named by its og.render call ({})",
             GEOMETRIES.join(", ")
         )),
         [_, b, ..] => Err(format!(
@@ -591,7 +604,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let mut mesh = match name {
         "bufferGeometry" => from_render(buffer::parse(b)?),
         "boxGeometry" => {
-            let f = Fields::new(b, name, &keys(&["width", "height", "depth"]))?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::shapes::cuboid(glam::Vec3::new(
                 f32s(f.size("width", 1.0)?),
                 f32s(f.size("height", 1.0)?),
@@ -599,18 +612,14 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             )))
         }
         "planeGeometry" => {
-            let f = Fields::new(b, name, &keys(&["width", "height"]))?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::shapes::plane_xy(
                 f32s(f.size("width", 1.0)?),
                 f32s(f.size("height", 1.0)?),
             ))
         }
         "sphereGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&["radius", "widthSegments", "heightSegments"]),
-            )?;
+            let f = Fields::schema(b, name)?;
             let r = f32s(f.size("radius", 1.0)?);
             let mut m = og_render_data::shapes::sphere(
                 f.segments("widthSegments", (32, 3, 512), 5, detail)?,
@@ -624,20 +633,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             from_render(m)
         }
         "cylinderGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "radiusTop",
-                    "radiusBottom",
-                    "height",
-                    "radialSegments",
-                    "heightSegments",
-                    "openEnded",
-                    "thetaStart",
-                    "thetaLength",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::cylinder(
                 &og_render_data::geometry::primitives::Cylinder {
                     radius_top: f32s(f.size("radiusTop", 1.0)?),
@@ -652,17 +648,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "coneGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "radius",
-                    "height",
-                    "radialSegments",
-                    "heightSegments",
-                    "openEnded",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::cone(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
@@ -672,17 +658,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "capsuleGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "radius",
-                    "height",
-                    "capSegments",
-                    "radialSegments",
-                    "heightSegments",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::capsule(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
@@ -692,11 +668,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "torusGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&["radius", "tube", "radialSegments", "tubularSegments", "arc"]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::torus(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("tube", 0.4)?),
@@ -706,18 +678,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "ringGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "innerRadius",
-                    "outerRadius",
-                    "thetaSegments",
-                    "phiSegments",
-                    "thetaStart",
-                    "thetaLength",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::ring(
                 f32s(f.size("innerRadius", 0.5)?),
                 f32s(f.size("outerRadius", 1.0)?),
@@ -728,11 +689,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "circleGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&["radius", "segments", "thetaStart", "thetaLength"]),
-            )?;
+            let f = Fields::schema(b, name)?;
             from_render(og_render_data::geometry::primitives::circle(
                 f32s(f.size("radius", 1.0)?),
                 f.segments("segments", (32, 3, 1 << 16), 5, detail)?,
@@ -741,18 +698,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             ))
         }
         "tubeGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "points",
-                    "path",
-                    "tubularSegments",
-                    "radius",
-                    "radialSegments",
-                    "closed",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             let tubular = f.segments("tubularSegments", (64, 1, 1 << 16), 6, detail)?;
             let radial = f.segments("radialSegments", (8, 3, 1 << 16), 5, detail)?;
             let radius = f32s(f.size("radius", 1.0)?);
@@ -800,7 +746,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             }
         }
         "shapeGeometry" => {
-            let f = Fields::new(b, name, &keys(&["shape", "curveSegments"]))?;
+            let f = Fields::schema(b, name)?;
             let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             og_shape::generators::shape_geometry(&shapes(
                 &f,
@@ -809,22 +755,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             )?)
         }
         "extrudeGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "shape",
-                    "depth",
-                    "steps",
-                    "bevelEnabled",
-                    "bevelThickness",
-                    "bevelSize",
-                    "bevelOffset",
-                    "bevelSegments",
-                    "curveSegments",
-                    "extrudePath",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             let s = shapes(&f, d, &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
             let thickness = f.size("bevelThickness", 0.2)?;
@@ -852,11 +783,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             }
         }
         "latheGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&["points", "segments", "phiStart", "phiLength"]),
-            )?;
+            let f = Fields::schema(b, name)?;
             let mut l = og_shape::generators::Lathe::default();
             if let Some(e) = f.get("points") {
                 let a = numbers(e)?;
@@ -871,7 +798,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             og_shape::generators::lathe(&l)
         }
         "polyhedronGeometry" => {
-            let f = Fields::new(b, name, &keys(&["vertices", "indices", "radius", "detail"]))?;
+            let f = Fields::schema(b, name)?;
             let vertices = f
                 .get("vertices")
                 .map(numbers)
@@ -905,7 +832,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         | "dodecahedronGeometry"
         | "octahedronGeometry"
         | "tetrahedronGeometry" => {
-            let f = Fields::new(b, name, &keys(&["radius", "detail"]))?;
+            let f = Fields::schema(b, name)?;
             let make = match name {
                 "icosahedronGeometry" => og_shape::generators::icosahedron,
                 "dodecahedronGeometry" => og_shape::generators::dodecahedron,
@@ -918,19 +845,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             )
         }
         "sweepGeometry" => {
-            let f = Fields::new(
-                b,
-                name,
-                &keys(&[
-                    "section",
-                    "path",
-                    "steps",
-                    "scale",
-                    "twist",
-                    "caps",
-                    "curveSegments",
-                ]),
-            )?;
+            let f = Fields::schema(b, name)?;
             let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             let section = match f.block("section")? {
                 Some(sb) => path2(sb, None)?.get_points(d),
@@ -972,7 +887,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             )?
         }
         "csgGeometry" => {
-            let f = Fields::new(b, name, &keys(&["op", "a", "b"]))?;
+            let f = Fields::schema(b, name)?;
             let op = match f.get("op") {
                 None => og_shape::boolean::CsgOp::Union,
                 Some(e) => match e.word(0).map_err(|x| at(e, x))? {
@@ -996,7 +911,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             og_shape::boolean::csg(&operand("a")?, none, &operand("b")?, none, op)?
         }
         MERGE => {
-            let f = Fields::new(b, name, &keys(&["part"]))?;
+            let f = Fields::schema(b, name)?;
             let parts: Vec<Mesh> = b
                 .get_all("part")
                 .enumerate()
@@ -1086,13 +1001,15 @@ fn placement(f: &Fields) -> Result<(Placement, Mirror), String> {
     ))
 }
 
-const PLACEMENT: [&str; 4] = ["position", "quaternion", "scale", "mirror"];
+fn placement_keys() -> Vec<&'static str> {
+    schema::PLACEMENT.iter().map(|f| f.key).collect()
+}
 
 /// A geometry block with its placement, baked into one mesh (a CSG
 /// operand, a merged part).
 fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Result<Mesh, String> {
     let g = geometry_entry(block, what, line)?;
-    let mut allowed: Vec<&str> = PLACEMENT.to_vec();
+    let mut allowed = placement_keys();
     allowed.push(g.key.as_str());
     let f = Fields::new(block, what, &allowed)?;
     let (p, m) = placement(&f)?;
@@ -1147,41 +1064,7 @@ pub(crate) fn material(
     images: &mut Vec<String>,
     first_texture: usize,
 ) -> Result<serde_json::Value, String> {
-    let f = Fields::new(
-        b,
-        "material",
-        &[
-            "color",
-            "opacity",
-            "metalness",
-            "roughness",
-            "emissive",
-            "emissiveIntensity",
-            "doubleSided",
-            "alphaTest",
-            "map",
-            "normalMap",
-            "normalScale",
-            "metalnessMap",
-            "aoMap",
-            "transmission",
-            "ior",
-            "thickness",
-            "clearcoat",
-            "clearcoatRoughness",
-            "translucency",
-            "domeNormals",
-            "season",
-            "autumnColor",
-            "autumnColor2",
-            "seasonShift",
-            "grime",
-            "grimeColor",
-            "grimeHeight",
-            "stains",
-            "stochastic",
-        ],
-    )?;
+    let f = Fields::schema(b, "material")?;
     let c = f.vec3("color", DVec3::ONE)?;
     let opacity = f.num("opacity", 1.0)?;
     let unit = |k: &str, v: f64| -> Result<f64, String> {
@@ -1447,6 +1330,12 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
     if doc.ty != MODEL_TYPE {
         return Err(format!("expected `type model`, not `type {}`", doc.ty));
     }
+    let fields = schema::fields("");
+    for e in &doc.body.entries {
+        if crate::grammar::find(&fields, &e.key, &[]).is_none() {
+            return Err(at(e, "unknown model field"));
+        }
+    }
     let mut materials: Vec<serde_json::Value> = Vec::new();
     let mut images: Vec<String> = Vec::new();
     let mut material_index: BTreeMap<String, usize> = BTreeMap::new();
@@ -1494,9 +1383,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 let name = name_of(e, "pivot")?;
                 let empty = Block::new();
                 let b = block.unwrap_or(&empty);
-                let mut allowed = PLACEMENT[..3].to_vec();
-                allowed.push("parent");
-                let f = Fields::new(b, "pivot", &allowed)?;
+                let f = Fields::schema(b, "pivot")?;
                 let parent = match f.get("parent") {
                     Some(pe) => {
                         let p = pe.string(0).map_err(|x| at(pe, x))?;
@@ -1530,9 +1417,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 let b = block.ok_or_else(|| at(e, "is a block"))?;
                 let what = format!("part '{name}'");
                 let g = geometry_entry(b, &what, e.line)?;
-                let mut allowed: Vec<&str> = PLACEMENT.to_vec();
-                allowed.extend(["material", "pivot", "at", g.key.as_str()]);
-                let f = Fields::new(b, "part", &allowed)?;
+                let f = Fields::schema(b, "part")?;
                 let material = match f.get("material") {
                     Some(me) => {
                         let m = me.string(0).map_err(|x| at(me, x))?;
@@ -1558,7 +1443,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     None => None,
                 };
                 let ats: Vec<&Entry> = b.get_all("at").collect();
-                let own = PLACEMENT.iter().any(|k| f.get(k).is_some());
+                let own = placement_keys().iter().any(|k| f.get(k).is_some());
                 if own && !ats.is_empty() {
                     return Err(at(
                         e,
@@ -1574,7 +1459,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                         .block
                         .as_ref()
                         .ok_or_else(|| at(a, "is a placement block"))?;
-                    places.push(placement(&Fields::new(ab, "at", &PLACEMENT)?)?);
+                    places.push(placement(&Fields::new(ab, "at", &placement_keys())?)?);
                 }
                 let mesh = geometry(g, detail).map_err(|x| format!("{what}: {x}"))?;
                 drawn += mesh.indices.len() / 3 * places.len();

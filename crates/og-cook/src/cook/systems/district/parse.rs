@@ -496,16 +496,87 @@ pub(crate) struct Material {
 }
 
 /// The keys of a library's material that are not the drawn material's.
-const OWN: [&str; 9] = [
-    "label",
-    "weight",
-    "tile",
-    "vary",
-    "brief",
-    "facade",
-    "relief",
-    "roughnessRange",
-    "occlusion",
+pub(crate) const MATERIAL_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "label",
+        "<label>",
+        "required",
+        "Repeat labels this material covers.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "weight",
+        "<number > 0>",
+        "1",
+        "Explicit selection weight within a label.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "tile",
+        "<width> <height>",
+        "1 1",
+        "Positive texture coverage in metres.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "vary",
+        "{ ... }",
+        "",
+        "Per-building value and warmth variation.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "brief",
+        "\"<text>\"",
+        "",
+        "Author's image request; the engine does not generate an image model's response.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "facade",
+        "true | false",
+        "false",
+        "Facade source repeats horizontally; requires brief.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "relief",
+        "<-1..1 metres>",
+        "0",
+        "Height range for the derived normal map; nonzero needs brief and normalMap.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "roughnessRange",
+        "<black> <white>",
+        "",
+        "Roughness endpoints 0..1; requires brief and metalnessMap.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "occlusion",
+        "<strength> <radius>",
+        "",
+        "Strength 0..1, whole radius 1..64 texels; requires brief, relief and aoMap.",
+        "",
+    ),
+];
+
+pub(crate) const VARY_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "value",
+        "<0..0.5>",
+        "0",
+        "Brightness variation either way.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "warmth",
+        "<0..0.5>",
+        "0",
+        "Warmth variation either way.",
+        "",
+    ),
 ];
 
 /// Reads a material library's text.
@@ -549,7 +620,11 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
         let (mut value, mut warmth) = (0.0, 0.0);
         if let Some(v) = b.get("vary") {
             let vb = block(v)?;
-            known(vb, &["value", "warmth"], "vary")?;
+            known(
+                vb,
+                &VARY_LINES.iter().map(|f| f.key).collect::<Vec<_>>(),
+                "vary",
+            )?;
             value = vb.get("value").map(one).transpose()?.unwrap_or(0.0);
             warmth = vb.get("warmth").map(one).transpose()?.unwrap_or(0.0);
             if !(0.0..=0.5).contains(&value) || !(0.0..=0.5).contains(&warmth) {
@@ -590,7 +665,7 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             entries: b
                 .entries
                 .iter()
-                .filter(|x| !OWN.contains(&x.key.as_str()))
+                .filter(|x| crate::grammar::find(MATERIAL_LINES, &x.key, &[]).is_none())
                 .cloned()
                 .collect(),
         };

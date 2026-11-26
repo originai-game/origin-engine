@@ -9,6 +9,11 @@ use og_core::glam::Vec2;
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_core::{Error, ErrorKind, Result};
 
+mod schema;
+mod source;
+pub use schema::BLOCKS;
+pub use source::{ClipBinding, GraphSource, SOURCE_LINES};
+
 /// One motion of the tree.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Motion {
@@ -245,6 +250,7 @@ impl GraphAsset {
             ));
         }
         let body = &doc.body;
+        schema::check(body, "")?;
         let mut params: Vec<String> = Vec::new();
         for e in body.get_all("param") {
             arity(e, 1)?;
@@ -653,20 +659,6 @@ impl GraphAsset {
                 ErrorKind::Parse,
                 "an animation graph needs at least one `layer`",
             ));
-        }
-        for e in &body.entries {
-            if !matches!(
-                e.key.as_str(),
-                "param" | "clip" | "blend1d" | "blend2d" | "layer"
-            ) {
-                return Err(err(
-                    e,
-                    format!(
-                        "unknown graph entry '{}' (param, clip, blend1d, blend2d, layer)",
-                        e.key
-                    ),
-                ));
-            }
         }
         Ok(GraphAsset {
             params,

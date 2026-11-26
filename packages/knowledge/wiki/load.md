@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 79 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 82 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -29,6 +29,8 @@ module load {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
+| [`FieldData`](load/type-FieldData.md) | struct |  | Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. |
+| [`og.load.field`](load/fn-field.md) | function | `(world: World, path: string): Result<FieldData>` | Read a cooked type field lattice without allocating world or GPU handles. |
 | [`Asset`](load/type-Asset.md) | handle |  | A loaded bundle, scene or glTF asset. |
 | [`Font`](load/type-Font.md) | handle |  | A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set. |
 | [`Sound`](load/type-Sound.md) | handle |  | A cooked sound: QOA-encoded PCM the audio module plays. |
@@ -84,6 +86,7 @@ module load {
 | [`og.load.error`](load/fn-error.md) | function | `(world: World, asset: Asset): string \| null` | Why a load failed. |
 | [`og.load.gltfInfo`](load/fn-gltfInfo.md) | function | `(world: World, asset: Asset): Result<GltfInfo>` | What a ready glTF holds. |
 | [`og.load.animation`](load/fn-animation.md) | function | `(world: World, path: string): Result<Animation>` | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. |
+| [`og.load.animgraph`](load/fn-animgraph.md) | function | `(world: World, path: string): Result<GraphAsset>` | Load a cooked type animgraph asset. |
 | [`og.load.rig`](load/fn-rig.md) | function | `(world: World, path: string): Result<Rig>` | Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. |
 | [`og.load.flipbook`](load/fn-flipbook.md) | function | `(world: World, path: string): Result<FlipbookInfo>` | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`: an Aseprite or TexturePacker atlas, or animated GIF, WebP or APNG sources the cook packs into `<sheet>#sheet`) and its texture, and registe… |
 | [`og.load.tilemap`](load/fn-tilemap.md) | function | `(world: World, path: string): Result<TilemapInfo>` | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. |
@@ -139,7 +142,7 @@ column TextureArray {
 }
 ```
 
-<sub>Module `load` line 14</sub>
+<sub>Module `load` line 30</sub>
 
 ```ogt
 column Asset {
@@ -150,7 +153,7 @@ column Asset {
 }
 ```
 
-<sub>Module `load` line 21</sub>
+<sub>Module `load` line 37</sub>
 
 ```ogt
 column Sound {
@@ -161,7 +164,7 @@ column Sound {
 }
 ```
 
-<sub>Module `load` line 28</sub>
+<sub>Module `load` line 44</sub>
 
 ```ogt
 column Font {
@@ -172,7 +175,7 @@ column Font {
 }
 ```
 
-<sub>Module `load` line 35</sub>
+<sub>Module `load` line 51</sub>
 
 ```ogt
 column Style {
@@ -183,4 +186,4 @@ column Style {
 }
 ```
 
-<sub>Module `load` line 42</sub>
+<sub>Module `load` line 58</sub>

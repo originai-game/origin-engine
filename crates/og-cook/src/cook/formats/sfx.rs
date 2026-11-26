@@ -55,6 +55,57 @@ pub const SFX_TYPE: &str = "sfx";
 /// Bumped when the synthesiser or a preset changes, so cooked presets re-cook.
 pub const SYNTH_VERSION: &str = "2";
 
+macro_rules! lines {
+    ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
+        &[$(crate::grammar::Line::new($key, $args, $default, $doc, "")),*]
+    };
+}
+
+pub const LINES: &[crate::grammar::Line] = lines![
+    "preset", "\"<name>\"", "", "Optional existing sound preset; custom layers need no preset.";
+    "seed", "<u32>", "0", "Seeded variation.";
+    "pitch", "<number>", "1", "Frequency multiplier.";
+    "length", "<number>", "1", "Duration multiplier, clamped to 0.1..10.";
+    "volume", "<number >= 0>", "1", "Master gain.";
+    "layer", "[wave] { ... }", "", "Repeat oscillator layers; at least one layer or preset required.";
+    "synth", "[wave] { ... }", "", "Accepted oscillator-layer spelling."
+];
+
+pub const LAYER_LINES: &[crate::grammar::Line] = lines![
+    "wave", "sine | square | saw | triangle | noise", "square", "Oscillator waveform; overrides a waveform on the layer line.";
+    "freq", "<Hz > 0>", "440", "Starting frequency.";
+    "freq_end", "<Hz > 0>", "", "Optional ending frequency.";
+    "freqEnd", "<Hz > 0>", "", "Accepted freq_end spelling.";
+    "slide", "<number>", "0", "Pitch slide.";
+    "arp", "<number >= 0>", "0", "Arpeggio interval.";
+    "arp_at", "<seconds >= 0>", "0", "Arpeggio time.";
+    "arpAt", "<seconds >= 0>", "0", "Accepted arp_at spelling.";
+    "vib_depth", "<number >= 0>", "0", "Vibrato depth.";
+    "vibDepth", "<number >= 0>", "0", "Accepted vib_depth spelling.";
+    "vib_rate", "<Hz >= 0>", "0", "Vibrato rate.";
+    "vibRate", "<Hz >= 0>", "0", "Accepted vib_rate spelling.";
+    "attack", "<seconds >= 0>", "0.002", "Envelope attack.";
+    "sustain", "<seconds >= 0>", "0.05", "Envelope sustain duration.";
+    "decay", "<seconds >= 0>", "0.15", "Envelope decay.";
+    "sustain_level", "<0..1>", "1", "Sustain level.";
+    "sustainLevel", "<0..1>", "1", "Accepted sustain_level spelling.";
+    "release", "<seconds >= 0>", "0", "Envelope release.";
+    "punch", "<number >= 0>", "0", "Envelope punch.";
+    "duty", "<0.01..0.99>", "0.5", "Square-wave duty cycle.";
+    "lowpass", "<Hz >= 0>", "0", "Low-pass cutoff; zero disables.";
+    "lp_slide", "<number>", "0", "Low-pass cutoff slide.";
+    "lpSlide", "<number>", "0", "Accepted lp_slide spelling.";
+    "q", "<number >= 0>", "0", "Filter resonance.";
+    "highpass", "<Hz >= 0>", "0", "High-pass cutoff; zero disables.";
+    "fm_freq", "<Hz >= 0>", "0", "FM modulation frequency.";
+    "fmFreq", "<Hz >= 0>", "0", "Accepted fm_freq spelling.";
+    "fm_index", "<number>", "0", "FM modulation index.";
+    "fmIndex", "<number>", "0", "Accepted fm_index spelling.";
+    "drive", "<number >= 0>", "0", "Soft-clip drive.";
+    "gain", "<number >= 0>", "0.5", "Layer gain.";
+    "delay", "<seconds >= 0>", "0", "Layer start delay."
+];
+
 /// A preset's `.ogt` text.
 pub fn preset_ogt(name: &str, v: Variation) -> String {
     format!(
@@ -112,6 +163,12 @@ fn parse_layer(block_entry: &Entry) -> Result<Layer, String> {
         )
     })?;
     for e in &body.entries {
+        if crate::grammar::find(LAYER_LINES, &e.key, &[]).is_none() {
+            return Err(format!(
+                "line {}: unknown sfx layer field '{}'",
+                e.line, e.key
+            ));
+        }
         match e.key.as_str() {
             "wave" => {
                 let w = e
@@ -201,6 +258,9 @@ pub fn parse_desc(text: &str) -> Result<SfxDesc, String> {
     let mut preset = None;
     let mut custom_layers = Vec::new();
     for e in &doc.body.entries {
+        if crate::grammar::find(LINES, &e.key, &[]).is_none() {
+            return Err(format!("line {}: unknown sfx field '{}'", e.line, e.key));
+        }
         match e.key.as_str() {
             "preset" => {
                 preset = e

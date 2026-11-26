@@ -9679,6 +9679,56 @@ pub use self::render::*;
 pub mod load {
     use super::*;
 
+    /// `FieldData`: packages/knowledge/wiki/load.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FieldData {
+        pub dimensions: [u32; 3],
+        pub channels: u32,
+        pub origin: [f32; 3],
+        pub spacing: [f32; 3],
+        pub values: Vec<f32>,
+    }
+
+    impl Default for FieldData {
+        fn default() -> Self {
+            Self {
+                dimensions: Default::default(),
+                channels: Default::default(),
+                origin: Default::default(),
+                spacing: Default::default(),
+                values: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FieldData {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                dimensions: field(o, "dimensions", d.dimensions)?,
+                channels: field(o, "channels", d.channels)?,
+                origin: field(o, "origin", d.origin)?,
+                spacing: field(o, "spacing", d.spacing)?,
+                values: field(o, "values", d.values)?,
+            })
+        }
+    }
+
+    impl ToJson for FieldData {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("dimensions".into(), self.dimensions.to_json());
+            o.insert("channels".into(), self.channels.to_json());
+            o.insert("origin".into(), self.origin.to_json());
+            o.insert("spacing".into(), self.spacing.to_json());
+            o.insert("values".into(), to_bin_f32(&self.values));
+            Value::Object(o)
+        }
+    }
+
     /// `LoadStatus`: packages/knowledge/wiki/load.md.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub enum LoadStatus {

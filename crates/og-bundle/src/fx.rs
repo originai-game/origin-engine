@@ -385,9 +385,9 @@ pub const EMITTER_LINES: &[Line] = &[
     ),
     Line::new(
         "field",
-        "curl <strength> [<frequency> <scroll>] | \"<texture>\" <strength> <size>",
+        "curl <strength> [<frequency> <scroll>] | \"<texture-or-field.ogt>\" <strength> <size>",
         "",
-        "Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1.",
+        "Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid baked from an image N² wide and N high (rgb 0..1 as -1..1, y from bottom), or a lossless cubic 3-channel field asset (N 1..16). Explicit size maps one period of the source lattice to emitter-local units; field origin/spacing describe the source sampling domain, not particle placement. Vectors are not normalized.",
         "field curl 3 0.8 0.2",
     ),
     Line::new(

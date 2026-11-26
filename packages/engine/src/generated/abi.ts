@@ -557,6 +557,8 @@ export interface HostAbi<A, V> {
   og_render_post_errors(world: number): string;
   /** `og.render.bakedLighting` */
   og_render_baked_lighting(world: number): string;
+  /** `og.load.field` */
+  og_load_field(world: number, path: string): Uint8Array;
   /** `og.load.bundle` */
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
@@ -617,6 +619,8 @@ export interface HostAbi<A, V> {
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.load.animation` */
   og_load_animation(world: number, path: string): string;
+  /** `og.load.animgraph` */
+  og_load_animgraph(world: number, path: string): string;
   /** `og.load.rig` */
   og_load_rig(world: number, path: string): string;
   /** `og.load.flipbook` */
@@ -1634,6 +1638,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_set_post_param",
   "og_render_post_errors",
   "og_render_baked_lighting",
+  "og_load_field",
   "og_load_bundle",
   "og_load_bundle_info",
   "og_load_progress",
@@ -1664,6 +1669,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_error",
   "og_load_gltf_info",
   "og_load_animation",
+  "og_load_animgraph",
   "og_load_rig",
   "og_load_flipbook",
   "og_load_tilemap",

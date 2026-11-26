@@ -58,6 +58,26 @@ export default og.game({
     if (!marker) throw new Error("generated entity was not instantiated");
     const transform = world.get(marker, og.Transform);
     og.assert.always(transform.ok && transform.value!.position.x === 2 && transform.value!.position.z === -3 && transform.value!.scale.x === 0.5, "generated fields compose with authored prefab fields", {});
+    const scatter = og.load.scene(world, "scatter.ogt");
+    if (!scatter.ok) throw new Error(scatter.reason);
+    const scattered = world.instantiate(scatter.value, { name: "scatter" });
+    if (!scattered.ok) throw new Error(scattered.reason);
+    const point = world.find("point-0");
+    if (!point) throw new Error("scatter point missing");
+    const at = world.get(point, og.Transform);
+    if (!at.ok) throw new Error(at.reason);
+    const projected = og.terrain.sample(world, { data: loaded.value.data, x: at.value.position.x, z: at.value.position.z });
+    og.assert.always(projected.ok && Math.abs(at.value.position.y - projected.value!.height - 0.2) <= tolerance, "scatter projects onto the same terrain surface", {});
+    og.assert.always(Math.abs(at.value.scale.x - 0.15) < 0.00001, "scatter preserves explicit scales", {});
+    const operand = og.load.gltf(world, "copy.ogt", {});
+    if (!operand.ok) throw new Error(operand.reason);
+    const copied = og.load.gltfInfo(world, operand.value);
+    if (!copied.ok) throw new Error(copied.reason);
+    const bounds = og.render.geometryInfo(world, copied.value.parts[0]!.geometry);
+    og.assert.always(bounds.ok && bounds.value!.min.x === -2 && bounds.value!.max.y === 6, "source mesh node retains geometry through a placed operand", {});
+    const graph = og.load.animgraph(world, "graph.ogt");
+    const again = og.load.animgraph(world, "graph.ogt");
+    og.assert.always(graph.ok && again.ok && graph.value === again.value, "cooked sprite graph loads once", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
@@ -199,6 +219,62 @@ entity "marker" {
 }
 ```
 
+```ogt recipe file=assets/scatter.ogt
+type scatter
+version 1
+---
+model "curves.ogt"
+project "surface.ogt"
+align true
+generate {
+  script "scatter.ts"
+  seed 17
+}
+```
+
+```ogt recipe file=assets/copy.ogt
+type model
+version 1
+---
+conform off
+part "copy" {
+  mergeGeometries {
+    part {
+      modelGeometry {
+        source "curves.ogt"
+        node "buffer"
+      }
+      position 0 2 0
+    }
+  }
+}
+```
+
+```ogt recipe file=assets/graph.ogt
+type animgraph
+version 1
+---
+sprite true
+clip still "still"
+layer base {
+  state idle still
+  entry idle
+}
+```
+
+```ts recipe file=assets/scatter.ts
+import { procgen, type GeneratorContext, type ScatterSource } from "@origingame/engine/generate";
+
+export default function scatter(ctx: GeneratorContext) {
+  const points = procgen.poissonDisk({ width: 20, height: 8, radius: 3, maxPoints: 12, seed: ctx.seed });
+  if (!points.ok) throw new Error(points.reason);
+  return {
+    positions: Float32Array.from(points.value.flatMap(p => [p.x - 10, 0.2, p.y - 4])),
+    scales: new Float32Array(points.value.length * 3).fill(0.15),
+  } satisfies ScatterSource;
+}
+```
+
 The TS default export synchronously returns `{columns, rows, heights}`. Samples are row-major from -z to +z and -x to +x; dimensions are 2..4097, every height is finite, and `size` defines positive x/z extents. A supplied field is never implicitly resampled or normalised. It cannot also request a noise source (`samples`, `noise`, `mask`) or intensity-to-height conversion (`height`). Relative static imports must name their extensions and stay inside the asset root.
 
 For an existing height image, write `heightmap "base.png"` (or EXR) beside `generate`. PNG intensity maps through `height low high`; EXR defaults to metres (`height 0 1`). The same processing runs after this conversion. Without a supplied field, `generate` starts with noise and maps it into `height` instead. Processing order is hydraulic erosion → thermal erosion → terraces → shore → automatic drainage/rivers → biome control. On supplied fields terraces anchor at zero and erosion may leave the original extrema. Author-directed valley lines, river networks and protection masks are separate inputs, not implied by automatic drainage.
@@ -264,6 +340,13 @@ export default og.game({
     if (!sound.ok) throw new Error(sound.reason);
     const format = og.load.soundInfo(world, sound.value);
     og.assert.always(format.ok && format.value!.rate === 22050 && format.value!.channels === 2 && format.value!.frames === 300, "generated PCM is a normal sound asset", {});
+    const field = og.load.field(world, "samples.ogt");
+    if (!field.ok) throw new Error(field.reason);
+    const expected = og.procgen.noiseGrid({ width: 5, height: 3, x: -2, y: 7, step: 0.25, noise: { seed: 17 } });
+    if (!expected.ok) throw new Error(expected.reason);
+    og.assert.always(field.value.values instanceof Float32Array && field.value.dimensions.join() === "5,3,1" && field.value.channels === 1, "rectangular field shape and typed values load", {});
+    og.assert.always(field.value.origin[0] === -2 && field.value.origin[1] === 7 && field.value.spacing[0] === 0.25, "field coordinates preserved", {});
+    og.assert.always(field.value.values.every((value, i) => value === expected.value[i]), "cooked field uses the runtime noise mechanism without quantization", {});
   },
 });
 ```
@@ -346,8 +429,49 @@ export default function signal() {
 ```
 
 <a id="guide-generating-7"></a>
-### `generating §7` Cook explicit scene declarations
+### `generating §7` Cook sampled fields
+
+`type field` contains `dimensions x y z`, `channels` (1..4), optional `origin` (default 0 0 0), positive `spacing` (default 1 1 1), and finite float `values`. Values are interleaved channels with x fastest, then y, then z. The exact dimensions product times channels is required, at most 16,777,216 scalars. No normalization, resampling or image encoding occurs. Alternatively its sole `generate` block returns `FieldSource`; the normal parser and writer validate both forms. Load it with `og.load.field`.
+
+This attachment to the map recipe samples the shared noiseGrid mechanism. A module can similarly sample noiseGrad, Worley or curlNoise at explicit coordinates, choosing its own scalar/vector channels.
+
+```ogt recipe file=assets/samples.ogt
+type field
+version 1
+---
+generate {
+  script "samples.ts"
+}
+```
+
+```ts recipe file=assets/samples.ts
+import { procgen, type FieldSource } from "@origingame/engine/generate";
+
+export default function samples() {
+  const values = procgen.noiseGrid({ width: 5, height: 3, x: -2, y: 7, step: 0.25, noise: { seed: 17 } });
+  if (!values.ok) throw new Error(values.reason);
+  return {
+    dimensions: [5, 3, 1], channels: 1,
+    origin: [-2, 7, 0], spacing: [0.25, 0.25, 1],
+    values: values.value,
+  } satisfies FieldSource;
+}
+```
+
+A particles file's `field "vectors.ogt" <strength> <size>` also accepts a field asset: a cubic 3-channel lattice, 1..16 samples a side. Cook embeds its float vectors in the normal emitter. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe where the generator sampled its source, not the emitter's transform. Unlike image input, no RGB remapping or quantization is applied. Changes to declared input bytes or transitive generator imports invalidate the emitter as well as the field.
+
+`type scatter` uses either repeated `point x y z` lines or a `generate` block returning `ScatterSource`: flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). It places exactly one authored `model` or `prefab`; no model or distribution is selected for the author. The first recipe composes the shared Poisson mechanism and explicitly maps its rectangle into terrain-local metres. The normal scene pipeline owns model instancing and prefab expansion. `project "terrain.ogt"` adds the terrain's height to each y; `align true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes instead of silently moving or dropping them. Scene and terrain must use the same local coordinates. Load the result with `og.load.scene` or reference it as a sub-scene.
+
+<a id="guide-generating-8"></a>
+### `generating §8` Cook explicit scene declarations
 
 A `scene.generate` module returns `SceneSource`: an entity tree and optional resource fields. Every entity has a name; optional `model`, `scene` and `prefab` are asset paths, `static` marks a model for baking, `components` maps reflected names to field objects, and `children` nests entities. Fields are numbers, booleans, strings or flat arrays, not runtime handles. Generated entities append after authored entities. A resource cannot be both authored and generated. Normal prefab merging, component reflection, asset dependencies and sub-scene cycle checks run on the combined declarations. Scene generation does not create a world.
 
 The first recipe includes these declarations. The generator sets a placement; the authored prefab supplies its model and scale. The game only loads the cooked scene.
+
+<a id="guide-generating-9"></a>
+### `generating §9` Reuse model geometry and animation graphs
+
+`modelGeometry` supplies an imported model's static rest geometry to an ordinary part, merge or CSG operand. Name a `source` relative to assets/ and optionally a mesh `node`; without a node it merges the visible default scene. Normal source import and generators run first. Cycles fail cook. Full affine placement, UVs, vertex colours and tangent frames survive merges; topology-changing CSG builds new frames. The outer part owns the material. Skinning and animations are not copied into a static operand.
+
+An animation graph is also an asset: use its existing graph language, then load it with `og.load.animgraph`. Add `bind "graph clip name" "model asset" "model clip name"` for each skeletal clip reference; cook checks those names against the model's own, library and mirrored clips. For a flipbook/2D rig use `sprite true` instead of bindings; clip names are then looked up on the target at playback. The first recipe checks the cooked 2D graph and reused model operand. Graph parameters and playback remain runtime state.

@@ -102,10 +102,12 @@ pub(crate) enum Action<'s> {
 
 /// Every system's kinds, one line a system.
 pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
+    animgraph::KINDS,
     behaviour::KINDS,
     story::KINDS,
     strings::KINDS,
     table::KINDS,
+    field::KINDS,
     navmesh::KINDS,
     terrain::KINDS,
     district::KINDS,

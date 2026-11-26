@@ -230,6 +230,7 @@ fn kinds() -> &'static [(&'static str, u64, u32)] {
     KINDS.get_or_init(|| {
         kinds!(
             Model,
+            Field,
             TextureArray,
             Video,
             VideoStream,

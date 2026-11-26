@@ -55,7 +55,9 @@ use og_core::{FieldSchema, FieldType, Layout, Schema};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod generate;
+mod scatter;
 pub(crate) use generate::expand;
+pub(crate) use scatter::LINES as SCATTER_LINES;
 
 struct Entity {
     name: String,
@@ -945,7 +947,7 @@ pub fn cook(
 pub(crate) static SCENE: KindDef = KindDef {
     name: "scene",
     extensions: &[],
-    types: &["scene"],
+    types: &["scene", "scatter"],
     by_content: false,
     streams: false,
     plan: plan_scene,

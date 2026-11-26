@@ -621,6 +621,7 @@ export const og = Object.freeze({
     bakedLighting: (world: { readonly id: number }): unknown => JSON.parse(abi().og_render_baked_lighting(world.id)) as unknown,
   }),
   load: Object.freeze({
+    field: (world: { readonly id: number }, path: string): unknown => binDecode(abi().og_load_field(world.id, path)),
     bundle: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_bundle(world.id, path)) as unknown,
     bundleInfo: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_bundle_info(world.id, asset)) as unknown,
     progress: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_progress(world.id, asset)) as unknown,
@@ -651,6 +652,7 @@ export const og = Object.freeze({
     error: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_error(world.id, asset)) as unknown,
     gltfInfo: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_gltf_info(world.id, asset)) as unknown,
     animation: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_animation(world.id, path)) as unknown,
+    animgraph: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_animgraph(world.id, path)) as unknown,
     rig: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_rig(world.id, path)) as unknown,
     flipbook: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_flipbook(world.id, path)) as unknown,
     tilemap: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_load_tilemap(world.id, path)) as unknown,

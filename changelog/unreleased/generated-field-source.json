@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "type field, og.load.field",
+      "summary": "Author scalar/vector lattices as explicit data or deterministic TS generation. Dimensions, channels, origin and positive spacing are explicit; cook stores lossless finite f32 values without resampling or normalization. Scripts compose the same noiseGrid, noiseGrad, Worley and curlNoise mechanisms as runtime. File fields are indexed from the parser table."
+    }
+  ]
+}

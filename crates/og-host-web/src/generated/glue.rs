@@ -1334,6 +1334,11 @@ pub fn og_render_baked_lighting(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_field(world: u32, path: String) -> Vec<u8> {
+    <Host as LoadApi>::og_load_field(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_bundle(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_bundle(&Host, world, path)
 }
@@ -1481,6 +1486,11 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
 #[wasm_bindgen]
 pub fn og_load_animation(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_animation(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_animgraph(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_animgraph(&Host, world, path)
 }
 
 #[wasm_bindgen]

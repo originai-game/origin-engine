@@ -89,6 +89,12 @@ fn make(s: &Source) -> Result<Option<Vec<u8>>, String> {
         return Ok(None);
     }
     let mut doc = Document::parse(&String::from_utf8_lossy(&s.bytes)).map_err(|e| e.to_string())?;
+    if doc.ty == "scatter" {
+        return super::scatter::expand(s, &doc)?
+            .to_text()
+            .map(|text| Some(text.into_bytes()))
+            .map_err(|e| e.to_string());
+    }
     let entries: Vec<_> = doc.body.get_all("generate").collect();
     if entries.is_empty() {
         return Ok(None);

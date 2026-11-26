@@ -115,19 +115,7 @@ fn plant_kind(kind: &str) -> Result<(og_shape::generators::Plant, PlantLook), St
 /// `leaves` and `flowers` only when their block is there.
 pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, PlantLook), String> {
     use og_shape::generators::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
-    let mut keys = vec![
-        "kind",
-        "seed",
-        "growth",
-        "levels",
-        "force",
-        "leaves",
-        "flowers",
-        "material",
-        "barkColor",
-    ];
-    keys.extend(PLANT_LEVELS);
-    let f = Fields::new(b, "plant", &keys)?;
+    let f = Fields::schema(b, "plant")?;
     let kinds: Vec<&str> = PLANT_KINDS.iter().map(|(k, _)| *k).collect();
     let (d, mut look) = match word_of(&f, "kind", &kinds)? {
         Some(kind) => plant_kind(kind)?,
@@ -151,20 +139,7 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, Plan
     for (k, l) in PLANT_LEVELS.iter().zip(&mut level) {
         let Some(lb) = f.block(k)? else { continue };
         let what = format!("plant.{k}");
-        let mut keys = vec![
-            "length",
-            "radius",
-            "sections",
-            "segments",
-            "taper",
-            "gnarliness",
-            "twist",
-            "children",
-        ];
-        if *k != "trunk" {
-            keys.extend(["angle", "start"]);
-        }
-        let lf = Fields::new(lb, &what, &keys)?;
+        let lf = Fields::schema(lb, &what)?;
         *l = Level {
             length: lf.size("length", l.length)?,
             radius: lf.size("radius", l.radius)?,
@@ -195,26 +170,7 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, Plan
     look.wood = f.get("material").map(named).transpose()?;
     let leaves = match f.block("leaves")? {
         Some(lb) => {
-            let mut keys = vec![
-                "shape",
-                "count",
-                "start",
-                "end",
-                "angle",
-                "facing",
-                "rows",
-                "size",
-                "width",
-                "sizeVariance",
-                "color",
-                "color2",
-                "colorVariation",
-                "material",
-                "translucency",
-                "domeNormals",
-            ];
-            keys.extend(SEASON_KEYS);
-            let lf = Fields::new(lb, "plant.leaves", &keys)?;
+            let lf = Fields::schema(lb, "plant.leaves")?;
             let l = d.leaves.unwrap_or_default();
             look.leaf = lf.get("material").map(named).transpose()?;
             for k in ["translucency", "domeNormals"]
@@ -271,21 +227,7 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, Plan
     };
     let flowers = match f.block("flowers")? {
         Some(fb) => {
-            let ff = Fields::new(
-                fb,
-                "plant.flowers",
-                &[
-                    "share",
-                    "count",
-                    "petals",
-                    "size",
-                    "width",
-                    "cup",
-                    "color",
-                    "color2",
-                    "centerColor",
-                ],
-            )?;
+            let ff = Fields::schema(fb, "plant.flowers")?;
             let l = d.flowers.unwrap_or_default();
             let color = color_field(&ff, "color", l.color)?;
             Some(Flowers {

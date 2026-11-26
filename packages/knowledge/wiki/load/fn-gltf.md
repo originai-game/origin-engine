@@ -41,4 +41,4 @@ fn gltf {
 }
 ```
 
-<sub>Module `load` line 242</sub>
+<sub>Module `load` line 258</sub>

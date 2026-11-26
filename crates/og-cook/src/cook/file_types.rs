@@ -19,6 +19,12 @@ fn table(out: &mut String, fields: &[Line]) {
     }
 }
 
+fn block(out: &mut String, name: &str, fields: &[Line]) {
+    let anchor = name.replace('.', "-");
+    let _ = writeln!(out, "\n<a id=\"file-{anchor}\"></a>\n### `file:{name}`\n");
+    table(out, fields);
+}
+
 pub fn markdown() -> Result<String, String> {
     terrain_schema::check_defaults()?;
     let mut out = String::from(
@@ -44,12 +50,46 @@ pub fn markdown() -> Result<String, String> {
                     out.push('\n');
                 }
             }
+            "animgraph" => {
+                out.push_str("Field coverage: asset bindings and all nested graph declarations share the runtime parser's line tables. Output: a validated graph with tracked model animation dependencies; load with og.load.animgraph. Bind names are resolved at cook; runtime handles are never stored.\n\n");
+                table(&mut out, og_anim::GRAPH_SOURCE_LINES);
+                for (path, fields) in og_anim::GRAPH_BLOCKS {
+                    if path.is_empty() {
+                        table(&mut out, fields);
+                    } else {
+                        block(&mut out, &format!("animgraph.{path}"), fields);
+                    }
+                }
+            }
+            "sfx" => {
+                out.push_str("Field coverage: complete parser line tables. Output: ordinary cooked sound through the shared oscillator synthesizer; load with og.load.sound. Existing alternate spellings are listed, not new compatibility paths.\n\n");
+                table(&mut out, super::sfx::LINES);
+                block(&mut out, "sfx.layer", super::sfx::LAYER_LINES);
+            }
+            "materials" => {
+                out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
+                let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES.iter().chain(super::model_text::schema::MATERIAL).copied().collect();
+                block(&mut out, "materials.material", &fields);
+                block(&mut out, "materials.material.vary", super::systems::district::parse::VARY_LINES);
+            }
+            "field" => {
+                out.push_str("Field coverage: complete parser line table. Output: lossless f32 lattice, loaded with og.load.field. Authored data and generate are exclusive. No implicit normalization, resampling or image encoding.\n\n");
+                table(&mut out, og_bundle::field::LINES);
+                out.push_str("\n<a id=\"file-field-generate\"></a>\n### `file:field.generate`\n\nReturns FieldSource: dimensions [x,y,z], channels 1..4, values, optional origin [x,y,z] and positive spacing [x,y,z]. Scripts compose noiseGrid, noiseGrad, Worley or curlNoise through the shared procgen implementation.\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
             "particles" | "effect" | "vfx" => {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");
                 table(&mut out, match ty { "particles" => crate::fx::EMITTER_LINES, "effect" => crate::effect::EFFECT_LINES, _ => crate::vfx::VFX_LINES });
             }
             "tilemap" => {
                 out.push_str("Field coverage: generate block only; see world for the authored map fields. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n<a id=\"file-tilemap-generate\"></a>\n### `file:tilemap.generate`\n\nThe script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
+            "scatter" => {
+                out.push_str("Field coverage: complete parser line table. Output: a normal scene; load with og.load.scene or reference from a scene. Model placements reuse normal model instancing; prefab placements expand their authored entities. No distribution, density, model or gameplay rule is inferred. Paths are asset-root relative.\n\n");
+                table(&mut out, super::scene::SCATTER_LINES);
+                out.push_str("\n<a id=\"file-scatter-generate\"></a>\n### `file:scatter.generate`\n\nReturns ScatterSource: flat positions, optional xyzw quaternions and xyz scales with one per point; at most 1,000,000 points. Authored point lines and generation are exclusive. Project adds the authoritative terrain height to y and can align local up before authored rotation. Terrain and placements share local coordinates; off-terrain points and holes fail cook.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
             "scene" => {
@@ -61,8 +101,24 @@ pub fn markdown() -> Result<String, String> {
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
             "model" => {
-                out.push_str("Field coverage: bufferGeometry only; other geometry, material, placement and plant fields are not yet migrated. See models. Output: a normal model loaded with og.load.gltf.\n\n<a id=\"file-model-part-bufferGeometry\"></a>\n### `file:model.part.bufferGeometry`\n\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n\n");
-                table(&mut out, super::model_text::BUFFER_LINES);
+                out.push_str("Field coverage: text-model declarations, every geometry, placement, material, plant level and fracture block share parser line tables. Output: a normal model loaded with og.load.gltf. Program-based models instead use program/params and the .shape.json language (see model); program operation schema is separate. Segment counts can be reduced by the project's face budget, never increased. A part contains one geometry; merge parts and CSG a/b are geometries plus placement, not named model parts.\n\n");
+                table(&mut out, &super::model_text::schema::fields(""));
+                for name in super::model_text::GEOMETRIES {
+                    if matches!(name, "bufferGeometry" | "modelGeometry") { continue; }
+                    block(&mut out, &format!("model.part.{name}"), &super::model_text::schema::fields(name));
+                }
+                for (name, _) in super::model_text::schema::BLOCKS {
+                    if name.is_empty() || name.ends_with("Geometry") || matches!(*name, "solid" | "plant.level") { continue; }
+                    block(&mut out, &format!("model.{name}"), &super::model_text::schema::fields(name));
+                }
+                for name in ["trunk", "branch1", "branch2", "branch3"] {
+                    block(&mut out, &format!("model.plant.{name}"), &super::model_text::schema::fields(&format!("plant.{name}")));
+                }
+                block(&mut out, "model.fracture", super::systems::fracture::LINES);
+                out.push_str("\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n");
+                block(&mut out, "model.part.bufferGeometry", super::model_text::BUFFER_LINES);
+                out.push_str("\n<a id=\"file-model-part-modelGeometry\"></a>\n### `file:model.part.modelGeometry`\n\nAn imported model's rest geometry as an operand of mergeGeometries or CSG, or as a part by itself. The source uses its ordinary importer and generation path before this model.\n\n");
+                table(&mut out, super::model_text::OPERAND_LINES);
                 out.push_str("\n<a id=\"file-model-part-bufferGeometry-generate\"></a>\n### `file:model.part.bufferGeometry.generate`\n\nReturns MeshSource: positions, and optional normals/uvs/colors/tangents/indices. Materials, pivots and placements remain authored in the model.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
@@ -98,15 +154,15 @@ pub fn markdown() -> Result<String, String> {
             "TSX is the UI source; TS/TSX bundling is not a cook generator. See ui-tsx.",
         ),
         (
-            "animgraph",
-            "Runtime anim.graph text only: not currently a registered cook type. See animation.",
-        ),
-        (
             "probe-record",
             "cooked/probes/<key>.ogt: derived bake record, not an authored input. See render.",
         ),
     ] {
         let _ = writeln!(out, "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\n{doc}\n");
+        if ty == "import" {
+            block(&mut out, "import.animation", super::anim::LINES);
+            block(&mut out, "import.fracture", super::systems::fracture::LINES);
+        }
     }
     out.push_str("Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.\n");
     Ok(out)

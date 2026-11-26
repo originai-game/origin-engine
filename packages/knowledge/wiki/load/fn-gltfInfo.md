@@ -30,4 +30,4 @@ fn gltfInfo {
 }
 ```
 
-<sub>Module `load` line 474</sub>
+<sub>Module `load` line 490</sub>

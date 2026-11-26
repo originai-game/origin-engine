@@ -14688,6 +14688,23 @@ export interface ShapeClass {
 // See `loading §1`.
 
 /**
+ * Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling.
+ */
+export interface FieldData {
+  /** Positive sample counts along x, y, z. */
+  readonly dimensions: [number, number, number];
+  /** One to four scalar channels per cell; units and meaning belong to the author. */
+  readonly channels: number;
+  /** Coordinates of the first lattice sample. */
+  readonly origin: [number, number, number];
+  /** Positive distance between samples on each axis, in authored coordinate units. */
+  readonly spacing: [number, number, number];
+  /** Finite samples; dimensions product times channels, at most 16,777,216 scalars. */
+  readonly values: Float32Array;
+}
+
+
+/**
  * A loaded bundle, scene or glTF asset.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -15136,6 +15153,7 @@ export interface EnvironmentSunTurn {
    */
   readonly elevation: number;
 }
+
 
 
 
@@ -39288,6 +39306,14 @@ export declare namespace og {
    */
   namespace load {
     /**
+     * Read a cooked type field lattice without allocating world or GPU handles.
+     *
+     * @param world The world whose bundle holds the field.
+     * @param path The field asset path under assets/.
+     * @returns Refused if missing, not resident, not a field, stale or invalid.
+     */
+    function field(world: World, path: string): Result<FieldData>;
+    /**
      * Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.
      * Scene, sub-scene and model dependencies resolve from their own bundle first, with loads cached per bundle and path. An id absent there falls back to the boot bundle, then ready bundles in open order. Direct og.load calls use that fallback order.
      * See `world §4`.
@@ -39556,6 +39582,14 @@ export declare namespace og {
      * @returns Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.
      */
     function animation(world: World, path: string): Result<Animation>;
+    /**
+     * Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle.
+     *
+     * @param world The world whose animation owns the graph.
+     * @param path The animgraph asset id under assets/.
+     * @returns Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip.
+     */
+    function animgraph(world: World, path: string): Result<GraphAsset>;
     /**
      * Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
      *

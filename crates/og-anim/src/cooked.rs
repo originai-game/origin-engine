@@ -47,9 +47,23 @@ pub trait BundleAnim {
 
     /// The humanoid map of a rig blob (`og.Rig`).
     fn rig(&self, id: &str, bytes: &[u8]) -> Result<crate::RigAsset, LoadError>;
+
+    /// The validated graph source and its model clip bindings.
+    fn animgraph(&self, id: &str, bytes: &[u8]) -> Result<crate::graph::GraphSource, LoadError>;
 }
 
 impl BundleAnim for Bundle {
+    fn animgraph(&self, id: &str, bytes: &[u8]) -> Result<crate::graph::GraphSource, LoadError> {
+        let blob = self.blob::<format::AnimGraph>(id, bytes)?;
+        let meta = one::<format::AnimGraphMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        let text = text
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the animgraph text is cut short or not UTF-8"))?;
+        crate::graph::GraphSource::parse(text).map_err(|e| invalid(&blob, e.reason()))
+    }
+
     fn animation(&self, id: &str, bytes: &[u8]) -> Result<CookedAnimation, LoadError> {
         let blob = self.blob::<format::Animation>(id, bytes)?;
         CookedAnimation::decode(asset_id(id), &blob)

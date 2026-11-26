@@ -11,7 +11,7 @@ pub(super) fn triangles(
     instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
 ) -> Vec<[Vec3; 3]> {
     let mut out = Vec::new();
-    visit_scene(src, instanced, |prim, at| {
+    visit_scene(src, instanced, |prim, at, _node| {
         let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
         let Some(pos) = reader.read_positions() else {
             return;

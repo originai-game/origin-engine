@@ -54,7 +54,7 @@ Every line the three effect formats take, from the tables their parsers read: an
 | `trail <seconds> [<width>] [only]` |  | A trail behind each particle: the path it took over the last <seconds>, a strip in its colour narrowing and fading to its tail, <width> a share of the particle's width (1 when left out); `only` draws the trails without the particles (a spark's streak). Billboards and mesh particles, not sprite mode. |
 | `inheritVelocity <fraction>` | `0` | The share of the emitter's own velocity, in world space, particles start with. |
 | `attractor <x> <y> <z> <strength> [<radius>]` |  | A point in the emitter's space that pulls, or pushes when negative; up to 4. |
-| `field curl <strength> [<frequency> <scroll>] \| "<texture>" <strength> <size>` |  | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1. |
+| `field curl <strength> [<frequency> <scroll>] \| "<texture-or-field.ogt>" <strength> <size>` |  | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid baked from an image N² wide and N high (rgb 0..1 as -1..1, y from bottom), or a lossless cubic 3-channel field asset (N 1..16). Explicit size maps one period of the source lattice to emitter-local units; field origin/spacing describe the source sampling domain, not particle placement. Vectors are not normalized. |
 | `fieldGrid <cells> <size> <strength> <vectors>` |  | What `og cook` writes in place of a texture field: the baked grid, x fastest. Not written by hand. |
 
 ## 2. Effect materials (type effect)

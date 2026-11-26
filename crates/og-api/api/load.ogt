@@ -5,6 +5,22 @@ module load {
   guide "loading §1"
   core gltf font emitter texture animation rig flipbook tilemap vfx
 
+  struct FieldData {
+    doc "Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling."
+    field dimensions Array.u32.3 "Positive sample counts along x, y, z."
+    field channels u32 "One to four scalar channels per cell; units and meaning belong to the author."
+    field origin Array.f32.3 "Coordinates of the first lattice sample."
+    field spacing Array.f32.3 "Positive distance between samples on each axis, in authored coordinate units."
+    field values Float32Array "Finite samples; dimensions product times channels, at most 16,777,216 scalars."
+  }
+
+  fn field {
+    doc "Read a cooked type field lattice without allocating world or GPU handles."
+    param world World "The world whose bundle holds the field."
+    param path String "The field asset path under assets/."
+    returns Result.FieldData "Refused if missing, not resident, not a field, stale or invalid."
+  }
+
   handle Asset "A loaded bundle, scene or glTF asset."
   handle Font "A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set."
   handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
@@ -485,6 +501,13 @@ module load {
     param world World "The world whose animation owns the assets."
     param path String "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
     returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
+  }
+
+  fn animgraph {
+    doc "Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle."
+    param world World "The world whose animation owns the graph."
+    param path String "The animgraph asset id under assets/."
+    returns Result.GraphAsset "Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip."
   }
 
   fn rig {

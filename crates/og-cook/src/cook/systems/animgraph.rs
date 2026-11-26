@@ -1,0 +1,101 @@
+//! The graph grammar is og-anim's; the cook resolves asset clip names,
+//! never runtime handles, and records those models as dependencies.
+use super::*;
+use og_anim::GraphSource;
+use og_blob::BlobWriter;
+
+pub(crate) static GRAPH: KindDef = KindDef {
+    name: "animgraph",
+    extensions: &[],
+    types: &["animgraph"],
+    by_content: false,
+    streams: false,
+    plan,
+};
+pub(crate) static KINDS: &[&KindDef] = &[&GRAPH];
+
+fn plan<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let result = (|| -> Result<(String, Vec<u8>), String> {
+        let text = std::str::from_utf8(&s.bytes).map_err(|e| e.to_string())?;
+        let graph = GraphSource::parse(text).map_err(|e| e.to_string())?;
+        let mut deps = Vec::new();
+        for b in &graph.bindings {
+            let source = cx
+                .sources
+                .iter()
+                .find(|s| s.rel == b.source)
+                .ok_or_else(|| {
+                    format!(
+                        "bind '{}': source '{}' is not a model asset",
+                        b.name, b.source
+                    )
+                })?;
+            let g = source.gltf.as_ref().ok_or_else(|| {
+                format!(
+                    "bind '{}': '{}' did not import as a model",
+                    b.name, b.source
+                )
+            })?;
+            let settings = anim_settings(source)?;
+            let names = anim::clip_names(g, &settings, cx.assets_dir)?;
+            if !names.contains(&b.clip) {
+                return Err(format!(
+                    "bind '{}': '{}' has no clip '{}'; available: {}",
+                    b.name,
+                    b.source,
+                    b.clip,
+                    names.join(", ")
+                ));
+            }
+            deps.extend_from_slice(&source.hash.to_le_bytes());
+            deps.extend_from_slice(anim::dependencies(cx.assets_dir, &settings).as_bytes());
+            state
+                .parsed_refs
+                .entry(s.rel.clone())
+                .or_default()
+                .insert(format!("{}#anim", b.source));
+        }
+        Ok((graph.document.to_text().map_err(|e| e.to_string())?, deps))
+    })();
+    match result {
+        Ok((text, deps)) => {
+            let st = stamp(&[Area::Anim], &[b"animgraph", &hash, &deps]);
+            outs.push((
+                s.rel.clone(),
+                format::AnimGraph::NAME,
+                st,
+                Box::new(GraphJob(text)),
+            ));
+        }
+        Err(e) => state.early_errors.push((s.rel.clone(), "animgraph", e)),
+    }
+}
+
+struct GraphJob(String);
+impl Job for GraphJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let mut w = BlobWriter::new(
+            format::AnimGraph::type_hash(),
+            format::AnimGraph::schema_version(),
+            p.stamp,
+        );
+        w.table(
+            "meta",
+            &[format::AnimGraphMeta {
+                text_bytes: self.0.len() as u32,
+            }],
+            format::row_hash::<format::AnimGraphMeta>(),
+        )
+        .raw("text", self.0.as_bytes().to_vec(), 16);
+        Ok((w.finish(), Vec::new()))
+    }
+    fn action(&self) -> Action<'_> {
+        Action::Input(self.0.as_bytes(), false)
+    }
+}

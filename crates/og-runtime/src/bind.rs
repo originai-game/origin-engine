@@ -44,7 +44,7 @@ pub mod exports {
     };
     pub use super::anim::{
         og_anim_get_node_matrix, og_anim_graph, og_anim_humanoid, og_anim_mirror, og_anim_retarget,
-        og_load_animation, og_load_rig,
+        og_load_animation, og_load_animgraph, og_load_rig,
     };
     pub use super::destruction::{
         og_destruction_capabilities, og_destruction_damage, og_destruction_explode,

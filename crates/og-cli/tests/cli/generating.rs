@@ -1,5 +1,172 @@
 use super::*;
 
+/// A graph asset resolves clip names at cook, keeps bindings in its
+/// typed blob, and revalidates them when the source changes.
+#[test]
+fn animation_graph_cooks_with_tracked_clip_bindings() {
+    use og_anim::cooked::BundleAnim;
+    let root = TempDir::new("og-generated-graph");
+    let assets = root.join("assets");
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Graph\"\n",
+    )
+    .unwrap();
+    let model =
+        std::fs::read(repo().join("tests/fixtures/anim-markers/assets/models/walker.glb")).unwrap();
+    std::fs::write(assets.join("walker.glb"), &model).unwrap();
+    std::fs::write(
+        assets.join("walker.glb.ogt"),
+        "type import\nversion 1\n---\nconform off\n",
+    )
+    .unwrap();
+    let graph = "type animgraph\nversion 1\n---\nbind \"stride\" \"walker.glb\" \"walk\"\nclip moving \"stride\"\nlayer base {\nstate active moving\nentry active\n}\n";
+    std::fs::write(assets.join("graph.ogt"), graph).unwrap();
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let source = bundle
+        .animgraph("graph.ogt", &bundle.read("graph.ogt").unwrap())
+        .unwrap();
+    assert!(!source.sprite);
+    assert_eq!(
+        (
+            source.bindings[0].name.as_str(),
+            source.bindings[0].clip.as_str()
+        ),
+        ("stride", "walk")
+    );
+    let mut renamed = model;
+    for i in 0..renamed.len() - 3 {
+        if &renamed[i..i + 4] == b"walk" {
+            renamed[i..i + 4].copy_from_slice(b"hike");
+        }
+    }
+    std::fs::write(assets.join("walker.glb"), renamed).unwrap();
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(text(&out).contains("has no clip 'walk'"), "{}", text(&out));
+    std::fs::write(
+        assets.join("graph.ogt"),
+        graph.replace("\"walk\"", "\"hike\""),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::write(
+        assets.join("graph.ogt"),
+        graph.replace("bind \"stride\" \"walker.glb\" \"walk\"", "sprite true"),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::write(
+        assets.join("graph.ogt"),
+        graph.replace("state active moving", "state active absent"),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(!out.status.success(), "invalid graph accepted");
+}
+
+/// Public lattice cook/load and emitter consumption retain channel order,
+/// float precision and tracked generator dependencies.
+#[test]
+fn generated_fields_load_losslessly_and_feed_particles() {
+    let root = TempDir::new("og-generated-fields");
+    let assets = root.join("assets");
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Field\"\n",
+    )
+    .unwrap();
+    std::fs::write(assets.join("source.ogt"), "type field\nversion 1\n---\ngenerate {\nscript \"field.ts\"\ninput \"amplitude\" \"input.bin\"\n}\n").unwrap();
+    std::fs::write(assets.join("field.ts"), "export default ({inputs}) => ({dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: Float32Array.from({length: 24}, (_, i) => inputs.amplitude[0] + i / 32)});").unwrap();
+    std::fs::write(assets.join("input.bin"), [7]).unwrap();
+    std::fs::write(
+        assets.join("particles.ogt"),
+        "type particles\nversion 1\n---\nfield \"source.ogt\" 0.25 9\n",
+    )
+    .unwrap();
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    for amplitude in [7, 11] {
+        std::fs::write(assets.join("input.bin"), [amplitude]).unwrap();
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let field = bundle.load_field("source.ogt").unwrap();
+        assert_eq!(field.dimensions, [2, 2, 2]);
+        assert_eq!(field.channels, 3);
+        assert_eq!(field.origin, [-3.0, 2.0, 7.0]);
+        assert_eq!(field.spacing, [0.5, 2.0, 3.0]);
+        let expected: Vec<f32> = (0..24)
+            .map(|i| f32::from(amplitude) + i as f32 / 32.0)
+            .collect();
+        assert_eq!(field.values, expected);
+        let bytes = bundle.read("particles.ogt").unwrap();
+        let text = bundle.emitter_text("particles.ogt", &bytes).unwrap();
+        let emitter = og_cook::fx::parse_emitter(&text, &mut |_| Ok(None)).unwrap();
+        let og_render_data::VectorField::Grid {
+            strength,
+            size,
+            cells,
+            vectors,
+        } = emitter.field.unwrap()
+        else {
+            panic!("not a grid")
+        };
+        assert_eq!((strength, size, cells), (0.25, 9.0, 2));
+        assert_eq!(
+            vectors
+                .into_iter()
+                .flat_map(|v| v.to_array())
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+    // A rectangular scalar lattice is valid by itself, not a particle grid.
+    std::fs::remove_file(assets.join("particles.ogt")).unwrap();
+    std::fs::write(assets.join("field.ts"), "export default () => ({dimensions: [3, 2, 1], channels: 1, values: [117, -2, 0.125, 4, 9, 0]});").unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle.load_field("source.ogt").unwrap().values,
+        [117.0, -2.0, 0.125, 4.0, 9.0, 0.0]
+    );
+    for invalid in [
+        "({dimensions: [3, 2, 1], channels: 1, values: [1, 2]})",
+        "({dimensions: [0, 2, 1], channels: 1, values: []})",
+        "({dimensions: [1, 1, 1], channels: 1, spacing: [1, 0, 1], values: [1]})",
+        "({dimensions: [1, 1, 1], channels: 5, values: [1, 2, 3, 4, 5]})",
+    ] {
+        std::fs::write(
+            assets.join("field.ts"),
+            format!("export default () => {invalid};"),
+        )
+        .unwrap();
+        let out = cook();
+        assert!(!out.status.success(), "accepted {invalid}: {}", text(&out));
+    }
+}
+
 /// The public offline executor: dependencies and parameters invalidate a
 /// content key, moving a project does not, and ambient authority is absent.
 #[test]
@@ -397,6 +564,48 @@ part "mixed" {
         // gives an image-up bitangent along +Y, hence +1 for N=Z, T=X.
         assert_eq!(t[3], if v.position[0] > 9.0 { 1.0 } else { -1.0 });
     }
+    // The consumer sorts before its source. Import order is a dependency,
+    // not filename order, and a selected node keeps its rest placement.
+    let operand = "type model\nversion 1\n---\nconform off\npart \"copy\" {\nmergeGeometries {\npart {\nmodelGeometry {\nsource \"mesh.ogt\"\nnode \"placed\"\n}\nposition 0 2 0\n}\n}\n}\n";
+    std::fs::write(assets.join("a-copy.ogt"), operand).unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let copy = bundle.load_model("a-copy.ogt").unwrap();
+    let p = &copy.primitives[0];
+    assert_eq!((p.min.x, p.max.x, p.min.y, p.max.y), (-6.0, 4.0, 2.0, 6.0));
+    for (v, t) in p.vertices.iter().zip(&p.tangents) {
+        assert!((t[0] + 1.0).abs() < 0.001);
+        assert_eq!(t[3], 1.0);
+        assert_eq!(v.color.iter().sum::<f32>(), 2.0);
+    }
+    std::fs::write(
+        assets.join("mesh.ts"),
+        format!(
+            "export default () => {};",
+            source.replace("-2, 0, 0", "-4, 0, 0")
+        ),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle.load_model("a-copy.ogt").unwrap().primitives[0].max.x,
+        8.0
+    );
+    std::fs::write(
+        assets.join("mesh.ogt"),
+        operand
+            .replace("mesh.ogt", "a-copy.ogt")
+            .replace("node \"placed\"", ""),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(text(&out).contains("dependency cycle"), "{}", text(&out));
+    std::fs::remove_file(assets.join("a-copy.ogt")).unwrap();
+    std::fs::write(assets.join("mesh.ogt"), "type model\nversion 1\n---\nconform off\npart \"source\" {\nbufferGeometry {\ngenerate {\nscript \"mesh.ts\"\n}\n}\n}\n").unwrap();
     for invalid in [
         "({positions: [0,0,0, 1,0,0, 0,1,0], indices: [0,1,3]})",
         "({positions: [0,0,0, 1,0,0, 0,1,0], colors: [1,0,0]})",

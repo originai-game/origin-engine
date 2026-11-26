@@ -45,6 +45,8 @@ pub(crate) struct AnimAssets {
     graphs: IdMap<u64, GraphAsset>,
     /// What og.load.animation answered per model id, so a second load answers the same handles.
     loaded: BTreeMap<String, Value>,
+    /// Cooked graphs loaded by asset id, for both skeletal and 2D targets.
+    graph_ids: BTreeMap<String, Value>,
     /// Humanoid maps from og.load.rig, and their handles by asset id.
     rigs: IdMap<u64, RigAsset>,
     rig_ids: BTreeMap<String, u64>,
@@ -310,6 +312,46 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
 
 pub fn og_load_animation(world: u32, path: String) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| load_animation(&eng, &path))
+}
+
+pub fn og_load_animgraph(world: u32, path: String) -> Result<Value, String> {
+    let eng = engine(world)?;
+    let id = og_bundle::runtime::asset_id(&path).to_string();
+    if let Some(v) = eng.state.borrow().anim_assets.graph_ids.get(&id) {
+        return Ok(v.clone());
+    }
+    let source = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle
+            .animgraph(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let mut clips = Vec::new();
+    for b in source.bindings {
+        let animation: Animation = wire::value(&load_animation(&eng, &b.source)?, "animation")?;
+        let mut clip = animation
+            .clips
+            .into_iter()
+            .find(|c| c.name == b.clip)
+            .ok_or_else(|| format!("{id}: '{}' has no clip '{}'", b.source, b.clip))?;
+        clip.name = b.name;
+        clips.push(clip);
+    }
+    let result = graph(
+        &eng,
+        &GraphDesc {
+            text: source.text,
+            clips,
+            sprite: source.sprite,
+        },
+    )?;
+    eng.state
+        .borrow_mut()
+        .anim_assets
+        .graph_ids
+        .insert(id, result.clone());
+    Ok(result)
 }
 
 pub fn og_anim_get_node_matrix(world: u32, entity: f64, node: u32) -> Result<glam::Mat4, String> {

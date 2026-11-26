@@ -3,6 +3,22 @@ import type { og } from "../types/index.d.ts";
 /** The runtime API's pure mechanisms, without a world or host handles. */
 export declare const procgen: typeof og.procgen;
 
+/** Lossless lattice; cook defaults origin to zero and spacing to one. */
+export interface FieldSource {
+  readonly dimensions: readonly [number, number, number];
+  readonly channels: 1 | 2 | 3 | 4;
+  readonly origin?: readonly [number, number, number];
+  readonly spacing?: readonly [number, number, number];
+  readonly values: Float32Array | readonly number[];
+}
+
+/** Scene-local transforms; optional arrays have one value per point. */
+export interface ScatterSource {
+  readonly positions: Float32Array | readonly number[];
+  readonly quaternions?: Float32Array | readonly number[];
+  readonly scales?: Float32Array | readonly number[];
+}
+
 /** Inputs are declared in generate.input or --input; scripts cannot open paths. */
 export interface GeneratorContext<P = Record<string, unknown>> {
   readonly params: P;

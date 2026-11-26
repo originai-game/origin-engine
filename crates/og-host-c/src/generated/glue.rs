@@ -1334,6 +1334,11 @@ unsafe extern "C" fn og_render_baked_lighting(args: *const crate::OgValue, out: 
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_load_field(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as LoadApi>::og_load_field(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_load_bundle(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as LoadApi>::og_load_bundle(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -1481,6 +1486,11 @@ unsafe extern "C" fn og_load_gltf_info(args: *const crate::OgValue, out: *mut cr
 
 unsafe extern "C" fn og_load_animation(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as LoadApi>::og_load_animation(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_load_animgraph(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as LoadApi>::og_load_animgraph(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3777,6 +3787,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_render_set_post_param", arity: 4, call: og_render_set_post_param },
     crate::Symbol { name: c"og_render_post_errors", arity: 1, call: og_render_post_errors },
     crate::Symbol { name: c"og_render_baked_lighting", arity: 1, call: og_render_baked_lighting },
+    crate::Symbol { name: c"og_load_field", arity: 2, call: og_load_field },
     crate::Symbol { name: c"og_load_bundle", arity: 2, call: og_load_bundle },
     crate::Symbol { name: c"og_load_bundle_info", arity: 2, call: og_load_bundle_info },
     crate::Symbol { name: c"og_load_progress", arity: 2, call: og_load_progress },
@@ -3807,6 +3818,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_load_error", arity: 2, call: og_load_error },
     crate::Symbol { name: c"og_load_gltf_info", arity: 2, call: og_load_gltf_info },
     crate::Symbol { name: c"og_load_animation", arity: 2, call: og_load_animation },
+    crate::Symbol { name: c"og_load_animgraph", arity: 2, call: og_load_animgraph },
     crate::Symbol { name: c"og_load_rig", arity: 2, call: og_load_rig },
     crate::Symbol { name: c"og_load_flipbook", arity: 2, call: og_load_flipbook },
     crate::Symbol { name: c"og_load_tilemap", arity: 2, call: og_load_tilemap },

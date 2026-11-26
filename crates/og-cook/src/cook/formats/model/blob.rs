@@ -953,7 +953,7 @@ pub(super) fn scene_bounds(
     instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
 ) -> (Vec3, Vec3) {
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-    visit_scene(src, instanced, |prim, at| {
+    visit_scene(src, instanced, |prim, at, _node| {
         let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
         if let Some(ps) = reader.read_positions() {
             for p in ps {
@@ -978,7 +978,7 @@ pub(super) fn scene_bounds(
 pub(super) fn visit_scene(
     src: &GltfSource,
     instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
-    mut f: impl FnMut(&gltf::Primitive, &[Mat4]),
+    mut f: impl FnMut(&gltf::Primitive, &[Mat4], &gltf::Node),
 ) {
     let doc = &src.doc;
     // A skinned mesh's vertices are placed by its bind pose, not its node.
@@ -1013,7 +1013,7 @@ pub(super) fn visit_scene(
                 .primitives()
                 .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
             {
-                f(&prim, &at);
+                f(&prim, &at, &node);
             }
         }
         for c in node.children() {

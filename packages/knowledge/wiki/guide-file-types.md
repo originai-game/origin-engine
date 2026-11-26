@@ -7,6 +7,78 @@ Use `og api list --kind file`, `og api show file:terrain` or `og api find erosio
 <a id="guide-file-types-1"></a>
 ### `file-types §1` Cook assets
 
+<a id="file-animgraph"></a>
+### `file:animgraph`
+
+An authored `animgraph` asset, cooked by `animgraph`. Input: `.ogt` under assets/.
+
+Field coverage: asset bindings and all nested graph declarations share the runtime parser's line tables. Output: a validated graph with tracked model animation dependencies; load with og.load.animgraph. Bind names are resolved at cook; runtime handles are never stored.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `bind "<name>" "<model asset>" "<clip>"` | `` | Bind a graph clip name to a cooked model's animation clip; repeat for each referenced clip. Asset-root relative paths, no runtime handles. |
+| `sprite true \| false` | `false` | Resolve clip names on the flipbook/2D rig at playback, exclusive with bind. Graph structure is still checked at cook. |
+| Field | Default | Meaning |
+|---|---|---|
+| `param <name>` | `` | Declare at most eight unique parameters, in component p0..p7 order. |
+| `clip <motion> "<bound clip>" { ... }` | `` | Clip leaf, resolved by bind for skeletal assets or by the 2D target for sprite assets. |
+| `blend1d <motion> <parameter> { ... }` | `` | Threshold interpolation; at least one child. |
+| `blend2d <motion> <x parameter> <y parameter> { ... }` | `` | Freeform Cartesian interpolation; at least one child. |
+| `layer <name> { ... }` | `required` | Layered state machine; at least one state. |
+
+<a id="file-animgraph-clip"></a>
+### `file:animgraph.clip`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <number > 0>` | `1` | Clip playback rate. |
+| `loop true \| false` | `true` | Loop playback. |
+| `mirror true \| false` | `false` | Mirror the skeletal pose. |
+
+<a id="file-animgraph-blend1d"></a>
+### `file:animgraph.blend1d`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `child <motion> <threshold>` | `required` | Repeat children; thresholds are sorted, clamped at the ends. |
+
+<a id="file-animgraph-blend2d"></a>
+### `file:animgraph.blend2d`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `child <motion> <x> <y>` | `required` | Repeat children at 2D parameter points. |
+
+<a id="file-animgraph-layer"></a>
+### `file:animgraph.layer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `state <name> <motion> { ... }` | `required` | Declare a unique state, with optional speed and sync. |
+| `entry <state>` | `first state` | Initial state. |
+| `mode override \| additive` | `override` | Pose combination mode. |
+| `weight <number> \| <parameter>` | `1` | Fixed or parameter-driven layer weight, clamped to 0..1. |
+| `mask "<node>" [weight]` | `` | Repeat subtree weights 0..1 (omitted weight one), resolved by skeleton node names. |
+| `transition <state> \| any <target> { ... }` | `` | Repeat transitions in priority order; needs a when or exit. |
+
+<a id="file-animgraph-layer-state"></a>
+### `file:animgraph.layer.state`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <number >= 0>` | `1` | State playback multiplier. |
+| `sync <group>` | `` | Named phase synchronization group. |
+
+<a id="file-animgraph-layer-transition"></a>
+### `file:animgraph.layer.transition`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `when <parameter> gt \| ge \| lt \| le \| eq \| ne <number>` | `` | Repeat conditions; all must hold. |
+| `exit <cycles>` | `` | Minimum source phase before the transition may fire. |
+| `fade <seconds>` | `0.2` | Cross-fade duration, clamped at zero. |
+| `interrupt any \| none \| source \| next` | `any` | Which transitions may interrupt this fade. |
+
 <a id="file-behaviour"></a>
 ### `file:behaviour`
 
@@ -66,6 +138,33 @@ An authored `environment` asset, cooked by `environment`. Input: `.ogt` under as
 
 Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
 
+<a id="file-field"></a>
+### `file:field`
+
+An authored `field` asset, cooked by `field`. Input: `.ogt` under assets/.
+
+Field coverage: complete parser line table. Output: lossless f32 lattice, loaded with og.load.field. Authored data and generate are exclusive. No implicit normalization, resampling or image encoding.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `dimensions <x> <y> <z>` | `required` | Positive sample counts; x varies fastest, then y, then z. |
+| `channels <1..4>` | `required` | Interleaved scalar channels per cell; the author defines their units and meaning. |
+| `origin <x> <y> <z>` | `0 0 0` | Position of the first lattice sample in authored coordinate units. |
+| `spacing <x> <y> <z>` | `1 1 1` | Positive distance between samples on each axis; no implicit resampling. |
+| `values <float> ...` | `required` | Finite f32 samples, dimensions product times channels; no normalization or quantization. |
+
+<a id="file-field-generate"></a>
+### `file:field.generate`
+
+Returns FieldSource: dimensions [x,y,z], channels 1..4, values, optional origin [x,y,z] and positive spacing [x,y,z]. Scripts compose noiseGrid, noiseGrad, Worley or curlNoise through the shared procgen implementation.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
+
 <a id="file-flipbook"></a>
 ### `file:flipbook`
 
@@ -106,19 +205,626 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `materials` asset, cooked by `materials`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: library parameters and shared model material fields. Repeat material "<name>" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.
+
+
+<a id="file-materials-material"></a>
+### `file:materials.material`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `label <label>` | `required` | Repeat labels this material covers. |
+| `weight <number > 0>` | `1` | Explicit selection weight within a label. |
+| `tile <width> <height>` | `1 1` | Positive texture coverage in metres. |
+| `vary { ... }` | `` | Per-building value and warmth variation. |
+| `brief "<text>"` | `` | Author's image request; the engine does not generate an image model's response. |
+| `facade true \| false` | `false` | Facade source repeats horizontally; requires brief. |
+| `relief <-1..1 metres>` | `0` | Height range for the derived normal map; nonzero needs brief and normalMap. |
+| `roughnessRange <black> <white>` | `` | Roughness endpoints 0..1; requires brief and metalnessMap. |
+| `occlusion <strength> <radius>` | `` | Strength 0..1, whole radius 1..64 texels; requires brief, relief and aoMap. |
+| `color <r> <g> <b>` | `1 1 1` | Linear base colour. |
+| `opacity <0..1>` | `1` | Base alpha; below one enables blending unless alphaTest is present. |
+| `metalness <0..1>` | `0` | Metallic factor. |
+| `roughness <0..1>` | `1` | Roughness factor. |
+| `emissive <r> <g> <b>` | `0 0 0` | Linear emitted colour. |
+| `emissiveIntensity <number >= 0>` | `1` | Multiply emissive, preserving values above one through the emissive-strength extension. |
+| `doubleSided true \| false` | `false` | Draw both faces. |
+| `alphaTest <0..1>` | `` | Alpha mask cutoff; takes precedence over opacity blending. |
+| `map "<image>"` | `` | Base colour image relative to the model, not an asset handle. |
+| `normalMap "<image>"` | `` | Normal image relative to the model. |
+| `normalScale <number>` | `1` | Scale normal-map strength. |
+| `metalnessMap "<image>"` | `` | Packed roughness (green) and metalness (blue). |
+| `aoMap "<image>"` | `` | Occlusion in red. |
+| `transmission <0..1>` | `0` | Specular transmission. |
+| `ior <1..3>` | `` | Explicit index of refraction. |
+| `thickness <metres >= 0>` | `0` | Volume thickness when transmission is nonzero. |
+| `clearcoat <0..1>` | `0` | Clearcoat weight. |
+| `clearcoatRoughness <0..1>` | `0` | Clearcoat roughness when clearcoat is nonzero. |
+| `translucency <0..1>` | `0` | Diffuse transmission; foliage draws both faces. |
+| `domeNormals <0..1>` | `0` | Foliage normals' canopy-dome blend. |
+| `season <0..1>` | `0` | Evergreen at zero, deciduous at one. |
+| `autumnColor <r> <g> <b>` | `0.42 0.12 0.015` | Nonnegative linear seasonal colour. |
+| `autumnColor2 <r> <g> <b>` | `0.25 0.025 0.015` | Second seasonal colour. |
+| `seasonShift <days>` | `0` | Shift the species' seasonal cycle within LeafSeason.MAX_SHIFT. |
+| `grime <0..1>` | `0` | Ground grime weight. |
+| `grimeColor <r> <g> <b>` | `0 0 0` | Nonnegative linear grime colour. |
+| `grimeHeight <metres >= 0>` | `0` | Ground grime extent. |
+| `stains <0..1>` | `0` | Stain variation weight. |
+| `stochastic <0..1>` | `0` | Stochastic texture sampling weight. |
+
+<a id="file-materials-material-vary"></a>
+### `file:materials.material.vary`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `value <0..0.5>` | `0` | Brightness variation either way. |
+| `warmth <0..0.5>` | `0` | Warmth variation either way. |
 
 <a id="file-model"></a>
 ### `file:model`
 
 An authored `model` asset, cooked by `model`. Input: `.ogt` under assets/.
 
-Field coverage: bufferGeometry only; other geometry, material, placement and plant fields are not yet migrated. See models. Output: a normal model loaded with og.load.gltf.
+Field coverage: text-model declarations, every geometry, placement, material, plant level and fracture block share parser line tables. Output: a normal model loaded with og.load.gltf. Program-based models instead use program/params and the .shape.json language (see model); program operation schema is separate. Segment counts can be reduced by the project's face budget, never increased. A part contains one geometry; merge parts and CSG a/b are geometries plus placement, not named model parts.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `material "<name>" { ... }` | `` | Named material declared before its uses. |
+| `pivot "<name>" { ... }` | `` | Named TRS node; parent must precede child. |
+| `part "<name>" { ... }` | `` | Placed mesh; one geometry block, with optional instanced at placements. |
+| `plant "<name>" { ... }` | `` | One generated plant per model. |
+| `fracture { ... }` | `` | Prefracture the imported model through the shared cutting kernel. |
+| `conform off \| character \| effect` | `project art contract` | Art conformance category. |
+
+<a id="file-model-part-boxGeometry"></a>
+### `file:model.part.boxGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `width <metres >= 0>` | `1` | X extent. |
+| `height <metres >= 0>` | `1` | Y extent. |
+| `depth <metres >= 0>` | `1` | Z extent. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-planeGeometry"></a>
+### `file:model.part.planeGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `width <metres >= 0>` | `1` | X extent. |
+| `height <metres >= 0>` | `1` | Y extent; plane faces +Z. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-sphereGeometry"></a>
+### `file:model.part.sphereGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Sphere radius. |
+| `widthSegments <3..512>` | `32` | Longitudinal segments. |
+| `heightSegments <2..512>` | `16` | Latitudinal segments. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-cylinderGeometry"></a>
+### `file:model.part.cylinderGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radiusTop <metres >= 0>` | `1` | Top radius. |
+| `radiusBottom <metres >= 0>` | `1` | Bottom radius. |
+| `height <metres >= 0>` | `1` | Y extent. |
+| `radialSegments <3..65536>` | `32` | Segments around the axis. |
+| `heightSegments <1..65536>` | `1` | Segments along the axis. |
+| `openEnded true \| false` | `false` | Omit end caps. |
+| `thetaStart <radians>` | `0` | Starting angle. |
+| `thetaLength <radians>` | `6.283185307179586` | Arc length. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-coneGeometry"></a>
+### `file:model.part.coneGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Base radius. |
+| `height <metres >= 0>` | `1` | Y extent. |
+| `radialSegments <3..65536>` | `32` | Segments around the axis. |
+| `heightSegments <1..65536>` | `1` | Segments along the axis. |
+| `openEnded true \| false` | `false` | Omit base cap. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-capsuleGeometry"></a>
+### `file:model.part.capsuleGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Cap radius. |
+| `height <metres >= 0>` | `1` | Distance between cap centres. |
+| `capSegments <1..65536>` | `4` | Segments of each cap. |
+| `radialSegments <3..65536>` | `8` | Segments around the axis. |
+| `heightSegments <1..65536>` | `1` | Segments along the cylinder. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-torusGeometry"></a>
+### `file:model.part.torusGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Major radius. |
+| `tube <metres >= 0>` | `0.4` | Tube radius. |
+| `radialSegments <2..65536>` | `12` | Segments around the tube. |
+| `tubularSegments <3..65536>` | `48` | Segments around the ring. |
+| `arc <radians>` | `6.283185307179586` | Ring angle. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-ringGeometry"></a>
+### `file:model.part.ringGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `innerRadius <metres >= 0>` | `0.5` | Inner radius. |
+| `outerRadius <metres >= 0>` | `1` | Outer radius. |
+| `thetaSegments <3..65536>` | `32` | Angular segments. |
+| `phiSegments <1..65536>` | `1` | Radial segments. |
+| `thetaStart <radians>` | `0` | Starting angle. |
+| `thetaLength <radians>` | `6.283185307179586` | Arc length. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-circleGeometry"></a>
+### `file:model.part.circleGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Disc radius. |
+| `segments <3..65536>` | `32` | Angular segments. |
+| `thetaStart <radians>` | `0` | Starting angle. |
+| `thetaLength <radians>` | `6.283185307179586` | Arc length. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-tubeGeometry"></a>
+### `file:model.part.tubeGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `points <x y z> ...` | `` | At least two polyline points; exclusive with path. |
+| `path { ... }` | `` | 3D path block, exclusive with points and closed. |
+| `tubularSegments <1..65536>` | `64` | Longitudinal segments. |
+| `radius <metres >= 0>` | `1` | Tube radius. |
+| `radialSegments <3..65536>` | `8` | Cross-section segments. |
+| `closed true \| false` | `false` | Close the polyline; a path owns its own closed flag. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-shapeGeometry"></a>
+### `file:model.part.shapeGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `shape { ... }` | `triangle` | Repeat Shape path blocks, each with optional holes. |
+| `curveSegments <1..4096>` | `12` | Curve subdivisions. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-extrudeGeometry"></a>
+### `file:model.part.extrudeGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `shape { ... }` | `unit square` | Repeat Shape path blocks, each with optional holes. |
+| `depth <metres >= 0>` | `1` | Straight extrusion depth when extrudePath is absent. |
+| `steps <1..65536>` | `1` | Steps along the extrusion. |
+| `bevelEnabled true \| false` | `true` | Bevel the contour. |
+| `bevelThickness <metres >= 0>` | `0.2` | Bevel depth. |
+| `bevelSize <metres>` | `bevelThickness - 0.1` | Bevel contour inset. |
+| `bevelOffset <metres>` | `0` | Bevel contour offset. |
+| `bevelSegments <1..4096>` | `3` | Bevel subdivisions. |
+| `curveSegments <1..4096>` | `12` | Shape curve subdivisions. |
+| `extrudePath { ... }` | `` | 3D path block for curved extrusion. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-latheGeometry"></a>
+### `file:model.part.latheGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `points <x y> ...` | `generator profile` | At least two radial profile points. |
+| `segments <1..65536>` | `12` | Angular segments. |
+| `phiStart <radians>` | `0` | Starting angle. |
+| `phiLength <radians>` | `6.283185307179586` | Arc length. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-polyhedronGeometry"></a>
+### `file:model.part.polyhedronGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `vertices <x y z> ...` | `required` | Input polyhedron vertices. |
+| `indices <u32> ...` | `required` | Triangle indices; at least one face. |
+| `radius <metres >= 0>` | `1` | Projected radius. |
+| `detail <0..64>` | `0` | Subdivision detail. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-icosahedronGeometry"></a>
+### `file:model.part.icosahedronGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Projected radius. |
+| `detail <0..64>` | `0` | Subdivision detail. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-dodecahedronGeometry"></a>
+### `file:model.part.dodecahedronGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Projected radius. |
+| `detail <0..64>` | `0` | Subdivision detail. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-octahedronGeometry"></a>
+### `file:model.part.octahedronGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Projected radius. |
+| `detail <0..64>` | `0` | Subdivision detail. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-tetrahedronGeometry"></a>
+### `file:model.part.tetrahedronGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `radius <metres >= 0>` | `1` | Projected radius. |
+| `detail <0..64>` | `0` | Subdivision detail. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-sweepGeometry"></a>
+### `file:model.part.sweepGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `section { ... }` | `required` | Path2 cross-section without holes. |
+| `path { ... }` | `required` | 3D path block. |
+| `steps <1..65536>` | `64` | Path subdivisions. |
+| `scale <t> <value>` | `` | Repeat interpolation keys along the path. |
+| `twist <t> <radians>` | `` | Repeat twist keys along the path. |
+| `caps true \| false` | `true` | Close the ends. |
+| `curveSegments <1..4096>` | `12` | Section curve subdivisions. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-csgGeometry"></a>
+### `file:model.part.csgGeometry`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `op union \| subtract \| intersect` | `union` | Boolean operation. |
+| `a { ... }` | `required` | Placed geometry operand. |
+| `b { ... }` | `required` | Placed geometry operand. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part-mergeGeometries"></a>
+### `file:model.part.mergeGeometries`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `part { ... }` | `required` | Repeat placed geometry blocks; retain attributes and correct reflected winding. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-part"></a>
+### `file:model.part`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `material "<name>"` | `glTF default` | Previously declared material. |
+| `pivot "<name>"` | `model root` | Previously declared parent pivot. |
+| `at { ... }` | `` | Repeat placement blocks, exclusive with the part's own placement. |
+| `position <x> <y> <z>` | `0 0 0` | Translation in metres. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Nonzero quaternion, normalized on import. |
+| `scale <x> <y> <z>` | `1 1 1` | Nonzero scale; negative components bake reflected triangles. |
+| `mirror none \| x \| y \| z` | `none` | Reflect geometry, correcting winding and tangent handedness. |
+| `modelGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `bufferGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `boxGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `planeGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `sphereGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `cylinderGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `coneGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `capsuleGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `torusGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `ringGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `circleGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `tubeGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `shapeGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `extrudeGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `latheGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `polyhedronGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `icosahedronGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `dodecahedronGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `octahedronGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `tetrahedronGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `sweepGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `csgGeometry { ... }` | `` | Exactly one geometry block per part. |
+| `mergeGeometries { ... }` | `` | Exactly one geometry block per part. |
+
+<a id="file-model-pivot"></a>
+### `file:model.pivot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `parent "<name>"` | `model root` | Previously declared pivot. Scale must be positive; mirror is not accepted. |
+| `position <x> <y> <z>` | `0 0 0` | Translation in metres. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Nonzero quaternion, normalized on import. |
+| `scale <x> <y> <z>` | `1 1 1` | Nonzero scale; negative components bake reflected triangles. |
+
+<a id="file-model-mergeGeometries"></a>
+### `file:model.mergeGeometries`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `part { ... }` | `required` | Repeat placed geometry blocks; retain attributes and correct reflected winding. |
+| `physics true \| false` | `true` | Accepted runtime descriptor field; model import settings own cooked collision. |
+| `dynamic true \| false` | `false` | Accepted runtime descriptor field; a cooked geometry is static source data. |
+| `uvRepeat <u> <v>` | `1 1` | Multiply source UVs. |
+
+<a id="file-model-path"></a>
+### `file:model.path`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind catmullRom \| bezier \| linear` | `catmullRom` | 3D curve interpolation. |
+| `closed true \| false` | `false` | Close the path. |
+| `tension <number>` | `0.5` | Catmull-Rom tension. |
+| `point <x> <y> <z>` | `required` | Repeat control points in metres. |
+
+<a id="file-model-shape"></a>
+### `file:model.shape`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `moveTo <x> <y>` | `` | Move the contour cursor. |
+| `lineTo <x> <y>` | `` | Append a line. |
+| `quadraticCurveTo <cx> <cy> <x> <y>` | `` | Append a quadratic curve. |
+| `bezierCurveTo <c1x> <c1y> <c2x> <c2y> <x> <y>` | `` | Append a cubic curve. |
+| `splineThru <x y> ...` | `` | Append a spline through point pairs. |
+| `points <x y> ...` | `` | Set the contour from point pairs. |
+| `arc <x> <y> <radius> <start> <end> [clockwise]` | `` | Relative-centre circular arc; angles in radians, clockwise defaults false. |
+| `absarc <x> <y> <radius> <start> <end> [clockwise]` | `` | Absolute-centre circular arc. |
+| `ellipse <x> <y> <rx> <ry> <start> <end> [clockwise] [rotation]` | `` | Relative-centre ellipse; radians, false and zero for optional values. |
+| `absellipse <x> <y> <rx> <ry> <start> <end> [clockwise] [rotation]` | `` | Absolute-centre ellipse. |
+| `closePath ` | `` | Close the contour. |
+| `hole { ... }` | `` | Hole contour; only within a Shape, never nested or in a sweep section. |
+
+<a id="file-model-material"></a>
+### `file:model.material`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `color <r> <g> <b>` | `1 1 1` | Linear base colour. |
+| `opacity <0..1>` | `1` | Base alpha; below one enables blending unless alphaTest is present. |
+| `metalness <0..1>` | `0` | Metallic factor. |
+| `roughness <0..1>` | `1` | Roughness factor. |
+| `emissive <r> <g> <b>` | `0 0 0` | Linear emitted colour. |
+| `emissiveIntensity <number >= 0>` | `1` | Multiply emissive, preserving values above one through the emissive-strength extension. |
+| `doubleSided true \| false` | `false` | Draw both faces. |
+| `alphaTest <0..1>` | `` | Alpha mask cutoff; takes precedence over opacity blending. |
+| `map "<image>"` | `` | Base colour image relative to the model, not an asset handle. |
+| `normalMap "<image>"` | `` | Normal image relative to the model. |
+| `normalScale <number>` | `1` | Scale normal-map strength. |
+| `metalnessMap "<image>"` | `` | Packed roughness (green) and metalness (blue). |
+| `aoMap "<image>"` | `` | Occlusion in red. |
+| `transmission <0..1>` | `0` | Specular transmission. |
+| `ior <1..3>` | `` | Explicit index of refraction. |
+| `thickness <metres >= 0>` | `0` | Volume thickness when transmission is nonzero. |
+| `clearcoat <0..1>` | `0` | Clearcoat weight. |
+| `clearcoatRoughness <0..1>` | `0` | Clearcoat roughness when clearcoat is nonzero. |
+| `translucency <0..1>` | `0` | Diffuse transmission; foliage draws both faces. |
+| `domeNormals <0..1>` | `0` | Foliage normals' canopy-dome blend. |
+| `season <0..1>` | `0` | Evergreen at zero, deciduous at one. |
+| `autumnColor <r> <g> <b>` | `0.42 0.12 0.015` | Nonnegative linear seasonal colour. |
+| `autumnColor2 <r> <g> <b>` | `0.25 0.025 0.015` | Second seasonal colour. |
+| `seasonShift <days>` | `0` | Shift the species' seasonal cycle within LeafSeason.MAX_SHIFT. |
+| `grime <0..1>` | `0` | Ground grime weight. |
+| `grimeColor <r> <g> <b>` | `0 0 0` | Nonnegative linear grime colour. |
+| `grimeHeight <metres >= 0>` | `0` | Ground grime extent. |
+| `stains <0..1>` | `0` | Stain variation weight. |
+| `stochastic <0..1>` | `0` | Stochastic texture sampling weight. |
+
+<a id="file-model-placement"></a>
+### `file:model.placement`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `0 0 0` | Translation in metres. |
+| `quaternion <x> <y> <z> <w>` | `0 0 0 1` | Nonzero quaternion, normalized on import. |
+| `scale <x> <y> <z>` | `1 1 1` | Nonzero scale; negative components bake reflected triangles. |
+| `mirror none \| x \| y \| z` | `none` | Reflect geometry, correcting winding and tangent handedness. |
+
+<a id="file-model-plant"></a>
+### `file:model.plant`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind <kind>` | `` | Optional existing plant defaults; explicit numbers override them. No implicit species selection. |
+| `seed <u32>` | `Plant default or kind` | Deterministic generator seed. |
+| `growth deciduous \| evergreen` | `Plant default or kind` | Branch growth mechanism. |
+| `levels <0..3>` | `Plant default or kind` | Branch levels after the trunk. |
+| `force <x> <y> <z> <strength>` | `Plant default or kind` | Tropism direction and strength. |
+| `trunk { ... }` | `Plant default or kind` | Trunk level parameters. |
+| `branch1 { ... }` | `Plant default or kind` | First branch level. |
+| `branch2 { ... }` | `Plant default or kind` | Second branch level. |
+| `branch3 { ... }` | `Plant default or kind` | Third branch level. |
+| `leaves { ... }` | `none without kind` | Enable leaves or override kind leaves. |
+| `flowers { ... }` | `none without kind` | Enable flowers or override kind flowers. |
+| `material "<name>"` | `generated bark material` | Previously declared wood material. |
+| `barkColor <r> <g> <b>` | `0.13 0.085 0.05 without kind` | Nonnegative linear bark colour. |
+
+<a id="file-model-plant-leaves"></a>
+### `file:model.plant.leaves`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `shape blade \| card \| cross` | `blade` | Leaf mesh construction. |
+| `count <0..2000>` | `inherited` | Leaves per last-level branch. |
+| `start <0..1>` | `inherited` | First leaf position. |
+| `end <0..1>` | `inherited` | Last leaf position, at least start. |
+| `angle <degrees>` | `inherited` | Leaf angle. |
+| `facing <0..1>` | `inherited` | Sky-facing blend. |
+| `rows <0..8>` | `inherited` | Leaf rows. |
+| `size <metres >= 0>` | `inherited` | Leaf length. |
+| `width <number >= 0>` | `inherited` | Width relative to length. |
+| `sizeVariance <0..1>` | `inherited` | Length variation. |
+| `color <r> <g> <b>` | `inherited` | Nonnegative linear colour. |
+| `color2 <r> <g> <b>` | `color when specified, else inherited` | Second linear colour. |
+| `colorVariation <0..1>` | `inherited` | Per-leaf variation. |
+| `material "<name>"` | `generated leaf material` | Previously declared material; owns translucency, domeNormals and season fields when named. |
+| `translucency <0..1>` | `0.5 without kind` | Diffuse transmission, exclusive with a named material. |
+| `domeNormals <0..1>` | `0.6 without kind` | Canopy normal blend, exclusive with a named material. |
+| `season <0..1>` | `0 without kind` | Seasonal blend, exclusive with a named material. |
+| `autumnColor <r> <g> <b>` | `inherited` | Seasonal colour, exclusive with a named material. |
+| `autumnColor2 <r> <g> <b>` | `inherited` | Second seasonal colour, exclusive with a named material. |
+| `seasonShift <days>` | `0 without kind` | Season shift, exclusive with a named material. |
+
+<a id="file-model-plant-flowers"></a>
+### `file:model.plant.flowers`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `share <0..1>` | `inherited` | Share of last-level ends with flowers. |
+| `count <0..200>` | `inherited` | Flowers per branch. |
+| `petals <1..32>` | `inherited` | Petal count. |
+| `size <metres >= 0>` | `inherited` | Petal length. |
+| `width <number >= 0>` | `inherited` | Relative petal width. |
+| `cup <degrees>` | `inherited` | Petal cup angle. |
+| `color <r> <g> <b>` | `inherited` | Nonnegative linear petal colour. |
+| `color2 <r> <g> <b>` | `color when specified, else inherited` | Second petal colour. |
+| `centerColor <r> <g> <b>` | `inherited` | Nonnegative linear flower centre colour. |
+
+<a id="file-model-plant-trunk"></a>
+### `file:model.plant.trunk`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `length <metres >= 0>` | `inherited` | Level length. |
+| `radius <number >= 0>` | `inherited` | Trunk metres, branch share of parent radius. |
+| `sections <1..64>` | `inherited` | Longitudinal rings. |
+| `segments <3..32>` | `inherited` | Ring sides. |
+| `taper <0..1>` | `inherited` | Share of radius lost by the end. |
+| `gnarliness <radians>` | `inherited` | Section wander. |
+| `twist <radians>` | `inherited` | Turn around the axis per section. |
+| `children <0..400>` | `inherited` | Child branches. |
+
+<a id="file-model-plant-branch1"></a>
+### `file:model.plant.branch1`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `length <metres >= 0>` | `inherited` | Level length. |
+| `radius <number >= 0>` | `inherited` | Trunk metres, branch share of parent radius. |
+| `sections <1..64>` | `inherited` | Longitudinal rings. |
+| `segments <3..32>` | `inherited` | Ring sides. |
+| `taper <0..1>` | `inherited` | Share of radius lost by the end. |
+| `gnarliness <radians>` | `inherited` | Section wander. |
+| `twist <radians>` | `inherited` | Turn around the axis per section. |
+| `children <0..400>` | `inherited` | Child branches. |
+| `angle <degrees>` | `inherited` | Branch angle from parent; not a trunk field. |
+| `start <0..1>` | `inherited` | First child position; not a trunk field. |
+
+<a id="file-model-plant-branch2"></a>
+### `file:model.plant.branch2`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `length <metres >= 0>` | `inherited` | Level length. |
+| `radius <number >= 0>` | `inherited` | Trunk metres, branch share of parent radius. |
+| `sections <1..64>` | `inherited` | Longitudinal rings. |
+| `segments <3..32>` | `inherited` | Ring sides. |
+| `taper <0..1>` | `inherited` | Share of radius lost by the end. |
+| `gnarliness <radians>` | `inherited` | Section wander. |
+| `twist <radians>` | `inherited` | Turn around the axis per section. |
+| `children <0..400>` | `inherited` | Child branches. |
+| `angle <degrees>` | `inherited` | Branch angle from parent; not a trunk field. |
+| `start <0..1>` | `inherited` | First child position; not a trunk field. |
+
+<a id="file-model-plant-branch3"></a>
+### `file:model.plant.branch3`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `length <metres >= 0>` | `inherited` | Level length. |
+| `radius <number >= 0>` | `inherited` | Trunk metres, branch share of parent radius. |
+| `sections <1..64>` | `inherited` | Longitudinal rings. |
+| `segments <3..32>` | `inherited` | Ring sides. |
+| `taper <0..1>` | `inherited` | Share of radius lost by the end. |
+| `gnarliness <radians>` | `inherited` | Section wander. |
+| `twist <radians>` | `inherited` | Turn around the axis per section. |
+| `children <0..400>` | `inherited` | Child branches. |
+| `angle <degrees>` | `inherited` | Branch angle from parent; not a trunk field. |
+| `start <0..1>` | `inherited` | First child position; not a trunk field. |
+
+<a id="file-model-fracture"></a>
+### `file:model.fracture`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `style voronoi \| concrete \| brick \| wood \| glass` | `voronoi` | Fracture mechanism, not a gameplay rule. |
+| `chunks <2..256>` | `16` | Support chunk count. |
+| `seed <u32>` | `1` | Deterministic cut pattern. |
+| `children <0..32>` | `0` | Child pieces per support chunk. |
+| `pattern auto \| volume \| slab` | `auto` | 3D cells or shards through the thinnest axis; auto detects thin input. |
+| `brick <length> <height>` | `0.25 0.1` | Brick dimensions, each at least 0.01 metres. |
+| `grain x \| y \| z` | `longest axis` | Wood grain axis. |
+| `rings <1..8>` | `2` | Glass concentric cracks. |
+| `impact <x> <y> <z> <radius>` | `` | Gather the pattern around an authored model-space impact; radius positive. |
+| `anchor bottom [ends] \| ends \| none \| plane <nx> <ny> <nz> <distance>` | `bottom` | Support surfaces; plane normal must be nonzero. |
+| `interiorScale <number > 0>` | `1` | Cut-face UV repeats per metre. |
+| `interior { ... }` | `darkened main material` | Cut-face material using model.material fields. |
+| `mortar { ... }` | `` | Debris material using model.material fields. |
+
+Attribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.
 
 <a id="file-model-part-bufferGeometry"></a>
 ### `file:model.part.bufferGeometry`
-
-Attribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.
 
 | Field | Default | Meaning |
 |---|---|---|
@@ -132,6 +838,16 @@ Attribute arrays are validated by the same bufferGeometry implementation as runt
 | `uvRepeat <u> <v>` | `1 1` | Scale UVs after reading the source. |
 | `physics true \| false` | `true` | Runtime descriptor field; model collision is owned by model import settings. |
 | `dynamic true \| false` | `false` | Runtime descriptor field; a cooked model is static source data. |
+
+<a id="file-model-part-modelGeometry"></a>
+### `file:model.part.modelGeometry`
+
+An imported model's rest geometry as an operand of mergeGeometries or CSG, or as a part by itself. The source uses its ordinary importer and generation path before this model.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<model asset>"` | `required` | Asset-root relative model, imported before this model. Cycles are refused. |
+| `node "<node name>"` | `all visible` | Select a mesh node by name, otherwise merge the visible default scene at rest. Node placements, UVs, colours and tangent frames are retained. The surrounding part owns the material; skins and animation are not copied into a static geometry operand. |
 
 <a id="file-model-part-bufferGeometry-generate"></a>
 ### `file:model.part.bufferGeometry.generate`
@@ -213,7 +929,7 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 | `trail <seconds> [<width>] [only]` | `` | A trail behind each particle: the path it took over the last <seconds>, a strip in its colour narrowing and fading to its tail, <width> a share of the particle's width (1 when left out); `only` draws the trails without the particles (a spark's streak). Billboards and mesh particles, not sprite mode. |
 | `inheritVelocity <fraction>` | `0` | The share of the emitter's own velocity, in world space, particles start with. |
 | `attractor <x> <y> <z> <strength> [<radius>]` | `` | A point in the emitter's space that pulls, or pushes when negative; up to 4. |
-| `field curl <strength> [<frequency> <scroll>] \| "<texture>" <strength> <size>` | `` | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid `og cook` bakes from an image N² pixels wide and N high (N to 16): pixel x + z·N holds cell (x, y, z), y from the bottom, rgb 0..1 as -1..1. |
+| `field curl <strength> [<frequency> <scroll>] \| "<texture-or-field.ogt>" <strength> <size>` | `` | Divergence-free curl noise (frequency 0.5, scroll 0.2), or a vector grid baked from an image N² wide and N high (rgb 0..1 as -1..1, y from bottom), or a lossless cubic 3-channel field asset (N 1..16). Explicit size maps one period of the source lattice to emitter-local units; field origin/spacing describe the source sampling domain, not particle placement. Vectors are not normalized. |
 | `fieldGrid <cells> <size> <strength> <vectors>` | `` | What `og cook` writes in place of a texture field: the baked grid, x fastest. Not written by hand. |
 
 <a id="file-post"></a>
@@ -251,6 +967,34 @@ An authored `rig2d` asset, cooked by `rig2d`. Input: `.ogt` under assets/.
 
 Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
 
+<a id="file-scatter"></a>
+### `file:scatter`
+
+An authored `scatter` asset, cooked by `scene`. Input: `.ogt` under assets/.
+
+Field coverage: complete parser line table. Output: a normal scene; load with og.load.scene or reference from a scene. Model placements reuse normal model instancing; prefab placements expand their authored entities. No distribution, density, model or gameplay rule is inferred. Paths are asset-root relative.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `model "<asset>"` | `` | Model to place at every transform; exclusive with prefab. |
+| `prefab "<asset>"` | `` | Prefab to instantiate at every transform; exclusive with model. |
+| `point <x> <y> <z>` | `` | Repeat for authored points, exclusive with generate. Positions use scene/terrain-local metres. |
+| `generate { ... }` | `` | Returns ScatterSource positions, optional quaternions and scales. May compose shared poissonDisk; no implicit distribution. |
+| `project "<terrain.ogt>"` | `` | Add the named terrain surface height to each point's y. Reject off-surface points and holes, not clamp or discard them. |
+| `align true \| false` | `false` | Rotate local up to the projected surface normal, before the authored quaternion; needs project. |
+
+<a id="file-scatter-generate"></a>
+### `file:scatter.generate`
+
+Returns ScatterSource: flat positions, optional xyzw quaternions and xyz scales with one per point; at most 1,000,000 points. Authored point lines and generation are exclusive. Project adds the authoritative terrain height to y and can align local up before authored rotation. Terrain and placements share local coordinates; off-terrain points and holes fail cook.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
+
 <a id="file-scene"></a>
 ### `file:scene`
 
@@ -275,7 +1019,55 @@ Returns SceneSource: {entities, resources?}. Each entity has name, optional mode
 
 An authored `sfx` asset, cooked by `sound`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: complete parser line tables. Output: ordinary cooked sound through the shared oscillator synthesizer; load with og.load.sound. Existing alternate spellings are listed, not new compatibility paths.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `preset "<name>"` | `` | Optional existing sound preset; custom layers need no preset. |
+| `seed <u32>` | `0` | Seeded variation. |
+| `pitch <number>` | `1` | Frequency multiplier. |
+| `length <number>` | `1` | Duration multiplier, clamped to 0.1..10. |
+| `volume <number >= 0>` | `1` | Master gain. |
+| `layer [wave] { ... }` | `` | Repeat oscillator layers; at least one layer or preset required. |
+| `synth [wave] { ... }` | `` | Accepted oscillator-layer spelling. |
+
+<a id="file-sfx-layer"></a>
+### `file:sfx.layer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `wave sine \| square \| saw \| triangle \| noise` | `square` | Oscillator waveform; overrides a waveform on the layer line. |
+| `freq <Hz > 0>` | `440` | Starting frequency. |
+| `freq_end <Hz > 0>` | `` | Optional ending frequency. |
+| `freqEnd <Hz > 0>` | `` | Accepted freq_end spelling. |
+| `slide <number>` | `0` | Pitch slide. |
+| `arp <number >= 0>` | `0` | Arpeggio interval. |
+| `arp_at <seconds >= 0>` | `0` | Arpeggio time. |
+| `arpAt <seconds >= 0>` | `0` | Accepted arp_at spelling. |
+| `vib_depth <number >= 0>` | `0` | Vibrato depth. |
+| `vibDepth <number >= 0>` | `0` | Accepted vib_depth spelling. |
+| `vib_rate <Hz >= 0>` | `0` | Vibrato rate. |
+| `vibRate <Hz >= 0>` | `0` | Accepted vib_rate spelling. |
+| `attack <seconds >= 0>` | `0.002` | Envelope attack. |
+| `sustain <seconds >= 0>` | `0.05` | Envelope sustain duration. |
+| `decay <seconds >= 0>` | `0.15` | Envelope decay. |
+| `sustain_level <0..1>` | `1` | Sustain level. |
+| `sustainLevel <0..1>` | `1` | Accepted sustain_level spelling. |
+| `release <seconds >= 0>` | `0` | Envelope release. |
+| `punch <number >= 0>` | `0` | Envelope punch. |
+| `duty <0.01..0.99>` | `0.5` | Square-wave duty cycle. |
+| `lowpass <Hz >= 0>` | `0` | Low-pass cutoff; zero disables. |
+| `lp_slide <number>` | `0` | Low-pass cutoff slide. |
+| `lpSlide <number>` | `0` | Accepted lp_slide spelling. |
+| `q <number >= 0>` | `0` | Filter resonance. |
+| `highpass <Hz >= 0>` | `0` | High-pass cutoff; zero disables. |
+| `fm_freq <Hz >= 0>` | `0` | FM modulation frequency. |
+| `fmFreq <Hz >= 0>` | `0` | Accepted fm_freq spelling. |
+| `fm_index <number>` | `0` | FM modulation index. |
+| `fmIndex <number>` | `0` | Accepted fm_index spelling. |
+| `drive <number >= 0>` | `0` | Soft-clip drive. |
+| `gain <number >= 0>` | `0.5` | Layer gain. |
+| `delay <seconds >= 0>` | `0` | Layer start delay. |
 
 <a id="file-shader"></a>
 ### `file:shader`
@@ -596,6 +1388,39 @@ project.ogt: project configuration, not an asset. See start and conventions.
 
 A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.
 
+
+<a id="file-import-animation"></a>
+### `file:import.animation`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `rate <1..120 Hz>` | `source key rate` | Resample every clip at this rate. |
+| `event "<clip>" "<marker>" <seconds>` | `` | Repeat explicit markers. |
+| `rig "<asset>"` | `detected` | Humanoid rig map under assets/. |
+| `library "<model>"` | `` | Repeat animation libraries to retarget to this skeleton; own clips win on name collisions. |
+| `mirror "<clip>" ["<new name>"]` | `` | Repeat mirrored clips; default name is <clip>.mirrored. |
+| `footIk true \| false` | `true` | Retarget planted feet against the ground. |
+| `compress true \| false` | `false` | Quantize and reduce keys instead of storing f32 samples. |
+| `tolerance <number > 0, <= 0.1>` | `0.0001` | Maximum compression error per channel lane in its units. |
+
+<a id="file-import-fracture"></a>
+### `file:import.fracture`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `style voronoi \| concrete \| brick \| wood \| glass` | `voronoi` | Fracture mechanism, not a gameplay rule. |
+| `chunks <2..256>` | `16` | Support chunk count. |
+| `seed <u32>` | `1` | Deterministic cut pattern. |
+| `children <0..32>` | `0` | Child pieces per support chunk. |
+| `pattern auto \| volume \| slab` | `auto` | 3D cells or shards through the thinnest axis; auto detects thin input. |
+| `brick <length> <height>` | `0.25 0.1` | Brick dimensions, each at least 0.01 metres. |
+| `grain x \| y \| z` | `longest axis` | Wood grain axis. |
+| `rings <1..8>` | `2` | Glass concentric cracks. |
+| `impact <x> <y> <z> <radius>` | `` | Gather the pattern around an authored model-space impact; radius positive. |
+| `anchor bottom [ends] \| ends \| none \| plane <nx> <ny> <nz> <distance>` | `bottom` | Support surfaces; plane normal must be nonzero. |
+| `interiorScale <number > 0>` | `1` | Cut-face UV repeats per metre. |
+| `interior { ... }` | `darkened main material` | Cut-face material using model.material fields. |
+| `mortar { ... }` | `` | Debris material using model.material fields. |
 <a id="file-model-program"></a>
 ### `file:model-program`
 
@@ -620,11 +1445,6 @@ extension.json of kind font, with TTF/OTF sources. See localization.
 ### `file:tsx`
 
 TSX is the UI source; TS/TSX bundling is not a cook generator. See ui-tsx.
-
-<a id="file-animgraph"></a>
-### `file:animgraph`
-
-Runtime anim.graph text only: not currently a registered cook type. See animation.
 
 <a id="file-probe-record"></a>
 ### `file:probe-record`

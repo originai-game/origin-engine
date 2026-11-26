@@ -3218,6 +3218,7 @@ dependencies = [
  "og-timeline",
  "opus-pure",
  "ruzstd",
+ "serde",
  "serde_json",
 ]
 

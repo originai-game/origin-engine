@@ -609,6 +609,8 @@ pub trait RenderApi: Wire {
 
 /// `load`: packages/knowledge/wiki/load.md.
 pub trait LoadApi: Wire {
+    /// `og.load.field`
+    fn og_load_field(&self, world: u32, path: String) -> Self::Bytes;
     /// `og.load.bundle`
     fn og_load_bundle(&self, world: u32, path: String) -> String;
     /// `og.load.bundleInfo`
@@ -669,6 +671,8 @@ pub trait LoadApi: Wire {
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.animation`
     fn og_load_animation(&self, world: u32, path: String) -> String;
+    /// `og.load.animgraph`
+    fn og_load_animgraph(&self, world: u32, path: String) -> String;
     /// `og.load.rig`
     fn og_load_rig(&self, world: u32, path: String) -> String;
     /// `og.load.flipbook`
@@ -1819,6 +1823,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_set_post_param",
     "og_render_post_errors",
     "og_render_baked_lighting",
+    "og_load_field",
     "og_load_bundle",
     "og_load_bundle_info",
     "og_load_progress",
@@ -1849,6 +1854,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_error",
     "og_load_gltf_info",
     "og_load_animation",
+    "og_load_animgraph",
     "og_load_rig",
     "og_load_flipbook",
     "og_load_tilemap",

@@ -1,0 +1,1 @@
+{"added":[{"member":"og.load.animgraph","summary":"Cook and load type animgraph files using the existing graph grammar, with bind lines for model clip references or sprite true for 2D targets. Cook checks graph structure and clip names, tracks animation dependencies and caches validated assets; loaded handles are reused."}]}
