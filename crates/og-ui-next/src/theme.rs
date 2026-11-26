@@ -230,10 +230,11 @@ impl Theme {
     /// piece's ground as drawn, by piece name (`button`, `button-hover`,
     /// `panel` …): the 10th and 90th percentile of its centre's opaque
     /// pixels, a gloss or a grain included, where the recipe's faces are
-    /// only the colours the face was painted from. Each art slot's ink is
-    /// moved until it holds 4.5:1 on its pieces as drawn, and every ink
-    /// role is solved again over those grounds. Returns what still misses
-    /// its ratio, for the cook to report.
+    /// only the colours the face was painted from. Each piece's ink
+    /// (`art-panel-fg`, for a game that draws the piece) is moved until it
+    /// holds 4.5:1 on the piece as drawn. The design's inks are not: no
+    /// built-in component stands on the art. Returns what still misses its
+    /// ratio, for the cook to report.
     pub fn register(&mut self, faces: &BTreeMap<String, Vec<String>>) -> Vec<String> {
         let mut missed = Vec::new();
         let Some(colors) = self
@@ -244,7 +245,6 @@ impl Theme {
         else {
             return missed;
         };
-        let mut grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
         for (_, image) in ART_SLOTS {
             let drawn: Vec<String> = faces
                 .iter()
@@ -277,48 +277,8 @@ impl Theme {
                     colors.insert(name, json!(fixed));
                 }
             }
-            let light =
-                drawn.iter().map(|f| luminance(f)).sum::<f32>() / drawn.len() as f32 >= 0.18;
-            grounds[usize::from(!light)].extend(drawn);
-        }
-        let mut solved = Map::new();
-        let seeds = seed_css(&self.pack_seeds());
-        solve_inks(&seeds, &grounds, &mut solved, false);
-        let mut more = Map::new();
-        solve_inks(&seeds, &grounds, &mut more, true);
-        set_more(&mut self.pack, more);
-        // The ink solve moved by the drawn grounds wins over the one by
-        // the painted faces: those grounds are what the text stands on.
-        let Some(colors) = self
-            .pack
-            .get_mut("theme")
-            .and_then(|t| t.get_mut("colors"))
-            .and_then(Value::as_object_mut)
-        else {
-            return missed;
-        };
-        for (role, pair) in solved {
-            colors.insert(role, pair);
-        }
-        // A fill the solve moved (`accent`) takes its own ink along.
-        let seeds = seed_css(&self.pack_seeds());
-        if let Some(colors) = self
-            .pack
-            .get_mut("theme")
-            .and_then(|t| t.get_mut("colors"))
-            .and_then(Value::as_object_mut)
-        {
-            solve_pairs(&seeds, colors);
         }
         missed
-    }
-
-    /// The pack's seeds alone, as [`seed_css`] reads them.
-    fn pack_seeds(&self) -> Map<String, Value> {
-        self.pack
-            .get("seeds")
-            .map(|s| Map::from_iter([("seeds".to_owned(), s.clone())]))
-            .unwrap_or_default()
     }
 
     /// The layer, with `images` (the drawn art's pack entries, by name)
@@ -336,6 +296,5 @@ impl Theme {
 mod color;
 mod compile;
 pub use color::{INKS, Lch, contrast, hex, lch, solve};
-use color::{luminance, seed_css, set_more, solve_inks, solve_pairs};
 use compile::ART_SLOTS;
 pub use compile::compile;

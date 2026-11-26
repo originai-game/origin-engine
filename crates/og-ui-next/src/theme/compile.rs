@@ -217,196 +217,22 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             colors.insert(name.clone(), json!(fg));
             (name, if light { "light" } else { "dark" })
         };
-        let (disabled, _) = ink("art-button-disabled-fg".into(), "disabled", 3.0);
-        let mut panel_look: Option<(String, &'static str)> = None;
-        let mut plate_look: Option<(String, &'static str)> = None;
-        for (slot, image) in ART_SLOTS {
-            let role = match image {
-                "button-primary" => "primary",
-                "button-danger" => "danger",
-                other => other,
-            };
-            let (fg, s) = ink(format!("art-{image}-fg"), role, 4.5);
-            if image == "panel" {
-                panel_look = Some((fg.clone(), s));
-            } else if image == "plate" {
-                plate_look = Some((fg.clone(), s));
-            }
-            let radius = match slot {
-                "Panel.frame" => " rounded-panel",
-                "Plate.frame" | "Slot.frame" => " rounded-card",
-                "Chip.frame" => " rounded-control",
-                "Field.frame" | "Field.area" => " rounded-field",
-                s if s.starts_with("Button") => " rounded-button",
-                _ => "",
-            };
-            let states = if slot.starts_with("Button") {
-                format!(
-                    " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled aria-pressed:inset-ring-regular aria-pressed:inset-ring-accent selected:inset-ring-regular selected:inset-ring-accent aria-busy:opacity-80 data-pressed:text-{fg} disabled:text-{disabled}"
-                )
-            } else if image == "field" {
-                // A text field's states, each its own art: read-only lies
-                // flat, an invalid value rings in danger, the focus in the
-                // accent (over invalid: the field being typed in), disabled
-                // over all, its ink the disabled faces'.
-                // Its box keeps the design's size and padding, which the
-                // art's edge sits in.
-                format!(
-                    " min-h-11 px-3 py-2 text-base placeholder:text-fg-subtle data-readonly:nine-field-readonly aria-invalid:nine-field-invalid focus:nine-field-focus disabled:nine-field-disabled disabled:opacity-50 disabled:text-{disabled}"
-                )
-            } else {
-                String::new()
-            };
-            variants.insert(
-                slot.into(),
-                json!(format!("scheme-{s} nine-{image}{radius}{states} bg-none bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
-            );
-        }
-        // Harmonize overlay & HUD container slots with the theme's panel/plate
-        // nine-slice art and solved ink so modals, sheets, menus, popovers,
-        // toasts, dropdowns and HUD plates share the theme's material.
-        if let Some((panel_fg, panel_s)) = &panel_look {
-            for (slot, layout) in [
-                (
-                    "Dialog.frame",
-                    "flex-col gap-3 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto p-6 compact:p-4 rounded-panel shadow-overlay",
-                ),
-                (
-                    "Sheet.frame",
-                    "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-[calc(env(hud-inset-bottom)+1.5rem)] rounded-t-sheet shadow-overlay transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
-                ),
-            ] {
-                variants.insert(
-                    slot.into(),
-                    json!(format!("{layout} scheme-{panel_s} nine-panel bg-none bg-transparent text-{panel_fg}")),
-                );
-            }
-        }
-        if let Some((plate_fg, plate_s)) = &plate_look {
-            for (slot, layout) in [
-                (
-                    "Popover.frame",
-                    "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
-                ),
-                (
-                    "Menu.frame",
-                    "flex-col min-w-52 max-w-80 p-1 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
-                ),
-                (
-                    "Toast.frame",
-                    "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card shadow-float pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
-                ),
-                (
-                    "Select.list",
-                    "flex-col p-1 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
-                ),
-                ("Combo.plate", "gap-y-1 p-2 rounded-card shadow-plate"),
-                ("Feed.plate", "gap-y-1 p-2 rounded-card shadow-plate"),
-            ] {
-                variants.insert(
-                    slot.into(),
-                    json!(format!("{layout} scheme-{plate_s} nine-plate bg-none bg-transparent text-{plate_fg}")),
-                );
-            }
-        }
-        // The combat HUD's ability slot in the theme's own slot art (combat
-        // HUD design §6): a round shape rings an ultimate with a disc, any
-        // other with its slot's rim, both filled in the accent.
-        let round = matches!(
-            recipe.get("shape").and_then(Value::as_str),
-            Some("round" | "soft" | "brush")
-        );
-        let ring = if round { "nine-disc" } else { "nine-slot-rim" };
-        for (slot, dress) in [
-            (
-                "Ability.frame",
-                if round {
-                    "nine-slot bg-transparent rounded-card transition duration-control"
-                } else {
-                    "nine-slot bg-transparent rounded-none transition duration-control"
-                }
-                .to_owned(),
-            ),
-            (
-                "Ability.frame.ultimate",
-                if round {
-                    "nine-none bg-transparent rounded-full"
-                } else {
-                    "nine-none bg-transparent"
-                }
-                .to_owned(),
-            ),
-            (
-                "Ability.frame.ready",
-                "shadow-glow animate-breathe".to_owned(),
-            ),
-            (
-                "Ability.face",
-                "inset-1 rounded-field overflow-hidden bg-transparent".to_owned(),
-            ),
-            (
-                "Ability.face.ultimate",
-                if round {
-                    "inset-1/8 rounded-full nine-slot".to_owned()
-                } else {
-                    "inset-1.5 rounded-none nine-slot".to_owned()
-                },
-            ),
-            (
-                "Ability.ring",
-                format!(
-                    "{ring} bg-track {}",
-                    if round {
-                        "rounded-full"
-                    } else {
-                        "rounded-none"
-                    }
-                ),
-            ),
-            ("Ability.ring.fill", format!("{ring} bg-hud-accent")),
-        ] {
-            variants.insert(slot.into(), json!(dress));
-        }
-        // A button variant without art of its own keeps its own plate over
-        // the art the theme gives `Button.plate`: no art (a second edge on
-        // it), the page's scheme and the variant's own fill and ink.
-        for (slot, _, dress) in crate::pack::design::SLOTS {
-            let Some(_) = slot.strip_prefix("Button.plate.") else {
-                continue;
-            };
-            if ART_SLOTS.iter().any(|(s, _)| s == slot) {
-                continue;
-            }
-            variants.insert(
-                (*slot).into(),
-                json!(format!(
-                    "scheme-normal nine-none hover:nine-none active:nine-none disabled:nine-none {dress}"
-                )),
-            );
-        }
-        // Ground registration (plan §4): each art slot's faces are grounds
-        // of the scheme its text reads in, with the design's own surfaces;
-        // every ink role is moved in OKLCH lightness until it holds its
-        // ratio on all of that scheme's grounds.
-        let mut grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
+        // Each piece's ink, for a game that draws the piece itself
+        // (`nine-panel text-art-panel-fg`). The built-in components never
+        // draw the material's art: their grounds and inks are the theme's
+        // tokens, so the page's scheme decides them.
+        ink("art-button-disabled-fg".into(), "disabled", 3.0);
         for (_, image) in ART_SLOTS {
             let role = match image {
                 "button-primary" => "primary",
                 "button-danger" => "danger",
                 other => other,
             };
-            let faces: Vec<String> = palette
-                .get(role)
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|f| f.as_str().map(str::to_owned))
-                .collect();
-            let light = faces.iter().map(|f| luminance(f)).sum::<f32>()
-                / (faces.len().max(1) as f32)
-                >= 0.18;
-            grounds[usize::from(!light)].extend(faces);
+            ink(format!("art-{image}-fg"), role, 4.5);
         }
+        // The design's inks are solved on its own surfaces only: no
+        // component stands on the material's art.
+        let grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
         solve_inks(&seed_css(&pack), &grounds, &mut colors, false);
         let mut more = Map::new();
         solve_inks(&seed_css(&pack), &grounds, &mut more, true);

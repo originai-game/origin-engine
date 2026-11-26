@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI themes (theme.json, the engine's @themes) and the built-in components",
+      "change": "A theme's material art no longer dresses the built-in components. Buttons, panels, plates, chips, slots, fields, dialogs, sheets, popovers, menus, toasts, select lists, combo and feed plates and ability slots draw only with the theme's tokens, so the page's scheme decides how light or dark they are: a light-material theme (minimal, ink, cartoon, storybook) under scheme-dark draws dark components instead of light plates. The theme still draws its nine-slice pieces and their inks (art-<piece>-fg) for a game's own content, and the design's inks are solved on the design's surfaces only.",
+      "fix": "Where a game wants a piece of the theme's art on its own content, name it: nine-panel text-art-panel-fg, nine-button hover:nine-button-hover active:nine-button-pressed text-art-button-fg. A style pack.json that relied on the theme dressing a slot sets that slot's variant itself. Cook again."
+    }
+  ]
+}

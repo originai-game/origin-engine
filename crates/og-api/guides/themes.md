@@ -9,10 +9,15 @@ review are in the screens guide.
 
 A theme is a recipe, `theme.json`: one value for each dimension of a look
 and the colours it starts from. The cook compiles it into the style pack
-the built-in components read, and draws the theme's nine-slice art
-(buttons with their hover, pressed and disabled states, panels, plates,
-chips, slots, fields) from its material, shape and ornament. Nothing is
-drawn by hand and nothing is copied into the game.
+the built-in components read: its colours, radius, type, motion, sound,
+icons and density. The built-in components draw only with the theme's
+tokens, so the page's scheme (`scheme-dark`, `scheme-light`) decides how
+light or dark every one of them is. The cook also draws the theme's
+nine-slice art (buttons with their hover, pressed and disabled states,
+panels, plates, chips, slots, fields) from its material, shape and
+ornament, as pieces a game may put on its own content (§4); no built-in
+component draws them. Nothing is drawn by hand and nothing is copied into
+the game.
 
 | Key | What it picks | Values |
 | --- | --- | --- |
@@ -71,7 +76,12 @@ an object merges key by key, anything else is replaced. An unknown key, a
 dimension value with no file, or an `extends` loop fails the cook and
 names the file.
 
-## 4. Hand-drawn art
+## 4. The theme's art
+
+A game puts a piece on its own content by name, with the piece's ink:
+`nine-panel text-art-panel-fg`, `nine-button hover:nine-button-hover
+active:nine-button-pressed text-art-button-fg`. The piece is drawn at one
+lightness, its material's, in either scheme.
 
 `pack` is a pack.json written as one, laid over everything the recipe
 made. A hand-drawn or generated piece replaces the drawn one of the same
@@ -90,9 +100,9 @@ centre. A piece's centre is the ground the text reads on (§5).
 
 ## 5. What the cook guarantees
 
-- Every ink role, and each art slot's own ink, holds 4.5:1 (3:1 for a
-  large figure's ink such as `gold-hi`) on every ground of its scheme:
-  the design's surfaces and each piece of art as drawn, its centre's
+- Every ink role holds 4.5:1 (3:1 for a large figure's ink such as
+  `gold-hi`) on every surface of its scheme. Each piece's own ink
+  (`art-panel-fg`) holds 4.5:1 on the piece as drawn, its centre's
   darkest and lightest tenths, so a gloss, a grain or a header band
   counts. Only the inks' lightness moves; hue and chroma stay the
   theme's.

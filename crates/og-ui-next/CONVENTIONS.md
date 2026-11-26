@@ -841,19 +841,18 @@ is in those files; `og_ui_next::theme` only merges and maps.
   the motion's slots; the sound's `sounds`; the icons' `iconSet` and
   `icon-*` colours (a bare name is a palette or colour role). The
   material's faces become the art palette (each at the material's OKLCH
-  lightness and chroma, in the neutral's or accent's hue) and the art
-  slots (`Button.plate[.primary]`, `Panel.frame`, `Plate.frame`,
-  `Chip.frame`, `Slot.frame`, `Field.frame`) draw that art with their fill
-  cleared. The art spec goes to og-cook's generator (`cook/ui_art.rs`).
-- Each art slot names its own ink (`art-<image>-fg`, the disabled
-  button's `art-button-disabled-fg` at 3:1), solved on the faces it
-  draws, and reads in its faces' scheme (`scheme-light` on a light face).
-  When no ink holds 4.5:1 on a face pair, the faces move away from it in
-  OKLCH lightness until one does. Every ink role (`theme::INKS`) is then
-  solved on the grounds of its scheme, the art faces registered with the
-  design's own surfaces, moving lightness only; a role the solve does not
-  move is not written.
-- A child inside an art slot reads in the slot's ink. One that sets its
+  lightness and chroma, in the neutral's or accent's hue). The art spec
+  goes to og-cook's generator (`cook/ui_art.rs`). No slot draws the art:
+  the built-in components keep the default pack's token slots, so the
+  page's scheme decides them; the pieces are for a game's own content.
+- Each piece names its own ink (`art-<image>-fg`, the disabled
+  button's `art-button-disabled-fg` at 3:1), solved on its faces and
+  again on the piece as drawn. When no ink holds 4.5:1 on a face pair,
+  the faces move away from it in OKLCH lightness until one does. Every
+  ink role (`theme::INKS`) is solved on the design's own surfaces of its
+  scheme, moving lightness only; a role the solve does not move is not
+  written.
+- A child inside a piece the game draws reads in the piece's ink. One that sets its
   own (`text-danger`, a state's `data-on:text-gold-fg`) is held to its
   ratio on that art by `og check` (OG9107); a state that paints its own
   fill sets its own shape with it (`data-on:nine-chip-cut`, or
