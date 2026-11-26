@@ -1,10 +1,8 @@
 //! The content identity is shared by serde, schema validation and author types.
+use super::temp;
 use og_cook::cook::source_schemas::{self, ContentRef};
 use og_core::reflect::source::{InputSchema, typescript};
 use serde_json::json;
-
-#[path = "../../../tests/temp.rs"]
-mod temp;
 
 #[test]
 fn content_reference_contract_is_not_a_path_string_or_runtime_handle() {

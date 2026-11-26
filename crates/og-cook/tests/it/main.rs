@@ -3,6 +3,8 @@
 use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;
+#[path = "../../../../tests/temp.rs"]
+mod temp;
 
 #[path = "../scene_string.rs"]
 mod scene_string;
@@ -12,3 +14,5 @@ mod shader;
 mod source_schemas;
 #[path = "../template.rs"]
 mod template;
+#[path = "../world_source_schemas.rs"]
+mod world_source_schemas;
