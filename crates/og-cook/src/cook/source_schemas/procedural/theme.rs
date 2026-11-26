@@ -7,7 +7,7 @@ use serde::Deserialize;
 /// A recipe selects dimensions and overlays a complete structured pack patch.
 /// Dimension names are data read by the domain, not a schema-maintained list.
 #[derive(Deserialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "pack"))]
 #[serde(deny_unknown_fields)]
 pub struct ThemeInput {
     pub about: Option<String>,
@@ -40,7 +40,7 @@ impl ThemeInput {
 #[serde(untagged)]
 pub enum ThemeBase {
     Builtin(String),
-    Asset(#[schemars(extend("x-og-ref-kinds" = ["theme"]))] ContentRef),
+    Asset(#[schemars(extend("x-og-ref-factories" = ["theme"]))] ContentRef),
 }
 input! {
     ThemeColor {

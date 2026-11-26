@@ -227,7 +227,7 @@ pub const LINES: &[crate::grammar::Line] = &[
 /// Offline texture transport input; all appearance values are explicit.
 /// Atlas dimensions, total work and nonzero light direction are domain checks.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "texture"))]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[schemars(extend("enum" = ["smoke", "fire", "explosion", "noise", "worley", "curl"]))]

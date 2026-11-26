@@ -4,7 +4,7 @@ use super::*;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "flipbook"))]
 #[serde(deny_unknown_fields)]
 pub struct Vfx2d {
     pub recipe: Recipe,

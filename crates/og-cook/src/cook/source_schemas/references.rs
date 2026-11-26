@@ -6,11 +6,13 @@ use std::collections::{BTreeMap, BTreeSet};
 /// One evaluated content edge. Paths are JSON Pointers relative to the input.
 /// Every applicable `x-og-ref-kinds` constrains the target; `None` allows any
 /// kind, while an empty set means the schema's constraints conflict.
+/// Factory constraints select primary source declarations, never subresources.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Reference {
     pub path: String,
     pub id: String,
     pub kinds: Option<BTreeSet<String>>,
+    pub factories: Option<BTreeSet<String>>,
 }
 
 /// Compile once per bound input schema and reuse across content entries.
@@ -28,6 +30,7 @@ struct Node {
     reference: bool,
     reachable: bool,
     kinds: Option<BTreeSet<String>>,
+    factories: Option<BTreeSet<String>>,
     same: Vec<usize>,
     alternatives: Vec<usize>,
     properties: BTreeMap<String, usize>,
@@ -98,17 +101,22 @@ impl<'a> ReferenceSchema<'a> {
         // Constraints apply to references inside that evaluated value, including
         // constraints in another applicable allOf arm at the same position.
         for reference in found.values_mut() {
-            let mut scope = reference.path.as_str();
-            loop {
-                if let Some(kinds) = constraints.get(scope) {
-                    match &mut reference.kinds {
-                        Some(current) => current.retain(|k| kinds.contains(k)),
-                        current @ None => *current = Some(kinds.clone()),
+            for (key, target) in [
+                ("x-og-ref-kinds", &mut reference.kinds),
+                ("x-og-ref-factories", &mut reference.factories),
+            ] {
+                let mut scope = reference.path.as_str();
+                loop {
+                    if let Some(values) = constraints.get(&(scope.to_string(), key)) {
+                        match &mut *target {
+                            Some(current) => current.retain(|k| values.contains(k)),
+                            current @ None => *current = Some(values.clone()),
+                        }
                     }
-                }
-                match scope.rsplit_once('/') {
-                    Some((parent, _)) => scope = parent,
-                    None => break,
+                    match scope.rsplit_once('/') {
+                        Some((parent, _)) => scope = parent,
+                        None => break,
+                    }
                 }
             }
         }
@@ -150,25 +158,14 @@ impl<'a> ReferenceSchema<'a> {
             }
         }
         let reference = schema.get("x-og-content-ref") == Some(&Value::Bool(true));
-        let kinds = schema
-            .get("x-og-ref-kinds")
-            .map(|v| {
-                v.as_array()
-                    .ok_or_else(|| format!("{pointer}: x-og-ref-kinds must be an array"))?
-                    .iter()
-                    .map(|v| {
-                        v.as_str()
-                            .map(str::to_owned)
-                            .ok_or_else(|| format!("{pointer}: reference kind must be a string"))
-                    })
-                    .collect::<Result<BTreeSet<_>, String>>()
-            })
-            .transpose()?;
+        let kinds = constraint(schema, pointer, "x-og-ref-kinds")?;
+        let factories = constraint(schema, pointer, "x-og-ref-factories")?;
         let mut node = Node {
             pointer: pointer.into(),
             reference,
-            reachable: reference || kinds.is_some(),
+            reachable: reference || kinds.is_some() || factories.is_some(),
             kinds,
+            factories,
             ..Node::default()
         };
         if let Some(target) = schema.get("$ref").and_then(Value::as_str) {
@@ -224,7 +221,7 @@ impl<'a> ReferenceSchema<'a> {
         path: &str,
         active: &mut Vec<(usize, *const Value)>,
         found: &mut BTreeMap<String, Reference>,
-        constraints: &mut BTreeMap<String, BTreeSet<String>>,
+        constraints: &mut BTreeMap<(String, &'static str), BTreeSet<String>>,
     ) -> Result<(), String> {
         let node = &self.nodes[i];
         let visit = (i, std::ptr::from_ref(value));
@@ -232,11 +229,16 @@ impl<'a> ReferenceSchema<'a> {
             return Ok(());
         }
         active.push(visit);
-        if let Some(kinds) = &node.kinds {
-            constraints
-                .entry(path.into())
-                .and_modify(|current| current.retain(|k| kinds.contains(k)))
-                .or_insert_with(|| kinds.clone());
+        for (key, values) in [
+            ("x-og-ref-kinds", &node.kinds),
+            ("x-og-ref-factories", &node.factories),
+        ] {
+            if let Some(values) = values {
+                constraints
+                    .entry((path.into(), key))
+                    .and_modify(|current| current.retain(|k| values.contains(k)))
+                    .or_insert_with(|| values.clone());
+            }
         }
         if node.reference {
             let id = value["$ogRef"]
@@ -246,6 +248,7 @@ impl<'a> ReferenceSchema<'a> {
                 path: path.into(),
                 id: id.into(),
                 kinds: None,
+                factories: None,
             });
         }
         for &child in &node.same {
@@ -334,4 +337,25 @@ impl<'a> ReferenceSchema<'a> {
 
 fn escape(key: &str) -> String {
     key.replace('~', "~0").replace('/', "~1")
+}
+
+fn constraint(
+    schema: &Value,
+    pointer: &str,
+    key: &str,
+) -> Result<Option<BTreeSet<String>>, String> {
+    schema
+        .get(key)
+        .map(|v| {
+            v.as_array()
+                .ok_or_else(|| format!("{pointer}: {key} must be an array"))?
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .map(str::to_owned)
+                        .ok_or_else(|| format!("{pointer}: {key} values must be strings"))
+                })
+                .collect()
+        })
+        .transpose()
 }

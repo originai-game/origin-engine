@@ -8,8 +8,8 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 macro_rules! input {
     ($(#[$doc:meta])* $name:ident { $($(#[$attr:meta])* $field:ident: $ty:ty),* $(,)? }) => {
-        $(#[$doc])*
         #[derive(Deserialize, JsonSchema)]
+        $(#[$doc])*
         #[schemars(crate = "og_core::reflect::source::schemars")]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name { $($(#[$attr])* pub $field: $ty,)* }
@@ -29,6 +29,7 @@ pub mod profiles;
 input!(
 /// Operations use Z up and the declared model unit (mm by default); cooking
 /// converts the result to metres/Y up. Angles are radians, times seconds.
+#[schemars(extend("x-og-output-kind" = "model"))]
 ModelProgramInput {
     /// Omitted: the shared kernel's model name.
     name: Option<String>,

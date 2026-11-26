@@ -19,6 +19,8 @@ pub mod world;
 /// another entry. The project graph validates names, existence, subresources,
 /// module access and target kinds. A field declares its allowed kinds with
 /// `x-og-ref-kinds` schema metadata, not a second kind inside this token.
+/// `x-og-ref-factories` instead requires an original declaration (no suffix),
+/// for source consumers such as parameterized model programs or theme recipes.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-content-ref" = true))]
 #[serde(deny_unknown_fields)]
@@ -33,6 +35,23 @@ pub struct ContentRef {
 pub struct Kind {
     pub name: &'static str,
     pub schema: fn() -> &'static dyn AuthorSchema,
+}
+
+impl Kind {
+    /// The primary reference kind, separate from the source factory. The
+    /// domain's schema declares a different kind where its recipe produces
+    /// another type. This does not promise a runtime blob for source-only data.
+    /// Import discriminants and contextual records are handled by discovery.
+    pub fn output_kind(&self) -> &'static str {
+        (self.schema)()
+            .document()
+            .get("x-og-output-kind")
+            .map_or(self.name, |kind| {
+                kind.as_str()
+                    .filter(|kind| !kind.is_empty())
+                    .expect("domain output kind is a nonempty string")
+            })
+    }
 }
 
 fn registry() -> &'static BTreeMap<&'static str, &'static Kind> {

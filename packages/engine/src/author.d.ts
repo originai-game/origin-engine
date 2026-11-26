@@ -10,7 +10,10 @@ export declare function defineModule(value: ModuleInput): ModuleInput;
 export interface ContextualFileInputs {}
 
 /** Project-generated content entry identities, discovered without evaluation.
- * Values contain the root-relative source file, factory and primary kind.
+ * Values contain the root-relative source file, factory and primary output kind.
+ * Factory names describe authoring, not output types: model-program produces
+ * model, effect-texture produces texture, sfx produces sound, vfx2d produces
+ * flipbook, theme produces pack and font-extension produces font-pack.
  * Derived subresources and checked reference edges belong to the cook graph. */
 export interface ContentIndex {}
 

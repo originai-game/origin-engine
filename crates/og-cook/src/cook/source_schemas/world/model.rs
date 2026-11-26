@@ -46,7 +46,7 @@ input!(GeometryModel {
 });
 
 input!(ProgramModel {
-    #[schemars(extend("x-og-ref-kinds" = ["model-program"]))]
+    #[schemars(extend("x-og-ref-factories" = ["model-program"]))]
     program: ContentRef,
     #[serde(default)]
     params: BTreeMap<String, f64>,

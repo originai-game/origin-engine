@@ -57,7 +57,9 @@ readonly "off"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonl
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -178,7 +180,9 @@ readonly "value": (number);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -303,7 +307,9 @@ readonly "operand": (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -425,7 +431,9 @@ readonly "text": (Input_dialogueDefinitions["Text"]);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -645,7 +653,9 @@ readonly "radius": (number);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -744,7 +754,9 @@ readonly "Channel": ("rgba" | "red" | "green" | "blue" | "alpha") & (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -904,7 +916,9 @@ readonly "name": (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -940,7 +954,9 @@ export interface Input_font_extensionDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -971,7 +987,9 @@ readonly "value": (Input_grammarDefinitions["Number"]);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -1187,7 +1205,9 @@ readonly "Conform": ("off" | "character" | "effect") & (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -1343,7 +1363,9 @@ readonly "probes"?: (ReadonlyArray<(ReadonlyArray<(ReadonlyArray<(number)> & { r
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -1380,7 +1402,9 @@ readonly "Antialias": ("tier" | "off" | "msaa4" | "taa") & (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -2227,7 +2251,9 @@ readonly "Conform": ("off" | "character" | "effect") & (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -3698,7 +3724,9 @@ export interface Input_motion_actionDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -3763,7 +3791,9 @@ readonly "min"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -3861,7 +3891,9 @@ readonly "Adaptive9": (((Input_packDefinitions["Schemes9"])) | ((Readonly<Record
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4129,7 +4161,9 @@ readonly "ColorCurve": (ReadonlyArray<(readonly [(number), (ReadonlyArray<(numbe
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4270,7 +4304,9 @@ export interface Input_questDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4502,7 +4538,9 @@ readonly "slots"?: (ReadonlyArray<(Input_rig2dDefinitions["SlotKeys"])> | (numbe
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4665,7 +4703,9 @@ export interface Input_scatterDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4796,7 +4836,9 @@ export interface Input_stringsDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -4923,7 +4965,9 @@ readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (nul
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -5489,7 +5533,9 @@ readonly "Adaptive9": (((Input_themeDefinitions["Schemes9"])) | ((Readonly<Recor
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -5730,7 +5776,9 @@ export interface Input_tilemapDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -5796,7 +5844,9 @@ readonly "y": (number);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -5867,7 +5917,9 @@ readonly "CaptionPosition": ("top" | "bottom") & (string);
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
@@ -6665,7 +6717,9 @@ readonly "Blend": ("alpha" | "additive" | "multiply" | "subtractive") & (string)
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
-`x-og-ref-kinds` schema metadata, not a second kind inside this token. */
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });

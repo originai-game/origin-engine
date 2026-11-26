@@ -69,6 +69,13 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
             let derived = if entry.id == "base/model" {
                 kind.map(|kind| BTreeMap::from([("tex0".into(), kind.into())]))
                     .unwrap_or_default()
+            } else if entry.id == "base/program" {
+                BTreeMap::from([("lod".into(), "model".into())])
+            } else if entry.id == "base/texture" {
+                BTreeMap::from([
+                    ("emission".into(), "texture".into()),
+                    ("array".into(), "texture-array".into()),
+                ])
             } else {
                 BTreeMap::new()
             };
@@ -209,12 +216,14 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
             .message
             .contains("base/model#tex0")
     );
-    assert!(
-        build(&project, &index, &empty, Some("model"))
-            .unwrap_err()
-            .message
-            .contains("has kind model")
-    );
+    for wrong in ["model", "effect-texture"] {
+        assert!(
+            build(&project, &index, &empty, Some(wrong))
+                .unwrap_err()
+                .message
+                .contains(&format!("has kind {wrong}"))
+        );
+    }
     let producer = evaluator
         .evaluate(&dir, &project, &index.entries["base/model"], &empty, None)
         .unwrap();
@@ -323,4 +332,112 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
         cyclic.dependents["north/b"],
         BTreeSet::from(["north/a".into()])
     );
+
+    // Factories describe how to author a declaration; kind describes what a
+    // consumer gets. Source-only uses must still reject other same-kind entries.
+    write(
+        "content/program.ts",
+        "import {file} from '@origingame/engine/author'; export default file['model-program']({ops:[]});",
+    );
+    let variant = "import {file,ref} from '@origingame/engine/author'; export default file.model({kind:'program',desc:{program:ref('base/program')}});";
+    write("content/variant.ts", variant);
+    let texture = serde_json::json!({
+        "mode":"noise","size":16,"frames":3,"columns":2,"grid":8,"steps":2,"dt":0.025,
+        "pressure":7,"seed":17,"frequency":2.5,"range":1.5,"turbulence":0.2,
+        "source":[0.1,0.35,0.8],"detail":0.25,"vorticity":0.4,"radius":0.15,
+        "inject":0.2,"density":0.7,"heat":0.8,"buoyancy":-0.3,"expansion":0.4,
+        "decay":0.6,"cooling":0.9,"absorption":1.5,"color":[0.1,0.5,0.8],
+        "emission":[0.9,0.4,0.2],"light":[-1,2,3],"ambient":0.3,"direct":0.7
+    });
+    write(
+        "content/texture.ts",
+        &format!(
+            "import {{file}} from '@origingame/engine/author'; export default file['effect-texture']({texture});"
+        ),
+    );
+    write(scene_file, &scene.replace("base/model", "base/program"));
+    let look = "import {file,ref} from '@origingame/engine/author'; export default file.look({RenderSettings:{decalAtlas:ref('base/texture#emission')},ui:ref('base/child-theme')});";
+    write("content/look.ts", look);
+    write(
+        "content/sound.ts",
+        "import {file} from '@origingame/engine/author'; export default file.sfx({seed:13,layers:[{freq:110}]});",
+    );
+    write(
+        "content/pixel.ts",
+        "import {file} from '@origingame/engine/author'; export default file.vfx2d({recipe:{layers:[{type:'burst'}]}});",
+    );
+    write(
+        "content/theme.ts",
+        "import {file} from '@origingame/engine/author'; export default file.theme({});",
+    );
+    let theme = "import {file,ref} from '@origingame/engine/author'; export default file.theme({extends:ref('base/theme')});";
+    write("content/child-theme.ts", theme);
+    write(
+        "content/pack.ts",
+        "import {file} from '@origingame/engine/author'; export default file.pack({});",
+    );
+    write(
+        "content/font.ts",
+        "import {file} from '@origingame/engine/author'; export default file.import({kind:'font',source:'assets/body.ttf'});",
+    );
+    write(
+        "content/fonts.ts",
+        "import {file,ref} from '@origingame/engine/author'; export default file['font-extension']({kind:'font',name:'Body',faces:[ref('base/font')]});",
+    );
+    write(
+        "modules/north/content/fx.ts",
+        "import {file,ref} from '@origingame/engine/author'; export default file.vfx({duration:1,elements:[{node:{kind:'decal',texture:ref('base/texture')}},{node:{kind:'sound',asset:ref('base/sound')}},{node:{kind:'flipbook',asset:ref('base/pixel')}}]});",
+    );
+    let index = Index::open(&dir, &project).unwrap();
+    let graph = build(&project, &index, &empty, Some("texture")).unwrap();
+    for (id, factory, kind) in [
+        ("base/program", "model-program", "model"),
+        ("base/texture", "effect-texture", "texture"),
+        ("base/sound", "sfx", "sound"),
+        ("base/pixel", "vfx2d", "flipbook"),
+        ("base/theme", "theme", "pack"),
+        ("base/fonts", "font-extension", "font-pack"),
+    ] {
+        assert_eq!(index.entries[id].factory, factory);
+        assert_eq!(index.entries[id].kind, kind);
+        assert_eq!(graph.outputs[id].kind, kind);
+    }
+    assert_eq!(graph.nodes["north/main"].references[0].kind, "model");
+    assert_eq!(graph.nodes["base/look"].references[0].kind, "texture");
+    for (file, source, from, to, message) in [
+        (
+            "content/variant.ts",
+            variant,
+            "base/program",
+            "base/model",
+            "factory",
+        ),
+        (
+            "content/variant.ts",
+            variant,
+            "base/program",
+            "base/program#lod",
+            "factory",
+        ),
+        (
+            "content/child-theme.ts",
+            theme,
+            "base/theme",
+            "base/pack",
+            "factory",
+        ),
+        (
+            "content/look.ts",
+            look,
+            "base/texture#emission",
+            "base/texture#array",
+            "has kind texture-array",
+        ),
+    ] {
+        let overlay = BTreeMap::from([(file.into(), source.replace(from, to))]);
+        let candidate = Index::open_with_overlay(&dir, &project, &overlay).unwrap();
+        let error = build(&project, &candidate, &overlay, Some("texture")).unwrap_err();
+        assert_eq!(error.file, file);
+        assert!(error.message.contains(message), "{error}");
+    }
 }

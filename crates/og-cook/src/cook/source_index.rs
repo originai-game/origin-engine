@@ -13,8 +13,9 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 
-/// One entry, not a cooked blob. `kind` is the primary content kind; for import
-/// factories it is the schema's literal discriminant, not the word "import".
+/// One entry, not a cooked blob. `factory` selects the source decoder; `kind`
+/// is its primary reference kind, from domain schema metadata or the import
+/// schema's literal discriminant. These are not interchangeable namespaces.
 /// Keep only byte identity, not every entry's source text, in a large index.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
@@ -200,8 +201,13 @@ impl Index {
                             });
                         }
                         value.unwrap().to_string()
-                    } else {
+                    } else if matches!(factory.as_str(), "scene" | "prefab" | "table") {
                         factory.clone()
+                    } else {
+                        source_schemas::get(&factory)
+                            .expect("registered content factory")
+                            .output_kind()
+                            .to_string()
                     };
                     index.files.insert(file.clone(), id.clone());
                     index.entries.insert(

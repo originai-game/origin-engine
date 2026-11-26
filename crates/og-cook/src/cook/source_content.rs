@@ -367,6 +367,17 @@ fn resolve(
             ),
         ));
     }
+    if let Some(factories) = &reference.factories
+        && (reference.id != owner.id || !factories.contains(&owner.factory))
+    {
+        return Err(pending.error(
+            file,
+            format!(
+                "reference {} needs a primary source declaration from factory {:?}, not {} from {}",
+                reference.id, factories, target.kind, owner.factory,
+            ),
+        ));
+    }
     Ok(Edge {
         path: pending.reference.path,
         target: pending.reference.id,
@@ -387,6 +398,7 @@ fn located(source: &Source, references: &[Reference]) -> Result<Vec<PendingRefer
                 path: r.path.clone(),
                 id: r.id.clone(),
                 kinds: r.kinds.clone(),
+                factories: r.factories.clone(),
             },
             location,
         })

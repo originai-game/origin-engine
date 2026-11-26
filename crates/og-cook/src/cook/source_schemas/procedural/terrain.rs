@@ -228,9 +228,9 @@ input! {
 }
 input! {
     TerrainLayerInput {
-        #[schemars(extend("x-og-ref-kinds" = ["texture", "effect-texture"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
         albedo: Option<ContentRef>,
-        #[schemars(extend("x-og-ref-kinds" = ["texture", "effect-texture"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
         normal: Option<ContentRef>,
         albedo_layer: Option<u32>,
         normal_layer: Option<u32>,

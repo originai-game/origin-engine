@@ -44,7 +44,7 @@ impl StringsInput {
 /// Pack membership does not change another face's own import settings or
 /// charset. Coverage and script/language validity are checked from actual fonts.
 #[derive(Deserialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "font-pack"))]
 #[serde(deny_unknown_fields)]
 pub struct FontExtensionInput {
     pub kind: FontKind,

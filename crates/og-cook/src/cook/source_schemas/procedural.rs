@@ -9,8 +9,8 @@ use std::sync::OnceLock;
 
 macro_rules! input {
     ($(#[$meta:meta])* $name:ident { $($(#[$field:meta])* $key:ident: $ty:ty),* $(,)? }) => {
-        $(#[$meta])*
         #[derive(Debug, Deserialize, JsonSchema)]
+        $(#[$meta])*
         #[schemars(crate = "og_core::reflect::source::schemars")]
         #[serde(deny_unknown_fields, rename_all = "camelCase")]
         pub struct $name { $($(#[$field])* pub $key: $ty),* }
@@ -48,6 +48,7 @@ pub struct Pcm(#[schemars(range(min = -1, max = 1))] pub f32);
 input! {
     /// Procedural sound: optional preset plus explicit oscillator/sample layers.
     /// At least one preset/layer and maximum rendered duration are domain checks.
+    #[schemars(extend("x-og-output-kind" = "sound"))]
     SfxInput {
         preset: Option<SfxPreset>,
         seed: Option<u32>,
@@ -183,7 +184,7 @@ input! {
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ScatterTarget {
     Model {
-        #[schemars(extend("x-og-ref-kinds" = ["model", "model-program"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["model"]))]
         asset: ContentRef,
     },
     Prefab {
@@ -240,7 +241,7 @@ input! {
 }
 input! {
     EffectTextureSlot {
-        #[schemars(extend("x-og-ref-kinds" = ["texture", "effect-texture"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
         texture: Option<ContentRef>,
         channel: Option<Channel>,
         uv: Option<UvInput>,
@@ -338,7 +339,7 @@ input! {
         #[schemars(range(min = 0, max = 1))]
         force_fields: Option<f32>,
         noise: Option<ParticleNoise>,
-        #[schemars(extend("x-og-ref-kinds" = ["texture", "effect-texture"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
         texture: Option<ContentRef>,
         sheet: Option<Sheet>,
         array: Option<ParticleArray>,
@@ -396,7 +397,7 @@ words!(ParticleMesh {
 #[serde(untagged)]
 pub enum MeshInput {
     Builtin(ParticleMesh),
-    Model(#[schemars(extend("x-og-ref-kinds" = ["model", "model-program"]))] ContentRef),
+    Model(#[schemars(extend("x-og-ref-kinds" = ["model"]))] ContentRef),
 }
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
@@ -691,7 +692,7 @@ pub enum VfxNode {
         trauma: Option<f32>,
     },
     Sound {
-        #[schemars(extend("x-og-ref-kinds" = ["sound", "sfx"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["sound"]))]
         asset: ContentRef,
         #[schemars(range(min = 0))]
         volume: Option<f32>,
@@ -699,7 +700,7 @@ pub enum VfxNode {
         pitch: Option<[f32; 2]>,
     },
     Flipbook {
-        #[schemars(extend("x-og-ref-kinds" = ["flipbook", "vfx2d"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["flipbook"]))]
         asset: ContentRef,
         #[schemars(range(min = 0), extend("x-og-unit" = "m"))]
         size: Option<f32>,
@@ -720,7 +721,7 @@ pub enum VfxShape {
         ring: Option<RingInput>,
     },
     Model {
-        #[schemars(extend("x-og-ref-kinds" = ["model", "model-program"]))]
+        #[schemars(extend("x-og-ref-kinds" = ["model"]))]
         asset: ContentRef,
     },
 }
@@ -838,7 +839,7 @@ pub enum LookBase {
 #[serde(untagged)]
 pub enum UiStyle {
     Builtin(String),
-    Asset(#[schemars(extend("x-og-ref-kinds" = ["theme", "pack"]))] ContentRef),
+    Asset(#[schemars(extend("x-og-ref-kinds" = ["pack"]))] ContentRef),
 }
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]

@@ -31,6 +31,14 @@ fn content_index_discovers_namespaces_and_types_without_evaluation() {
     assert_eq!(empty.declarations().len(), 3);
     let wind = "import {file as data} from '@origingame/engine/author';\nimport missing from '../../sources/missing.ts';\nthrow new Error('CONTENT_EXECUTED');\nexport default data.field(missing());";
     write("content/not-a-kind/wind.ts", wind);
+    write(
+        "content/program.ts",
+        "import {file} from '@origingame/engine/author'; throw new Error('PROGRAM_EXECUTED'); export default file['model-program']({ops:[]});",
+    );
+    write(
+        "content/texture.ts",
+        "import {file} from '@origingame/engine/author'; throw new Error('TEXTURE_EXECUTED'); export default file['effect-texture']({});",
+    );
     let import = "import * as og from '@origingame/engine/author';\nthrow new Error('IMPORT_EXECUTED');\nexport default og.file.import({kind:'model',source:'assets/gate.glb'});";
     write("modules/north/content/model/gate'北.ts", import);
     write(
@@ -41,7 +49,7 @@ fn content_index_discovers_namespaces_and_types_without_evaluation() {
         write(&format!("content/{skipped}/invalid.ts"), "not source");
     }
     let index = Index::open(&dir, &project).unwrap();
-    assert_eq!(index.entries.len(), 3);
+    assert_eq!(index.entries.len(), 5);
     assert_eq!(index.entries["base/not-a-kind/wind"].kind, "field");
     let gate = &index.entries["north/model/gate'北"];
     assert_eq!((&*gate.factory, &*gate.kind), ("import", "model"));
@@ -85,6 +93,11 @@ const kind: ContentIndex[typeof id]['kind'] = 'model';
 const factory: ContentIndex[typeof id]['factory'] = 'import';
 const file: ContentIndex[typeof id]['file'] = "modules/north/content/model/gate'北.ts";
 const wind: ContentIndex['base/not-a-kind/wind']['kind'] = 'field';
+const program: ContentIndex['base/program']['kind'] = 'model';
+const programFactory: ContentIndex['base/program']['factory'] = 'model-program';
+const texture: ContentIndex['base/texture']['kind'] = 'texture';
+// @ts-expect-error Source factory spellings are not aliases for output kinds.
+const sourceKind: ContentIndex['base/texture']['kind'] = 'effect-texture';
 // @ts-expect-error A missing source is not in this snapshot.
 const absent: keyof ContentIndex = 'north/model/missing';
 // @ts-expect-error Primary kind is not the import factory's name or its folder.
@@ -1057,6 +1070,7 @@ fn schema_bound_references_ignore_json_and_preserve_container_constraints() {
         path: path.into(),
         id: id.into(),
         kinds: Some(kinds.iter().map(|s| (*s).to_owned()).collect()),
+        factories: None,
     };
     for kind in source_schemas::all() {
         ReferenceSchema::new((kind.schema)()).unwrap_or_else(|e| panic!("{}: {e}", kind.name));
@@ -1079,7 +1093,7 @@ fn schema_bound_references_ignore_json_and_preserve_container_constraints() {
             "base/texture/light",
             &["texture"],
         ),
-        edge("/sounds/press/clips/0", "base/sfx/tap", &["sfx", "sound"]),
+        edge("/sounds/press/clips/0", "base/sfx/tap", &["sound"]),
     ];
     assert_eq!(references.collect(&value).unwrap(), expected);
     assert_eq!(references.collect(&value).unwrap(), expected);
@@ -1170,8 +1184,8 @@ fn reference_schemas_select_branches_and_follow_recursive_maps() {
     let constrained = InputSchema::<serde_json::Value>::from_document(json!({
         "allOf":[
             InputSchema::<ContentRef>::new().unwrap().document(),
-            {"x-og-ref-kinds":["font","texture"]},
-            {"x-og-ref-kinds":["font"]}
+            {"x-og-ref-kinds":["font"], "x-og-ref-factories":["import"]},
+            {"x-og-ref-kinds":["font","texture"], "x-og-ref-factories":["import","other"]}
         ]
     }))
     .unwrap();
@@ -1181,6 +1195,7 @@ fn reference_schemas_select_branches_and_follow_recursive_maps() {
         .unwrap();
     assert_eq!(edges[0].path, "");
     assert_eq!(edges[0].kinds, Some([String::from("font")].into()));
+    assert_eq!(edges[0].factories, Some([String::from("import")].into()));
 }
 
 #[test]

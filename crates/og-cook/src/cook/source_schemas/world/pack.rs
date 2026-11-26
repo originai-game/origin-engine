@@ -200,7 +200,7 @@ pub enum Range {
 pub struct Sound {
     /// Empty clips silence an underlying layer only when volume is zero.
     #[serde(default)]
-    #[schemars(extend("x-og-ref-kinds" = ["sound", "sfx"]))]
+    #[schemars(extend("x-og-ref-kinds" = ["sound"]))]
     pub clips: Vec<ContentRef>,
     /// Gain or [low, high]; unset is 1.
     pub volume: Option<Range>,
