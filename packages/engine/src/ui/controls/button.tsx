@@ -42,6 +42,10 @@ export interface ButtonProps {
   /** Seconds a press or confirm must be held before it presses (hold-to-confirm). */
   hold?: number | undefined;
   onPress?: ((e: UiEvent) => void) | undefined;
+  /** It took the focus (a menu entry takes its list's bar). */
+  onFocus?: ((e: UiEvent) => void) | undefined;
+  /** The pointer moved over it. */
+  onPointerMove?: ((e: UiEvent) => void) | undefined;
   /** The hold's progress, 0 to 1, in `e.value` ("0" when let go early). */
   onHold?: ((e: UiEvent) => void) | undefined;
   onLongPress?: ((e: UiEvent) => void) | undefined;

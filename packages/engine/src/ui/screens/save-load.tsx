@@ -40,7 +40,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
   return (
     <View class={`absolute inset-0 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+1.5rem)] text-fg gap-y-6 pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] overflow-hidden compact:pt-[calc(env(hud-inset-top)+1rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:gap-y-3 compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onBack?.(e) }}>
       <View class={`absolute bg-glass backdrop-blur-regular inset-0`} />
-      <View class={`flex-row min-h-12 border-b border-border-muted items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
+      <View class={`flex-row min-h-12 items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>
           <Button class={`text-fg-muted narrow:-ml-2 shrink`} autofocus onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
@@ -58,14 +58,13 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
             {t("screen.save-load.saveTitle")}
           </Text>
         </Show>
-        <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 narrow:hidden" />
       </View>
       <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 narrow:grid-cols-1 narrow:grid-rows-[minmax(0,1fr)_auto] narrow:gap-y-3">
         <Scroll class="p-1 -m-1">
-          <View class="gap-y-2" focusGroup="stop">
+          <View class={`gap-y-2 ${packClass("List", "cascade")}`} focusGroup="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`flex-row group/slot text-fg transition duration-control items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+              <View class={`flex-row group/slot text-fg transition duration-control items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
                 <Art class={`w-37.5 aspect-89/50 h-auto object-cover compact:w-24 group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={

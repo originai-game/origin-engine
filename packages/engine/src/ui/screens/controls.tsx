@@ -100,7 +100,7 @@ export function ControlsScreen(props: ControlsScreenProps) {
       onAction={{ back: (e) => props.onBack?.(e), details: (e) => props.onReset?.(e) }}
     >
       <View class="absolute bg-glass inset-0" />
-      <View class="flex-row min-h-12 border-b border-border-muted items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1">
+      <View class="flex-row min-h-12 items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1">
         <Show when={props.onBack}>
           <Button class="text-fg-muted narrow:-ml-2 shrink" onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">

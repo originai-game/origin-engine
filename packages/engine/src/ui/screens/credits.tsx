@@ -54,11 +54,9 @@ export function CreditsScreen(props: CreditsScreenProps) {
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-4">
               <View class="flex-row items-center justify-center gap-x-3 w-full">
-                <View class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent`} />
                 <Text class={`tracking-kicker uppercase text-hud-accent-ink shrink text-caption font-bold m-0 compact:tracking-label`}>
                   {s().title}
                 </Text>
-                <View class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent -scale-x-100 scale-y-100`} />
               </View>
               <For each={s().names}>
                 {(n) => (

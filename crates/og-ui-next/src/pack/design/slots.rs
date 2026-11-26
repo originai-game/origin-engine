@@ -121,13 +121,23 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "Button.plate.menu",
-        "a front-end menu entry (the main menu's, the pause menu's): type, not a box, dim until it is the one, then the HUD accent fills it",
-        "w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hud-accent hover:text-hud-accent-fg hover:shadow-none hover:inset-ring-0 focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-none active:bg-hud-accent active:text-hud-accent-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+        "a front-end menu entry (MenuEntry: the main menu's, the pause menu's): type, not a box, dim until it is the current one, then in the ink of the MenuList.indicator gliding under it",
+        "relative w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-transparent hover:shadow-none hover:inset-ring-0 active:bg-none active:bg-transparent data-current:text-hud-accent-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
     ),
     (
         "Button.plate.menu-danger",
-        "a menu entry that ends something (Quit game): the danger fills it",
-        "w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-danger hover:text-danger-fg hover:shadow-none hover:inset-ring-0 focus-visible:bg-danger focus-visible:text-danger-fg active:bg-none active:bg-danger active:text-danger-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+        "a menu entry that ends something (Quit game): in the danger's ink while current",
+        "relative w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-transparent hover:shadow-none hover:inset-ring-0 active:bg-none active:bg-transparent data-current:text-danger-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+    ),
+    (
+        "MenuList.indicator",
+        "the bar behind a menu list's current entry (MenuList): it glides from the entry it leaves to the one hovered or focused (Timing::indicator)",
+        "absolute inset-0 rounded-button bg-hud-accent pointer-events-none",
+    ),
+    (
+        "MenuList.indicator.danger",
+        "the bar behind a current entry that ends something (Quit game)",
+        "bg-danger",
     ),
     (
         "Button.spinner",

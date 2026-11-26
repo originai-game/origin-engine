@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "MenuList / MenuEntry",
+      "summary": "A front-end menu as a built-in control (`@origingame/engine/ui/controls/menu-list.tsx`): its entries are `menu`-variant Buttons that enter one after another (`List.cascade`, `List.item`), and one bar glides to the entry hovered or focused on the pack's glide spring (`MenuList.indicator`, `MenuList.indicator.danger`). MainMenuScreen and PauseScreen are built on it."
+    },
+    {
+      "member": "Button",
+      "summary": "`onFocus` and `onPointerMove` props."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Button",
+      "summary": "The `menu` and `menu-danger` variants no longer fill themselves; the current entry takes the ink of the MenuList bar under it."
+    },
+    {
+      "member": "SettingsScreen / SaveLoadScreen",
+      "summary": "Their rows enter one after another (`List.cascade`), and the hairlines under the header and the tabs are gone."
+    },
+    {
+      "member": "ControlsScreen / CreditsScreen",
+      "summary": "The hairline under the controls header and the rules beside each credits section title are gone."
+    }
+  ]
+}

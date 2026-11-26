@@ -78,7 +78,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       }}
     >
       <View class={`absolute bg-glass backdrop-blur-regular inset-0`} />
-      <View class={`flex-row min-h-12 border-b border-border-muted items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
+      <View class={`flex-row min-h-12 items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
           <Button class={`text-fg-muted compact:-ml-2 shrink`} autofocus onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
@@ -100,7 +100,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </View>
       <View class="grow shrink basis-0 gap-y-4 min-h-0">
         <Show when={props.page}>
-          <View class={`flex-row items-center gap-x-3 border-b border-border`}>
+          <View class={`flex-row items-center gap-x-3`}>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
             <Scroll class="grow shrink compact:-mx-4">
               <Tabs class="border-b-0 gap-x-2 px-2" label={t("screen.settings.title")}>
@@ -116,12 +116,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
           </View>
           <View class="grow shrink basis-0 min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 compact:grid-cols-1">
-            <Scroll class="grow shrink basis-0 gap-y-0.5 p-0 m-0">
+            <Scroll class={`grow shrink basis-0 gap-y-0.5 p-0 m-0 ${packClass("List", "cascade")}`}>
               <For each={props.entries} key={(entry) => entry.id}>
                 {(entry) => (
                   <Show when={entry().page === props.page}>
                     <View
-                      class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")}`}
+                      class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")} ${packClass("List", "item")}`}
                       label={entry().description}
                       data-selected={inspected()?.id === entry().id}
                       onFocus={() => activeEntryId.set(entry().id)}

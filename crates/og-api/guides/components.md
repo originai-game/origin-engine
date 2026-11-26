@@ -4214,6 +4214,8 @@ A press target (NSH base's `Button`): it owns its presses, its pressed, selected
 | `autofocus?` | `boolean \| undefined` | It takes the focus once it shows (a menu's first choice, a dialog's safe one). |
 | `hold?` | `number \| undefined` | Seconds a press or confirm must be held before it presses (hold-to-confirm). |
 | `onPress?` | `((e: UiEvent) => void) \| undefined` |  |
+| `onFocus?` | `((e: UiEvent) => void) \| undefined` | It took the focus (a menu entry takes its list's bar). |
+| `onPointerMove?` | `((e: UiEvent) => void) \| undefined` | The pointer moved over it. |
 | `onHold?` | `((e: UiEvent) => void) \| undefined` | The hold's progress, 0 to 1, in `e.value` ("0" when let go early). |
 | `onLongPress?` | `((e: UiEvent) => void) \| undefined` |  |
 | `onAction?` | `Record<string, (e: UiEvent) => void> \| undefined` |  |
@@ -5655,7 +5657,7 @@ Saving or loading: the slots with their title, place, time played, date and thum
 | `onSave?` | `((e: UiEvent, key?: string) => void) \| undefined` | The save event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
+Pack slots: `List.cascade`, `List.item`, `Panel.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -5684,7 +5686,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `Plate.frame`, `Row.frame`, `Screen.frame`.
+Pack slots: `List.cascade`, `List.item`, `Plate.frame`, `Row.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 

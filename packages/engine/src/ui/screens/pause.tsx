@@ -1,5 +1,5 @@
-import {For, Scroll, Icon, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
-import { Button } from "../controls/button";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import { MenuEntry, MenuList } from "../controls/menu-list";
 import "./pause.en.ogt";
 
 export interface PauseScreenProps {
@@ -111,25 +111,18 @@ export function PauseScreen(props: PauseScreenProps) {
             {t("screen.pause.Played", { played: formatDuration(props.played) })}
           </Text>
         </View>
-        <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focusGroup="wrap" focusMemory>
+        <MenuList wrap class="mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4">
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
                 <Show when={r().apart}>
                   <View class="h-4 short:h-1" />
                 </Show>
-                <Button variant={r().danger ? "menu-danger" : "menu"} class="group/row compact:pl-6" name={r().name} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
-                  <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
-                    {r().label}
-                  </Text>
-                  <Show when={!r().minor}>
-                    <Icon class="opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-                  </Show>
-                </Button>
+                <MenuEntry id={r().name} size="md" class="compact:pl-6" label={r().label} minor={r().minor} danger={r().danger} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)} />
               </>
             )}
           </For>
-        </View>
+        </MenuList>
       </Scroll>
       <View class="grow shrink basis-0 items-center justify-center p-8 compact:hidden">{props.side?.()}</View>
     </View>

@@ -104,7 +104,7 @@ Scale tokens under `theme` in `pack.json`, with the utility classes that read ea
 
 Pass component, slot, and optional variant to `packClass(component, slot, variant)` from `@origingame/engine/ui` (resolved as `@Component.slot` or `@Component.slot.variant`).
 
-Total: 233 pack slots across 59 component groups.
+Total: 235 pack slots across 60 component groups.
 
 | Component | Slots |
 |---|---|
@@ -138,6 +138,7 @@ Total: 233 pack slots across 59 component groups.
 | `IconButton` | `@IconButton.frame` |
 | `List` | `@List.cascade`, `@List.item` |
 | `Menu` | `@Menu.frame`, `@Menu.indicator`, `@Menu.item`, `@Menu.item.danger`, `@Menu.label`, `@Menu.separator`, `@Menu.shortcut` |
+| `MenuList` | `@MenuList.indicator`, `@MenuList.indicator.danger` |
 | `Modal` | `@Modal.frame`, `@Modal.scrim` |
 | `NumberInput` | `@NumberInput.field`, `@NumberInput.frame`, `@NumberInput.step` |
 | `Orb` | `@Orb.box`, `@Orb.fill`, `@Orb.fill.mana`, `@Orb.glass`, `@Orb.label`, `@Orb.rim`, `@Orb.value`, `@Orb.well`, `@Orb.well.mana` |

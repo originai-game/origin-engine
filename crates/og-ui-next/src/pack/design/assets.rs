@@ -301,14 +301,14 @@ impl Timing<'_> {
         )
     }
 
-    /// `Tab.indicator`: a selection's indicator, sliding on the glide row's
-    /// spring from the one it replaces (`glide-tab`).
-    pub(super) fn indicator(&self) -> String {
+    /// `Tab.indicator`, `Menu.indicator`: a selection's indicator, sliding
+    /// on the glide row's spring from the one it replaces (`glide-<name>`).
+    pub(super) fn indicator(&self, name: &str) -> String {
         let spring = Self::spring(
             self.num("--motion-timing-glide-damping"),
             self.ms("--motion-timing-glide-duration") / 1000.0,
         );
-        format!("transition-layout {spring} glide-tab")
+        format!("transition-layout {spring} glide-{name}")
     }
 
     /// `Bar.fill`: a fill easing to a new value on the bar row.
