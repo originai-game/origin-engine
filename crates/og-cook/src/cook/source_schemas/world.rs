@@ -2,7 +2,9 @@
 use super::Kind;
 
 pub mod bake;
+pub mod district;
 pub mod geometry;
+pub mod grammar;
 pub mod localization;
 pub mod pack;
 mod records;
@@ -13,6 +15,14 @@ pub mod table;
 // Geometry is a model/terrain input, not a top-level file kind. Register model
 // only when the model's remaining parts/materials/processing inputs are covered.
 pub(super) const KINDS: &[Kind] = &[
+    Kind {
+        name: "district",
+        schema: || district::DistrictInput::schema(),
+    },
+    Kind {
+        name: "grammar",
+        schema: || grammar::GrammarInput::schema(),
+    },
     Kind {
         name: "navmesh",
         schema: || bake::NavmeshInput::schema(),

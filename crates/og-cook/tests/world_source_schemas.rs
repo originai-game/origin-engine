@@ -8,6 +8,115 @@ use og_core::reflect::source::typescript;
 use serde_json::json;
 
 #[test]
+fn district_and_grammar_author_contracts() {
+    let grammar = json!({"params":{"floor":3.2},"start":"Lot","rules":{
+        "Lot":[{"op":"recess","depth":0.1,"jamb":"Wall"},{"op":"detail","level":2},
+            {"op":"extrude","depth":"floor","faces":{"sides":"Facade","top":"Roof"}}],
+        "Facade":[{"op":"split","axis":"y","parts":[{"size":"abs","length":1,"rule":"Wall"},
+            {"size":"repeat","length":"floor","rule":"Wall"},{"size":"fill","length":1,"rule":"Wall"}]}],
+        "Wall":[{"op":"label","label":"stone"}],
+        "Roof":[{"op":"roof","roof":{"kind":"gable","angle":35},"slope":"Wall","overhang":0.2}],
+        "Hip":[{"op":"roof","roof":{"kind":"hip","angle":25},"slope":"Wall"}],
+        "Flat":[{"op":"roof","roof":{"kind":"flat"},"slope":"Wall"}],
+        "Inset":[{"op":"inset","width":0.2,"border":"Wall","inner":"Wall"}],
+        "Insert":[{"op":"insert","model":{"$ogRef":"base/model/gate"}}],
+        "Pick":[{"op":"pick","options":[{"weight":2,"rule":"Wall"}]}],
+        "Case":[{"op":"case","arms":[{"condition":{"kind":"wider","value":4},"rule":"Wall"},
+            {"condition":{"kind":"taller","value":5},"rule":"Wall"},
+            {"condition":{"kind":"param","name":"floor","value":3.2},"rule":"Wall"}],"otherwise":"Wall"}],
+        "Empty":[{"op":"drop"}]}});
+    let district = json!({"seed":7,"region":{"kind":"area","points":[[0,0],[100,0],[0,60]]},
+        "streets":{"grid":{"size":[15,22],"turn":35},"kerb":0.15,
+            "streets":[{"name":"market","points":[[1,2],[30,7]],"width":4}]},
+        "lots":{"width":[3,7],"depth":[4,8]},"materials":{"$ogRef":"base/materials/stone"},
+        "buildings":{"density":0.6,"height":[3,12],"heightNoise":{"frequency":0.03,"share":0.7},
+            "rules":[{"grammar":{"$ogRef":"base/grammar/blocks"},"weight":2}]},
+        "props":[{"name":"lamp","model":{"$ogRef":"base/model/lamp"},"collider":{"kind":"box","size":[1,3,2]}}],
+        "cells":{"size":64,"load":90},"terrain":{"terrain":{"$ogRef":"base/terrain/north"},"depth":0.3}});
+    let mut ts = String::new();
+    for (kind, name, value) in [
+        ("grammar", "Grammar", grammar),
+        ("district", "District", district.clone()),
+    ] {
+        let schema = (source_schemas::get(kind).unwrap().schema)();
+        schema
+            .check(&value)
+            .unwrap_or_else(|e| panic!("{kind}: {e}"));
+        ts.push_str(&typescript(schema.document(), name).unwrap());
+        ts.push_str(&format!("const value{name}: {name} = {value};\n"));
+    }
+    let mut along = district.clone();
+    along["region"] = json!({"kind":"along","street":{"points":[[0,0],[0,15]]},"depth":10});
+    along["props"][0]["collider"] = json!({"kind":"capsule","radius":0.4,"height":0});
+    source_schemas::world::district::DistrictInput::schema()
+        .decode(along.clone())
+        .unwrap();
+    ts.push_str(&format!("const along: District = {along};\n"));
+    for (path, bad) in [
+        ("/buildings/height", json!([-1, 5])),
+        ("/buildings/density", json!(1.01)),
+        ("/props/0/collider/size", json!([1, 0, 2])),
+        ("/cells/size", json!(7.99)),
+        ("/terrain/depth", json!(1e39)),
+        ("/materials", json!("base/materials/stone")),
+        (
+            "/region",
+            json!({"kind":"area","points":[],"street":{"points":[]}}),
+        ),
+    ] {
+        let mut invalid = district.clone();
+        *invalid.pointer_mut(path).unwrap() = bad;
+        assert!(
+            source_schemas::world::district::DistrictInput::schema()
+                .decode(invalid.clone())
+                .is_err(),
+            "accepted {invalid}"
+        );
+    }
+    for op in [
+        json!({"op":"detail","level":17}),
+        json!({"op":"insert","model":3}),
+        json!({"op":"pick","options":[]}),
+        json!({"op":"drop","depth":2}),
+        json!({"op":"roof","roof":{"kind":"flat","angle":30},"slope":"Wall"}),
+        json!({"op":"split","axis":"z","parts":[]}),
+    ] {
+        assert!(
+            source_schemas::world::grammar::GrammarInput::schema()
+                .decode(json!({"start":"A","rules":{"A":[op]}}))
+                .is_err()
+        );
+    }
+    ts.push_str(r#"
+// @ts-expect-error Branches are closed; area cannot include an along street.
+const mixedRegion: District["region"] = {kind:"area",points:[],street:{points:[]}};
+// @ts-expect-error No parser source-text escape hatch.
+const rawGrammar: Grammar = {source:"rule A { drop }"};
+// @ts-expect-error Each operation has its own fields.
+const mixedOperation: Grammar = {start:"A",rules:{A:[{op:"drop",depth:2}]}};
+// @ts-expect-error Flat roofs cannot carry an angle.
+const flatAngle: Grammar = {start:"A",rules:{A:[{op:"roof",roof:{kind:"flat",angle:30},slope:"A"}]}};
+// @ts-expect-error Model dependencies are content references, not handles.
+const handle: Grammar = {start:"A",rules:{A:[{op:"insert",model:3}]}};
+// @ts-expect-error Rules retain readonly operation order.
+valueGrammar.rules.Lot.push({op:"drop"});
+"#);
+    let dir = temp::TempDir::new("district-grammar-schema");
+    std::fs::write(dir.join("inputs.ts"), ts).unwrap();
+    let result = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
 fn bake_and_localization_author_contracts() {
     let nav = json!({"scene":{"$ogRef":"base/scene/world"},"agents":[{}, {"name":"small","radius":0.2}],
         "cellSize":0.25,"cellHeight":0.1,"tileSize":32.5,
