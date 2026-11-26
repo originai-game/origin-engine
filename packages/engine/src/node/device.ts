@@ -768,7 +768,11 @@ async function measure(d: Driver, url: string, seconds: number): Promise<Measure
   if (!gated) refuse("the play gate never showed and play never started");
   if (gated === "gate") {
     await d.tap("#og-gate button");
-    if (!(await until<number>(d, mark("og:start"), 10_000))) refuse(`a tap on the play gate did not start play${(await failed()) ? `: ${await failed()}` : ""}`);
+    // The page's failure card (an adapter lost on start, an engine error) or its first console error says why play did not start.
+    await until<boolean>(d, `(${mark("og:start")}) > 0 || !!(${FAILED})`, 10_000);
+    const after = await failed();
+    if (after) refuse(`the page failed after a tap on the play gate: ${after}`);
+    if (!(await d.eval<number>(mark("og:start")).catch(() => 0))) refuse(`a tap on the play gate did not start play in 10 s${d.errors().length ? `: ${d.errors()[0]}` : ": the page showed no error"}`);
   }
   const startMs = Math.round(await d.eval<number>(mark("og:start")));
   await sleep(1000);
