@@ -26,10 +26,37 @@ fn sample_exact(t: texture_2d<f32>, s: sampler, uv: vec2<f32>) -> vec4<f32> {
   return textureSampleLevel(t, s, uv, 0.0);
 }
 
-// The exposure EV the meter asks for: middle grey at the scene's mean
-// log2 luminance `avg`, moved by `compensation` EV, within `lo`..`hi`.
+// What a scene's luminance of 1 (a white surface in full sun, at the
+// physical daylight's scale) is on the scale of metered_key's curve. 20
+// puts the key at 0.18 where a daylit landscape's log mean lies, a
+// sixteenth (log2 -4; the alpine valley's views meter -3.8 to -4.3 on the
+// L4), so such a view is exposed as a fixed key of 0.18 exposes it. It is
+// a calibration of the curve to the frames this engine draws, not the
+// scene's luminance in cd/m² (a sunlit white is some 30000 of those, where
+// the curve is flat: every daylit view at a key near 0.7).
+const KEY_SCALE: f32 = 20.0;
+
+// The key the meter gives a scene of mean log2 luminance `avg`: the display
+// luminance its mean is exposed to. Krawczyk, Myszkowski and Seidel,
+// "Perceptual Effects in Real-time Tone Mapping" (SCCG 2005), equation 11,
+// key = 1.03 - 2 / (2 + log10(Y + 1)), Y the adapting luminance: a bright
+// view keeps a high key and a dim one a low key, as an eye that adapts only
+// part of the way sees them, from 0.03 in the dark to 0.18 at a sixteenth
+// and 0.43 at a white in full sun.
+//
+// A fixed key of 0.18 brought every view's mean to middle grey: it could not
+// tell a white under less light from a grey under more, so a cloud deck from
+// above or a snowfield came out grey, as bright under a sun of 1 as of 20,
+// and a night as bright as a day.
+fn metered_key(avg: f32) -> f32 {
+  return 1.03 - 2.0 / (2.0 + log(exp2(avg) * KEY_SCALE + 1.0) / log(10.0));
+}
+
+// The exposure EV the meter asks for: the scene's mean log2 luminance `avg`
+// brought to its key (metered_key), moved by `compensation` EV, within
+// `lo`..`hi`.
 fn metered_ev(avg: f32, compensation: f32, lo: f32, hi: f32) -> f32 {
-  return clamp(log2(0.18) - avg + compensation, lo, hi);
+  return clamp(log2(metered_key(avg)) - avg + compensation, lo, hi);
 }
 
 // The mean log2 luminance a meter texel holds (luminance.wgsl): its

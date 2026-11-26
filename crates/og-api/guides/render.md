@@ -233,10 +233,10 @@ const sun = og.load.environmentSun(world, map, turn.value.rotation, env.intensit
 An authored LDR background is drawn as its source, without exposure or
 the tone curve, and the auto-exposure meter leaves it out. So:
 
-- `autoExposure` (on in most looks) meters the lit models alone to middle
-  grey, whatever the sky: a dark whale against a pale sky comes out as
-  bright as a pale one, and neither a darker tint nor a lower
-  Environment.intensity moves it. Use it when the camera moves between
+- `autoExposure` (on in most looks) meters the lit models alone to their
+  key (§5), whatever the sky: a dark whale against a pale sky comes out
+  most of the way to a pale one's brightness, and neither a darker tint
+  nor a lower Environment.intensity moves it far. Use it when the camera moves between
   places whose light differs and no source frame is to be matched.
 - To match a source image, turn it off and keep `exposure 1`. With
   `toneMapping none` and Environment.intensity 1, a diffuse surface of
@@ -354,20 +354,25 @@ depth-normal prepass: the first one pays for it.
   frame drawn before the first tick (the web shell's frame behind the play
   gate) meters at once and is never adapted from. 3 EV/s down and 1 up is
   a natural pair. `autoExposureMin` and `autoExposureMax` bound the
-  exposure it applies (default -10 to 10 EV, which lets a moonlit night
-  meter up to a grey day). For a day-night cycle, set the maximum to about
-  the exposure a dusk view meters to (read it with the probe, then add a
-  stop or two): the night then draws darker than the day by what the light
-  lost past that point, with no per-tick Camera.exposure from the game.
+  exposure it applies (default -10 to 10 EV). For a day-night cycle whose
+  night should be darker than the meter leaves it, set the maximum to
+  about the exposure a dusk view meters to (read it with the probe, then
+  add a stop or two): the night then draws darker than the day by what the
+  light lost past that point, with no per-tick Camera.exposure from the
+  game.
 - Auto exposure brings the frame's mean (the log average of its
-  luminance) to middle grey, whatever is in it: it cannot tell a white
-  surface from a grey one under more light. A view that is mostly white (a
-  cloud deck from above, a snowfield, a white room) therefore comes out
-  grey, and a stronger sun does not change it. Open up as a photographer
-  does for snow: Camera.exposure 2 to 2.8 (+1 to +1.5 stops) over such a
-  view, or `autoExposure false` with a fixed exposure where the daylight
-  is physical (§6). A view that is mostly black is lifted to grey the same
-  way: Camera.exposure below 1, or `autoExposureMax`.
+  luminance) to a key that follows how bright the view is, as an eye that
+  adapts part of the way: middle grey (0.18) for a view whose mean is a
+  sixteenth of a white in full sun (a daylit landscape), 0.38 for a cloud
+  deck from above or a snowfield in sun (a stop brighter than middle
+  grey), 0.09 for a dusk at a sixty-fourth (a stop darker) and 0.05 for a
+  night. A stronger sun makes the same view brighter, by a fifth (a view
+  already bright) to a half (a daylit landscape) of the stops added, and a
+  night stays dark. The meter still sees only luminance: a white room
+  under a dim lamp meters as a grey one under a bright lamp does. Move a
+  view the key leaves too bright or too dark with Camera.exposure (2 is a
+  stop up, 0.5 a stop down), or write `autoExposure false` with a fixed
+  exposure where the daylight is physical (§6).
 - AO: `gtao` looks better, `ssao` is cheaper, `screen` imitates three.js-era
   post SSAO (ground seen at a low angle darkens a little, as theirs did).
   Half resolution is a fraction of the GPU time at softer contacts.

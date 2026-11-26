@@ -198,7 +198,7 @@ pub fn cascades_scene() -> RenderScene {
 
 /// `exposure`: the shrine court at deep dusk, the sun gone below the
 /// hills and two stone lanterns just lit by the torii: a view a fixed
-/// exposure leaves near black, brought to middle grey by the metered one.
+/// exposure leaves near black, brought to a dusk's key by the metered one.
 pub fn exposure_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     crate::shadow_scenes::court(&mut scene);
@@ -211,7 +211,7 @@ pub fn exposure_scene() -> RenderScene {
         crate::shadow_scenes::light_toro(&mut scene, fire, 8.0, false);
     }
     physical_light_under(&mut scene, Vec3::new(-0.7, -0.035, -0.71));
-    // Metered a stop under middle grey, as a game keys a dusk.
+    // Metered a stop under its key.
     scene.frame.camera = Camera {
         position: Vec3::new(2.2, 1.2, 5.6),
         target: Vec3::new(-0.6, 1.9, -6.0),

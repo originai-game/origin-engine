@@ -343,7 +343,7 @@ pub fn thin_geometry() -> RenderScene {
     };
     scene
 }
-/// A dusk scene lit `brightness` times: metered exposure brings it to middle grey.
+/// A dusk scene lit `brightness` times: metered exposure brings it to its key.
 pub fn dim_scene(brightness: f32) -> RenderScene {
     let mut scene = RenderScene::new();
     ground(&mut scene, 40.0, 1.0, 0.8);

@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.RenderSettings.autoExposure",
+      "change": "Auto exposure brings a view's mean luminance to a key that follows how bright the view is (Krawczyk, Myszkowski and Seidel 2005), not to middle grey whatever the view. A daylit landscape, whose mean is about a sixteenth of a white in full sun, is exposed as before. A view that is mostly sunlit white (a cloud deck from above, a snowfield) is about a stop brighter and no longer grey; a stronger sun makes the same view brighter; a dusk is about a stop darker and a night two. Every auto-exposed frame whose mean is not a sixteenth moves.",
+      "fix": "Look at each auto-exposed scene again. Take out a Camera.exposure that was opening up a white view (2 to 2.8) or holding a night down, and an autoExposureMax set only to keep a night from metering to grey. Where a view is now too bright or too dark, move it with Camera.exposure (2 is a stop up, 0.5 a stop down). A look with `autoExposure false` is unchanged.",
+      "find": ["autoExposure", "autoExposureMax"]
+    }
+  ]
+}

@@ -231,7 +231,7 @@ fn a_mechanisms_shader_code_is_written_once() {
             &["fft.wgsl"],
             &["fn cmul(", "fn bitrev(", "fn signed_index(", "<< (s + 1u)"],
         ),
-        (&["fullscreen.wgsl"], &["log2(0.18)"]),
+        (&["fullscreen.wgsl"], &["fn metered_key(", "fn metered_ev("]),
         (
             &["tonemap.wgsl"],
             &["fn aces(", "fn agx(", "fn neutral(", "fn tone_curve("],

@@ -27,7 +27,9 @@ fn light(s: &mut RenderScene, brightness: f32) {
         og_render::Background::Color(glam::Vec3::new(0.01, 0.012, 0.02) * brightness);
 }
 
-/// The scene is 16x bright before tick 30, then dim (the view darkens by 4 EV).
+/// The scene is 16x bright before tick 30, then dim: the view darkens by
+/// 4 EV, and the exposure it meters to rises by about 2 (the bright view's
+/// key is the higher: fullscreen.wgsl `metered_key`).
 fn brightness_at(tick: u64) -> f32 {
     if tick < 30 { 16.0 } else { 1.0 }
 }
@@ -95,7 +97,7 @@ fn adaptation_converges_identically_and_survives_a_restore() {
     let (just, mid) = (mean_luma(&just_a), mean_luma(&mid_a));
     println!("mean luma: instant {settled:.1}, tick 31 {just:.1}, tick 120 {mid:.1}");
     assert!(
-        just < settled * 0.25,
+        just < settled * 0.5,
         "tick 31: {just:.1} against {settled:.1}"
     );
     assert!(
@@ -103,7 +105,8 @@ fn adaptation_converges_identically_and_survives_a_restore() {
         "tick 120: {mid:.1}"
     );
 
-    // 4 EV at 1 EV/s: settled after four seconds, on the metered exposure.
+    // About 2 EV at 1 EV/s: settled well within five seconds, on the
+    // metered exposure.
     let late_a = run(&mut a, &mut sa, 121, 330);
     let late_b = run(&mut b, &mut sb, 121, 330);
     assert_eq!(
