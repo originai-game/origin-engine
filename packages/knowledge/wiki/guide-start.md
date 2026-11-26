@@ -95,6 +95,10 @@ Never write API from memory of other engines. The answers, in order:
 - `og api show <module>`: a module's overview and its members.
 - `og api show <guide>`: one of the guides of §5 (`--guide` when a module
   has the same name).
+- `og api list --kind file`: the source-file contracts the cook accepts;
+  `og api show file:terrain` describes one, and `og api find erosion
+  --kind file` searches their fields. Read `generating` for designed inputs
+  and deterministic TS generators executed by cook.
 - `node_modules/@origingame/engine/types/index.d.ts`: the generated types
   the type checker uses; what is not there does not exist.
 
@@ -114,9 +118,14 @@ mechanical and lists every line it is not, each with its section of the
   no native addon; a feature that seems to need one is an engine request.
 - `assets/` holds sources; `og cook` writes `cooked/`. Never edit or
   commit `cooked/`, `dist/` or `og-out/`.
-- Scripts that generate sources (art, maps, tables) go in `tools/`.
-  Nothing there is cooked or bundled, and a generated file names its
-  script in its first comment.
+- Obtain or generate the game's images and models, save the actual source
+  files under `assets/`, cook them, then load and place them with `og.load`.
+  Follow `art-review §2` through capture and review; a downloaded image or
+  a successful load is not yet a visible asset in the game.
+- For generated maps, meshes, scatter or audio, use the cook's existing
+  mechanisms and deterministic TS inputs (`generating`), not an external
+  script that reimplements the engine's generators. Keep the design inputs
+  beside the assets they generate; cook caches the result.
 - Simulation state lives in components and resources; UI state lives
   in named scope stores. Module-level values are outside the snapshot,
   so saves, restores, hot reload and replays lose them.
@@ -166,6 +175,8 @@ most; `--all` lists every member.
 | play sound and music | `audio` | `og.AudioSource`, `og.audio.createSound` |
 | play online or build shared worlds | `networking`, `shared-worlds`, determinism §3 | `og.Lockstep`, `og.PlayerInput`, `og.net.submit`, `og.shared` |
 | load models, textures, sounds & author `.ogt` assets | `loading`, `assets` | `og.load.gltf`, `og.load.texture`, `og.load.flipbook` |
+| take generated key art, logos, icons and models into a reviewed game frame | art-review §2, screens §1, loading §2, `captures` | `og cook`, `og.load.texture`, `og.load.gltf`, `World.instantiate` |
+| find cookable file types or design generated content in TS | `file-types`, `generating` | `og api list --kind file`, `og api show file:terrain`, `og script` |
 | choose the look | `looks`, `art-review` | `og.render.applyLook`, `og.Stylise` |
 | light and render the scene | `render`, looks §3, looks §5 | `og.Mesh`, `og.DirectionalLight`, `og.RenderSettings`, `og.render.standardMaterial` |
 | set the time of day, the season and the weather | render §7, `seasons` | `og.DayNight`, `og.Season`, `og.Weather`, `og.atmosphere.season` |

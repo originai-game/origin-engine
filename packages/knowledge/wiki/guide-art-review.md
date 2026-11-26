@@ -47,6 +47,97 @@ the generator is asked for what the cook would otherwise force.
   safe area and focal point; a generic image cropped into a slot loses
   its subject.
 
+### From generated assets to a reviewed frame
+
+Generation is an authoring step, not a game-time loader. Use the brief
+with the asset source or generation tools available in the authoring
+environment; this engine neither calls an image/model service nor supplies
+its credentials. The same path applies to commissioned or licensed art:
+
+1. **Obtain the source.** Request key art with room for the title/actions,
+   a transparent logo, icons legible at their displayed size, and models
+   with the look's proportions and face budget. Inspect the returned image
+   or model, not just the request or its task status. Keep accepted assets
+   as references for the next request.
+2. **Save real files.** Download the image bytes and final GLB/glTF under
+   `assets/`, for example `textures/title.png`, `textures/logo.png`,
+   `textures/icon.png` and `models/subject.glb`. Keep any glTF sidecar
+   buffers/textures and asset licences. A task ID, a preview page or a
+   remote URL is not a source file that the cook can import.
+3. **Cook and inspect.** Run `og cook --report`; resolve import errors and
+   review conformance changes before accepting the output (§3). Keep the
+   sources, not edits to `cooked/`. Use `og model` (`model`, `loading §2`)
+   for scale, orientation, mesh and material inspection or processing.
+4. **Load, then place.** Use paths relative to `assets/`, check each
+   `og.load.texture` or `og.load.gltf` result, and attach the resulting
+   handles. `TitleScreen.keyArt` and `.logo` take textures (`screens §1`);
+   an `Image` takes its texture in `src`. A model becomes visible through
+   `world.instantiate` or an `og.Model` component, not by loading alone.
+5. **Capture the game.** Run with a renderer at the target sizes and
+   capture the actual screen or play camera (`captures §1`, `testing §3`).
+   In this repository, visual acceptance uses Chrome or Vulkan on the
+   NVIDIA L4; a headless load check or a generator's preview proves no
+   rendered quality. Capture motion too for animated content.
+6. **Review and repeat.** Check title crops and text safe areas on phone
+   and desktop, logo/icon transparency and legibility at their real size,
+   and the model's front, side, back and play view under the game's light.
+   Fix composition in the source/request, import orientation in its
+   settings, placement in the game, or lighting in the look, then cook and
+   capture again. Do not replace a missing asset with a zero handle and
+   call that final art. A theme supplies controls, not the game's imagery.
+
+### A cook/load/place recipe, not an art preset
+
+These tiny SVGs and a single-triangle glTF are input fixtures, not finished
+art. Replace them with obtained assets at the same paths. The gate cooks
+the files and runs the recipe twice, checking that each texture loads and
+the model is instantiated; it does not judge the frame or call a generator.
+The title and image APIs accept these same texture handles after loading.
+
+```ts recipe ticks=2
+import { og } from "@origingame/engine";
+import { Image, View, mount } from "@origingame/engine/ui";
+import { TitleScreen } from "@origingame/engine/ui/screens/title.tsx";
+
+export default og.game({
+  start(world) {
+    const keyArt = og.load.texture(world, "textures/title.svg");
+    const logo = og.load.texture(world, "textures/logo.svg");
+    const icon = og.load.texture(world, "textures/icon.svg");
+    if (!keyArt.ok) throw new Error(keyArt.reason);
+    if (!logo.ok) throw new Error(logo.reason);
+    if (!icon.ok) throw new Error(icon.reason);
+    og.assert.always(keyArt.value !== 0 && logo.value !== 0 && icon.value !== 0, "all art slots have loaded textures", {});
+    mount(world, TitleScreen, {
+      keyArt: keyArt.value, logo: logo.value, name: "", version: "", legal: "",
+      background: () => View({ class: "absolute bottom-4 left-4", children: Image({ src: icon.value, class: "size-8 object-contain", label: "Asset fixture" }) }),
+    }, { layer: "menu" });
+    const model = og.load.gltf(world, "models/subject.gltf", {});
+    if (!model.ok) throw new Error(model.reason);
+    const instance = world.instantiate(model.value, { name: "subject", position: { x: 2, y: 0, z: -4 } });
+    if (!instance.ok) throw new Error(instance.reason);
+    const placed = world.get(instance.value, og.Model);
+    og.assert.always(placed.ok && placed.value!.asset === model.value, "loading is followed by a placed model", {});
+  },
+});
+```
+
+```text recipe file=assets/textures/title.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><path fill="#142738" d="M0 0h160v90H0z"/><path fill="#529cbd" d="M0 90L32 37 70 90z"/></svg>
+```
+
+```text recipe file=assets/textures/logo.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="50"><path fill="#f0ca73" d="M10 40V10h12v18h80v12z"/></svg>
+```
+
+```text recipe file=assets/textures/icon.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path fill="#f0ca73" d="M16 2 29 16 16 30 3 16z"/></svg>
+```
+
+```json recipe file=assets/models/subject.gltf
+{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],"meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],"buffers":[{"byteLength":36,"uri":"data:application/octet-stream;base64,AACAvwAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAQEAAAAAA"}],"bufferViews":[{"buffer":0,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[-1,0,0],"max":[2,3,0]}]}
+```
+
 <a id="guide-art-review-3"></a>
 ### `art-review §3` Conformance and its measures
 
