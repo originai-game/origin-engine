@@ -96,6 +96,14 @@ pub(crate) fn set_suppressed(engine: u32, entities: BTreeSet<u64>) {
     lock(&shared(engine)).suppressed = entities;
 }
 
+/// Queues a seek of `entity`'s og.Timeline to `time`, applied when the
+/// timeline system next runs: how a deck loaded paused (og.flow's paused
+/// start) is evaluated at its time, since a new run evaluates nothing until a
+/// play or a seek.
+pub(crate) fn queue_seek(engine: u32, entity: u64, time: f32) {
+    lock(&shared(engine)).ops.push((entity, Op::Seek(time)));
+}
+
 /// Whether `owner` has a scene queued for placement on the next `before_tick`
 /// and no scene placed yet (used by `og.flow` to avoid a 1-frame cut gap).
 pub(crate) fn scene_pending(engine: u32, owner: u64) -> bool {

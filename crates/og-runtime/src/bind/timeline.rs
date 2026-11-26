@@ -31,7 +31,7 @@ pub(crate) use stage::{before_tick, gate, waiting};
 use crate::{present::feel, world::assets};
 use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate, preroll};
 use playback::{Op, Rec, Run, shared};
-pub(crate) use playback::{install, register_records, scene_pending, set_suppressed};
+pub(crate) use playback::{install, queue_seek, register_records, scene_pending, set_suppressed};
 pub use playback::{
     og_timeline_captions, og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop,
 };

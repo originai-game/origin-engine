@@ -1903,6 +1903,11 @@ fn tick(
                                 decks.iter().any(|(d, k)| *d == cur && k.node == id);
                             if !loaded_already {
                                 load_deck(ctx, r, cur, id, node, false, flow.speed, false)?;
+                                // A timeline loaded paused evaluates nothing
+                                // until a play or a seek: seek it to its start
+                                // so its video track hands the deck's player
+                                // the footage and the opening frame shows.
+                                crate::bind::timeline::queue_seek(eng.id, cur.to_bits(), 0.0);
                                 for (d, k) in decks.iter_mut() {
                                     if *d == cur {
                                         k.node = id;

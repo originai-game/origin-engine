@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.flow.pause",
+      "summary": "A flow paused before it starts (og.flow.pause in GameDesc.start) shows its opening segment's first frame: its deck's timeline is evaluated at time 0, so the deck's og.VideoPlayer gets its video. Before, the deck was loaded but its video stayed 0 and nothing was drawn behind a title screen until the flow played."
+    }
+  ]
+}
