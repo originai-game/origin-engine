@@ -20,6 +20,7 @@ mod operand;
 pub(crate) mod orient;
 pub mod plain;
 mod primitive;
+pub(crate) mod process;
 mod shape;
 pub(crate) mod skin_report;
 
@@ -307,7 +308,7 @@ fn base64_decode(s: &str) -> Option<Vec<u8>> {
 
 fn read_uri(
     uri: &str,
-    base: &Path,
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
     external: &mut Vec<(String, Vec<u8>)>,
 ) -> Result<Vec<u8>, String> {
     if let Some(rest) = uri.strip_prefix("data:") {
@@ -331,8 +332,7 @@ fn read_uri(
         path.push(b[i] as char);
         i += 1;
     }
-    let full = base.join(&path);
-    let bytes = std::fs::read(&full).map_err(|e| format!("{}: {e}", full.display()))?;
+    let bytes = read(&path)?;
     external.push((path, bytes.clone()));
     Ok(bytes)
 }
@@ -551,12 +551,22 @@ pub(crate) fn decode_orm(bytes: &[u8]) -> Result<texture::Image, String> {
 }
 
 pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
+    load_with(bytes, &|file| {
+        std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}"))
+    })
+}
+
+/// Read source dependencies through the cook's input graph, including virtual maps.
+pub(crate) fn load_with(
+    bytes: &[u8],
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Result<GltfSource, String> {
     let plain::Plain {
         json,
         buffers,
         external,
         warnings: plain_warnings,
-    } = plain::plain(bytes, dir)?;
+    } = plain::plain_with(bytes, read)?;
     let root: gltf::json::Root =
         serde_json::from_value(json.clone()).map_err(|e| format!("glTF: {e}"))?;
     let doc = gltf::Document::from_json(root).map_err(|e| format!("glTF: {e}"))?;
@@ -579,7 +589,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                     .ok_or("glTF: image view out of range")?
                     .to_vec()
             }
-            gltf::image::Source::Uri { uri, .. } => read_uri(uri, dir, &mut external)?,
+            gltf::image::Source::Uri { uri, .. } => read_uri(uri, read, &mut external)?,
         });
     }
     // Track images used by any multi-channel slot so standalone occlusion maps

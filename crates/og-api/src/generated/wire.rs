@@ -15090,9 +15090,56 @@ pub mod audio {
         }
     }
 
+    /// `SfxSampleDesc`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SfxSampleDesc {
+        pub samples: Vec<f32>,
+        pub rate: u32,
+        pub reference: f32,
+        pub r#loop: bool,
+    }
+
+    impl Default for SfxSampleDesc {
+        fn default() -> Self {
+            Self {
+                samples: Default::default(),
+                rate: Default::default(),
+                reference: 440.0_f32,
+                r#loop: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SfxSampleDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                samples: field(o, "samples", d.samples)?,
+                rate: field(o, "rate", d.rate)?,
+                reference: field(o, "reference", d.reference)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+            })
+        }
+    }
+
+    impl ToJson for SfxSampleDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("samples".into(), self.samples.to_json());
+            o.insert("rate".into(), self.rate.to_json());
+            o.insert("reference".into(), self.reference.to_json());
+            o.insert("loop".into(), self.r#loop.to_json());
+            Value::Object(o)
+        }
+    }
+
     /// `SfxLayerDesc`: packages/knowledge/wiki/audio.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct SfxLayerDesc {
+        pub sample: Option<SfxSampleDesc>,
         pub wave: SfxWave,
         pub freq: f32,
         pub freq_end: f32,
@@ -15122,6 +15169,7 @@ pub mod audio {
     impl Default for SfxLayerDesc {
         fn default() -> Self {
             Self {
+                sample: Default::default(),
                 wave: SfxWave::Square,
                 freq: 440.0_f32,
                 freq_end: Default::default(),
@@ -15157,6 +15205,7 @@ pub mod audio {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
+                sample: field(o, "sample", d.sample)?,
                 wave: field(o, "wave", d.wave)?,
                 freq: field(o, "freq", d.freq)?,
                 freq_end: field(o, "freqEnd", d.freq_end)?,
@@ -15188,6 +15237,7 @@ pub mod audio {
     impl ToJson for SfxLayerDesc {
         fn to_json(&self) -> Value {
             let mut o = Map::new();
+            o.insert("sample".into(), self.sample.to_json());
             o.insert("wave".into(), self.wave.to_json());
             o.insert("freq".into(), self.freq.to_json());
             o.insert("freqEnd".into(), self.freq_end.to_json());

@@ -28,7 +28,6 @@
 //! one it does not read refuses the file, by name.
 
 use serde_json::{Map, Value, json};
-use std::path::Path;
 
 /// The extensions the cook reads: a file that requires one is taken.
 pub const READ: &[&str] = &[
@@ -124,9 +123,11 @@ fn remove_ext(v: &mut Value, names: &[&str]) {
     }
 }
 
-/// Reads `bytes` (a `.glb` or `.gltf`, relative files under `dir`) and
-/// makes it plain.
-pub fn plain(bytes: &[u8], dir: &Path) -> Result<Plain, String> {
+/// Make GLB/glTF plain, resolving external buffers through the input graph.
+pub(crate) fn plain_with(
+    bytes: &[u8],
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Result<Plain, String> {
     let (text, mut bin) = chunks(bytes)?;
     let mut json: Value = serde_json::from_slice(text).map_err(|e| format!("glTF: {e}"))?;
     let mut warnings = super::pointer_visibility(&mut json)?;
@@ -141,7 +142,7 @@ pub fn plain(bytes: &[u8], dir: &Path) -> Result<Plain, String> {
         let data = match b.get("uri").and_then(Value::as_str) {
             // Only views with the extension point at it: their decoded bytes fill it.
             _ if fallback => vec![0; len],
-            Some(uri) => super::read_uri(uri, dir, &mut external)?,
+            Some(uri) => super::read_uri(uri, read, &mut external)?,
             None => bin.take().ok_or("glTF: the BIN chunk is missing")?,
         };
         if data.len() < len {

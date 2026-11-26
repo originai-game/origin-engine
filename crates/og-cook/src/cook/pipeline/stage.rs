@@ -122,6 +122,7 @@ pub(crate) fn scan_sources(
     } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads, code)?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
+    crate::cook::materials::expand(&mut sources);
     // Typed script results enter the ordinary asset pipelines before planning.
     field::expand(&mut sources);
     tilemap::expand(&mut sources);
@@ -173,6 +174,12 @@ pub(crate) fn import(
     texture_cache: Option<&Path>,
     threads: usize,
 ) -> Imported {
+    // Virtual map paths cannot collide with physical files (checked at expansion).
+    let textures: BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| s.kind == &texture::TEXTURE && !s.path.exists())
+        .map(|s| (s.rel.clone(), s.bytes.clone()))
+        .collect();
     let ids: BTreeMap<_, _> = sources
         .iter()
         .enumerate()
@@ -261,7 +268,7 @@ pub(crate) fn import(
             let result = if s.error.is_some() {
                 None
             } else {
-                import_source(s, texture_cache)
+                import_source(s, texture_cache, &textures)
             };
             s.hash = source_hash(s);
             (*i, result)
@@ -315,8 +322,36 @@ fn source_hash(s: &Source) -> u64 {
 
 /// One source's import; `None` when it failed, with its error on the
 /// source (which then has no hash and plans nothing).
-fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
+fn import_source(
+    s: &mut Source,
+    texture_cache: Option<&Path>,
+    textures: &BTreeMap<String, Vec<u8>>,
+) -> Option<Made> {
     let mut made = Made::default();
+    let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
+    let base = s
+        .rel
+        .rsplit_once('/')
+        .map_or(String::new(), |(p, _)| format!("{p}/"));
+    let read = |file: &str| {
+        textures
+            .get(&normalise_rel(&format!("{base}{file}")))
+            .cloned()
+            .map(Ok)
+            .unwrap_or_else(|| std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}")))
+    };
+    let processing = if s.kind == &model::MODEL {
+        let text = (ext(&s.rel) == "ogt").then(|| String::from_utf8_lossy(&s.bytes));
+        match model::process::settings(text.as_deref(), settings_block(s, "model")) {
+            Ok(v) => v,
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    } else {
+        None
+    };
     // What a model says it is (`conform character`, `conform effect`),
     // read from its text or import settings before a text becomes a glb.
     let role = if s.kind == &crate::cook::model::MODEL {
@@ -371,8 +406,6 @@ fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
                 && Document::parse(&String::from_utf8_lossy(&s.bytes))
                     .is_ok_and(|d| model_program::names_program(&d))))
     {
-        let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        let read = |f: &str| std::fs::read(dir.join(f)).map_err(|e| e.to_string());
         match model_program::parse(&s.rel, &s.bytes, &read).and_then(|p| p.glb(&read)) {
             Ok(w) => {
                 s.bytes = w.glb;
@@ -415,9 +448,20 @@ fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
             }
         }
     }
+    if let Some(processing) = &processing {
+        match model::process::apply(&s.bytes, &read, processing, texture_cache) {
+            Ok((bytes, read)) => {
+                s.bytes = bytes;
+                imported.get_or_insert_with(Default::default).0.extend(read);
+            }
+            Err(e) => {
+                s.error = Some(format!("process: {e}"));
+                return None;
+            }
+        }
+    }
     // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
     if s.kind == &crate::cook::model::MODEL {
-        let dir = s.path.parent().unwrap_or(Path::new("."));
         let text = made.text.as_deref();
         let input_stamp = stamp(
             &[Area::Fracture],
@@ -438,8 +482,8 @@ fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
                         s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
                     ],
                 );
-                fracture_cache::run(texture_cache, &key, input_stamp, dir, || {
-                    fracture::fracture_glb(&s.bytes, dir, &f)
+                fracture_cache::run(texture_cache, &key, input_stamp, &read, || {
+                    fracture::fracture_glb(&s.bytes, &f, &read)
                 })
             })
             .transpose()
@@ -465,8 +509,7 @@ fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
         }
     }
     if s.kind == &crate::cook::model::MODEL {
-        let dir = s.path.parent().unwrap_or(Path::new("."));
-        match model::load(&s.bytes, dir) {
+        match model::load_with(&s.bytes, &read) {
             Ok(mut g) => {
                 g.role = role;
                 if let Some((read, notes)) = imported {
@@ -490,6 +533,11 @@ fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
             }
             Err(e) => s.error = Some(e),
         }
+    }
+    // Rebuilding procedural primitives under an art face budget would erase
+    // the authored preparation. The normal imported-mesh budget applies instead.
+    if processing.is_some() {
+        made.text = None;
     }
     Some(made)
 }
@@ -746,7 +794,16 @@ pub(crate) fn contract(
                     return Ok(None);
                 }
                 let dir = s.path.parent().unwrap_or(Path::new("."));
-                let mut g = model::load(&glb, dir)?;
+                let mut g = model::load_with(&glb, &|file| {
+                    g.external
+                        .iter()
+                        .find(|(name, _)| name == file)
+                        .map(|(_, bytes)| bytes.clone())
+                        .map(Ok)
+                        .unwrap_or_else(|| {
+                            std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}"))
+                        })
+                })?;
                 g.role = role;
                 g.segments = Some((detail, written));
                 Ok(Some((glb, g)))

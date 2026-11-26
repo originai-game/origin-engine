@@ -53,7 +53,7 @@ pub use og_audio::synth::{
 pub const SFX_TYPE: &str = "sfx";
 
 /// Bumped when the synthesiser or a preset changes, so cooked presets re-cook.
-pub const SYNTH_VERSION: &str = "2";
+pub const SYNTH_VERSION: &str = "3";
 
 macro_rules! lines {
     ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
@@ -72,6 +72,7 @@ pub const LINES: &[crate::grammar::Line] = lines![
 ];
 
 pub const LAYER_LINES: &[crate::grammar::Line] = lines![
+    "sample", "{ ... }", "", "Recording source instead of the oscillator; envelope and filters still apply.";
     "wave", "sine | square | saw | triangle | noise", "square", "Oscillator waveform; overrides a waveform on the layer line.";
     "freq", "<Hz > 0>", "440", "Starting frequency.";
     "freq_end", "<Hz > 0>", "", "Optional ending frequency.";
@@ -105,6 +106,103 @@ pub const LAYER_LINES: &[crate::grammar::Line] = lines![
     "gain", "<number >= 0>", "0.5", "Layer gain.";
     "delay", "<seconds >= 0>", "0", "Layer start delay."
 ];
+
+pub const SAMPLE_LINES: &[crate::grammar::Line] = lines![
+    "source", "\"<audio file>\"", "", "Audio file relative to this SFX file; mono or stereo (stereo averages to mono). Exclusive with samples/rate.";
+    "samples", "<finite mono PCM -1..1...>", "", "Explicit mono samples instead of a source file.";
+    "rate", "<integer 8000..192000>", "", "Sample rate of explicit PCM; the file's rate is retained for source.";
+    "reference", "<Hz > 0>", "440", "Layer frequency that plays the recording at original speed.";
+    "loop", "true | false", "false", "Wrap at the recording's end; envelope duration remains explicit."
+];
+
+fn sample(
+    e: &Entry,
+    resolve: &mut dyn FnMut(&str) -> Result<super::audio::Pcm, String>,
+) -> Result<og_audio::synth::Sample, String> {
+    let b = e
+        .block
+        .as_ref()
+        .filter(|_| e.values.is_empty())
+        .ok_or("sample takes a block")?;
+    let mut seen = std::collections::BTreeSet::new();
+    for e in &b.entries {
+        if !SAMPLE_LINES.iter().any(|f| f.key == e.key) || !seen.insert(&e.key) {
+            return Err(format!(
+                "line {}: unknown or duplicate sample field '{}'",
+                e.line, e.key
+            ));
+        }
+    }
+    let (samples, rate) = if let Some(source) = b.get("source") {
+        if b.get("samples").is_some()
+            || b.get("rate").is_some()
+            || source.values.len() != 1
+            || source.block.is_some()
+        {
+            return Err(
+                "sample.source is exclusive with samples/rate and takes one audio path".into(),
+            );
+        }
+        let pcm = resolve(source.string(0).map_err(|e| e.to_string())?)?;
+        let samples = pcm
+            .samples
+            .chunks_exact(pcm.channels as usize)
+            .map(|frame| {
+                frame.iter().map(|&v| f32::from(v) / 32768.0).sum::<f32>() / pcm.channels as f32
+            })
+            .collect();
+        (samples, pcm.rate)
+    } else {
+        let data = b
+            .get("samples")
+            .ok_or("sample needs source or samples and rate")?;
+        let samples = data
+            .values
+            .iter()
+            .map(|v| {
+                v.as_number()
+                    .map(|n| n.as_f64() as f32)
+                    .ok_or_else(|| "sample.samples takes finite mono numbers".to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let rate = finite_num(b.get("rate").ok_or("sample.samples needs rate")?)?;
+        if rate.fract() != 0.0 || !(8000.0..=192000.0).contains(&rate) {
+            return Err("sample.rate must be an integer in 8000..192000".into());
+        }
+        (samples, rate as u32)
+    };
+    let reference = b
+        .get("reference")
+        .map(finite_num)
+        .transpose()?
+        .unwrap_or(440.0);
+    let looping = b
+        .get("loop")
+        .map(|e| {
+            e.values
+                .first()
+                .and_then(|v| v.as_bool())
+                .ok_or("sample.loop takes true or false")
+        })
+        .transpose()?
+        .unwrap_or(false);
+    if samples.is_empty()
+        || samples.iter().any(|v| !v.is_finite() || v.abs() > 1.0)
+        || !(8000..=192000).contains(&rate)
+        || reference <= 0.0
+    {
+        return Err(
+            "sample needs finite mono PCM in -1..1, rate 8000..192000 and positive reference"
+                .into(),
+        );
+    }
+    Ok(og_audio::synth::Sample {
+        samples,
+        rate,
+        reference,
+        looping,
+    })
+}
 
 /// A preset's `.ogt` text.
 pub fn preset_ogt(name: &str, v: Variation) -> String {
@@ -142,7 +240,10 @@ fn non_neg(e: &Entry) -> Result<f64, String> {
     Ok(n)
 }
 
-fn parse_layer(block_entry: &Entry) -> Result<Layer, String> {
+fn parse_layer(
+    block_entry: &Entry,
+    resolve: &mut dyn FnMut(&str) -> Result<super::audio::Pcm, String>,
+) -> Result<Layer, String> {
     let mut layer = L;
     if let Some(w) = block_entry
         .values
@@ -170,6 +271,12 @@ fn parse_layer(block_entry: &Entry) -> Result<Layer, String> {
             ));
         }
         match e.key.as_str() {
+            "sample" => {
+                if layer.sample.is_some() {
+                    return Err("a layer declares sample once".into());
+                }
+                layer.sample = Some(sample(e, resolve)?);
+            }
             "wave" => {
                 let w = e
                     .values
@@ -241,12 +348,24 @@ fn parse_layer(block_entry: &Entry) -> Result<Layer, String> {
             }
         }
     }
+    if layer.sample.is_some() && (layer.fm_freq != 0.0 || layer.fm_index != 0.0) {
+        return Err("sample layers reject FM; it is oscillator-only".into());
+    }
     Ok(layer)
 }
 
 /// Reads a `type sfx` document: an optional preset, custom synth layers, and
 /// variation settings.
 pub fn parse_desc(text: &str) -> Result<SfxDesc, String> {
+    parse_desc_with(text, &mut |_| {
+        Err("sample.source is resolved by cook; inline PCM needs samples and rate".into())
+    })
+}
+
+fn parse_desc_with(
+    text: &str,
+    resolve: &mut dyn FnMut(&str) -> Result<super::audio::Pcm, String>,
+) -> Result<SfxDesc, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty != SFX_TYPE {
         return Err(format!(
@@ -273,7 +392,7 @@ pub fn parse_desc(text: &str) -> Result<SfxDesc, String> {
             "pitch" => v.pitch = finite_num(e)?,
             "length" => v.length = finite_num(e)?,
             "volume" => v.volume = non_neg(e)?,
-            "layer" | "synth" => custom_layers.push(parse_layer(e)?),
+            "layer" | "synth" => custom_layers.push(parse_layer(e, resolve)?),
             k => {
                 return Err(format!(
                     "line {}: '{k}' is not a sound preset entry: preset, layer, synth, seed, pitch, length or volume",
@@ -328,7 +447,11 @@ pub fn cook(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
     let text = std::str::from_utf8(bytes)
         .map_err(|_| CookError("a sound preset is text (UTF-8)".into()))?;
     let desc = parse_desc(text).map_err(CookError)?;
-    let samples = render_desc(&desc);
+    cook_desc(&desc, stamp)
+}
+
+fn cook_desc(desc: &SfxDesc, stamp: u64) -> Result<(Vec<u8>, String), CookError> {
+    let samples = render_desc(desc);
     let qoa = qoa::encode(&samples, 1, RATE).map_err(CookError)?;
     let frames = samples.len() as u32;
     let meta = SoundMeta {
@@ -380,16 +503,43 @@ fn plan_sfx<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     // A preset's stamp moves with the synthesiser.
-    let st = stamp(&[Area::Audio], &[b"sfx", SYNTH_VERSION.as_bytes(), &hash]);
-    outs.push((s.rel.clone(), format::Sound::NAME, st, Box::new(SfxJob(s))));
+    let mut inputs = Vec::new();
+    let desc = parse_desc_with(&String::from_utf8_lossy(&s.bytes), &mut |name| {
+        let path = s
+            .path
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .join(name)
+            .canonicalize()
+            .map_err(|e| format!("{name}: {e}"))?;
+        let root = super::assets_root(s)
+            .canonicalize()
+            .map_err(|e| e.to_string())?;
+        if !path.starts_with(root) {
+            return Err(format!("{name}: sample source must stay under assets/"));
+        }
+        let bytes = std::fs::read(&path).map_err(|e| format!("{name}: {e}"))?;
+        inputs.push(bytes.clone());
+        super::audio::decode(name, &bytes)
+    });
+    let mut parts = vec![b"sfx".as_slice(), SYNTH_VERSION.as_bytes(), &hash];
+    parts.extend(inputs.iter().map(Vec::as_slice));
+    let st = stamp(&[Area::Audio], &parts);
+    outs.push((
+        s.rel.clone(),
+        format::Sound::NAME,
+        st,
+        Box::new(SfxJob(s, desc)),
+    ));
 }
 
 /// A sound preset's one output: its synthesised sound.
-struct SfxJob<'a>(&'a Source);
+struct SfxJob<'a>(&'a Source, Result<SfxDesc, String>);
 
 impl Job for SfxJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook(&self.0.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
+        cook_desc(self.1.as_ref().map_err(|e| CookError(e.clone()))?, p.stamp)
+            .map(|(b, n)| (b, vec![n]))
     }
 
     fn action(&self) -> Action<'_> {

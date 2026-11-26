@@ -481,6 +481,8 @@ pub(crate) struct Material {
     /// tileable surface. `og materials` reads them; the cook also keeps
     /// a facade's bottom image row at the building's base.
     pub brief: Option<String>,
+    /// Explicit input image for cook-time map preparation; asset-root relative.
+    pub generate: Option<String>,
     pub facade: bool,
     /// How many metres of height the source image's darkest to lightest
     /// span, for the normal map `og materials make` derives (0: none;
@@ -496,7 +498,22 @@ pub(crate) struct Material {
 }
 
 /// The keys of a library's material that are not the drawn material's.
+pub(crate) const MATERIAL_GENERATE_LINES: &[crate::grammar::Line] = &[crate::grammar::Line::new(
+    "source",
+    "\"<image>\"",
+    "required",
+    "Authored input image, relative to assets/. Its bytes and processing parameters form the action key.",
+    "",
+)];
+
 pub(crate) const MATERIAL_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "generate",
+        "{ source \"<image>\" }",
+        "off",
+        "Prepare the declared map destinations during cook, without writing generated files into assets/.",
+        "",
+    ),
     crate::grammar::Line::new(
         "label",
         "<label>",
@@ -632,6 +649,27 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             }
         }
         let brief = b.get("brief").map(text).transpose()?;
+        let generate = b
+            .get("generate")
+            .map(|e| {
+                if b.get_all("generate").count() != 1 || !e.values.is_empty() {
+                    return Err(at(e, "declare generate once, as a block"));
+                }
+                let g = block(e)?;
+                for e in &g.entries {
+                    if crate::grammar::find(MATERIAL_GENERATE_LINES, &e.key, &[]).is_none() {
+                        return Err(at(e, "unknown material generation field"));
+                    }
+                }
+                if g.entries.len() != 1 {
+                    return Err(at(e, "generate contains one source"));
+                }
+                asset(
+                    g.get("source")
+                        .ok_or_else(|| at(e, "generate needs source"))?,
+                )
+            })
+            .transpose()?;
         let facade = b.get("facade").map(flag).transpose()?.unwrap_or(false);
         let relief = b.get("relief").map(one).transpose()?.unwrap_or(0.0);
         let roughness_range = b.get("roughnessRange").map(range).transpose()?;
@@ -655,6 +693,7 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
         }
         if (facade || relief != 0.0 || roughness_range.is_some() || occlusion.is_some())
             && brief.is_none()
+            && generate.is_none()
         {
             return Err(at(
                 e,
@@ -682,6 +721,7 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             value,
             warmth,
             brief,
+            generate,
             facade,
             relief,
             roughness_range,

@@ -211,6 +211,7 @@ Field coverage: library parameters and shared model material fields. Repeat mate
 
 | Field | Default | Meaning |
 |---|---|---|
+| `generate { source "<image>" }` | `off` | Prepare the declared map destinations during cook, without writing generated files into assets/. |
 | `label <label>` | `required` | Repeat labels this material covers. |
 | `weight <number > 0>` | `1` | Explicit selection weight within a label. |
 | `tile <width> <height>` | `1 1` | Positive texture coverage in metres. |
@@ -250,6 +251,13 @@ Field coverage: library parameters and shared model material fields. Repeat mate
 | `stains <0..1>` | `0` | Stain variation weight. |
 | `stochastic <0..1>` | `0` | Stochastic texture sampling weight. |
 
+<a id="file-materials-material-generate"></a>
+### `file:materials.material.generate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<image>"` | `required` | Authored input image, relative to assets/. Its bytes and processing parameters form the action key. |
+
 <a id="file-materials-material-vary"></a>
 ### `file:materials.material.vary`
 
@@ -272,6 +280,7 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `part "<name>" { ... }` | `` | Placed mesh; one geometry block, with optional instanced at placements. |
 | `plant "<name>" { ... }` | `` | One generated plant per model. |
 | `fracture { ... }` | `` | Prefracture the imported model through the shared cutting kernel. |
+| `process { ... }` | `` | Explicit static-mesh repair, simplification, UVs, material transfer and skin binding before prefracture; see model.process. |
 | `conform off \| character \| effect` | `project art contract` | Art conformance category. |
 
 <a id="file-model-part-boxGeometry"></a>
@@ -823,6 +832,76 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `interior { ... }` | `darkened main material` | Cut-face material using model.material fields. |
 | `mortar { ... }` | `` | Debris material using model.material fields. |
 
+<a id="file-model-process"></a>
+### `file:model.process`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `repair { ... }` | `off` | Run the existing mesh repair kernel before simplification. |
+| `decimate { ... }` | `off` | Explicit triangle/error budget, independently per material primitive. |
+| `unwrap { ... }` | `off` | Replace UVs. Existing maps require bake so their appearance is not silently lost. |
+| `bake { ... }` | `off` | Transfer the source material and normals to a fresh low-mesh atlas. No image generation. |
+| `rig { ... }` | `off` | Bind explicit joints, or explicitly request the existing humanoid finder, after static processing. |
+
+<a id="file-model-process-repair"></a>
+### `file:model.process.repair`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `weld <metres >= 0>` | `0` | Weld distance; zero welds exact duplicates. |
+| `weldAll true \| false` | `false` | Also weld interior vertices. |
+| `floaters <metres >= 0>` | `0` | Drop disconnected pieces below this diagonal. |
+| `floaterFraction <0..1>` | `0` | Drop pieces below this share of the largest diagonal. |
+| `nonManifold true \| false` | `false` | Split non-manifold sheets. |
+| `holeEdges <integer >= 0>` | `0` | Largest hole rim to close. |
+| `holesThrough true \| false` | `false` | Permit a crossing fill of larger holes. |
+| `thicken <metres >= 0>` | `0` | Thickness given to open sheets. |
+| `fuse true \| false` | `false` | Self-union closed interpenetrating shells. |
+| `minEdge <metres >= 0>` | `0` | Collapse edges below this length where manifoldness survives. |
+
+<a id="file-model-process-decimate"></a>
+### `file:model.process.decimate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `target <integer >= 0>` | `0` | Maximum triangles per material primitive; zero is unset. |
+| `ratio <0..1>` | `0` | Triangle share; zero is unset. With target the smaller count wins. |
+| `maxError <metres >= 0>` | `0` | Quadric RMS displacement limit; zero is unlimited. |
+| `lockBorder true \| false` | `false` | Keep open-border vertices fixed. |
+| `mergeCharts <UV distance >= 0>` | `0` | Join UV charts agreeing up to a rigid move. |
+| `crossColorBorders true \| false` | `false` | Permit collapse across hard vertex-colour borders. |
+
+<a id="file-model-process-unwrap"></a>
+### `file:model.process.unwrap`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `angle <degrees, 0..90)` | `0 (kernel 66)` | Chart projection angle. |
+| `resolution <integer, 0..8192>` | `0 (kernel 1024)` | Grid used to measure padding. |
+| `padding <texels >= 0>` | `0 (kernel 2)` | Chart separation. |
+| `shared true \| false` | `false` | Share chart projection directions. |
+| `conformal true \| false` | `false` | Use angle-preserving flattening where valid. |
+| `seams true \| false` | `false` | Try seam-cut charts before flattening. |
+
+<a id="file-model-process-bake"></a>
+### `file:model.process.bake`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <integer, 1..8192>` | `1024` | Atlas and material-map side in texels. |
+| `distance <metres >= 0>` | `0` | Source search distance; zero uses the kernel's 2% of diagonal. |
+| `padding <integer, 0..8192>` | `4` | Atlas gutters. |
+| `dilate <integer >= 0>` | `0` | Dilation layers; zero fills all uncovered texels. |
+| `normals true \| false` | `true` | Transfer source shading normals as a tangent-space normal map. |
+
+<a id="file-model-process-rig"></a>
+### `file:model.process.rig`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `auto true \| false` | `false` | Explicitly run the existing humanoid joint finder; exclusive with joint lines. |
+| `joint "<name>" "<parent or empty>" <x> <y> <z>` | `` | Repeat parent-first joints in model-local metres, Y up. Each processed primitive is bound to the same skeleton. |
+
 Attribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.
 
 <a id="file-model-part-bufferGeometry"></a>
@@ -1038,6 +1117,7 @@ Field coverage: complete parser line tables. Output: ordinary cooked sound throu
 
 | Field | Default | Meaning |
 |---|---|---|
+| `sample { ... }` | `` | Recording source instead of the oscillator; envelope and filters still apply. |
 | `wave sine \| square \| saw \| triangle \| noise` | `square` | Oscillator waveform; overrides a waveform on the layer line. |
 | `freq <Hz > 0>` | `440` | Starting frequency. |
 | `freq_end <Hz > 0>` | `` | Optional ending frequency. |
@@ -1070,6 +1150,17 @@ Field coverage: complete parser line tables. Output: ordinary cooked sound throu
 | `drive <number >= 0>` | `0` | Soft-clip drive. |
 | `gain <number >= 0>` | `0.5` | Layer gain. |
 | `delay <seconds >= 0>` | `0` | Layer start delay. |
+
+<a id="file-sfx-layer-sample"></a>
+### `file:sfx.layer.sample`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<audio file>"` | `` | Audio file relative to this SFX file; mono or stereo (stereo averages to mono). Exclusive with samples/rate. |
+| `samples <finite mono PCM -1..1...>` | `` | Explicit mono samples instead of a source file. |
+| `rate <integer 8000..192000>` | `` | Sample rate of explicit PCM; the file's rate is retained for source. |
+| `reference <Hz > 0>` | `440` | Layer frequency that plays the recording at original speed. |
+| `loop true \| false` | `false` | Wrap at the recording's end; envelope duration remains explicit. |
 
 <a id="file-shader"></a>
 ### `file:shader`

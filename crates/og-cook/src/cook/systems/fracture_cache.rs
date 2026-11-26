@@ -10,7 +10,7 @@ pub(crate) fn run(
     directory: Option<&Path>,
     input: &str,
     stamp: u64,
-    dir: &Path,
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
     fracture: impl FnOnce() -> Result<Fractured, String>,
 ) -> Result<(Fractured, bool), String> {
     let store = directory.map(|p| cache::Store::new(p.to_owned()));
@@ -26,7 +26,7 @@ pub(crate) fn run(
         && let Ok(names) = serde_json::from_slice::<Vec<String>>(&names)
         && let Ok(read) = names
             .into_iter()
-            .map(|name| std::fs::read(dir.join(&name)).map(|bytes| (name, bytes)))
+            .map(|name| read(&name).map(|bytes| (name, bytes)))
             .collect::<Result<Vec<_>, _>>()
         && let Some((bytes, _)) = store.action(&action_key(input, &read))
         && let Some(result) = decode(&bytes, stamp, read)

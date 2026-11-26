@@ -744,9 +744,23 @@ module audio {
     variant noise "Deterministic white or sample-and-hold noise (SplitMix64)."
   }
 
-  struct SfxLayerDesc {
-    doc "One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound)."
+  struct SfxSampleDesc {
+    doc "An authored mono PCM source for a synth layer, instead of its oscillator. Linear interpolation; outside a non-looping recording the source is silent. Envelope, pitch slide, vibrato and filters still apply."
     desc true
+    field samples List.f32 "Finite mono PCM samples in -1..1; at least one sample."
+    field rate u32 "Recording sample rate in Hz, 8000..192000."
+    field reference f32 "Layer frequency that plays the recording at original speed." {
+      default 440
+      min 1
+      unit hz
+    }
+    field loop bool "Wrap at the recording's end; envelope duration remains explicit."
+  }
+
+  struct SfxLayerDesc {
+    doc "One oscillator or PCM sample layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound)."
+    desc true
+    field sample Option.SfxSampleDesc "Optional recording instead of wave. FM is oscillator-only; sample layers reject it."
     field wave SfxWave "Oscillator waveform." {
       default square
     }

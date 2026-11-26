@@ -61,7 +61,6 @@ use og_physics_data::fracture::{Bond, Chunk, FractureAsset, NONE};
 use og_shape::boolean::fracture::{self, Piece, seeds};
 use og_shape::generators::Mesh;
 use std::collections::BTreeMap;
-use std::path::Path;
 
 /// The `fracture` block's key, in a `type model` or import settings.
 pub const BLOCK: &str = "fracture";
@@ -1055,9 +1054,13 @@ pub(crate) struct Fractured {
     pub read: Vec<(String, Vec<u8>)>,
 }
 
-/// Fractures glTF binary `glb` (read beside `dir`) by `s`.
-pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fractured, String> {
-    let g = model::load(glb, dir)?;
+/// Fractures glTF binary `glb` with dependencies from the cook's input graph.
+pub(crate) fn fracture_glb(
+    glb: &[u8],
+    s: &Settings,
+    resolve: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Result<Fractured, String> {
+    let g = model::load_with(glb, resolve)?;
     let (mesh, material) = flatten(&g)?;
     let (lo, hi) = fracture::bounds(&mesh);
     let ext = hi - lo;
@@ -1176,9 +1179,7 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
         let mut images = json["images"].as_array().cloned().unwrap_or_default();
         let mut textures = json["textures"].as_array().cloned().unwrap_or_default();
         for file in &maps {
-            let full = dir.join(file);
-            let bytes = std::fs::read(&full)
-                .map_err(|e| format!("fracture.interior: {}: {e}", full.display()))?;
+            let bytes = resolve(file).map_err(|e| format!("fracture.interior: {file}: {e}"))?;
             let view = bin.view(&bytes);
             images.push(serde_json::json!({ "bufferView": view, "mimeType": mime(&bytes) }));
             textures.push(serde_json::json!({ "source": images.len() - 1, "sampler": sampler }));

@@ -276,7 +276,7 @@ pub fn parse(
                     as u32;
             }
             // Read by the cook's conform step.
-            "conform" => {}
+            "conform" | "process" => {}
             other => {
                 return Err(at(
                     e,

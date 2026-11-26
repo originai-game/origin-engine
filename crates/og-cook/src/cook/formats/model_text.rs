@@ -1635,7 +1635,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
             }
             // A `fracture` block: the cook cuts the built model into chunks
             // (`fracture.rs`).
-            "fracture" if e.block.is_some() => {}
+            "fracture" | "process" if e.block.is_some() && e.values.is_empty() => {}
             // `conform off`: the art contract leaves it as made;
             // `conform character`: it is held to ArtShape.characterFaces;
             // `conform effect`: an effect's mesh, no face budget (cook/conform).

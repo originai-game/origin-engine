@@ -42,10 +42,21 @@ impl Wave {
     }
 }
 
-/// One oscillator layer.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// An authored mono recording used instead of an oscillator.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Sample {
+    pub samples: Vec<f32>,
+    pub rate: u32,
+    /// Frequency at which the recording plays at its original speed.
+    pub reference: f64,
+    pub looping: bool,
+}
+
+/// One oscillator or sample layer, with the same envelope and filters.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Layer {
     pub wave: Wave,
+    pub sample: Option<Sample>,
     /// Start frequency, Hz. For `Wave::Noise`, `>= 24_000 Hz` (or `<= 0`) runs
     /// full-rate white noise; lower values run sample-and-hold at `freq` Hz.
     pub freq: f64,
@@ -93,6 +104,7 @@ impl Default for Layer {
 
 pub const L: Layer = Layer {
     wave: Wave::Square,
+    sample: None,
     freq: 440.0,
     freq_end: None,
     slide: 0.0,
@@ -538,7 +550,7 @@ pub fn render_layers_f32(base_layers: &[Layer], v: Variation) -> Vec<f32> {
         1.0
     };
     for l in &mut layers {
-        if l.wave != Wave::Noise || l.freq < f64::from(RATE) * 0.5 {
+        if l.sample.is_some() || l.wave != Wave::Noise || l.freq < f64::from(RATE) * 0.5 {
             l.freq *= pitch;
             if let Some(end) = l.freq_end {
                 l.freq_end = Some(end * pitch);
@@ -556,7 +568,7 @@ pub fn render_layers_f32(base_layers: &[Layer], v: Variation) -> Vec<f32> {
         l.lp_slide /= len_scale;
         if v.seed != 0 {
             let f_jit = rng.around(0.06);
-            if l.wave != Wave::Noise || l.freq < f64::from(RATE) * 0.5 {
+            if l.sample.is_some() || l.wave != Wave::Noise || l.freq < f64::from(RATE) * 0.5 {
                 l.freq *= f_jit;
                 if let Some(end) = l.freq_end {
                     l.freq_end = Some(end * f_jit);
@@ -601,6 +613,7 @@ pub fn render_layers_f32(base_layers: &[Layer], v: Variation) -> Vec<f32> {
         );
         let mut phase = 0.0f64;
         let mut fm_phase = 0.0f64;
+        let mut cursor = 0.0f64;
         let mut held = 0.0f64;
         let (mut lp, mut hp_in, mut hp) = (0.0f64, 0.0f64, 0.0f64);
         let (mut svf_ic1, mut svf_ic2) = (0.0f64, 0.0f64);
@@ -676,29 +689,48 @@ pub fn render_layers_f32(base_layers: &[Layer], v: Variation) -> Vec<f32> {
             } else {
                 phase
             };
-            let s = match l.wave {
-                Wave::Square => {
-                    let raw = if mod_phase < duty { 1.0 } else { -1.0 };
-                    let shifted = (mod_phase + 1.0 - duty).fract();
-                    // PolyBLEP at both rising (0) and falling (`duty`) edges,
-                    // plus analytical DC removal for asymmetric pulse widths.
-                    let blep = poly_blep(mod_phase, dt_phase) - poly_blep(shifted, dt_phase);
-                    raw + blep - (2.0 * duty - 1.0)
-                }
-                Wave::Saw => {
-                    let raw = mod_phase * 2.0 - 1.0;
-                    raw - poly_blep(mod_phase, dt_phase)
-                }
-                Wave::Sine => double::sin(TAU * mod_phase),
-                Wave::Triangle => 1.0 - 4.0 * (mod_phase - 0.5).abs(),
-                Wave::Noise => {
-                    if full_rate_noise {
-                        noise.next() * 2.0 - 1.0
+            let s = if let Some(sample) = &l.sample {
+                let count = sample.samples.len();
+                let at = cursor.floor() as usize;
+                let value = if count == 0 || (!sample.looping && at >= count) {
+                    0.0
+                } else {
+                    let index = at % count;
+                    let next = if sample.looping {
+                        (index + 1) % count
                     } else {
-                        if phase < prev || i == start {
-                            held = noise.next() * 2.0 - 1.0;
+                        (index + 1).min(count - 1)
+                    };
+                    let a = f64::from(sample.samples[index]);
+                    a + (f64::from(sample.samples[next]) - a) * cursor.fract()
+                };
+                cursor += f64::from(sample.rate) * dt * f / sample.reference;
+                value
+            } else {
+                match l.wave {
+                    Wave::Square => {
+                        let raw = if mod_phase < duty { 1.0 } else { -1.0 };
+                        let shifted = (mod_phase + 1.0 - duty).fract();
+                        // PolyBLEP at both rising (0) and falling (`duty`) edges,
+                        // plus analytical DC removal for asymmetric pulse widths.
+                        let blep = poly_blep(mod_phase, dt_phase) - poly_blep(shifted, dt_phase);
+                        raw + blep - (2.0 * duty - 1.0)
+                    }
+                    Wave::Saw => {
+                        let raw = mod_phase * 2.0 - 1.0;
+                        raw - poly_blep(mod_phase, dt_phase)
+                    }
+                    Wave::Sine => double::sin(TAU * mod_phase),
+                    Wave::Triangle => 1.0 - 4.0 * (mod_phase - 0.5).abs(),
+                    Wave::Noise => {
+                        if full_rate_noise {
+                            noise.next() * 2.0 - 1.0
+                        } else {
+                            if phase < prev || i == start {
+                                held = noise.next() * 2.0 - 1.0;
+                            }
+                            held
                         }
-                        held
                     }
                 }
             };

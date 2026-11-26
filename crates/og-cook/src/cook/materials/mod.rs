@@ -24,6 +24,8 @@ use super::systems::district::parse;
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Request {
     pub material: String,
+    /// Also make these maps as virtual cook inputs.
+    pub generate: bool,
     /// The art brief kind: `material` (a seamless surface) or `facade` (a
     /// module that repeats along a street).
     pub kind: &'static str,
@@ -45,7 +47,10 @@ pub struct Request {
 pub fn requests(text: &str) -> Result<Vec<Request>, String> {
     let mut out = Vec::new();
     for m in parse::materials(text)? {
-        let Some(subject) = m.brief else { continue };
+        if m.brief.is_none() && m.generate.is_none() {
+            continue;
+        }
+        let subject = m.brief.unwrap_or_default();
         let named = |k: &str| -> Result<Option<String>, String> {
             match m.fields.get(k) {
                 None => Ok(None),
@@ -90,10 +95,11 @@ pub fn requests(text: &str) -> Result<Vec<Request>, String> {
         }
         out.push(Request {
             material: m.name,
+            generate: m.generate.is_some(),
             kind: if m.facade { "facade" } else { "material" },
             subject,
             tile: m.tile,
-            source: format!("{stem}.source.png"),
+            source: m.generate.unwrap_or_else(|| format!("{stem}.source.png")),
             map,
             normal_map: if m.relief != 0.0 { normal_map } else { None },
             relief: m.relief,
@@ -113,7 +119,7 @@ pub fn requests(text: &str) -> Result<Vec<Request>, String> {
     for r in &out {
         for id in std::iter::once(&r.source).chain(r.destinations()) {
             if id.contains(['\\', ':'])
-                || !id.ends_with(".png")
+                || (id != &r.source && !id.ends_with(".png"))
                 || id.split('/').any(|part| matches!(part, "" | "." | ".."))
             {
                 return Err(format!(
@@ -245,4 +251,84 @@ fn png(w: usize, h: usize, rgb: &[u8]) -> Result<Vec<u8>, String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(out)
+}
+
+/// Map generation is a cook input node, never a write into the author's assets.
+pub(crate) fn expand(sources: &mut Vec<super::Source>) {
+    use super::{Source, assets_root, cache, systems::district, texture};
+    let mut occupied: std::collections::BTreeSet<_> =
+        sources.iter().map(|s| s.rel.clone()).collect();
+    let mut extra = Vec::new();
+    for s in sources
+        .iter_mut()
+        .filter(|s| s.kind == &district::MATERIALS && s.error.is_none())
+    {
+        let root = assets_root(s);
+        let made = (|| {
+            let requests = requests(&String::from_utf8_lossy(&s.bytes))?;
+            let mut files = Vec::new();
+            for r in requests.into_iter().filter(|r| r.generate) {
+                let source = std::fs::read(root.join(&r.source))
+                    .map_err(|e| format!("{}: {e}", r.source))?;
+                let options = serde_json::to_vec(&r).map_err(|e| e.to_string())?;
+                let key = cache::key(
+                    &[crate::format::Area::Texture],
+                    "material-maps-1",
+                    &[&options, &source],
+                );
+                let store = cache::default_path().map(cache::Store::new);
+                let cached = store
+                    .as_ref()
+                    .and_then(|s| s.action(&key))
+                    .and_then(|(bytes, _)| {
+                        serde_json::from_slice::<Vec<(String, Vec<u8>)>>(&bytes).ok()
+                    });
+                let maps = match cached {
+                    Some(maps) => maps,
+                    None => {
+                        let maps = make(&r, &source)?.files;
+                        if let Some(store) = &store {
+                            let bytes = serde_json::to_vec(&maps).map_err(|e| e.to_string())?;
+                            let _ = store.put_action(&key, &bytes, &[]);
+                        }
+                        maps
+                    }
+                };
+                files.extend(maps);
+            }
+            for (id, _) in &files {
+                if occupied.contains(id) || root.join(id).exists() {
+                    return Err(format!(
+                        "generated material map '{id}' collides with an authored source or another output"
+                    ));
+                }
+            }
+            Ok::<_, String>(files)
+        })();
+        match made {
+            Err(error) => s.error = Some(error),
+            Ok(files) => {
+                for (rel, bytes) in files {
+                    occupied.insert(rel.clone());
+                    extra.push(Source {
+                        path: root.join(&rel),
+                        rel,
+                        kind: &texture::TEXTURE,
+                        bytes,
+                        settings: None,
+                        settings_files: Vec::new(),
+                        hash: 0,
+                        gltf: None,
+                        error: None,
+                        encoded: Default::default(),
+                        whole: Default::default(),
+                        model: Default::default(),
+                        conformed: None,
+                        fracture: None,
+                    });
+                }
+            }
+        }
+    }
+    sources.extend(extra);
 }

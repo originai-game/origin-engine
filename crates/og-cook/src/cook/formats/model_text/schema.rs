@@ -61,6 +61,7 @@ pub const BLOCKS: &[(&str, &[Line])] = &[
             "part", "\"<name>\" { ... }", "", "Placed mesh; one geometry block, with optional instanced at placements.";
             "plant", "\"<name>\" { ... }", "", "One generated plant per model.";
             "fracture", "{ ... }", "", "Prefracture the imported model through the shared cutting kernel.";
+            "process", "{ ... }", "", "Explicit static-mesh repair, simplification, UVs, material transfer and skin binding before prefracture; see model.process.";
             "conform", "off | character | effect", "project art contract", "Art conformance category."
         ],
     ),

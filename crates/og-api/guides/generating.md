@@ -98,9 +98,77 @@ export default og.game({
     og.assert.always(foliage.value.parts.length === 2, "guided plant cooks wood and custom foliage", {});
     const counts = foliage.value.parts.map(part => og.render.geometryInfo(world, part.geometry));
     og.assert.always(counts.every(v => v.ok) && counts.reduce((n, v) => n + v.value!.triangles, 0) === 17, "two trunk sections and one custom leaf triangle survive cook", {});
+    const processed = og.load.gltf(world, "processed.ogt", {});
+    if (!processed.ok) throw new Error(processed.reason);
+    const prepared = og.load.gltfInfo(world, processed.value);
+    if (!prepared.ok) throw new Error(prepared.reason);
+    const reduced = og.render.geometryInfo(world, prepared.value.parts[0]!.geometry);
+    og.assert.always(reduced.ok && reduced.value!.triangles > 0 && reduced.value!.triangles < 168, "authored repair, reduction and atlas baking produce a loadable mesh", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
+```
+
+```ogt recipe file=assets/processed.ogt
+type model
+version 1
+---
+conform off
+material "surface" {
+  map "surface.png"
+  normalMap "surface-normal.png"
+  roughness 0.8
+}
+part "surface" {
+  material "surface"
+  sphereGeometry {
+    widthSegments 12
+    heightSegments 8
+  }
+}
+process {
+  repair {
+    weld 0
+  }
+  decimate {
+    ratio 0.6
+  }
+  unwrap {
+    resolution 64
+  }
+  bake {
+    size 64
+    padding 2
+  }
+  rig {
+    joint "root" "" 0 -1 0
+    joint "tip" "root" 0 1 0
+  }
+}
+```
+
+The model's `process` block runs repair, decimation, UV preparation/material baking and skin binding in that order, through the existing mesh kernels. It accepts static meshes only; it refuses existing animation, skins and morphs rather than discarding them. An explicit skeleton uses model-local metres, Y up. Unwrapping a textured input requires baking so its authored appearance survives the UV replacement. Processed maps are embedded and their source bytes remain cook dependencies.
+
+A material library's explicit `generate` block invokes the existing periodic/PBR map preparation during cook. Destinations must not collide with authored files or other outputs. Generated PNG inputs exist in the cook graph, not in `assets/`; model, processing and fracture consumers resolve the same bytes. The image and every processing parameter form the action key. `og materials make` remains the explicit authoring command when source files are wanted.
+
+```ogt recipe file=assets/materials.ogt
+type materials
+version 1
+---
+material "surface" {
+  label surface
+  generate {
+    source "surface.svg"
+  }
+  tile 2 1
+  relief 0.02
+  map "surface.png"
+  normalMap "surface-normal.png"
+}
+```
+
+```text recipe file=assets/surface.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><rect width="32" height="16" fill="#bf7944"/><path fill="#483025" d="M3 0h5v16H3zM19 0h3v16h-3z"/></svg>
 ```
 
 ```ogt recipe file=assets/surface.ogt
@@ -472,6 +540,15 @@ export default og.game({
     if (!entity.ok) throw new Error(entity.reason);
     world.insert(entity.value, og.Tilemap, { map: loaded.value.map });
     const sound = og.load.sound(world, "signal.ogt");
+    const sampled = og.load.sound(world, "sampled.ogt");
+    og.assert.always(sampled.ok, "sample-based synthesis cooks as a normal sound", {});
+    const source = { samples: [0.25], rate: 8000, reference: 440, loop: true };
+    const layer = { sample: source, freq: 880, attack: 0, sustain: 0.01, decay: 0, gain: 1 };
+    const looped = og.audio.synth({ seed: 0, layers: [layer] });
+    const oneShot = og.audio.synth({ seed: 0, layers: [{ ...layer, sample: { ...source, loop: false } }] });
+    if (!looped.ok || !oneShot.ok) throw new Error("sample synthesis failed");
+    const sampleExpected = 0.25 * (1 - 2 * Math.PI * 15 / 48000) ** 7;
+    og.assert.always(Math.abs(looped.value.samples[7]! - sampleExpected) < 0.000001 && oneShot.value.samples[7]! < 0, "PCM loops wrap while non-looping sources end at the tuned sample rate", {});
     if (!sound.ok) throw new Error(sound.reason);
     const format = og.load.soundInfo(world, sound.value);
     og.assert.always(format.ok && format.value!.rate === 22050 && format.value!.channels === 2 && format.value!.frames === 300, "generated PCM is a normal sound asset", {});
@@ -561,6 +638,27 @@ import type { SoundSource } from "@origingame/engine/generate";
 export default function signal() {
   const samples = Float32Array.from({ length: 600 }, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6]!);
   return { rate: 22050, channels: 2, samples } satisfies SoundSource;
+}
+```
+
+SFX layers can also use a recording instead of an oscillator. A `sample` block accepts either `source "recording.wav"` relative to the SFX file, or explicit mono `samples` and `rate`. Stereo files average to mono. `reference` gives the layer frequency for original-speed playback, and `loop` wraps only the source, not the explicit envelope. Slide, vibrato, filters and drive use the same synth as oscillators; FM is oscillator-only. The file's content participates in the cook cache key even when the SFX text did not change.
+
+```ogt recipe file=assets/sampled.ogt
+type sfx
+version 1
+---
+layer {
+  sample {
+    samples 0.25 -0.5 0.75
+    rate 8000
+    reference 440
+    loop true
+  }
+  freq 880
+  attack 0.002
+  sustain 0.01
+  decay 0.004
+  gain 0.5
 }
 ```
 

@@ -532,6 +532,48 @@ fn generated_pcm_cooks_as_an_authored_sound() {
             text(&out)
         );
     }
+    std::fs::remove_file(assets.join("made.ogt")).unwrap();
+    std::fs::write(assets.join("sampled.ogt"), "type sfx\nversion 1\n---\nlayer {\nsample {\nsource \"authored.wav\"\nloop true\n}\nattack 0\nsustain 0.01\ndecay 0\ngain 1\n}\n").unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let decoded = || {
+        og_cook::runtime::Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_sound("sampled.ogt")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .samples
+    };
+    let first = decoded();
+    assert!(first.iter().any(|&v| v != 0));
+    // Changing only the recording must invalidate the sample-based synth,
+    // including an existing shared-cache entry for the unchanged SFX text.
+    let mut writer = hound::WavWriter::create(
+        assets.join("authored.wav"),
+        hound::WavSpec {
+            channels: 1,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .unwrap();
+    for _ in 0..8 {
+        writer.write_sample(0i16).unwrap();
+    }
+    writer.finalize().unwrap();
+    std::fs::write(assets.join("zero.ogt"), "type sfx\nversion 1\n---\nlayer {\nsample {\nsamples 0\nrate 8000\nloop true\n}\nattack 0\nsustain 0.01\ndecay 0\ngain 1\n}\n").unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_ne!(first, decoded());
+    let silence = og_cook::runtime::Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_sound("zero.ogt")
+        .unwrap()
+        .decode()
+        .unwrap();
+    assert_eq!(decoded(), silence.samples);
 }
 
 /// Typed source attributes cross the public cook/load boundary, including

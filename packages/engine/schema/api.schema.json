@@ -10244,6 +10244,7 @@
         "SoundEnded",
         "AudioFeedbackDesc",
         "SfxWave",
+        "SfxSampleDesc",
         "SfxLayerDesc",
         "SfxDesc",
         "SfxSamples"
@@ -46372,12 +46373,60 @@
         "noise": "Deterministic white or sample-and-hold noise (SplitMix64)."
       }
     },
+    "SfxSampleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "audio",
+      "description": "An authored mono PCM source for a synth layer, instead of its oscillator. Linear interpolation; outside a non-looping recording the source is silent. Envelope, pitch slide, vibrato and filters still apply.",
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Finite mono PCM samples in -1..1; at least one sample.",
+          "default": []
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Recording sample rate in Hz, 8000..192000.",
+          "default": 0
+        },
+        "reference": {
+          "type": "number",
+          "description": "Layer frequency that plays the recording at original speed.",
+          "default": 440,
+          "minimum": 1,
+          "x-og-unit": "hz"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Wrap at the recording's end; envelope duration remains explicit.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "SfxLayerDesc": {
       "x-og-kind": "desc",
       "x-og-module": "audio",
-      "description": "One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).",
+      "description": "One oscillator or PCM sample layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).",
       "type": "object",
       "properties": {
+        "sample": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SfxSampleDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional recording instead of wave. FM is oscillator-only; sample layers reject it.",
+          "default": null
+        },
         "wave": {
           "$ref": "#/$defs/SfxWave",
           "description": "Oscillator waveform.",

@@ -387,7 +387,7 @@ pub fn og_audio_create_sound(
 }
 
 fn synth_render(d: &wire::SfxDesc) -> Result<Vec<f32>, String> {
-    use og_audio::synth::{Layer, Variation, Wave, preset_layers, render_layers_f32};
+    use og_audio::synth::{Layer, Sample, Variation, Wave, preset_layers, render_layers_f32};
     for (name, val) in [
         ("pitch", d.pitch),
         ("duration", d.duration),
@@ -429,7 +429,16 @@ fn synth_render(d: &wire::SfxDesc) -> Result<Vec<f32>, String> {
             if nums.iter().any(|x| !x.is_finite()) {
                 return Err(format!("desc.layers[{i}] contains a non-finite parameter"));
             }
+            let sample = l.sample.as_ref().map(|s| {
+                if s.samples.is_empty() || s.samples.iter().any(|v| !v.is_finite() || v.abs() > 1.0)
+                    || !(8000..=192000).contains(&s.rate) || !s.reference.is_finite() || s.reference <= 0.0
+                    || l.fm_index != 0.0 || l.fm_freq != 0.0 {
+                    return Err(format!("desc.layers[{i}].sample needs finite mono PCM in -1..1, rate 8000..192000 and positive reference; FM is oscillator-only"));
+                }
+                Ok(Sample { samples: s.samples.clone(), rate: s.rate, reference: f64::from(s.reference), looping: s.r#loop })
+            }).transpose()?;
             out.push(Layer {
+                sample,
                 wave: match l.wave {
                     wire::SfxWave::Square => Wave::Square,
                     wire::SfxWave::Saw => Wave::Saw,

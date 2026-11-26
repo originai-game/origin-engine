@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "materials.material.generate",
+    "change": "Material libraries can declare a source image for deterministic periodic and derived-map preparation during cook. Generated maps are virtual inputs consumed by the normal model and texture pipelines.",
+    "fix": "Write generate { source \"input.png\" } and explicit map destinations instead of maintaining a preprocessing script. Generated destinations must not also be authored files."
+  }]
+}

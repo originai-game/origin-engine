@@ -6,12 +6,13 @@ Module [`audio`](../audio.md) · [index](../index.md)
 
 ### `SfxLayerDesc` (desc struct)
 
-One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).
+One oscillator or PCM sample layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
+| `sample` | `SfxSampleDesc \| null` | `null` | — | — | — | Optional recording instead of wave. FM is oscillator-only; sample layers reject it. |
 | `wave` | `SfxWave` | `"square"` | — | — | — | Oscillator waveform. |
 | `freq` | `number` | `440` | 0 … 48000 | `hz` | — | Start frequency (for noise, >= 24000 or 0 runs full-rate white noise; lower values sample-and-hold at freq). |
 | `freqEnd` | `number` | `0` | 0 … 48000 | `hz` | — | Optional target end frequency overriding slide when > 0 (0: use slide). |
@@ -39,8 +40,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct SfxLayerDesc {
-  doc "One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound)."
+  doc "One oscillator or PCM sample layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound)."
   desc true
+  field sample Option.SfxSampleDesc "Optional recording instead of wave. FM is oscillator-only; sample layers reject it."
   field wave SfxWave "Oscillator waveform." {
     default square
   }
@@ -160,4 +162,4 @@ struct SfxLayerDesc {
 }
 ```
 
-<sub>Module `audio` line 747</sub>
+<sub>Module `audio` line 760</sub>

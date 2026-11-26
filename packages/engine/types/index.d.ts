@@ -25414,11 +25414,51 @@ export interface AudioFeedbackDesc {
 export type SfxWave = "square" | "saw" | "sine" | "triangle" | "noise";
 
 /**
- * One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).
+ * An authored mono PCM source for a synth layer, instead of its oscillator. Linear interpolation; outside a non-looping recording the source is silent. Envelope, pitch slide, vibrato and filters still apply.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SfxSampleDesc {
+  /**
+   * Finite mono PCM samples in -1..1; at least one sample.
+   *
+   * @default []
+   */
+  readonly samples?: readonly number[];
+  /**
+   * Recording sample rate in Hz, 8000..192000.
+   *
+   * @default 0
+   */
+  readonly rate?: number;
+  /**
+   * Layer frequency that plays the recording at original speed.
+   *
+   * @default 440
+   * @range 1..
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly reference?: number;
+  /**
+   * Wrap at the recording's end; envelope duration remains explicit.
+   *
+   * @default false
+   */
+  readonly loop?: boolean;
+}
+
+/**
+ * One oscillator or PCM sample layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface SfxLayerDesc {
+  /**
+   * Optional recording instead of wave. FM is oscillator-only; sample layers reject it.
+   *
+   * @default null
+   */
+  readonly sample?: SfxSampleDesc | null;
   /**
    * Oscillator waveform.
    *

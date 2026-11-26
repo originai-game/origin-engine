@@ -30,4 +30,4 @@ fn createSynthSound {
 }
 ```
 
-<sub>Module `audio` line 914</sub>
+<sub>Module `audio` line 928</sub>

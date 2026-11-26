@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "model.process",
+    "change": "Model files and import.model settings declare repair, decimate, unwrap, bake and rig processing through the existing mesh kernels.",
+    "fix": "Use an explicit process block instead of an external preparation script. Static meshes only: existing skins, morphs and animation are rejected rather than discarded; unwrap of textured input requires bake."
+  }]
+}

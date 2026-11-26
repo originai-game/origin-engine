@@ -66,11 +66,13 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("Field coverage: complete parser line tables. Output: ordinary cooked sound through the shared oscillator synthesizer; load with og.load.sound. Existing alternate spellings are listed, not new compatibility paths.\n\n");
                 table(&mut out, super::sfx::LINES);
                 block(&mut out, "sfx.layer", super::sfx::LAYER_LINES);
+                block(&mut out, "sfx.layer.sample", super::sfx::SAMPLE_LINES);
             }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
                 let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES.iter().chain(super::model_text::schema::MATERIAL).copied().collect();
                 block(&mut out, "materials.material", &fields);
+                block(&mut out, "materials.material.generate", super::systems::district::parse::MATERIAL_GENERATE_LINES);
                 block(&mut out, "materials.material.vary", super::systems::district::parse::VARY_LINES);
             }
             "field" => {
@@ -126,6 +128,16 @@ pub fn markdown() -> Result<String, String> {
                     block(&mut out, &format!("model.plant.{name}"), &super::model_text::schema::fields(&format!("plant.{name}")));
                 }
                 block(&mut out, "model.fracture", super::systems::fracture::LINES);
+                block(&mut out, "model.process", super::model::process::LINES);
+                for (name, fields) in [
+                    ("repair", super::model::process::REPAIR),
+                    ("decimate", super::model::process::DECIMATE),
+                    ("unwrap", super::model::process::UNWRAP),
+                    ("bake", super::model::process::BAKE),
+                    ("rig", super::model::process::RIG),
+                ] {
+                    block(&mut out, &format!("model.process.{name}"), fields);
+                }
                 out.push_str("\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n");
                 block(&mut out, "model.part.bufferGeometry", super::model_text::BUFFER_LINES);
                 out.push_str("\n<a id=\"file-model-part-modelGeometry\"></a>\n### `file:model.part.modelGeometry`\n\nAn imported model's rest geometry as an operand of mergeGeometries or CSG, or as a part by itself. The source uses its ordinary importer and generation path before this model.\n\n");
