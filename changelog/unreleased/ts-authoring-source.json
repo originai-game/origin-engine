@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "cook author source edits",
+      "summary": "Prepared TS data entries retain their original source snapshot. Tooling can locate direct literals by JSON Pointer and propose byte-preserving value patches or missing-property insertions with expected-value checks. Changed sources, computed/shared expressions, ambiguous objects and overlapping edits reject the whole patch. This is an in-memory source-edit foundation; schema/type validation, entity provenance and atomic native/web persistence remain with the consuming author service. No file kind or project format is switched by this batch."
+    }
+  ]
+}

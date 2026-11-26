@@ -22,6 +22,7 @@ use std::sync::{
 };
 
 mod author;
+pub mod source;
 
 const BUILTIN: &str = "@origingame/engine/generate";
 
@@ -211,6 +212,9 @@ pub struct Program {
     pub key: String,
     /// Sorted, root-relative source and input paths, excluding built-in modules.
     pub dependencies: Vec<String>,
+    /// Original entry bytes from the same read used to prepare this program.
+    /// Literal edits never follow imported/shared definitions.
+    pub source: source::Source,
     context: String,
     author_inputs: Arc<BTreeMap<String, Vec<u8>>>,
     export: Export,
@@ -251,6 +255,7 @@ fn module(
     modules: &mut BTreeMap<String, String>,
     inputs: &mut BTreeMap<String, bool>,
     hash: &mut blake3::Hasher,
+    entry_source: &mut Option<source::Source>,
 ) -> Result<(), String> {
     if modules.contains_key(path) {
         return Ok(());
@@ -265,6 +270,7 @@ fn module(
         return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
     }
     let text = std::str::from_utf8(&bytes).map_err(|e| format!("{path}: {e}"))?;
+    entry_source.get_or_insert_with(|| source::Source::new(path, text));
     hash.update(&(path.len() as u64).to_le_bytes());
     hash.update(path.as_bytes());
     hash.update(blake3::hash(&bytes).as_bytes());
@@ -332,7 +338,7 @@ fn module(
     }
     modules.insert(path.to_string(), Codegen::new().build(&program).code);
     for name in imports {
-        module(root, &name, modules, inputs, hash)?;
+        module(root, &name, modules, inputs, hash, entry_source)?;
     }
     Ok(())
 }
@@ -392,7 +398,15 @@ impl Program {
             (author::MODULE.to_string(), author::SOURCE.to_string()),
         ]);
         let mut declared = BTreeMap::new();
-        module(root, &entry, &mut modules, &mut declared, &mut hash)?;
+        let mut entry_source = None;
+        module(
+            root,
+            &entry,
+            &mut modules,
+            &mut declared,
+            &mut hash,
+            &mut entry_source,
+        )?;
         let mut dependencies: std::collections::BTreeSet<String> = modules
             .keys()
             .filter(|p| *p != BUILTIN && *p != author::MODULE)
@@ -446,6 +460,8 @@ impl Program {
             modules,
             key: hash.finalize().to_hex().to_string(),
             dependencies: dependencies.into_iter().collect(),
+            source: entry_source
+                .ok_or("generator entry must be a source file, not a built-in module")?,
             context,
             author_inputs: Arc::new(author_inputs),
             export,

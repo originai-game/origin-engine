@@ -1,5 +1,258 @@
 use super::*;
 
+/// Source-bound edits must change evaluated data without erasing code or
+/// following aliases. This is the source-edit boundary used by author tooling.
+#[test]
+fn author_literal_edits_preserve_source_identity() {
+    use og_cook::cook::generator::{
+        Program,
+        source::{Edit, Source},
+    };
+    use serde_json::json;
+    let root = TempDir::new("og-author-source");
+    let original = "// 原始源码\r\nconst shared = {weight: 13};\r\nexport default ({\r\n  // keep the label\r\n  label: '北', // keep trailing comment\r\n  samples: [3, -7, 11] as const,\r\n  'a/b~c': {enabled: false},\r\n  empty: {/* keep */},\r\n  shared,\r\n  computed: 5 * 2,\r\n} satisfies Record<string, unknown>);\r\n";
+    std::fs::write(root.join("source.ts"), original).unwrap();
+    let program = Program::prepare_value(&root, "source.ts").unwrap();
+    let before = program.run().unwrap();
+    let source = &program.source;
+    let label = source.field("/label").unwrap();
+    assert_eq!(label.value, Some(json!("北")));
+    assert_eq!((label.location.line, label.location.column), (5, 10));
+    assert_eq!(
+        &original[label.location.start as usize..label.location.end as usize],
+        "'北'"
+    );
+    assert!(source.field("/empty/optional").unwrap().value.is_none());
+    let edits = [
+        Edit {
+            path: "/label".into(),
+            expected: Some(before["label"].clone()),
+            value: json!("南'\\\"\n"),
+        },
+        Edit {
+            path: "/samples/1".into(),
+            expected: Some(json!(-7)),
+            value: json!(19),
+        },
+        Edit {
+            path: "/a~1b~0c/enabled".into(),
+            expected: Some(json!(false)),
+            value: json!(true),
+        },
+        Edit {
+            path: "/empty/optional".into(),
+            expected: None,
+            value: json!(null),
+        },
+        Edit {
+            path: "/empty/other".into(),
+            expected: None,
+            value: json!([2, 17]),
+        },
+        Edit {
+            path: "/new".into(),
+            expected: None,
+            value: json!(23),
+        },
+    ];
+    let patched = source.patch(original, &edits).unwrap();
+    assert!(patched.contains("// keep the label\r\n  label: '南"));
+    assert!(patched.contains(", // keep trailing comment\r\n"));
+    assert!(patched.contains("[3, 19, 11] as const"));
+    assert!(patched.contains("{/* keep */"));
+    assert!(patched.contains("  shared,\r\n  computed: 5 * 2,"));
+    assert!(patched.contains("\r\n} satisfies Record<string, unknown>);\r\n"));
+    assert!(!patched.replace("\r\n", "").contains('\n'));
+    // A prepared entry retains its original bytes even after the file changes.
+    std::fs::write(root.join("source.ts"), &patched).unwrap();
+    assert_eq!(source.field("/label").unwrap().value, Some(json!("北")));
+    assert_eq!(
+        source.patch(&patched, &edits).unwrap_err().code,
+        "source-conflict"
+    );
+    let next = Program::prepare_value(&root, "source.ts").unwrap();
+    assert_ne!(source.digest(), next.source.digest());
+    assert_ne!(program.key, next.key);
+    let after = next.run().unwrap();
+    assert_eq!(
+        after,
+        json!({"label": "南'\\\"\n", "samples": [3,19,11], "a/b~c": {"enabled": true}, "empty": {"optional": null,"other": [2,17]}, "shared": {"weight":13}, "computed":10, "new":23})
+    );
+    assert_eq!(program.run().unwrap(), before);
+
+    let valid = Edit {
+        path: "/samples/0".into(),
+        expected: Some(json!(3)),
+        value: json!(29),
+    };
+    for (bad, expected, code) in [
+        ("/computed", Some(json!(10)), "computed-source"),
+        ("/shared/weight", Some(json!(13)), "computed-source"),
+        ("/empty", Some(json!({})), "commented-source"),
+        ("/label", Some(json!("wrong")), "value-conflict"),
+        ("/empty/optional", Some(json!(null)), "value-conflict"),
+        ("/samples/01", Some(json!(-7)), "missing-source"),
+        ("/samples/-", None, "missing-source"),
+        ("/a~2b", None, "invalid-pointer"),
+        ("label", None, "invalid-pointer"),
+        ("/samples/0", Some(json!(3)), "overlapping-edits"),
+        ("/samples", Some(json!([3, -7, 11])), "overlapping-edits"),
+    ] {
+        let error = source
+            .patch(
+                original,
+                &[
+                    valid.clone(),
+                    Edit {
+                        path: bad.into(),
+                        expected,
+                        value: json!(31),
+                    },
+                ],
+            )
+            .unwrap_err();
+        assert_eq!(error.code, code, "{bad}: {error}");
+        assert_eq!(error.file, "source.ts");
+        assert_eq!(error.path, bad);
+    }
+    // An edit of a whole computed container must not erase its expressions.
+    assert_eq!(
+        source
+            .patch(
+                original,
+                &[Edit {
+                    path: "".into(),
+                    expected: Some(before),
+                    value: json!({})
+                }]
+            )
+            .unwrap_err()
+            .code,
+        "computed-source"
+    );
+    for expression in [
+        "{x: 1, ...{x: 2}}",
+        "{['x']: 1}",
+        "{x: 1, x: 2}",
+        "{get x() {return 1}}",
+        "{__proto__: {x: 1}}",
+        "{0: 1}",
+        "{x: [1, ...[2]]}",
+        "{x: [1,,3]}",
+    ] {
+        let text = format!("export default {expression};");
+        let source = Source::new("ambiguous.ts", &text);
+        let path = if expression.contains('[') && expression.starts_with("{x:") {
+            "/x/0"
+        } else {
+            "/x"
+        };
+        assert_eq!(
+            source
+                .patch(
+                    &text,
+                    &[Edit {
+                        path: path.into(),
+                        expected: Some(json!(1)),
+                        value: json!(37)
+                    }]
+                )
+                .unwrap_err()
+                .code,
+            "computed-source",
+            "{expression}"
+        );
+    }
+    for value in [
+        json!(9007199254740993_u64),
+        json!({"nested": {"__proto__": {"x": 1}}}),
+    ] {
+        assert_eq!(
+            source
+                .patch(
+                    original,
+                    &[Edit {
+                        path: "/samples/0".into(),
+                        expected: Some(json!(3)),
+                        value,
+                    }]
+                )
+                .unwrap_err()
+                .code,
+            "invalid-value"
+        );
+    }
+    assert_eq!(
+        std::fs::read_to_string(root.join("source.ts")).unwrap(),
+        patched
+    );
+    // Only a real trailing comma counts; commas in comments are trivia.
+    for text in [
+        "export default {};",
+        "export default {x: 1 /* , */};",
+        "export default {x: 1 // ,\n};",
+        "export default {x: 1, // ,\n};",
+    ] {
+        std::fs::write(root.join("insert.ts"), text).unwrap();
+        let program = Program::prepare_value(&root, "insert.ts").unwrap();
+        let patched = program
+            .source
+            .patch(
+                text,
+                &[
+                    Edit {
+                        path: "/a".into(),
+                        expected: None,
+                        value: json!(17),
+                    },
+                    Edit {
+                        path: "/b".into(),
+                        expected: None,
+                        value: json!(false),
+                    },
+                ],
+            )
+            .unwrap();
+        std::fs::write(root.join("insert.ts"), patched).unwrap();
+        let after = Program::prepare_value(&root, "insert.ts")
+            .unwrap()
+            .run()
+            .unwrap();
+        let expected = if text == "export default {};" {
+            json!({"a":17,"b":false})
+        } else {
+            json!({"x":1,"a":17,"b":false})
+        };
+        assert_eq!(after, expected);
+    }
+    let text = "export default {x: [0x10, -2, 3.5], nested: {a: 0b11}};";
+    let patched = Source::new("containers.ts", text)
+        .patch(
+            text,
+            &[
+                Edit {
+                    path: "/x".into(),
+                    expected: Some(json!([16, -2, 3.5])),
+                    value: json!([7, 19]),
+                },
+                Edit {
+                    path: "/nested".into(),
+                    expected: Some(json!({"a":3})),
+                    value: json!({"b":13}),
+                },
+            ],
+        )
+        .unwrap();
+    std::fs::write(root.join("containers.ts"), patched).unwrap();
+    assert_eq!(
+        Program::prepare_value(&root, "containers.ts")
+            .unwrap()
+            .run()
+            .unwrap(),
+        json!({"x":[7,19],"nested":{"b":13}})
+    );
+}
+
 /// Generated effects use the public cook/load contracts, including virtual
 /// array links; uncached deterministic volume data and cache hits agree.
 #[test]
