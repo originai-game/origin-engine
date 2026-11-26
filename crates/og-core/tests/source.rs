@@ -1,5 +1,5 @@
 //! The author schema is shared by validation, serde decoding and emitted TS.
-use og_core::reflect::source::{InputSchema, schemars::JsonSchema, typescript};
+use og_core::reflect::source::{AuthorSchema, InputSchema, schemars::JsonSchema, typescript};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -96,6 +96,22 @@ fn one_author_schema_checks_values_and_typescript() {
     let mut upper = valid.clone();
     upper["duration"] = json!(4);
     schema.decode(upper).unwrap();
+
+    let erased: &dyn AuthorSchema = &schema;
+    assert_eq!(erased.document(), schema.document());
+    erased.check(&valid).unwrap();
+    let mut wrong = valid.clone();
+    wrong["tuple"][1] = json!(-1);
+    assert_eq!(erased.check(&wrong).unwrap_err().path, "/tuple/1");
+
+    // Reflected additions may describe a broader shape than serde accepts.
+    // Erasing the input type must not silently discard decoder constraints.
+    let byte = InputSchema::<u8>::from_document(json!({"type": "integer"})).unwrap();
+    byte.validate(&json!(256)).unwrap();
+    let erased: &dyn AuthorSchema = &byte;
+    erased.check(&json!(255)).unwrap();
+    assert_eq!(erased.check(&json!(256)).unwrap_err().path, "");
+    assert!(InputSchema::<u8>::from_document(json!({"type": "not-a-type"})).is_err());
 
     let dir = temp::TempDir::new("source-schema");
     let positive = r#"

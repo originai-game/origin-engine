@@ -8,5 +8,7 @@ mod gpu_tests;
 mod scene_string;
 #[path = "../shader.rs"]
 mod shader;
+#[path = "../source_schemas.rs"]
+mod source_schemas;
 #[path = "../template.rs"]
 mod template;

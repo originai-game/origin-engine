@@ -40,6 +40,13 @@ impl std::fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
+/// A tooling schema without its concrete decoder type. Structural checking
+/// includes serde decoding; domain relationships still need the domain cooker.
+pub trait AuthorSchema: Sync {
+    fn document(&self) -> &Value;
+    fn check(&self, value: &Value) -> Result<(), Diagnostic>;
+}
+
 /// A compiled schema bound to its Rust decoder. Keep one per input type in a
 /// registry; tools may read `document()` without knowing the concrete type.
 pub struct InputSchema<T> {
@@ -55,6 +62,14 @@ impl<T: JsonSchema> InputSchema<T> {
             .into_generator()
             .into_root_schema_for::<T>()
             .to_value();
+        Self::from_document(document)
+    }
+}
+
+impl<T> InputSchema<T> {
+    /// Bind a reflected or context-expanded schema to the same Rust decoder.
+    /// Local `$defs` must be included; remote schema retrieval is disabled.
+    pub fn from_document(document: Value) -> Result<Self, String> {
         let validator = jsonschema::validator_for(&document).map_err(|e| e.to_string())?;
         Ok(Self {
             document,
@@ -76,7 +91,7 @@ impl<T: JsonSchema> InputSchema<T> {
     }
 }
 
-impl<T: JsonSchema + DeserializeOwned> InputSchema<T> {
+impl<T: DeserializeOwned> InputSchema<T> {
     /// Schema validation cannot be bypassed by a TS assertion. Decode with
     /// serde afterwards as well: a Rust-specific constraint may be stricter.
     pub fn decode(&self, value: Value) -> Result<T, Diagnostic> {
@@ -98,5 +113,15 @@ impl<T: JsonSchema + DeserializeOwned> InputSchema<T> {
                 message: e.inner().to_string(),
             }
         })
+    }
+}
+
+impl<T: DeserializeOwned> AuthorSchema for InputSchema<T> {
+    fn document(&self) -> &Value {
+        self.document()
+    }
+
+    fn check(&self, value: &Value) -> Result<(), Diagnostic> {
+        self.decode(value.clone()).map(|_| ())
     }
 }

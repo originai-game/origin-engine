@@ -43,6 +43,7 @@ pub mod file_types;
 pub mod flow;
 pub mod generator;
 pub mod materials;
+pub mod source_schemas;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
 mod schemas;
