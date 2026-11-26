@@ -65,10 +65,11 @@ export function buildCoast(world: World): Coast {
   const sea = must(world.spawn({ name: "sea" }));
   must(world.insert(sea, og.Water, {
     size: { x: 6000, y: 6000 }, segments: 256, endless: true, seabed: ground,
-    // A fresh breeze off the sea: a long swell that shoals on the reef
-    // and breaks on the rocks.
-    wind: { x: -11, y: 5.5 }, swell: 1.25, choppiness: 0.85, shore: 2, shoreFoam: 1.6, foamWidth: 1.2,
-    deep: { r: 0.01, g: 0.06, b: 0.09 }, shallow: { r: 0.2, g: 0.5, b: 0.55 }, depthFade: 12, waveStrength: 0.25,
+    // A light breeze off the sea: a long, calm swell that shoals on the
+    // reef and breaks white only on the rocks.
+    wind: { x: -5.8, y: 2.9 }, swell: 1.2, choppiness: 0.55, shore: 2, shoreFoam: 0.9, foamWidth: 0.8, foamStreaks: 0.25, spray: 0.3,
+    deep: { r: 0.012, g: 0.05, b: 0.075 }, shallow: { r: 0.12, g: 0.36, b: 0.4 }, depthFade: 10, waveStrength: 0.2, reflectivity: 0.55,
+    scattering: { r: 0.002, g: 0.007, b: 0.009 }, absorption: { r: 0.45, g: 0.09, b: 0.06 },
   }));
 
   // The lamp room, an eighth of the tower below its top.

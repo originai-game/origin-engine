@@ -45,11 +45,11 @@ const CHANGE = WEATHER_SECONDS / KINDS[2].intensity;
 
 // What each weather does to the sky, the air and the sea.
 const AIR = [
-  /* clear */ { cover: 0.46, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.00015, veil: 0.08, wind: 8, sea: 12.3, swell: 1.8, chop: 0.9, lightning: 0, warmth: 0, colour: 0 },
-  /* rain  */ { cover: 0.86, cloud: 0.05, grey: 0.62, haze: 0.0016, mist: 0.012, veil: 0.2, wind: 12, sea: 15, swell: 2, chop: 0.95, lightning: 0, warmth: -0.22, colour: -0.12 },
-  /* storm */ { cover: 1, cloud: 0.08, grey: 0.36, haze: 0.003, mist: 0.02, veil: 0.25, wind: 22, sea: 20, swell: 2.4, chop: 1, lightning: 30, warmth: -0.34, colour: -0.2 },
-  /* fog   */ { cover: 0.7, cloud: 0.03, grey: 0.86, haze: 0.011, mist: 0.05, veil: 1, wind: 2.5, sea: 6, swell: 0.8, chop: 0.6, lightning: 0, warmth: -0.12, colour: -0.16 },
-  /* snow  */ { cover: 0.9, cloud: 0.045, grey: 0.82, haze: 0.003, mist: 0.01, veil: 0.3, wind: 5, sea: 9, swell: 1, chop: 0.75, lightning: 0, warmth: -0.14, colour: -0.14 },
+  /* clear */ { cover: 0.28, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.00015, veil: 0.08, wind: 4, sea: 6.5, swell: 1.2, chop: 0.55, lightning: 0, warmth: 0, colour: 0 },
+  /* rain  */ { cover: 0.86, cloud: 0.05, grey: 0.62, haze: 0.0016, mist: 0.012, veil: 0.2, wind: 6.5, sea: 9, swell: 1.5, chop: 0.7, lightning: 0, warmth: -0.22, colour: -0.12 },
+  /* storm */ { cover: 1, cloud: 0.08, grey: 0.36, haze: 0.003, mist: 0.02, veil: 0.25, wind: 11, sea: 14, swell: 2, chop: 0.85, lightning: 30, warmth: -0.34, colour: -0.2 },
+  /* fog   */ { cover: 0.7, cloud: 0.03, grey: 0.86, haze: 0.011, mist: 0.05, veil: 1, wind: 1.5, sea: 4, swell: 0.7, chop: 0.45, lightning: 0, warmth: -0.12, colour: -0.16 },
+  /* snow  */ { cover: 0.9, cloud: 0.045, grey: 0.82, haze: 0.003, mist: 0.01, veil: 0.3, wind: 3, sea: 6, swell: 0.9, chop: 0.55, lightning: 0, warmth: -0.14, colour: -0.14 },
 ] as const satisfies readonly Table[];
 
 // What each season does to the land. `melt` is metres of lying snow lost a

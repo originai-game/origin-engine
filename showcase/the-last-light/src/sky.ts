@@ -23,18 +23,26 @@ export function buildSky(world: World): void {
 
   const clouds = must(world.resource(og.Clouds));
   clouds.enabled = true;
-  clouds.coverage = 0.52;
-  clouds.detail = 1;
-  clouds.scale = 7000;
-  clouds.steps = 96;
-  clouds.density = 0.03;
-  clouds.base = 1300;
-  clouds.thickness = 1100;
-  clouds.layer = 0.6;
+  // Fair-weather cumulus at sunset: a few large heads with clear sky
+  // between, smaller and flatter towards the horizon, under a thin high veil.
+  clouds.coverage = 0.28;
+  clouds.detail = 0.35;
+  clouds.scale = 11000;
+  clouds.steps = 128;
+  clouds.density = 0.035;
+  clouds.base = 1500;
+  clouds.thickness = 1500;
+  clouds.layer = 0.08;
+  clouds.seed = 7;
 
   const wind = must(world.resource(og.Wind));
   wind.direction = { x: -0.9, y: 0, z: 0.45 };
-  wind.speed = 8;
+  wind.speed = 4;
+  // A steady sea breeze in broad gusts: the grass and the cloak lean and
+  // breathe with it rather than thrash.
+  wind.gust = 0.4;
+  wind.turbulence = 0.15;
+  wind.gustSize = 36;
 
   // Sea mist lying under the cliffs; the air above stays clear.
   const fog = must(world.resource(og.Fog));

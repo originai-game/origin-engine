@@ -43,6 +43,7 @@ tools/refs/*.png
 /assets/models/rock-cliff.glb
 /assets/models/ruin.glb
 /assets/models/sea-stack.glb
+/assets/models/walk-clips.glb
 /assets/models/wanderer.glb
 /assets/terrain/coast-control.png
 /assets/terrain/coast-height.png

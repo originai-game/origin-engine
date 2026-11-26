@@ -212,6 +212,12 @@
       "visibility": "public"
     },
     {
+      "path": "assets/models/walk-clips.glb",
+      "sha256": "d8bbb08ed0bc9dd7b9591af9699b6c7cb47a8ae01f7ac5ad37ed1d660e7e65bb",
+      "size": 1375092,
+      "visibility": "public"
+    },
+    {
       "path": "assets/models/wanderer.glb",
       "sha256": "5b9261b2d45e00366670d1a0978e4df69f76021425f82c4a94f25dc626a22c83",
       "size": 5371648,
