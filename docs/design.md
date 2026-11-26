@@ -177,6 +177,18 @@ invalidated by the compiler itself.
   sample count. The `source` feature is cook/tooling-only, not a replacement
   for packed runtime reflection. Heightfield generator results use it;
   other author frontends have not yet switched.
+- **Author inputs** use `@origingame/engine/author` in the existing closed
+  cook realm. OXC resolves direct `input.bytes/text` calls through their
+  import bindings and collects literal paths across helper modules before
+  evaluation. Paths are relative to the evaluator's input root (currently
+  `assets/` for asset generators); they cannot follow symlinks or escape
+  that root. Captured bytes join the cache key and the program's sorted
+  dependencies. Reads do no runtime I/O; bytes calls return independent
+  VM-owned copies, and text requires strict UTF-8 without newline/BOM
+  normalisation. Named import aliases are allowed; capability aliases,
+  re-exports and computed paths are refused with a source location.
+  `procgen` reuses the same offline Rust mechanisms. This is an author API
+  foundation, not the file-kind or project-format cutover.
 - **Handles**: assets, meshes, materials, sounds and scenes are generational
   handles; a dead handle is an error value, never a crash.
 

@@ -21,6 +21,8 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
 };
 
+mod author;
+
 const BUILTIN: &str = "@origingame/engine/generate";
 
 /// Standalone script source blocks; terrain adds its processing stages.
@@ -207,7 +209,10 @@ pub struct Program {
     entry: String,
     modules: BTreeMap<String, String>,
     pub key: String,
+    /// Sorted, root-relative source and input paths, excluding built-in modules.
+    pub dependencies: Vec<String>,
     context: String,
+    author_inputs: Arc<BTreeMap<String, Vec<u8>>>,
     export: Export,
 }
 
@@ -244,6 +249,7 @@ fn module(
     root: &Path,
     path: &str,
     modules: &mut BTreeMap<String, String>,
+    inputs: &mut BTreeMap<String, bool>,
     hash: &mut blake3::Hasher,
 ) -> Result<(), String> {
     if modules.contains_key(path) {
@@ -290,6 +296,17 @@ fn module(
     if !transformed.diagnostics.is_empty() {
         return Err(format!("{path}: {:?}", transformed.diagnostics));
     }
+    for (input, text) in
+        author::collect(&program, &transformed.scoping).map_err(|(offset, message)| {
+            let before = &text[..offset as usize];
+            let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
+            let column = before.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+            format!("{path}:{line}:{column}: {message}")
+        })?
+    {
+        let input = relative("", &input).map_err(|e| format!("{path}: {e}"))?;
+        *inputs.entry(input).or_default() |= text;
+    }
     // Only executable imports enter the realm. Type-only imports are erased
     // by OXC; their resolution belongs to the project's type checker.
     let mut imports = Vec::new();
@@ -301,12 +318,13 @@ fn module(
             _ => None,
         };
         if let Some(name) = source {
-            if name == BUILTIN {
+            if name == BUILTIN || name == author::MODULE {
                 continue;
             }
             if !name.starts_with("./") && !name.starts_with("../") {
                 return Err(format!(
-                    "{path}: imports must be relative with an explicit suffix, or {BUILTIN}: {name}"
+                    "{path}: imports must be relative with an explicit suffix, {BUILTIN} or {}: {name}",
+                    author::MODULE
                 ));
             }
             imports.push(relative(path, name)?);
@@ -314,7 +332,7 @@ fn module(
     }
     modules.insert(path.to_string(), Codegen::new().build(&program).code);
     for name in imports {
-        module(root, &name, modules, hash)?;
+        module(root, &name, modules, inputs, hash)?;
     }
     Ok(())
 }
@@ -355,6 +373,8 @@ impl Program {
         });
         hash.update(include_bytes!("generator.rs"));
         hash.update(include_bytes!("generator_value.js"));
+        hash.update(include_bytes!("generator/author.rs"));
+        hash.update(author::SOURCE.as_bytes());
         hash.update(include_bytes!(
             "../../../../crates/og-generation/src/lib.rs"
         ));
@@ -364,20 +384,48 @@ impl Program {
         hash.update(og_generation::MODULE_SOURCE.as_bytes());
         hash.update(include_bytes!("../../../../Cargo.lock"));
         hash.update(&crate::format::revisions(&crate::format::Area::ALL).to_le_bytes());
-        let mut modules = BTreeMap::from([(
-            BUILTIN.to_string(),
-            og_generation::MODULE_SOURCE.to_string(),
-        )]);
-        module(root, &entry, &mut modules, &mut hash)?;
+        let mut modules = BTreeMap::from([
+            (
+                BUILTIN.to_string(),
+                og_generation::MODULE_SOURCE.to_string(),
+            ),
+            (author::MODULE.to_string(), author::SOURCE.to_string()),
+        ]);
+        let mut declared = BTreeMap::new();
+        module(root, &entry, &mut modules, &mut declared, &mut hash)?;
+        let mut dependencies: std::collections::BTreeSet<String> = modules
+            .keys()
+            .filter(|p| *p != BUILTIN && *p != author::MODULE)
+            .cloned()
+            .collect();
         let mut inputs = BTreeMap::new();
         let mut total = 0;
         for (name, path) in &spec.inputs {
-            let bytes = read(root, &relative(source, path)?)?;
+            let path = relative(source, path)?;
+            let bytes = read(root, &path)?;
+            dependencies.insert(path);
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
                 return Err("generator inputs exceed 64 MiB in total".into());
             }
             inputs.insert(name, bytes);
+        }
+        let mut author_inputs = BTreeMap::new();
+        for (path, text) in declared {
+            let bytes = read(root, &path)?;
+            total += bytes.len();
+            if total > 64 * 1024 * 1024 {
+                return Err("generator inputs exceed 64 MiB in total".into());
+            }
+            if text {
+                std::str::from_utf8(&bytes)
+                    .map_err(|e| format!("{path}: input.text requires UTF-8: {e}"))?;
+            }
+            hash.update(&(path.len() as u64).to_le_bytes());
+            hash.update(path.as_bytes());
+            hash.update(blake3::hash(&bytes).as_bytes());
+            dependencies.insert(path.clone());
+            author_inputs.insert(path, bytes);
         }
         // JS has one numeric parameter type. OGT's 17.0 and CLI JSON's 17
         // must identify the same action, not two spelling-dependent caches.
@@ -397,7 +445,9 @@ impl Program {
             entry,
             modules,
             key: hash.finalize().to_hex().to_string(),
+            dependencies: dependencies.into_iter().collect(),
             context,
+            author_inputs: Arc::new(author_inputs),
             export,
         })
     }
@@ -468,6 +518,7 @@ impl Program {
                     };
                     call().map_err(|e| rquickjs::Exception::throw_message(&ctx, &e))
                 })?)?;
+                author::install(&ctx, Arc::clone(&self.author_inputs))?;
                 ctx.globals().set("__context", ctx.json_parse(self.context.as_bytes())?)?;
                 let encode: Function = ctx.eval(include_str!("generator_value.js"))?;
                 let source = self.modules.get(&self.entry).expect("prepared entry");
