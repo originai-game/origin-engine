@@ -108,6 +108,109 @@ pub(crate) fn install(
     og_anim::install_with(world, step).map_err(|e| e.reason().to_string())
 }
 
+/// Connect animation's environment to live physics queries and swept
+/// controller motion in a natively assembled world. Schedule animation
+/// before physics, with physics query initialization before animation.
+pub fn connect_animation_physics(
+    world: &mut og_ecs::World,
+    anim: &AnimationSystem,
+    physics: og_physics::PhysicsSystem,
+) -> og_core::Result<()> {
+    use og_core::Reflect;
+    world.register::<og_physics::CharacterController>()?;
+    world.grant(
+        og_anim::SYSTEM_NAME,
+        &[og_physics::CharacterController::NAME],
+    )?;
+    anim.set_environment(PhysicsEnvironment(physics));
+    Ok(())
+}
+
+struct PhysicsEnvironment(og_physics::PhysicsSystem);
+
+impl og_anim::AnimationEnvironment for PhysicsEnvironment {
+    fn raycast(
+        &self,
+        origin: glam::Vec3,
+        direction: glam::Vec3,
+        max_distance: f32,
+        exclude: og_ecs::Entity,
+    ) -> og_core::Result<Option<og_anim::SurfaceHit>> {
+        Ok(self
+            .0
+            .tick_query()?
+            .raycast(&og_physics::RaycastDesc {
+                origin,
+                direction,
+                max_distance,
+                filter: og_physics::QueryFilter {
+                    exclude: Some(exclude),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })?
+            .map(|hit| og_anim::SurfaceHit {
+                point: hit.point,
+                normal: hit.normal,
+            }))
+    }
+
+    fn cast_sphere(
+        &self,
+        from: glam::Vec3,
+        to: glam::Vec3,
+        radius: f32,
+        mask: u32,
+        exclude: og_ecs::Entity,
+    ) -> og_core::Result<Option<og_anim::SurfaceHit>> {
+        Ok(self
+            .0
+            .tick_query()?
+            .shape_cast(&og_physics::ShapeCastDesc {
+                shape: og_physics::ShapeDesc {
+                    shape: og_physics::SHAPE_SPHERE,
+                    radius,
+                    ..Default::default()
+                },
+                position: from,
+                direction: to - from,
+                max_distance: from.distance(to),
+                filter: og_physics::QueryFilter {
+                    mask,
+                    exclude: Some(exclude),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })?
+            .map(|hit| og_anim::SurfaceHit {
+                point: hit.point,
+                normal: hit.normal,
+            }))
+    }
+
+    fn wind_at(&self, point: glam::Vec3) -> glam::Vec3 {
+        self.0.air_at(point)
+    }
+
+    fn move_controller(
+        &self,
+        ctx: &mut og_ecs::SystemContext<'_>,
+        entity: og_ecs::Entity,
+        delta: glam::Vec3,
+    ) -> og_core::Result<()> {
+        let mut controller = ctx
+            .get::<og_physics::CharacterController>(entity)
+            .map_err(|_| {
+                og_core::Error::new(
+                    og_core::ErrorKind::Invalid,
+                    "controller root motion needs og.CharacterController",
+                )
+            })?;
+        controller.root_delta += delta;
+        ctx.insert(entity, controller)
+    }
+}
+
 fn system(eng: &Engine) -> Result<AnimationSystem, String> {
     eng.state
         .borrow()

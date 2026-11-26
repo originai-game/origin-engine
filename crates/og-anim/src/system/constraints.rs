@@ -45,21 +45,15 @@ pub(super) fn foot_lock(
         Lock::Free => animated,
     };
     let ground = if fl.ground_reach > 0.0 {
-        sh.physics
+        sh.environment
             .as_ref()
-            .map(|p| p.tick_query())
-            .transpose()?
             .map(|q| {
-                q.raycast(&og_physics::RaycastDesc {
-                    origin: ray_at + Vec3::Y * fl.ground_reach,
-                    direction: -Vec3::Y,
-                    max_distance: 2.0 * fl.ground_reach,
-                    filter: og_physics::QueryFilter {
-                        exclude: Some(w.entity),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
+                q.raycast(
+                    ray_at + Vec3::Y * fl.ground_reach,
+                    -Vec3::Y,
+                    2.0 * fl.ground_reach,
+                    w.entity,
+                )
             })
             .transpose()?
             .flatten()
@@ -318,7 +312,7 @@ pub(super) fn spring(
     prev: Option<&SpringState>,
     colliders: &[(u32, SpringCollider)],
     limits: &Limits,
-    physics: Option<&og_physics::PhysicsSystem>,
+    environment: Option<&dyn AnimationEnvironment>,
     dt: f32,
 ) -> Result<SpringState> {
     let node = joint(w, sb.joint, "og.SpringBone.joint")?;
@@ -382,7 +376,7 @@ pub(super) fn spring(
         p => matrices[p as usize],
     };
     let world_query = if sb.world_colliders != 0 {
-        physics.map(|p| p.tick_query()).transpose()?
+        environment
     } else {
         None
     };
@@ -408,13 +402,13 @@ pub(super) fn spring(
         }
         let x0 = x;
         if dt > 0.0 {
-            let wind = physics.map_or(Vec3::ZERO, |p| {
+            let wind = environment.map_or(Vec3::ZERO, |p| {
                 let at = if sb.space == SPRING_WORLD {
                     x
                 } else {
                     w.world_matrix().transform_point3(x)
                 };
-                let wind = p.air_at(at);
+                let wind = p.wind_at(at);
                 if sb.space == SPRING_WORLD {
                     wind
                 } else {
@@ -468,22 +462,7 @@ pub(super) fn spring(
                 let a = world.transform_point3(head);
                 let b = world.transform_point3(x);
                 let reach = radius * scale(w.world_matrix() * m);
-                let hit = q.shape_cast(&og_physics::ShapeCastDesc {
-                    shape: og_physics::ShapeDesc {
-                        shape: og_physics::SHAPE_SPHERE,
-                        radius: reach,
-                        ..Default::default()
-                    },
-                    position: a,
-                    direction: b - a,
-                    max_distance: a.distance(b),
-                    filter: og_physics::QueryFilter {
-                        mask: sb.world_colliders,
-                        exclude: Some(w.entity),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })?;
+                let hit = q.cast_sphere(a, b, reach, sb.world_colliders, w.entity)?;
                 if let Some(hit) = hit {
                     let penetration = (hit.point + hit.normal * reach - b).dot(hit.normal);
                     if penetration > 0.0 {

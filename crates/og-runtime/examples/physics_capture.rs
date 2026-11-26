@@ -1,5 +1,5 @@
 //! Asset-free WS-5 visual review, not a reference or a quality test.
-//! Build: cargo build -p og-anim --example physics_capture
+//! Build: cargo build -p og-runtime --example physics_capture
 //! NVIDIA L4: OG_GFX_BACKEND=vulkan physics_capture OUTPUT_DIRECTORY
 //! CPU scenario only: physics_capture OUTPUT_DIRECTORY --cpu
 //! Frames: animated, activating, falling, settled (two contacting ragdolls
@@ -77,7 +77,7 @@ mod native {
         .unwrap();
         let anim = og_anim::install(&mut world).unwrap();
         let physics = og_physics::install(&mut world, Physics::default()).unwrap();
-        anim.set_physics(physics.clone());
+        og_runtime::connect_animation_physics(&mut world, &anim, physics.clone()).unwrap();
         world
             .spawn((
                 Transform::at(Vec3::new(0.0, -0.5, 0.0)),

@@ -10,7 +10,6 @@ autotests = false
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
-og-physics = { path = "../og-physics" }
 og-lanes = { path = "../og-lanes" }
 # The cooked animation, flipbook and rig blobs decode into this crate's
 # assets (`cooked`); the blob schemas are og-bundle's.

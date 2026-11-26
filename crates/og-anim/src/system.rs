@@ -30,6 +30,46 @@ use std::sync::{Arc, Mutex, MutexGuard};
 /// The scheduled system's and the state block's name.
 pub const SYSTEM_NAME: &str = "og.anim";
 
+/// A world-space surface reached by a ground ray or a spring's swept sphere.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SurfaceHit {
+    pub point: Vec3,
+    pub normal: Vec3,
+}
+
+/// The host's environment queries and controller input. Animation owns the
+/// constraints; the assembly layer supplies the other domains' answers.
+pub trait AnimationEnvironment: Send + Sync {
+    /// Nearest ground surface, excluding the skeleton's own collider.
+    fn raycast(
+        &self,
+        origin: Vec3,
+        direction: Vec3,
+        max_distance: f32,
+        exclude: Entity,
+    ) -> Result<Option<SurfaceHit>>;
+    /// Sweep a sphere from `from` to `to`, using the requested contact mask
+    /// and excluding the skeleton's own collider.
+    fn cast_sphere(
+        &self,
+        from: Vec3,
+        to: Vec3,
+        radius: f32,
+        mask: u32,
+        exclude: Entity,
+    ) -> Result<Option<SurfaceHit>>;
+    /// Air velocity at a world-space point.
+    fn wind_at(&self, point: Vec3) -> Vec3;
+    /// Add this tick's world-space displacement to the entity's controller.
+    /// The host must grant `og.anim` access to the component it writes.
+    fn move_controller(
+        &self,
+        ctx: &mut SystemContext<'_>,
+        entity: Entity,
+        delta: Vec3,
+    ) -> Result<()>;
+}
+
 /// The renderer side of the palette contract (`README.md` §Palette). The
 /// host extracts every animated entity's output into its render scene
 /// through this; og-render's skinning input implements it.
@@ -199,7 +239,7 @@ struct Saved {
 /// The registered assets and the world state.
 #[derive(Default)]
 pub(crate) struct Shared {
-    physics: Option<og_physics::PhysicsSystem>,
+    environment: Option<Box<dyn AnimationEnvironment>>,
     skeletons: IdMap<u64, Arc<SkeletonAsset>>,
     clips: IdMap<u64, Arc<ClipAsset>>,
     graphs: IdMap<u64, Arc<GraphAsset>>,
@@ -517,7 +557,6 @@ pub struct StepDefault {
 /// smooth, as [`install`]).
 pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<AnimationSystem> {
     world.register::<Transform>()?;
-    world.register::<og_physics::CharacterController>()?;
     world.register::<og_ecs::transform::Parent>()?;
     world.register::<og_ecs::transform::MatrixWorld>()?;
     world.register::<BoneAttachment>()?;
@@ -548,7 +587,6 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
         .read::<SpringCollider>()
         .write::<Transform>()
         .read::<og_ecs::transform::Parent>()
-        .write::<og_physics::CharacterController>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
         .query(
@@ -629,9 +667,9 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
 }
 
 impl AnimationSystem {
-    /// Physics queries and wind used by opt-in ground adaptation and springs.
-    pub fn set_physics(&self, physics: og_physics::PhysicsSystem) {
-        lock(&self.shared).physics = Some(physics);
+    /// Injects the host's world queries, wind and controller input wiring.
+    pub fn set_environment(&self, environment: impl AnimationEnvironment + 'static) {
+        lock(&self.shared).environment = Some(Box::new(environment));
     }
     /// Model-space node frames for bone children, from the final pose
     /// after IK, or the asset's rest pose before its first tick. Matrices
@@ -1113,13 +1151,12 @@ fn run(
             w.skeleton.root_yaw_delta =
                 2.0 * og_core::math::atan2(delta.rotation.y, delta.rotation.w);
             if w.skeleton.root_motion_mode == 1 {
-                let mut c = ctx
-                    .get::<og_physics::CharacterController>(w.entity)
-                    .map_err(|_| {
-                        invalid("controller root motion needs og.CharacterController".into())
-                    })?;
-                c.root_delta += w.skeleton.root_delta;
-                ctx.insert(w.entity, c)?;
+                sh.environment
+                    .as_ref()
+                    .ok_or_else(|| {
+                        invalid("controller root motion needs a host environment".into())
+                    })?
+                    .move_controller(ctx, w.entity, w.skeleton.root_delta)?;
                 t.quaternion = unit(
                     t.quaternion
                         * og_core::math::quat_from_axis_angle(Vec3::Y, w.skeleton.root_yaw_delta),
@@ -1267,7 +1304,7 @@ fn run(
                     prev,
                     &colliders,
                     &limits,
-                    sh.physics.as_ref(),
+                    sh.environment.as_deref(),
                     dt,
                 )?,
             );

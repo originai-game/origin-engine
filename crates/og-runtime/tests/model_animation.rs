@@ -104,3 +104,120 @@ fn cooked_rigid_node_keys_move_the_drawn_model() {
     assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(root).unwrap();
 }
+
+/// The animation/physics boundary: desired root travel must be reported,
+/// swept, consumed once, and replayed exactly after a restore.
+#[test]
+fn controller_root_motion_stops_at_a_wall_and_restores() {
+    use og_anim::{
+        AnimationPlayer, Channel, ChannelPath, ClipAsset, NONE, ROOT_MOTION_PLANAR, Skeleton,
+        SkeletonAsset, SkeletonNode, Trs,
+    };
+    use og_core::glam::Vec3;
+    use og_ecs::transform::Transform;
+    use og_ecs::{World, WorldDesc};
+    use og_physics::{CharacterController, Collider, Physics};
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 8,
+    })
+    .unwrap();
+    let anim = og_anim::install(&mut w).unwrap();
+    let physics = og_physics::install(
+        &mut w,
+        Physics {
+            gravity: Vec3::ZERO,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    connect_animation_physics(&mut w, &anim, physics).unwrap();
+    anim.add_skeleton(
+        1,
+        SkeletonAsset {
+            nodes: vec![SkeletonNode {
+                name: "root".into(),
+                parent: NONE,
+                rest: Trs::default(),
+                mesh: NONE,
+            }],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    anim.add_clip(
+        2,
+        ClipAsset {
+            name: "move".into(),
+            duration: 1.0,
+            rate: 1.0,
+            source_rate: 1.0,
+            frames: 2,
+            channels: vec![Channel {
+                node: 0,
+                node_name: "root".into(),
+                path: ChannelPath::Translation,
+                step: false,
+                lanes: 3,
+                samples: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.2].into(),
+            }],
+            events: vec![],
+        },
+    )
+    .unwrap();
+    let wall = w
+        .spawn((
+            Transform::at(Vec3::new(0.0, 1.0, 1.5)),
+            Collider::cuboid(Vec3::new(4.0, 4.0, 0.2)),
+        ))
+        .unwrap();
+    let actor = w
+        .spawn((
+            Transform::default(),
+            Skeleton {
+                asset: 1,
+                root_motion: ROOT_MOTION_PLANAR,
+                root_motion_mode: 1,
+                ..Default::default()
+            },
+            AnimationPlayer::new(2),
+            Collider::capsule(0.3, 0.8),
+            CharacterController {
+                gravity_scale: 0.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    let mut requested = 0.0;
+    for _ in 0..120 {
+        w.step().unwrap();
+        requested += w.get::<Skeleton>(actor).unwrap().root_delta.z;
+        assert_eq!(
+            w.get::<CharacterController>(actor).unwrap().root_delta,
+            Vec3::ZERO
+        );
+    }
+    let stopped = w.get::<Transform>(actor).unwrap().position.z;
+    assert!(
+        requested > 2.0 && stopped > 0.9 && stopped < 1.12,
+        "requested {requested}, swept to {stopped}"
+    );
+    let checkpoint = w.snapshot();
+    for _ in 0..30 {
+        w.step().unwrap();
+    }
+    let end = w.snapshot();
+    w.restore(&checkpoint).unwrap();
+    for _ in 0..30 {
+        w.step().unwrap();
+    }
+    assert_eq!(w.snapshot(), end);
+    w.despawn(wall).unwrap();
+    for _ in 0..60 {
+        w.step().unwrap();
+    }
+    assert!(
+        w.get::<Transform>(actor).unwrap().position.z > stopped + 0.8,
+        "motion resumes after the obstruction is removed"
+    );
+}

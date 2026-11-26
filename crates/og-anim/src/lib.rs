@@ -79,7 +79,7 @@ pub use skeleton2d::{
     install_skeleton2d, skeleton_frame, skeleton_pose,
 };
 pub use system::{
-    AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, StepDefault, install,
-    install_with,
+    AnimOutput, AnimationEnvironment, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME,
+    StepDefault, SurfaceHit, install, install_with,
 };
 pub use xform::{Trs, nlerp, rotation_arc, twist_y, unit};

@@ -22,9 +22,12 @@ world.step()?;                                                   // pose, palett
 anim.write_outputs(&mut render_sink);                            // PaletteSink: joint palettes, blendshape weights
 ```
 
-Dependencies include og-core, og-ecs and og-physics; optional queries and wind use
-`AnimationSystem::set_physics`. No C, builds for
-`wasm32-unknown-unknown`.
+The animation domain does not depend on physics. `AnimationEnvironment`,
+injected through `AnimationSystem::set_environment`, supplies ground rays,
+swept spheres, wind and controller input. `og_runtime::connect_animation_physics`
+wires those operations to live `PhysicsQuery` answers and grants `og.anim`
+its controller access. The cross-domain capture example lives in
+`og-runtime/examples/physics_capture.rs`. No C, builds for `wasm32-unknown-unknown`.
 
 ## API map
 
