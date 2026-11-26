@@ -381,6 +381,7 @@ impl Program {
         hash.update(include_bytes!("generator_value.js"));
         hash.update(include_bytes!("generator/author.rs"));
         hash.update(author::SOURCE.as_bytes());
+        hash.update(include_bytes!("../../../og-core/src/rng.rs"));
         hash.update(include_bytes!(
             "../../../../crates/og-generation/src/lib.rs"
         ));
@@ -499,7 +500,7 @@ impl Program {
         let output = ctx.with(|ctx| -> Result<String, String> {
             let run = || -> rquickjs::Result<String> {
                 ctx.eval::<(), _>(r#"
-                    Math.random = () => { throw new Error('use ctx.seed and an explicit seeded algorithm'); };
+                    Math.random = () => { throw new Error('use rng(seed) from @origingame/engine/author'); };
                     delete globalThis.SharedArrayBuffer;
                     delete globalThis.Atomics;
                     // All executable source must pass the tracked TS transform,

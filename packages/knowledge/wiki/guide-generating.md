@@ -8,6 +8,8 @@ For emitter/material/timeline families, `type particles`, `type effect` and `typ
 
 Cook scripts may import `{ input, procgen }` from `@origingame/engine/author`. Call `input.bytes("height.bin")` or `input.text("layout.csv")` directly with a string literal; paths are relative to the evaluator's input root, currently `assets/` for asset generators, even from a nested helper. Cook captures these files before evaluation and tracks their bytes with the helper imports. Bytes calls return independent `Uint8Array` copies; text requires UTF-8 and preserves BOM/line endings. Named import aliases work, but assigning the input capability to another variable, re-exporting it, or computing a path does not. Missing files, symlinks and paths outside the root fail. This module does not yet replace the asset declarations described below.
 
+For random source data, import `rng` from the same author module and supply a u32 seed: `const stream = rng(42)`. `stream.next()` draws in [0, 1) using the engine's Rust RNG; `stream.fork("cliffs")` makes an independent stream derived from the seed and UTF-16 label, without advancing its parent. Repeated forks with the same label start the same sequence, regardless of the parent's draw count. Streams are local to the cook realm, not runtime handles or simulation state. There is no implicit project seed or global draw counter; `Math.random()` remains forbidden. The RNG implementation participates in the cook cache key.
+
 <a id="guide-generating-1"></a>
 ### `generating §1` Find the file contract
 

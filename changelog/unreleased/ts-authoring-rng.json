@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "@origingame/engine/author.rng",
+      "summary": "Cook scripts can create independent seeded streams with rng(seed), next() and fork(label), using the existing Rust RNG rather than a separate JS algorithm or runtime handles. Seeds must be u32 integers; UTF-16 labels derive fresh streams without advancing the parent. The RNG implementation is part of the cook action key. Math.random remains forbidden. This adds an author foundation without switching file formats."
+    }
+  ]
+}

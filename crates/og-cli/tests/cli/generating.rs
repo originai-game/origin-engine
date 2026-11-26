@@ -915,6 +915,132 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
     assert!(data.run().is_err());
 }
 
+/// Author streams use the engine sequence without shared draw state, including
+/// forks, helper imports, separate realms and warm action-cache results.
+#[test]
+fn author_rng_is_explicit_and_independent() {
+    use og_cook::cook::generator::Program;
+    use serde_json::json;
+    let root = TempDir::new("og-author-rng");
+    std::fs::write(root.join("helper.ts"), "import {rng as create} from '@origingame/engine/author'; export const first = (seed: number) => create(seed).next();").unwrap();
+    let source = r#"
+        import * as og from '@origingame/engine/author';
+        import {first} from './helper.ts';
+        const parent = og.rng(42);
+        const before = parent.fork('区域🦊');
+        const one = parent.next();
+        const childOne = before.next();
+        const after = parent.fork('区域🦊');
+        export default {
+            seed: parent.seed,
+            draws: [one, parent.next(), parent.next()],
+            fork: [before.seed, childOne, before.next(), after.next(), after.next()],
+            other: parent.fork('other').next(),
+            independent: first(42),
+            zero: first(0),
+            max: first(4294967295),
+            maxSeed: og.rng(4294967295).seed,
+        };
+    "#;
+    std::fs::write(root.join("first.ts"), source).unwrap();
+    std::fs::write(root.join("second.ts"), source).unwrap();
+    let first = Program::prepare_value(&root, "first.ts").unwrap();
+    let second = Program::prepare_value(&root, "second.ts").unwrap();
+    // Main stream values are the existing Web substrate vectors; fork values
+    // were independently computed with UTF-16 units, not UTF-8 or codepoints.
+    let expected = json!({
+        "seed": 42,
+        "draws": [0.09396462352015078, 0.5757808552589267, 0.19534794357605278],
+        "fork": [2981131337_u32, 0.7657625777646899, 0.4455386148765683,
+            0.7657625777646899, 0.4455386148765683],
+        "other": 0.7984659534413368,
+        "independent": 0.09396462352015078,
+        "zero": 0.479614513926208,
+        "max": 0.3764090109616518,
+        "maxSeed": 4294967295_u32,
+    });
+    std::thread::scope(|scope| {
+        let a = scope.spawn(|| first.run().unwrap());
+        let b = scope.spawn(|| second.run().unwrap());
+        assert_eq!(a.join().unwrap(), expected);
+        assert_eq!(b.join().unwrap(), expected);
+    });
+    assert_eq!(first.run().unwrap(), expected);
+
+    for expression in [
+        "rng()",
+        "rng(-1)",
+        "rng(4294967296)",
+        "rng(0.25)",
+        "rng(NaN)",
+        "rng(Infinity)",
+        "rng('42')",
+        "rng(null)",
+        "rng(true)",
+        "rng(42).fork(7)",
+        "rng(42)",
+        "Math.random()",
+    ] {
+        std::fs::write(
+            root.join("invalid.ts"),
+            format!(
+                "import {{rng}} from '@origingame/engine/author'; export default {expression};"
+            ),
+        )
+        .unwrap();
+        assert!(
+            Program::prepare_value(&root, "invalid.ts")
+                .unwrap()
+                .run()
+                .is_err(),
+            "accepted {expression}"
+        );
+    }
+    // A TS assertion cannot bypass the numeric check above. The declaration
+    // separately catches missing/non-number seeds, wrong labels and mutation.
+    std::fs::write(
+        root.join("contract.ts"),
+        format!(
+            r#"
+        import {{rng, type Rng}} from {};
+        const stream: Rng = rng(42).fork('区域🦊');
+        const value: number = stream.next();
+        const seed: number = stream.seed;
+        // @ts-expect-error A seed is mandatory.
+        rng();
+        // @ts-expect-error No string coercion.
+        rng('42');
+        // @ts-expect-error Labels are strings.
+        stream.fork(7);
+        // @ts-expect-error The seed is immutable.
+        stream.seed = 7;
+        // @ts-expect-error The draw operation is immutable.
+        stream.next = () => 0;
+    "#,
+            json!(repo().join("packages/engine/src/author.js"))
+        ),
+    )
+    .unwrap();
+    let check = Command::new("tsrs")
+        .args([
+            "--ignoreConfig",
+            "--strict",
+            "--skipLibCheck",
+            "--noEmit",
+            "--target",
+            "esnext",
+            "--module",
+            "esnext",
+            "--moduleResolution",
+            "bundler",
+            "contract.ts",
+        ])
+        .current_dir(&root)
+        .output()
+        .expect("the pinned tsrs checker must be installed");
+    assert!(check.status.success(), "{}", text(&check));
+}
+
 /// The author input capability snapshots only literal, tracked dependencies;
 /// helpers, cache hits and separate realms observe the same closed inputs.
 #[test]

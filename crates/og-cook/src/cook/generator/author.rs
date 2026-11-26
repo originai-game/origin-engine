@@ -1,5 +1,5 @@
-//! Close author input declarations over the executable module graph. Resolve
-//! bindings, not spellings: a helper's local `input` is not a cook capability.
+//! Pure author capabilities and their tracked inputs. Resolve bindings, not
+//! spellings: a helper's local `input` is not a cook capability.
 use oxc_ast::ast::{
     Argument, CallExpression, Expression, IdentifierReference, ImportDeclarationSpecifier, Program,
     Statement, StaticMemberExpression,
@@ -137,12 +137,58 @@ pub fn collect(
     }
 }
 
-/// Only the immutable, pre-read input map crosses the host boundary. Each
-/// bytes call copies into VM-owned memory, never shares a mutable input.
+/// A stream owns its draws; forks depend only on the seed, never the draw count.
+/// Keep the engine algorithm in Rust, not a second implementation in JS.
+fn stream<'js>(
+    ctx: &rquickjs::Ctx<'js>,
+    rng: og_core::Rng,
+) -> rquickjs::Result<rquickjs::Object<'js>> {
+    use rquickjs::{Function, function::MutFn, object::Property};
+    let object = rquickjs::Object::new(ctx.clone())?;
+    // rquickjs 0.14's u32 conversion round-trips through i32 with wrapping;
+    // use f64 so seeds above i32::MAX retain their unsigned numeric value.
+    object.prop("seed", Property::from(f64::from(rng.seed())).enumerable())?;
+    let mut draws = rng;
+    object.prop(
+        "next",
+        Property::from(Function::new(
+            ctx.clone(),
+            MutFn::new(move || draws.next_f64()),
+        )?)
+        .enumerable(),
+    )?;
+    object.prop(
+        "fork",
+        Property::from(Function::new(
+            ctx.clone(),
+            move |ctx: rquickjs::Ctx<'js>, label: String| stream(&ctx, rng.fork(&label)),
+        )?)
+        .enumerable(),
+    )?;
+    Ok(object)
+}
+
+/// Only pre-read inputs and explicit seeded streams cross the host boundary.
+/// Each bytes call copies into VM-owned memory, never shares a mutable input.
 pub fn install<'js>(
     ctx: &rquickjs::Ctx<'js>,
     inputs: Arc<BTreeMap<String, Vec<u8>>>,
 ) -> rquickjs::Result<()> {
+    ctx.globals().set(
+        "__authorRng",
+        rquickjs::Function::new(
+            ctx.clone(),
+            |ctx: rquickjs::Ctx<'js>, seed: rquickjs::Value<'js>| {
+                let seed = seed
+                    .as_number()
+                    .filter(|n| n.fract() == 0.0 && *n >= 0.0 && *n <= f64::from(u32::MAX))
+                    .ok_or_else(|| {
+                        rquickjs::Exception::throw_message(&ctx, "rng seed must be a u32 integer")
+                    })?;
+                stream(&ctx, og_core::Rng::new(seed as u32))
+            },
+        )?,
+    )?;
     ctx.globals().set(
         "__authorInput",
         rquickjs::Function::new(
