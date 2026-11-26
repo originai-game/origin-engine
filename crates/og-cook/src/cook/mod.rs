@@ -44,6 +44,7 @@ pub mod flow;
 pub mod generator;
 pub mod materials;
 pub mod source_schemas;
+pub mod source_transaction;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
 mod schemas;
