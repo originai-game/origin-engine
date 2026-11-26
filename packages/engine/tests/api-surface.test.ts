@@ -20,6 +20,7 @@ import * as engineExports from "../src/index.ts";
 import { og, defineComponent, defineSystem, f32 } from "../src/index.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { defineComponent as schemaComponent } from "../src/schema.ts";
 
 interface Call {
   readonly kind: "fn" | "method" | "prop";
@@ -27,7 +28,8 @@ interface Call {
   readonly symbol: string;
 }
 
-const Marker = defineComponent("SurfaceMarker", { value: f32() });
+// A schema token is the runtime token, not a separate declaration or adapter.
+const Marker = schemaComponent("SurfaceMarker", { value: f32() });
 // One field of every column kind, each made by its exported factory: the engine takes them all.
 const factories = engineExports as unknown as Record<string, (...a: unknown[]) => unknown>;
 const Every = defineComponent(

@@ -3,50 +3,10 @@ import { declare } from "./host.ts";
 import { type Result, json, parse } from "./result.ts";
 import { rt } from "./state.ts";
 import type { SaveEdit } from "../generated/calls.ts";
+import type { FieldSpec, Token } from "../records.ts";
+export { defineRecord, fieldSpec, type FieldSpec, type Token } from "../records.ts";
 
 // ── tokens and declarations ───────────────────────────────────────────────
-
-export interface FieldSpec {
-  readonly kind: string;
-  readonly default: unknown;
-  readonly options: Record<string, unknown>;
-  /** A `str` field's capacity in bytes. */
-  readonly capacity?: number;
-  /** A list field's capacity in elements (`list(u32(), 8)`); `kind` is the element's. */
-  readonly list?: number;
-}
-
-/** A field factory's spec (`f32()`, `Vector3()`): frozen, as declarations keep it. */
-export const fieldSpec = (kind: string, value: unknown, options: unknown): FieldSpec =>
-  Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
-
-export interface Token {
-  readonly kind: "component" | "resource" | "event";
-  readonly name: string;
-  readonly fields?: Readonly<Record<string, FieldSpec>>;
-}
-
-/** Field specs, in declaration order, as the host reads `Fields`. */
-function fieldList(fields: Readonly<Record<string, FieldSpec>>): unknown[] {
-  return Object.entries(fields).map(([name, spec]) => ({
-    name,
-    kind: spec?.kind,
-    default: spec?.default,
-    options: spec?.options ?? {},
-    ...(spec?.capacity === undefined ? {} : { capacity: spec.capacity }),
-    ...(spec?.list === undefined ? {} : { list: spec.list }),
-  }));
-}
-
-export function defineRecord(kind: Token["kind"], name: string, fields: Record<string, FieldSpec>): Token {
-  const token: Token = Object.freeze({ kind, name, fields: Object.freeze({ ...fields }) });
-  declare((a) => {
-    if (kind === "component") a.og_reflect_define_component(name, JSON.stringify(fieldList(fields)));
-    else if (kind === "resource") a.og_reflect_define_resource(name, JSON.stringify(fieldList(fields)));
-    else a.og_reflect_define_event(name, JSON.stringify(fieldList(fields)));
-  });
-  return token;
-}
 
 type DeclField = { name: string; column?: string; type?: string; default?: unknown; list?: number };
 

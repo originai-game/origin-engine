@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "@origingame/engine/schema",
+      "summary": "Pure record and column factories share the runtime's token implementation without loading a host. Declare project components, resources and events in src/schema and import those same tokens in game code."
+    }
+  ]
+}

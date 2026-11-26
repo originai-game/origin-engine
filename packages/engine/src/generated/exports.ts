@@ -3,7 +3,7 @@
 // A factory's default is its kind's zero value: an enum's first variant, a null handle.
 
 import type * as Api from "@origingame/engine";
-import { fieldSpec as spec } from "../runtime.ts";
+import { fieldSpec as spec } from "../records.ts";
 
 // reflect
 export const f32 = ((value = 0, options) => spec("f32", value, options)) as typeof Api.f32;

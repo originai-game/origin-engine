@@ -4,7 +4,7 @@
 // from the IDL fails `bun run typecheck`.
 
 import type * as Api from "@origingame/engine";
-import { BUILTINS, calls, clip, environmentSunRotation, fieldSpec, top, ui } from "./runtime.ts";
+import { BUILTINS, calls, clip, environmentSunRotation, top, ui } from "./runtime.ts";
 import * as systems from "./systems/index.ts";
 import { inventoryModule } from "./systems/inventory.ts";
 import { abilitiesModule } from "./systems/abilities.ts";
@@ -15,12 +15,8 @@ import { formatNotation } from "./ui/data/format.ts";
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
 export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color, math } from "./math.ts";
 
-// The column factories that take a capacity: the rest, and every constant, are generated from the IDL.
-// The capacity crosses with the spec; the engine refuses one outside 1 to 4096 at declaration.
-export const str = ((capacity, value = "", options) => Object.freeze({ ...fieldSpec("str", value, options), capacity })) as typeof Api.str;
-// A list of another factory's kind: the engine refuses a kind that is not a number or a handle, and a capacity outside 1 to 1024, at declaration.
-export const list = ((of, capacity, options) =>
-  Object.freeze({ kind: of.kind, default: Object.freeze([]), options: Object.freeze({ ...(options ?? {}) }), list: capacity })) as typeof Api.list;
+// Capacity-taking factories share the same implementation with pure schemas.
+export { str, list } from "./schema.ts";
 export * from "./generated/exports.ts";
 export * from "./generated/vocabulary.ts";
 

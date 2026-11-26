@@ -5,6 +5,7 @@ import { dispatch } from "./engine.ts";
 import { dirtyRecords, flushRecords } from "./resources.ts";
 import { refused } from "./result.ts";
 import { rt } from "./state.ts";
+import { consumeRecords } from "../records.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
 
@@ -145,3 +146,21 @@ export function declare(call: (abi: HostAbi<Uint32Array, unknown>) => void): voi
   if (rt.host) call(rt.host.abi);
   else queue.push(call);
 }
+
+// Subscribe only after the host queue is initialized: a schema may have been
+// imported before the runtime, including through its cyclic module graph.
+consumeRecords(({ kind, name, fields }) => {
+  declare((a) => {
+    const wire = JSON.stringify(Object.entries(fields!).map(([name, spec]) => ({
+      name,
+      kind: spec?.kind,
+      default: spec?.default,
+      options: spec?.options ?? {},
+      ...(spec?.capacity === undefined ? {} : { capacity: spec.capacity }),
+      ...(spec?.list === undefined ? {} : { list: spec.list }),
+    })));
+    if (kind === "component") a.og_reflect_define_component(name, wire);
+    else if (kind === "resource") a.og_reflect_define_resource(name, wire);
+    else a.og_reflect_define_event(name, wire);
+  });
+});

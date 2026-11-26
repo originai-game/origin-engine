@@ -726,7 +726,7 @@ impl<'a> Gen<'a, '_> {
 }
 
 /// `packages/engine/src/generated/exports.ts`: every column factory but the
-/// ones that take a capacity (`str`, `list`, written by hand in `index.ts`)
+/// ones that take a capacity (`str`, `list`, written by hand in `schema.ts`)
 /// and every constant, as the package's named exports. Generated, so a
 /// column or a constant the IDL gains is exported without a hand edit.
 pub fn exports_ts(ix: &Index<'_>) -> String {
@@ -735,7 +735,7 @@ pub fn exports_ts(ix: &Index<'_>) -> String {
          // The column factories and constants the IDL declares, re-exported by src/index.ts.\n\
          // A factory's default is its kind's zero value: an enum's first variant, a null handle.\n\n\
          import type * as Api from \"@origingame/engine\";\n\
-         import {{ fieldSpec as spec }} from \"../runtime.ts\";\n"
+         import {{ fieldSpec as spec }} from \"../records.ts\";\n"
     );
     for m in &ix.api.modules {
         let columns: Vec<&Column> = m

@@ -37,6 +37,7 @@
       "types": "./src/author.d.ts",
       "default": "./src/author.js"
     },
+    "./schema": "./src/schema.ts",
     "./sourcemap": "./src/sourcemap.ts",
     "./ui": {
       "og-source": "./src/ui/index.ts",
