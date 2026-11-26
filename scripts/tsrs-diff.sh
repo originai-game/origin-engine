@@ -17,7 +17,7 @@
 #   - one tsgo reports and tsrs does not (a miss) fails, each listed;
 #   - one tsrs reports and tsgo does not, or the same key with another
 #     message, is printed (`diff` lines) and passes; re-check those with
-#     the typescript 7.1.0-dev tsrs ports before calling them tsrs defects;
+#     the typescript 7.1.0-beta tsrs ports before calling them tsrs defects;
 #   - both clean is one PASS line.
 #
 # It also holds the pins to their single statements: no template or example

@@ -24,8 +24,8 @@
 #                     (packages/engine/scripts/wasm-split.ts)
 #   tsrs              `og check`'s type checker, pinned by TSRS_VERSION and the
 #                     SRI of its npm platform package; the package version
-#                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
-#                     `Version 7.1.0-dev.20260930.4` (TSRS_REPORTS), the
+#                     7.1.0-beta.tsrs5 is a binary that reports
+#                     `Version 7.1.0-beta` (TSRS_REPORTS), the
 #                     string the present check compares
 #   wasmtime          the wasm32-wasip1 test runner of the shape-wasm32 step,
 #                     pinned by WASMTIME_VERSION and each release archive's
@@ -39,12 +39,12 @@ set -eu -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 
-BUN_VERSION="${BUN_VERSION:-1.4.4}"
+BUN_VERSION="${BUN_VERSION:-1.4.5}"
 SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
 RUSTFILT_VERSION="${RUSTFILT_VERSION:-0.2.1}"
-TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
-TSRS_REPORTS="7.1.0-dev.20260930.4"
+TSRS_VERSION="${TSRS_VERSION:-7.1.0-beta.tsrs5}"
+TSRS_REPORTS="7.1.0-beta"
 BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 ZIG_VERSION="${ZIG_VERSION:-0.17.0}"
 ZIG_SHA256=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
@@ -233,11 +233,11 @@ else
   libc=gnu
   if [ "$os" = Linux ] && ldd --version 2>&1 | grep -qi musl; then libc=musl; fi
   case "$os-$arch-$libc" in
-    Linux-x86_64-gnu)   pkg=linux-x64-gnu;    sri='sha512-EdBwBgNICGu1r1h23ixdcKwsMo6E9ll7ZsY3mNERNYqE1Pwdtcat99d5E7zB1J+oy/Xk6YqiizaB6nolIjpDTw==' ;;
-    Linux-aarch64-gnu)  pkg=linux-arm64-gnu;  sri='sha512-zm9/z9yylig68JiZF4Aq0Cm26n09KEU8YoQRlG7tdDWTBNAIViYw8knxnWYsjMWVZ2XiU4mYq1xdrOKuOgABHg==' ;;
-    Linux-x86_64-musl)  pkg=linux-x64-musl;   sri='sha512-LHk+AOAtXuTlhJhOJ2+elriEIX17ycXljojeNxrrzckOipTG1LksoVWuCSas2nu00EnWAzrdKpt9oqPylUKZfQ==' ;;
-    Linux-aarch64-musl) pkg=linux-arm64-musl; sri='sha512-Lw7VVU/YQ9JcarODICEiwzMLdFqZprqh5RGTgbS5Uc6I95P635/g5xA1pOC8RVs4efBvAR30J54iDG3l5JEYiw==' ;;
-    Darwin-aarch64-*)   pkg=darwin-arm64;     sri='sha512-sAirMpaGA9uRQm2W+t4zC7PjnijNuFa4PCSIfLKKo0JyAUCRfnMeev0UGBQ9F3g+9Nz187tvikUs5Irh5+eajA==' ;;
+    Linux-x86_64-gnu)   pkg=linux-x64-gnu;    sri='sha512-hyg70btCCaMT3RvFYU0KEibFyQjFUUfrqk4zTl7rf/7G3HPO3X6sEs8J/AHYUvJB0cA+dXgU/adkiZf1XJI/XA==' ;;
+    Linux-aarch64-gnu)  pkg=linux-arm64-gnu;  sri='sha512-o0ofV8Yw5IbaXR7wjIHaqBv9YddJ6Weot+IpYWfUNqG3YpAe4N5G0dU9vsCLX7eNNYx1mMyIZK0eyMV1r6qg2g==' ;;
+    Linux-x86_64-musl)  pkg=linux-x64-musl;   sri='sha512-5RI2Ziy8eSkvUi/oeQbrCSzJC/AP7DCtn9IEOWS74BhuQK7WUr1op5ozQMsn4kA6DfuCAuYSQZygTk2Zv3Ib+g==' ;;
+    Linux-aarch64-musl) pkg=linux-arm64-musl; sri='sha512-Nki4kxNnp8qO+/8MtZeO0cAt8ifGHPbC9R0BepVlLuDdvR2cqfzym+l75zXtvnwW1nekmKwbNpHqsuHXoITYGQ==' ;;
+    Darwin-aarch64-*)   pkg=darwin-arm64;     sri='sha512-wRLJq3IDZjdLrh+lsipipCfYPpFjNW/0zjeM9azNLjA33OWjOIxT2THiKExf7bjkbr6SGCrrjDR+ZZyXYz4Rjg==' ;;
     *) pkg="" ;;
   esac
   if [ -z "$pkg" ]; then

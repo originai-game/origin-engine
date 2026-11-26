@@ -1,4 +1,4 @@
-// bun-types 1.4.4: the `bun:test` module of npm `bun-types@1.4.4`
+// bun-types 1.4.5: the `bun:test` module of npm `bun-types@1.4.5`
 // (https://github.com/oven-sh/bun, packages/bun-types/test.d.ts, MIT,
 // LICENSE beside this file), the version docs/ci.md §Toolchain pins beside
 // bun. scripts/toolchain.test.ts (the quick gate's bun-quick) fails when the
@@ -8,7 +8,7 @@
 // esnext), re-checked on every move; drop one upstream no longer needs:
 // 1. JestMock.MockInstance's `[Symbol.dispose](): void` is removed: ES2022
 //    declares no Symbol.dispose, so the member is TS2550 under the games'
-//    lib. Upstream 1.4.4 assumes lib esnext (its ts7.1/ typesVersions
+//    lib. Upstream 1.4.5 assumes lib esnext (its ts7.1/ typesVersions
 //    variant does not cover test.d.ts).
 /**
  *

@@ -321,9 +321,9 @@ pub fn platform() -> Option<&'static str> {
 pub struct Tsrs {
     pub path: PathBuf,
     pub source: &'static str,
-    /// The TypeScript version it ports (`7.1.0-dev.20260930.4`).
+    /// The TypeScript version it ports (`7.1.0-beta`).
     pub version: String,
-    /// Its own package version (`0.18.0-ts7.1.0-dev.20260929`).
+    /// Its own package version (`7.1.0-beta.tsrs5`).
     pub package_version: String,
 }
 
@@ -373,7 +373,7 @@ pub fn locate_tsrs(package: Option<&Path>) -> Result<Option<Tsrs>, String> {
         .stdin(Stdio::null())
         .output()
         .map_err(|e| format!("cannot start {} ({e})", path.display()))?;
-    // `Version 7.1.0-dev.20260930.4 (tsrs 0.18.0-ts7.1.0-dev.20260929, microsoft/TypeScript@...)`
+    // `Version 7.1.0-beta (tsrs 7.1.0-beta.tsrs5, microsoft/TypeScript@...)`
     let text = String::from_utf8_lossy(&out.stdout);
     let mut words = text.split_whitespace();
     let version = match (words.next(), words.next()) {
