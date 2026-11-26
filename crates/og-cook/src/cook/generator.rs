@@ -183,7 +183,7 @@ fn relative(base: &str, name: &str) -> Result<String, String> {
     Ok(out.to_string_lossy().replace('\\', "/"))
 }
 
-fn read(root: &Path, path: &str) -> Result<Vec<u8>, String> {
+fn read(root: &Path, path: &str, overlay: &BTreeMap<String, String>) -> Result<Vec<u8>, String> {
     let path = relative("", path)?;
     let mut at = root.to_path_buf();
     for part in Path::new(&path).components() {
@@ -202,7 +202,16 @@ fn read(root: &Path, path: &str) -> Result<Vec<u8>, String> {
             "{path}: generator input must be a file of at most 64 MiB"
         ));
     }
-    std::fs::read(at).map_err(|e| format!("{path}: {e}"))
+    let bytes = match overlay.get(&path) {
+        Some(text) => text.as_bytes().to_vec(),
+        None => std::fs::read(at).map_err(|e| format!("{path}: {e}"))?,
+    };
+    if bytes.len() > 64 * 1024 * 1024 {
+        return Err(format!(
+            "{path}: generator input must be a file of at most 64 MiB"
+        ));
+    }
+    Ok(bytes)
 }
 
 /// The complete, closed module graph. No loader reaches the filesystem.
@@ -252,6 +261,7 @@ impl<'a> Visit<'a> for Synchronous {
 fn module(
     root: &Path,
     path: &str,
+    overlay: &BTreeMap<String, String>,
     modules: &mut BTreeMap<String, String>,
     inputs: &mut BTreeMap<String, bool>,
     hash: &mut blake3::Hasher,
@@ -263,7 +273,7 @@ fn module(
     if modules.len() >= 128 {
         return Err("a generator imports at most 128 modules".into());
     }
-    let bytes = read(root, path)?;
+    let bytes = read(root, path, overlay)?;
     if bytes.len() > 1024 * 1024
         || modules.values().map(String::len).sum::<usize>() + bytes.len() > 8 * 1024 * 1024
     {
@@ -338,20 +348,32 @@ fn module(
     }
     modules.insert(path.to_string(), Codegen::new().build(&program).code);
     for name in imports {
-        module(root, &name, modules, inputs, hash, entry_source)?;
+        module(root, &name, overlay, modules, inputs, hash, entry_source)?;
     }
     Ok(())
 }
 
 impl Program {
     pub fn prepare(root: &Path, source: &str, spec: &Spec) -> Result<Self, String> {
-        Self::prepare_export(root, source, spec, Export::Call)
+        Self::prepare_export(root, source, spec, Export::Call, &BTreeMap::new())
     }
 
     /// Evaluate an authored module's default data export, without calling it.
     /// Uses the same closed imports, isolated realm, budgets and action cache
     /// as generators. Domain schema validation belongs to the consuming cook.
     pub fn prepare_value(root: &Path, script: &str) -> Result<Self, String> {
+        Self::prepare_value_with_overlay(root, script, &BTreeMap::new())
+    }
+
+    /// Validate a candidate save without writing it first. Overlay keys are
+    /// normalized root-relative TS paths to existing regular source files.
+    /// Imports, explicit inputs, source snapshots and action keys all observe
+    /// the same candidate bytes. Unused candidates do not enter this action.
+    pub fn prepare_value_with_overlay(
+        root: &Path,
+        script: &str,
+        overlay: &BTreeMap<String, String>,
+    ) -> Result<Self, String> {
         Self::prepare_export(
             root,
             "",
@@ -362,6 +384,7 @@ impl Program {
                 inputs: BTreeMap::new(),
             },
             Export::Value,
+            overlay,
         )
     }
 
@@ -370,7 +393,20 @@ impl Program {
         source: &str,
         spec: &Spec,
         export: Export,
+        overlay: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
+        for path in overlay.keys() {
+            if relative("", path)? != *path || !path.ends_with(".ts") {
+                return Err(format!(
+                    "{path}: candidate source must be a normalized root-relative .ts path"
+                ));
+            }
+            if read(root, path, overlay)?.len() > 1024 * 1024 {
+                return Err(format!(
+                    "{path}: candidate source budget is 1 MiB per module"
+                ));
+            }
+        }
         let entry = relative(source, &spec.script)?;
         let mut hash = blake3::Hasher::new();
         hash.update(match export {
@@ -404,6 +440,7 @@ impl Program {
         module(
             root,
             &entry,
+            overlay,
             &mut modules,
             &mut declared,
             &mut hash,
@@ -418,7 +455,7 @@ impl Program {
         let mut total = 0;
         for (name, path) in &spec.inputs {
             let path = relative(source, path)?;
-            let bytes = read(root, &path)?;
+            let bytes = read(root, &path, overlay)?;
             dependencies.insert(path);
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
@@ -428,7 +465,7 @@ impl Program {
         }
         let mut author_inputs = BTreeMap::new();
         for (path, text) in declared {
-            let bytes = read(root, &path)?;
+            let bytes = read(root, &path, overlay)?;
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
                 return Err("generator inputs exceed 64 MiB in total".into());

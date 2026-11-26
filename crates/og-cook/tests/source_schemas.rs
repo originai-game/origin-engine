@@ -57,6 +57,132 @@ export default {
     }))
     .unwrap();
     scene.check(Some(&schema)).unwrap();
+
+    // Provenance is relative to the factory's argument, not the descriptor
+    // envelope. A multi-file candidate is evaluated without modifying disk.
+    use og_cook::cook::generator::source::{Edit, Source};
+    use std::collections::BTreeMap;
+    let text = "import {file as files} from '@origingame/engine/author';\nimport {label} from './helper.ts';\nexport default (files.strings({\n  locale: 'en',\n  entries: {gate: 'Gate', computed: label}, // keep\n}) satisfies unknown);\n";
+    std::fs::write(dir.join("edit.ts"), text).unwrap();
+    std::fs::write(dir.join("helper.ts"), "export const label = 'Helper';").unwrap();
+    std::fs::write(dir.join("unused.ts"), "export const unused = 1;").unwrap();
+    let original = Program::prepare_value(&dir, "edit.ts").unwrap();
+    assert_eq!(original.source.content_kind().unwrap(), "strings");
+    let gate = original.source.field("/entries/gate").unwrap();
+    assert_eq!(gate.value, Some(json!("Gate")));
+    assert_eq!(gate.location.line, 5);
+    assert_eq!(
+        &text[gate.location.start as usize..gate.location.end as usize],
+        "'Gate'"
+    );
+    assert_eq!(
+        original.source.field("/entries/computed").unwrap_err().code,
+        "computed-source"
+    );
+    let patched = original
+        .source
+        .patch(
+            text,
+            &[Edit {
+                path: "/entries/gate".into(),
+                expected: Some(json!("Gate")),
+                value: json!("North gate"),
+            }],
+        )
+        .unwrap();
+    assert!(patched.contains("gate: 'North gate', computed: label}, // keep"));
+    let mut overlay = BTreeMap::from([
+        ("edit.ts".into(), patched),
+        (
+            "helper.ts".into(),
+            "export const label = 'Candidate helper';".into(),
+        ),
+    ]);
+    let candidate = Program::prepare_value_with_overlay(&dir, "edit.ts", &overlay).unwrap();
+    assert_eq!(original.run().unwrap()["value"]["entries"]["gate"], "Gate");
+    let evaluated = candidate.run().unwrap();
+    assert_eq!(
+        evaluated["value"]["entries"],
+        json!({"gate":"North gate","computed":"Candidate helper"})
+    );
+    assert_ne!(candidate.key, original.key);
+    assert_ne!(candidate.source.digest(), original.source.digest());
+    let checked: File = serde_json::from_value(evaluated.clone()).unwrap();
+    checked.check(None).unwrap();
+    std::fs::write(
+        dir.join("captured.ts"),
+        "import {input} from '@origingame/engine/author'; export default input.text('helper.ts');",
+    )
+    .unwrap();
+    assert_eq!(
+        Program::prepare_value_with_overlay(&dir, "captured.ts", &overlay)
+            .unwrap()
+            .run()
+            .unwrap(),
+        json!("export const label = 'Candidate helper';")
+    );
+    overlay.insert("unused.ts".into(), "export const unused = 99;".into());
+    let warm = Program::prepare_value_with_overlay(&dir, "edit.ts", &overlay).unwrap();
+    assert_eq!(warm.key, candidate.key);
+    assert_eq!(warm.run().unwrap(), evaluated);
+    assert_eq!(std::fs::read_to_string(dir.join("edit.ts")).unwrap(), text);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("helper.ts")).unwrap(),
+        "export const label = 'Helper';"
+    );
+    for path in [
+        "../escape.ts",
+        "./edit.ts",
+        "edit/../edit.ts",
+        "helper.json",
+        "missing.ts",
+    ] {
+        let invalid = BTreeMap::from([(path.into(), "export default {};".into())]);
+        assert!(
+            Program::prepare_value_with_overlay(&dir, "edit.ts", &invalid).is_err(),
+            "{path}"
+        );
+    }
+    for (imports, call, kind) in [
+        (
+            "import * as og from '@origingame/engine/author';",
+            "og.file['texture-array']({})",
+            Some("texture-array"),
+        ),
+        (
+            "import {file} from '@origingame/engine/author';",
+            "file.strings({})",
+            Some("strings"),
+        ),
+        (
+            "const file = {strings: (v: unknown) => v};",
+            "file.strings({})",
+            None,
+        ),
+        (
+            "import {file} from '@origingame/engine/author'; const make = file.strings;",
+            "make({})",
+            None,
+        ),
+        (
+            "import {file} from '@origingame/engine/author'; const kind = 'strings';",
+            "file[kind]({})",
+            None,
+        ),
+        (
+            "import type {file} from '@origingame/engine/author';",
+            "file.strings({})",
+            None,
+        ),
+        (
+            "import {file} from '@origingame/engine/author';",
+            "file.strings(...[{}])",
+            None,
+        ),
+    ] {
+        let source = Source::new("source.ts", &format!("{imports}\nexport default ({call});"));
+        assert_eq!(source.content_kind().ok().as_deref(), kind, "{call}");
+    }
     for expr in ["og.ref(42)", "og.ref('')", "og.file.unknown({})"] {
         std::fs::write(
             dir.join("bad.ts"),

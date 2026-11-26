@@ -8,10 +8,11 @@
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Comment, Expression, ObjectExpression, ObjectProperty, ObjectPropertyKind, Statement,
+    Comment, Expression, ImportDeclarationSpecifier, ImportOrExportKind, ObjectExpression,
+    ObjectProperty, ObjectPropertyKind, Statement,
 };
 use oxc_parser::Parser;
-use oxc_semantic::SemanticBuilder;
+use oxc_semantic::{Scoping, SemanticBuilder, SymbolId};
 use oxc_span::{GetSpan, SourceType, Span};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -131,7 +132,7 @@ impl Source {
     fn with_root<T>(
         &self,
         path: &str,
-        f: impl FnOnce(&Expression<'_>, &[Comment]) -> Result<T, Failure>,
+        f: impl FnOnce(&Expression<'_>, &[Comment], Option<&str>) -> Result<T, Failure>,
     ) -> Result<T, Diagnostic> {
         let allocator = Allocator::default();
         let source_type = SourceType::from_path(&self.file).map_err(|e| {
@@ -188,7 +189,12 @@ impl Source {
                 .declaration
                 .as_expression()
                 .ok_or_else(|| computed(d.span))
-                .and_then(|root| f(root, &parsed.program.comments)),
+                .and_then(|root| {
+                    let content = factory(root, &parsed.program, semantics.semantic.scoping());
+                    let (kind, value) =
+                        content.map_or((None, root), |(kind, value)| (Some(kind), value));
+                    f(value, &parsed.program.comments, kind)
+                }),
             _ => Err(fail(
                 "invalid-source",
                 Span::default(),
@@ -198,8 +204,20 @@ impl Source {
         result.map_err(|e| self.diagnostic(path, e))
     }
 
+    /// Discover an entry without executing it. Only a direct imported
+    /// author.file.<kind>(value) call identifies content, never an alias,
+    /// lookalike local object, helper result or re-exported factory.
+    pub fn content_kind(&self) -> Result<String, Diagnostic> {
+        self.with_root("", |root, _, kind| {
+            kind.map(str::to_string).ok_or_else(|| fail(
+                "missing-factory", root.span(),
+                "default-export a direct file.<kind>(value) call imported from @origingame/engine/author",
+            ))
+        })
+    }
+
     pub fn field(&self, path: &str) -> Result<Field, Diagnostic> {
-        self.with_root(path, |root, _| {
+        self.with_root(path, |root, _, _| {
             let target = locate(root, &segments(path)?)?;
             Ok(Field {
                 location: self.location(target.span()),
@@ -225,7 +243,7 @@ impl Source {
                 ),
             ));
         }
-        self.with_root("", |root, comments| {
+        self.with_root("", |root, comments, _| {
             let mut paths: Vec<Vec<String>> = Vec::new();
             let mut replacements = Vec::new();
             let mut insertions: BTreeMap<u32, (Option<u32>, Vec<String>)> = BTreeMap::new();
@@ -339,10 +357,69 @@ impl Source {
         .and_then(|text| {
             // JSON is valid JS data, but an object replacing a scalar default
             // export, for example, still needs the surrounding TS grammar.
-            Self::new(&self.file, &text).with_root("", |_, _| Ok(()))?;
+            Self::new(&self.file, &text).with_root("", |_, _, _| Ok(()))?;
             Ok(text)
         })
     }
+}
+
+fn factory<'a, 's>(
+    root: &'s Expression<'a>,
+    program: &oxc_ast::ast::Program<'a>,
+    scoping: &Scoping,
+) -> Option<(&'s str, &'s Expression<'a>)> {
+    fn member<'a, 's>(expression: &'s Expression<'a>) -> Option<(&'s Expression<'a>, &'s str)> {
+        match expression.get_inner_expression() {
+            Expression::StaticMemberExpression(m) if !m.optional => {
+                Some((&m.object, m.property.name.as_str()))
+            }
+            Expression::ComputedMemberExpression(m) if !m.optional => {
+                let Expression::StringLiteral(key) = m.expression.get_inner_expression() else {
+                    return None;
+                };
+                Some((&m.object, key.value.as_str()?))
+            }
+            _ => None,
+        }
+    }
+    let Expression::CallExpression(call) = root.get_inner_expression() else {
+        return None;
+    };
+    if call.optional || call.arguments.len() != 1 {
+        return None;
+    }
+    let (object, kind) = member(&call.callee)?;
+    let binding = |expression: &Expression<'_>, symbol: SymbolId| {
+        matches!(expression.get_inner_expression(), Expression::Identifier(id)
+            if id.reference_id.get().and_then(|r| scoping.get_reference(r).symbol_id()) == Some(symbol))
+    };
+    let imported = program.body.iter().any(|statement| {
+        let Statement::ImportDeclaration(import) = statement else {
+            return false;
+        };
+        import.source.value == super::author::MODULE
+            && import.import_kind == ImportOrExportKind::Value
+            && import
+                .specifiers
+                .iter()
+                .flatten()
+                .any(|specifier| match specifier {
+                    ImportDeclarationSpecifier::ImportSpecifier(s) => {
+                        s.import_kind == ImportOrExportKind::Value
+                            && s.imported.name() == "file"
+                            && binding(object, s.local.symbol_id())
+                    }
+                    ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => member(object)
+                        .is_some_and(|(namespace, name)| {
+                            name == "file" && binding(namespace, s.local.symbol_id())
+                        }),
+                    _ => false,
+                })
+    });
+    if !imported {
+        return None;
+    }
+    Some((kind, call.arguments[0].as_expression()?))
 }
 
 enum Target<'a, 's> {
