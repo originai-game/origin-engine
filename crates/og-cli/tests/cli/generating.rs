@@ -63,6 +63,44 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
         .unwrap();
     assert_eq!(input, value(&output));
 
+    std::fs::write(root.join("mechanisms.ts"), r#"
+        import {procgen} from '@origingame/engine/generate';
+        export default () => {
+            const h = procgen.heightmap({columns: 3, rows: 2, size: {x: 11, y: 7}, heights: new Float32Array([117, 119, 123, 127, 131, 137])});
+            const w = procgen.wfc({width: 3, height: 1, tiles: [
+                {weight: 1, up: 0, right: 1, down: 0, left: 2, rotations: false},
+                {weight: 1, up: 0, right: 2, down: 0, left: 1, rotations: false},
+            ], fixed: [{x: 0, y: 0, tile: 0, quarterTurns: 0}]});
+            if (!h.ok || !w.ok) throw new Error('mechanism refused');
+            if (!(h.value.heights instanceof Float32Array) || !(w.value.tiles instanceof Uint32Array)) throw new Error('lost typed buffers');
+            return {heights: h.value.heights.subarray(1, 5), tiles: w.value.tiles};
+        };
+    "#).unwrap();
+    let mechanisms = value(&run("mechanisms.ts", "{}"));
+    assert_eq!(
+        mechanisms["data"]["heights"],
+        serde_json::json!([119, 123, 127, 131])
+    );
+    assert_eq!(mechanisms["data"]["tiles"], serde_json::json!([0, 1, 0]));
+
+    let exported = og()
+        .args([
+            "script",
+            "mechanisms.ts",
+            "--out",
+            "out/nested/result.json",
+            "--json",
+        ])
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert_eq!(value(&exported)["data"], serde_json::Value::Null);
+    let published = std::fs::read(root.join("out/nested/result.json")).unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&published).unwrap(),
+        mechanisms["data"]
+    );
+
     for code in [
         "export default () => Date.now()",
         "export default () => Math.random()",
@@ -84,6 +122,22 @@ fn script_tracks_its_closed_inputs_and_rejects_ambient_authority() {
         );
         assert!(out.stdout.is_empty(), "partial result for {code}");
     }
+    let refused = og()
+        .args([
+            "script",
+            "denied.ts",
+            "--out",
+            "out/nested/result.json",
+            "--json",
+        ])
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(!refused.status.success());
+    assert_eq!(
+        std::fs::read(root.join("out/nested/result.json")).unwrap(),
+        published
+    );
     let out = run("../outside.ts", "{}");
     assert!(!out.status.success());
     assert!(text(&out).contains("leaves its input root"));

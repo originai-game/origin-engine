@@ -29,6 +29,10 @@
     "./web/rpc-ring": "./src/web/rpc-ring.ts",
     "./provider": "./src/provider.ts",
     "./runtime": "./src/runtime.ts",
+    "./generate": {
+      "types": "./src/generate.d.ts",
+      "default": "./src/generate.ts"
+    },
     "./sourcemap": "./src/sourcemap.ts",
     "./ui": {
       "og-source": "./src/ui/index.ts",

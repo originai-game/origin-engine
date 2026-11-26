@@ -7,8 +7,12 @@ rust-version.workspace = true
 description = "Origin Engine pure generation: IDL parameters over the shared CPU mechanisms, used by runtime and cook without a world or GPU."
 autotests = false
 
+[features]
+offline = ["dep:serde_json"]
+
 [dependencies]
 og-api = { path = "../og-api" }
 og-core = { path = "../og-core" }
 og-render-data = { path = "../og-render-data" }
 og-shape = { path = "../og-shape" }
+serde_json = { version = "1", optional = true }

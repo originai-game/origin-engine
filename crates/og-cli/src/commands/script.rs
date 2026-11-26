@@ -59,7 +59,8 @@ fn execute(args: &[&str]) -> Result<serde_json::Value, String> {
     let data = program.run()?;
     if let Some(path) = output {
         let bytes = serde_json::to_vec(&data).map_err(|e| e.to_string())?;
-        std::fs::write(path, bytes).map_err(|e| format!("{path}: {e}"))?;
+        og_cook::cook::cache::atomic_write(Path::new(path), &bytes)
+            .map_err(|e| format!("{path}: {e}"))?;
     }
     Ok(
         serde_json::json!({"key": program.key, "output": output, "data": output.is_none().then_some(data)}),

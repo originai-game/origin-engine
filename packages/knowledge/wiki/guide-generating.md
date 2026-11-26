@@ -69,15 +69,18 @@ layer {
 ```
 
 ```ts recipe file=assets/heights.ts
-export default function heights(ctx: { params: { offset: number }; seed: number; inputs: Record<string, number[]> }) {
+import { procgen, type GeneratorContext, type HeightfieldSource } from "@origingame/engine/generate";
+
+export default function heights(ctx: GeneratorContext<{ offset: number }>) {
   const columns = 13, rows = 7;
   const heights = new Float32Array(columns * rows);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
-      heights[r * columns + c] = ctx.params.offset + 0.7 * c + 0.2 * r + (c === 8 && r === 3 ? 9 : 0);
+      const detail = 0.05 * c * procgen.noise({ seed: ctx.seed }, c / 7, r / 3, 0);
+      heights[r * columns + c] = ctx.params.offset + 0.7 * c + 0.2 * r + (c === 8 && r === 3 ? 9 : 0) + detail;
     }
   }
-  return { columns, rows, heights };
+  return { columns, rows, heights } satisfies HeightfieldSource;
 }
 ```
 
@@ -88,10 +91,17 @@ For an existing height image, write `heightmap "base.png"` (or EXR) beside `gene
 <a id="guide-generating-3"></a>
 ### `generating §3` Script, inputs and caching
 
-`og script heights.ts --root assets --params '{"offset":117}' --seed 9 --out og-out/heights.json --json` executes the very same generator as cook. `og mcp` exposes the same `script` tool. `--out` is an explicit JSON output, not permission for the TS module to write files. Run from the recipe project directory; create the output directory first when needed.
+`og script heights.ts --root assets --params '{"offset":117}' --seed 9 --out og-out/heights.json --json` executes the very same generator as cook. `og mcp` exposes the same `script` tool. `--out` is an explicit JSON output, not permission for the TS module to write files. Run from the recipe project directory; parent directories are created and the complete output is published by rename.
 
 Use repeated `input "name" "relative/path"` entries inside `generate` (or `--input name=path` with script) for source bytes. Only those bytes are exposed at `ctx.inputs[name]`; the script cannot open paths. Parameters, seed, source, transitive imports, declared input contents and relevant engine/toolchain identity determine the shared cook cache key. Moving an unchanged project does not change its key. A source/input change invalidates it even when its timestamp was preserved.
 
 The realm has no filesystem, process, environment, network, system clock or timers. `Math.random` is refused: use an explicitly seeded algorithm and `ctx.seed`. Dynamic code compilation is unavailable; mathematical transcendentals use software libm. Imports are closed before execution. Heap, stack, instruction, module and input budgets stop runaway work. Outputs must be finite synchronous JSON-compatible data; typed arrays become arrays. Invalid source data fails cook before the target asset is published. Runtime handles and world snapshots are not source data.
+
+<a id="guide-generating-4"></a>
+### `generating §4` Compose the shared mechanisms
+
+`@origingame/engine/generate` exports `procgen` with exactly the signatures documented for `og.procgen`: noise, noiseGrad, curlNoise, worley, noiseGrid, poissonDisk, bsp, wfc, heightmap, plant and fracture. Cook calls the same Rust implementation and IDL parameter reader as the game hosts, without creating a world. An imported generator can also be called by a game: the module then forwards to its normal runtime bindings, as the recipe does above.
+
+Typed buffers remain typed inside the generator, including nested mesh attributes and WFC/BSP grids; a `subarray` denotes only that slice. At the final JSON output boundary they become numeric arrays. Result-returning mechanisms keep `{ok, value}` / `{ok: false, reason}`: check `ok` before composing them. These pure mechanisms do not load assets or return runtime handles. Existing files remain the normal input for plants, sound synthesis and prefracture; calling a mechanism in TS does not bypass a target asset's source validation.
 
 The guide gate writes all attached files and explicitly cooks the project before running the assertions twice. An attached fence's `file=` is project-relative and cannot escape the recipe directory; it belongs to the preceding `ts recipe` main entry. The guide contains no per-recipe shell harness.

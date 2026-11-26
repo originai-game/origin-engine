@@ -1,6 +1,7 @@
 //! Generators from the validated model. Shared helpers live here.
 
 pub mod calls;
+pub mod generation;
 pub mod host;
 pub mod tables;
 pub mod ts;

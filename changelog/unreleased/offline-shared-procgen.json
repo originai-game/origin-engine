@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/generate",
+      "summary": "Deterministic cook and script modules can compose every og.procgen mechanism through the same Rust implementations and IDL parameter readers as game hosts, preserving nested typed buffers inside the generator. Game code can import the same module through its normal host bindings."
+    },
+    {
+      "member": "og script --out",
+      "summary": "Creates parent directories and atomically publishes the complete JSON result, without exposing file writes to the generator."
+    }
+  ]
+}

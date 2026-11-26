@@ -20,6 +20,8 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
 };
 
+const BUILTIN: &str = "@origingame/engine/generate";
+
 /// A module's default export receives `{params, seed, inputs}`. Inputs are
 /// explicitly named byte arrays; paths are relative to the asset's directory.
 #[derive(Clone, Debug)]
@@ -184,9 +186,12 @@ fn module(
             _ => None,
         };
         if let Some(name) = source {
+            if name == BUILTIN {
+                continue;
+            }
             if !name.starts_with("./") && !name.starts_with("../") {
                 return Err(format!(
-                    "{path}: only relative, explicitly suffixed module imports are allowed: {name}"
+                    "{path}: imports must be relative with an explicit suffix, or {BUILTIN}: {name}"
                 ));
             }
             imports.push(relative(path, name)?);
@@ -215,9 +220,19 @@ impl Program {
         let entry = relative(source, &spec.script)?;
         let mut hash = blake3::Hasher::new();
         hash.update(include_bytes!("generator.rs"));
+        hash.update(include_bytes!(
+            "../../../../crates/og-generation/src/lib.rs"
+        ));
+        hash.update(include_bytes!(
+            "../../../../crates/og-api/src/generated/wire.rs"
+        ));
+        hash.update(og_generation::MODULE_SOURCE.as_bytes());
         hash.update(include_bytes!("../../../../Cargo.lock"));
-        hash.update(&crate::format::revisions(&[crate::format::Area::Terrain]).to_le_bytes());
-        let mut modules = BTreeMap::new();
+        hash.update(&crate::format::revisions(&crate::format::Area::ALL).to_le_bytes());
+        let mut modules = BTreeMap::from([(
+            BUILTIN.to_string(),
+            og_generation::MODULE_SOURCE.to_string(),
+        )]);
         module(root, &entry, &mut modules, &mut hash)?;
         let mut inputs = BTreeMap::new();
         let mut total = 0;
@@ -310,6 +325,13 @@ impl Program {
                 math.set("hypot", rquickjs::function::Func::from(|v: rquickjs::function::Rest<f64>| {
                     v.0.into_iter().fold(0.0, libm::hypot)
                 }))?;
+                ctx.globals().set("__procgen", Function::new(ctx.clone(), |ctx: rquickjs::Ctx<'_>, name: String, args: String| {
+                    let call = || -> Result<String, String> {
+                        let args: Vec<Json> = serde_json::from_str(&args).map_err(|e| e.to_string())?;
+                        Ok(og_generation::invoke(&name, &args)?.to_string())
+                    };
+                    call().map_err(|e| rquickjs::Exception::throw_message(&ctx, &e))
+                })?)?;
                 ctx.globals().set("__context", ctx.json_parse(self.context.as_bytes())?)?;
                 let source = self.modules.get(&self.entry).expect("prepared entry");
                 let (m, p) = Module::declare(ctx.clone(), self.entry.as_str(), source.as_bytes())?.eval()?;

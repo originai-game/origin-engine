@@ -3288,6 +3288,7 @@ dependencies = [
  "og-core",
  "og-css",
  "og-draw",
+ "og-generation",
  "og-i18n",
  "og-physics-data",
  "og-records",
@@ -3392,6 +3393,7 @@ dependencies = [
  "og-core",
  "og-render-data",
  "og-shape",
+ "serde_json",
 ]
 
 [[package]]

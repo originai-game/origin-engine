@@ -9,6 +9,13 @@ use og_core::noise::{self, Fbm, NoiseKind};
 use og_core::procgen::{self, BspDesc, Wfc, WfcTile};
 use og_core::rng::Rng;
 
+#[cfg(feature = "offline")]
+#[rustfmt::skip]
+#[path = "generated/dispatch.rs"]
+mod dispatch;
+#[cfg(feature = "offline")]
+pub use dispatch::{FUNCTIONS, MODULE_SOURCE, invoke};
+
 /// An FbmDesc read off the wire as og-core's generator.
 fn fbm(d: &wire::FbmDesc) -> Fbm {
     Fbm {

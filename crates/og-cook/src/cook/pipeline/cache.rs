@@ -239,9 +239,13 @@ pub struct GcReport {
     pub removed: usize,
 }
 
-pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+/// Publish a complete file by rename, creating its parent directories and
+/// removing the staging file on failure. Used by cache and explicit exports.
+pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
-    std::fs::create_dir_all(path.parent().expect("cache directory"))?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     let temp = path.with_extension(format!(
         "{}.{}.tmp",
         std::process::id(),
