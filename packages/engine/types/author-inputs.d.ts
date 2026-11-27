@@ -4551,6 +4551,7 @@ readonly "slot": (string);
 })) & { readonly "closed"?: never; readonly "constant"?: never; readonly "lengths"?: never; readonly "points"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "size"?: never; readonly "triangles"?: never; readonly "vertices"?: never; }));
 readonly "Authored": ({
 readonly "armatures"?: (Readonly<Record<string, (Input_rig2dDefinitions["Armature"])>>);
+readonly "conform"?: (((Input_rig2dDefinitions["TilesetConform"])) | ((null)));
 readonly "filter"?: (((Input_rig2dDefinitions["Filter"])) | ((null)));
 readonly "rig": (Input_rig2dDefinitions["Armature"]);
 readonly "texture": (Input_rig2dDefinitions["ContentRef"]);
@@ -4595,10 +4596,11 @@ readonly "$ogRef": (string);
 readonly "Dragonbones": ({
 /** Explicit atlas exchange text from input.text. */
 readonly "atlas": (string);
+readonly "conform"?: (((Input_rig2dDefinitions["TilesetConform"])) | ((null)));
 /** Explicit DragonBones 5.5 exchange text from input.text. */
 readonly "dragonbones": (string);
 readonly "filter"?: (((Input_rig2dDefinitions["Filter"])) | ((null)));
-readonly "texture"?: (((Input_rig2dDefinitions["ContentRef"])) | ((null)));
+readonly "texture": (Input_rig2dDefinitions["ContentRef"]);
 readonly "unit"?: ((number) | (null));
 });
 readonly "Ease": (((({
@@ -4673,7 +4675,10 @@ readonly "time": (number);
 readonly "value": (string);
 });
 readonly "Parts": ({
+readonly "conform"?: (((Input_rig2dDefinitions["TilesetConform"])) | ((null)));
 readonly "filter"?: (((Input_rig2dDefinitions["Filter"])) | ((null)));
+/** Canonical module-relative PSD/PSB or PNG-parts directory under assets/
+or sources/. Directory paths have no trailing slash; no sibling lookup. */
 readonly "parts": (string);
 readonly "pivots"?: (Readonly<Record<string, (ReadonlyArray<(number)> & { readonly length: 2 })>>);
 readonly "template": (string);
@@ -4711,6 +4716,12 @@ readonly "color"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])> | (number ex
 readonly "offset"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])> | (number extends ((Input_rig2dDefinitions["Key5"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "slot": (string);
 });
+readonly "TilesetConform": (((({
+readonly "kind": ("off") & (string);
+})) & { readonly "size"?: never; }) | (({
+readonly "kind": ("size") & (string);
+readonly "size": (number);
+})));
 readonly "TransformConstraint": ({
 readonly "at"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 readonly "bones": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));

@@ -26,9 +26,9 @@ mod systems;
 pub use systems::shader_check::material_shader;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
-    animgraph, autorig, behaviour, district, effect, effect_texture, environment, field, flipbook,
-    fracture, fracture_cache, hlod, lightmap, navmesh, rig2d, shader_check, story, story_functions,
-    strings, table, terrain, vfx,
+    animgraph, behaviour, district, effect, effect_texture, environment, field, flipbook, fracture,
+    fracture_cache, hlod, lightmap, navmesh, rig2d, shader_check, story, story_functions, strings,
+    table, terrain, vfx,
 };
 mod formats;
 /// A source image decoded to RGBA8.
@@ -165,6 +165,8 @@ pub(crate) struct Source {
     animgraph: Option<og_anim::GraphSource>,
     /// Prepared native frames and clips, shared by sheet producers and cook.
     flipbook: Option<og_anim::FlipbookSheet>,
+    /// Native 2D rig and captured layered-art inputs.
+    rig2d: Option<rig2d::Prepared>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

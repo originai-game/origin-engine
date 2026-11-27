@@ -1,5 +1,186 @@
 use super::*;
 
+/// All three rig inputs share the native loader, canonical graph and cache.
+#[test]
+fn rig2d_cooks_native_fields_imports_and_captured_parts() {
+    use og_anim::cooked::BundleAnim;
+    use og_cook::runtime::Bundle;
+    use serde_json::json;
+    let root = TempDir::new("og-ts-rig2d");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Rig","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'rig',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "");
+    write("lib/unit.ts", "export const unit=7;");
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    image::RgbaImage::from_pixel(13, 9, image::Rgba([83, 119, 211, 255]))
+        .save(root.join("assets/atlas.png"))
+        .unwrap();
+    let body = json!({
+        "bones":[{"name":"root","at":[3,7]}, {"name":"tip","parent":"root","at":[5,2],"length":4}],
+        "slots":[{"name":"back","bone":"tip","attachment":"z-region"},{"name":"front","bone":"root","attachment":"a-box"}],
+        "attachments":{
+            "z-region":{"kind":"region","slot":"back","rect":[1,2,3,5]},
+            "a-box":{"kind":"box","slot":"front","polygon":[[0,0],[2,0],[0,3]]},
+            "mesh":{"kind":"mesh","slot":"back","vertices":[
+                {"uv":[1,2],"influences":[{"bone":"root","at":[0,0],"weight":0.25},{"bone":"tip","at":[2,3],"weight":0.75}]},
+                {"uv":[4,2],"influences":[{"bone":"tip","at":[2,0],"weight":1}]},
+                {"uv":[1,7],"influences":[{"bone":"tip","at":[0,3],"weight":1}]}],"triangles":[0,1,2]},
+            "child":{"kind":"child","slot":"front","armature":"flame","clip":"burn"}
+        },
+        "iks":[{"name":"aim","bones":["tip"],"target":"root","weight":0.25}],
+        "transforms":[{"name":"follow","bones":["tip"],"target":"root","mix":[0,0,0,0]}],
+        "skins":{"armor":{"z-region":"mesh","a-box":null}},
+        "clips":[{"name":"walk","duration":1,"looping":false,
+            "bones":[{"bone":"tip","translate":[{"time":0,"value":[2,7],"ease":{"kind":"step"}}],
+                "rotate":[{"time":0,"value":{"degrees":23,"turn":{"kind":"clockwise","turns":2}}}]}],
+            "slots":[{"slot":"front","attachment":[{"time":0.25,"value":"child"}]}],
+            "deforms":{"mesh":[{"time":0,"value":[0,1,2,3,4,5,6,7]}]},
+            "order":[{"time":0.5,"value":["front","back"]}],
+            "iks":{"aim":[{"time":0,"value":{"weight":0.75,"counterclockwise":true}}]},
+            "events":[{"time":0.75,"value":"late"},{"time":0.125,"value":"早"}]}]
+    });
+    let child = json!({"bones":[{"name":"flame-root"}],"clips":[{"name":"burn","duration":0.5}]});
+    let authored = format!(
+        "import {{file,ref}} from '@origingame/engine/author';\nimport {{unit}} from '../lib/unit.ts';\nexport default file.rig2d({{texture:ref('base/atlas'),filter:'nearest',unit,rig:{body},armatures:{{flame:{child}}}}});"
+    );
+    write("content/hero.ts", &authored);
+    write(
+        "sources/skeleton.json",
+        r#"{"version":"5.5","frameRate":24,"armature":[{"name":"hero","bone":[{"name":"hip","transform":{"x":5,"y":9}}]}]}"#,
+    );
+    write(
+        "sources/atlas.json",
+        r#"{"imagePath":"DO-NOT-GUESS.png","width":13,"height":9,"SubTexture":[]}"#,
+    );
+    write(
+        "content/imported.ts",
+        "import {file,input,ref} from '@origingame/engine/author';export default file.rig2d({dragonbones:input.text('sources/skeleton.json'),atlas:input.text('sources/atlas.json'),texture:ref('base/atlas'),unit:11});",
+    );
+    for module in ["", "modules/north/"] {
+        std::fs::create_dir_all(root.join(format!("{module}sources/parts"))).unwrap();
+        image::RgbaImage::from_pixel(9, 13, image::Rgba([127, 83, 211, 255]))
+            .save(root.join(format!("{module}sources/parts/body.png")))
+            .unwrap();
+        write(
+            &format!("{module}content/creature.ts"),
+            "import {file} from '@origingame/engine/author';export default file.rig2d({parts:'sources/parts',template:'creature',pivots:{body:[3,5]},unit:13,filter:'nearest'});",
+        );
+    }
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let hero = bundle.load_rig2d("base/hero").unwrap();
+    assert_eq!(
+        (&hero.texture, hero.size, hero.unit),
+        (&"atlas.png".to_string(), [13, 9], 7.0)
+    );
+    assert_eq!(hero.bones[1].parent, Some(0));
+    assert_eq!((hero.bones[0].x, hero.bones[0].y), (3.0, 7.0));
+    assert_eq!(
+        hero.attachments[hero.slots[0].attachment.unwrap()].name,
+        "z-region"
+    );
+    assert_eq!(
+        hero.clips[0].events,
+        [(0.125, "早".into()), (0.75, "late".into())]
+    );
+    assert_eq!(hero.clips[0].order[0].1, [1, 0]);
+    assert_eq!(
+        hero.clips[0].deforms[0].keys[0].value,
+        [0., 1., 2., 3., 4., 5., 6., 7.]
+    );
+    assert_eq!(hero.skins[0].name, "armor");
+    assert_eq!(hero.armatures[0].clips[0].name, "burn");
+    assert_eq!(hero.clips[0].iks[0].keys[0].value.weight, 0.75);
+    assert!(matches!(
+        hero.clips[0].bones[0].rotate[0].value.turn,
+        og_anim::Turn::Clockwise(2)
+    ));
+    let imported = bundle.load_rig2d("base/imported").unwrap();
+    assert_eq!(
+        (imported.bones[0].x, imported.bones[0].y, imported.unit),
+        (5.0, -9.0, 11.0)
+    );
+    let creature = bundle.load_rig2d("base/creature").unwrap();
+    assert_eq!(creature.texture, "base/creature#atlas");
+    assert!(!creature.clips.is_empty());
+    assert_eq!(
+        bundle.load_texture(&creature.texture).unwrap().meta.width,
+        creature.size[0]
+    );
+    let north = bundle.read("north/creature").unwrap().to_vec();
+    let original = bundle.read("base/hero").unwrap().to_vec();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::remove_dir_all(root.join("cooked")).unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(
+        Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .read("base/hero")
+            .unwrap()
+            .to_vec(),
+        original
+    );
+    write("lib/unit.ts", "export const unit=17;");
+    write(
+        "sources/skeleton.json",
+        r#"{"version":"5.5","frameRate":24,"armature":[{"name":"hero","bone":[{"name":"hip","transform":{"x":5,"y":12}}]}]}"#,
+    );
+    image::RgbaImage::from_pixel(11, 13, image::Rgba([127, 83, 211, 255]))
+        .save(root.join("sources/parts/body.png"))
+        .unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let changed = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(changed.load_rig2d("base/hero").unwrap().unit, 17.0);
+    assert_eq!(
+        changed.load_rig2d("base/imported").unwrap().bones[0].y,
+        -12.0
+    );
+    assert_eq!(changed.read("north/creature").unwrap().to_vec(), north);
+    assert_ne!(changed.load_rig2d("base/creature").unwrap(), creature);
+    for invalid in [
+        authored.replace("\"parent\":\"root\"", "\"parent\":\"tip\""),
+        authored.replace("base/atlas", "base/hero"),
+        authored.replace("base/atlas", "base/missing"),
+        authored.replace("\"weight\":0.25", "\"weight\":0.5"),
+        authored.replace("\"value\":[0,1,2,3,4,5,6,7]", "\"value\":[0,1]"),
+        authored.replace("\"slot\":\"back\"", "\"slot\":\"missing\""),
+    ] {
+        assert_ne!(invalid, authored);
+        write("content/hero.ts", &invalid);
+        let out = cook();
+        assert!(!out.status.success(), "accepted {invalid}");
+        assert!(text(&out).contains("content/hero.ts:"), "{}", text(&out));
+    }
+    write("content/hero.ts", &authored);
+    write(
+        "assets/old.ogt",
+        "type rig2d\nversion 1\n---\ntexture \"atlas.png\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success(), "{}", text(&out));
+}
+
 /// The bake command produces cookable TS plus captured dense buffers, and
 /// rebakes the existing declaration even when a module owns it elsewhere.
 #[test]

@@ -148,14 +148,6 @@ pub fn markdown() -> Result<String, String> {
                 table(&mut out, og_anim::FLIPBOOK_LINES);
                 block(&mut out, "flipbook.clip", og_anim::FLIPBOOK_CLIP_LINES);
             }
-            "rig2d" => {
-                out.push_str("Field coverage: shared runtime grammar plus cook-only layered-art input. Coordinates are pixels, +y up, angles counterclockwise degrees. Key easing is linear by default, step, or curve x1 y1 x2 y2 with optional further anchors/control points. Named attachment/constraint/bone references are validated; armatures share the same body grammar.\n\n");
-                table(&mut out, og_anim::RIG2D_LINES);
-                for (name, fields) in og_anim::RIG2D_BLOCKS {
-                    block(&mut out, &format!("rig2d.{name}"), fields);
-                }
-                block(&mut out, "rig2d.parts", super::systems::autorig::LINES);
-            }
             "quest" => {
                 for scope in ["quest", "reward", "stage", "objective"] {
                     let fields: Vec<_> = og_story::asset::QUEST_LINES

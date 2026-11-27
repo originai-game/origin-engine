@@ -6,12 +6,12 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `Rig2D` (handle)
 
-A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.
+A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
+handle Rig2D "A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d."
 ```
 
 <sub>Module `anim` line 992</sub>

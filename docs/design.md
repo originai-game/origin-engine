@@ -601,8 +601,8 @@ A reconnection resets both and requires a new subscription.
   t and playing to t give the same world hash and the video producer (§2.9)
   starts at any frame. A camera track owns `og.Camera` while it plays and
   hands back the camera it found.
-- **2D skeletal animation** (og-anim `rig2d.rs`): `type rig2d` rigs, written
-  by hand, imported from DragonBones or rigged by the cook from layered art,
+- **2D skeletal animation** (og-anim `rig2d.rs`): checked TS `file.rig2d`
+  declarations, imported from explicit DragonBones inputs or rigged from layered art,
   played by `og.Skeleton2D`. The pose is a function of the component, its
   Transform and its IK targets through arithmetic-only trigonometry, the
   same bits on both hosts. Spine's format is not imported (its licence).

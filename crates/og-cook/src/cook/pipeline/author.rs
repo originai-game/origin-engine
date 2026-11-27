@@ -32,6 +32,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("grammar", &district::GRAMMAR),
     ("animgraph", &animgraph::GRAPH),
     ("vfx2d", &flipbook::FLIPBOOK),
+    ("rig2d", &rig2d::RIG2D),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -240,10 +241,22 @@ pub(crate) fn sources(
             tilemap: None,
             animgraph: None,
             flipbook: None,
+            rig2d: None,
             conformed: None,
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "rig2d" => {
+                let prepared =
+                    rig2d::Prepared::new(source.input()?, &assets_root(&source), &source.rel)?;
+                let derived = if prepared.atlas.is_some() {
+                    BTreeMap::from([("atlas".into(), "texture".into())])
+                } else {
+                    BTreeMap::new()
+                };
+                source.rig2d = Some(prepared);
+                Ok(derived)
+            }
             "grammar" => {
                 let grammar = district::grammar::declaration(source.input()?, |name| {
                     let escaped = name.replace('~', "~0").replace('/', "~1");
@@ -391,6 +404,7 @@ pub(crate) fn sources(
             }
         }
     }
+    rig2d::bind(sources, &graph)?;
     timeline::bind(sources, &graph)?;
     font_pack::bind(sources, &graph)?;
     field::bind(sources, fields);

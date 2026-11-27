@@ -627,23 +627,22 @@ Nested timeline, scene, sound, video and VFX references use `ref("<module>/<cont
   `timeline:pause[:<name>]`, `timeline:resume[:<name>]`,
   `timeline:stop[:<name>]`.
 
-## 14. Auto-rigging layered 2D art (`type rig2d`)
+## 14. Auto-rigging layered 2D art
 
-A `type rig2d` `.ogt` file can auto-rig layered 2D artwork (a multi-layer PSD or a folder of PNG parts) into a full `og.Skeleton2D` rig plus packed texture atlas (`<rig>#atlas`) at cook time, with no external skeletal editor:
+A `file.rig2d` declaration can auto-rig layered 2D artwork (a multi-layer PSD or a folder of PNG parts) into a full `og.Skeleton2D` rig plus packed texture atlas (`<rig>#atlas`) at cook time, with no external skeletal editor:
 
-```text
-type rig2d
-version 1
----
-parts "knight.psd"
-template humanoid-side
-pivot hand-r 212 340
-unit 200
-filter nearest
+```ts
+import {file} from '@origingame/engine/author';
+export default file.rig2d({
+  parts: 'sources/knight.psd', template: 'humanoid-side',
+  pivots: {'hand-r': [212, 340]}, unit: 200, filter: 'nearest',
+});
 ```
 
-- **`parts`**: path to a layered `.psd` file or a folder of `.png` files (`"knight/"`). Each layer or PNG is named for a template part and drawn where it sits in the setup pose, overlapping its parent where they join.
+- **`parts`**: canonical module-relative path under `sources/` or `assets/` to a layered PSD/PSB or a PNG directory (`'sources/knight'`, no trailing slash). Each layer or PNG is named for a template part and drawn where it sits in the setup pose, overlapping its parent where they join.
 - **`template`**: one of the four built-in rig templates — `humanoid-side`, `humanoid-front`, `quadruped`, or `creature`. The cook holds the parts to it: a layer or PNG named for no part of the template (one whose name starts with `_` is left out), a required part missing, two layers of one part, a part with no pixels, or a PNG not at the canvas size is refused, and the message names the parts the template expects and the fix.
-- **`pivot <part> <x> <y>`**: optional manual joint override in canvas pixels.
-- **`unit <px>`**: pixels per world unit; **`filter nearest`**: crisp pixel-art sampling.
+- **`pivots`**: optional manual joint overrides by part name, in canvas pixels.
+- **`unit`**: pixels per world unit; **`filter: 'nearest'`**: crisp pixel-art sampling.
 - Load the cooked rig with `og.load.rig2d` and play its generated clips on `og.Skeleton2D` like any other 2D skeleton (§9).
+
+For authored rigs, supply `texture: ref('base/atlas')` and `rig` with parent-first named bones, ordered slots, named attachments, constraints and clips; optional `armatures` hold named child bodies. Keys contain `time`, `value` and optional `ease`. DragonBones imports supply explicit `dragonbones: input.text('sources/hero_ske.json')`, `atlas: input.text('sources/hero_tex.json')` and a canonical texture ref; the atlas's imagePath is never guessed. The checked schema is available through `og api show file:rig2d`. Load IDs are canonical content IDs, for example `base/rigs/knight`, not TS paths or OGT filenames.

@@ -1,9 +1,4 @@
-//! 2D rigs: an `.ogt` of `type rig2d`, written by hand (og-anim's
-//! `rig2d.rs` documents every line) or naming a DragonBones export
-//! (`dragonbones "hero_ske.json"`, with `atlas "hero_tex.json"`, its texture
-//! atlas), into the canonical rig text (`og_anim::Rig2dAsset::to_text`)
-//! with the texture's id and size filled in, or naming layered art
-//! (`parts "hero.psd"` and a `template`), which `autorig.rs` rigs.
+//! Checked TS 2D rigs, DragonBones exchange inputs and layered-art rigging.
 //!
 //! The DragonBones 5.5 mapping: y runs down there and up here, so every y
 //! and every angle changes sign; a transform's `skY` (or `rotate`) is the
@@ -42,9 +37,7 @@
 //! `rotateOffset`, `rotateMix`, `translateMix`) `along` constraints;
 //! DragonBones has no transform constraint.
 
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, autorig, stamp,
-};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, autorig, stamp};
 use crate::format::{self, *};
 use og_anim::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
@@ -53,120 +46,49 @@ use og_anim::{
     SlotTimeline, Turn, turn_delta,
 };
 use og_blob::BlobWriter;
-use og_core::ogt::{Document, Entry, Value};
 use serde_json::Value as Json;
+mod input;
+pub(crate) use input::Prepared;
 
-fn string_of(doc: &Document, key: &str) -> Option<String> {
-    doc.body
-        .get(key)
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-}
-
-/// The hashes of what the rig depends on (its texture, its DragonBones
-/// export and atlas), for the cook stamp.
-pub(crate) fn dependency_hashes(s: &Source) -> String {
-    let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return String::new();
-    };
-    let root = crate::cook::assets_root(s);
-    let parts = super::autorig::part_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes));
-    ["texture", "dragonbones", "atlas"]
-        .iter()
-        .filter_map(|k| string_of(&doc, k))
-        .map(|p| super::flipbook::resolve(s, &p))
-        .chain(parts)
-        .map(|id| {
-            let h = std::fs::read(root.join(&id))
-                .map(|b| super::hash_bytes(&b))
-                .unwrap_or(0);
-            format!("{id}={h:016x}")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-/// The canonical rig of a source, and notes on what an import dropped.
-pub(crate) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
-    let text = std::str::from_utf8(&s.bytes).map_err(|_| "a 2D rig is text (UTF-8)".to_string())?;
-    let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
-    let root = crate::cook::assets_root(s);
-    if super::autorig::is_autorig(&doc) {
-        let (rig, _, notes) = super::autorig::build(s, &doc)?;
-        return Ok((rig, notes));
-    }
-    let mut notes = Vec::new();
-    let read = |p: &str| -> Result<(String, Vec<u8>), String> {
-        let id = super::flipbook::resolve(s, p);
-        let bytes =
-            std::fs::read(root.join(&id)).map_err(|_| format!("`{id}` is not in assets/"))?;
-        Ok((id, bytes))
-    };
-    let mut rig = if let Some(db) = string_of(&doc, "dragonbones") {
-        if let Some(e) = doc.body.entries.iter().find(|e| {
-            matches!(
-                e.key.as_str(),
-                "bone" | "slot" | "region" | "mesh" | "box" | "child" | "ik" | "clip" | "armature"
-            )
-        }) {
-            return Err(format!(
-                "line {}: a rig that imports `dragonbones` takes its {} from the export; keep texture, atlas, filter and unit here",
-                e.line, e.key
-            ));
-        }
-        let (db_id, db_bytes) = read(&db)?;
-        let atlas_path = string_of(&doc, "atlas")
-            .ok_or("a DragonBones rig needs `atlas \"<name>_tex.json\"`")?;
-        let (atlas_id, atlas_bytes) = read(&atlas_path)?;
-        let ske: Json =
-            serde_json::from_slice(&db_bytes).map_err(|e| format!("{db_id}: not JSON: {e}"))?;
-        let atlas: Json = serde_json::from_slice(&atlas_bytes)
-            .map_err(|e| format!("{atlas_id}: not JSON: {e}"))?;
-        let mut rig = dragonbones(&ske, &atlas, &mut notes).map_err(|e| format!("{db_id}: {e}"))?;
-        // The texture: the rig's own line, else the atlas's imagePath beside it.
-        rig.texture = match string_of(&doc, "texture") {
-            Some(t) => t,
-            None => {
-                let image = atlas["imagePath"]
-                    .as_str()
-                    .ok_or(format!("{atlas_id}: no imagePath; name the texture"))?;
-                let dir = atlas_id
-                    .rsplit_once('/')
-                    .map_or(String::new(), |(d, _)| format!("{d}/"));
-                format!("{dir}{image}")
-            }
+pub(crate) fn bind(
+    sources: &mut [Source],
+    graph: &crate::cook::source_content::Graph,
+) -> Result<(), CookError> {
+    let mut bindings = Vec::new();
+    for (index, source) in sources.iter().enumerate() {
+        let Some(prepared) = &source.rig2d else {
+            continue;
         };
-        if let Some(e) = doc.body.get("unit") {
-            rig.unit = e
-                .f32(0)
-                .map_err(|_| format!("line {}: unit <pixels per world unit>", e.line))?;
+        if prepared.atlas.is_some() {
+            continue;
         }
-        if doc.body.get("filter").and_then(|e| e.word(0).ok()) == Some("nearest") {
-            rig.filter = SheetFilter::Nearest;
-        }
-        rig
-    } else {
-        // The hand-written text: the size of its texture filled in and checked as og-anim reads it.
-        doc.body.entries.retain(|e| e.key != "size");
-        let size = Entry::new("size")
-            .with(Value::Number(
-                og_core::ogt::Number::from_f64(0.0).expect("finite"),
+        let id = &graph.outputs[&prepared.rig.texture].asset;
+        let texture = sources.iter().find(|s| &s.rel == id).ok_or_else(|| {
+            CookError(format!(
+                "{}: rig texture '{id}' has no image input",
+                source.path.display()
             ))
-            .with(Value::Number(
-                og_core::ogt::Number::from_f64(0.0).expect("finite"),
-            ));
-        doc.body.entries.insert(0, size);
-        let text = doc.to_text().map_err(|e| e.reason().to_string())?;
-        Rig2dAsset::parse(&text).map_err(|e| e.reason().to_string())?
-    };
-    let (texture_id, image) = read(&rig.texture.clone())?;
-    let (w, h) = image::load_from_memory(&image)
-        .map(|i| (i.width(), i.height()))
-        .map_err(|e| format!("texture `{texture_id}`: {e}"))?;
-    rig.texture = texture_id;
-    rig.size = [w, h];
-    Ok((rig, notes))
+        })?;
+        let image = super::texture::decode(
+            texture
+                .conformed
+                .as_deref()
+                .map_or(&texture.bytes, |b| b.as_slice()),
+        )
+        .map_err(|e| {
+            CookError(format!(
+                "{}: rig texture '{id}': {e}",
+                source.path.display()
+            ))
+        })?;
+        bindings.push((index, id.clone(), [image.width, image.height]));
+    }
+    for (index, id, size) in bindings {
+        let prepared = sources[index].rig2d.as_mut().expect("checked rig2d");
+        prepared.rig.texture = id;
+        prepared.rig.size = size;
+    }
+    Ok(())
 }
 
 /// The atlas texture of a rig that names `parts`.
@@ -175,19 +97,19 @@ pub(crate) fn cook_atlas(
     opts: &super::TextureOptions,
     stamp: u64,
 ) -> Result<Vec<u8>, CookError> {
-    let text =
-        std::str::from_utf8(&s.bytes).map_err(|_| CookError("a 2D rig is text (UTF-8)".into()))?;
-    let doc = Document::parse(text).map_err(|e| CookError(e.reason().to_string()))?;
-    let (rig, image, _) = super::autorig::build(s, &doc).map_err(CookError)?;
-    let kind = match rig.filter {
+    let prepared = s.rig2d.as_ref().expect("checked rig2d");
+    let image = prepared.atlas.as_ref().expect("parts atlas");
+    let kind = match prepared.rig.filter {
         SheetFilter::Nearest => format::kind::PIXEL,
         SheetFilter::Linear => format::kind::COLOR,
     };
-    super::texture::cook(&image, kind, opts, stamp)
+    super::texture::cook(image, kind, opts, stamp)
 }
 
 pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let (rig, mut notes) = rig(s).map_err(CookError)?;
+    let prepared = s.rig2d.as_ref().expect("checked rig2d");
+    let rig = &prepared.rig;
+    let mut notes = prepared.notes.clone();
     let data = rig.to_bytes().map_err(|e| CookError(e.reason().into()))?;
     notes.insert(
         0,
@@ -467,10 +389,6 @@ pub fn dragonbones(
         skins: top_skins,
         armatures,
     };
-    // What the runtime reads back: refused here (a display showing its own armature) rather than there.
-    let mut probe = rig.clone();
-    probe.texture = "probe".into();
-    Rig2dAsset::parse(&probe.to_text()).map_err(|e| e.reason().to_string())?;
     Ok(rig)
 }
 
@@ -1296,7 +1214,7 @@ fn influences(
 pub(crate) static RIG2D: KindDef = KindDef {
     name: "rig2d",
     extensions: &[],
-    types: &[og_anim::RIG2D_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_rig2d,
@@ -1312,11 +1230,15 @@ fn plan_rig2d<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { tex_desc, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = dependency_hashes(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[Area::Anim], &[b"rig2d", &hash, deps.as_bytes()]);
+    let prepared = s.rig2d.as_ref().expect("checked rig2d");
+    cx.index.note_external(&prepared.files);
+    state
+        .parsed_refs
+        .entry(s.rel.clone())
+        .or_default()
+        .insert(prepared.rig.texture.clone());
+    let data = prepared.rig.to_bytes().expect("validated rig2d");
+    let st = stamp(&[Area::Anim], &[b"rig2d", &hash, &prepared.hash, &data]);
     outs.push((
         s.rel.clone(),
         format::Rig2D::NAME,
@@ -1324,10 +1246,15 @@ fn plan_rig2d<'a>(
         Box::new(Rig2dJob(s)),
     ));
     // Rigged from layered art: its parts packed into a texture beside it.
-    if Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| autorig::is_autorig(&d)) {
+    if prepared.atlas.is_some() {
         let st = stamp(
             &[Area::Anim, Area::Texture],
-            &[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()],
+            &[
+                b"rig2d atlas",
+                cx.tex_desc.as_bytes(),
+                &hash,
+                &prepared.hash,
+            ],
         );
         outs.push((
             autorig::atlas_id(&s.rel),

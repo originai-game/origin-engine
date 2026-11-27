@@ -3,6 +3,7 @@
 
 use super::super::{psd, texture};
 use super::template::Template;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// One part: its pixels trimmed to their alpha, where they sit on the canvas.
@@ -209,15 +210,24 @@ fn flatten(pieces: &[Piece]) -> Option<(i32, i32, u32, u32, Vec<u8>)> {
     Some((l + x0 as i32, t + y0 as i32, tw as u32, th as u32, rgba))
 }
 
-/// Reads the parts `id` names (a `.psd`, or a folder ending in `/`) and
+/// Reads the captured parts `id` names (a PSD/PSB or a PNG directory) and
 /// checks them against the template: every name one of its parts, each
 /// part drawn once, nothing empty, every required part there.
-pub fn read(root: &Path, id: &str, t: &Template, notes: &mut Vec<String>) -> Result<Art, String> {
+pub fn read(
+    id: &str,
+    inputs: &BTreeMap<String, Vec<u8>>,
+    t: &Template,
+    notes: &mut Vec<String>,
+) -> Result<Art, String> {
     // (part, source, pieces), back to front by the first piece.
     let mut found: Vec<(String, String, Vec<Piece>)> = Vec::new();
     let width;
-    if let Some(dir) = id.strip_suffix('/') {
-        let files = folder_files(&root.join(dir));
+    if !id.to_lowercase().ends_with(".psd") && !id.to_lowercase().ends_with(".psb") {
+        let prefix = format!("{id}/");
+        let files = inputs
+            .keys()
+            .filter_map(|f| f.strip_prefix(&prefix))
+            .collect::<Vec<_>>();
         if files.is_empty() {
             return Err(format!(
                 "{id}: no PNG parts in the folder; export each layer as a PNG named for its part (head.png, 01-arm-upper-l.png, ...)"
@@ -225,9 +235,8 @@ pub fn read(root: &Path, id: &str, t: &Template, notes: &mut Vec<String>) -> Res
         }
         let mut size = None;
         for f in &files {
-            let path = format!("{dir}/{f}");
-            let bytes = std::fs::read(root.join(&path)).map_err(|e| format!("{path}: {e}"))?;
-            let img = texture::decode(&bytes).map_err(|e| format!("{path}: {e}"))?;
+            let path = format!("{id}/{f}");
+            let img = texture::decode(&inputs[&path]).map_err(|e| format!("{path}: {e}"))?;
             match size {
                 None => size = Some((img.width, img.height, path.clone())),
                 Some((w, h, ref first)) if (w, h) != (img.width, img.height) => {
@@ -262,14 +271,10 @@ pub fn read(root: &Path, id: &str, t: &Template, notes: &mut Vec<String>) -> Res
         }
         width = size.expect("a file").0;
     } else {
-        let bytes =
-            std::fs::read(root.join(id)).map_err(|_| format!("`{id}` is not in assets/"))?;
-        if !id.to_lowercase().ends_with(".psd") && !id.to_lowercase().ends_with(".psb") {
-            return Err(format!(
-                "{id}: `parts` names a layered PSD (\"hero.psd\") or a folder of PNG parts (\"hero/\")"
-            ));
-        }
-        let doc = psd::layers(&bytes).map_err(|e| format!("{id}: {e}"))?;
+        let bytes = inputs
+            .get(id)
+            .ok_or_else(|| format!("'{id}' was not captured"))?;
+        let doc = psd::layers(bytes).map_err(|e| format!("{id}: {e}"))?;
         width = doc.width;
         let mut hidden = Vec::new();
         for l in doc

@@ -336,6 +336,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         tilemap: None,
                         animgraph: None,
                         flipbook: None,
+                        rig2d: None,
                         conformed: None,
                         fracture: None,
                     });

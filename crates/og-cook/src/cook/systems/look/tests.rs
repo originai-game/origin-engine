@@ -28,6 +28,7 @@ fn source(root: &Path, rel: &str) -> Source {
         tilemap: None,
         animgraph: None,
         flipbook: None,
+        rig2d: None,
         conformed: None,
         fracture: None,
     }

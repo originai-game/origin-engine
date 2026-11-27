@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "file.rig2d / og.load.rig2d",
+    "change": "2D rigs use checked TypeScript declarations and native fields only. Removed the OGT author parser, writer, grammar, field tables, sibling texture lookup and DragonBones imagePath guessing.",
+    "fix": "Export file.rig2d({texture:ref('base/atlas'),rig:{bones:[{name:'root'}]}}) under content/ and load its canonical ID. Use named attachments/armatures, ordered bones/slots and {time,value,ease} keys. DragonBones requires explicit input.text exports and texture ref. Layered art uses parts:'sources/knight.psd' or an explicit PNG directory without a trailing slash, plus template and optional pivots map. Re-cook with matching hosts."
+  }]
+}

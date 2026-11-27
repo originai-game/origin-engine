@@ -12,7 +12,7 @@
 //! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, a checked TS `file.animgraph`) |
 //! | [`Samples`], [`QuantizedKeys`] | a channel's frames in memory: f32, one constant sample, or the cooked quantised keys sampled where they lie (with [`unpack_quat`], [`dequantize`], [`nlerp4`], the decoding arithmetic the cook measures against) |
 //! | [`HumanoidMap`], [`RigAsset`], [`retarget`] | humanoid bone maps (detected from Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names, or a checked TS rig declaration) and clips rewritten from one rig to another (rest correction, bone lengths, scaled root travel, foot IK) |
-//! | [`Rig2dAsset`], [`Skeleton2D`], [`Skeleton2DEvent`], [`IkTarget2D`], [`install_skeleton2d`] | 2D skeletal animation: the `type rig2d` asset (bones, slots, region and weighted-mesh attachments, IK, clips with bone, slot and deform keys), played by `og.skeleton2d` and drawn as triangles |
+//! | [`Rig2dAsset`], [`Skeleton2D`], [`Skeleton2DEvent`], [`IkTarget2D`], [`install_skeleton2d`] | 2D skeletal animation: native bones, slots, attachments, constraints and clips, played by `og.skeleton2d` and drawn as triangles; authored through checked TS `file.rig2d` |
 //! | [`cooked`] | the cooked assets: [`cooked::BundleAnim`] (the animation, flipbook and rig loaders of og-bundle's `Bundle`), [`cooked::CookedAnimation`] and the sample codec |
 //! | [`AnimationSystem`] | asset registration, the final pose, the per-entity [`AnimOutput`] (joint palette, blendshape weights) and [`PaletteSink`], the renderer contract |
 //!
@@ -68,9 +68,8 @@ pub use retarget::{
 pub use rig2d::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, BoundingBox2d, Clip2d,
     DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, PathConstraint2d,
-    PathRotate, PathSpacing, PathUnit, Pose2d, RIG2D_BLOCKS, RIG2D_LINES, RIG2D_TYPE, Rig2dAsset,
-    RigSkin, RigVertex, Rotation, Skin2d, Slot2d, SlotTimeline, TransformConstraint2d, Turn,
-    check_curve, sincos, turn_delta,
+    PathRotate, PathSpacing, PathUnit, Pose2d, Rig2dAsset, RigSkin, RigVertex, Rotation, Skin2d,
+    Slot2d, SlotTimeline, TransformConstraint2d, Turn, check_curve, sincos, turn_delta,
 };
 pub use samples::{QuantizedKeys, Samples, dequantize, nlerp4, normalize4, unpack_quat};
 pub use schema::*;

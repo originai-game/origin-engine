@@ -214,25 +214,26 @@ styles) turns the pack's `art-requests.json` into prompts through
 ### 2.8 The auto-rig's input layers
 
 A character drawn in layers is rigged by the cook with no editor step: a
-`type rig2d` file names the art and a template, and the cook makes the
+`file.rig2d` TS declaration names the art and a template, and the cook makes the
 bones, slots, leg IK, atlas and the template's clips
 (`crates/og-cook/src/cook/systems/autorig.rs`). This section is the contract the
 art meets. `rigParts(template)` of `@origingame/create-game` lists every
 template's parts with their parent, joint end and motion, back to front,
 and og-cook's `rig_parts_match_the_templates` holds it equal to the cook.
 
-```text
-type rig2d
-version 1
----
-parts "knight.psd"          # a layered PSD (or PSB), or "knight/", a folder of PNGs
-template humanoid-side      # humanoid-side, humanoid-front, quadruped, creature
-pivot hand-r 212 340        # optional, repeatable: a part's joint, canvas pixels
-unit 200                    # optional: pixels per world unit
-filter nearest              # optional: pixel art
+```ts
+import {file} from '@origingame/engine/author';
+export default file.rig2d({
+  parts: 'sources/knight.psd', // PSD/PSB or 'sources/knight', a PNG directory
+  template: 'humanoid-side',  // humanoid-front, quadruped, creature also supported
+  pivots: {'hand-r': [212, 340]}, // optional joint overrides, canvas pixels
+  unit: 200,                 // optional pixels per world unit
+  filter: 'nearest',         // optional pixel art
+});
 ```
 
-Any other line is refused.
+Paths are explicit under the owning module's `assets/` or `sources/`; no
+sibling search or directory symlinks. Unknown declaration fields are refused.
 
 **Templates.** In `humanoid-side` and `quadruped` the character faces
 right, `-l` is the far side and `-r` the near side. In `humanoid-front`

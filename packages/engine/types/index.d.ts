@@ -23098,7 +23098,7 @@ export interface FlipbookInfo {
 
 
 /**
- * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.
+ * A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -40094,10 +40094,10 @@ export declare namespace og {
      */
     function vfx(world: World, path: string): Result<VfxAsset>;
     /**
-     * Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.
+     * Load a cooked file.rig2d TS declaration by canonical content ID and its texture, and register it with og.skeleton2d. Authored fields, DragonBones exchange inputs and layered-art rigs cook directly to native data. Loading the same ID again answers the same handles.
      *
      * @param world The world whose animation and renderer own it.
-     * @param path The rig's asset id, such as `rigs/hero.ogt`.
+     * @param path The rig's canonical content ID, such as `base/rigs/hero`.
      * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
      */
     function rig2d(world: World, path: string): Result<Rig2DInfo>;
@@ -40864,7 +40864,7 @@ export declare namespace og {
      */
     function clip(info: Animation, name: string): ClipAsset;
     /**
-     * The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. -1 when the rig has no such clip.
+     * The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "base/rigs/hero").value, "walk")`. -1 when the rig has no such clip.
      *
      * @param info What og.load.rig2d or og.anim.rig2dInfo answered.
      * @param name The clip's name.

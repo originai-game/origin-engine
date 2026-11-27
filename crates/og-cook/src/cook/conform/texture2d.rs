@@ -168,6 +168,25 @@ const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
+        if let Some(rig) = &s.rig2d {
+            use crate::cook::source_schemas::media::tiles::TilesetConform;
+            if let Some(c) = &rig.conform {
+                sheet_conform.insert(
+                    i,
+                    match c {
+                        TilesetConform::Off => AssetConform {
+                            off: true,
+                            ..Default::default()
+                        },
+                        TilesetConform::Size { size } => AssetConform {
+                            size: Some(*size),
+                            ..Default::default()
+                        },
+                    },
+                );
+            }
+            continue;
+        }
         if s.kind == &tilemap::TILESET {
             use crate::cook::source_schemas::media::tiles::{Tileset, TilesetConform};
             let input: Tileset = s.input().expect("checked tileset input");
@@ -188,7 +207,7 @@ pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConfo
             }
             continue;
         }
-        let sheets = [&flipbook::FLIPBOOK, &rig2d::RIG2D];
+        let sheets = [&flipbook::FLIPBOOK];
         if !sheets.contains(&s.kind) {
             continue;
         }
@@ -245,13 +264,11 @@ pub(super) fn uses(
                 }
             }
             k if k == &rig2d::RIG2D => {
-                if let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes))
-                    && let Some(p) = doc
-                        .body
-                        .get("texture")
-                        .and_then(|e| e.values.first()?.as_str())
-                {
-                    add(flipbook::resolve(s, p), UseKind::Fixed("a 2D rig's parts"));
+                if let Some(prepared) = &s.rig2d {
+                    add(
+                        prepared.rig.texture.clone(),
+                        UseKind::Fixed("a 2D rig's parts"),
+                    );
                 }
             }
             // A UI style's art is laid out by its pack (nine-slice insets, sizes):
@@ -544,6 +561,7 @@ pub(in crate::cook) fn conform(
                 tilemap: None,
                 animgraph: None,
                 flipbook: None,
+                rig2d: None,
                 conformed: None,
                 fracture: None,
             };

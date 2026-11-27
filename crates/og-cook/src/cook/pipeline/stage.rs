@@ -646,12 +646,12 @@ pub(crate) fn resolve(
                     .map(|p| p.to_string_lossy().replace('\\', "/"))
             }));
         }
-        if s.kind == &rig2d::RIG2D {
-            consumed.extend(autorig::part_files(
-                &s.rel,
-                assets_dir,
-                &String::from_utf8_lossy(&s.bytes),
-            ));
+        if let Some(prepared) = &s.rig2d {
+            consumed.extend(prepared.files.iter().filter_map(|path| {
+                path.strip_prefix(assets_dir)
+                    .ok()
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+            }));
         }
         if let Some(timeline) = &s.timeline {
             consumed.extend(timeline.files.values().filter_map(|(path, _)| {

@@ -1,4 +1,4 @@
-//! `skeleton-2d`: a 2D rig (og-anim's `type rig2d`, the game-2d template's
+//! `skeleton-2d`: a native 2D rig (the game-2d template's
 //! lamp keeper) posed by og-anim and drawn through the sprite batch's
 //! triangles (`RenderScene::sprite_meshes`), lit by 2D lighting.
 //!
@@ -33,10 +33,13 @@ const ANKLE: f32 = 0.12;
 const LIFT: f32 = 0.08;
 const FEET: [f32; 2] = [0.15, -0.15];
 
-/// The keeper's rig (`rig2d/keeper.ogt`).
+mod keeper;
+
+/// The keeper's native reference rig.
 fn keeper_rig() -> Result<Rig2dAsset, String> {
-    Rig2dAsset::parse(std::str::from_utf8(&asset("rig2d/keeper.ogt")?).map_err(|e| e.to_string())?)
-        .map_err(|e| format!("rig2d/keeper.ogt: {}", e.reason()))
+    let rig = keeper::rig();
+    rig.validate().map_err(|e| e.to_string())?;
+    Ok(rig)
 }
 
 /// `skeleton-2d` (module docs).
@@ -135,7 +138,7 @@ pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
     Ok(scene)
 }
 
-/// The walk clip's pace (keeper.ogt): a 0.4 stride each foot every 0.8 s,
+/// The walk clip's pace: a 0.4 stride each foot every 0.8 s,
 /// half a unit a second, a foot on the plank for half the cycle.
 const WALK_SPEED: f32 = 0.5;
 const WALK_CYCLE: f32 = 0.8;

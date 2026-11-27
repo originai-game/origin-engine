@@ -68,7 +68,7 @@ fn clip {
 
 ### `og.anim.clip`
 
-The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. -1 when the rig has no such clip.
+The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "base/rigs/hero").value, "walk")`. -1 when the rig has no such clip.
 
 ```ts
 og.anim.clip(info: Rig2DInfo, name: string): number
@@ -85,7 +85,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn clip {
-  doc "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"rigs/hero.ogt\").value, \"walk\")`. -1 when the rig has no such clip."
+  doc "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"base/rigs/hero\").value, \"walk\")`. -1 when the rig has no such clip."
   host false
   param info Rig2DInfo "What og.load.rig2d or og.anim.rig2dInfo answered."
   param name String "The clip's name."

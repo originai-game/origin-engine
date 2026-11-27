@@ -7763,7 +7763,7 @@
         },
         {
           "name": "rig2d",
-          "doc": "Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.",
+          "doc": "Load a cooked file.rig2d TS declaration by canonical content ID and its texture, and register it with og.skeleton2d. Authored fields, DragonBones exchange inputs and layered-art rigs cook directly to native data. Loading the same ID again answers the same handles.",
           "params": [
             {
               "name": "world",
@@ -7775,7 +7775,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The rig's asset id, such as `rigs/hero.ogt`."
+              "doc": "The rig's canonical content ID, such as `base/rigs/hero`."
             }
           ],
           "returns": "Result<Rig2DInfo>",
@@ -9374,7 +9374,7 @@
         },
         {
           "name": "clip",
-          "doc": "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"rigs/hero.ogt\").value, \"walk\")`. -1 when the rig has no such clip.",
+          "doc": "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"base/rigs/hero\").value, \"walk\")`. -1 when the rig has no such clip.",
           "params": [
             {
               "name": "info",
@@ -43956,7 +43956,7 @@
     "Rig2D": {
       "x-og-kind": "handle",
       "x-og-module": "anim",
-      "description": "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.",
+      "description": "A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d.",
       "type": "integer",
       "minimum": 0
     },

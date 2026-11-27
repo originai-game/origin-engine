@@ -982,14 +982,14 @@ module anim {
   }
 
   fn clip {
-    doc "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"rigs/hero.ogt\").value, \"walk\")`. -1 when the rig has no such clip."
+    doc "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"base/rigs/hero\").value, \"walk\")`. -1 when the rig has no such clip."
     host false
     param info Rig2DInfo "What og.load.rig2d or og.anim.rig2dInfo answered."
     param name String "The clip's name."
     returns i32
   }
 
-  handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
+  handle Rig2D "A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d."
 
   column Rig2D {
     doc "A Rig2D handle field."

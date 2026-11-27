@@ -180,6 +180,7 @@ pub(crate) fn prepare(s: &mut Source) -> Result<Source, String> {
         tilemap: None,
         animgraph: None,
         flipbook: None,
+        rig2d: None,
         conformed: None,
         fracture: None,
     })

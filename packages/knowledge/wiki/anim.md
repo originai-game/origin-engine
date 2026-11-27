@@ -100,8 +100,8 @@ module anim {
 | [`FlipbookInfo`](anim/type-FlipbookInfo.md) | struct |  | What og.load.flipbook registered. |
 | [`og.anim.clip`](anim/fn-clip.md) | function | `(info: FlipbookInfo, name: string): number` | The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. |
 | [`og.anim.clip`](anim/fn-clip.md) | function | `(info: Animation, name: string): ClipAsset` | A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name… |
-| [`og.anim.clip`](anim/fn-clip.md) | function | `(info: Rig2DInfo, name: string): number` | The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. |
-| [`Rig2D`](anim/type-Rig2D.md) | handle |  | A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d. |
+| [`og.anim.clip`](anim/fn-clip.md) | function | `(info: Rig2DInfo, name: string): number` | The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "base/rigs/hero").value, "walk")`. |
+| [`Rig2D`](anim/type-Rig2D.md) | handle |  | A native 2D rig from a checked file.rig2d TS declaration: bones, slots, attachments, constraints, skins, child armatures and clips, loaded by canonical content ID through og.load.rig2d. |
 | [`Rig2D()`](#column-Rig2D) | column kind |  | A Rig2D handle field. |
 | [`og.Skeleton2D`](anim/record-Skeleton2D.md) | component |  | Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`,… |
 | [`og.Skeleton2DEvent`](anim/record-Skeleton2DEvent.md) | event |  | A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. |

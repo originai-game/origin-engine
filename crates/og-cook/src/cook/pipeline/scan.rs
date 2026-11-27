@@ -561,6 +561,7 @@ pub(crate) fn scan_with(
             tilemap: None,
             animgraph: None,
             flipbook: None,
+            rig2d: None,
             conformed: None,
             fracture: None,
         };

@@ -17,12 +17,13 @@ pub enum Rig2d {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct Dragonbones {
+    pub conform: Option<super::tiles::TilesetConform>,
     /// Explicit DragonBones 5.5 exchange text from input.text.
     pub dragonbones: String,
     /// Explicit atlas exchange text from input.text.
     pub atlas: String,
     #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
-    pub texture: Option<ContentRef>,
+    pub texture: ContentRef,
     pub filter: Option<Filter>,
     #[schemars(extend("exclusiveMinimum" = 0, "x-og-unit" = "px/m"))]
     pub unit: Option<f32>,
@@ -32,6 +33,9 @@ pub struct Dragonbones {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct Parts {
+    pub conform: Option<super::tiles::TilesetConform>,
+    /// Canonical module-relative PSD/PSB or PNG-parts directory under assets/
+    /// or sources/. Directory paths have no trailing slash; no sibling lookup.
     #[schemars(extend("x-og-input" = "bytes"))]
     pub parts: String,
     pub template: String,
@@ -46,6 +50,7 @@ pub struct Parts {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct Authored {
+    pub conform: Option<super::tiles::TilesetConform>,
     #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
     pub texture: ContentRef,
     pub filter: Option<Filter>,

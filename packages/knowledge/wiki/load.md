@@ -94,7 +94,7 @@ module load {
 | [`og.load.videoInfo`](load/fn-videoInfo.md) | function | `(world: World, video: Video): Result<VideoInfo>` | A loaded video's size, frames, rate, length, texture and sound. |
 | [`og.load.timeline`](load/fn-timeline.md) | function | `(world: World, path: string): Result<TimelineAsset>` | Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. |
 | [`og.load.vfx`](load/fn-vfx.md) | function | `(world: World, path: string): Result<VfxAsset>` | Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file) or an Effekseer effect (`.efkproj`, `.efkefc`) the cook converts, with every emitter, effect material, model, flipbook sheet… |
-| [`og.load.rig2d`](load/fn-rig2d.md) | function | `(world: World, path: string): Result<Rig2DInfo>` | Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. |
+| [`og.load.rig2d`](load/fn-rig2d.md) | function | `(world: World, path: string): Result<Rig2DInfo>` | Load a cooked file.rig2d TS declaration by canonical content ID and its texture, and register it with og.skeleton2d. |
 | [`LoadBudget`](load/type-LoadBudget.md) | desc struct |  | The limits an uncooked load (og.load.imageData, og.load.gltfData, og.load.environmentData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's head… |
 | [`ImageKind`](load/type-ImageKind.md) | enum |  | How an uncooked image's texels are read, as a cooked texture's `kind`. |
 | [`GltfDataDesc`](load/type-GltfDataDesc.md) | desc struct |  | How og.load.gltfData reads a model. |

@@ -10,52 +10,83 @@ use og_anim::*;
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World, WorldDesc};
 
-const RIG: &str = r#"type rig2d
-version 1
----
-texture "leg.png"
-size 16 16
-unit 10
-bone hip {
+fn rig() -> Rig2dAsset {
+    Rig2dAsset {
+        texture: "leg.png".into(),
+        size: [16, 16],
+        unit: 10.0,
+        filter: SheetFilter::Linear,
+        bones: [
+            ("hip", None, [0.0, 0.0], 0.0, 0.0),
+            ("thigh", Some(0), [0.0, 0.0], -90.0, 10.0),
+            ("shin", Some(1), [10.0, 0.0], 0.0, 10.0),
+            ("goal", Some(0), [5.0, -15.0], 0.0, 0.0),
+        ]
+        .into_iter()
+        .map(|(name, parent, [x, y], rotation, length)| Bone2d {
+            name: name.into(),
+            parent,
+            x,
+            y,
+            rotation,
+            length,
+            skew: 0.0,
+            scale: [1.0; 2],
+        })
+        .collect(),
+        slots: vec![Slot2d {
+            name: "leg".into(),
+            bone: 1,
+            attachment: Some(0),
+            color: [1.0; 4],
+            offset: [0.0; 4],
+        }],
+        attachments: vec![Attachment2d {
+            name: "leg".into(),
+            slot: 0,
+            kind: AttachmentKind::Region {
+                rect: [0.0, 0.0, 16.0, 16.0],
+                at: [0.0; 2],
+                rotation: 0.0,
+                skew: 0.0,
+                size: [16.0; 2],
+            },
+        }],
+        iks: vec![Ik2d {
+            name: "foot".into(),
+            bones: vec![1, 2],
+            target: 3,
+            counterclockwise: true,
+            weight: 1.0,
+        }],
+        clips: [
+            (
+                "walk",
+                0.5,
+                true,
+                vec![(0.0, "start".into()), (0.25, "step".into())],
+            ),
+            ("once", 0.1, false, vec![(0.1, "end".into())]),
+        ]
+        .into_iter()
+        .map(|(name, duration, looping, events)| Clip2d {
+            name: name.into(),
+            duration,
+            looping,
+            events,
+            bones: vec![],
+            slots: vec![],
+            deforms: vec![],
+            order: vec![],
+            iks: vec![],
+        })
+        .collect(),
+        transforms: vec![],
+        paths: vec![],
+        skins: vec![],
+        armatures: vec![],
+    }
 }
-bone thigh {
-  parent hip
-  rotation -90
-  length 10
-}
-bone shin {
-  parent thigh
-  at 10 0
-  length 10
-}
-bone goal {
-  parent hip
-  at 5 -15
-}
-slot leg {
-  bone thigh
-  attachment leg
-}
-region leg {
-  slot leg
-  rect 0 0 16 16
-}
-ik foot {
-  bones thigh shin
-  target goal
-  bend counterclockwise
-}
-clip walk {
-  duration 0.5
-  event 0 "start"
-  event 0.25 "step"
-}
-clip once {
-  duration 0.1
-  loop false
-  event 0.1 "end"
-}
-"#;
 
 fn world() -> (World, Entity, Entity) {
     let mut w = World::new(&WorldDesc {
@@ -64,7 +95,7 @@ fn world() -> (World, Entity, Entity) {
     })
     .unwrap();
     let sys = install_skeleton2d(&mut w).unwrap();
-    let rig = Rig2dAsset::parse(RIG).unwrap();
+    let rig = rig();
     let bytes = rig.to_bytes().unwrap();
     let decoded = Rig2dAsset::from_bytes(&bytes).unwrap();
     assert_eq!(decoded, rig);
