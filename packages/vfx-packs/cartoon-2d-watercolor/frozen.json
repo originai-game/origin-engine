@@ -1,0 +1,65 @@
+{
+ "name": "Frozen",
+ "w": 160,
+ "h": 176,
+ "frames": 14,
+ "fps": 15,
+ "loop": false,
+ "seed": 77,
+ "ramps": {
+  "main": [
+   "#71a1cc",
+   "#a5d2ea",
+   "#ddf3fb",
+   "#f7f7f7"
+  ],
+  "spark": [
+   "#e0dbd4",
+   "#f6f3ef",
+   "#f7f7f7"
+  ]
+ },
+ "layers": [
+  {
+   "type": "spikes",
+   "ramp": "$main",
+   "count": 6,
+   "spread": 0.8,
+   "hgt": 1.2,
+   "width": 0.22,
+   "lean": 0.35,
+   "fan": 0.6,
+   "grow": 0.2,
+   "hold": 0.6,
+   "y": 0.95
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 6,
+   "y": 0.4,
+   "speed": [
+    0.8,
+    1.4
+   ],
+   "drag": 3,
+   "life": [
+    0.3,
+    0.6
+   ],
+   "shape": "diamond",
+   "size": 3,
+   "t0": 0.1
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.8636
+ ],
+ "scale": 0.8,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

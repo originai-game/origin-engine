@@ -5,7 +5,7 @@ the Pixel VFX Forge library) lives in the platform's asset library; the
 engine's own packs ship with its releases, a few bundled and the rest
 downloadable (§5). The engine owns the formats (`type
 vfx`, `type vfx2d`, `type particles`, `type effect`), the `vfx` extension
-kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.py`.
+kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.ts`.
 This is the contract agreed with the platform's importer
 (`origingame` packages/asset-admin, `vfx:import`).
 
@@ -95,12 +95,12 @@ Inside the pack, stored by the library and never installed:
 ## 4. Making a pack
 
 ```sh
-python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json>   # assets.json, catalog fields
-python3 scripts/vfx-pack.py preview <pack> [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
+bun scripts/vfx-pack.ts manifest <pack> --spec <spec.json>   # assets.json, catalog fields
+bun scripts/vfx-pack.ts preview <pack> [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
 ```
 
 The spec names the provenance of each file by glob and each effect's
-title, category, element and keywords (the script's docstring has its
+title, category, element and keywords (the script's header comment has its
 shape). `preview` needs the native addon the gate builds
 (`OG_GATE=1 sh packages/engine/scripts/build.sh --native` copies it after
 `scripts/check.sh`) and takes its GPU locks itself

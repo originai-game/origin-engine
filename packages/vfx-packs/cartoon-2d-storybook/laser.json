@@ -1,0 +1,60 @@
+{
+ "name": "Ray Beam",
+ "w": 192,
+ "h": 64,
+ "frames": 8,
+ "fps": 12,
+ "loop": true,
+ "seed": 25,
+ "ramps": {
+  "main": [
+   "#c23a8e",
+   "#ee6ac0",
+   "#ffb6e6"
+  ],
+  "spark": [
+   "#d8cfc4",
+   "#f4efe8",
+   "#ffffff"
+  ]
+ },
+ "layers": [
+  {
+   "type": "beam",
+   "ramp": "$main",
+   "x": -1.45,
+   "len": 2.9,
+   "th": 0.28,
+   "cap": 0.3,
+   "wob": 0.12,
+   "speed": 2,
+   "grow": 0
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "ambient",
+   "count": 6,
+   "area": 0.9,
+   "spanX": 0.85,
+   "spanY": 0.25,
+   "speed": [
+    0,
+    0.1
+   ],
+   "wiggle": 0.04,
+   "life": [
+    0.3,
+    0.6
+   ],
+   "shape": "star",
+   "size": 4,
+   "twinkle": 2
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "line": 1.25,
+ "innerLine": 0.75
+}

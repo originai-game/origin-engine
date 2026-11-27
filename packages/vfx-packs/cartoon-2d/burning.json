@@ -1,0 +1,60 @@
+{
+ "name": "On Fire",
+ "w": 128,
+ "h": 192,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 76,
+ "ramps": {
+  "main": [
+   "#b8321c",
+   "#ee6a1e",
+   "#ffb22e",
+   "#ffe9a0"
+  ]
+ },
+ "layers": [
+  {
+   "type": "flame",
+   "ramp": "$main",
+   "w": 0.75,
+   "hgt": 2,
+   "taper": 0.4,
+   "freq": 2,
+   "rough": 0.35,
+   "speed": 1,
+   "flick": 0.3,
+   "y": 1.1
+  },
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "rise",
+   "count": 5,
+   "y": 0.4,
+   "area": 0.5,
+   "speed": [
+    0.8,
+    1.4
+   ],
+   "life": [
+    0.4,
+    0.8
+   ],
+   "shape": "circle",
+   "size": 3
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.7875
+ ],
+ "scale": 0.75,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#3a2416",
+ "line": 2,
+ "innerLine": 1
+}

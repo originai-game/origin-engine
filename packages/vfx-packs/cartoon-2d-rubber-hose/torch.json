@@ -1,0 +1,41 @@
+{
+ "name": "Torch Flame",
+ "w": 64,
+ "h": 112,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 92,
+ "ramps": {
+  "main": [
+   "#9d523c",
+   "#c27746",
+   "#d2a051",
+   "#e8d090"
+  ]
+ },
+ "layers": [
+  {
+   "type": "flame",
+   "ramp": "$main",
+   "w": 0.6,
+   "hgt": 1.5,
+   "taper": 0.5,
+   "freq": 2,
+   "rough": 0.3,
+   "speed": 1,
+   "flick": 0.3,
+   "y": 0.75
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.7286
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

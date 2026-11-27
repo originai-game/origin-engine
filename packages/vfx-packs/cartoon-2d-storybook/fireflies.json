@@ -1,0 +1,44 @@
+{
+ "name": "Fireflies",
+ "w": 192,
+ "h": 128,
+ "frames": 24,
+ "fps": 12,
+ "loop": true,
+ "seed": 95,
+ "ramps": {
+  "main": [
+   "#a8b81c",
+   "#e6f04a",
+   "#fbffc8"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "ambient",
+   "count": 10,
+   "spanX": 0.85,
+   "spanY": 0.6,
+   "speed": [
+    0,
+    0.15
+   ],
+   "life": [
+    0.8,
+    1
+   ],
+   "wiggle": 0.2,
+   "twinkle": 1,
+   "shape": "circle",
+   "size": 9,
+   "glow": 1
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "line": 1.25,
+ "innerLine": 0.75
+}

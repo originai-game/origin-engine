@@ -1,0 +1,53 @@
+{
+ "name": "Tap Hit",
+ "w": 72,
+ "h": 72,
+ "frames": 8,
+ "fps": 18,
+ "loop": false,
+ "seed": 12,
+ "ramps": {
+  "main": [
+   "#e0dbd4",
+   "#f6f3ef",
+   "#f7f7f7"
+  ],
+  "spark": [
+   "#deb059",
+   "#f0d57b",
+   "#f8f1c4"
+  ]
+ },
+ "layers": [
+  {
+   "type": "star",
+   "ramp": "$main",
+   "points": 5,
+   "r": 0.7,
+   "inner": 0.45,
+   "pop": 0.25,
+   "hollow": 0.9
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 5,
+   "speed": [
+    1.4,
+    2
+   ],
+   "drag": 3,
+   "life": [
+    0.3,
+    0.5
+   ],
+   "shape": "circle",
+   "size": 4
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

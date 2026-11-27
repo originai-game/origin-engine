@@ -1,0 +1,85 @@
+{
+ "name": "Buff",
+ "w": 144,
+ "h": 192,
+ "frames": 16,
+ "fps": 15,
+ "loop": false,
+ "seed": 72,
+ "ramps": {
+  "main": [
+   "#b78b3e",
+   "#d4b358",
+   "#ead794"
+  ],
+  "spark": [
+   "#9c4f44",
+   "#c37356",
+   "#dd9f72"
+  ]
+ },
+ "layers": [
+  {
+   "type": "ring",
+   "ramp": "$main",
+   "r0": 0.3,
+   "r1": 0.9,
+   "th": 0.12,
+   "squash": 0.3,
+   "breakup": 0.3,
+   "y": 1.1,
+   "t1": 0.6
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "rise",
+   "count": 9,
+   "y": 1,
+   "area": 0.6,
+   "areaY": 0.2,
+   "speed": [
+    1.2,
+    1.9
+   ],
+   "life": [
+    0.45,
+    0.8
+   ],
+   "emit": 0.5,
+   "shape": "chevron",
+   "size": 10
+  },
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "rise",
+   "count": 6,
+   "y": 1,
+   "area": 0.7,
+   "speed": [
+    0.7,
+    1.2
+   ],
+   "life": [
+    0.4,
+    0.8
+   ],
+   "emit": 0.6,
+   "shape": "star",
+   "size": 5,
+   "twinkle": 2
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.8354
+ ],
+ "scale": 0.777778,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

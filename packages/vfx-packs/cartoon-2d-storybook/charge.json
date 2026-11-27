@@ -1,0 +1,54 @@
+{
+ "name": "Charge Ball",
+ "w": 96,
+ "h": 96,
+ "frames": 12,
+ "fps": 12,
+ "loop": true,
+ "seed": 24,
+ "ramps": {
+  "main": [
+   "#2f5ed8",
+   "#62bcff",
+   "#dff7ff"
+  ],
+  "spark": [
+   "#d8cfc4",
+   "#f4efe8",
+   "#ffffff"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "implode",
+   "count": 10,
+   "implodeR": 0.95,
+   "life": [
+    0.5,
+    1
+   ],
+   "shape": "star",
+   "size": 4,
+   "heat": [
+    0.6,
+    1.05
+   ]
+  },
+  {
+   "type": "orb",
+   "ramp": "$main",
+   "r": 0.34,
+   "pulse": 0.15,
+   "pulseRate": 2,
+   "spin": 1,
+   "rim": 0.2
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "line": 1.25,
+ "innerLine": 0.75
+}

@@ -1,0 +1,89 @@
+{
+ "name": "Heal",
+ "w": 144,
+ "h": 192,
+ "frames": 18,
+ "fps": 15,
+ "loop": false,
+ "seed": 71,
+ "ramps": {
+  "main": [
+   "#4c7d4b",
+   "#76ac68",
+   "#b6d28b",
+   "#e5ebbd"
+  ],
+  "spark": [
+   "#d0c1a1",
+   "#ebdcb9",
+   "#f5e9c9"
+  ]
+ },
+ "layers": [
+  {
+   "type": "ring",
+   "ramp": "$main",
+   "r0": 0.3,
+   "r1": 0.95,
+   "th": 0.14,
+   "squash": 0.32,
+   "breakup": 0.25,
+   "y": 1.1
+  },
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "rise",
+   "count": 8,
+   "y": 1,
+   "area": 0.65,
+   "areaY": 0.25,
+   "speed": [
+    0.8,
+    1.5
+   ],
+   "life": [
+    0.5,
+    0.85
+   ],
+   "emit": 0.5,
+   "shape": "plus",
+   "size": 5,
+   "heat": [
+    1.05,
+    0.7
+   ]
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "rise",
+   "count": 6,
+   "y": 1,
+   "area": 0.7,
+   "speed": [
+    0.5,
+    1
+   ],
+   "life": [
+    0.4,
+    0.8
+   ],
+   "emit": 0.6,
+   "shape": "star",
+   "size": 3,
+   "twinkle": 2
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.8354
+ ],
+ "scale": 0.777778,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

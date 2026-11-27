@@ -1,0 +1,39 @@
+{
+ "name": "Spell Circle",
+ "w": 160,
+ "h": 80,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 83,
+ "ramps": {
+  "main": [
+   "#896dc9",
+   "#b296e7",
+   "#dccaf9",
+   "#f7f1fd"
+  ]
+ },
+ "layers": [
+  {
+   "type": "glyph",
+   "ramp": "$main",
+   "r": 0.95,
+   "squash": 0.35,
+   "rings": [
+    1,
+    0.82,
+    0.55
+   ],
+   "star": 6,
+   "step": 2,
+   "ticks": 0,
+   "runes": 0,
+   "spin": 1
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

@@ -1,0 +1,48 @@
+{
+ "name": "Run Dust",
+ "w": 96,
+ "h": 64,
+ "frames": 12,
+ "fps": 12,
+ "loop": true,
+ "seed": 43,
+ "ramps": {
+  "main": [
+   "#967957",
+   "#bc9c72",
+   "#dfc597"
+  ]
+ },
+ "layers": [
+  {
+   "type": "puffs",
+   "ramp": "$main",
+   "count": 4,
+   "spread": 0.2,
+   "flat": 0.4,
+   "rise": 0.25,
+   "r0": 0.1,
+   "r1": 0.2,
+   "life": [
+    0.5,
+    0.9
+   ],
+   "dir": 180,
+   "cone": 40,
+   "speed": 0.8,
+   "decay": 0.6,
+   "x": 0.3,
+   "y": 0.55
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.875
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

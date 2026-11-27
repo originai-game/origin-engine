@@ -1,0 +1,37 @@
+{
+ "name": "Dizzy Stars",
+ "w": 112,
+ "h": 64,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 74,
+ "ramps": {
+  "main": [
+   "#deb059",
+   "#f0d57b",
+   "#f8f1c4"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "orbit",
+   "count": 4,
+   "orbitR": 0.75,
+   "turns": 1,
+   "squash": 0.35,
+   "life": [
+    1,
+    1
+   ],
+   "shape": "star",
+   "size": 7
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

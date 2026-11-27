@@ -1,0 +1,44 @@
+{
+ "name": "Bubbles",
+ "w": 64,
+ "h": 128,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 54,
+ "ramps": {
+  "main": [
+   "#a5d0ea",
+   "#d9effb",
+   "#f7f7f7"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "rise",
+   "count": 8,
+   "y": 0.8,
+   "area": 0.3,
+   "speed": [
+    0.8,
+    1.4
+   ],
+   "life": [
+    0.6,
+    1
+   ],
+   "wiggle": 0.3,
+   "shape": "bubble",
+   "size": [
+    3,
+    6
+   ]
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

@@ -1,0 +1,79 @@
+{
+ "name": "Coin Grab",
+ "w": 96,
+ "h": 112,
+ "frames": 12,
+ "fps": 18,
+ "loop": false,
+ "seed": 61,
+ "ramps": {
+  "main": [
+   "#9b6f34",
+   "#c19645",
+   "#dabd68",
+   "#f0dea6"
+  ],
+  "smoke": [
+   "#d0c1a1",
+   "#ebdcb9",
+   "#f5e9c9"
+  ],
+  "spark": [
+   "#b78b3e",
+   "#d4b358",
+   "#ead794"
+  ]
+ },
+ "layers": [
+  {
+   "type": "rays",
+   "ramp": "$smoke",
+   "count": 8,
+   "r": 0.8,
+   "width": 0.16,
+   "gain": 0.55,
+   "t1": 0.6
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 6,
+   "speed": [
+    1.2,
+    1.8
+   ],
+   "drag": 3,
+   "life": [
+    0.35,
+    0.6
+   ],
+   "shape": "star",
+   "size": 5,
+   "t0": 0.1
+  },
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "burst",
+   "count": 1,
+   "speed": [
+    0,
+    0
+   ],
+   "life": [
+    0.55,
+    0.6
+   ],
+   "shape": "coin",
+   "size": 11,
+   "gravity": -2.5
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

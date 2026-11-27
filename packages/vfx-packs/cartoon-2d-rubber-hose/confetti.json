@@ -1,0 +1,119 @@
+{
+ "name": "Confetti Pop",
+ "w": 184,
+ "h": 184,
+ "frames": 20,
+ "fps": 15,
+ "loop": false,
+ "seed": 67,
+ "ramps": {
+  "main": [
+   "#9c4f44",
+   "#c37356",
+   "#dd9f72"
+  ],
+  "alt": [
+   "#526682",
+   "#728fa3",
+   "#adc1be"
+  ],
+  "smoke": [
+   "#b78b3e",
+   "#d4b358",
+   "#ead794"
+  ],
+  "spark": [
+   "#d0c1a1",
+   "#ebdcb9",
+   "#f5e9c9"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "spray",
+   "count": 10,
+   "dir": -90,
+   "spread": 120,
+   "speed": [
+    1.8,
+    2.8
+   ],
+   "gravity": 1.6,
+   "drag": 1.8,
+   "life": [
+    0.6,
+    1
+   ],
+   "shape": "leaf",
+   "size": 9
+  },
+  {
+   "type": "particles",
+   "ramp": "$alt",
+   "mode": "spray",
+   "count": 10,
+   "dir": -90,
+   "spread": 120,
+   "speed": [
+    1.8,
+    2.8
+   ],
+   "gravity": 1.6,
+   "drag": 1.8,
+   "life": [
+    0.6,
+    1
+   ],
+   "shape": "leaf",
+   "size": 9,
+   "seed": 3
+  },
+  {
+   "type": "particles",
+   "ramp": "$smoke",
+   "mode": "spray",
+   "count": 10,
+   "dir": -90,
+   "spread": 120,
+   "speed": [
+    1.8,
+    2.8
+   ],
+   "gravity": 1.6,
+   "drag": 1.8,
+   "life": [
+    0.6,
+    1
+   ],
+   "shape": "leaf",
+   "size": 9,
+   "seed": 5
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 6,
+   "speed": [
+    1.4,
+    2
+   ],
+   "drag": 2.6,
+   "life": [
+    0.3,
+    0.5
+   ],
+   "shape": "star",
+   "size": 5
+  }
+ ],
+ "scale": 0.869565,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

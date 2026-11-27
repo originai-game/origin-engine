@@ -137,7 +137,303 @@ A starter set of realistic effects for 3D games: a muzzle flash, a bullet impact
 | `vfx/realistic-starter/water-splash.ogt` | Water Splash | splash | water | 1.6 |  |  |  |  |
 
 <a id="guide-effect-packs-4"></a>
-### `effect-packs §4` cinematic-realism
+### `effect-packs §4` cartoon-2d
+
+Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth. 59 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add cartoon-2d`.
+
+- Style: stylised, 2d
+- Categories: ambient, beam, buff, destruction, explosion, fire, gunfire, heal, hit-spark, magic-impact, magic-projectile, marker, movement, pickup, projectile, shield, slash, smoke, splash, status, ui
+- Elements: arcane, dark, earth, fire, ice, lightning, nature, poison, water, wind
+- Keywords: 2d, cartoon, cartoon-2d, flat
+
+Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
+
+| Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
+|---|---|---|---|---|---|---|---|---|
+| `vfx/cartoon-2d/block.ogt` | Block | shield |  | 0.556 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/break-crate.ogt` | Crate Break | destruction | nature | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/break-ice.ogt` | Ice Shatter | destruction | ice | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/break-rock.ogt` | Rock Break | destruction | earth | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/bubbles.ogt` | Bubbles | ambient | water | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/buff.ogt` | Buff | buff |  | 1.067 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/bullet-hit.ogt` | Pellet Pop | hit-spark |  | 0.444 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/bullet.ogt` | Pellet | projectile |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/burning.ogt` | On Fire | status | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/campfire.ogt` | Campfire | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/charge.ogt` | Charge Ball | magic-impact | lightning | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/checkpoint.ogt` | Checkpoint | marker |  | 1.067 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/chest-open.ogt` | Treasure | pickup |  | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/chimney-smoke.ogt` | Chimney Smoke | smoke |  | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/coin.ogt` | Coin Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/confetti-rain.ogt` | Confetti Rain | ui |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/confetti.ogt` | Confetti Pop | ui |  | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/dash.ogt` | Dash Lines | movement | wind | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/debuff.ogt` | Debuff | status | dark | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/double-jump.ogt` | Air Jump | movement | wind | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/explosion-small.ogt` | Pop Boom | explosion | fire | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/explosion.ogt` | Boom | explosion | fire | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/fireflies.ogt` | Fireflies | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/fireworks.ogt` | Firework | ui | fire | 1.467 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/frozen.ogt` | Frozen | status | ice | 0.933 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/fuse.ogt` | Fuse Sparks | fire | fire | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/gem.ogt` | Gem Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/heal.ogt` | Heal | heal | nature | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/heart.ogt` | Heart Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/hit-heavy.ogt` | Smash Hit | hit-spark |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/hit-small.ogt` | Tap Hit | hit-spark |  | 0.444 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/hit.ogt` | Pow Hit | hit-spark |  | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/jump-dust.ogt` | Jump Dust | movement | earth | 0.556 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/land-dust.ogt` | Land Dust | movement | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/laser.ogt` | Ray Beam | beam | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/leaves.ogt` | Falling Leaves | ambient | nature | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/magic-bolt.ogt` | Magic Bolt | magic-projectile | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/magic-circle.ogt` | Spell Circle | magic-impact | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/magic.ogt` | Sparkle Cast | magic-impact | arcane | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/muzzle.ogt` | Pop Muzzle | gunfire | fire | 0.3 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/poison.ogt` | Poisoned | status | poison | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/poof.ogt` | Poof | smoke |  | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/portal.ogt` | Portal | magic-impact | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/powerup.ogt` | Power Up | buff |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/ripple.ogt` | Ripples | splash | water | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/run-dust.ogt` | Run Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/shield.ogt` | Shield Bubble | shield | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/shocked.ogt` | Zapped | status | lightning | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d/skid.ogt` | Skid Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/slash.ogt` | Swoosh Slash | slash |  | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/splash-small.ogt` | Plop | splash | water | 0.75 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/splash.ogt` | Splash | splash | water | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/star-collect.ogt` | Star Grab | pickup |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/stomp.ogt` | Stomp | hit-spark | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/stun.ogt` | Dizzy Stars | status |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/teleport.ogt` | Teleport | movement | arcane | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/torch.ogt` | Torch Flame | fire | fire | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/twinkle.ogt` | Twinkle | ambient |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d/whirlwind.ogt` | Whirlwind | magic-impact | wind | loops |  |  | 0.00 | 9 |
+
+<a id="guide-effect-packs-5"></a>
+### `effect-packs §5` cartoon-2d-rubber-hose
+
+Rubber-hose effects for cartoon-2d's rubber-hose variant: muted primaries in a faded warm grade inked with a 3 px black line. 59 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add cartoon-2d-rubber-hose`.
+
+- Style: stylised, 2d
+- Categories: ambient, beam, buff, destruction, explosion, fire, gunfire, heal, hit-spark, magic-impact, magic-projectile, marker, movement, pickup, projectile, shield, slash, smoke, splash, status, ui
+- Elements: arcane, dark, earth, fire, ice, lightning, nature, poison, water, wind
+- Keywords: 2d, cartoon, cartoon-2d, flat, rubber-hose
+
+Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
+
+| Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
+|---|---|---|---|---|---|---|---|---|
+| `vfx/cartoon-2d-rubber-hose/block.ogt` | Block | shield |  | 0.833 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/break-crate.ogt` | Crate Break | destruction | nature | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/break-ice.ogt` | Ice Shatter | destruction | ice | 1.167 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/break-rock.ogt` | Rock Break | destruction | earth | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/bubbles.ogt` | Bubbles | ambient | water | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/buff.ogt` | Buff | buff |  | 1.333 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/bullet-hit.ogt` | Pellet Pop | hit-spark |  | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/bullet.ogt` | Pellet | projectile |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/burning.ogt` | On Fire | status | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/campfire.ogt` | Campfire | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/charge.ogt` | Charge Ball | magic-impact | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/checkpoint.ogt` | Checkpoint | marker |  | 1.333 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/chest-open.ogt` | Treasure | pickup |  | 1.5 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/chimney-smoke.ogt` | Chimney Smoke | smoke |  | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/coin.ogt` | Coin Grab | pickup |  | 1 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/confetti-rain.ogt` | Confetti Rain | ui |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/confetti.ogt` | Confetti Pop | ui |  | 1.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/dash.ogt` | Dash Lines | movement | wind | 0.833 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/debuff.ogt` | Debuff | status | dark | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/double-jump.ogt` | Air Jump | movement | wind | 0.833 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/explosion-small.ogt` | Pop Boom | explosion | fire | 1.167 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/explosion.ogt` | Boom | explosion | fire | 1.5 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/fireflies.ogt` | Fireflies | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/fireworks.ogt` | Firework | ui | fire | 1.833 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/frozen.ogt` | Frozen | status | ice | 1.167 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/fuse.ogt` | Fuse Sparks | fire | fire | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/gem.ogt` | Gem Grab | pickup |  | 1 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/heal.ogt` | Heal | heal | nature | 1.5 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/heart.ogt` | Heart Grab | pickup |  | 1 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/hit-heavy.ogt` | Smash Hit | hit-spark |  | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/hit-small.ogt` | Tap Hit | hit-spark |  | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/hit.ogt` | Pow Hit | hit-spark |  | 0.833 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/jump-dust.ogt` | Jump Dust | movement | earth | 0.833 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/land-dust.ogt` | Land Dust | movement | earth | 1 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/laser.ogt` | Ray Beam | beam | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/leaves.ogt` | Falling Leaves | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/magic-bolt.ogt` | Magic Bolt | magic-projectile | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/magic-circle.ogt` | Spell Circle | magic-impact | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/magic.ogt` | Sparkle Cast | magic-impact | arcane | 1.167 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/muzzle.ogt` | Pop Muzzle | gunfire | fire | 0.5 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/poison.ogt` | Poisoned | status | poison | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/poof.ogt` | Poof | smoke |  | 1.167 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/portal.ogt` | Portal | magic-impact | arcane | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/powerup.ogt` | Power Up | buff |  | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/ripple.ogt` | Ripples | splash | water | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/run-dust.ogt` | Run Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/shield.ogt` | Shield Bubble | shield | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/shocked.ogt` | Zapped | status | lightning | 1 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/skid.ogt` | Skid Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/slash.ogt` | Swoosh Slash | slash |  | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/splash-small.ogt` | Plop | splash | water | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/splash.ogt` | Splash | splash | water | 1.167 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/star-collect.ogt` | Star Grab | pickup |  | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/stomp.ogt` | Stomp | hit-spark | earth | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/stun.ogt` | Dizzy Stars | status |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/teleport.ogt` | Teleport | movement | arcane | 1.5 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/torch.ogt` | Torch Flame | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-rubber-hose/twinkle.ogt` | Twinkle | ambient |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-rubber-hose/whirlwind.ogt` | Whirlwind | magic-impact | wind | loops |  |  | 0.01 | 9 |
+
+<a id="guide-effect-packs-6"></a>
+### `effect-packs §6` cartoon-2d-storybook
+
+Storybook effects for cartoon-2d's storybook variant: soft saturated shapes with a thin coloured line a shade darker than the fill. 59 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add cartoon-2d-storybook`.
+
+- Style: stylised, 2d
+- Categories: ambient, beam, buff, destruction, explosion, fire, gunfire, heal, hit-spark, magic-impact, magic-projectile, marker, movement, pickup, projectile, shield, slash, smoke, splash, status, ui
+- Elements: arcane, dark, earth, fire, ice, lightning, nature, poison, water, wind
+- Keywords: 2d, cartoon, cartoon-2d, flat, storybook
+
+Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
+
+| Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
+|---|---|---|---|---|---|---|---|---|
+| `vfx/cartoon-2d-storybook/block.ogt` | Block | shield |  | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/break-crate.ogt` | Crate Break | destruction | nature | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/break-ice.ogt` | Ice Shatter | destruction | ice | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/break-rock.ogt` | Rock Break | destruction | earth | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/bubbles.ogt` | Bubbles | ambient | water | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/buff.ogt` | Buff | buff |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/bullet-hit.ogt` | Pellet Pop | hit-spark |  | 0.444 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/bullet.ogt` | Pellet | projectile |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/burning.ogt` | On Fire | status | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/campfire.ogt` | Campfire | fire | fire | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/charge.ogt` | Charge Ball | magic-impact | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/checkpoint.ogt` | Checkpoint | marker |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/chest-open.ogt` | Treasure | pickup |  | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/chimney-smoke.ogt` | Chimney Smoke | smoke |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/coin.ogt` | Coin Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/confetti-rain.ogt` | Confetti Rain | ui |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/confetti.ogt` | Confetti Pop | ui |  | 1.333 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/dash.ogt` | Dash Lines | movement | wind | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/debuff.ogt` | Debuff | status | dark | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/double-jump.ogt` | Air Jump | movement | wind | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/explosion-small.ogt` | Pop Boom | explosion | fire | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/explosion.ogt` | Boom | explosion | fire | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/fireflies.ogt` | Fireflies | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/fireworks.ogt` | Firework | ui | fire | 1.467 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/frozen.ogt` | Frozen | status | ice | 0.933 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/fuse.ogt` | Fuse Sparks | fire | fire | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/gem.ogt` | Gem Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/heal.ogt` | Heal | heal | nature | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/heart.ogt` | Heart Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/hit-heavy.ogt` | Smash Hit | hit-spark |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/hit-small.ogt` | Tap Hit | hit-spark |  | 0.444 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/hit.ogt` | Pow Hit | hit-spark |  | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/jump-dust.ogt` | Jump Dust | movement | earth | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/land-dust.ogt` | Land Dust | movement | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/laser.ogt` | Ray Beam | beam | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/leaves.ogt` | Falling Leaves | ambient | nature | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/magic-bolt.ogt` | Magic Bolt | magic-projectile | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/magic-circle.ogt` | Spell Circle | magic-impact | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/magic.ogt` | Sparkle Cast | magic-impact | arcane | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/muzzle.ogt` | Pop Muzzle | gunfire | fire | 0.3 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/poison.ogt` | Poisoned | status | poison | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/poof.ogt` | Poof | smoke |  | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/portal.ogt` | Portal | magic-impact | arcane | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/powerup.ogt` | Power Up | buff |  | 1.067 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/ripple.ogt` | Ripples | splash | water | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/run-dust.ogt` | Run Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/shield.ogt` | Shield Bubble | shield | arcane | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/shocked.ogt` | Zapped | status | lightning | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/skid.ogt` | Skid Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/slash.ogt` | Swoosh Slash | slash |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/splash-small.ogt` | Plop | splash | water | 0.75 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/splash.ogt` | Splash | splash | water | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/star-collect.ogt` | Star Grab | pickup |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/stomp.ogt` | Stomp | hit-spark | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/stun.ogt` | Dizzy Stars | status |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/teleport.ogt` | Teleport | movement | arcane | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-storybook/torch.ogt` | Torch Flame | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/twinkle.ogt` | Twinkle | ambient |  | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-storybook/whirlwind.ogt` | Whirlwind | magic-impact | wind | loops |  |  | 0.00 | 9 |
+
+<a id="guide-effect-packs-7"></a>
+### `effect-packs §7` cartoon-2d-watercolor
+
+Watercolour effects for cartoon-2d's watercolor variant: light translucent-looking washes with no contour, a darker pigment rim instead. 59 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add cartoon-2d-watercolor`.
+
+- Style: stylised, 2d
+- Categories: ambient, beam, buff, destruction, explosion, fire, gunfire, heal, hit-spark, magic-impact, magic-projectile, marker, movement, pickup, projectile, shield, slash, smoke, splash, status, ui
+- Elements: arcane, dark, earth, fire, ice, lightning, nature, poison, water, wind
+- Keywords: 2d, cartoon, cartoon-2d, flat, watercolor
+
+Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
+
+| Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
+|---|---|---|---|---|---|---|---|---|
+| `vfx/cartoon-2d-watercolor/block.ogt` | Block | shield |  | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/break-crate.ogt` | Crate Break | destruction | nature | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/break-ice.ogt` | Ice Shatter | destruction | ice | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/break-rock.ogt` | Rock Break | destruction | earth | 1 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/bubbles.ogt` | Bubbles | ambient | water | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/buff.ogt` | Buff | buff |  | 1.067 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/bullet-hit.ogt` | Pellet Pop | hit-spark |  | 0.444 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/bullet.ogt` | Pellet | projectile |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/burning.ogt` | On Fire | status | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/campfire.ogt` | Campfire | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/charge.ogt` | Charge Ball | magic-impact | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/checkpoint.ogt` | Checkpoint | marker |  | 1.067 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/chest-open.ogt` | Treasure | pickup |  | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/chimney-smoke.ogt` | Chimney Smoke | smoke |  | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/coin.ogt` | Coin Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/confetti-rain.ogt` | Confetti Rain | ui |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/confetti.ogt` | Confetti Pop | ui |  | 1.333 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/dash.ogt` | Dash Lines | movement | wind | 0.556 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/debuff.ogt` | Debuff | status | dark | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/double-jump.ogt` | Air Jump | movement | wind | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/explosion-small.ogt` | Pop Boom | explosion | fire | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/explosion.ogt` | Boom | explosion | fire | 1.2 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/fireflies.ogt` | Fireflies | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/fireworks.ogt` | Firework | ui | fire | 1.467 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/frozen.ogt` | Frozen | status | ice | 0.933 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/fuse.ogt` | Fuse Sparks | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/gem.ogt` | Gem Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/heal.ogt` | Heal | heal | nature | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/heart.ogt` | Heart Grab | pickup |  | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/hit-heavy.ogt` | Smash Hit | hit-spark |  | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/hit-small.ogt` | Tap Hit | hit-spark |  | 0.444 |  |  | 0.02 | 9 |
+| `vfx/cartoon-2d-watercolor/hit.ogt` | Pow Hit | hit-spark |  | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/jump-dust.ogt` | Jump Dust | movement | earth | 0.556 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/land-dust.ogt` | Land Dust | movement | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/laser.ogt` | Ray Beam | beam | lightning | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/leaves.ogt` | Falling Leaves | ambient | nature | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/magic-bolt.ogt` | Magic Bolt | magic-projectile | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/magic-circle.ogt` | Spell Circle | magic-impact | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/magic.ogt` | Sparkle Cast | magic-impact | arcane | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/muzzle.ogt` | Pop Muzzle | gunfire | fire | 0.3 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/poison.ogt` | Poisoned | status | poison | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/poof.ogt` | Poof | smoke |  | 0.875 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/portal.ogt` | Portal | magic-impact | arcane | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/powerup.ogt` | Power Up | buff |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/ripple.ogt` | Ripples | splash | water | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/run-dust.ogt` | Run Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/shield.ogt` | Shield Bubble | shield | arcane | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/shocked.ogt` | Zapped | status | lightning | 0.667 |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/skid.ogt` | Skid Dust | movement | earth | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/slash.ogt` | Swoosh Slash | slash |  | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/splash-small.ogt` | Plop | splash | water | 0.75 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/splash.ogt` | Splash | splash | water | 0.875 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/star-collect.ogt` | Star Grab | pickup |  | 1.067 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/stomp.ogt` | Stomp | hit-spark | earth | 0.667 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/stun.ogt` | Dizzy Stars | status |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/teleport.ogt` | Teleport | movement | arcane | 1.2 |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/torch.ogt` | Torch Flame | fire | fire | loops |  |  | 0.00 | 9 |
+| `vfx/cartoon-2d-watercolor/twinkle.ogt` | Twinkle | ambient |  | loops |  |  | 0.01 | 9 |
+| `vfx/cartoon-2d-watercolor/whirlwind.ogt` | Whirlwind | magic-impact | wind | loops |  |  | 0.01 | 9 |
+
+<a id="guide-effect-packs-8"></a>
+### `effect-packs §8` cinematic-realism
 
 Restrained cinematic effects: simulated fire and smoke, ballistic sparks, spray, motes and exhaust. Designed for cinematic-realism and muted scenes. 89 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add cinematic-realism`.
 
@@ -240,8 +536,8 @@ Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
 | `vfx/cinematic-realism/waterfall-mist.ogt` | Waterfall Mist | splash | water | loops | 4.0 × 2.2 × 4.0 | ground | 0.19 | 18 |
 | `vfx/cinematic-realism/wheel-dust.ogt` | Wheel Dust | vehicle | earth | loops | 1.7 × 1.3 × 2.1 | ground | 0.24 | 15 |
 
-<a id="guide-effect-packs-5"></a>
-### `effect-packs §5` effekseer-andrewfm01
+<a id="guide-effect-packs-9"></a>
+### `effect-packs §9` effekseer-andrewfm01
 
 AndrewFM01's Effekseer sample effects (15), converted to type vfx. 15 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-andrewfm01`.
 
@@ -270,8 +566,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-andrewfm01/smallTexturesRibbon.ogt` | Small Textures Ribbon | magic-impact |  | 1.017 |  |  | 0.09 | 20 |
 | `vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital.ogt` | Small Textures Square Wave Orbital | magic-impact |  | 66.667 |  |  | 0.08 | 17 |
 
-<a id="guide-effect-packs-6"></a>
-### `effect-packs §6` effekseer-effekseer01
+<a id="guide-effect-packs-10"></a>
+### `effect-packs §10` effekseer-effekseer01
 
 Effekseer01's Effekseer sample effects (15), converted to type vfx. 15 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-effekseer01`.
 
@@ -300,8 +596,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-effekseer01/Simple_Sprite_FixedYAxis.ogt` | Simple Sprite Fixed YAxis | basic |  | 2.817 |  |  | 1.07 | 15 |
 | `vfx/effekseer-effekseer01/Simple_Track1.ogt` | Simple Track 1 | basic |  | 3.333 |  |  | 0.51 | 15 |
 
-<a id="guide-effect-packs-7"></a>
-### `effect-packs §7` effekseer-hato01
+<a id="guide-effect-packs-11"></a>
+### `effect-packs §11` effekseer-hato01
 
 HATO01's Effekseer sample effects (4), converted to type vfx. 4 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-hato01`.
 
@@ -319,8 +615,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-hato01/kiroi-chou.ogt` | Kiroi Chou | ambient | nature | 33.375 |  |  | 0.37 | 22 |
 | `vfx/effekseer-hato01/sakura1.ogt` | Sakura 1 | ambient | nature | 13.8 |  |  | 1.55 | 52 |
 
-<a id="guide-effect-packs-8"></a>
-### `effect-packs §8` effekseer-magicalxspiral
+<a id="guide-effect-packs-12"></a>
+### `effect-packs §12` effekseer-magicalxspiral
 
 MAGICAL X SPIRAL's Effekseer sample effects (101), converted to type vfx. 101 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-magicalxspiral`.
 
@@ -435,8 +731,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-magicalxspiral/meteo1.ogt` | Meteo 1 | magic-projectile | fire | 0.858 |  |  | 0.54 | 23 |
 | `vfx/effekseer-magicalxspiral/salamander13.ogt` | Salamander 13 | magic-impact | fire | 1.683 |  |  | 0.34 | 24 |
 
-<a id="guide-effect-packs-9"></a>
-### `effect-packs §9` effekseer-nextsoft01
+<a id="guide-effect-packs-13"></a>
+### `effect-packs §13` effekseer-nextsoft01
 
 NextSoft01's Effekseer sample effects (20), converted to type vfx. 20 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-nextsoft01`.
 
@@ -470,8 +766,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-nextsoft01/Sword1.ogt` | Sword 1 | slash |  | 0.333 |  |  | 0.19 | 17 |
 | `vfx/effekseer-nextsoft01/Sword2.ogt` | Sword 2 | slash |  | 1.1 |  |  | 1.33 | 19 |
 
-<a id="guide-effect-packs-10"></a>
-### `effect-packs §10` effekseer-pierre01
+<a id="guide-effect-packs-14"></a>
+### `effect-packs §14` effekseer-pierre01
 
 Pierre vol.1's Effekseer sample effects (11), converted to type vfx. 11 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-pierre01`.
 
@@ -496,8 +792,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-pierre01/PhantasmMeteor_Single.ogt` | Phantasm Meteor Single | magic-projectile | fire | 3.612 |  |  | 5.55 | 46 |
 | `vfx/effekseer-pierre01/SonicBoom.ogt` | Sonic Boom | magic-projectile |  | 1.833 |  |  | 2.31 | 31 |
 
-<a id="guide-effect-packs-11"></a>
-### `effect-packs §11` effekseer-pierre02
+<a id="guide-effect-packs-15"></a>
+### `effect-packs §15` effekseer-pierre02
 
 Pierre vol.2's Effekseer sample effects (12), converted to type vfx. 12 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-pierre02`.
 
@@ -523,8 +819,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-pierre02/Sword_Sacredlight.ogt` | Sword Sacredlight | slash | holy | loops |  |  | 1.84 | 24 |
 | `vfx/effekseer-pierre02/Sword_Storm.ogt` | Sword Storm | slash | wind | loops |  |  | 3.63 | 28 |
 
-<a id="guide-effect-packs-12"></a>
-### `effect-packs §12` effekseer-suzuki01
+<a id="guide-effect-packs-16"></a>
+### `effect-packs §16` effekseer-suzuki01
 
 Suzuki01's Effekseer sample effects (3), converted to type vfx. 3 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-suzuki01`.
 
@@ -541,8 +837,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-suzuki01/snowstorm11.ogt` | Snowstorm 11 | weather | ice | 8.917 |  |  | 4.00 | 24 |
 | `vfx/effekseer-suzuki01/sword.ogt` | Sword | slash |  | loops |  |  | 1.33 | 30 |
 
-<a id="guide-effect-packs-13"></a>
-### `effect-packs §13` effekseer-tktk01
+<a id="guide-effect-packs-17"></a>
+### `effect-packs §17` effekseer-tktk01
 
 tktk vol.1's Effekseer sample effects (71), converted to type vfx. 71 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-tktk01`.
 
@@ -627,8 +923,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-tktk01/hozyo4.ogt` | Hozyo 4 | buff |  | loops |  |  | 4.68 | 24 |
 | `vfx/effekseer-tktk01/hozyo5.ogt` | Hozyo 5 | buff |  | loops |  |  | 4.63 | 25 |
 
-<a id="guide-effect-packs-14"></a>
-### `effect-packs §14` effekseer-tktk02
+<a id="guide-effect-packs-18"></a>
+### `effect-packs §18` effekseer-tktk02
 
 tktk vol.2's Effekseer sample effects (33), converted to type vfx. 33 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add effekseer-tktk02`.
 
@@ -675,8 +971,8 @@ Measured on Apple M4 Pro GPU (Metal).
 | `vfx/effekseer-tktk02/Light3.ogt` | Light 3 | magic-impact | holy | loops |  |  | 6.40 | 93 |
 | `vfx/effekseer-tktk02/Light4.ogt` | Light 4 | magic-impact | holy | 2.777 |  |  | 3.69 | 78 |
 
-<a id="guide-effect-packs-15"></a>
-### `effect-packs §15` geometric
+<a id="guide-effect-packs-19"></a>
+### `effect-packs §19` geometric
 
 Texture-free hard geometry for minimal-geometric and faceted-low-poly: nine visual mechanisms, no bloom or soft sprites. 9 effects, downloadable: a release's `vfx/<pack>.tar.gz`: `og vfx add geometric`.
 
@@ -699,11 +995,15 @@ Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
 | `vfx/geometric/splash.ogt` | Facet Splash | splash | water | 1.2 | 1.3 × 1.2 × 1.3 | centre | 0.04 | 11 |
 | `vfx/geometric/trail.ogt` | Facet Trail | ambient |  | loops | 0.0 × 0.1 × 0.0 | ground | 0.04 | 11 |
 
-<a id="guide-effect-packs-16"></a>
-### `effect-packs §16` Ambient effects
+<a id="guide-effect-packs-20"></a>
+### `effect-packs §20` Ambient effects
 
-Ambient effects (ambient): 20 in `cinematic-realism`, `effekseer-hato01`, `effekseer-pierre01`, `effekseer-starter`, `geometric`, `pixel-scenario`, `realistic-starter`.
+Ambient effects (ambient): 36 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-hato01`, `effekseer-pierre01`, `effekseer-starter`, `geometric`, `pixel-scenario`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/bubbles.ogt` (Bubbles), `vfx/cartoon-2d/fireflies.ogt` (Fireflies), `vfx/cartoon-2d/leaves.ogt` (Falling Leaves), `vfx/cartoon-2d/twinkle.ogt` (Twinkle)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/bubbles.ogt` (Bubbles), `vfx/cartoon-2d-rubber-hose/fireflies.ogt` (Fireflies), `vfx/cartoon-2d-rubber-hose/leaves.ogt` (Falling Leaves), `vfx/cartoon-2d-rubber-hose/twinkle.ogt` (Twinkle)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/bubbles.ogt` (Bubbles), `vfx/cartoon-2d-storybook/fireflies.ogt` (Fireflies), `vfx/cartoon-2d-storybook/leaves.ogt` (Falling Leaves), `vfx/cartoon-2d-storybook/twinkle.ogt` (Twinkle)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/bubbles.ogt` (Bubbles), `vfx/cartoon-2d-watercolor/fireflies.ogt` (Fireflies), `vfx/cartoon-2d-watercolor/leaves.ogt` (Falling Leaves), `vfx/cartoon-2d-watercolor/twinkle.ogt` (Twinkle)
 - cinematic-realism: `vfx/cinematic-realism/electric-sparks.ogt` (Arcing Fault), `vfx/cinematic-realism/embers.ogt` (Drifting Embers), `vfx/cinematic-realism/fireflies.ogt` (Fireflies), `vfx/cinematic-realism/ground-fog.ogt` (Ground Fog), `vfx/cinematic-realism/leaves.ogt` (Falling Leaves), `vfx/cinematic-realism/sunbeam-dust.ogt` (Lit Dust)
 - effekseer-hato01: `vfx/effekseer-hato01/aoi-chou.ogt` (Aoi Chou), `vfx/effekseer-hato01/iwai-ume.ogt` (Iwai Ume), `vfx/effekseer-hato01/kiroi-chou.ogt` (Kiroi Chou), `vfx/effekseer-hato01/sakura1.ogt` (Sakura 1)
 - effekseer-pierre01: `vfx/effekseer-pierre01/Atmosphere.ogt` (Atmosphere), `vfx/effekseer-pierre01/Background.ogt` (Background)
@@ -712,27 +1012,35 @@ Ambient effects (ambient): 20 in `cinematic-realism`, `effekseer-hato01`, `effek
 - pixel-scenario: `vfx/pixel-scenario/cherry-blossom-petals.ogt` (Thorn Ambient), `vfx/pixel-scenario/embers-rising.ogt` (Blaze Ambient), `vfx/pixel-scenario/falling-leaves.ogt` (Bloom Ambient), `vfx/pixel-scenario/fireflies.ogt` (Mystic Ambient)
 - realistic-starter: `vfx/realistic-starter/ambient-dust.ogt` (Ambient Dust)
 
-<a id="guide-effect-packs-17"></a>
-### `effect-packs §17` Basic effects
+<a id="guide-effect-packs-21"></a>
+### `effect-packs §21` Basic effects
 
 Basic effects (basic): 11 in `effekseer-effekseer01`.
 
 - effekseer-effekseer01: `vfx/effekseer-effekseer01/Simple_Distortion.ogt` (Simple Distortion), `vfx/effekseer-effekseer01/Simple_GeneratingPosition1.ogt` (Simple Generating Position 1), `vfx/effekseer-effekseer01/Simple_Model_UV.ogt` (Simple Model UV), `vfx/effekseer-effekseer01/Simple_Ribbon_Parent.ogt` (Simple Ribbon Parent), `vfx/effekseer-effekseer01/Simple_Ribbon_Sword.ogt` (Simple Ribbon Sword), `vfx/effekseer-effekseer01/Simple_Ring_Shape1.ogt` (Simple Ring Shape 1), `vfx/effekseer-effekseer01/Simple_Ring_Shape2.ogt` (Simple Ring Shape 2), `vfx/effekseer-effekseer01/Simple_Sprite_BillBoard.ogt` (Simple Sprite Bill Board), `vfx/effekseer-effekseer01/Simple_Sprite_Fixed.ogt` (Simple Sprite Fixed), `vfx/effekseer-effekseer01/Simple_Sprite_FixedYAxis.ogt` (Simple Sprite Fixed YAxis), `vfx/effekseer-effekseer01/Simple_Track1.ogt` (Simple Track 1)
 
-<a id="guide-effect-packs-18"></a>
-### `effect-packs §18` Beam effects
+<a id="guide-effect-packs-22"></a>
+### `effect-packs §22` Beam effects
 
-Beam effects (beam): 6 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-effekseer01`.
+Beam effects (beam): 10 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-effekseer01`.
 
+- cartoon-2d: `vfx/cartoon-2d/laser.ogt` (Ray Beam)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/laser.ogt` (Ray Beam)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/laser.ogt` (Ray Beam)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/laser.ogt` (Ray Beam)
 - cinematic-realism: `vfx/cinematic-realism/laser.ogt` (Laser Beam)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/blue_laser.ogt` (Blue Laser)
 - effekseer-effekseer01: `vfx/effekseer-effekseer01/Homing_Laser01.ogt` (Homing Laser 01), `vfx/effekseer-effekseer01/Laser01.ogt` (Laser 01), `vfx/effekseer-effekseer01/Laser02.ogt` (Laser 02), `vfx/effekseer-effekseer01/Laser03.ogt` (Laser 03)
 
-<a id="guide-effect-packs-19"></a>
-### `effect-packs §19` Buff effects
+<a id="guide-effect-packs-23"></a>
+### `effect-packs §23` Buff effects
 
-Buff effects (buff): 17 in `cinematic-realism`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `geometric`, `pixel-scenario`.
+Buff effects (buff): 25 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `geometric`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/buff.ogt` (Buff), `vfx/cartoon-2d/powerup.ogt` (Power Up)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/buff.ogt` (Buff), `vfx/cartoon-2d-rubber-hose/powerup.ogt` (Power Up)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/buff.ogt` (Buff), `vfx/cartoon-2d-storybook/powerup.ogt` (Power Up)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/buff.ogt` (Buff), `vfx/cartoon-2d-watercolor/powerup.ogt` (Power Up)
 - cinematic-realism: `vfx/cinematic-realism/buff.ogt` (Rising Strands), `vfx/cinematic-realism/pickup.ogt` (Amber Motes)
 - effekseer-nextsoft01: `vfx/effekseer-nextsoft01/PowerUp.ogt` (Power Up)
 - effekseer-pierre01: `vfx/effekseer-pierre01/Herald.ogt` (Herald)
@@ -742,32 +1050,40 @@ Buff effects (buff): 17 in `cinematic-realism`, `effekseer-nextsoft01`, `effekse
 - geometric: `vfx/geometric/pickup.ogt` (Rising Cubes)
 - pixel-scenario: `vfx/pixel-scenario/charge-up-energy.ogt` (Pulse Charge), `vfx/pixel-scenario/dark-shadow-aura.ogt` (Night Aura), `vfx/pixel-scenario/hex-shield-barrier.ogt` (Flux Shield)
 
-<a id="guide-effect-packs-20"></a>
-### `effect-packs §20` Debris effects
+<a id="guide-effect-packs-24"></a>
+### `effect-packs §24` Debris effects
 
 Debris effects (debris): 1 in `realistic-starter`.
 
 - realistic-starter: `vfx/realistic-starter/dust-burst.ogt` (Dust Burst)
 
-<a id="guide-effect-packs-21"></a>
-### `effect-packs §21` Decal effects
+<a id="guide-effect-packs-25"></a>
+### `effect-packs §25` Decal effects
 
 Decal effects (decal): 4 in `cinematic-realism`.
 
 - cinematic-realism: `vfx/cinematic-realism/mark-bullet.ogt` (Bullet Hole), `vfx/cinematic-realism/mark-burn.ogt` (Burn Mark), `vfx/cinematic-realism/mark-wet.ogt` (Wet Patch), `vfx/cinematic-realism/skid.ogt` (Skid Mark)
 
-<a id="guide-effect-packs-22"></a>
-### `effect-packs §22` Destruction effects
+<a id="guide-effect-packs-26"></a>
+### `effect-packs §26` Destruction effects
 
-Destruction effects (destruction): 3 in `cinematic-realism`.
+Destruction effects (destruction): 15 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`.
 
+- cartoon-2d: `vfx/cartoon-2d/break-crate.ogt` (Crate Break), `vfx/cartoon-2d/break-ice.ogt` (Ice Shatter), `vfx/cartoon-2d/break-rock.ogt` (Rock Break)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/break-crate.ogt` (Crate Break), `vfx/cartoon-2d-rubber-hose/break-ice.ogt` (Ice Shatter), `vfx/cartoon-2d-rubber-hose/break-rock.ogt` (Rock Break)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/break-crate.ogt` (Crate Break), `vfx/cartoon-2d-storybook/break-ice.ogt` (Ice Shatter), `vfx/cartoon-2d-storybook/break-rock.ogt` (Rock Break)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/break-crate.ogt` (Crate Break), `vfx/cartoon-2d-watercolor/break-ice.ogt` (Ice Shatter), `vfx/cartoon-2d-watercolor/break-rock.ogt` (Rock Break)
 - cinematic-realism: `vfx/cinematic-realism/break-glass.ogt` (Pane Break), `vfx/cinematic-realism/break-stone.ogt` (Masonry Break), `vfx/cinematic-realism/break-wood.ogt` (Crate Break)
 
-<a id="guide-effect-packs-23"></a>
-### `effect-packs §23` Explosion effects
+<a id="guide-effect-packs-27"></a>
+### `effect-packs §27` Explosion effects
 
-Explosion effects (explosion): 22 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `geometric`, `pixel-scenario`, `realistic-starter`.
+Explosion effects (explosion): 30 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `geometric`, `pixel-scenario`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/explosion-small.ogt` (Pop Boom), `vfx/cartoon-2d/explosion.ogt` (Boom)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/explosion-small.ogt` (Pop Boom), `vfx/cartoon-2d-rubber-hose/explosion.ogt` (Boom)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/explosion-small.ogt` (Pop Boom), `vfx/cartoon-2d-storybook/explosion.ogt` (Boom)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/explosion-small.ogt` (Pop Boom), `vfx/cartoon-2d-watercolor/explosion.ogt` (Boom)
 - cinematic-realism: `vfx/cinematic-realism/explosion-air.ogt` (Airburst), `vfx/cinematic-realism/explosion-energy.ogt` (Energy Blast), `vfx/cinematic-realism/explosion-large.ogt` (Large Blast), `vfx/cinematic-realism/explosion-small.ogt` (Grenade Blast), `vfx/cinematic-realism/explosion-water.ogt` (Depth Blast), `vfx/cinematic-realism/explosion.ogt` (Cinematic Explosion), `vfx/cinematic-realism/flashbang.ogt` (Flash Charge)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/boss_death.ogt` (Boss Death)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Breakdown.ogt` (Breakdown), `vfx/effekseer-magicalxspiral/IcicleBroken.ogt` (Icicle Broken), `vfx/effekseer-magicalxspiral/StairBroken.ogt` (Stair Broken), `vfx/effekseer-magicalxspiral/StairBroken3.ogt` (Stair Broken 3)
@@ -777,11 +1093,15 @@ Explosion effects (explosion): 22 in `cinematic-realism`, `effekseer-andrewfm01`
 - pixel-scenario: `vfx/pixel-scenario/big-fire-explosion.ogt` (Cinder Explosion), `vfx/pixel-scenario/meteor-strike.ogt` (Ember Meteor)
 - realistic-starter: `vfx/realistic-starter/explosion.ogt` (Explosion)
 
-<a id="guide-effect-packs-24"></a>
-### `effect-packs §24` Fire effects
+<a id="guide-effect-packs-28"></a>
+### `effect-packs §28` Fire effects
 
-Fire effects (fire): 33 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`, `realistic-starter`.
+Fire effects (fire): 45 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/campfire.ogt` (Campfire), `vfx/cartoon-2d/fuse.ogt` (Fuse Sparks), `vfx/cartoon-2d/torch.ogt` (Torch Flame)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/campfire.ogt` (Campfire), `vfx/cartoon-2d-rubber-hose/fuse.ogt` (Fuse Sparks), `vfx/cartoon-2d-rubber-hose/torch.ogt` (Torch Flame)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/campfire.ogt` (Campfire), `vfx/cartoon-2d-storybook/fuse.ogt` (Fuse Sparks), `vfx/cartoon-2d-storybook/torch.ogt` (Torch Flame)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/campfire.ogt` (Campfire), `vfx/cartoon-2d-watercolor/fuse.ogt` (Fuse Sparks), `vfx/cartoon-2d-watercolor/torch.ogt` (Torch Flame)
 - cinematic-realism: `vfx/cinematic-realism/campfire.ogt` (Campfire), `vfx/cinematic-realism/fire-large.ogt` (Large Fire), `vfx/cinematic-realism/flamethrower.ogt` (Flame Stream)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/fire.ogt` (Fire)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/FirePot1.ogt` (Fire Pot 1), `vfx/effekseer-magicalxspiral/FirePot2.ogt` (Fire Pot 2), `vfx/effekseer-magicalxspiral/Magic1_fire.ogt` (Magic 1 Fire), `vfx/effekseer-magicalxspiral/Magic2_fire.ogt` (Magic 2 Fire)
@@ -793,20 +1113,28 @@ Fire effects (fire): 33 in `cinematic-realism`, `effekseer-andrewfm01`, `effekse
 - pixel-scenario: `vfx/pixel-scenario/campfire.ogt` (Ember Flame), `vfx/pixel-scenario/dragon-fire-breath.ogt` (Cinder Breath), `vfx/pixel-scenario/fire-tornado.ogt` (Blaze Tornado)
 - realistic-starter: `vfx/realistic-starter/torch-fire.ogt` (Torch Fire)
 
-<a id="guide-effect-packs-25"></a>
-### `effect-packs §25` Gunfire effects
+<a id="guide-effect-packs-29"></a>
+### `effect-packs §29` Gunfire effects
 
-Gunfire effects (gunfire): 7 in `cinematic-realism`, `geometric`, `realistic-starter`.
+Gunfire effects (gunfire): 11 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `geometric`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/muzzle.ogt` (Pop Muzzle)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/muzzle.ogt` (Pop Muzzle)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/muzzle.ogt` (Pop Muzzle)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/muzzle.ogt` (Pop Muzzle)
 - cinematic-realism: `vfx/cinematic-realism/muzzle-auto.ogt` (Automatic Fire), `vfx/cinematic-realism/muzzle-heavy.ogt` (Heavy Muzzle Blast), `vfx/cinematic-realism/muzzle-suppressed.ogt` (Suppressed Shot), `vfx/cinematic-realism/muzzle.ogt` (Powder Flash), `vfx/cinematic-realism/shell.ogt` (Spent Casing)
 - geometric: `vfx/geometric/muzzle.ogt` (Geometric Pulse)
 - realistic-starter: `vfx/realistic-starter/muzzle-flash.ogt` (Muzzle Flash)
 
-<a id="guide-effect-packs-26"></a>
-### `effect-packs §26` Heal effects
+<a id="guide-effect-packs-30"></a>
+### `effect-packs §30` Heal effects
 
-Heal effects (heal): 18 in `cinematic-realism`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `pixel-scenario`.
+Heal effects (heal): 22 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/heal.ogt` (Heal)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/heal.ogt` (Heal)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/heal.ogt` (Heal)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/heal.ogt` (Heal)
 - cinematic-realism: `vfx/cinematic-realism/heal.ogt` (Mending Light)
 - effekseer-nextsoft01: `vfx/effekseer-nextsoft01/HealPotion1.ogt` (Heal Potion 1), `vfx/effekseer-nextsoft01/HealPotion2.ogt` (Heal Potion 2), `vfx/effekseer-nextsoft01/MagicHeal1.ogt` (Magic Heal 1), `vfx/effekseer-nextsoft01/MagicHeal2.ogt` (Magic Heal 2)
 - effekseer-pierre02: `vfx/effekseer-pierre02/Benediction.ogt` (Benediction)
@@ -814,11 +1142,15 @@ Heal effects (heal): 18 in `cinematic-realism`, `effekseer-nextsoft01`, `effekse
 - effekseer-tktk01: `vfx/effekseer-tktk01/Cure1.ogt` (Cure 1), `vfx/effekseer-tktk01/Cure2.ogt` (Cure 2), `vfx/effekseer-tktk01/Cure3.ogt` (Cure 3), `vfx/effekseer-tktk01/Cure4.ogt` (Cure 4), `vfx/effekseer-tktk01/Cure5.ogt` (Cure 5), `vfx/effekseer-tktk01/Cure6.ogt` (Cure 6), `vfx/effekseer-tktk01/Cure7.ogt` (Cure 7)
 - pixel-scenario: `vfx/pixel-scenario/healing-with-rising-crosses.ogt` (Bloom Heal)
 
-<a id="guide-effect-packs-27"></a>
-### `effect-packs §27` Hit spark effects
+<a id="guide-effect-packs-31"></a>
+### `effect-packs §31` Hit spark effects
 
-Hit spark effects (hit-spark): 36 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `geometric`, `pixel-scenario`, `realistic-starter`.
+Hit spark effects (hit-spark): 56 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `geometric`, `pixel-scenario`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/bullet-hit.ogt` (Pellet Pop), `vfx/cartoon-2d/hit-heavy.ogt` (Smash Hit), `vfx/cartoon-2d/hit-small.ogt` (Tap Hit), `vfx/cartoon-2d/hit.ogt` (Pow Hit), `vfx/cartoon-2d/stomp.ogt` (Stomp)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/bullet-hit.ogt` (Pellet Pop), `vfx/cartoon-2d-rubber-hose/hit-heavy.ogt` (Smash Hit), `vfx/cartoon-2d-rubber-hose/hit-small.ogt` (Tap Hit), `vfx/cartoon-2d-rubber-hose/hit.ogt` (Pow Hit), `vfx/cartoon-2d-rubber-hose/stomp.ogt` (Stomp)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/bullet-hit.ogt` (Pellet Pop), `vfx/cartoon-2d-storybook/hit-heavy.ogt` (Smash Hit), `vfx/cartoon-2d-storybook/hit-small.ogt` (Tap Hit), `vfx/cartoon-2d-storybook/hit.ogt` (Pow Hit), `vfx/cartoon-2d-storybook/stomp.ogt` (Stomp)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/bullet-hit.ogt` (Pellet Pop), `vfx/cartoon-2d-watercolor/hit-heavy.ogt` (Smash Hit), `vfx/cartoon-2d-watercolor/hit-small.ogt` (Tap Hit), `vfx/cartoon-2d-watercolor/hit.ogt` (Pow Hit), `vfx/cartoon-2d-watercolor/stomp.ogt` (Stomp)
 - cinematic-realism: `vfx/cinematic-realism/impact-concrete.ogt` (Concrete Impact), `vfx/cinematic-realism/impact-dirt.ogt` (Earth Impact), `vfx/cinematic-realism/impact-flesh.ogt` (Cloth Impact), `vfx/cinematic-realism/impact-glass.ogt` (Glass Impact), `vfx/cinematic-realism/impact-water.ogt` (Water Impact), `vfx/cinematic-realism/impact-wood.ogt` (Timber Impact), `vfx/cinematic-realism/impact.ogt` (Steel Impact)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/hit_eff.ogt` (Hit Eff)
 - effekseer-starter: `vfx/effekseer-starter/Attack_Impact.ogt` (Attack Impact), `vfx/effekseer-starter/Blow2.ogt` (Spark Hit), `vfx/effekseer-starter/Blow8.ogt` (Star Hit), `vfx/effekseer-starter/hit_eff.ogt` (Hit Flash)
@@ -828,8 +1160,8 @@ Hit spark effects (hit-spark): 36 in `cinematic-realism`, `effekseer-andrewfm01`
 - pixel-scenario: `vfx/pixel-scenario/electric-impact-hit.ogt` (Static Impact)
 - realistic-starter: `vfx/realistic-starter/bullet-impact.ogt` (Bullet Impact)
 
-<a id="guide-effect-packs-28"></a>
-### `effect-packs §28` Level up effects
+<a id="guide-effect-packs-32"></a>
+### `effect-packs §32` Level up effects
 
 Level up effects (level-up): 4 in `cinematic-realism`, `effekseer-starter`, `pixel-scenario`.
 
@@ -837,11 +1169,15 @@ Level up effects (level-up): 4 in `cinematic-realism`, `effekseer-starter`, `pix
 - effekseer-starter: `vfx/effekseer-starter/Light4.ogt` (Level Up Arrows), `vfx/effekseer-starter/Thunder1.ogt` (Golden Rise)
 - pixel-scenario: `vfx/pixel-scenario/level-up.ogt` (Gilded Level Up)
 
-<a id="guide-effect-packs-29"></a>
-### `effect-packs §29` Magic impact effects
+<a id="guide-effect-packs-33"></a>
+### `effect-packs §33` Magic impact effects
 
-Magic impact effects (magic-impact): 113 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `geometric`, `pixel-scenario`.
+Magic impact effects (magic-impact): 133 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `geometric`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/charge.ogt` (Charge Ball), `vfx/cartoon-2d/magic-circle.ogt` (Spell Circle), `vfx/cartoon-2d/magic.ogt` (Sparkle Cast), `vfx/cartoon-2d/portal.ogt` (Portal), `vfx/cartoon-2d/whirlwind.ogt` (Whirlwind)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/charge.ogt` (Charge Ball), `vfx/cartoon-2d-rubber-hose/magic-circle.ogt` (Spell Circle), `vfx/cartoon-2d-rubber-hose/magic.ogt` (Sparkle Cast), `vfx/cartoon-2d-rubber-hose/portal.ogt` (Portal), `vfx/cartoon-2d-rubber-hose/whirlwind.ogt` (Whirlwind)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/charge.ogt` (Charge Ball), `vfx/cartoon-2d-storybook/magic-circle.ogt` (Spell Circle), `vfx/cartoon-2d-storybook/magic.ogt` (Sparkle Cast), `vfx/cartoon-2d-storybook/portal.ogt` (Portal), `vfx/cartoon-2d-storybook/whirlwind.ogt` (Whirlwind)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/charge.ogt` (Charge Ball), `vfx/cartoon-2d-watercolor/magic-circle.ogt` (Spell Circle), `vfx/cartoon-2d-watercolor/magic.ogt` (Sparkle Cast), `vfx/cartoon-2d-watercolor/portal.ogt` (Portal), `vfx/cartoon-2d-watercolor/whirlwind.ogt` (Whirlwind)
 - cinematic-realism: `vfx/cinematic-realism/charge.ogt` (Gathering Charge), `vfx/cinematic-realism/magic-circle.ogt` (Drawn Circle), `vfx/cinematic-realism/magic.ogt` (Aether Wisps)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/smallTexturesRibbon.ogt` (Small Textures Ribbon), `vfx/effekseer-andrewfm01/smallTexturesSquareWave_orbital.ogt` (Small Textures Square Wave Orbital)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/A_Gohlem1.ogt` (A Gohlem 1), `vfx/effekseer-magicalxspiral/A_Salamander1.ogt` (A Salamander 1), `vfx/effekseer-magicalxspiral/A_Salamander2.ogt` (A Salamander 2), `vfx/effekseer-magicalxspiral/A_Salamander4.ogt` (A Salamander 4), `vfx/effekseer-magicalxspiral/A_Sylph1.ogt` (A Sylph 1), `vfx/effekseer-magicalxspiral/A_Sylph2.ogt` (A Sylph 2), `vfx/effekseer-magicalxspiral/A_Undine1.ogt` (A Undine 1), `vfx/effekseer-magicalxspiral/A_Undine2.ogt` (A Undine 2), `vfx/effekseer-magicalxspiral/AquaPoint.ogt` (Aqua Point), `vfx/effekseer-magicalxspiral/Attack_Impact.ogt` (Attack Impact), `vfx/effekseer-magicalxspiral/Gohlem1.ogt` (Gohlem 1), `vfx/effekseer-magicalxspiral/Gohlem11.ogt` (Gohlem 11), `vfx/effekseer-magicalxspiral/Gohlem5.ogt` (Gohlem 5), `vfx/effekseer-magicalxspiral/Gohlem7.ogt` (Gohlem 7), `vfx/effekseer-magicalxspiral/Holy1.ogt` (Holy 1), `vfx/effekseer-magicalxspiral/Holy2.ogt` (Holy 2), `vfx/effekseer-magicalxspiral/Impact.ogt` (Impact), `vfx/effekseer-magicalxspiral/Magic1_earth.ogt` (Magic 1 Earth), `vfx/effekseer-magicalxspiral/Magic1_holy.ogt` (Magic 1 Holy), `vfx/effekseer-magicalxspiral/Magic1_water.ogt` (Magic 1 Water), `vfx/effekseer-magicalxspiral/Magic1_wind.ogt` (Magic 1 Wind), `vfx/effekseer-magicalxspiral/Magic2_earth.ogt` (Magic 2 Earth), `vfx/effekseer-magicalxspiral/Magic2_holy.ogt` (Magic 2 Holy), `vfx/effekseer-magicalxspiral/Magic2_water.ogt` (Magic 2 Water), `vfx/effekseer-magicalxspiral/Magic2_wind.ogt` (Magic 2 Wind), `vfx/effekseer-magicalxspiral/Rock1.ogt` (Rock 1), `vfx/effekseer-magicalxspiral/Rock2.ogt` (Rock 2), `vfx/effekseer-magicalxspiral/Salamander1.ogt` (Salamander 1), `vfx/effekseer-magicalxspiral/Salamander11.ogt` (Salamander 11), `vfx/effekseer-magicalxspiral/Salamander12.ogt` (Salamander 12), `vfx/effekseer-magicalxspiral/Salamander14.ogt` (Salamander 14), `vfx/effekseer-magicalxspiral/Salamander15.ogt` (Salamander 15), `vfx/effekseer-magicalxspiral/Salamander2.ogt` (Salamander 2), `vfx/effekseer-magicalxspiral/Salamander3.ogt` (Salamander 3), `vfx/effekseer-magicalxspiral/Salamander4.ogt` (Salamander 4), `vfx/effekseer-magicalxspiral/Salamander5.ogt` (Salamander 5), `vfx/effekseer-magicalxspiral/Salamander6.ogt` (Salamander 6), `vfx/effekseer-magicalxspiral/Salamander7.ogt` (Salamander 7), `vfx/effekseer-magicalxspiral/Sylph1.ogt` (Sylph 1), `vfx/effekseer-magicalxspiral/Sylph10.ogt` (Sylph 10), `vfx/effekseer-magicalxspiral/Sylph11.ogt` (Sylph 11), `vfx/effekseer-magicalxspiral/Sylph13.ogt` (Sylph 13), `vfx/effekseer-magicalxspiral/Sylph15.ogt` (Sylph 15), `vfx/effekseer-magicalxspiral/Sylph2.ogt` (Sylph 2), `vfx/effekseer-magicalxspiral/Sylph3.ogt` (Sylph 3), `vfx/effekseer-magicalxspiral/Sylph4.ogt` (Sylph 4), `vfx/effekseer-magicalxspiral/Sylph5.ogt` (Sylph 5), `vfx/effekseer-magicalxspiral/Sylph6.ogt` (Sylph 6), `vfx/effekseer-magicalxspiral/Sylph7.ogt` (Sylph 7), `vfx/effekseer-magicalxspiral/Sylph8.ogt` (Sylph 8), `vfx/effekseer-magicalxspiral/Thunder1.ogt` (Thunder 1), `vfx/effekseer-magicalxspiral/Thunder2.ogt` (Thunder 2), `vfx/effekseer-magicalxspiral/Thunder3.ogt` (Thunder 3), `vfx/effekseer-magicalxspiral/Topwater1.ogt` (Topwater 1), `vfx/effekseer-magicalxspiral/Undine1.ogt` (Undine 1), `vfx/effekseer-magicalxspiral/Undine11.ogt` (Undine 11), `vfx/effekseer-magicalxspiral/Undine13.ogt` (Undine 13), `vfx/effekseer-magicalxspiral/Undine2.ogt` (Undine 2), `vfx/effekseer-magicalxspiral/Undine3.ogt` (Undine 3), `vfx/effekseer-magicalxspiral/Undine4.ogt` (Undine 4), `vfx/effekseer-magicalxspiral/Undine5.ogt` (Undine 5), `vfx/effekseer-magicalxspiral/Undine6.ogt` (Undine 6), `vfx/effekseer-magicalxspiral/Undine8.ogt` (Undine 8), `vfx/effekseer-magicalxspiral/WHead1.ogt` (WHead 1), `vfx/effekseer-magicalxspiral/WHead2.ogt` (WHead 2), `vfx/effekseer-magicalxspiral/WHead3.ogt` (WHead 3), `vfx/effekseer-magicalxspiral/Water_Impact.ogt` (Water Impact), `vfx/effekseer-magicalxspiral/Wind_Impact.ogt` (Wind Impact), `vfx/effekseer-magicalxspiral/salamander13.ogt` (Salamander 13)
@@ -854,11 +1190,15 @@ Magic impact effects (magic-impact): 113 in `cinematic-realism`, `effekseer-andr
 - geometric: `vfx/geometric/magic.ogt` (Open Triangles)
 - pixel-scenario: `vfx/pixel-scenario/arcane-magic-circle.ogt` (Eldritch Magic Circle), `vfx/pixel-scenario/frost-nova.ogt` (Frost Nova), `vfx/pixel-scenario/ground-slam-quake.ogt` (Stone Ground Slam), `vfx/pixel-scenario/holy-pillar-of-light.ogt` (Divine Pillar), `vfx/pixel-scenario/ice-spikes-erupting.ogt` (Frozen Spikes), `vfx/pixel-scenario/lava-eruption-pillar.ogt` (Volcanic Pillar), `vfx/pixel-scenario/lightning-strike-from-the-sky.ogt` (Storm Strike), `vfx/pixel-scenario/water-splash.ogt` (Aqua Splash)
 
-<a id="guide-effect-packs-30"></a>
-### `effect-packs §30` Magic projectile effects
+<a id="guide-effect-packs-34"></a>
+### `effect-packs §34` Magic projectile effects
 
-Magic projectile effects (magic-projectile): 37 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+Magic projectile effects (magic-projectile): 41 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/magic-bolt.ogt` (Magic Bolt)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/magic-bolt.ogt` (Magic Bolt)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/magic-bolt.ogt` (Magic Bolt)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/magic-bolt.ogt` (Magic Bolt)
 - cinematic-realism: `vfx/cinematic-realism/magic-bolt.ogt` (Arcane Bolt)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/drill.ogt` (Drill)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Icicle1.ogt` (Icicle 1), `vfx/effekseer-magicalxspiral/Icicle2.ogt` (Icicle 2), `vfx/effekseer-magicalxspiral/Icicle3.ogt` (Icicle 3), `vfx/effekseer-magicalxspiral/IcicleLocus.ogt` (Icicle Locus), `vfx/effekseer-magicalxspiral/Lance3.ogt` (Lance 3), `vfx/effekseer-magicalxspiral/Lance4.ogt` (Lance 4), `vfx/effekseer-magicalxspiral/Lance5.ogt` (Lance 5), `vfx/effekseer-magicalxspiral/meteo1.ogt` (Meteo 1)
@@ -870,22 +1210,40 @@ Magic projectile effects (magic-projectile): 37 in `cinematic-realism`, `effekse
 - effekseer-tktk02: `vfx/effekseer-tktk02/Gun1.ogt` (Gun 1), `vfx/effekseer-tktk02/Gun2.ogt` (Gun 2), `vfx/effekseer-tktk02/Gun3.ogt` (Gun 3), `vfx/effekseer-tktk02/Gun4.ogt` (Gun 4), `vfx/effekseer-tktk02/Gun5.ogt` (Gun 5), `vfx/effekseer-tktk02/Gun6.ogt` (Gun 6), `vfx/effekseer-tktk02/Gun7.ogt` (Gun 7), `vfx/effekseer-tktk02/Gun8.ogt` (Gun 8), `vfx/effekseer-tktk02/Gun9.ogt` (Gun 9)
 - pixel-scenario: `vfx/pixel-scenario/blue-energy-beam.ogt` (Aether Beam), `vfx/pixel-scenario/fireball-projectile.ogt` (Ember Projectile), `vfx/pixel-scenario/plasma-orb.ogt` (Ion Orb)
 
-<a id="guide-effect-packs-31"></a>
-### `effect-packs §31` Marker effects
+<a id="guide-effect-packs-35"></a>
+### `effect-packs §35` Marker effects
 
-Marker effects (marker): 3 in `cinematic-realism`.
+Marker effects (marker): 7 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`.
 
+- cartoon-2d: `vfx/cartoon-2d/checkpoint.ogt` (Checkpoint)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/checkpoint.ogt` (Checkpoint)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/checkpoint.ogt` (Checkpoint)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/checkpoint.ogt` (Checkpoint)
 - cinematic-realism: `vfx/cinematic-realism/beacon.ogt` (Marker Beacon), `vfx/cinematic-realism/chest-open.ogt` (Opened Chest), `vfx/cinematic-realism/loot-glow.ogt` (Rare Drop Glow)
 
-<a id="guide-effect-packs-32"></a>
-### `effect-packs §32` Movement effects
+<a id="guide-effect-packs-36"></a>
+### `effect-packs §36` Movement effects
 
-Movement effects (movement): 3 in `cinematic-realism`.
+Movement effects (movement): 31 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`.
 
+- cartoon-2d: `vfx/cartoon-2d/dash.ogt` (Dash Lines), `vfx/cartoon-2d/double-jump.ogt` (Air Jump), `vfx/cartoon-2d/jump-dust.ogt` (Jump Dust), `vfx/cartoon-2d/land-dust.ogt` (Land Dust), `vfx/cartoon-2d/run-dust.ogt` (Run Dust), `vfx/cartoon-2d/skid.ogt` (Skid Dust), `vfx/cartoon-2d/teleport.ogt` (Teleport)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/dash.ogt` (Dash Lines), `vfx/cartoon-2d-rubber-hose/double-jump.ogt` (Air Jump), `vfx/cartoon-2d-rubber-hose/jump-dust.ogt` (Jump Dust), `vfx/cartoon-2d-rubber-hose/land-dust.ogt` (Land Dust), `vfx/cartoon-2d-rubber-hose/run-dust.ogt` (Run Dust), `vfx/cartoon-2d-rubber-hose/skid.ogt` (Skid Dust), `vfx/cartoon-2d-rubber-hose/teleport.ogt` (Teleport)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/dash.ogt` (Dash Lines), `vfx/cartoon-2d-storybook/double-jump.ogt` (Air Jump), `vfx/cartoon-2d-storybook/jump-dust.ogt` (Jump Dust), `vfx/cartoon-2d-storybook/land-dust.ogt` (Land Dust), `vfx/cartoon-2d-storybook/run-dust.ogt` (Run Dust), `vfx/cartoon-2d-storybook/skid.ogt` (Skid Dust), `vfx/cartoon-2d-storybook/teleport.ogt` (Teleport)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/dash.ogt` (Dash Lines), `vfx/cartoon-2d-watercolor/double-jump.ogt` (Air Jump), `vfx/cartoon-2d-watercolor/jump-dust.ogt` (Jump Dust), `vfx/cartoon-2d-watercolor/land-dust.ogt` (Land Dust), `vfx/cartoon-2d-watercolor/run-dust.ogt` (Run Dust), `vfx/cartoon-2d-watercolor/skid.ogt` (Skid Dust), `vfx/cartoon-2d-watercolor/teleport.ogt` (Teleport)
 - cinematic-realism: `vfx/cinematic-realism/dash.ogt` (Dash), `vfx/cinematic-realism/footstep-dust.ogt` (Footstep Dust), `vfx/cinematic-realism/landing.ogt` (Landing Dust)
 
-<a id="guide-effect-packs-33"></a>
-### `effect-packs §33` Portal effects
+<a id="guide-effect-packs-37"></a>
+### `effect-packs §37` Pickup effects
+
+Pickup effects (pickup): 20 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`.
+
+- cartoon-2d: `vfx/cartoon-2d/chest-open.ogt` (Treasure), `vfx/cartoon-2d/coin.ogt` (Coin Grab), `vfx/cartoon-2d/gem.ogt` (Gem Grab), `vfx/cartoon-2d/heart.ogt` (Heart Grab), `vfx/cartoon-2d/star-collect.ogt` (Star Grab)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/chest-open.ogt` (Treasure), `vfx/cartoon-2d-rubber-hose/coin.ogt` (Coin Grab), `vfx/cartoon-2d-rubber-hose/gem.ogt` (Gem Grab), `vfx/cartoon-2d-rubber-hose/heart.ogt` (Heart Grab), `vfx/cartoon-2d-rubber-hose/star-collect.ogt` (Star Grab)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/chest-open.ogt` (Treasure), `vfx/cartoon-2d-storybook/coin.ogt` (Coin Grab), `vfx/cartoon-2d-storybook/gem.ogt` (Gem Grab), `vfx/cartoon-2d-storybook/heart.ogt` (Heart Grab), `vfx/cartoon-2d-storybook/star-collect.ogt` (Star Grab)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/chest-open.ogt` (Treasure), `vfx/cartoon-2d-watercolor/coin.ogt` (Coin Grab), `vfx/cartoon-2d-watercolor/gem.ogt` (Gem Grab), `vfx/cartoon-2d-watercolor/heart.ogt` (Heart Grab), `vfx/cartoon-2d-watercolor/star-collect.ogt` (Star Grab)
+
+<a id="guide-effect-packs-38"></a>
+### `effect-packs §38` Portal effects
 
 Portal effects (portal): 11 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `effekseer-starter`, `pixel-scenario`.
 
@@ -896,27 +1254,39 @@ Portal effects (portal): 11 in `cinematic-realism`, `effekseer-andrewfm01`, `eff
 - effekseer-starter: `vfx/effekseer-starter/Magic2_fire.ogt` (Fire Pentagram), `vfx/effekseer-starter/magic_circle.ogt` (Magic Circle), `vfx/effekseer-starter/smallTexturesSquareWave_orbital.ogt` (Arcane Ring)
 - pixel-scenario: `vfx/pixel-scenario/dimensional-portal.ogt` (Astral Portal), `vfx/pixel-scenario/purple-black-hole-vortex.ogt` (Shadow Vortex), `vfx/pixel-scenario/teleport-blink.ogt` (Mystic Teleport)
 
-<a id="guide-effect-packs-34"></a>
-### `effect-packs §34` Projectile effects
+<a id="guide-effect-packs-39"></a>
+### `effect-packs §39` Projectile effects
 
-Projectile effects (projectile): 4 in `cinematic-realism`.
+Projectile effects (projectile): 8 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`.
 
+- cartoon-2d: `vfx/cartoon-2d/bullet.ogt` (Pellet)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/bullet.ogt` (Pellet)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/bullet.ogt` (Pellet)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/bullet.ogt` (Pellet)
 - cinematic-realism: `vfx/cinematic-realism/bolt.ogt` (Energy Bolt), `vfx/cinematic-realism/grenade-trail.ogt` (Grenade Smoke Thread), `vfx/cinematic-realism/rocket.ogt` (Rocket Motor), `vfx/cinematic-realism/tracer.ogt` (Tracer Round)
 
-<a id="guide-effect-packs-35"></a>
-### `effect-packs §35` Shield effects
+<a id="guide-effect-packs-40"></a>
+### `effect-packs §40` Shield effects
 
-Shield effects (shield): 5 in `cinematic-realism`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`.
+Shield effects (shield): 13 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`.
 
+- cartoon-2d: `vfx/cartoon-2d/block.ogt` (Block), `vfx/cartoon-2d/shield.ogt` (Shield Bubble)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/block.ogt` (Block), `vfx/cartoon-2d-rubber-hose/shield.ogt` (Shield Bubble)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/block.ogt` (Block), `vfx/cartoon-2d-storybook/shield.ogt` (Shield Bubble)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/block.ogt` (Block), `vfx/cartoon-2d-watercolor/shield.ogt` (Shield Bubble)
 - cinematic-realism: `vfx/cinematic-realism/barrier.ogt` (Barrier Dome), `vfx/cinematic-realism/shield-hit.ogt` (Shield Ripple)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Gohlem_Shield1.ogt` (Gohlem Shield 1), `vfx/effekseer-magicalxspiral/Gohlem_Shield2.ogt` (Gohlem Shield 2)
 - effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicShield.ogt` (Magic Shield)
 
-<a id="guide-effect-packs-36"></a>
-### `effect-packs §36` Slash effects
+<a id="guide-effect-packs-41"></a>
+### `effect-packs §41` Slash effects
 
-Slash effects (slash): 49 in `cinematic-realism`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
+Slash effects (slash): 53 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre02`, `effekseer-starter`, `effekseer-suzuki01`, `effekseer-tktk01`, `effekseer-tktk02`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/slash.ogt` (Swoosh Slash)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/slash.ogt` (Swoosh Slash)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/slash.ogt` (Swoosh Slash)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/slash.ogt` (Swoosh Slash)
 - cinematic-realism: `vfx/cinematic-realism/slash.ogt` (Blade Arc)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/Attack1.ogt` (Attack 1), `vfx/effekseer-magicalxspiral/Attack2.ogt` (Attack 2), `vfx/effekseer-magicalxspiral/Attack5.ogt` (Attack 5), `vfx/effekseer-magicalxspiral/Attack6.ogt` (Attack 6)
 - effekseer-nextsoft01: `vfx/effekseer-nextsoft01/MagicSword.ogt` (Magic Sword), `vfx/effekseer-nextsoft01/Sword1.ogt` (Sword 1), `vfx/effekseer-nextsoft01/Sword2.ogt` (Sword 2)
@@ -927,11 +1297,15 @@ Slash effects (slash): 49 in `cinematic-realism`, `effekseer-magicalxspiral`, `e
 - effekseer-tktk02: `vfx/effekseer-tktk02/Claw1.ogt` (Claw 1), `vfx/effekseer-tktk02/Claw2.ogt` (Claw 2), `vfx/effekseer-tktk02/Claw3.ogt` (Claw 3), `vfx/effekseer-tktk02/Claw4.ogt` (Claw 4)
 - pixel-scenario: `vfx/pixel-scenario/crescent-sword-slash.ogt` (Razor Slash), `vfx/pixel-scenario/dash-speed-lines.ogt` (Cyclone Dash), `vfx/pixel-scenario/feral-claw-scratch-blood.ogt` (Sanguine Claw), `vfx/pixel-scenario/spinning-wind-slash.ogt` (Cyclone Slash), `vfx/pixel-scenario/triple-slash-combo-with-blue-energy.ogt` (Flux Slash)
 
-<a id="guide-effect-packs-37"></a>
-### `effect-packs §37` Smoke effects
+<a id="guide-effect-packs-42"></a>
+### `effect-packs §42` Smoke effects
 
-Smoke effects (smoke): 17 in `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `geometric`, `pixel-scenario`.
+Smoke effects (smoke): 25 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `effekseer-magicalxspiral`, `effekseer-pierre02`, `geometric`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/chimney-smoke.ogt` (Chimney Smoke), `vfx/cartoon-2d/poof.ogt` (Poof)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/chimney-smoke.ogt` (Chimney Smoke), `vfx/cartoon-2d-rubber-hose/poof.ogt` (Poof)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/chimney-smoke.ogt` (Chimney Smoke), `vfx/cartoon-2d-storybook/poof.ogt` (Poof)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/chimney-smoke.ogt` (Chimney Smoke), `vfx/cartoon-2d-watercolor/poof.ogt` (Poof)
 - cinematic-realism: `vfx/cinematic-realism/dust.ogt` (Rolling Dust), `vfx/cinematic-realism/smoke-grenade.ogt` (Smoke Screen), `vfx/cinematic-realism/smoke-plume.ogt` (Wreck Smoke Column), `vfx/cinematic-realism/steam.ogt` (Steam Leak)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/electric_dust.ogt` (Electric Dust)
 - effekseer-magicalxspiral: `vfx/effekseer-magicalxspiral/foot_smoke1.ogt` (Foot Smoke 1), `vfx/effekseer-magicalxspiral/foot_smoke2.ogt` (Foot Smoke 2), `vfx/effekseer-magicalxspiral/foot_smoke3.ogt` (Foot Smoke 3), `vfx/effekseer-magicalxspiral/foot_smoke4.ogt` (Foot Smoke 4), `vfx/effekseer-magicalxspiral/foot_smoke5.ogt` (Foot Smoke 5), `vfx/effekseer-magicalxspiral/foot_smoke6.ogt` (Foot Smoke 6), `vfx/effekseer-magicalxspiral/foot_smoke7.ogt` (Foot Smoke 7), `vfx/effekseer-magicalxspiral/foot_smoke8.ogt` (Foot Smoke 8)
@@ -939,41 +1313,53 @@ Smoke effects (smoke): 17 in `cinematic-realism`, `effekseer-andrewfm01`, `effek
 - geometric: `vfx/geometric/dust.ogt` (Slate Dust)
 - pixel-scenario: `vfx/pixel-scenario/poison-gas-cloud.ogt` (Blight Cloud), `vfx/pixel-scenario/smoke-poof.ogt` (Ashen Poof)
 
-<a id="guide-effect-packs-38"></a>
-### `effect-packs §38` Splash effects
+<a id="guide-effect-packs-43"></a>
+### `effect-packs §43` Splash effects
 
-Splash effects (splash): 8 in `cinematic-realism`, `geometric`, `realistic-starter`.
+Splash effects (splash): 20 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `geometric`, `realistic-starter`.
 
+- cartoon-2d: `vfx/cartoon-2d/ripple.ogt` (Ripples), `vfx/cartoon-2d/splash-small.ogt` (Plop), `vfx/cartoon-2d/splash.ogt` (Splash)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/ripple.ogt` (Ripples), `vfx/cartoon-2d-rubber-hose/splash-small.ogt` (Plop), `vfx/cartoon-2d-rubber-hose/splash.ogt` (Splash)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/ripple.ogt` (Ripples), `vfx/cartoon-2d-storybook/splash-small.ogt` (Plop), `vfx/cartoon-2d-storybook/splash.ogt` (Splash)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/ripple.ogt` (Ripples), `vfx/cartoon-2d-watercolor/splash-small.ogt` (Plop), `vfx/cartoon-2d-watercolor/splash.ogt` (Splash)
 - cinematic-realism: `vfx/cinematic-realism/drip.ogt` (Drip), `vfx/cinematic-realism/footstep-water.ogt` (Wading Step), `vfx/cinematic-realism/fountain.ogt` (Fountain Jet), `vfx/cinematic-realism/splash-small.ogt` (Small Splash), `vfx/cinematic-realism/splash.ogt` (Ballistic Spray), `vfx/cinematic-realism/waterfall-mist.ogt` (Waterfall Mist)
 - geometric: `vfx/geometric/splash.ogt` (Facet Splash)
 - realistic-starter: `vfx/realistic-starter/water-splash.ogt` (Water Splash)
 
-<a id="guide-effect-packs-39"></a>
-### `effect-packs §39` Status effects
+<a id="guide-effect-packs-44"></a>
+### `effect-packs §44` Status effects
 
-Status effects (status): 6 in `cinematic-realism`.
+Status effects (status): 30 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`.
 
+- cartoon-2d: `vfx/cartoon-2d/burning.ogt` (On Fire), `vfx/cartoon-2d/debuff.ogt` (Debuff), `vfx/cartoon-2d/frozen.ogt` (Frozen), `vfx/cartoon-2d/poison.ogt` (Poisoned), `vfx/cartoon-2d/shocked.ogt` (Zapped), `vfx/cartoon-2d/stun.ogt` (Dizzy Stars)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/burning.ogt` (On Fire), `vfx/cartoon-2d-rubber-hose/debuff.ogt` (Debuff), `vfx/cartoon-2d-rubber-hose/frozen.ogt` (Frozen), `vfx/cartoon-2d-rubber-hose/poison.ogt` (Poisoned), `vfx/cartoon-2d-rubber-hose/shocked.ogt` (Zapped), `vfx/cartoon-2d-rubber-hose/stun.ogt` (Dizzy Stars)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/burning.ogt` (On Fire), `vfx/cartoon-2d-storybook/debuff.ogt` (Debuff), `vfx/cartoon-2d-storybook/frozen.ogt` (Frozen), `vfx/cartoon-2d-storybook/poison.ogt` (Poisoned), `vfx/cartoon-2d-storybook/shocked.ogt` (Zapped), `vfx/cartoon-2d-storybook/stun.ogt` (Dizzy Stars)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/burning.ogt` (On Fire), `vfx/cartoon-2d-watercolor/debuff.ogt` (Debuff), `vfx/cartoon-2d-watercolor/frozen.ogt` (Frozen), `vfx/cartoon-2d-watercolor/poison.ogt` (Poisoned), `vfx/cartoon-2d-watercolor/shocked.ogt` (Zapped), `vfx/cartoon-2d-watercolor/stun.ogt` (Dizzy Stars)
 - cinematic-realism: `vfx/cinematic-realism/burning.ogt` (Burning), `vfx/cinematic-realism/debuff.ogt` (Sinking Strands), `vfx/cinematic-realism/dissolve.ogt` (Ash Dissolve), `vfx/cinematic-realism/frozen.ogt` (Frozen), `vfx/cinematic-realism/poison.ogt` (Poisoned), `vfx/cinematic-realism/shocked.ogt` (Shocked)
 
-<a id="guide-effect-packs-40"></a>
-### `effect-packs §40` Ui effects
+<a id="guide-effect-packs-45"></a>
+### `effect-packs §45` Ui effects
 
-Ui effects (ui): 14 in `cinematic-realism`, `effekseer-andrewfm01`, `geometric`, `pixel-scenario`.
+Ui effects (ui): 26 in `cartoon-2d`, `cartoon-2d-rubber-hose`, `cartoon-2d-storybook`, `cartoon-2d-watercolor`, `cinematic-realism`, `effekseer-andrewfm01`, `geometric`, `pixel-scenario`.
 
+- cartoon-2d: `vfx/cartoon-2d/confetti-rain.ogt` (Confetti Rain), `vfx/cartoon-2d/confetti.ogt` (Confetti Pop), `vfx/cartoon-2d/fireworks.ogt` (Firework)
+- cartoon-2d-rubber-hose: `vfx/cartoon-2d-rubber-hose/confetti-rain.ogt` (Confetti Rain), `vfx/cartoon-2d-rubber-hose/confetti.ogt` (Confetti Pop), `vfx/cartoon-2d-rubber-hose/fireworks.ogt` (Firework)
+- cartoon-2d-storybook: `vfx/cartoon-2d-storybook/confetti-rain.ogt` (Confetti Rain), `vfx/cartoon-2d-storybook/confetti.ogt` (Confetti Pop), `vfx/cartoon-2d-storybook/fireworks.ogt` (Firework)
+- cartoon-2d-watercolor: `vfx/cartoon-2d-watercolor/confetti-rain.ogt` (Confetti Rain), `vfx/cartoon-2d-watercolor/confetti.ogt` (Confetti Pop), `vfx/cartoon-2d-watercolor/fireworks.ogt` (Firework)
 - cinematic-realism: `vfx/cinematic-realism/celebration.ogt` (Satin Confetti), `vfx/cinematic-realism/fireworks.ogt` (Firework), `vfx/cinematic-realism/reward-burst.ogt` (Reward Fountain)
 - effekseer-andrewfm01: `vfx/effekseer-andrewfm01/actionLines_halo.ogt` (Action Lines Halo), `vfx/effekseer-andrewfm01/actionLines_halo2.ogt` (Action Lines Halo 2), `vfx/effekseer-andrewfm01/actionLines_radial.ogt` (Action Lines Radial), `vfx/effekseer-andrewfm01/actionLines_radial2.ogt` (Action Lines Radial 2), `vfx/effekseer-andrewfm01/actionLines_shockwave.ogt` (Action Lines Shockwave), `vfx/effekseer-andrewfm01/actionLines_strip.ogt` (Action Lines Strip)
 - geometric: `vfx/geometric/celebration.ogt` (Coral Confetti)
 - pixel-scenario: `vfx/pixel-scenario/critical-hit-damage-999.ogt` (Ember Damage Number), `vfx/pixel-scenario/fireworks-celebration.ogt` (Arcane Fireworks), `vfx/pixel-scenario/gold-coins-loot-drop.ogt` (Lucky Loot), `vfx/pixel-scenario/sparkle-twinkle.ogt` (Sacred Sparkle)
 
-<a id="guide-effect-packs-41"></a>
-### `effect-packs §41` Vehicle effects
+<a id="guide-effect-packs-46"></a>
+### `effect-packs §46` Vehicle effects
 
 Vehicle effects (vehicle): 11 in `cinematic-realism`.
 
 - cinematic-realism: `vfx/cinematic-realism/afterburner.ogt` (Afterburner), `vfx/cinematic-realism/boost.ogt` (Booster Burst), `vfx/cinematic-realism/car-exhaust.ogt` (Road Exhaust), `vfx/cinematic-realism/damage-smoke.ogt` (Damage Smoke), `vfx/cinematic-realism/downwash.ogt` (Rotor Downwash), `vfx/cinematic-realism/exhaust.ogt` (Ion Exhaust), `vfx/cinematic-realism/thruster.ogt` (Attitude Jet), `vfx/cinematic-realism/tire-smoke.ogt` (Tyre Smoke), `vfx/cinematic-realism/wake.ogt` (Hull Wake), `vfx/cinematic-realism/warp.ogt` (Jump Flash), `vfx/cinematic-realism/wheel-dust.ogt` (Wheel Dust)
 
-<a id="guide-effect-packs-42"></a>
-### `effect-packs §42` Weather effects
+<a id="guide-effect-packs-47"></a>
+### `effect-packs §47` Weather effects
 
 Weather effects (weather): 7 in `effekseer-magicalxspiral`, `effekseer-nextsoft01`, `effekseer-pierre01`, `effekseer-starter`, `effekseer-suzuki01`, `pixel-scenario`.
 

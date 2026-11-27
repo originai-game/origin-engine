@@ -1,0 +1,73 @@
+{
+ "name": "Falling Leaves",
+ "w": 192,
+ "h": 192,
+ "frames": 24,
+ "fps": 12,
+ "loop": true,
+ "seed": 94,
+ "ramps": {
+  "main": [
+   "#4f8a26",
+   "#86bf3a",
+   "#c8e46a"
+  ],
+  "alt": [
+   "#b4501c",
+   "#e88a2a",
+   "#f6c04a"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "fall",
+   "y": 0.3,
+   "fadeIn": 0.15,
+   "fallScale": 0.62,
+   "driftX": 0.06,
+   "count": 6,
+   "spanX": 0.68,
+   "speed": [
+    0.4,
+    0.7
+   ],
+   "life": [
+    0.8,
+    0.95
+   ],
+   "wiggle": 0.2,
+   "shape": "leaf",
+   "size": 14
+  },
+  {
+   "type": "particles",
+   "ramp": "$alt",
+   "mode": "fall",
+   "y": 0.3,
+   "fadeIn": 0.15,
+   "fallScale": 0.62,
+   "driftX": 0.06,
+   "count": 5,
+   "spanX": 0.68,
+   "speed": [
+    0.4,
+    0.7
+   ],
+   "life": [
+    0.8,
+    0.95
+   ],
+   "wiggle": 0.2,
+   "shape": "leaf",
+   "size": 14,
+   "seed": 4
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "line": 1.25,
+ "innerLine": 0.75
+}

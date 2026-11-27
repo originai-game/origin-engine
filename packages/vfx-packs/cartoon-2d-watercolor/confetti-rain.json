@@ -1,0 +1,100 @@
+{
+ "name": "Confetti Rain",
+ "w": 192,
+ "h": 192,
+ "frames": 24,
+ "fps": 12,
+ "loop": true,
+ "seed": 68,
+ "ramps": {
+  "main": [
+   "#c95d5d",
+   "#e08c7b",
+   "#f4b89a"
+  ],
+  "alt": [
+   "#5d80cb",
+   "#83ace2",
+   "#bcdbf8"
+  ],
+  "smoke": [
+   "#deb059",
+   "#f0d57b",
+   "#f8f1c4"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "fall",
+   "y": 0.3,
+   "fadeIn": 0.15,
+   "fallScale": 0.62,
+   "driftX": 0.06,
+   "count": 8,
+   "spanX": 0.68,
+   "speed": [
+    0.6,
+    1
+   ],
+   "life": [
+    0.8,
+    0.95
+   ],
+   "wiggle": 0.2,
+   "shape": "leaf",
+   "size": 9
+  },
+  {
+   "type": "particles",
+   "ramp": "$alt",
+   "mode": "fall",
+   "y": 0.3,
+   "fadeIn": 0.15,
+   "fallScale": 0.62,
+   "driftX": 0.06,
+   "count": 8,
+   "spanX": 0.68,
+   "speed": [
+    0.6,
+    1
+   ],
+   "life": [
+    0.8,
+    0.95
+   ],
+   "wiggle": 0.2,
+   "shape": "leaf",
+   "size": 9,
+   "seed": 3
+  },
+  {
+   "type": "particles",
+   "ramp": "$smoke",
+   "mode": "fall",
+   "y": 0.3,
+   "fadeIn": 0.15,
+   "fallScale": 0.62,
+   "driftX": 0.06,
+   "count": 8,
+   "spanX": 0.68,
+   "speed": [
+    0.6,
+    1
+   ],
+   "life": [
+    0.8,
+    0.95
+   ],
+   "wiggle": 0.2,
+   "shape": "leaf",
+   "size": 9,
+   "seed": 5
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

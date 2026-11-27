@@ -1,0 +1,49 @@
+{
+ "name": "Jump Dust",
+ "w": 160,
+ "h": 112,
+ "frames": 10,
+ "fps": 18,
+ "loop": false,
+ "seed": 41,
+ "ramps": {
+  "main": [
+   "#a37650",
+   "#cfa274",
+   "#f0d6ae"
+  ]
+ },
+ "layers": [
+  {
+   "type": "puffs",
+   "ramp": "$main",
+   "count": 6,
+   "spread": 0.5,
+   "flat": 0.2,
+   "rise": 0.12,
+   "r0": 0.12,
+   "r1": 0.26,
+   "life": [
+    0.5,
+    0.9
+   ],
+   "emit": 0.06,
+   "dir": 180,
+   "cone": 200,
+   "speed": 0.9,
+   "decay": 0.55,
+   "y": 0.55
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.7143
+ ],
+ "scale": 0.571429,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#3a2416",
+ "line": 2,
+ "innerLine": 1
+}

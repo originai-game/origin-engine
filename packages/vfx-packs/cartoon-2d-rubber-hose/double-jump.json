@@ -1,0 +1,58 @@
+{
+ "name": "Air Jump",
+ "w": 112,
+ "h": 80,
+ "frames": 10,
+ "fps": 18,
+ "loop": false,
+ "seed": 45,
+ "ramps": {
+  "main": [
+   "#d0c1a1",
+   "#ebdcb9",
+   "#f5e9c9"
+  ],
+  "spark": [
+   "#b78b3e",
+   "#d4b358",
+   "#ead794"
+  ]
+ },
+ "layers": [
+  {
+   "type": "ring",
+   "ramp": "$main",
+   "r0": 0.2,
+   "r1": 0.95,
+   "th": 0.16,
+   "squash": 0.35,
+   "breakup": 0.3,
+   "y": 0.4
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 6,
+   "y": 0.4,
+   "squash": 0.4,
+   "speed": [
+    1.2,
+    1.8
+   ],
+   "drag": 3,
+   "life": [
+    0.3,
+    0.5
+   ],
+   "shape": "star",
+   "size": 4
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

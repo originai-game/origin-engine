@@ -1,0 +1,51 @@
+{
+ "name": "Fuse Sparks",
+ "w": 64,
+ "h": 64,
+ "frames": 12,
+ "fps": 12,
+ "loop": true,
+ "seed": 26,
+ "ramps": {
+  "main": [
+   "#d6785d",
+   "#efa86b",
+   "#f1d47e",
+   "#fbf5da"
+  ]
+ },
+ "layers": [
+  {
+   "type": "particles",
+   "ramp": "$main",
+   "mode": "spray",
+   "count": 10,
+   "dir": -90,
+   "spread": 160,
+   "speed": [
+    0.8,
+    1.6
+   ],
+   "gravity": 1.2,
+   "drag": 1.2,
+   "life": [
+    0.3,
+    0.6
+   ],
+   "shape": "star",
+   "size": 4
+  },
+  {
+   "type": "orb",
+   "ramp": "$main",
+   "r": 0.16,
+   "pulse": 0.3,
+   "pulseRate": 3,
+   "spin": 1
+  }
+ ],
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}

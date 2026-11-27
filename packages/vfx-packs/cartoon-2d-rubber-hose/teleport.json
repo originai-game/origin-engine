@@ -1,0 +1,85 @@
+{
+ "name": "Teleport",
+ "w": 144,
+ "h": 208,
+ "frames": 18,
+ "fps": 15,
+ "loop": false,
+ "seed": 85,
+ "ramps": {
+  "main": [
+   "#526682",
+   "#728fa3",
+   "#adc1be"
+  ],
+  "spark": [
+   "#d0c1a1",
+   "#ebdcb9",
+   "#f5e9c9"
+  ]
+ },
+ "layers": [
+  {
+   "type": "ring",
+   "ramp": "$main",
+   "r0": 0.3,
+   "r1": 0.95,
+   "th": 0.14,
+   "squash": 0.32,
+   "breakup": 0.2,
+   "y": 1.3,
+   "t1": 0.7
+  },
+  {
+   "type": "pillar",
+   "ramp": "$main",
+   "w": 0.4,
+   "hgt": 2.8,
+   "speed": 3,
+   "rough": 0.12,
+   "grow": 0.1,
+   "y": 1.3,
+   "t0": 0.25,
+   "t1": 0.8
+  },
+  {
+   "type": "particles",
+   "ramp": "$spark",
+   "mode": "burst",
+   "count": 8,
+   "y": 0.3,
+   "t0": 0.35,
+   "speed": [
+    1,
+    1.8
+   ],
+   "drag": 2.5,
+   "life": [
+    0.3,
+    0.6
+   ],
+   "shape": "star",
+   "size": 5
+  },
+  {
+   "type": "flash",
+   "ramp": "$spark",
+   "y": 0.3,
+   "r": 0.6,
+   "squash": 1.6,
+   "t0": 0.3,
+   "dur": 0.12
+  }
+ ],
+ "pivot": [
+  0.5,
+  0.8634
+ ],
+ "scale": 0.777778,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "outside",
+ "outlineColor": "#141010",
+ "line": 3,
+ "innerLine": 1.5
+}

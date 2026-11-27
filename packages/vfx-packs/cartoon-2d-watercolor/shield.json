@@ -1,0 +1,32 @@
+{
+ "name": "Shield Bubble",
+ "w": 144,
+ "h": 144,
+ "frames": 16,
+ "fps": 12,
+ "loop": true,
+ "seed": 86,
+ "ramps": {
+  "main": [
+   "#5d80cb",
+   "#83ace2",
+   "#bcdbf8"
+  ]
+ },
+ "layers": [
+  {
+   "type": "bubble",
+   "ramp": "$main",
+   "r": 0.85,
+   "th": 0.09,
+   "hex": 0,
+   "fill": 0,
+   "shimmer": 1
+  }
+ ],
+ "scale": 0.888889,
+ "supersample": 4,
+ "cleanup": false,
+ "outline": "inside",
+ "line": 1.5
+}
