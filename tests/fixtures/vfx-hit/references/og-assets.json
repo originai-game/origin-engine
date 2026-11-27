@@ -3,14 +3,14 @@
   "files": [
     {
       "path": "vulkan/heal.png",
-      "sha256": "89f46c09beff365b919423c1cac086f55a01c64daea51e5cb8e639ea4eaf6606",
-      "size": 85980,
+      "sha256": "95b0bfd83ac907543b77c510c289c6e3545d752a31584079c16c5c4aec553fcc",
+      "size": 192453,
       "visibility": "public"
     },
     {
       "path": "vulkan/hit.png",
-      "sha256": "1ff50d896243c31cec21ee6a924ce8f4f9df90027adb5d1ce5ebc9bd05fdaad1",
-      "size": 134191,
+      "sha256": "f844ed0d0cd1579324473d5ac792a556dcbf5e5354e41094d2f72e4c24f55c9d",
+      "size": 246536,
       "visibility": "public"
     }
   ]
