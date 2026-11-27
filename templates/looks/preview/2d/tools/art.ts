@@ -128,45 +128,11 @@ const TOP: Record<string, Beat> = {
   heart: { kind: "sprite", subject: "one heart, the health marker of the game's HUD, seen flat from the front", canvas: "square", cut: "sprite" },
 };
 
-/** What a look's art needs said beyond its brief, by look (watercolour: its playfield's beats; its far layers take FAR_WASH). */
-const NOTES: Record<string, string> = {
-  "cartoon-2d:watercolor":
-    "Pigment: this stands in the playfield, in front of pale distance. Paint it in rich full-strength washes: saturated colour, deep mid and dark values, crisp edges where the pigment pools. The game thins every wash towards the paper and adds the paper's grain, so a pale picture would vanish. Still transparent watercolour: no opaque paint, no black line.",
-  "pixel:monochrome":
-    "Drawing: two values only. Solid shapes of the darkest colour on the lightest colour (the paper), with small marks of the lightest colour inside a dark shape for its detail; no mid-tone fill, no checker or dither filling a shape, no grey.",
-  "cartoon-2d:storybook": "Colour: soft and a little chalky, as gouache on cream paper: sage, ochre, dusty rose and terracotta, nothing saturated or glossy.",
-  "cartoon-2d:rubber-hose": "Colour: a faded 1930s print: sepia, ochre, grey-green and dull brick over cream, nothing saturated.",
-};
-
 /** What one beat of a look needs said beyond its brief: what the scene asks of it that the brief cannot know. */
 const BEAT_NOTES: Record<string, Record<string, string>> = {
   "pixel:topdown": {
     hero: "Proportions: a chibi figure two heads tall: the hooded head is half the figure's height and as wide as the body, with two dark eyes of one block each; the lantern is one bright yellow block in the hand. Drawn in exactly 16 x 24 large square blocks and nothing finer: every shape is at least two blocks wide.",
   },
-  "pixel:coarse": {
-    hero: "Colour: the cloak is a pale warm ochre and the hood a lighter cream, the brightest figure of a dark blue-black scene; the legs are mid brown, the lantern one bright orange block. No black or navy on the figure.",
-    slime: "Colour: one bright saturated lime-green mass with a lighter top edge, a bright accent in a dark blue-black scene; no eyes.",
-    mid: "Drawing: the whole row is one flat silhouette in a single muted blue-grey, a step lighter than a night sky, with nothing inside it: no windows, no highlights, no second colour.",
-  },
-  "pixel:luminous": {
-    backdrop: "Light: a large full moon, a tenth of the picture's width across, stands in the sky right of the middle and well below the top edge: a bright near-white disc with a pale cyan rim and a wide soft glow round it. A town climbs a tall hill in the left half of the picture, its roofs and towers reaching two thirds of the way up the picture, well above the forest, with rows of many lit windows of bright warm yellow; a few bright stars are out. Everything else stays near black and deep blue; the top left and top right corners hold only dark sky.",
-    gem: "Light: the gem glows: a bright near-white core with saturated cyan facets round it, the brightest small thing in a dark scene; nothing on it is dark.",
-    hero: "Drawing: a simple chunky figure made for a 20 x 32 grid of large square blocks, nothing finer: a big pointed hood and head a third of the figure's height, one plain cloak to the knees, two boots, a round pack, the lantern held out as a three-block square. Large flat shapes at least three blocks wide; no straps, belt, buckle, folds or face detail. Light: the lantern lights the figure: the front half of the hood and cloak is one bright orange, the back half one saturated mid blue with a cyan edge, the lantern bright yellow; nothing on the figure is black or near black.",
-    slime: "Light: the slime shines from within: a bright saturated cyan-green body, lightest at its core, with two dark eyes and a white sheen; nothing on it is black.",
-    crate: "Light: lit warm from the left by a lantern: the planks are mid amber-brown, the left edges bright orange, the right edges saturated blue; no plank is black or near black.",
-  },
-  "pixel:detailed": {
-    slime: "Reading: unmistakably a living creature, not a rock or a gem: a glossy green jelly dome with two large round white eyes with dark pupils on the side it faces, a small mouth, and one bright sheen on its top.",
-  },
-};
-
-/** Watercolour's far layers: paler than its playfield, but not faint. */
-const FAR_WASH = "Pigment: clear medium-strength washes, the far ranges paler than the near ones and the sky left as light paper. The game thins every wash towards the paper and adds the paper's grain, so a faint picture would vanish. Still transparent watercolour: no opaque paint, no black line.";
-
-/** A look whose brief of a kind asks for more than one picture takes another kind for these beats. */
-const KINDS: Record<string, Record<string, ArtKind>> = {
-  // Its sprite brief asks for a flipbook sheet of frames; the scene takes one drawing.
-  "cartoon-2d:rubber-hose": { slime: "prop", gem: "prop", heart: "prop" },
 };
 
 const CANVAS = { square: [1024, 1024], tall: [1024, 1536], wide: [1536, 1024] } as const;
@@ -214,12 +180,9 @@ function plan(): Job[] {
       if (only && !only.includes(beat)) continue;
       if (verb !== "prepare" && !again && fileOf(join(looks, entry.art!), beat)) continue;
       const metres = entry.heights?.[beat] ?? entry.widths?.[beat];
-      const brief = artBrief(look, KINDS[name]?.[beat] ?? spec.kind, spec.subject, metres && spec.cut === "sprite" ? { metres: Math.max(metres, 0.5) } : {});
+      const brief = artBrief(look, spec.kind, spec.subject, metres && spec.cut === "sprite" ? { metres: Math.max(metres, 0.5) } : {});
       const lines = brief.prompt.split("\n").filter((l) => !l.startsWith("Reference:"));
       if (spec.opening) lines[0] = spec.opening;
-      const far = name === "cartoon-2d:watercolor" && (beat === "backdrop" || beat === "mid");
-      if (far) lines.splice(1, 0, FAR_WASH);
-      else if (NOTES[name]) lines.splice(1, 0, NOTES[name]!);
       const note = BEAT_NOTES[name]?.[beat];
       if (note) lines.splice(1, 0, note);
       const prompt = lines

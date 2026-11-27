@@ -152,7 +152,10 @@ for (const slot of slots) {
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
   mkdirSync(join(dir, "content/looks"), { recursive: true });
   writeFileSync(join(dir, "content/looks/main.ts"), `import {file} from '@origingame/engine/author';\nexport default file.look(${JSON.stringify({name: `Preview: ${name}`, extends: [slug], ...(variant ? {variant} : {})})});\n`);
-  if (scene.models) cpSync(join(looks, scene.models), join(dir, "content/models"), { recursive: true });
+  if (scene.models) {
+    cpSync(join(looks, scene.models), join(dir, "content/models"), { recursive: true, filter: (from) => !statSync(from).isFile() || from.endsWith(".ts") });
+    cpSync(join(looks, scene.models), join(dir, "assets/models"), { recursive: true, filter: (from) => !statSync(from).isFile() || !from.endsWith(".ts") });
+  }
   if (scene.scene === "3d") {
     const sprites: Record<string, { path: string; width: number; height: number }> = {};
     if (scene.art) cpSync(join(looks, scene.art), join(dir, "assets/art"), { recursive: true });

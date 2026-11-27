@@ -475,7 +475,7 @@ export function artDoc(roots: Roots, problems: string[]): void {
   const moods = [...(/one of ([^)]*?) \(og-bundle's `MOODS`/.exec(doc)?.[1] ?? "").matchAll(/`([a-z-]+)`/g)].map((m) => m[1]!);
   if (moods.join() !== MOODS.join()) problems.push(`docs/art.md §2.10 names the moods ${moods.join(", ") || "none"}; the look takes ${MOODS.join(", ")} (og-bundle's MOODS)`);
 
-  const list = /Twelve looks[\s\S]*?line names: ([\s\S]*?)\./.exec(doc)?.[1];
+  const list = /looks, every one offered[\s\S]*?line names: ([\s\S]*?)\./.exec(doc)?.[1];
   if (!list) {
     problems.push("docs/art.md §2.6 has no looks list naming every catalogue style with the UI pack its `ui` line names");
   } else {

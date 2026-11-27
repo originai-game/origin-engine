@@ -137,11 +137,10 @@ The engine's own effect packs ship two ways:
   `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), which `og vfx add`
   fetches as below.
 
-Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`),
-`effekseer-starter` (a curated set across the Effekseer contributors) and
-`realistic-starter` (realistic 3D effects written for the engine on Kenney
-Particle Pack textures).
-Downloadable: `effekseer-<contributor>`, every sample of one contributor.
+Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`)
+and `effekseer-starter` (a curated set across the Effekseer contributors).
+Downloadable: `cartoon-2d`, `geometric`, `toy-3d`, `toy-3d-paper` and
+`effekseer-<contributor>` (every sample of one contributor).
 A bundled pack's `preview/` stays in the repository for the library (its
 images pinned in the asset store) and out of the engine package
 (`!extensions/*/preview` in its `files`). Pack metadata stays in each

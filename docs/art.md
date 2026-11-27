@@ -188,11 +188,10 @@ summary as warnings and never refuses a build.
   `authoredArt(look)` lists it.
 - `variants` (§2.11): the preset drawn other ways, each with its own text.
 
-Twelve looks, every one offered to a new game (`creationLooks`), with the
-UI theme their `ui` line names: anime-cel-3d (anime); toy-3d (candy);
-cartoon-2d (cartoon); painterly-3d (fantasy); inked-comic-3d (ink);
-cinematic-realism, minimal-geometric and faceted-low-poly (minimal); pixel,
-pixel-3d-hybrid and low-resolution-3d (pixel); neon-vector (scifi). A
+Six looks, every one offered to a new game (`creationLooks`), with the
+UI theme their `ui` line names: toy-3d (candy); cartoon-2d (cartoon);
+inked-comic-3d (ink); faceted-low-poly (minimal); pixel (pixel);
+neon-vector (scifi). A
 theme is a recipe in `templates/themes/<name>/`.
 The validator keeps a look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches
@@ -358,14 +357,8 @@ grid differ. The validator holds the files and entries equal.
 
 | Look | Variants |
 |---|---|
-| pixel | 8bit, monochrome, detailed, luminous, coarse, topdown |
-| cinematic-realism | muted |
-| inked-comic-3d | bold-comic, heavy-ink |
-| painterly-3d | lush, luminous-layers, expressionist |
-| low-resolution-3d | monochrome-dither |
-| minimal-geometric | layered-silhouette |
-| toy-3d | voxel, clay, diorama, paper |
-| cartoon-2d | watercolor, storybook, rubber-hose |
+| pixel | topdown |
+| toy-3d | paper |
 
 ## 4. The platform: the style is chosen when a game is created
 

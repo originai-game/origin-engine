@@ -247,7 +247,7 @@ a platform vocabulary:
 
 - `CREATION_CHOICES` owns the enums, and `creationSchema(creationLooks())`
   returns the form's JSON Schema 2020-12. `creationLooks()` lists the
-  twelve looks a new game is offered, every look of the catalogue; the
+  six looks a new game is offered, every look of the catalogue; the
   `ui` enum is default alone until the theme recipes land.
 - `resolveCreationChoices(premise, partialChoices)` returns suggestions with
   explicit choices preserved; display and confirm the required ones.

@@ -1,22 +1,17 @@
-// The cartoon effect packs, written from one table of recipes.
+// The cartoon effect pack, written from one table of recipes.
 //
 //   bun scripts/vfx-cartoon.ts [<out dir> [<pack>...] [--spec=<dir>]]
 //
 // The out dir defaults to packages/vfx-packs; `--spec=<dir>` also writes each
 // pack's `vfx-pack.ts manifest` spec there.
 //
-// Writes `cartoon-2d/` (the cartoon-2d look) and one pack a variant of it:
-// `cartoon-2d-watercolor`, `cartoon-2d-storybook`, `cartoon-2d-rubber-hose`.
+// Writes `cartoon-2d/` for the cartoon-2d look.
 // Each effect is one checked `file.vfx2d` Pixel VFX Forge declaration
 // (`content/<name>.ts`), drawn supersampled (`supersample`)
 // so its edges are smooth, its fills flat bands of two to four tones and its
-// contour the variant's line: a 2 px dark warm brown for cartoon-2d, none
-// (pigment rims instead) for watercolour, a 1 px coloured line a shade
-// darker than the fill for storybook and a 3 px black ink for rubber-hose.
+// contour a 2 px dark warm brown.
 //
-// A variant changes only colour and line, never what an effect is: the same
-// names, timing, canvas and pivot in every pack, so a game changes look by
-// changing the pack. Positions are in half-canvas units of the shorter side,
+// Positions are in half-canvas units of the shorter side,
 // y down; an effect that stands on the ground has its pivot on the ground
 // line, so the entity's position is where the feet are.
 //
@@ -478,66 +473,10 @@ fx("break-ice", "Ice Shatter", "destruction", "ice", "At the centre of shattered
   ], R({ main: "ice", spark: "white" }), { seed: 103 }));
 
 
-// ---------- the variants ----------
-
-/** Python's float `%`: the result takes the divisor's sign. */
-function pymod(a: number, b: number): number {
-  let m = a % b;
-  if (m !== 0 && b < 0 !== m < 0) m += b;
-  return m;
-}
-
-// colorsys's rgb_to_hls and hls_to_rgb, step for step.
-function rgbToHls(r: number, g: number, b: number): [number, number, number] {
-  const maxc = Math.max(r, g, b);
-  const minc = Math.min(r, g, b);
-  const l = (maxc + minc) / 2.0;
-  if (minc === maxc) return [0.0, l, 0.0];
-  const rangec = maxc - minc;
-  const s = l <= 0.5 ? rangec / (maxc + minc) : rangec / (2.0 - maxc - minc);
-  const rc = (maxc - r) / rangec;
-  const gc = (maxc - g) / rangec;
-  const bc = (maxc - b) / rangec;
-  const h = r === maxc ? bc - gc : g === maxc ? 2.0 + rc - bc : 4.0 + gc - rc;
-  return [pymod(h / 6.0, 1.0), l, s];
-}
-function hue(m1: number, m2: number, h: number): number {
-  h = pymod(h, 1.0);
-  if (h < 1.0 / 6.0) return m1 + (m2 - m1) * h * 6.0;
-  if (h < 0.5) return m2;
-  if (h < 2.0 / 3.0) return m1 + (m2 - m1) * (2.0 / 3.0 - h) * 6.0;
-  return m1;
-}
-function hlsToRgb(h: number, l: number, s: number): [number, number, number] {
-  if (s === 0.0) return [l, l, l];
-  const m2 = l <= 0.5 ? l * (1.0 + s) : l + s - l * s;
-  const m1 = 2.0 * l - m2;
-  return [hue(m1, m2, h + 1.0 / 3.0), hue(m1, m2, h), hue(m1, m2, h - 1.0 / 3.0)];
-}
-
-const parse = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255) as [number, number, number];
-const hex = (rgb: number[]) => "#" + rgb.map((c) => roundHalfEven(c * 255).toString(16).padStart(2, "0")).join("");
-
-/** Watercolour: lighter, a little less saturated; light values dominate. */
-const wash = (ramp: string[]) =>
-  ramp.map((c) => {
-    const [h, l, s] = rgbToHls(...parse(c));
-    return hex(hlsToRgb(h, Math.min(0.97, l * 0.75 + 0.25), s * 0.8));
-  });
-
-/** Rubber-hose: muted primaries under a warm faded grade. */
-const faded = (ramp: string[]) =>
-  ramp.map((c) => {
-    const [h, l, s] = rgbToHls(...parse(c));
-    const [r, g, b] = hlsToRgb(h, l * 0.92 + 0.04, s * 0.55);
-    return hex([r * 0.95 + 0.05, g * 0.9 + 0.05, b * 0.78 + 0.04].map((v) => Math.min(1, v)));
-  });
-
 interface Pack {
   description: string;
   looks: string[];
   style: Record<string, Json>;
-  ramp: (ramp: string[]) => string[];
   title: string;
 }
 
@@ -546,29 +485,7 @@ const PACKS: Record<string, Pack> = {
     description: "Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
     looks: ["cartoon-2d"],
     style: { outline: "outside", outlineColor: "#3a2416", line: 2, innerLine: 1 },
-    ramp: (r) => r,
     title: "Cartoon",
-  },
-  "cartoon-2d-watercolor": {
-    description: "Watercolour effects for cartoon-2d's watercolor variant: light translucent-looking washes with no contour, a darker pigment rim instead.",
-    looks: ["cartoon-2d", "watercolor"],
-    style: { outline: "inside", line: 1.5 },
-    ramp: wash,
-    title: "Watercolour",
-  },
-  "cartoon-2d-storybook": {
-    description: "Storybook effects for cartoon-2d's storybook variant: soft saturated shapes with a thin coloured line a shade darker than the fill.",
-    looks: ["cartoon-2d", "storybook"],
-    style: { outline: "outside", line: 1.25, innerLine: 0.75 },
-    ramp: (r) => r,
-    title: "Storybook",
-  },
-  "cartoon-2d-rubber-hose": {
-    description: "Rubber-hose effects for cartoon-2d's rubber-hose variant: muted primaries in a faded warm grade inked with a 3 px black line.",
-    looks: ["cartoon-2d", "rubber-hose"],
-    style: { outline: "outside", outlineColor: "#141010", line: 3, innerLine: 1.5 },
-    ramp: faded,
-    title: "Rubber-hose",
   },
 };
 
@@ -582,7 +499,6 @@ function write(pack: string, spec: Pack): number {
   const rows: string[] = [];
   for (const [name, title, category, element, placement, r0] of EFFECTS) {
     const r: Recipe = structuredClone(r0);
-    r.ramps = Object.fromEntries(Object.entries(r.ramps as Record<string, string[]>).map(([k, v]) => [k, spec.ramp(v)]));
     Object.assign(r, { supersample: 4, cleanup: false, ...spec.style });
     writeFileSync(join(d, "content", `${name}.ts`), `import { file } from '@origingame/engine/author';\n// ${title}: ${placement}\nexport default file.vfx2d(${JSON.stringify({ recipe: r }, null, 1)});\n`);
     cats.add(category);
@@ -611,9 +527,6 @@ shrinks it, so its edges are smooth and its sheet is filtered linearly.
 An effect's pixels are the character's (96 to 160 px): draw the sprite at
 1 world unit a pixel of the game's own scale, never resampled.
 
-The same names, timing and pivots are in every cartoon pack
-(\`cartoon-2d\`, \`cartoon-2d-watercolor\`, \`cartoon-2d-storybook\`,
-\`cartoon-2d-rubber-hose\`), so a game changes look by changing the pack.
 Each one-shot effect sends an og.FlipbookEvent \`impact\`.
 No gameplay, scoring, damage or UI logic; text is left to the
 game's UI.

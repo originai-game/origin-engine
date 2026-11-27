@@ -9,11 +9,8 @@ shrinks it, so its edges are smooth and its sheet is filtered linearly.
 An effect's pixels are the character's (96 to 160 px): draw the sprite at
 1 world unit a pixel of the game's own scale, never resampled.
 
-The same names, timing and pivots are in every cartoon pack
-(`cartoon-2d`, `cartoon-2d-watercolor`, `cartoon-2d-storybook`,
-`cartoon-2d-rubber-hose`), so a game changes look by changing the pack.
-Each one-shot effect sends an og.FlipbookEvent `impact` (the `pixel-vfx`
-guide). No gameplay, scoring, damage or UI logic; text is left to the
+Each one-shot effect sends an og.FlipbookEvent `impact`.
+No gameplay, scoring, damage or UI logic; text is left to the
 game's UI.
 
 | Effect | Plays | Placement |

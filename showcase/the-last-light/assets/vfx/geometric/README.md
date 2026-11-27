@@ -1,12 +1,8 @@
 # Geometric effects
 
 Install with `og vfx add geometric`; spawn `base/vfx/geometric/<name>`.
-Nine texture-free visual mechanisms for `minimal-geometric` and
-`faceted-low-poly`. Hard mesh silhouettes, one coral accent and
+Nine texture-free visual mechanisms for `faceted-low-poly`. Hard mesh silhouettes, one coral accent and
 slate neutrals; no bloom, noisy textures or soft billboard smoke.
-
-The `layered-silhouette` variant is not supported: its full-frame depth-band
-replacement hides these transparent effects. It remains a coverage gap.
 
 | Effect | Placement |
 |---|---|

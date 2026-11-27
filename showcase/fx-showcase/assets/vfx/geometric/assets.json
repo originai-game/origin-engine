@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "README.md",
-      "sha256": "74d2201087cdc90a8d1e5bc78b67325e8ea40e6ac75dbf7e4a6a90b9de15dffd",
+      "sha256": "805bd7808cea43d9944f48e9d88fbb66d69f772e535df5b8a549e4d232c710cc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -127,7 +127,7 @@
     },
     {
       "path": "extension.json",
-      "sha256": "b18e4e9730e735efcd78f25a8a3aaac08a48b769b54b1c54681074fac8fcc00d",
+      "sha256": "ee92febd49725a7c9c2630fcce4e10d8da45e3a9fbd219fbbd7e00490f09ba23",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"

@@ -177,9 +177,7 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
     asked = inferCreationChoices(premise, { ...input, form: formOf(chosen.look.views[0] as View) });
   }
   const view = asked.view;
-  // An interactive film looks cinematic where that look draws its view (a 3D one, or none named).
-  const cinematic = asked.genre === FILM_GENRE && asked.form === "3d" && (view === undefined || styles.some(s => s.slug === "cinematic-realism" && s.look.views.includes(view)));
-  const slug = input.look ?? (cinematic ? "cinematic-realism" : pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
+  const slug = input.look ?? (pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'; pick one of ${creationLooks(styles).join(", ")}`);
   if (view !== undefined && !style.look.views.includes(view)) {

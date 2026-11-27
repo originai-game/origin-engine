@@ -12,7 +12,7 @@ export default defineProject({
   "create": {
     "genre": "open-world",
     "view": "third-person-3d",
-    "look": "cinematic-realism",
+    "look": "faceted-low-poly",
     "ui": "default",
     "platform": "desktop",
     "input": "keyboard-mouse",

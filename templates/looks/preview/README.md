@@ -24,9 +24,7 @@ never promises more than a game in that look draws (docs/art.md §2.6).
   traveller, lantern, crate, slime, gems and trees, sorted by their feet.
   Every beat is a sprite or tile set of the look's authored art, at the
   size the look's contract gives it: on a pixel grid a texel is a logical
-  pixel and a tile is a metre, so a look with larger sprites (detailed)
-  sees less of the level than one with small ones (8bit), as a game in it
-  would. `stage.ts` copies a look's art in and writes its import settings,
+  pixel and a tile is a metre. `stage.ts` copies a look's art in and writes its import settings,
   tile set, map and sizes.
 - `preview.json`: which scene each look and variant takes, and the art it
   takes from `templates/looks/` (a look's own models, pixel sprites stood in
@@ -57,9 +55,7 @@ art brief (`artBrief`, in the variant), sent to the origin gateway's image
 generator, journalled in `2d/tools/gateway-journal.md`, then cut to its
 subject and brought to the look's grid. The answers as generated stay under
 `target/look-previews/raw/` on the machine that made them. A 2D look's
-`light` is day, night or none: a look of a few flat tones (8bit,
-monochrome, coarse) is drawn unlit, because a light takes its pixels off the
-conformed palette and the frame's posterize steps them again.
+`light` is day, night or none; `none` draws the art unlit.
 
 ## The hero scenes in every look
 
@@ -86,9 +82,7 @@ from the frames already there). The scene's own seconds are stepped without
 drawing and `--settle` seconds are drawn before the frame (1 s by default).
 On a software renderer a frame of these scenes takes minutes: pass
 `--settle 0.1` and an optimised `og` (`--og`), and take those frames as
-previews; the frames of record come from the GPU host. A look on a 240-line
-pixel grid (low-resolution-3d, pixel-3d-hybrid) fills 1280 x 720 whole;
-draw it at `--size 1280x720`.
+previews; the frames of record come from the GPU host.
 
 What a hero's own code writes each tick is the scene's, not the look's: The
 Last Light sets the exposure, the colour temperature and the saturation

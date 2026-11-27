@@ -33,8 +33,8 @@ fn procedural_inputs_share_their_registry_value_and_typescript_contracts() {
             "look",
             "LookInput",
             json!({
-                "name": "Cold ink", "extends": ["anime-cel-3d", {"$ogRef": "base/look/common"}],
-                "mood": "cold", "variant": "8bit", "antialias": "taa",
+                "name": "Cold pixel", "extends": ["pixel", {"$ogRef": "base/look/common"}],
+                "mood": "cold", "variant": "topdown", "antialias": "taa",
                 "RenderSettings": {"exposure": 1.25, "toneMapping": "agx"},
                 "PostEffects": {"outlineColor": "#1b1420", "lut": {"$ogRef": "base/lut/dusk"}},
                 "uiSeeds": {"primary": "#1122aa", "team": "#bb88cc"}

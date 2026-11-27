@@ -1,7 +1,5 @@
 import { og, math, quat, defineResource, defineSystem, Entity, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
-import { GROUPS } from "./effects.ts";
-import type { Effect } from "./effects.ts";
 
 // FX Showcase: every effect of the installed packs on one stage, one at a
 // time. It plays them in order on its own; ArrowRight / ArrowLeft step,
@@ -13,6 +11,9 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   return r.value;
 }
 
+interface Effect { readonly name: string; readonly reach: number; readonly look: number; readonly y: number;
+  readonly rot: readonly [number, number, number]; readonly fly: number; readonly params: readonly number[];
+  readonly loops: boolean; readonly seconds: number }
 interface Entry { readonly pack: string; readonly group: number; readonly zh: string; readonly en: string; readonly e: Effect }
 
 // The geometric pack's mechanisms, placed as its review placed them.
@@ -26,10 +27,9 @@ const GEOMETRIC = [
 ];
 
 const ENTRIES: readonly Entry[] = [
-  ...GROUPS.flatMap((g, i) => g.effects.map((e) => ({ pack: "cinematic-realism", group: i, zh: g.zh, en: g.en, e }))),
-  ...GEOMETRIC.map((e) => ({ pack: "geometric", group: GROUPS.length, zh: "几何风格", en: "Geometric", e })),
+  ...GEOMETRIC.map((e) => ({ pack: "geometric", group: 0, zh: "几何风格", en: "Geometric", e })),
 ];
-const GROUP_COUNT = GROUPS.length + 1;
+const GROUP_COUNT = 1;
 
 /** How long an effect stays on stage before the next: a loop shows for 3 s, a one-shot for its own length (marks cut short). */
 function hold(e: Effect): number {

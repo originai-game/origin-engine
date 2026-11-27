@@ -212,9 +212,7 @@ const palettes: Record<string, { about: string; colors: string[] }> = {
     about: "One bit: black and white.",
     colors: ["000000", "ffffff"],
   },
-  // The moods of the two palette-bound styles (templates/looks/moods/<mood>/):
-  // pixel's monochrome variant draws in handheld4 (its own mood, soft), and
-  // low-resolution-3d's monochrome-dither variant in 1bit (its own, high-contrast).
+  // Mood ramps for games using the handheld4 and 1bit palettes.
   "handheld4-bright": {
     about: "Four handheld greens in a bright mood: a lifted lime ramp, darkest to lightest.",
     colors: ["1f3a1a", "4f8a2e", "a8cf45", "eef7b0"],

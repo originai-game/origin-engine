@@ -10,13 +10,8 @@ game's own fields:
   field's default (`exposure 0.72` takes a preset at 0.8 to 0.52, clamped to
   the field's range); any other value (a bool, a variant, a colour, a palette)
   replaces the preset's.
-- `<mood>/<slug>.ts`: one look's layer, used for that look in place of the
-  generic one, and `<mood>/<slug>.<variant>.ts` one variant's (a look's
-  `variant: "<name>"`, `../variants/README.md`), used for the variant before
-  the look's own: the palette-bound variants swap their palette for the
-  mood's; a posterized look leaves out the vignette (its falloff steps into
-  rings) and cinematic-realism's muted variant reads bright and soft over its
-  dim, fogged stage.
+
+All six shipped looks and their retained variants use these generic layers.
 
 A layer sets the frame's grading, light and palette only: `PostEffects`,
 `RenderSettings`, `Environment`, `Fog`, `Sky`, `Stylise.palette` and

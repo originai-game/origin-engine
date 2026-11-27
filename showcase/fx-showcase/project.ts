@@ -13,7 +13,7 @@ export default defineProject({
     "form": "3d",
     "genre": "open-world",
     "view": "third-person-3d",
-    "look": "cinematic-realism",
+    "look": "faceted-low-poly",
     "ui": "minimal",
     "platform": "desktop",
     "input": "keyboard-mouse",
