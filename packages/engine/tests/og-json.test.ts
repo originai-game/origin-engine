@@ -433,13 +433,33 @@ test("og build --json prints check and build events; the build lands in dist/ or
   expect(existsSync(join(elsewhere, "og-build.json"))).toBe(true);
 }, BUILD_WALL_MS);
 
+test("commands files preserve script steps and arguments across run and replay", () => {
+  writeFileSync(join(game, "src/main.ts"), `import { og } from "@origingame/engine"; export default og.game({});`);
+  const script = join(root, "commands.txt");
+  writeFileSync(script, ["# A CRLF recording", "", "  # Indented comment", "0:dump_world:hash#\\;before.json;0:dump_ui:ui.json", "0.2:quit", "# End"].join("\r\n"));
+  const out = join(root, "command-outputs");
+  const r = og("run", game, "--headless", "--commands-file", script, "--out", out, "--json");
+  expect(r.code, r.stderr).toBe(0);
+  expect(lines(r.stdout).at(-1)).toMatchObject({ tick: 12, quit: true });
+  expect(existsSync(join(out, "hash#;before.json"))).toBe(true);
+  expect(existsSync(join(out, "ui.json"))).toBe(true);
+  const trace = join(root, "recording.json");
+  const recorded = og("replay", "record", game, "--commands-file", script, "--out", trace, "--json");
+  expect(recorded.code, recorded.stderr).toBe(0);
+  const compared = og("replay", "compare", trace, game, "--json");
+  expect(compared.code, compared.stderr).toBe(0);
+}, 120_000);
+
 gpuTest("og render records its whole frame grid through New game's snapshot rewind", () => {
   const project = join(root, "render-rewind");
   const made = og("new", project, "--form", "2d", "--look", "pixel", "--no-prompt");
   expect(made.code, made.stderr).toBe(0);
   const out = join(root, "render-frames");
-  const r = Bun.spawnSync([ogBin(), "render", project, "--commands",
-    '0.5:intent:ShellAction:{"action":"menu","value":""};1:intent:ShellAction:{"action":"new","value":""};1.8:expect:ui:text:=Pause;3:quit',
+  const script = join(root, "render-commands.txt");
+  writeFileSync(script, ['# Restore during the recording', '', '0.5:intent:ShellAction:{"action":"menu","value":""}',
+    '1:intent:ShellAction:{"action":"new","value":""}', '  # Commands retain their original recording times',
+    '2:dump_world:after#\\;new.json;2.2:expect:ui:text:=Pause', '3:quit'].join("\n"));
+  const r = Bun.spawnSync([ogBin(), "render", project, "--commands-file", script,
     "--to", "2.5", "--fps", "30", "--size", "160x90", "--frames", "png", "--out", out, "--json"],
     { cwd: repo, env: { ...env, OG_RENDERER: process.env.OG_RENDERER ?? "hardware" } });
   expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
@@ -449,4 +469,5 @@ gpuTest("og render records its whole frame grid through New game's snapshot rewi
     Array.from({ length: 75 }, (_, i) => [i, i / 30]),
   );
   expect(existsSync(join(out, frames.frames[74].file))).toBe(true);
+  expect(JSON.parse(readFileSync(join(out, "outputs", "after#;new.json"), "utf8"))).toMatchObject({ tick: 59 });
 }, 180_000);

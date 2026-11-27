@@ -137,6 +137,12 @@ pub fn parse(args: &[&str]) -> Result<RenderArgs, String> {
                 r.commands = Some(
                     std::fs::read_to_string(v)
                         .map_err(|e| format!("--commands-file {v}: {e}"))?
+                        .lines()
+                        .filter(|line| {
+                            !line.trim().is_empty() && !line.trim_start().starts_with('#')
+                        })
+                        .collect::<Vec<_>>()
+                        .join(";")
                         .trim()
                         .to_string(),
                 );

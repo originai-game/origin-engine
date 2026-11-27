@@ -281,11 +281,25 @@ playtest's `commands`) drives a run and checks it. `help` lists every
 action; this section gives the forms of the ones that check and edit.
 
 `og run`, `og render` and `og replay record` also take `--commands-file <f>`
-instead of `--commands`. The UTF-8 file contains the same semicolon-separated
-script; leading and trailing whitespace is trimmed. Its path is relative to
-the caller's working directory, not the project. Use a file for long recordings
-to avoid the operating system's command-line argument limit. If both options
-are given, the last one wins, as with `og replay record`.
+instead of `--commands`. The UTF-8 file accepts one step per line or
+semicolon-separated steps (both may be mixed). Blank lines and lines whose
+first non-whitespace character is `#` are ignored; `#` inside an argument
+is literal, not an inline comment. LF and CRLF line endings work. Command
+escapes such as `\;` and `\:` keep their meaning. Leading and trailing
+whitespace around the script is trimmed. For example:
+
+```text
+# Start a new game, then capture it after loading.
+0.5:intent:ShellAction:{"action":"menu","value":""}
+1.0:intent:ShellAction:{"action":"new","value":""}
+2.0:screenshot:playing.png
+3.0:quit
+```
+
+Its path is relative to the caller's working directory, not the project.
+Use a file for long recordings to avoid the operating system's command-line
+argument limit. If both options are given, the last one wins, as with
+`og replay record`.
 
 `expect:<what>` asserts at its tick and `invariant:<what>` after every tick
 from its own on. Their forms:

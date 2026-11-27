@@ -89,6 +89,7 @@ import { setImmediate } from "node:timers/promises";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { readProject } from "./project.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
+import { readCommandsFile } from "./commands-file.ts";
 import { decodePng } from "./png.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
@@ -177,7 +178,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--seed") seed = Number(next());
       else if (a === "--setup") setup.push(next());
       else if (a === "--commands") commands = next();
-      else if (a === "--commands-file") commands = readFileSync(next(), "utf8").trim();
+      else if (a === "--commands-file") commands = readCommandsFile(next());
       else if (a === "--out") out = next();
       else if (a === "--port") port = Number(next());
       else if (a === "--size") {

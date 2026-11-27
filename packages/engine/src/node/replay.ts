@@ -57,6 +57,7 @@ import { loadNativeHost, native } from "./index.ts";
 import { readProject } from "./project.ts";
 import { openAudio } from "./audio.ts";
 import { bundleHash } from "./bundle-hash.ts";
+import { readCommandsFile } from "./commands-file.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import type { PlatformAnswer, PlatformHost, PlatformLink, PlatformNotice } from "../platform-local.ts";
 import { boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
@@ -134,7 +135,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--record") recordPath = resolve(next());
   else if (a === "--compare") comparePath = resolve(next());
   else if (a === "--commands") commands = next();
-  else if (a === "--commands-file") commands = readFileSync(next(), "utf8").trim();
+  else if (a === "--commands-file") commands = readCommandsFile(next());
   else if (a === "--ticks") ticks = Number(next());
   else if (a === "--seed") seed = Number(next());
   else if (a === "--clock") clock = Number(next());

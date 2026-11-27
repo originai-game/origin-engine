@@ -68,6 +68,8 @@ commands:
       [--json] [--no-check] [--require-checked]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
+                      --commands-file: UTF-8, one step per line or separated by semicolons;
+                      blank lines and full-line # comments are ignored (also render/replay record)
                       --require-checked exits 1 when GPU checks remain unchecked (default: warning)
   run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
       [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
@@ -79,6 +81,7 @@ commands:
   replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S]
       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>]
       [--keyframe-every K] [--loads <journal.json>] [--content <dir>] --out <trace.json> [--json]
+                      --commands-file: one step per line or semicolons, blank lines and full-line # comments
   replay compare <trace.json> [project] [--content <dir>] [--json]
                       record the world's portable hash after every tick of a scripted headless run
                       (and its save every K ticks, default 30), or replay a trace with this engine
@@ -101,6 +104,7 @@ commands:
                       render the script to frames, a video (ffmpeg: H.264 or VP9, the capture
                       mixer's audio with --audio), frames.json (tick, time, sha256 per frame) and a
                       contact sheet; the fps divides the tick rate; --jobs splits the range;
+                      --commands-file: one step per line or semicolons, blank lines and full-line # comments
                       --keyframes adds the frames where something happened (an input, a step, a
                       screen change, an assertion or expectation, a mean FLIP of F, default 0.02,
                       from the last key frame at least S seconds, default 0.5, after it) as

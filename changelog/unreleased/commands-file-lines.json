@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run, og render, og replay record --commands-file",
+      "summary": "Command files accept one step per line, blank lines and full-line # comments, as well as semicolon-separated steps. Hashes inside arguments and command escapes are preserved. Inline --commands keeps its existing grammar."
+    }
+  ]
+}
