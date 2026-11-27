@@ -22,6 +22,7 @@
   },
   "files": [
     "bin",
+    "template/AGENTS.md",
     "template/og-project.json",
     "template/project.ts",
     "template/src/main.ts",

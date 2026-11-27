@@ -6,6 +6,7 @@ genre and view. The platform mounts its text as
 
 | Path | Role |
 |---|---|
+| `AGENTS.md` | The project layout, `og api` lookup, commands and rules for an agent |
 | `og-project.json` | Sole project marker and authority for name, engine pin and optional look |
 | `project.ts` | `defineProject`: id, entry, tick rate, seed, modules and publish settings |
 | `src/main.ts` | An empty `export default og.game({})` |
