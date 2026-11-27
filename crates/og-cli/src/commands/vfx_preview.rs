@@ -348,6 +348,10 @@ impl Stage<'_> {
         let text = STAGE
             .replace("__DIM__", dim)
             .replace("__VFX2D__", &json!(pixel).to_string())
+            .replace(
+                "__PIVOTS__",
+                &pixel_pivots(&self.project.root.join("assets"), pixel)?.to_string(),
+            )
             .replace("__W__", &size.0.to_string())
             .replace("__H__", &size.1.to_string())
             .replace(
@@ -421,6 +425,30 @@ impl Stage<'_> {
             }
         }
     }
+}
+
+/// Each `type vfx2d` effect's sheet pivot (a fraction from the bottom left),
+/// so the stage centres the frame rather than the pivot: an effect that
+/// stands on the ground has its pivot near the frame's foot.
+fn pixel_pivots(assets: &Path, ids: &[&str]) -> Result<serde_json::Value, String> {
+    let mut out = serde_json::Map::new();
+    for id in ids {
+        let text = std::fs::read_to_string(assets.join(id)).map_err(|e| format!("{id}: {e}"))?;
+        let dir = Path::new(id).parent().unwrap_or(Path::new(""));
+        let resolve = |p: &str| {
+            let local = dir.join(p);
+            if assets.join(&local).is_file() {
+                local.to_string_lossy().replace('\\', "/")
+            } else {
+                p.to_string()
+            }
+        };
+        let read = |f: &str| std::fs::read(assets.join(f)).map_err(|e| format!("{f}: {e}"));
+        let (x, y) = og_cook::cook::vfx2d::pivot(&text, &resolve, &read)
+            .map_err(|e| format!("{id}: {e}"))?;
+        out.insert(id.to_string(), json!([x, y]));
+    }
+    Ok(serde_json::Value::Object(out))
 }
 
 /// The asset id an argument names: an id as given, or a file under the

@@ -4426,6 +4426,10 @@ OGT header followed by inline JSON or an external recipe, not an ordinary nested
 | `outline none \| outside \| outside8 \| inside` | `none` | Pixel outline mode. |
 | `outlineColor hex colour or null` | `null` | Fixed outline colour. |
 | `dither number, 0..1` | `0` | Ordered dither. |
+| `supersample integer, 1..8` | `1` | Draw at this many canvas pixels an output pixel each way and shrink: smooth edges, linear filtering. |
+| `line number, 0..8` | `1` | Outline width in output pixels. |
+| `scale number, 0.25..4` | `1` | Half-canvas units: this times half the shorter side; under 1 leaves a margin. |
+| `innerLine number, 0..8` | `0` | Supersampled: line width where a later layer covers an earlier one, in output pixels. |
 | `palette named palette \| hex colour array \| null` | `null` | Quantise to an explicit palette. |
 | `cleanup boolean` | `true` | Clean isolated pixels and holes. |
 | `pivot [x,y], 0..1` | `[0.5,0.5]` | Top-left canvas fractions. |

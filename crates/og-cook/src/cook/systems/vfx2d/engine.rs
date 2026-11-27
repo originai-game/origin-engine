@@ -255,6 +255,9 @@ pub(super) struct C<'a> {
     pub(super) ph: f64,
     pub(super) looping: bool,
     pub(super) seed: f64,
+    /// Canvas pixels per output pixel (the recipe's `supersample`): what a
+    /// pixel-sized mark (a dot, a line's width, a glow step) is scaled by.
+    pub(super) k: f64,
     pub(super) heat: &'a mut [f32],
 }
 
@@ -290,6 +293,10 @@ impl C<'_> {
         thick: f64,
     ) {
         if ![x0, y0, x1, y1].iter().all(|v| v.is_finite()) {
+            return;
+        }
+        if self.k > 1.0 {
+            self.capsule(x0, y0, x1, y1, v0, v1, max(1.0, thick) * self.k * 0.5);
             return;
         }
         let (x0, y0, x1, y1) = (x0.round(), y0.round(), x1.round(), y1.round());
@@ -353,6 +360,100 @@ impl C<'_> {
             }
             y += 1.0;
         }
+    }
+
+    /// A one-pixel mark: a pixel, or a disc an output pixel across when
+    /// supersampled.
+    pub(super) fn dot(&mut self, x: f64, y: f64, v: f64) {
+        if self.k > 1.0 {
+            self.round_fill(x, y, self.k * 0.5, self.k * 0.5, 0.0, v);
+        } else {
+            self.plot(x, y, v);
+        }
+    }
+
+    /// Fills the pixels whose centres lie within `inside(dx, dy)` of a box
+    /// round `(cx, cy)`, `reach` pixels each way: the supersampled shapes.
+    pub(super) fn cover(
+        &mut self,
+        cx: f64,
+        cy: f64,
+        reach: f64,
+        mut inside: impl FnMut(f64, f64) -> Option<f64>,
+    ) {
+        if ![cx, cy, reach].iter().all(|v| v.is_finite()) {
+            return;
+        }
+        let reach = reach.min(4096.0);
+        let x0 = (cx - reach).floor().max(0.0);
+        let x1 = (cx + reach).ceil().min(self.w - 1.0);
+        let y0 = (cy - reach).floor().max(0.0);
+        let y1 = (cy + reach).ceil().min(self.h - 1.0);
+        let mut y = y0;
+        while y <= y1 {
+            let mut x = x0;
+            while x <= x1 {
+                if let Some(v) = inside(x - cx, y - cy) {
+                    let i = y as usize * self.wi + x as usize;
+                    if v > f64::from(self.heat[i]) {
+                        self.heat[i] = v as f32;
+                    }
+                }
+                x += 1.0;
+            }
+            y += 1.0;
+        }
+    }
+
+    /// An ellipse, radii `rx` and `ry`, turned `angle` radians.
+    pub(super) fn round_fill(&mut self, cx: f64, cy: f64, rx: f64, ry: f64, angle: f64, v: f64) {
+        let (rx, ry) = (rx.max(0.35), ry.max(0.35));
+        let (ca, sa) = (m::cos(angle), m::sin(angle));
+        self.cover(cx, cy, rx.max(ry) + 1.0, |dx, dy| {
+            let (u, w) = ((dx * ca + dy * sa) / rx, (-dx * sa + dy * ca) / ry);
+            (u * u + w * w <= 1.0).then_some(v)
+        });
+    }
+
+    /// A line `r` pixels thick each side with round ends, its heat running
+    /// from `v0` to `v1`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn capsule(&mut self, x0: f64, y0: f64, x1: f64, y1: f64, v0: f64, v1: f64, r: f64) {
+        let r = r.max(0.35);
+        let (dx, dy) = (x1 - x0, y1 - y0);
+        let len2 = dx * dx + dy * dy;
+        let (mx, my) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+        self.cover(mx, my, len2.sqrt() / 2.0 + r + 1.0, |px, py| {
+            let (px, py) = (px + mx - x0, py + my - y0);
+            let t = if len2 > 0.0 {
+                ((px * dx + py * dy) / len2).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let (ex, ey) = (px - dx * t, py - dy * t);
+            (ex * ex + ey * ey <= r * r).then_some(v0 + (v1 - v0) * t)
+        });
+    }
+
+    /// A convex or star-shaped polygon about `(cx, cy)`, its corners as
+    /// offsets from it (even-odd fill).
+    pub(super) fn polygon(&mut self, cx: f64, cy: f64, pts: &[(f64, f64)], v: f64) {
+        let reach = pts
+            .iter()
+            .fold(0.0f64, |m, p| m.max(p.0.abs()).max(p.1.abs()))
+            + 1.0;
+        self.cover(cx, cy, reach, |x, y| {
+            let mut inside = false;
+            let mut j = pts.len().wrapping_sub(1);
+            for i in 0..pts.len() {
+                let ((xi, yi), (xj, yj)) = (pts[i], pts[j]);
+                if (yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi {
+                    inside = !inside;
+                }
+                j = i;
+            }
+            inside.then_some(v)
+        });
     }
 
     /// Grows bright pixels outward in decaying steps: a pixel-art glow.
@@ -468,6 +569,15 @@ struct Recipe<'a> {
     cleanup: bool,
     outline: Option<String>,
     outline_color: Option<i32>,
+    /// The outline's width in output pixels.
+    line: f64,
+    /// The width in output pixels of the line where a later layer covers
+    /// an earlier one, drawn on the earlier (supersampled only; 0: none).
+    inner: f64,
+    /// Canvas pixels per output pixel each way (1: the Forge's pixel art).
+    k: usize,
+    /// Half-canvas units: `scale` times half the shorter side.
+    scale: f64,
     palette: Option<Vec<i32>>,
     layers: Vec<Layer<'a>>,
 }
@@ -510,6 +620,26 @@ fn normalize(recipe: &Val) -> Recipe<'_> {
     let outline_color = field("outlineColor")
         .filter(|v| v.truthy())
         .map(|v| color::pack(color::hex_to_rgb(&v.js_string())));
+    let k = clamp_int(field("supersample"), 1.0, 8.0, 1.0) as usize;
+    let line = field("line").map_or(1.0, Val::num);
+    let line = if line.is_finite() {
+        line.clamp(0.0, 8.0)
+    } else {
+        1.0
+    };
+    let line = if k == 1 { round(line) } else { line };
+    let scale = field("scale").map_or(1.0, Val::num);
+    let scale = if scale.is_finite() {
+        scale.clamp(0.25, 4.0)
+    } else {
+        1.0
+    };
+    let inner = field("innerLine").map_or(0.0, Val::num);
+    let inner = if inner.is_finite() {
+        inner.clamp(0.0, 8.0)
+    } else {
+        0.0
+    };
     let palette = field("palette").filter(|v| v.truthy()).and_then(|v| {
         let hexes: Vec<String> = match v {
             Val::Arr(a) => a.iter().map(Val::js_string).collect(),
@@ -578,6 +708,10 @@ fn normalize(recipe: &Val) -> Recipe<'_> {
         cleanup,
         outline,
         outline_color,
+        line,
+        inner,
+        k,
+        scale,
         palette,
         layers,
     }
@@ -603,6 +737,9 @@ pub struct Rendered {
     pub h: u32,
     pub fps: u32,
     pub looping: bool,
+    /// Drawn supersampled (`supersample` above 1): smooth edges with
+    /// partial alpha, for a sheet filtered linearly.
+    pub smooth: bool,
     pub frames: Vec<Vec<u8>>,
     /// The impact frame: the recipe's `impact` (0..1 of the effect), else
     /// the frame with the largest jump in covered pixels in the first 60%.
@@ -614,7 +751,9 @@ pub struct Rendered {
 /// Renders every frame of a recipe.
 pub fn render(recipe: &Val) -> Rendered {
     let r = normalize(recipe);
-    let (w, h) = (r.w, r.h);
+    // Supersampled, the layers draw on a canvas k times as wide and tall,
+    // shrunk to the recipe's size after the outline and palette passes.
+    let (w, h) = (r.w * r.k, r.h * r.k);
     let n = w * h;
     let mut heat = vec![0f32; n];
     let mut color = vec![-1i32; n];
@@ -622,10 +761,11 @@ pub fn render(recipe: &Val) -> Rendered {
     let mut kind = vec![0u8; n];
     let mut nearest = r.palette.clone().map(Nearest::new);
     let mut out = Rendered {
-        w: w as u32,
-        h: h as u32,
+        w: r.w as u32,
+        h: r.h as u32,
         fps: r.fps,
         looping: r.looping,
+        smooth: r.k > 1,
         frames: Vec::new(),
         impact: 0,
         covered: Vec::new(),
@@ -644,7 +784,7 @@ pub fn render(recipe: &Val) -> Rendered {
         } else {
             0.0
         };
-        let s = (w.min(h) as f64) / 2.0;
+        let s = (w.min(h) as f64) / 2.0 * r.scale;
         for (li, layer) in r.layers.iter().enumerate() {
             let l = layer.l;
             if l.t("hidden") {
@@ -671,32 +811,43 @@ pub fn render(recipe: &Val) -> Rendered {
                 seed: f64::from(to_u32(
                     r.seed * 7919.0 + li as f64 * 104729.0 + lseed * 15485863.0,
                 )),
+                k: r.k as f64,
                 heat: &mut heat,
             };
             super::layers::draw(layer.ty, &mut c, l);
             if l.t("glow") {
                 let radius = round(l.n("glow", 0.0));
                 if radius.is_finite() && radius > 0.0 {
-                    c.dilate(min(4.0, radius), c01(l.n("glowFalloff", 0.5)));
+                    let falloff = c01(l.n("glowFalloff", 0.5));
+                    // Supersampled, k steps make one output pixel of glow.
+                    c.dilate(
+                        min(4.0, radius) * r.k as f64,
+                        m::pow(falloff, 1.0 / r.k as f64),
+                    );
                 }
             }
             paint(&heat, w, layer, li, &r, &mut color, &mut owner, &mut kind);
         }
         post(&r, &mut color, &mut owner, &kind, nearest.as_mut());
-        let mut rgba = vec![0u8; n * 4];
-        let mut covered = 0usize;
-        for (i, &col) in color.iter().enumerate() {
-            if col < 0 {
-                continue;
+        let (rgba, covered) = if r.k > 1 {
+            shrink(&color, r.w, r.h, r.k)
+        } else {
+            let mut rgba = vec![0u8; n * 4];
+            let mut covered = 0usize;
+            for (i, &col) in color.iter().enumerate() {
+                if col < 0 {
+                    continue;
+                }
+                covered += 1;
+                rgba[i * 4..i * 4 + 4].copy_from_slice(&[
+                    (col >> 16) as u8,
+                    (col >> 8) as u8,
+                    col as u8,
+                    255,
+                ]);
             }
-            covered += 1;
-            rgba[i * 4..i * 4 + 4].copy_from_slice(&[
-                (col >> 16) as u8,
-                (col >> 8) as u8,
-                col as u8,
-                255,
-            ]);
-        }
+            (rgba, covered)
+        };
         let jump = covered as i64 - prev;
         if (fi as f64) < (frames * 0.6).ceil() && jump > best {
             best = jump;
@@ -778,8 +929,15 @@ fn post(
     kind: &[u8],
     nearest: Option<&mut Nearest>,
 ) {
-    let (w, h) = (r.w, r.h);
-    if r.cleanup {
+    let (w, h) = (r.w * r.k, r.h * r.k);
+    if r.k > 1 {
+        if r.inner > 0.0 {
+            inner_lines(r, w, h, color, owner);
+        }
+        if let Some(mode) = &r.outline {
+            smooth_outline(r, mode, w, h, color, owner);
+        }
+    } else if r.cleanup {
         let mut rm = Vec::new();
         for y in 0..h {
             for x in 0..w {
@@ -832,79 +990,83 @@ fn post(
             }
         }
     }
-    if let Some(mode) = &r.outline {
-        let fixed = r.outline_color;
-        let ramp0 = |o: i16| {
-            usize::try_from(o)
-                .ok()
-                .and_then(|o| r.layers.get(o))
-                .map(|l| l.ramp[0])
-        };
-        if mode == "inside" {
-            let mut edge = Vec::new();
-            for y in 0..h {
-                for x in 0..w {
-                    let i = y * w + x;
-                    if color[i] < 0 {
-                        continue;
-                    }
-                    if x == 0
-                        || y == 0
-                        || x == w - 1
-                        || y == h - 1
-                        || color[i - 1] < 0
-                        || color[i + 1] < 0
-                        || color[i - w] < 0
-                        || color[i + w] < 0
-                    {
-                        edge.push(i);
-                    }
-                }
-            }
-            for i in edge {
-                color[i] = fixed.or_else(|| ramp0(owner[i])).unwrap_or(color[i]);
-            }
-        } else {
-            let diag = mode == "outside8";
-            let mut add = Vec::new();
-            for y in 0..h {
-                for x in 0..w {
-                    let i = y * w + x;
-                    if color[i] >= 0 {
-                        continue;
-                    }
-                    let mut src = None;
-                    if x > 0 && color[i - 1] >= 0 {
-                        src = Some(i - 1);
-                    } else if x < w - 1 && color[i + 1] >= 0 {
-                        src = Some(i + 1);
-                    } else if y > 0 && color[i - w] >= 0 {
-                        src = Some(i - w);
-                    } else if y < h - 1 && color[i + w] >= 0 {
-                        src = Some(i + w);
-                    } else if diag {
-                        for (dx, dy) in [(-1i64, -1i64), (1, -1), (-1, 1), (1, 1)] {
-                            let (xx, yy) = (x as i64 + dx, y as i64 + dy);
-                            if xx >= 0
-                                && yy >= 0
-                                && xx < w as i64
-                                && yy < h as i64
-                                && color[yy as usize * w + xx as usize] >= 0
-                            {
-                                src = Some(yy as usize * w + xx as usize);
-                                break;
-                            }
+    // Pixel art: one pass per pixel of `line` (1 is the Forge's outline).
+    let passes = if r.k == 1 { r.line as usize } else { 0 };
+    for _ in 0..passes {
+        if let Some(mode) = &r.outline {
+            let fixed = r.outline_color;
+            let ramp0 = |o: i16| {
+                usize::try_from(o)
+                    .ok()
+                    .and_then(|o| r.layers.get(o))
+                    .map(|l| l.ramp[0])
+            };
+            if mode == "inside" {
+                let mut edge = Vec::new();
+                for y in 0..h {
+                    for x in 0..w {
+                        let i = y * w + x;
+                        if color[i] < 0 {
+                            continue;
+                        }
+                        if x == 0
+                            || y == 0
+                            || x == w - 1
+                            || y == h - 1
+                            || color[i - 1] < 0
+                            || color[i + 1] < 0
+                            || color[i - w] < 0
+                            || color[i + w] < 0
+                        {
+                            edge.push(i);
                         }
                     }
-                    if let Some(s) = src {
-                        add.push((i, s));
+                }
+                for i in edge {
+                    color[i] = fixed.or_else(|| ramp0(owner[i])).unwrap_or(color[i]);
+                }
+            } else {
+                let diag = mode == "outside8";
+                let mut add = Vec::new();
+                for y in 0..h {
+                    for x in 0..w {
+                        let i = y * w + x;
+                        if color[i] >= 0 {
+                            continue;
+                        }
+                        let mut src = None;
+                        if x > 0 && color[i - 1] >= 0 {
+                            src = Some(i - 1);
+                        } else if x < w - 1 && color[i + 1] >= 0 {
+                            src = Some(i + 1);
+                        } else if y > 0 && color[i - w] >= 0 {
+                            src = Some(i - w);
+                        } else if y < h - 1 && color[i + w] >= 0 {
+                            src = Some(i + w);
+                        } else if diag {
+                            for (dx, dy) in [(-1i64, -1i64), (1, -1), (-1, 1), (1, 1)] {
+                                let (xx, yy) = (x as i64 + dx, y as i64 + dy);
+                                if xx >= 0
+                                    && yy >= 0
+                                    && xx < w as i64
+                                    && yy < h as i64
+                                    && color[yy as usize * w + xx as usize] >= 0
+                                {
+                                    src = Some(yy as usize * w + xx as usize);
+                                    break;
+                                }
+                            }
+                        }
+                        if let Some(s) = src {
+                            add.push((i, s));
+                        }
                     }
                 }
-            }
-            for (i, s) in add {
-                color[i] =
-                    fixed.unwrap_or_else(|| color::darken(ramp0(owner[s]).unwrap_or(0), 0.55));
-                owner[i] = owner[s];
+                for (i, s) in add {
+                    color[i] =
+                        fixed.unwrap_or_else(|| color::darken(ramp0(owner[s]).unwrap_or(0), 0.55));
+                    owner[i] = owner[s];
+                }
             }
         }
     }
@@ -915,4 +1077,209 @@ fn post(
             }
         }
     }
+}
+
+/// The outline of a supersampled frame, `line` output pixels wide: every
+/// empty canvas pixel within that distance of a drawn one (`outside`,
+/// `outside8`), or every drawn one within it of an empty one (`inside`),
+/// by exact Euclidean distance, so the line is round at every angle
+/// (P. F. Felzenszwalb and D. P. Huttenlocher, "Distance Transforms of
+/// Sampled Functions", Theory of Computing 8, 2012, with the nearest site
+/// kept to colour it as the pixel outline colours from its neighbour).
+fn smooth_outline(
+    r: &Recipe,
+    mode: &str,
+    w: usize,
+    h: usize,
+    color: &mut [i32],
+    owner: &mut [i16],
+) {
+    let reach = r.line * r.k as f64;
+    if reach <= 0.0 {
+        return;
+    }
+    let inside = mode == "inside";
+    // Sites: drawn pixels for an outside line, empty ones for an inside one.
+    let site = |c: i32| if inside { c < 0 } else { c >= 0 };
+    let (d, near) = distance(w, h, |i| site(color[i]));
+    let r2 = reach * reach;
+    let ramp0 = |o: i16| {
+        usize::try_from(o)
+            .ok()
+            .and_then(|o| r.layers.get(o))
+            .map(|l| l.ramp[0])
+    };
+    let mut set = Vec::new();
+    for i in 0..w * h {
+        if site(color[i]) || d[i] > r2 || near[i] == usize::MAX {
+            continue;
+        }
+        if inside {
+            set.push((
+                i,
+                r.outline_color
+                    .or_else(|| ramp0(owner[i]))
+                    .unwrap_or(color[i]),
+                owner[i],
+            ));
+        } else {
+            let s = near[i];
+            let c = r
+                .outline_color
+                .unwrap_or_else(|| color::darken(ramp0(owner[s]).unwrap_or(0), 0.55));
+            set.push((i, c, owner[s]));
+        }
+    }
+    for (i, c, o) in set {
+        color[i] = c;
+        owner[i] = o;
+    }
+}
+
+/// The lines inside a supersampled frame: where a later layer's pixel
+/// touches an earlier layer's, the earlier layer's pixels within `inner`
+/// output pixels of that edge take the outline colour, so overlapping
+/// shapes read as separate cut-outs (a coin over the light behind it).
+fn inner_lines(r: &Recipe, w: usize, h: usize, color: &mut [i32], owner: &[i16]) {
+    let reach = r.inner * r.k as f64;
+    // Seeds: drawn pixels with a later layer's pixel beside them.
+    let seed = |i: usize| {
+        if color[i] < 0 {
+            return false;
+        }
+        let (x, y, o) = (i % w, i / w, owner[i]);
+        let above = |j: usize| color[j] >= 0 && owner[j] > o;
+        (x > 0 && above(i - 1))
+            || (x + 1 < w && above(i + 1))
+            || (y > 0 && above(i - w))
+            || (y + 1 < h && above(i + w))
+    };
+    let (d, near) = distance(w, h, seed);
+    let r2 = reach * reach;
+    let ramp0 = |o: i16| {
+        usize::try_from(o)
+            .ok()
+            .and_then(|o| r.layers.get(o))
+            .map(|l| l.ramp[0])
+    };
+    for i in 0..w * h {
+        if color[i] < 0 || d[i] > r2 || near[i] == usize::MAX || owner[near[i]] != owner[i] {
+            continue;
+        }
+        color[i] = r
+            .outline_color
+            .unwrap_or_else(|| color::darken(ramp0(owner[i]).unwrap_or(0), 0.55));
+    }
+}
+
+/// Squared distance from every pixel to the nearest pixel where `site`
+/// holds, and that pixel's index (usize::MAX when there is none): the
+/// separable lower-envelope transform, columns then rows.
+fn distance(w: usize, h: usize, site: impl Fn(usize) -> bool) -> (Vec<f64>, Vec<usize>) {
+    const FAR: f64 = 1e20;
+    // Columns: each pixel's nearest site row in its own column.
+    let mut col = vec![FAR; w * h];
+    let mut row_of = vec![usize::MAX; w * h];
+    let mut f = vec![0.0; w.max(h)];
+    let mut dd = vec![0.0; w.max(h)];
+    let mut arg = vec![0usize; w.max(h)];
+    for x in 0..w {
+        for (y, v) in f[..h].iter_mut().enumerate() {
+            *v = if site(y * w + x) { 0.0 } else { FAR };
+        }
+        envelope(&f[..h], &mut dd[..h], &mut arg[..h]);
+        for y in 0..h {
+            col[y * w + x] = dd[y];
+            row_of[y * w + x] = if dd[y] < FAR { arg[y] } else { usize::MAX };
+        }
+    }
+    let mut out = vec![FAR; w * h];
+    let mut near = vec![usize::MAX; w * h];
+    for y in 0..h {
+        f[..w].copy_from_slice(&col[y * w..(y + 1) * w]);
+        envelope(&f[..w], &mut dd[..w], &mut arg[..w]);
+        for x in 0..w {
+            out[y * w + x] = dd[x];
+            let sx = arg[x];
+            let sy = row_of[y * w + sx];
+            if dd[x] < FAR && sy != usize::MAX {
+                near[y * w + x] = sy * w + sx;
+            }
+        }
+    }
+    (out, near)
+}
+
+/// The 1D squared distance transform of `f` into `d`, with each sample's
+/// minimising index in `arg`.
+fn envelope(f: &[f64], d: &mut [f64], arg: &mut [usize]) {
+    let n = f.len();
+    let mut v = vec![0usize; n];
+    let mut z = vec![0.0f64; n + 1];
+    let mut k = 0usize;
+    z[0] = f64::NEG_INFINITY;
+    z[1] = f64::INFINITY;
+    let cross = |q: usize, p: usize| {
+        ((f[q] + (q * q) as f64) - (f[p] + (p * p) as f64)) / (2.0 * (q as f64 - p as f64))
+    };
+    for q in 1..n {
+        // z[0] is -inf, so k never passes below 0.
+        let mut s = cross(q, v[k]);
+        while s <= z[k] {
+            k -= 1;
+            s = cross(q, v[k]);
+        }
+        k += 1;
+        v[k] = q;
+        z[k] = s;
+        z[k + 1] = f64::INFINITY;
+    }
+    k = 0;
+    for q in 0..n {
+        while z[k + 1] < q as f64 {
+            k += 1;
+        }
+        let p = v[k];
+        let dq = q as f64 - p as f64;
+        d[q] = dq * dq + f[p];
+        arg[q] = p;
+    }
+}
+
+/// A supersampled frame shrunk `k` times each way: each output pixel the
+/// mean of its k×k canvas pixels, its alpha their drawn share (straight
+/// RGBA8), and the output pixels with any coverage counted.
+fn shrink(color: &[i32], w: usize, h: usize, k: usize) -> (Vec<u8>, usize) {
+    let cw = w * k;
+    let mut rgba = vec![0u8; w * h * 4];
+    let mut covered = 0;
+    for y in 0..h {
+        for x in 0..w {
+            let (mut r, mut g, mut b, mut n) = (0u32, 0u32, 0u32, 0u32);
+            for j in 0..k {
+                for i in 0..k {
+                    let c = color[(y * k + j) * cw + x * k + i];
+                    if c >= 0 {
+                        r += (c >> 16 & 255) as u32;
+                        g += (c >> 8 & 255) as u32;
+                        b += (c & 255) as u32;
+                        n += 1;
+                    }
+                }
+            }
+            if n == 0 {
+                continue;
+            }
+            covered += 1;
+            let o = (y * w + x) * 4;
+            let a = (n * 255 + (k * k) as u32 / 2) / (k * k) as u32;
+            rgba[o..o + 4].copy_from_slice(&[
+                ((r + n / 2) / n) as u8,
+                ((g + n / 2) / n) as u8,
+                ((b + n / 2) / n) as u8,
+                a as u8,
+            ]);
+        }
+    }
+    (rgba, covered)
 }

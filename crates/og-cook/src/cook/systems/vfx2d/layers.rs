@@ -8,7 +8,7 @@ use super::engine::{
 };
 use super::jsmath::{self as m, hypot, max, min, round, truthy};
 use super::json::Val;
-use std::f64::consts::PI;
+use std::f64::consts::{PI, SQRT_2};
 
 // ---------- 3x5 pixel font ----------
 
@@ -519,7 +519,7 @@ fn glyph(c: &mut C, l: &Val) {
         None => vec![1.0, 0.84, 0.5],
     };
     let pt = |c: &mut C, a: f64, rr: f64, v: f64| {
-        c.plot(
+        c.dot(
             round(cx + m::cos(a) * rr),
             round(cy + m::sin(a) * rr * sq),
             v,
@@ -588,7 +588,17 @@ fn glyph(c: &mut C, l: &Val) {
             }
             for b in 0..9u32 {
                 if bits & (1 << b) != 0 {
-                    c.plot(gx + f64::from(b % 3), gy + f64::from(b / 3), gain * 1.02);
+                    // Supersampled, each of the rune's 3x3 cells is k wide.
+                    let (cx, cy) = (gx + f64::from(b % 3) * c.k, gy + f64::from(b / 3) * c.k);
+                    let mut j = 0.0;
+                    while j < c.k {
+                        let mut i = 0.0;
+                        while i < c.k {
+                            c.plot(cx + i, cy + j, gain * 1.02);
+                            i += 1.0;
+                        }
+                        j += 1.0;
+                    }
                 }
             }
             j += 1.0;
@@ -708,6 +718,9 @@ fn shape(
     age: f64,
     r: f64,
 ) {
+    if c.k > 1.0 {
+        return smooth_shape(c, kind, x, y, size, v, vx, vy, age, r);
+    }
     let (xx, yy) = (round(x), round(y));
     let range = |a: f64, b: f64| {
         let mut out = Vec::new();
@@ -854,6 +867,20 @@ fn shape(
             }
         }
         "circle" => c.disc(xx, yy, max(0.5, size / 2.0), v),
+        "heart" => {
+            let s = max(1.5, size);
+            for j in range(-s, s) {
+                for i in range(-s, s) {
+                    if heart(i / s, j / s) {
+                        c.plot(
+                            xx + i,
+                            yy + j,
+                            v * if i < 0.0 && j < 0.0 { 1.1 } else { 0.9 },
+                        );
+                    }
+                }
+            }
+        }
         _ => {
             if size <= 1.0 {
                 c.plot(xx, yy, v);
@@ -923,7 +950,11 @@ fn particles(c: &mut C, l: &Val) {
                 vy = -sp;
             }
             "fall" => {
-                let (xs, ys, dist) = ((q[4] - 0.5) * wu * 1.15, -hu / 2.0 - 0.08, hu + 0.2);
+                let (xs, ys, dist) = (
+                    (q[4] - 0.5) * wu * l.n("spanX", 1.15),
+                    ay - hu / 2.0 - 0.08,
+                    hu + 0.2,
+                );
                 let drift = l.n("driftX", 0.15) * (0.5 + q[1]);
                 let wig = l.n("wiggle", 0.0) * m::sin(TAU * (age * l.n("wiggleRate", 2.0) + q[6]));
                 x = xs + drift * age + wig;
@@ -1469,7 +1500,7 @@ fn text(c: &mut C, l: &Val) {
         .take(14)
         .collect();
     let k = c.lt;
-    let base = max(1.0, round(l.n("scale", 1.0)));
+    let base = max(1.0, round(l.n("scale", 1.0))) * c.k;
     let pop = !matches!(l.get("pop"), Some(Val::Bool(false)));
     let sc = if k < 0.1 && pop { base + 1.0 } else { base };
     let rise = ease("outCubic", k) * l.n("rise", 0.35);
@@ -1582,4 +1613,166 @@ pub(super) fn draw(ty: &str, c: &mut C, l: &Val) {
         "tornado" => tornado(c, l),
         _ => {}
     }
+}
+
+/// A particle's shape on a supersampled canvas: the pixel shapes drawn as
+/// filled outlines `size` output pixels across, so they stay round and
+/// clean once the frame is shrunk.
+#[allow(clippy::too_many_arguments)]
+fn smooth_shape(
+    c: &mut C,
+    kind: &str,
+    x: f64,
+    y: f64,
+    size: f64,
+    v: f64,
+    vx: f64,
+    vy: f64,
+    age: f64,
+    r: f64,
+) {
+    let k = c.k;
+    let s = max(1.0, size) * k;
+    let star = |n: usize, outer: f64, inner: f64, turn: f64| -> Vec<(f64, f64)> {
+        (0..n * 2)
+            .map(|i| {
+                let a = turn - PI / 2.0 + i as f64 * PI / n as f64;
+                let rr = if i % 2 == 0 { outer } else { outer * inner };
+                (m::cos(a) * rr, m::sin(a) * rr)
+            })
+            .collect()
+    };
+    let quad = |half: f64, turn: f64| -> Vec<(f64, f64)> {
+        (0..4)
+            .map(|i| {
+                let a = turn + PI / 4.0 + i as f64 * PI / 2.0;
+                (m::cos(a) * half * SQRT_2, m::sin(a) * half * SQRT_2)
+            })
+            .collect()
+    };
+    match kind {
+        "square" => c.polygon(x, y, &quad(s / 2.0, 0.0), v),
+        "chunk" => c.polygon(x, y, &quad(s / 2.0, r * PI + age * 4.0), v),
+        "plus" | "cross" => {
+            let w = k * 0.5 * max(1.0, size * 0.35);
+            c.capsule(x - s, y, x + s, y, v, v, w);
+            c.capsule(x, y - s, x, y + s, v, v, w);
+            if kind == "cross" {
+                let d = s * 0.55;
+                c.capsule(x - d, y - d, x + d, y + d, v * 0.85, v * 0.85, w * 0.8);
+                c.capsule(x - d, y + d, x + d, y - d, v * 0.85, v * 0.85, w * 0.8);
+            }
+        }
+        "star" => {
+            let outer = s * max(0.35, m::sin(PI * c01(age)));
+            c.polygon(x, y, &star(5, outer, 0.45, r * 0.6), v);
+        }
+        "diamond" => c.polygon(
+            x,
+            y,
+            &[(0.0, -s), (s * 0.7, 0.0), (0.0, s), (-s * 0.7, 0.0)],
+            v,
+        ),
+        "ring" | "bubble" => {
+            let (ro, th) = (s, k * 0.5 * max(1.0, size * 0.25));
+            c.cover(x, y, ro + th + 1.0, |dx, dy| {
+                ((hypot(dx, dy) - ro).abs() <= th).then_some(v)
+            });
+            if kind == "bubble" {
+                c.round_fill(
+                    x - ro * 0.4,
+                    y - ro * 0.4,
+                    ro * 0.22,
+                    ro * 0.22,
+                    0.0,
+                    v * 1.15,
+                );
+            }
+        }
+        "streak" => {
+            let sp = hypot(vx, vy);
+            let sp = if truthy(sp) { sp } else { 1.0 };
+            let len = max(1.0, size * sp * 0.6) * k;
+            let (x1, y1) = (x - (vx / sp) * len, y - (vy / sp) * len);
+            c.capsule(x, y, x1, y1, v, v * 0.6, k * 0.55);
+        }
+        "drop" => {
+            let a = m::atan2(vy, vx);
+            let (ca, sa) = (m::cos(a), m::sin(a));
+            c.round_fill(x, y, s * 0.5, s * 0.38, a, v);
+            c.polygon(
+                x,
+                y,
+                &[
+                    (-ca * s * 1.2, -sa * s * 1.2),
+                    (-sa * s * 0.36, ca * s * 0.36),
+                    (sa * s * 0.36, -ca * s * 0.36),
+                ],
+                v,
+            );
+        }
+        "shard" => {
+            let a = r * PI + age * 6.0;
+            let (ca, sa) = (m::cos(a), m::sin(a));
+            c.polygon(
+                x,
+                y,
+                &[
+                    (ca * s, sa * s),
+                    (-sa * s * 0.28, ca * s * 0.28),
+                    (-ca * s * 0.45, -sa * s * 0.45),
+                    (sa * s * 0.22, -ca * s * 0.22),
+                ],
+                v,
+            );
+        }
+        "leaf" | "petal" => {
+            let a = r * PI + age * 5.0;
+            let flip = m::cos(age * 8.0 + r * 4.0).abs().max(0.25);
+            c.round_fill(x, y, s * 0.6, s * 0.3 * flip, a, v);
+        }
+        "chevron" => {
+            let w = k * 0.5 * max(1.0, size * 0.3);
+            c.capsule(x - s, y + s * 0.6, x, y - s * 0.4, v, v, w);
+            c.capsule(x, y - s * 0.4, x + s, y + s * 0.6, v, v, w);
+        }
+        "coin" => {
+            let wd = max(k * 0.5, (m::cos(age * TAU * 2.0 + r * TAU)).abs() * s);
+            c.round_fill(x, y, wd, s, 0.0, v * 0.8);
+            c.round_fill(x - wd * 0.3, y - s * 0.3, wd * 0.35, s * 0.35, 0.0, v * 1.1);
+        }
+        "circle" => c.round_fill(
+            x,
+            y,
+            max(0.5, size / 2.0) * k,
+            max(0.5, size / 2.0) * k,
+            0.0,
+            v,
+        ),
+        "heart" => {
+            let s = s * 0.75;
+            c.cover(x, y, s * 1.3, |dx, dy| heart(dx / s, dy / s).then_some(v));
+            c.round_fill(
+                x - s * 0.42,
+                y - s * 0.32,
+                s * 0.2,
+                s * 0.14,
+                -0.6,
+                v * 1.12,
+            );
+        }
+        _ => {
+            let rr = max(0.5, size / 2.0) * k;
+            c.round_fill(x, y, rr, rr, 0.0, v);
+        }
+    }
+}
+
+/// Whether a point, in units of a heart's half width and y down, lies in
+/// the heart: the sextic (x^2 + y^2 - 1)^3 = x^2 y^3, y flipped and raised
+/// so the shape is centred.
+fn heart(x: f64, y: f64) -> bool {
+    let (x, y) = (x * 1.15, -(y * 1.15) + 0.15);
+    let a = x * x + y * y - 1.0;
+    a * a * a - x * x * y * y * y <= 0.0
 }

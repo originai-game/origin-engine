@@ -4,7 +4,8 @@
 //! Forge's renderer, ported to Rust (`vfx2d/engine.rs`, the same frames as
 //! the Forge), and the effect becomes an ordinary flipbook sheet: its frames
 //! packed into a texture of its own, `<id>#sheet` (pixel art, `filter
-//! nearest`), and one clip named after the file with the recipe's fps and
+//! nearest`; a recipe with `supersample` above 1 is drawn at that many
+//! canvas pixels a pixel and shrunk, smooth and `filter linear`), and one clip named after the file with the recipe's fps and
 //! loop and a FlipbookEvent `impact` on the impact frame. The rest of the
 //! cook and the runtime see a sheet. Its recipe already authors the pixel
 //! grid, colour ramps, coverage and outline: the generated texture opts
@@ -53,6 +54,30 @@ const MAX_EVENT_NAME: usize = 63;
 /// Renders a recipe's JSON text: the Forge's frames.
 pub fn render_json(text: &str) -> Result<Rendered, String> {
     Ok(engine::render(&grammar::recipe(json::parse(text)?)))
+}
+
+/// The sheet's pivot of a recipe, as a fraction from the bottom left (the
+/// recipe's `pivot` is a canvas point from the top left).
+fn sheet_pivot(recipe: &json::Val) -> (f64, f64) {
+    let pivot = |i: usize, d: f64| match recipe.get("pivot") {
+        Some(json::Val::Arr(p)) => p
+            .get(i)
+            .map(json::Val::num)
+            .filter(|v| v.is_finite())
+            .unwrap_or(d),
+        _ => d,
+    };
+    (pivot(0, 0.5), 1.0 - pivot(1, 0.5))
+}
+
+/// The pivot of a `type vfx2d` file's sheet, as a fraction from the bottom
+/// left: where the entity's position is on the frame.
+pub fn pivot(
+    text: &str,
+    resolve: &dyn Fn(&str) -> String,
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Result<(f64, f64), String> {
+    Ok(sheet_pivot(&parse(text, resolve, read)?.recipe))
 }
 
 /// What a `type vfx2d` file says.
@@ -293,17 +318,7 @@ pub fn build(
             .write_image(&sheet, tw, th, image::ExtendedColorType::Rgba8)
             .map_err(|e| format!("the packed sheet: {e}"))?;
     }
-    // The recipe's pivot is a canvas point from the top left; a sheet's
-    // is from the bottom left.
-    let pivot = |i: usize, d: f64| match fx.recipe.get("pivot") {
-        Some(json::Val::Arr(p)) => p
-            .get(i)
-            .map(json::Val::num)
-            .filter(|v| v.is_finite())
-            .unwrap_or(d),
-        _ => d,
-    };
-    let (px, py) = (pivot(0, 0.5), 1.0 - pivot(1, 0.5));
+    let (px, py) = sheet_pivot(&fx.recipe);
     let num = |v: f64| Value::Number(og_core::ogt::Number::from_f64(v).expect("finite"));
     let clip = rel
         .rsplit('/')
@@ -314,8 +329,10 @@ pub fn build(
     let mut out = Document::new("flipbook", 1);
     out.body
         .push(Entry::new("texture").with(Value::String(super::animated::sheet_texture_id(rel))));
+    // Pixel art keeps its texels; a supersampled effect's edges are smooth.
+    let filter = if r.smooth { "linear" } else { "nearest" };
     out.body
-        .push(Entry::new("filter").with(Value::Word("nearest".into())));
+        .push(Entry::new("filter").with(Value::Word(filter.into())));
     let mut names = Entry::new("frames");
     for i in 0..n {
         let name = format!("{clip}_{i}");

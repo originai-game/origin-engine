@@ -63,6 +63,10 @@ A JSON object; unknown fields are ignored, so notes can stay in it.
 | `hue`, `sat` | 0, 1 | rotate every ramp's hue (degrees), scale its saturation |
 | `outline` | `"none"` | `"outside"`, `"outside8"` (with diagonals) or `"inside"`, in each layer's darkest colour |
 | `outlineColor` | null | a fixed outline colour, `"#1a1020"` |
+| `line` | 1 | the outline's width in output pixels (whole pixels without `supersample`) |
+| `innerLine` | 0 | supersampled: the width in output pixels of the line where a later layer covers an earlier one, drawn on the earlier |
+| `scale` | 1 | 0.25 to 4: a half-canvas unit is this times half the shorter side; under 1 a larger canvas keeps the drawing's pixel size and gains a margin |
+| `supersample` | 1 | 1 to 8: draw on a canvas this many times as wide and tall and shrink it, so edges are smooth and the sheet is filtered linearly (§6) |
 | `dither` | 0 | 0 to 1: a 4x4 ordered dither on band edges |
 | `palette` | null | lock every pixel to the nearest (OKLab) colour of `"pico8"`, `"sweetie16"`, `"endesga32"`, `"gameboy"`, `"onebit"` or a list of hex colours |
 | `cleanup` | true | remove isolated pixels and one-pixel holes from shape layers |
@@ -101,7 +105,7 @@ The 22 types, defaults in brackets:
 | `rays` | radial light rays | `count` [10], `r`, `width`, `jitter`, `inner`, `spin`, `twinkle` |
 | `glyph` | a magic circle drawn on, then spinning | `r`, `rings` [[1, 0.84, 0.5]], `star` [5], `step` [2], `ticks` [24], `runes` [8], `draw`, `spin`, `fill` |
 | `puffs` | smoke, dust, gas, or a breath cone | `count` [7], `spread`, `flat`, `rise`, `r0`, `r1`, `life`, `emit`, `dir` [-90], `cone`, `speed`, `drift`, `dissolve`, `decay`, `freq` |
-| `particles` | sparks and debris: `mode` burst, spray, rise, fall, ambient, orbit or implode; `shape` dot, square, plus, cross, star, diamond, ring, bubble, streak, drop, shard, leaf, petal, chevron, coin, chunk or circle | `count` [16], `speed`, `life`, `emit`, `dir`, `spread` [360], `area`, `gravity`, `drag`, `ground`, `size`, `heat`, `twinkle`, `wiggle`, `orbitR`, `turns`, `implodeR`, `swirl`, `fadeIn`, `driftX`, `fallScale`, `spanX`, `spanY` |
+| `particles` | sparks and debris: `mode` burst, spray, rise, fall, ambient, orbit or implode; `shape` dot, square, plus, cross, star, diamond, ring, bubble, streak, drop, shard, leaf, petal, chevron, coin, chunk, circle or heart | `count` [16], `speed`, `life`, `emit`, `dir`, `spread` [360], `area`, `gravity`, `drag`, `ground`, `size`, `heat`, `twinkle`, `wiggle`, `orbitR`, `turns`, `implodeR`, `swirl`, `fadeIn`, `driftX`, `fallScale`, `spanX`, `spanY` |
 | `bolt` | lightning, regenerated every `hold` frames: `mode` radial, strike (from the top edge) or line | `count` [4], `len`, `jag`, `depth` [5], `branch`, `thick`, `flicker`, `fadeStart`, `hold` [2] |
 | `cracks` | ground cracks from the anchor | `count` [6], `len`, `squash` [0.4], `grow`, `fadeStart` |
 | `spikes` | faceted crystal or rock spikes erupting, then shattering | `count` [5], `spread`, `hgt`, `width`, `lean`, `fan`, `grow`, `hold` [0.55] |
@@ -131,3 +135,33 @@ The 22 types, defaults in brackets:
   `twinkle` are whole numbers and particles have `life` below 1.
 - Check the first frames (anticipation, flash), the impact frame and the
   last frames: the effect breaks apart rather than shrinking.
+
+## 6. Smooth 2D effects
+
+A flat-colour 2D look (cartoon, storybook, watercolour) wants the same
+bands without the pixel steps: `supersample 4` draws the recipe at four
+canvas pixels an output pixel, outlines it there and averages each 4x4
+block into one output pixel, so a band's edge and the outline are smooth
+and the outside of the shape fades over one pixel. The sheet is then
+`filter linear` instead of `nearest`.
+
+- Positions and sizes stay in half-canvas units; `w`, `h`, particle
+  `size`, `glow`, a bolt's `thick`, a claw's `th` and `line` stay in output
+  pixels, so a recipe keeps its proportions at any `supersample`.
+- Particle shapes are drawn as filled outlines (a five-point `star`, an
+  elliptical `leaf` that tumbles, a `drop` with a tail, a `coin` that
+  turns) instead of their pixel stamps, so give them a `size` of 4 to 8.
+- The outline is measured by exact Euclidean distance, round at every
+  angle; `line 2` with a dark warm `outlineColor` is a cartoon contour,
+  `outline inside` with `line 1.5` a watercolour's pigment rim.
+- `innerLine 1` draws a thinner line where a later layer covers an
+  earlier one (a coin over the light behind it), so overlapping shapes
+  read as separate cut-outs; bands of one layer stay unlined.
+- A sprite's canvas edge is a straight cut in the game: no frame may
+  draw on it. Rings that grow, debris that flies and particles that drift
+  need room; give the effect a larger `w` and `h` with `scale` below 1
+  (`w` 160, `scale` 0.8 is the drawing of `w` 128 with 16 px each side).
+- `cleanup` and `dither` are pixel-art passes: leave them off.
+- It costs `supersample` squared times the pixel effect's cook time; the
+  sheet it writes is the same size.
+

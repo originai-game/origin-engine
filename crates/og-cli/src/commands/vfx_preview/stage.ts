@@ -25,6 +25,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 }
 const DIM: string = "__DIM__";
 const VFX2D: string[] = __VFX2D__;
+const PIVOTS: Record<string, [number, number]> = __PIVOTS__;
 const QUALITY: string = "__QUALITY__";
 const CONTEXT: { stage?: string; enabled?: boolean; look?: string; scene?: string; position?: number[]; camera?: number[] } = __CONTEXT__;
 const VIEW_HEIGHT = __H__;
@@ -122,8 +123,11 @@ function play(world: World, path: string): void {
     // the view (Camera.height 10 m over the view's height in pixels).
     const k = Math.max(1, Math.floor(Math.min((0.8 * VIEW_HEIGHT) / info.frameHeight, (0.8 * VIEW_WIDTH) / info.frameWidth)));
     const m = 10 / VIEW_HEIGHT;
-    const e = must(world.spawn({ position: { x: 0, y: 0, z: 0 } }));
-    must(world.insert(e, og.Sprite, { texture: info.texture, width: info.frameWidth * k * m, height: info.frameHeight * k * m }));
+    // The frame centred in the view: the entity stands at the pivot.
+    const [px, py] = PIVOTS[path] ?? [0.5, 0.5];
+    const w = info.frameWidth * k * m, h = info.frameHeight * k * m;
+    const e = must(world.spawn({ position: { x: (px - 0.5) * w, y: (py - 0.5) * h, z: 0 } }));
+    must(world.insert(e, og.Sprite, { texture: info.texture, width: w, height: h }));
     must(world.insert(e, og.Flipbook, { sheet: info.sheet, clip: clip.clip }));
     shown.push(e);
     starts.push({ path, tick: world.tick, duration: clip.duration, loop: clip.mode !== "once", elements: ["flipbook"] });
