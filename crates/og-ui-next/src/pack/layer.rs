@@ -3,17 +3,19 @@
 use super::*;
 
 /// One `pack.json` as read: nothing merged yet.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Layer {
     /// The scheme the pack is drawn in unless the game asks for another.
     pub scheme: Option<Scheme>,
     /// Seed overrides, by name, per scheme.
-    pub(super) seeds: Vec<(String, [String; 2])>,
+    pub seeds: Vec<(String, [String; 2])>,
     /// The theme per scheme ([`Scheme::ALL`] order).
-    pub(super) theme: [Map<String, Value>; 2],
+    #[serde(with = "super::cooked::themes")]
+    pub theme: [Map<String, Value>; 2],
     /// What the theme takes in high contrast (`prefers-contrast: more`),
     /// per scheme: entries over the theme's, as `theme` writes them.
-    pub(super) contrast: [Map<String, Value>; 2],
+    #[serde(with = "super::cooked::themes")]
+    pub contrast: [Map<String, Value>; 2],
     pub variants: BTreeMap<String, String>,
     /// The font files it ships, each relative to the pack's directory or
     /// a shared asset (`@styles/shared/…`). A file's family, weight, style

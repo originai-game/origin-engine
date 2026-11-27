@@ -4062,6 +4062,7 @@ name = "og-ui-next"
 version = "0.9.0"
 dependencies = [
  "accesskit",
+ "bincode",
  "bytemuck",
  "nsh-input",
  "nsh-reactive",

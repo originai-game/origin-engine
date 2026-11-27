@@ -20,7 +20,7 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 /// A colour scheme: each has its own theme.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Scheme {
     Light,
     Dark,
@@ -113,7 +113,7 @@ pub fn sound_fallback(event: &str) -> Option<&'static str> {
 
 /// A sound an event plays: one of `clips` at random, at a volume and
 /// pitch drawn from their ranges.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Sound {
     pub clips: Vec<String>,
     pub volume: [f32; 2],
@@ -123,7 +123,7 @@ pub struct Sound {
 /// Nine-slice art: an image cut by four insets into corners that keep
 /// their size, edges that stretch or tile along their side, and a centre
 /// drawn or left out. A class `nine-<name>` gives an element it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NineSlice {
     /// The image, relative to the pack or an asset id (`@styles/…`).
     pub src: String,
@@ -169,6 +169,7 @@ pub type Sounds = BTreeMap<String, Sound>;
 /// The haptic preset names of one scope, by event.
 pub type Haptics = BTreeMap<String, String>;
 
+mod cooked;
 mod layer;
 pub use layer::Layer;
 use layer::merge;
