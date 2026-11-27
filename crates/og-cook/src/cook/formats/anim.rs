@@ -35,12 +35,26 @@ type Deltas = Vec<[f32; 3]>;
 /// The `.ogt` type of a humanoid rig map.
 pub const RIG_TYPE: &str = "rig";
 
-/// Cooks a `type rig` .ogt: validated by og-anim and stored as its
-/// canonical text (the `og.Rig` blob).
+/// Validates a rig and stores its native humanoid map, not author text.
 pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(bytes).map_err(|_| CookError("a rig is text (UTF-8)".into()))?;
     let rig = og_anim::RigAsset::parse(text).map_err(|e| CookError(e.reason().to_string()))?;
-    let canonical = rig.to_text();
+    rig.validate().map_err(|e| CookError(e.to_string()))?;
+    let mut strings = Strings(Vec::new());
+    let (scheme_offset, scheme_len) = strings.add(rig.scheme.as_deref().unwrap_or(""));
+    let bones: Vec<_> = rig
+        .bones
+        .iter()
+        .map(|(bone, node, _)| {
+            let (node_offset, node_len) = strings.add(node.as_deref().unwrap_or(""));
+            format::RigBoneRow {
+                bone: *bone as u32,
+                mapped: u32::from(node.is_some()),
+                node_offset,
+                node_len,
+            }
+        })
+        .collect();
     let mut w = BlobWriter::new(
         format::Rig::type_hash(),
         format::Rig::schema_version(),
@@ -49,11 +63,16 @@ pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), Cook
     w.table(
         "meta",
         &[format::RigMeta {
-            text_bytes: canonical.len() as u32,
+            scheme_offset,
+            scheme_len,
+            foot_height: u32::from(rig.foot_height.is_some()),
+            left_height: rig.foot_height.unwrap_or_default()[0],
+            right_height: rig.foot_height.unwrap_or_default()[1],
         }],
         format::row_hash::<format::RigMeta>(),
     )
-    .raw("text", canonical.into_bytes(), 16);
+    .table("bones", &bones, format::row_hash::<format::RigBoneRow>())
+    .raw("strings", strings.0, 1);
     Ok((
         w.finish(),
         vec![format!(

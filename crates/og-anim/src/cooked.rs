@@ -110,11 +110,36 @@ impl BundleAnim for Bundle {
     fn rig(&self, id: &str, bytes: &[u8]) -> Result<crate::RigAsset, LoadError> {
         let blob = self.blob::<format::Rig>(id, bytes)?;
         let meta = one::<format::RigMeta>(&blob)?;
-        let text = blob
-            .raw("text")?
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
-        crate::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
+        let strings = blob.raw("strings")?;
+        let text = |offset: u32, len: u32| {
+            (offset as usize)
+                .checked_add(len as usize)
+                .and_then(|end| strings.get(offset as usize..end))
+                .and_then(|s| std::str::from_utf8(s).ok())
+                .ok_or_else(|| invalid(&blob, "a rig string range is invalid or not UTF-8"))
+        };
+        let scheme = text(meta.scheme_offset, meta.scheme_len)?;
+        let mut rig = crate::RigAsset {
+            scheme: (!scheme.is_empty()).then(|| scheme.to_owned()),
+            foot_height: match meta.foot_height {
+                0 => None,
+                1 => Some([meta.left_height, meta.right_height]),
+                _ => return Err(invalid(&blob, "invalid rig foot-height flag")),
+            },
+            bones: Vec::new(),
+        };
+        for row in blob
+            .table::<format::RigBoneRow>("bones", format::row_hash::<format::RigBoneRow>())?
+            .iter()
+        {
+            let node = match row.mapped {
+                0 => None,
+                1 => Some(text(row.node_offset, row.node_len)?.to_owned()),
+                _ => return Err(invalid(&blob, "invalid rig bone mapping flag")),
+            };
+            rig.bones.push((row.bone as usize, node, 0));
+        }
+        rig.validate().map_err(|e| invalid(&blob, e.reason()))?;
+        Ok(rig)
     }
 }

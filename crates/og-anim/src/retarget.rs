@@ -688,6 +688,32 @@ fn parse_err(e: &Entry, reason: impl std::fmt::Display) -> Error {
 }
 
 impl RigAsset {
+    /// Shared domain invariants for checked input and native blob loading.
+    pub fn validate(&self) -> Result<()> {
+        if let Some(scheme) = &self.scheme
+            && !SCHEMES.contains(&scheme.as_str())
+        {
+            return Err(invalid(format!("unknown humanoid scheme '{scheme}'")));
+        }
+        if let Some(heights) = self.foot_height
+            && heights
+                .iter()
+                .any(|h| !h.is_finite() || !(-10.0..=10.0).contains(h))
+        {
+            return Err(invalid("a foot height is metres, -10..=10".into()));
+        }
+        let mut seen = [false; HUMAN_BONE_COUNT];
+        for (bone, _, _) in &self.bones {
+            let Some(named) = seen.get_mut(*bone) else {
+                return Err(invalid("unknown standard humanoid bone index".into()));
+            };
+            if std::mem::replace(named, true) {
+                return Err(invalid(format!("'{}' is named twice", HUMAN_BONES[*bone])));
+            }
+        }
+        Ok(())
+    }
+
     /// File fields from the same naming schemes and bone list the reader accepts.
     pub fn lines() -> Vec<og_core::ogt::line::Line> {
         use og_core::ogt::line::Line;
@@ -803,6 +829,7 @@ impl RigAsset {
     /// The map of `skeleton`: its scheme's (or the detected one), then the
     /// bones named outright. A named node the skeleton lacks is refused.
     pub fn map(&self, skeleton: &SkeletonAsset) -> Result<HumanoidMap> {
+        self.validate()?;
         let mut m = match &self.scheme {
             Some(s) => HumanoidMap::with_scheme(skeleton, s)?,
             None => HumanoidMap::detect(skeleton),

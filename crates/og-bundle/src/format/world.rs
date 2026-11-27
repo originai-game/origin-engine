@@ -283,20 +283,29 @@ impl BlobKind for Table {
 }
 
 row!(
-    /// The root of a rig blob (an `.ogt` of `type rig`).
-    RigMeta, "og.Rig", 1 {
-        /// Bytes of the canonical rig text in `text`.
-        text_bytes: u32,
+    /// A humanoid map; string ranges address the UTF-8 `strings` section.
+    RigMeta, "og.Rig", 2 {
+        scheme_offset: u32, scheme_len: u32,
+        /// Whether the two explicit ankle heights are present.
+        foot_height: u32,
+        left_height: f32, right_height: f32,
     }
 );
 
-/// The rig blob: `text` holds the canonical humanoid map
-/// (`og_anim::RigAsset::to_text`), parsed again at load.
+row!(
+    /// One standard bone override; a zero `mapped` explicitly unmaps it.
+    RigBoneRow, "og.RigBone", 1 {
+        bone: u32, mapped: u32,
+        node_offset: u32, node_len: u32,
+    }
+);
+
+/// Native humanoid naming scheme, optional ankle heights and bone overrides.
 pub struct Rig;
 impl BlobKind for Rig {
     const NAME: &'static str = "og.Rig";
     fn schemas() -> Vec<Schema> {
-        vec![RigMeta::schema()]
+        vec![RigMeta::schema(), RigBoneRow::schema()]
     }
 }
 

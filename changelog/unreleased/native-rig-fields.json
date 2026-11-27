@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "og.Rig cooked payload",
+    "change": "Humanoid rig maps load native fields and bone rows instead of an embedded author document.",
+    "fix": "Re-cook rigs and use matching native and web hosts; old rig blobs are not supported."
+  }]
+}
