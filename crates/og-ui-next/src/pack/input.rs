@@ -56,7 +56,7 @@ pub enum Scheme {
     Dark,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Serialize)]
 #[cfg_attr(feature = "source", derive(JsonSchema))]
 #[cfg_attr(
     feature = "source",
@@ -66,6 +66,37 @@ pub enum Scheme {
 pub struct Schemes<T> {
     pub light: T,
     pub dark: T,
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Schemes<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor<T>(std::marker::PhantomData<T>);
+        impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for Visitor<T> {
+            type Value = Schemes<T>;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("an object with light and dark fields")
+            }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                map: A,
+            ) -> Result<Self::Value, A::Error> {
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Fields<T> {
+                    light: T,
+                    dark: T,
+                }
+                let Fields { light, dark } =
+                    Fields::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
+                Ok(Schemes { light, dark })
+            }
+        }
+        // Derived struct readers also accept a sequence: [size, leading]
+        // must remain a shared FontSize, never light=size and dark=leading.
+        deserializer.deserialize_map(Visitor(std::marker::PhantomData))
+    }
 }
 
 /// A shared value or an explicit complete light/dark pair.

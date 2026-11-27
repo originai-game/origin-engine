@@ -47,7 +47,7 @@ fn typed_styles_load_native_layers_and_refresh_inherited_inputs() {
     write("content/styles/child.ts", child);
     write(
         "content/styles/plain.ts",
-        "import {file,ref} from '@origingame/engine/author';export default file.pack({icons:{coin:ref('north/paint')},haptics:{press:'tap','Button.plate':{hover:'none'}},sounds:{press:{volume:0}},variants:{'Panel.frame':'bg-glass text-fg'}});",
+        "import {file,ref} from '@origingame/engine/author';export default file.pack({theme:{fontSize:{shared:[23,1.75],adaptive:{light:[17,1.2],dark:[29,1.6]}}},icons:{coin:ref('north/paint')},haptics:{press:'tap','Button.plate':{hover:'none'}},sounds:{press:{volume:0}},variants:{'Panel.frame':'bg-glass text-fg'}});",
     );
     write(
         "modules/north/content/paint.ts",
@@ -90,6 +90,20 @@ fn typed_styles_load_native_layers_and_refresh_inherited_inputs() {
         assert_eq!(plain.icons["coin"], "north/paint");
         assert_eq!(plain.haptics["Button.plate"]["hover"], "none");
         assert_eq!(plain.sounds[""]["press"].volume, [0., 0.]);
+        let pack = og_ui_next::pack::Pack::new(&[plain]);
+        for (scheme, size, leading) in [
+            (og_ui_next::pack::Scheme::Light, 17., 1.2),
+            (og_ui_next::pack::Scheme::Dark, 29., 1.6),
+        ] {
+            let (mut classes, ignored) =
+                og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme))).unwrap();
+            assert!(ignored.is_empty(), "{ignored:?}");
+            let env = og_ui_next::classes::Env::default();
+            let shared = classes.record("text-shared", &env);
+            assert_eq!((shared.font_size, shared.text.line), (23., 1.75));
+            let adaptive = classes.record("text-adaptive", &env);
+            assert_eq!((adaptive.font_size, adaptive.text.line), (size, leading));
+        }
         (
             bytes.to_vec(),
             layer.theme[0]["radius"]["asym"].as_f64().unwrap(),

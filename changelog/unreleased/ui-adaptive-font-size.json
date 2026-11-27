@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "file.pack, file.theme",
+      "summary": "Shared [fontSize, lineHeight] values remain font-size pairs in both schemes. Adaptive values require an explicit object with light and dark fields; a two-number font-size pair is no longer mistaken for two scheme values, which made dark-mode UI text about one pixel tall."
+    }
+  ]
+}
