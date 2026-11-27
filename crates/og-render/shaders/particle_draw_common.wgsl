@@ -19,7 +19,7 @@ struct EmitterDraw {
   sheet2: vec4<f32>,             // x: cycles or fps, y: textured, z: blend frames, w: local space (1 local, 0 world)
   render: vec4<f32>,             // x: align, y: stretch, z: soft distance, w: blend (0 add, 1 alpha, 2 sub, 3 mul)
   counts: vec4<f32>,             // x: size keys, y: colour keys, z: height keys, w: second colour keys
-  counts2: vec4<f32>,            // x: spin keys, y: hue turn (rad), z: trail newest sample age (s), w: unused
+  counts2: vec4<f32>,            // x: spin keys, y: hue turn (rad), z: trail newest sample age (s), w: lit mesh translucency
   look: vec4<f32>,               // x: lit, y: distortion, z: mesh mode (0 quad, 1 mesh, 2 effect mesh), w: roughness
   axis: vec4<f32>,               // xyz: upright/facing axis in emitter space; w: 1 effect mesh billboard
   trail: vec4<f32>,              // x: lifetime, y: width share, z: sample interval, w: newest sample index

@@ -3849,6 +3849,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `render billboard \| sprite [<layer>] \| mesh box \| sphere \| tetrahedron \| "<model id>"` | `billboard` | 3D billboards, 2D sprites in a sprite layer, or a small mesh per particle that tumbles with its rotation (a model's first mesh). |
 | `lit true \| false` | `false` | Billboards and meshes shaded by the sun, the sky and local lights. |
 | `roughness <0..1>` | `1` | A lit mesh's surface: 1 matte; smoother reflects over an alpha body (glass shards). |
+| `translucency <0..1>` | `0` | A lit mesh's share of the light on its far side that passes through: thin paper, leaves and confetti stay bright when turned from the sun. |
 | `distortion <0..1>` | `0` | Billboards bend the scene behind them by this fraction of the screen at most: heat haze, shock rings. |
 | `events birth \| death \| collision ...` | `` | Send og.ParticleEvent for these; the emitter's systems then simulate in the tick. |
 | `subEmitter birth \| death \| collision "<id>" <count> [<inherit>] \| life "<id>" [<inherit>]` | `` | Another emitter's particles born where this one's are born, die or bounce (count 1 to 4096, moving at their start velocity plus `inherit` times the parent's), or each particle running the other's own emission while it lives; up to 4, one level deep. |

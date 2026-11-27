@@ -4278,6 +4278,7 @@ readonly "spread"?: ((number) | (null));
 readonly "subEmitters"?: ((ReadonlyArray<(Input_particlesDefinitions["SubEmitter"])> | (number extends ((Input_particlesDefinitions["SubEmitter"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "texture"?: (((Input_particlesDefinitions["ContentRef"])) | ((null)));
 readonly "trail"?: (((Input_particlesDefinitions["ParticleTrail"])) | ((null)));
+readonly "translucency"?: ((number) | (null));
 readonly "wind"?: ((number) | (null));
 });
 export interface Input_particlesDefinitions {

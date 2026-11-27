@@ -493,10 +493,17 @@ fn mesh_fragment(in: ParticleOut) -> vec4<f32> {
   } else {
     c = particle_hue(in.color);
   }
+  let albedo = c.rgb;
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
     c = particle_gloss(in.clip.xy, in.world, n, c, emitter.look.w);
   } else if (emitter.look.x > 0.5) {
     c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, n, toward_eye(in.world), 0.0), c.a);
+  }
+  // Translucency: the share of the light on the far side (the sun with its
+  // shadow, the sky, local lights) that passes through a thin piece.
+  let through = emitter.counts2.w;
+  if (emitter.look.x > 0.5 && through > 0.0) {
+    c = vec4<f32>(c.rgb + albedo * through * particle_light(in.clip.xy, in.world, -n, toward_eye(in.world), 0.0), c.a);
   }
   c = fx_fog(c, in.world, in.clip.xy, is_alpha_blend());
   if (c.a <= 0.0) { discard; }

@@ -356,6 +356,8 @@ input! {
         #[schemars(range(min = 0, max = 1))]
         roughness: Option<f32>,
         #[schemars(range(min = 0, max = 1))]
+        translucency: Option<f32>,
+        #[schemars(range(min = 0, max = 1))]
         distortion: Option<f32>,
         events: Option<Vec<ParticleEvent>>,
         #[schemars(length(max = 4))]

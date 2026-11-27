@@ -200,7 +200,7 @@ pub(super) fn emitter_draw_gpu(
             height_n,
             color2_n,
         ],
-        counts2: [spin_n, hue, 0.0, 0.0],
+        counts2: [spin_n, hue, 0.0, e.translucency],
         look: [
             e.lit as u32 as f32,
             e.distortion,

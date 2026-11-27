@@ -625,6 +625,11 @@ pub struct ParticleEmitter {
     /// strength, so an alpha-blended body stays clear and glints where it
     /// faces the light (glass shards, ice, wet pebbles). Meshes only.
     pub roughness: f32,
+    /// A lit mesh's share, 0 (the default) to 1, of the light on its other
+    /// side that passes through it: a thin piece (paper, a leaf, a petal,
+    /// confetti) seen from its shadowed side shows the sun and sky behind
+    /// it through its colour instead of going dark. Meshes only.
+    pub translucency: f32,
     /// Above 0 the particles bend the image behind them instead of adding
     /// colour (heat haze, shock rings, a portal's shimmer): the opaque scene
     /// behind each one is drawn shifted by up to this fraction of the
@@ -722,6 +727,7 @@ impl Default for ParticleEmitter {
             glow: 0.0,
             lit: false,
             roughness: 1.0,
+            translucency: 0.0,
             distortion: 0.0,
             sub_emitters: Vec::new(),
             events: Vec::new(),
@@ -854,6 +860,12 @@ impl ParticleEmitter {
             if self.render != ParticleRender::Billboard {
                 return Err("a blended sheet is drawn by billboards (render billboard)".into());
             }
+        }
+        if !(0.0..=1.0).contains(&self.translucency) {
+            return Err(format!("translucency {}", self.translucency));
+        }
+        if self.translucency > 0.0 && !matches!(self.render, ParticleRender::Mesh { .. }) {
+            return Err("translucency is drawn by lit meshes (render mesh)".into());
         }
         if !(self.distortion.is_finite() && self.distortion >= 0.0) {
             return Err(format!("distortion {}", self.distortion));

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "particles translucency",
+      "change": "A lit mesh particle emitter takes `translucency <0..1>` (TS: `translucency`), default 0: the share of the light on a piece's far side (the sun with its shadow, the sky, local lights) that passes through it. A thin piece such as a paper card, a leaf or confetti seen from its shadowed side now shows that light through its colour instead of going dark. Only meshes take it; any other render mode refuses a value above 0. Emitters that leave it out draw as before.",
+      "fix": "Set `translucency` (about 0.4 to 0.7) on lit mesh emitters of thin pieces that turned black away from the sun; leave solid debris at 0."
+    }
+  ]
+}

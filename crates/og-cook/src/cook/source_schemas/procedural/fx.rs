@@ -241,7 +241,7 @@ impl ParticlesInput {
             size => size, color => color, rotation => rotation_degrees,
             angular_velocity => angular_velocity_degrees, drag => drag, wind => wind,
             force_fields => force_fields, soft_distance => soft_distance, lit => lit,
-            roughness => roughness, distortion => distortion, glow => glow, round => round,
+            roughness => roughness, translucency => translucency, distortion => distortion, glow => glow, round => round,
             inherit_velocity => inherit_velocity);
         if let Some(v) = self.gravity {
             em.gravity = v.into();

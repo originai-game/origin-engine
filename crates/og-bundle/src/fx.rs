@@ -295,6 +295,13 @@ pub const EMITTER_LINES: &[Line] = &[
         "roughness 0.2",
     ),
     Line::new(
+        "translucency",
+        "<0..1>",
+        "0",
+        "A lit mesh's share of the light on its far side that passes through: thin paper, leaves and confetti stay bright when turned from the sun.",
+        "render mesh box\nlit true\ntranslucency 0.6",
+    ),
+    Line::new(
         "distortion",
         "<0..1>",
         "0",
@@ -901,6 +908,13 @@ pub fn parse_emitter_linked(
                     return Err(format!("line {line}: roughness is from 0 to 1"));
                 }
                 em.roughness = v;
+            }
+            "translucency" => {
+                let v = one(e)?;
+                if !(0.0..=1.0).contains(&v) {
+                    return Err(format!("line {line}: translucency is from 0 to 1"));
+                }
+                em.translucency = v;
             }
             "distortion" => {
                 let v = one(e)?;
