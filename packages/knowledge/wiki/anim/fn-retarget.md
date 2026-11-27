@@ -6,9 +6,7 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.anim.retarget`
 
-A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does (guide §7), then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers.
-
-See `animation §7`.
+A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does, then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers.
 
 ```ts
 og.anim.retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>
@@ -25,12 +23,11 @@ Binding symbol `og_anim_retarget` · publish builds: kept
 
 ```ogt
 fn retarget {
-  doc "A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does (guide §7), then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers."
-  guide "animation §7"
+  doc "A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does, then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers."
   param world World "The world whose animation owns the skeletons and the clip."
   param desc RetargetDesc "The clip, the two skeletons and their rigs."
   returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node."
 }
 ```
 
-<sub>Module `anim` line 866</sub>
+<sub>Module `anim` line 855</sub>

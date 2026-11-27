@@ -35,4 +35,4 @@ resource SceneState {
 }
 ```
 
-<sub>Module `scene` line 7</sub>
+<sub>Module `scene` line 6</sub>

@@ -8,8 +8,6 @@ Module [`inventory`](../inventory.md) · [index](../index.md)
 
 What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.
 
-See `items §2`.
-
 Also known as: picker, auto loot, magnet, player pickup, vacuum items
 
 Token `og.Collector`, registered under the schema name `og.Collector`; its value type is `Collector`.
@@ -22,9 +20,8 @@ Token `og.Collector`, registered under the schema name `og.Collector`; its value
 component Collector {
   aliases "picker, auto loot, magnet, player pickup, vacuum items"
   doc "What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`."
-  guide "items §2"
   field container Entity "The og.Container what it picks up goes into; 0 picks up nothing."
 }
 ```
 
-<sub>Module `inventory` line 38</sub>
+<sub>Module `inventory` line 34</sub>

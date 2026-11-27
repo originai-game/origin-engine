@@ -77,4 +77,4 @@ component Beam {
 }
 ```
 
-<sub>Module `render` line 2493</sub>
+<sub>Module `render` line 2398</sub>

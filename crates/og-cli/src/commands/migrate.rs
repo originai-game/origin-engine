@@ -1,6 +1,6 @@
 //! `og migrate three <file.ts> [--out <file.ts> | --write] [--json]`: a
-//! three.js file rewritten towards Origin Engine with the mappings of the
-//! `three-to-og` guide (`crates/og-api/guides/`, `og api show three-to-og`).
+//! three.js file rewritten towards Origin Engine with API reference names
+//! for mappings that need a hand edit.
 //!
 //! What is mechanical is rewritten: the three.js imports to one import of
 //! `og` from `@origingame/engine` (and a `must` helper), the geometry
@@ -13,13 +13,8 @@
 //! og.Camera resource, texture loads to `og.load.texture`, and the scene,
 //! the renderer and what is said to them deleted.
 //!
-//! What is not stays as written under a `// og migrate: <what to do>
-//! (three-to-og §N)` line and is listed with its line: the render loop
-//! (three-to-og §8), the glTF and environment loaders (three-to-og §7),
-//! the Raycaster (three-to-og §9), OrbitControls, InstancedMesh and
-//! ShaderMaterial (three-to-og §10), ambient lights (three-to-og §6),
-//! Euler and in-place arithmetic (three-to-og §3). The validator of the
-//! knowledge package checks that every section cited here exists.
+//! What is not stays as written under a `// og migrate: <what to do>`
+//! line with an `og api show` query, and is listed with its input line.
 //!
 //! The file is read as text, not parsed as TypeScript: a statement is a
 //! line (joined while a parenthesis or bracket is open), strings and
@@ -35,17 +30,17 @@ mod rewrite;
 
 const USAGE: &str = "usage: og migrate three <file.ts> [--out <file.ts> | --write] [--json]";
 
-// The guide's sections, by what they map.
-const S_MODEL: u8 = 1; // three-to-og §1
-const S_GRAPH: u8 = 2; // three-to-og §2
-const S_OBJECT: u8 = 3; // three-to-og §3
-const S_GEOMETRY: u8 = 4; // three-to-og §4
-const S_MATERIAL: u8 = 5; // three-to-og §5
-const S_LIGHT: u8 = 6; // three-to-og §6
-const S_LOAD: u8 = 7; // three-to-og §7
-const S_TICK: u8 = 8; // three-to-og §8
-const S_PICK: u8 = 9; // three-to-og §9
-const S_GAPS: u8 = 10; // three-to-og §10
+// API queries for the concepts each rewrite touches.
+const S_MODEL: &str = "og.game";
+const S_GRAPH: &str = "og.Parent";
+const S_OBJECT: &str = "og.Transform";
+const S_GEOMETRY: &str = "og.render.boxGeometry";
+const S_MATERIAL: &str = "og.render.standardMaterial";
+const S_LIGHT: &str = "og.PointLight";
+const S_LOAD: &str = "og.load.gltf";
+const S_TICK: &str = "og.game";
+const S_PICK: &str = "og.render.raycast";
+const S_GAPS: &str = "render";
 
 /// What happened to one line.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,14 +61,14 @@ impl Kind {
 }
 
 /// One entry of the list: the line in the input, what it said, what it
-/// became (or why it went, or what to do by hand), and the guide's section.
+/// became (or why it went, or what to do by hand), and an API reference.
 #[derive(Clone, Debug)]
 pub struct Item {
     pub line: usize,
     pub kind: Kind,
     pub three: String,
     pub og: String,
-    pub section: u8,
+    pub reference: &'static str,
 }
 
 /// The rewritten file and the list.
@@ -428,7 +423,7 @@ const MESH_FIELDS: &[&str] = &[
 ];
 
 /// three.js classes with no mechanical rewrite: what to do instead.
-fn manual_class(name: &str) -> Option<(&'static str, u8)> {
+fn manual_class(name: &str) -> Option<(&'static str, &'static str)> {
     Some(match name {
         "Clock" => (
             "the render loop's clock: per-tick logic goes in a system, where clock.getDelta() is time.dt",
@@ -807,14 +802,14 @@ enum Var {
     Mesh,
     Light(&'static Light),
     TextureLoader,
-    Manual(&'static str, u8),
+    Manual(&'static str, &'static str),
 }
 
 /// A note an expression leaves on its line.
 struct Note {
     kind: Kind,
     text: String,
-    section: u8,
+    section: &'static str,
 }
 
 #[derive(Default)]
@@ -887,11 +882,11 @@ fn three_import(t: &str) -> bool {
 /// What one statement became.
 enum Done {
     /// Rewritten to these lines.
-    Lines(Vec<String>, u8),
+    Lines(Vec<String>, &'static str),
     /// Deleted, and why.
-    Removed(String, u8),
+    Removed(String, &'static str),
     /// Left as written, with what to do.
-    Manual(String, u8),
+    Manual(String, &'static str),
 }
 
 fn euler(a: &[String]) -> String {
@@ -935,7 +930,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                     kind: Kind::Rewritten,
                     three: three.clone(),
                     og: short(&lines.join(" ")),
-                    section,
+                    reference: section,
                 });
                 body.extend(lines.into_iter().map(|l| format!("{indent}{l}")));
             }
@@ -944,7 +939,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                 kind: Kind::Removed,
                 three: three.clone(),
                 og: why,
-                section,
+                reference: section,
             }),
             Some(Done::Manual(what, section)) => {
                 comments.push((what.clone(), section));
@@ -953,7 +948,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                     kind: Kind::Manual,
                     three: three.clone(),
                     og: what,
-                    section,
+                    reference: section,
                 });
                 body.push(raw.clone());
             }
@@ -967,7 +962,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                         notes.push(Note {
                             kind: Kind::Manual,
                             text: what.to_string(),
-                            section: *section,
+                            section,
                         });
                     }
                 }
@@ -997,7 +992,7 @@ pub fn migrate(src: &str) -> Option<Migration> {
                         kind: Kind::Rewritten,
                         three: three.clone(),
                         og: short(rewritten.trim()),
-                        section: section_of(&rewritten),
+                        reference: reference_of(&rewritten),
                     });
                 }
                 body.push(rewritten);
@@ -1012,13 +1007,13 @@ pub fn migrate(src: &str) -> Option<Migration> {
                 kind: n.kind,
                 three: three.clone(),
                 og: n.text,
-                section: n.section,
+                reference: n.section,
             });
         }
         comments.dedup();
         for (what, section) in comments {
             out.push(format!(
-                "{indent}// og migrate: {what} (three-to-og §{section})"
+                "{indent}// og migrate: {what} (og api show {section})"
             ));
         }
         out.extend(body);
@@ -1055,8 +1050,8 @@ pub fn migrate(src: &str) -> Option<Migration> {
     Some(Migration { output, items })
 }
 
-/// The section a rewritten expression line belongs to, by what it calls.
-fn section_of(s: &str) -> u8 {
+/// The API reference for a rewritten expression, by what it calls.
+fn reference_of(s: &str) -> &'static str {
     if s.contains("Material(") {
         S_MATERIAL
     } else if s.contains("og.load.") {
@@ -1151,7 +1146,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             "rewritten": count(Kind::Rewritten),
             "removed": count(Kind::Removed),
             "manual": count(Kind::Manual),
-            "items": m.items.iter().map(|i| json!({ "line": i.line, "kind": i.kind.as_str(), "three": i.three, "og": i.og, "section": i.section })).collect::<Vec<_>>(),
+            "items": m.items.iter().map(|i| json!({ "line": i.line, "kind": i.kind.as_str(), "three": i.three, "og": i.og, "reference": i.reference })).collect::<Vec<_>>(),
         });
         if target.is_none() {
             v["output"] = json!(m.output);
@@ -1171,8 +1166,8 @@ pub fn run(args: &[&str]) -> ExitCode {
     );
     for i in m.items.iter().filter(|i| i.kind == Kind::Manual) {
         report.push_str(&format!(
-            "  {}: {} (three-to-og §{})\n      {}\n",
-            i.line, i.og, i.section, i.three
+            "  {}: {} (og api show {})\n      {}\n",
+            i.line, i.og, i.reference, i.three
         ));
     }
     report.push_str("next: move the setup into GameDesc.start(world) and the loop into systems, then `og check`\n");

@@ -33,4 +33,4 @@ fn count {
 }
 ```
 
-<sub>Module `inventory` line 95</sub>
+<sub>Module `inventory` line 89</sub>

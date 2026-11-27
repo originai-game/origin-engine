@@ -10,8 +10,6 @@ Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, mat
 
 A MagicaVoxel `.vox` cooks to a glTF and loads here too, its frames as clips og.AnimationPlayer plays; its import settings size and place it.
 
-See `loading §2`.
-
 Also known as: load a 3D model, model loader, GLTFLoader, glb, gltf model, import a mesh
 
 ```ts
@@ -33,7 +31,6 @@ fn gltf {
   aliases "load a 3D model, model loader, GLTFLoader, glb, gltf model, import a mesh"
   doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
   doc "A MagicaVoxel `.vox` cooks to a glTF and loads here too, its frames as clips og.AnimationPlayer plays; its import settings size and place it."
-  guide "loading §2"
   param world World "The world that owns the asset."
   param path String "The asset id, such as `models/ship.glb`."
   param desc GltfDesc "Scene and shadow options."
@@ -41,4 +38,4 @@ fn gltf {
 }
 ```
 
-<sub>Module `load` line 258</sub>
+<sub>Module `load` line 247</sub>

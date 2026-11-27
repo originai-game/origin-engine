@@ -12,7 +12,7 @@
 //! | [`opus`] | Opus sounds: Opus packets in self-contained blocks (music and long sounds) |
 //! | [`lightmap`] | native baked-lighting records and their KTX2 pages |
 //! | [`fx`] | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
-//! | [`grammar`] | the effect files' line tables and the `effect-files` guide written from them |
+//! | [`grammar`] | parser line tables |
 //! | [`look`] | native look values, inheritance, hex colours and `.hex`/`.gpl` palettes; no author parser |
 //! | [`shader`] | material shaders (`.ogt` of `type shader`): parsing and the cooked text (og-cook compiles them with naga) |
 //!

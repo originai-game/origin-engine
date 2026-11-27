@@ -2,7 +2,6 @@ module physics {
   doc "Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back."
   doc "The profile is 2D in a `form \"2d\"` project. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
-  guide "physics"
   split physics
   core RigidBody Collider Velocity CharacterController Vehicle ColliderShape
 
@@ -18,7 +17,6 @@ module physics {
 
   enum RigidBodyType {
     doc "A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract."
-    guide "physics §1"
     variant dynamic "Moved by the solver; Transform and Velocity are written back every tick."
     variant fixed "Not moved by the solver; collides with dynamic bodies."
     variant kinematic "Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Transform is not a next-position target from which velocity is inferred."
@@ -35,7 +33,6 @@ module physics {
     doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
     doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
     aliases "physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body"
-    guide "physics §1"
     field kind RigidBodyType "dynamic is simulated, fixed is not moved by the solver, kinematic follows Velocity and Transform writes." {
       label "Kind"
     }
@@ -68,12 +65,10 @@ module physics {
     }
     field ccd bool "Enable continuous collision detection for fast small bodies that must not tunnel."
     field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. Needs an og.Collider." {
-      guide "physics §1"
       unit m
       tunable true
     }
     field airDrag f32 "How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping." {
-      guide "physics §1"
       min 0
       max 100
       unit perSecond
@@ -102,7 +97,6 @@ module physics {
 
   enum ColliderShape {
     doc "What a collider is shaped as: Collider.shape and ShapeDesc.shape."
-    guide "physics §1"
     variant box "A box of `size` (both profiles)."
     variant sphere "A sphere of `radius` (a circle in 2D)."
     variant capsule "A capsule along y of `radius`, with `height` between the cap centres (both profiles)."
@@ -141,7 +135,6 @@ module physics {
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
     doc "A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children."
-    guide "physics §1"
     aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
     field shape ColliderShape "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a height field), diamond, hexagon, cone (3D) or polyline." {
       label "Shape"
@@ -224,7 +217,6 @@ module physics {
   component ForceField {
     aliases "gravity zone, low gravity room, gravity well, pull objects towards a point, attract or repel bodies, updraft, jump pad, tractor beam, anti-gravity area, whirlpool"
     doc "An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run."
-    guide "physics §8"
     field kind ForceFieldKind "How it accelerates."
     field direction Vector3 "A directional field's direction and a vortex's axis, in the entity's space (it turns with the entity); its length does not matter." {
       default 0 1 0
@@ -254,7 +246,6 @@ module physics {
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
     field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again." {
-      guide "physics §2"
       default 3
       min 2
       max 3
@@ -285,7 +276,6 @@ module physics {
       tunable true
     }
     field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps." {
-      guide "physics §3"
       min 0
       max 3600
       tunable true
@@ -301,7 +291,6 @@ module physics {
 
   event CollisionStarted {
     doc "Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself."
-    guide "physics §5"
     field a Entity "The entity with the lower id."
     field b Entity "The entity with the higher id."
     field point Vector3 "The deepest contact point in world space (z is 0 in 2D)." {
@@ -314,7 +303,6 @@ module physics {
       unit newtonSecond
     }
     field relativeVelocity Vector3 "a's velocity relative to b at `point` as the step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach." {
-      guide "physics §5"
       unit mps
     }
   }
@@ -392,7 +380,6 @@ module physics {
 
   enum JointType {
     doc "How a joint holds its two bodies: Joint.kind."
-    guide "physics §1"
     variant fixed "The two bodies move as one."
     variant revolute "A hinge about `axis` (2D: about z), with optional limits and a motor."
     variant prismatic "A slider along `axis`, with optional limits and a motor."
@@ -411,7 +398,6 @@ module physics {
 
   enum JointMotor {
     doc "What drives a joint: Joint.motor."
-    guide "physics §1"
     variant none "No motor."
     variant velocity "Drive towards `motorTarget` speed (rad/s or m/s)."
     variant position "Spring towards `motorTarget` angle or position (a servo)."
@@ -439,7 +425,6 @@ module physics {
 
   component Joint {
     doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
-    guide "physics §1"
     field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF)." {
       label "Kind"
     }

@@ -1,6 +1,5 @@
 module interact {
   doc "The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing."
-  guide "interaction §1"
 
   enum InteractRule {
     doc "How an og.Interactor picks its focus among the candidates in range, in its cone and in sight."
@@ -19,7 +18,6 @@ module interact {
   component Interactable {
     aliases "usable, interaction target, use prompt target, press E to interact, pickup, Unity interactable, Godot interactable area"
     doc "Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens."
-    guide "interaction §1"
     field priority u32 "Ranks it under InteractRule.priority: the highest is focused first."
     field holdTicks u32 "Ticks the action is held on it before it is used; 0 uses it on the press." {
       min 0
@@ -32,7 +30,6 @@ module interact {
   component Interactor {
     aliases "interaction focus, player interact, use key, look at target, interaction prompt source, hold to interact"
     doc "Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it."
-    guide "interaction §1"
     field action str.32 "The input action that uses the focus (og.input.defineAction's name); empty uses nothing."
     field range f32 "How far it looks; 0 focuses nothing." {
       min 0
@@ -65,7 +62,6 @@ module interact {
   event Interacted {
     aliases "on interact, used, interaction event, picked up, lever pulled"
     doc "An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes."
-    guide "interaction §1"
     field interactor Entity "The og.Interactor."
     field target Entity "The og.Interactable."
   }
@@ -73,7 +69,6 @@ module interact {
   component Door {
     aliases "door, gate, open close door, navmesh door, Unity NavMeshLink door, locked passage"
     doc "A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`."
-    guide "interaction §2"
     field open bool "Whether it is open; write it to open or close it from the game."
     field toggle Entity "An og.Toggle (a lever, a pressure plate) whose `on` it follows; 0: using it flips it."
     field mesh Navigation "The navmesh its link is on (og.nav.build, og.nav.load); 0: no link."
@@ -89,7 +84,6 @@ module interact {
   component Toggle {
     aliases "lever, switch, button, pressure plate, floor switch, on off"
     doc "Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it."
-    guide "interaction §2"
     field on bool "Whether it is on."
     field plate bool "On while anything is inside its sensor (an og.Collider with `sensor` on its entity)."
   }
@@ -97,7 +91,6 @@ module interact {
   component Grab {
     aliases "pick up, carry, throw object, hold item, grab physics object, Half-Life gravity gun"
     doc "A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody."
-    guide "interaction §2"
     field carry Vector3 "Where it is carried, in the carrier's frame (forward +Z)." {
       unit m
       worldspace none

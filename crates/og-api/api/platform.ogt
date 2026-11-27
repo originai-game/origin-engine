@@ -1,6 +1,5 @@
 module platform {
   doc "Platform services as host capabilities: the cloud store and save slots, leaderboards, telemetry, Origin Point, AI marks, purchases, ads, achievements, the player, friends, invites, share and rooms. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them; every id it hands back is opaque and scoped to this game. Calls are asynchronous: each returns a request number at once and its answer arrives at the start of a later tick (og.PlatformAnswered, og.platform.result), host input like key presses. A host that lacks a method answers it `unavailable`."
-  guide "saves §7"
   core storeGet result quickPlay PlatformResult QuickPlayDesc
 
   const CORE_ONLY_METHODS List.String "store.get store.set store.list leaderboard.submit leaderboard.top leaderboard.around telemetry catalog.head" "The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions."
@@ -115,11 +114,9 @@ module platform {
     doc "What answers platform calls here."
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
     field capabilities List.String "The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one." {
-      guide "saves §7"
     }
     field pending u32 "Calls not answered yet."
     field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock), `system` (the native host's), `fixed` (`og run --clock` and playtests: it starts where told and moves with the ticks) or `none`." {
-      guide "saves §7"
     }
   }
 
@@ -141,7 +138,6 @@ module platform {
 
   fn catalogHead {
     doc "Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: a catalog notice (og.PlatformNotice) is a hint a host may never send."
-    guide "saves §11"
     aliases "content version, world index version, published level version, catalog pointer"
     param world World "The world."
     param catalog String "The catalog's name, as og.load.data's CatalogEntry.catalog."
@@ -216,7 +212,6 @@ module platform {
 
   fn saveSlot {
     doc "Save a long text under a slot, in as many store keys as it needs, with one request. The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. A slot takes at most 17 keys (two banks and the manifest)."
-    guide "saves §6"
     param world World "The world."
     param desc SaveSlotDesc "The slot, the text and what a title shows of it."
     returns Result.u32 "Refused for a malformed slot name, a text over 512 KiB or a meta over 4 KiB. Answered once the manifest is written: data `{ slot, parts, bytes, revision }`; an error is the first refused part's or the manifest's (`conflict`: another save of the slot landed; the slot holds that one)."
@@ -224,7 +219,6 @@ module platform {
 
   fn loadSlot {
     doc "Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it."
-    guide "saves §1"
     param world World "The world."
     param desc LoadSlotDesc "The slot, and whether to read its meta alone."
     returns Result.u32 "Refused for a malformed slot name. The answer's data is `{ slot, text, meta, parts, bytes, revision }`: text and meta null for a slot never saved, text null with metaOnly; `invalid` for a key that holds no slot manifest or parts that do not match it."
@@ -249,7 +243,6 @@ module platform {
 
   event PlatformNotice {
     doc "Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable."
-    guide "saves §8"
     field notice u32 "The notice's number, for og.platform.notice: 1 for the first, counting up."
     field kind PlatformNoticeKind "What it is about."
   }
@@ -344,7 +337,6 @@ module platform {
 
   fn purchase {
     doc "Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume."
-    guide "saves §8"
     param world World "The world."
     param desc PurchaseDesc "The product and how many."
     returns Result.u32 "Refused for a malformed product id. Data `{ purchase, product, quantity, state }`: state `completed` or `pending` (a parent's approval or a payment; a `purchase` notice settles it). Errors: `cancelled` (the player backed out), `not_found`, `conflict` (a durable already owned), `unavailable`."
@@ -352,7 +344,6 @@ module platform {
 
   fn entitlements {
     doc "What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed."
-    guide "saves §8"
     param world World "The world."
     returns u32 "The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise."
   }
@@ -490,14 +481,12 @@ module platform {
 
   fn journal {
     doc "Everything the host handed this engine, oldest first, with the tick it was handed at: platform answers are host input, and `og replay record --platform-journal` hands these back at the same ticks, so a web session, whose answers come when the page delivers them, replays natively. A publish build keeps none."
-    guide "saves §7"
     param world World "The world."
     returns List.PlatformHanded
   }
 
   fn now {
     doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values."
-    guide "saves §7"
     aliases "real time, wall clock, date, server time, calendar day, daily reward clock"
     param world World "The world."
     returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
@@ -590,7 +579,6 @@ module platform {
 
   fn roomCreate {
     doc "Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does)."
-    guide "saves §9"
     param world World "The world."
     param desc RoomDesc "Its name and capacity." {
       optional true

@@ -37,4 +37,4 @@ fn t {
 }
 ```
 
-<sub>Module `i18n` line 68</sub>
+<sub>Module `i18n` line 67</sub>

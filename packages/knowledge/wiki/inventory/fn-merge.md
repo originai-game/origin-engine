@@ -36,4 +36,4 @@ fn merge {
 }
 ```
 
-<sub>Module `inventory` line 157</sub>
+<sub>Module `inventory` line 151</sub>

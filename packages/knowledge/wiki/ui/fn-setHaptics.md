@@ -28,4 +28,4 @@ fn setHaptics {
 }
 ```
 
-<sub>Module `ui` line 367</sub>
+<sub>Module `ui` line 366</sub>

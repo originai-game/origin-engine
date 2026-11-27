@@ -12,8 +12,6 @@ Driven by og.systems.cameras; the first entity carrying one, in query order, dri
 
 The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
 
-See `camera §1`.
-
 Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its value type is `OrbitCamera`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -38,7 +36,6 @@ Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its v
 component OrbitCamera {
   doc "Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own."
   doc "Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
-  guide "camera §1"
   doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
   field target Vector3 "The orbited point, relative to the entity's position." {
     worldspace none
@@ -113,4 +110,4 @@ component OrbitCamera {
 }
 ```
 
-<sub>Module `camera` line 255</sub>
+<sub>Module `camera` line 253</sub>

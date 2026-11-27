@@ -35,7 +35,7 @@
 //! rooms, og.net's lockstep; a run in a room keeps going until `quit` or
 //! --ticks, waiting for the other players). `--locale ja` is the locale og.i18n is
 //! asked for (default: none, the base table). `--content <dir>` is the
-//! content base og.load.data reads catalogs from (guide loading §14);
+//! content base og.load.data reads catalogs from;
 //! without it a data load fails `unavailable`. Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.

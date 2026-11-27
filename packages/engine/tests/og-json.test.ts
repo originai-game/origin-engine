@@ -1,5 +1,5 @@
-// The machine-readable output a tool that drives og relies on (the testing
-// guide §9): `og test --json`'s events, `og probe`'s result and exit
+// The machine-readable output a tool that drives og relies on:
+// `og test --json`'s events, `og probe`'s result and exit
 // status, and `og build --json` with where the build lands. A change to
 // any shape asserted here is a breaking change.
 import { afterAll, beforeAll, expect, test } from "bun:test";

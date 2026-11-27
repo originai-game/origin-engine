@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
 
-See `render §8`.
-
 Token `og.Water`, registered under the schema name `og.Water`; its value type is `Water`.
 
 #### Shape
@@ -18,8 +16,8 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 |---|---|---|---|---|---|---|
 | `size` | `Vector2` | `{ x: 16, y: 16 }` | — | `m` | tunable | The extent along the entity's x and z. |
 | `depth` | `number` | `0` | ≥ 0 | `m` | tunable | Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume. |
-| `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid. See `render §8`. |
-| `river` | `Path` | `0` | — | — | — | A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none. See `render §8`. |
+| `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid. |
+| `river` | `Path` | `0` | — | — | — | A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none. |
 | `riverWidth` | `number` | `6` | ≥ 0 | `m` | tunable | The river's width across. |
 | `riverSpeed` | `number` | `1.5` | ≥ 0 | `mps` | tunable | The river's current mid-stream; it slows to nothing at the banks. |
 | `segments` | `number` | `64` | 1 … 256 | — | — | Grid cells per side (the height field's detail). |
@@ -31,7 +29,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | `shallow` | `Color` | `{ r: 0.55, g: 0.85, b: 0.82 }` | — | — | — | Shallow water's colour (tints what is seen through it). |
 | `deep` | `Color` | `{ r: 0.02, g: 0.09, b: 0.14 }` | — | — | — | Deep water's colour. |
 | `depthFade` | `number` | `2.5` | ≥ 0.01 | `m` | tunable | The depth over which water turns from shallow to deep. |
-| `absorption` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | How much of each colour the water absorbs per metre of light's path (1/m; sea water about 0.45 0.07 0.03). With it or scattering set the body is physical: what lies below dims along the path down and up, and sun and sky scatter back out; shallow, deep, depthFade and opacity are then unused. See `render §8`. |
+| `absorption` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | How much of each colour the water absorbs per metre of light's path (1/m; sea water about 0.45 0.07 0.03). With it or scattering set the body is physical: what lies below dims along the path down and up, and sun and sky scatter back out; shallow, deep, depthFade and opacity are then unused. |
 | `scattering` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption. |
 | `opacity` | `number` | `0.92` | 0 … 1 | `ratio` | tunable | How opaque deep water gets. |
 
@@ -56,7 +54,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 |---|---|---|---|---|---|---|
 | `refraction` | `number` | `1` | ≥ 0 | — | tunable | How far refraction shifts what is seen through the water. |
 | `reflectivity` | `number` | `1` | 0 … 2 | — | tunable | How much it reflects. |
-| `planarReflection` | `number` | `0` | 0 … 1 | `ratio` | tunable | Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). As many surfaces a frame as RenderOptions.planarReflections allows. See `render §8`. |
+| `planarReflection` | `number` | `0` | 0 … 1 | `ratio` | tunable | Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). As many surfaces a frame as RenderOptions.planarReflections allows. |
 | `shadows` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the sun's shadows darken the surface: its highlight, foam and colour (0: none). |
 | `f0` | `number` | `0.02` | 0 … 1 | `ratio` | tunable | The reflectance looking straight down (Schlick's F0): 0.02 for clean water; three.js Water.js reflects at least 0.3. |
 | `reflectionBias` | `number` | `0` | 0 … 1 | `ratio` | tunable | A floor under the reflected colour: bias + (1 - bias) times the reflection (three.js Water.js: 0.1). |
@@ -66,7 +64,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `underwaterColor` | `Color` | `{ r: 0.03, g: 0.16, b: 0.2 }` | — | — | — | With the camera below the surface: the water's fog colour. |
-| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it. See `render §8`. |
+| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it. |
 
 #### Caustics
 
@@ -81,11 +79,11 @@ three.js Water and Water2 ripples in place of the travelling waves.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `normalMap` | `Texture` | `0` | — | — | — | Ripples from a tangent-space normal map (linear; red +x, green +z, blue up) in place of the waves: with flow 0, four layers drifting over the world's xz times normalScale (three.js Water); with a flow, two layers sliding along it, cross-faded (three.js Water2). waveStrength scales slopes. 0: waves. See `render §8`. |
+| `normalMap` | `Texture` | `0` | — | — | — | Ripples from a tangent-space normal map (linear; red +x, green +z, blue up) in place of the waves: with flow 0, four layers drifting over the world's xz times normalScale (three.js Water); with a flow, two layers sliding along it, cross-faded (three.js Water2). waveStrength scales slopes. 0: waves. |
 | `normalScale` | `number` | `1` | ≥ 0 | — | tunable | The normal map's repeats per metre (the lake) or per uv unit (a flow). |
-| `glint` | `number` | `0` | ≥ 0 | — | tunable | three.js Water's sun glint: pow(eye · reflect(-sun, normal), 100) times the sun's light times this, through the Fresnel term. With glint it is shaded as three.js Water.js throughout (deep is its waterColor, sunColor the light × glint / 2). 0: the default half-vector highlight and depth colour. See `render §8`. |
+| `glint` | `number` | `0` | ≥ 0 | — | tunable | three.js Water's sun glint: pow(eye · reflect(-sun, normal), 100) times the sun's light times this, through the Fresnel term. With glint it is shaded as three.js Water.js throughout (deep is its waterColor, sunColor the light × glint / 2). 0: the default half-vector highlight and depth colour. |
 | `flow` | `Vector2` | `{ x: 0, y: 0 }` | — | — | tunable | Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river. |
-| `flowMap` | `Texture` | `0` | — | — | — | three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; image top at v 1), over the mesh's uv or the grid from its -x -z corner; with it flow's length is the speed (0 0: 0.03) and the map the direction, for the normal map's layers or the travelling waves. 0: the flow alone. See `render §8`. |
+| `flowMap` | `Texture` | `0` | — | — | — | three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; image top at v 1), over the mesh's uv or the grid from its -x -z corner; with it flow's length is the speed (0 0: 0.03) and the map the direction, for the normal map's layers or the travelling waves. 0: the flow alone. |
 
 #### Sea
 
@@ -93,11 +91,11 @@ A wind-driven ocean on the grid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none. See `render §8`. |
+| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none. |
 | `swell` | `number` | `1` | 0 … 4 | `ratio` | tunable | The sea's height, as a fraction of a fully developed sea's for the wind. |
 | `choppiness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much. |
 | `endless` | `boolean` | `false` | — | — | — | A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale). |
-| `seabed` | `Entity` | `0` | — | — | — | The og.Terrain whose heights are the sea's floor (0: none): a wave fades in water shallower than half its length, the sea held under its breaking height (significant height 0.78 × depth); shore trains break into surf. og.physics.waterHeight and og.Buoyancy read the same sea. See `render §8`. |
+| `seabed` | `Entity` | `0` | — | — | — | The og.Terrain whose heights are the sea's floor (0: none): a wave fades in water shallower than half its length, the sea held under its breaking height (significant height 0.78 × depth); shore trains break into surf. og.physics.waterHeight and og.Buoyancy read the same sea. |
 
 #### Shore
 
@@ -113,13 +111,12 @@ A wind-driven ocean on the grid.
 |---|---|---|---|---|---|---|
 | `foamStreaks` | `number` | `1` | 0 … 4 | `ratio` | tunable | How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): the lace a whitecap leaves, gathered into windrows by the surface's Langmuir circulation. Rendering only. |
 | `meniscus` | `number` | `2` | -1 … 16 | — | tunable | Where the camera's near plane crosses the surface, the width in pixels of the meniscus along the waterline between the air and the water's fog, each pixel under or above as the waves put it; 0: the line alone; below 0: no waterline, the frame above or under as the eye is. Needs underwaterDensity. |
-| `dynamicWaves` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only. See `render §8`. |
+| `dynamicWaves` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only. |
 | `spray` | `number` | `1` | 0 … 4 | `ratio` | tunable | How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them. |
 
 ```ogt
 component Water {
   doc "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it."
-  guide "render §8"
   split world3d
   group "Shape"
   field size Vector2 "The extent along the entity's x and z." {
@@ -133,10 +130,8 @@ component Water {
     tunable true
   }
   field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid." {
-    guide "render §8"
   }
   field river Path "A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none." {
-    guide "render §8"
   }
   field riverWidth f32 "The river's width across." {
     default 6
@@ -169,7 +164,6 @@ component Water {
     tunable true
   }
   field absorption Color "How much of each colour the water absorbs per metre of light's path (1/m; sea water about 0.45 0.07 0.03). With it or scattering set the body is physical: what lies below dims along the path down and up, and sun and sky scatter back out; shallow, deep, depthFade and opacity are then unused." {
-    guide "render §8"
     default 0 0 0
   }
   field scattering Color "How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption." {
@@ -221,7 +215,6 @@ component Water {
     tunable true
   }
   field planarReflection f32 "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). As many surfaces a frame as RenderOptions.planarReflections allows." {
-    guide "render §8"
     min 0
     max 1
     unit ratio
@@ -251,7 +244,6 @@ component Water {
     default 0.03 0.16 0.2
   }
   field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it." {
-    guide "render §8"
     default 0.09
     min 0
     max 2
@@ -271,7 +263,6 @@ component Water {
   }
   group "Normal maps and flow" "three.js Water and Water2 ripples in place of the travelling waves."
   field normalMap Texture "Ripples from a tangent-space normal map (linear; red +x, green +z, blue up) in place of the waves: with flow 0, four layers drifting over the world's xz times normalScale (three.js Water); with a flow, two layers sliding along it, cross-faded (three.js Water2). waveStrength scales slopes. 0: waves." {
-    guide "render §8"
   }
   field normalScale f32 "The normal map's repeats per metre (the lake) or per uv unit (a flow)." {
     default 1
@@ -279,7 +270,6 @@ component Water {
     tunable true
   }
   field glint f32 "three.js Water's sun glint: pow(eye · reflect(-sun, normal), 100) times the sun's light times this, through the Fresnel term. With glint it is shaded as three.js Water.js throughout (deep is its waterColor, sunColor the light × glint / 2). 0: the default half-vector highlight and depth colour." {
-    guide "render §8"
     min 0
     tunable true
   }
@@ -288,11 +278,9 @@ component Water {
     tunable true
   }
   field flowMap Texture "three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; image top at v 1), over the mesh's uv or the grid from its -x -z corner; with it flow's length is the speed (0 0: 0.03) and the map the direction, for the normal map's layers or the travelling waves. 0: the flow alone." {
-    guide "render §8"
   }
   group "Sea" "A wind-driven ocean on the grid."
   field wind Vector2 "The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none." {
-    guide "render §8"
     default 0 0
     unit mps
     tunable true
@@ -313,7 +301,6 @@ component Water {
   }
   field endless bool "A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale)."
   field seabed Entity "The og.Terrain whose heights are the sea's floor (0: none): a wave fades in water shallower than half its length, the sea held under its breaking height (significant height 0.78 × depth); shore trains break into surf. og.physics.waterHeight and og.Buoyancy read the same sea." {
-    guide "render §8"
   }
   group "Shore"
   field shore f32 "How high the trains rolling in on the seabed's shores are, times a quarter of the sea's significant height (0: none; the waves still shoal)." {
@@ -351,7 +338,6 @@ component Water {
     tunable true
   }
   field dynamicWaves f32 "How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only." {
-    guide "render §8"
     default 1
     min 0
     max 4
@@ -368,4 +354,4 @@ component Water {
 }
 ```
 
-<sub>Module `atmosphere` line 816</sub>
+<sub>Module `atmosphere` line 798</sub>

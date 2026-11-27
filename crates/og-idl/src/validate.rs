@@ -1191,37 +1191,3 @@ fn placelike(name: &str) -> bool {
                 && name[name.len() - w.len()..].starts_with(|c: char| c.is_ascii_uppercase()))
     })
 }
-
-/// Every `guide` reference names a guide beside the IDL and, when it gives
-/// one, a `## N.` section of it. Run by `read`, once the guides are loaded.
-pub(crate) fn guide_refs(api: &Api) -> Vec<Diagnostic> {
-    let mut out = Vec::new();
-    for r in api.guide_refs() {
-        let Some(g) = api.guides.iter().find(|g| g.name == r.guide) else {
-            out.push(Diagnostic {
-                line: r.line,
-                message: format!(
-                    "`guide \"{r}\"` names no guide: crates/og-api/guides/ has {}",
-                    api.guides
-                        .iter()
-                        .map(|g| g.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            });
-            continue;
-        };
-        if let Some(n) = r.section
-            && !g.sections().contains(&n)
-        {
-            out.push(Diagnostic {
-                line: r.line,
-                message: format!(
-                    "`guide \"{r}\"`: the `{}` guide has no section `## {n}.`",
-                    g.name
-                ),
-            });
-        }
-    }
-    out
-}

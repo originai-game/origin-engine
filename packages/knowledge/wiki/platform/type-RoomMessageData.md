@@ -27,4 +27,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>Module `platform` line 554</sub>
+<sub>Module `platform` line 543</sub>

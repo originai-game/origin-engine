@@ -28,13 +28,11 @@ mod publish;
 mod relay;
 mod style_check;
 mod trace;
-mod ui_api_docs;
 mod ui_components;
 mod ui_data;
 mod ui_grounds;
 mod ui_styles;
 mod ui_values;
-mod vfx_catalogue;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -51,8 +49,7 @@ commands:
                       write one empty game project and its creation choices; `og new` is an alias;
                       never prompts with --no-prompt or without a terminal; --look is a catalogue
                       style with a preset (an unknown one exits 1, listing them);
-                      --genre interactive-film adds a flow (og api show flow);
-                      the start guide §1
+                      --genre interactive-film adds a flow (og api show flow)
   new [dir] [options]  alias for og create
   script <file.ts> [--root DIR] [--params JSON] [--seed N] [--input name=path] [--out FILE] [--json]
                       execute a deterministic cook generator; no network, arbitrary files, processes or clock
@@ -96,8 +93,7 @@ commands:
                       hash in a fresh og run and on the web host, and written as a repro and a bun:test
                       playtest beside report.json in --out (default <project>/og-out/explore); defaults
                       60 s, 200000 ticks, 256 MB of snapshots, 1 job, horizon 3600 ticks; --first
-                      stops at the first violation or error and reports only those; the explore
-                      guide: og api show explore
+                      stops at the first violation or error and reports only those
   render [project] --commands \"t:action[:args];...\" | --commands-file <f> | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
       [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]
@@ -108,8 +104,7 @@ commands:
                       --keyframes adds the frames where something happened (an input, a step, a
                       screen change, an assertion or expectation, a mean FLIP of F, default 0.02,
                       from the last key frame at least S seconds, default 0.5, after it) as
-                      keyframes/<index>.png at 1280, keyframes.png and timeline.json (the captures
-                      guide)
+                      keyframes/<index>.png at 1280, keyframes.png and timeline.json
   model <command> <program.json | mesh> [options]
                       og-shape's model and mesh tools: build, export, measure, preview, import,
                       repair, decimate, unwrap, place, collide, compress, process, rig
@@ -118,26 +113,26 @@ commands:
       [--flip <out.png>] [--ppd P] [--regions N] [--json]
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
                       overlap) of a captured frame against a reference image, and one sheet PNG of
-                      the reference beside the render beside their silhouettes (the art-review guide);
+                      the reference beside the render beside their silhouettes;
                       NVIDIA's FLIP of the two (mean, percentiles, max), its heat map (default
                       <render>.flip.png) and its worst regions, each reference | render | heat
-                      enlarged in <heat>-<n>.png (the captures guide)
+                      enlarged in <heat>-<n>.png
   cost [project] --off \"<og run options>\" [--on \"<og run options>\"] [--runs N] [--ticks A..B] [--json]
       [-- <og run options for both>]
                       what a feature costs the real frame: og run --trace with it on and off, at
                       least 4 runs a side alternating, the median GPU frame span of each side with
-                      its range and the load, and their difference (the render guide)
+                      its range and the load, and their difference
   migrate three <file.ts> [--out <file.ts> | --write] [--json]
                       rewrite a three.js file towards og where the mapping is mechanical (geometries,
                       materials, meshes, lights, the scene graph, transforms, the camera, texture
-                      loads) and list each line that is not, with the three-to-og guide's section
+                      loads) and list each line that is not, with its API reference query
   probe <method> [params-json] [--port P] [--out file.png] [--timeout S] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket):
                       the result as JSON on stdout, exit 0 (a refusal, false or null, is a result); an
                       error on stderr, exit 1; a capture/marks PNG written to --out (default capture.png),
                       capture_views/sweep frames beside it as <stem>-<view>.png, listen WAV to --out
                       (default listen.wav); --timeout sets socket timeout in seconds (default 30);
-                      --raw prints the whole answer frame (the testing guide §9)
+                      --raw prints the whole answer frame
   mcp                 serve the og tool over MCP on stdio: probe, run_logs, run, test, check, cook,
                       build, create, explore, replay, ui, style, model, assets, prefab, doctor,
                       render, compare, frame, cost, vfx, sfx, sprite, materials, i18n, flow, fmt,
@@ -150,7 +145,7 @@ commands:
                       serve the development web build on http://H:P/ (default 127.0.0.1:47810;
                       the inspector, Tune, Pause and Step, the probe) with every edit pushed to
                       the open page: assets and UI applied in place, code swapped with the world
-                      kept, a reload when project.ts or og-project.json changes (the testing guide §1)
+                      kept, a reload when project.ts or og-project.json changes
   check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints NDJSON (`check` plus optional `ui-check`/`style-check` events);
@@ -162,13 +157,13 @@ commands:
                       --skip omits suite files matching a substring (repeatable);
                       --affected <git-revision> selects changed dependencies (unknown inputs run all);
                       --jobs N runs up to N playtest files at once, each one's output whole, in order
-                      --json: stdout is JSON Lines only, the check, playtest and test events (the
-                      testing guide §9); the prose goes to stderr
+                      --json: stdout is JSON Lines only, the check, playtest and test events;
+                      the prose goes to stderr
   build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--modules cdn|local] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest);
-                      --json: the check and build events as JSON Lines (the testing guide §9)
+                      --json: the check and build events as JSON Lines
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
                       assets/ into cooked/, incrementally; --report prints the ten slowest
                       assets by their last cook; --watch cooks each change, timing it
@@ -219,8 +214,7 @@ commands:
                       a material library's maps from images an image model draws: list the
                       images its briefed materials ask for (art brief kind, metres, where each
                       goes), or make each map periodic (a facade module across only) and its
-                      authored normal, packed roughness and cavity maps, reporting seams (the
-                      districts guide)
+                      authored normal, packed roughness and cavity maps, reporting seams
   sprite inspect <file.gif|.webp|.png|content/sheet.ts> [--key auto|off|#rrggbb] [--tolerance T]
       [--holes] [--out <frames.png>] [--json]
                       measure an animated sprite source or a flipbook sheet built from them:
@@ -331,7 +325,7 @@ commands:
                       contrast (the ink, the region's darkest or brightest 5 %, against the median
                       ground of --against or the region), high-pass energy (mean |grey - its σ 2
                       blur|, with its ratio to --against), mean colour, and the grey per band of
-                      --rows rows with the largest step (the art-review guide)
+                      --rows rows with the largest step
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep); behind a TLS
@@ -357,18 +351,16 @@ commands:
                       move og-project.json's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
-  api find <words> [--kind module|fn|record|type|member|const|value|column|guide|file] [--limit N] [--json]
-                      the API reference and guide entries for the words (a name, a purpose, a
+  api find <words> [--kind module|fn|record|type|member|const|value|column|file|component] [--limit N] [--json]
+                      the API reference entries for the words (a name, a purpose, a
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
-  api show <name> [--all] [--guide] [--json]
+  api show <name> [--all] [--json]
                       one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.castRay, MAX_RAYCAST_HITS, Button, \"saves §2\"; og. may be left out);
-                      a module shows its overview and its core members, --all every member; --guide shows
-                      the guide named like a module (physics, input, camera, audio, render); large guides
-                      print a section table unless --all is passed
-  api list [--kind module|guide|file] [--json]
-                      list every API module and guide with one-line summaries and section counts
+                      og.physics.castRay, MAX_RAYCAST_HITS, Button, file:terrain; og. may be left out);
+                      a module shows its overview and its core members, --all every member
+  api list [--kind module|file|component] [--json]
+                      list API modules, file inputs or UI components with one-line summaries
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki

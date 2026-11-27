@@ -39,4 +39,4 @@ struct ThermalErosionDesc {
 }
 ```
 
-<sub>Module `procgen` line 359</sub>
+<sub>Module `procgen` line 358</sub>

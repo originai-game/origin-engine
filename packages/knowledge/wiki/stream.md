@@ -6,11 +6,9 @@ Named groups load one pack each, by priority within a memory budget (256 MiB by 
 
 World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
 
-See `world §4`.
-
 - **TypeScript**: functions are the namespace `og.stream`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module stream {
@@ -58,28 +56,28 @@ module stream {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>Module `stream` line 66</sub>
+<sub>Module `stream` line 62</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>Module `stream` line 67</sub>
+<sub>Module `stream` line 63</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>Module `stream` line 68</sub>
+<sub>Module `stream` line 64</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's pack is available (StreamState resident), independently of texture worker progress."
 ```
 
-<sub>Module `stream` line 69</sub>
+<sub>Module `stream` line 65</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>Module `stream` line 70</sub>
+<sub>Module `stream` line 66</sub>

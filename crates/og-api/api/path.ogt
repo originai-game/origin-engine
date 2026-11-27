@@ -1,7 +1,6 @@
 module path {
   doc "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed. catmullRom passes through every point (tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...`, linear joins straight segments; a closed path joins its last point to its first and wraps t."
   doc "Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state."
-  guide "world §8"
 
   handle Path "A path: its points, kind and arc-length table."
 

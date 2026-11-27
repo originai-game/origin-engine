@@ -1,7 +1,6 @@
 module destruction {
   doc "Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells."
   doc "It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts."
-  guide "physics §9"
   split destruction physics
   core Destructible Chunk Fractured PixelTerrain PixelDetached damage explode info material fill2d explode2d MATERIAL_BRICK MATERIAL_CONCRETE MATERIAL_GLASS DamageDesc ExplosionDesc DestructibleInfo Fill2dDesc Explosion2dDesc
 
@@ -21,7 +20,6 @@ module destruction {
   component Destructible {
     doc "Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). A standing prop (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (its piece's hull) on an og.Chunk, replacing the entity's own Collider and RigidBody. A moving prop (a dynamic or kinematic body) collides as itself until its first break, when its chunks replace its Collider, RigidBody and Velocity, moving as it moved. Then each chunk draws its piece of the hidden model (its tint, variant, shadows)."
     doc "Chunks' colliders and mass follow og.Transform.scale's mean."
-    guide "physics §9"
     split destruction3d physics
     aliases "breakable, destructable, destructible prop, fracture, Unreal Geometry Collection"
     field toughness f32 "How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000." {
@@ -31,21 +29,18 @@ module destruction {
       tunable true
     }
     field strength f32 "The stress its bonds hold in tension and shear before they weaken; compression holds thirty times as much, shear more by `friction`, and a bond breaks outright at twice the stress. 0 turns the stress solver off." {
-      guide "physics §9"
       default 30000
       min 0
       unit pascal
       tunable true
     }
     field friction f32 "How much more shear a bond holds per pascal of compression across it (Mohr–Coulomb: the tangent of the friction angle). 0 is shear at strength alone." {
-      guide "physics §9"
       default 0.7
       min 0
       max 4
       tunable true
     }
     field tension f32 "The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's); 1 is tension at strength. At 0.1 or below, with strength above 0, a standing block also needs its weight within the middle third of what bears it from below, or it comes loose whole." {
-      guide "physics §9"
       default 1
       min 0
       max 1
@@ -58,7 +53,6 @@ module destruction {
       tunable true
     }
     field impactThreshold f32 "A collision's impulse (og.CollisionStarted.impulse) that does no damage: the excess is the hit's damage and, on a prop that stood still, the push its broken-loose pieces take along the striker's path (shared by falloff, none faster than the striker closed); a moving prop's keep their velocity." {
-      guide "physics §9"
       default 30
       min 0
       unit newtonSecond
@@ -76,11 +70,9 @@ module destruction {
     field breakFx ParticleEmitter "A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none."
     field hitFx ParticleEmitter "A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none."
     field breakVfx VfxAsset "A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none." {
-      guide "effects §1"
     }
     field hitVfx VfxAsset "A composed effect (og.load.vfx) played at each hit that damages it, beside hitFx. 0 none."
     field debris ParticleEmitter "GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body." {
-      guide "physics §9"
     }
     field fractured bool "Written: true from its first break (the model hidden, its chunks drawn)." {
       readonly true
@@ -166,7 +158,6 @@ module destruction {
       max 1000
     }
     field stressBudget u32 "The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit." {
-      guide "physics §9"
       default 200000
       min 0
       tunable true
@@ -222,7 +213,6 @@ module destruction {
       unit newtonSecond
     }
     field impulse f32 "The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does. The pieces it drives apart pull on the bonds between them." {
-      guide "physics §9"
       default 2000
       min 0
       unit newtonSecondPerM2
@@ -319,7 +309,6 @@ module destruction {
   component PixelTerrain {
     doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
     doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
-    guide "physics §9"
     split destruction2d physics
     aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
     field width u32 "Its cells across. Changing it starts the terrain over, filled again." {

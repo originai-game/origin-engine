@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A structured blend-tree graph whose clip references were resolved to clip handles."
 ```
 
-<sub>Module `anim` line 10</sub>
+<sub>Module `anim` line 9</sub>

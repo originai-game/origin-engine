@@ -30,4 +30,4 @@ fn rows {
 }
 ```
 
-<sub>Module `table` line 65</sub>
+<sub>Module `table` line 64</sub>

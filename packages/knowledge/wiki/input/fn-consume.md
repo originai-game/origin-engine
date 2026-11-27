@@ -8,8 +8,6 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move.
 
-See `input §1`.
-
 Also known as: input buffer, buffered input, consume input, jump buffer, combo buffer
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_input_consume` · publish builds: kept
 ```ogt
 fn consume {
   doc "Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move."
-  guide "input §1"
   aliases "input buffer, buffered input, consume input, jump buffer, combo buffer"
   param world World "The world."
   param name String "The action."
@@ -36,4 +33,4 @@ fn consume {
 }
 ```
 
-<sub>Module `input` line 330</sub>
+<sub>Module `input` line 323</sub>

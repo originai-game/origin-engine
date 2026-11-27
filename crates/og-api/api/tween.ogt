@@ -2,7 +2,6 @@ module tween {
   doc "Tweens: animate any numeric field of a component (og.Transform.position, a game's own f32) to a target over time with an easing curve, a delay, repeat and yoyo, in sequences or in parallel. Advanced by og.tween after the game's systems, before og.anim and physics, by scaled time unless unscaled."
   doc "Running tweens are world state (the og.tween state block). og.TweenCompleted reports one that ends on its own. og.tween.squash and og.tween.flash are feel presets."
   doc "Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent."
-  guide "animation §12"
 
   handle Tween "A running tween or group."
 
@@ -363,7 +362,6 @@ module tween {
     desc true
     field entity Entity "The entity."
     field impact Partial.Vector3 "The x, y and z factors at the impact; z 0 (or left out) stays at rest. A component left out takes its default: x 1.25, y 0.8, z 0. ArtMotion.squash scales it under a project's art contract." {
-      guide "animation §12"
     }
     field rest Vector3 "The scale it recovers to." {
       default 1 1 1

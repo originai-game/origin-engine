@@ -10,8 +10,6 @@ How long after its world time a sample leaves the speaker, as the host reports i
 
 Inside a system og.Audio must be among its reads or writes.
 
-See `audio §3`.
-
 ```ts
 og.audio.outputLatency(world: World): number
 ```
@@ -28,11 +26,10 @@ Binding symbol `og_audio_output_latency` · publish builds: kept
 fn outputLatency {
   custom true
   doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency and the mixer's buffer; 0 headless. Host input, written to og.Audio between ticks, so a replay carries it."
-  guide "audio §3"
   doc "Inside a system og.Audio must be among its reads or writes."
   param world World "The world."
   returns f64 "Seconds; 0 headless."
 }
 ```
 
-<sub>Module `audio` line 935</sub>
+<sub>Module `audio` line 928</sub>

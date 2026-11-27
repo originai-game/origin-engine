@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
 
-See `physics §8`.
-
 Token `og.Garment`, registered under the schema name `og.Garment`; its value type is `Garment`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -30,16 +28,15 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
 | `damping` | `number` | `1.85` | 0 … 100 | `perSecond` | tunable | Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off). See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off). |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
 | `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
-| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). |
 
 ```ogt
 component Garment {
   doc "A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied."
-  guide "physics §8"
   field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
   field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
     default 0.2
@@ -117,7 +114,6 @@ component Garment {
     tunable true
   }
   field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off)." {
-    guide "physics §8"
     unit mps
     tunable true
   }
@@ -138,9 +134,8 @@ component Garment {
     tunable true
   }
   field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-    guide "physics §8"
   }
 }
 ```
 
-<sub>Module `physics` line 1492</sub>
+<sub>Module `physics` line 1461</sub>

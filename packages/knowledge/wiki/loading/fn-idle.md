@@ -28,4 +28,4 @@ fn idle {
 }
 ```
 
-<sub>Module `loading` line 51</sub>
+<sub>Module `loading` line 48</sub>

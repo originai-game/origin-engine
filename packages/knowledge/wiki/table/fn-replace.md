@@ -35,4 +35,4 @@ fn replace {
 }
 ```
 
-<sub>Module `table` line 47</sub>
+<sub>Module `table` line 46</sub>

@@ -1,7 +1,6 @@
 module net {
   doc "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep and join a room (og.platform.roomJoin); once the room holds `players` peers the authority (the lowest peer number) starts, and tick t runs when every seated player's input for t is in (in rollback, on a prediction re-run when the input differs)."
   doc "Systems read og.PlayerInput and give this peer's input with og.net.submit; og.Desync reports the first tick whose hashes differ."
-  guide "networking"
   split net
   core Lockstep PlayerInput SeatDropped SeatRejoined submit
 
@@ -21,7 +20,6 @@ module net {
   resource Lockstep {
     doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
     aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent"
-    guide "networking §1"
     field enabled bool "Whether the world takes its ticks in lockstep when in a room."
     field players u32 "The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for." {
       default 2
@@ -32,7 +30,6 @@ module net {
       readonly true
     }
     field inputDelayTicks u32 "Ticks between a player's input and the tick it acts on: the time the input has to cross the room." {
-      guide "networking §3"
       default 2
       min 1
       max 30
@@ -58,7 +55,6 @@ module net {
       default true
     }
     field maxPredictionTicks u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {
-      guide "networking §3"
       default 8
       min 1
       max 30
@@ -88,7 +84,6 @@ module net {
   event Desync {
     doc "This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived."
     aliases "desync, out of sync, divergence, hash mismatch, simulation drift"
-    guide "networking §6"
     field tick u32 "The first divergent tick: the world after it differs (og.Time.tick of the snapshots compared)."
     field peer u32 "The first peer whose world differs from this one."
     field peers u32 "How many peers' worlds differ from this one."
@@ -196,7 +191,6 @@ module net {
 
   fn submit {
     doc "Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
-    guide "networking §3"
     param world World "The world."
     param input InputDesc "The buttons and axes."
     returns Result.Void "Refused for an axis that is not finite."
@@ -256,7 +250,6 @@ module net {
 
   fn hash {
     doc "The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus, ...). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers."
-    guide "networking §6"
     param world World "The world."
     returns String
   }

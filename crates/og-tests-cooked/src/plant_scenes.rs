@@ -1,6 +1,6 @@
 //! Plants the cook grows (a checked `file.model` plant item, og-shape's
 //! `plant`) and a wood scattered from them: og-tests' assets/plants, the
-//! models guide's kinds (each asset a `kind` and nothing else, two with a
+//! plant kinds (each asset a `kind` and nothing else, two with a
 //! colour of their own), cooked in a project of their own, the oak, the
 //! pine and the shrub with their impostors.
 //!
@@ -197,8 +197,7 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
 
 /// Where a card's texel covers one pixel of the capture (720 rows, 50
 /// degrees of them, the cook's 128 texel frame across the sphere): the
-/// nearest a card is as sharp as its mesh, 12 radii here (the models
-/// guide's rule for impostorDistance).
+/// nearest a card is as sharp as its mesh, 12 radii here.
 fn card_distance(impostor: Impostor) -> f32 {
     const ROWS: f32 = 720.0;
     const FRAME: f32 = 128.0;

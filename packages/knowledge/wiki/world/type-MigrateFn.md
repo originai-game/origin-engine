@@ -26,4 +26,4 @@ callback MigrateFn {
 }
 ```
 
-<sub>Module `world` line 98</sub>
+<sub>Module `world` line 95</sub>

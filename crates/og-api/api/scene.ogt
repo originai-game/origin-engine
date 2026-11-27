@@ -1,7 +1,6 @@
 module scene {
   doc "Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`)."
   doc "What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready."
-  guide "loading §12"
   core preload progress change
 
   resource SceneState {
@@ -50,7 +49,6 @@ module scene {
 
   fn preload {
     doc "Load a scene and what it spawns with (its models, their textures and pipelines, its sub-scenes and prefabs) without placing it, and ask for every streaming group it declares (og.stream.request) until og.scene.release, so it is fetched and prepared while the current scene plays and is drawn whole the frame it is placed. Calling it again does nothing more. Systems may call it."
-    guide "loading §12"
     aliases "preload level, load the next scene in the background, async scene load, Unity LoadSceneAsync, Godot ResourceLoader.load_threaded_request"
     param world World "The world."
     param scene String "A GameDesc.scenes name or the scene's asset id."
@@ -59,7 +57,6 @@ module scene {
 
   fn progress {
     doc "How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
-    guide "loading §12"
     param world World "The world."
     param scene String "A GameDesc.scenes name or the scene's asset id."
     returns Result.ScenePreload "Refused for a scene that is not a GameDesc.scenes name or a cooked scene."
@@ -74,7 +71,6 @@ module scene {
 
   fn change {
     doc "Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it."
-    guide "loading §12"
     aliases "change scene, switch level, load level, Unity SceneManager.LoadScene, Godot change_scene_to_file"
     param world World "The world."
     param scene String "A GameDesc.scenes name or the scene's asset id."

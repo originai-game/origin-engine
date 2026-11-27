@@ -1,6 +1,5 @@
 module vfx {
   doc "Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds."
-  guide "loading §11"
   doc "An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false)."
   core VfxEvent spawn VfxSpawnDesc
 
@@ -33,10 +32,10 @@ module vfx {
       min 0
       max 1
     }
-    field hue f32 "Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3)." {
+    field hue f32 "Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours." {
       unit rad
     }
-    field params List.f32.4 "Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast."
+    field params List.f32.4 "Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (file:vfx): one file, a critical hit or a weaker cast."
     field despawn bool "Despawn the entity on the tick after a non-looping effect ends." {
       default true
     }

@@ -4,11 +4,9 @@
 
 The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing.
 
-See `interaction §1`.
-
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module interact {
@@ -49,4 +47,4 @@ column InteractRule {
 }
 ```
 
-<sub>Module `interact` line 12</sub>
+<sub>Module `interact` line 11</sub>

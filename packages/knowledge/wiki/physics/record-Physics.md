@@ -12,19 +12,18 @@ Token `og.Physics`, registered under the schema name `og.Physics`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `profile` | `number` | `3` | 2 … 3 | — | label “Profile” | PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again. See `physics §2`. |
+| `profile` | `number` | `3` | 2 … 3 | — | label “Profile” | PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again. |
 | `gravity` | `Vector3` | `{ x: 0, y: -9.81, z: 0 }` | — | `mps2` | tunable | The acceleration of every dynamic body, times its gravityScale; 2D uses x and y. |
 | `substeps` | `number` | `1` | 1 … 16 | — | tunable | Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost. |
 | `solverIterations` | `number` | `4` | 1 … 32 | — | tunable | Solver iterations per step. |
 | `restSpeed` | `number` | `0.02` | 0 … 1 | `mps` | tunable | A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it. |
-| `sleepTicks` | `number` | `0` | 0 … 3600 | — | tunable | Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps. See `physics §3`. |
+| `sleepTicks` | `number` | `0` | 0 … 3600 | — | tunable | Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps. |
 | `sleepSpeed` | `number` | `0.1` | 0 … 10 | `mps` | tunable | The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s). |
 
 ```ogt
 resource Physics {
   doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
   field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again." {
-    guide "physics §2"
     default 3
     min 2
     max 3
@@ -55,7 +54,6 @@ resource Physics {
     tunable true
   }
   field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps." {
-    guide "physics §3"
     min 0
     max 3600
     tunable true
@@ -70,4 +68,4 @@ resource Physics {
 }
 ```
 
-<sub>Module `physics` line 254</sub>
+<sub>Module `physics` line 246</sub>

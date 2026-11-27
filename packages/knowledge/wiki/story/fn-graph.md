@@ -8,8 +8,6 @@ Module [`story`](../story.md) · [index](../index.md)
 
 A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice.
 
-See `yarn §9`.
-
 Also known as: flowchart, story graph, branching map, node graph, route map
 
 ```ts
@@ -32,8 +30,7 @@ fn graph {
   param world World "The world."
   param dialogue String "The dialogue's name (StoryAsset.name)."
   returns Result.List.GraphNode "Refused for a dialogue that is not loaded."
-  guide "yarn §9"
 }
 ```
 
-<sub>Module `story` line 328</sub>
+<sub>Module `story` line 324</sub>

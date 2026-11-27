@@ -31,4 +31,4 @@ enum NoiseKind {
 }
 ```
 
-<sub>Module `procgen` line 7</sub>
+<sub>Module `procgen` line 6</sub>

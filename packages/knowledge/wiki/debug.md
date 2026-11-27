@@ -6,16 +6,15 @@ Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each fo
 
 Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state.
 
-See `testing §8`.
-
 - **TypeScript**: functions are the namespace `og.debug`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module debug {
   doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch."
   doc "Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state."
+  publish false
   # declarations follow, each on its own page
 ```
 

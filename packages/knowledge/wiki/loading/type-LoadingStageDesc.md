@@ -29,4 +29,4 @@ struct LoadingStageDesc {
 }
 ```
 
-<sub>Module `loading` line 13</sub>
+<sub>Module `loading` line 12</sub>

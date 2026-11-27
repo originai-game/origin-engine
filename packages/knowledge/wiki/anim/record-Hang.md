@@ -8,8 +8,6 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
 
-See `animation §8`.
-
 Also known as: rope swing, hang from rope, grab ledge, hold bar, grip constraint, monkey bars, zipline
 
 Token `og.Hang`, registered under the schema name `og.Hang`; its value type is `Hang`.
@@ -30,7 +28,6 @@ Token `og.Hang`, registered under the schema name `og.Hang`; its value type is `
 ```ogt
 component Hang {
   doc "A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick."
-  guide "animation §8"
   aliases "rope swing, hang from rope, grab ledge, hold bar, grip constraint, monkey bars, zipline"
   field skeleton Entity "The entity with the og.Skeleton that hangs; it needs an og.Transform."
   field grip u32 "The gripping joint (an index into the skin's joints): the hand on the rope." {
@@ -67,4 +64,4 @@ component Hang {
 }
 ```
 
-<sub>Module `anim` line 485</sub>
+<sub>Module `anim` line 480</sub>

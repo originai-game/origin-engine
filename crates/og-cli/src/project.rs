@@ -17,7 +17,7 @@ pub struct Project {
     pub out: String,
     /// The ordinary JSON project's exact engine pin; absent for a bare entry.
     pub engine: Option<String>,
-    /// project.ts's named median-time limits in milliseconds (guide perf).
+    /// project.ts's named median-time limits in milliseconds.
     pub budgets: Vec<(String, f64)>,
 }
 

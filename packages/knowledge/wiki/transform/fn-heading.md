@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z).
 
-See `facing`.
-
 Also known as: yaw, facing angle, compass direction, Unity eulerAngles.y, three.js rotation.y
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_heading` · publish builds: kept
 fn heading {
   doc "The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z)."
   aliases "yaw, facing angle, compass direction, Unity eulerAngles.y, three.js rotation.y"
-  guide "facing"
   param quaternion Quaternion "The object's rotation."
   returns f32 "The heading in radians, from -π to π."
 }
 ```
 
-<sub>Module `transform` line 192</sub>
+<sub>Module `transform` line 186</sub>

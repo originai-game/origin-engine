@@ -32,4 +32,4 @@ event TimelineMarker {
 }
 ```
 
-<sub>Module `timeline` line 48</sub>
+<sub>Module `timeline` line 47</sub>

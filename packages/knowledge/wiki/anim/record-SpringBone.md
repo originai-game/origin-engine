@@ -8,8 +8,6 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
 
-See `animation §8`.
-
 Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its value type is `SpringBone`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -34,7 +32,6 @@ Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its val
 ```ogt
 component SpringBone {
   doc "A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them."
-  guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
   field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
     min 0
@@ -94,4 +91,4 @@ component SpringBone {
 }
 ```
 
-<sub>Module `anim` line 536</sub>
+<sub>Module `anim` line 530</sub>

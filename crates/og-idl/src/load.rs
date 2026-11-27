@@ -70,14 +70,12 @@ impl Loader {
             publish: true,
             core: Vec::new(),
             split: Vec::new(),
-            see: Vec::new(),
             items: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => module.doc.extend(self.doc_line(child)),
-                "guide" => module.see.extend(self.guide_ref(child)),
                 "core" => {
                     let words: Option<Vec<&str>> =
                         child.values.iter().map(Value::as_word).collect();
@@ -165,13 +163,11 @@ impl Loader {
             publish: None,
             host: true,
             custom: false,
-            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
-                "guide" => f.see.extend(self.guide_ref(child)),
                 "aliases" => f.aliases.extend(self.doc_line(child)),
                 "generic" => {
                     let (Some(n), Some(bound)) = (
@@ -205,7 +201,7 @@ impl Loader {
                 "custom" => f.custom = self.bool_value(child).unwrap_or(true),
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in fn `{}`: expected doc, guide, generic, param, returns, publish, host or custom", f.name),
+                    format!("unknown key `{other}` in fn `{}`: expected doc, generic, param, returns, publish, host or custom", f.name),
                 ),
             }
         }
@@ -268,13 +264,11 @@ impl Loader {
             desc: false,
             fields: Vec::new(),
             groups: Vec::new(),
-            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => s.doc.extend(self.doc_line(child)),
-                "guide" => s.see.extend(self.guide_ref(child)),
                 "aliases" => s.aliases.extend(self.doc_line(child)),
                 "desc" => s.desc = self.bool_value(child).unwrap_or(false),
                 "group" => s.groups.extend(self.group(child)),
@@ -287,7 +281,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in struct `{}`: expected doc, guide, aliases, desc, group or field",
+                        "unknown key `{other}` in struct `{}`: expected doc, aliases, desc, group or field",
                         s.name
                     ),
                 ),
@@ -314,14 +308,12 @@ impl Loader {
             readonly: false,
             weak: false,
             optional: false,
-            see: Vec::new(),
             group: None,
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
-                "guide" => f.see.extend(self.guide_ref(child)),
                 "default" => f.default = Some(child.values.clone()),
                 "min" => f.min = self.number_value(child),
                 "max" => f.max = self.number_value(child),
@@ -351,7 +343,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in field `{}`: expected doc, guide, default, min, max, step, unit, worldspace, label, tunable, readonly, weak or optional",
+                        "unknown key `{other}` in field `{}`: expected doc, default, min, max, step, unit, worldspace, label, tunable, readonly, weak or optional",
                         f.name
                     ),
                 ),
@@ -368,13 +360,11 @@ impl Loader {
             aliases: Vec::new(),
             variants: Vec::new(),
             patterns: Vec::new(),
-            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => e.doc.extend(self.doc_line(child)),
-                "guide" => e.see.extend(self.guide_ref(child)),
                 "aliases" => e.aliases.extend(self.doc_line(child)),
                 "variant" | "pattern" => {
                     let name = if child.key == "pattern" {
@@ -411,7 +401,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in enum `{}`: expected doc, guide, aliases, variant or pattern",
+                        "unknown key `{other}` in enum `{}`: expected doc, aliases, variant or pattern",
                         e.name
                     ),
                 ),
@@ -428,13 +418,11 @@ impl Loader {
             aliases: Vec::new(),
             tag: String::new(),
             cases: Vec::new(),
-            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => u.doc.extend(self.doc_line(child)),
-                "guide" => u.see.extend(self.guide_ref(child)),
                 "aliases" => u.aliases.extend(self.doc_line(child)),
                 "tag" => {
                     u.tag = child
@@ -464,7 +452,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in union `{}`: expected doc, guide, aliases, tag or case",
+                        "unknown key `{other}` in union `{}`: expected doc, aliases, tag or case",
                         u.name
                     ),
                 ),
@@ -486,13 +474,11 @@ impl Loader {
             publish: None,
             custom: false,
             members: Vec::new(),
-            see: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => i.doc.extend(self.doc_line(child)),
-                "guide" => i.see.extend(self.guide_ref(child)),
                 "aliases" => i.aliases.extend(self.doc_line(child)),
                 "extends" => i.extends = child.values.first().and_then(Value::as_word).map(str::to_string),
                 "publish" => i.publish = self.bool_value(child),
@@ -511,17 +497,15 @@ impl Loader {
                         publish: None,
                         host: true,
                         custom: false,
-                        see: Vec::new(),
                         line: child.line,
                     };
                     for g in children(child) {
                         match g.key.as_str() {
                             "doc" => prop.doc.extend(self.doc_line(g)),
-                            "guide" => prop.see.extend(self.guide_ref(g)),
                             "publish" => prop.publish = self.bool_value(g),
                             "host" => prop.host = self.bool_value(g).unwrap_or(true),
                             "custom" => prop.custom = self.bool_value(g).unwrap_or(true),
-                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, guide, publish, host or custom")),
+                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, publish, host or custom")),
                         }
                     }
                     i.members.push(Member::Prop(prop));
@@ -533,7 +517,7 @@ impl Loader {
                 }
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in interface `{}`: expected doc, guide, aliases, extends, publish, custom, prop or fn", i.name),
+                    format!("unknown key `{other}` in interface `{}`: expected doc, aliases, extends, publish, custom, prop or fn", i.name),
                 ),
             }
         }
@@ -628,14 +612,12 @@ impl Loader {
             fields: Vec::new(),
             groups: Vec::new(),
             methods: Vec::new(),
-            see: Vec::new(),
             split: None,
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => r.doc.extend(self.doc_line(child)),
-                "guide" => r.see.extend(self.guide_ref(child)),
                 "aliases" => r.aliases.extend(self.doc_line(child)),
                 "split" => r.split = self.split(child),
                 "group" => r.groups.extend(self.group(child)),
@@ -653,7 +635,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in {} `{}`: expected doc, guide, aliases, split, group, field{}",
+                        "unknown key `{other}` in {} `{}`: expected doc, aliases, split, group, field{}",
                         kind.as_str(),
                         r.name,
                         if kind == RecordKind::Resource {
@@ -686,42 +668,6 @@ impl Loader {
                 None
             }
         }
-    }
-
-    /// `guide "saves §2"` or `guide "saves"`.
-    fn guide_ref(&mut self, node: &Node) -> Option<GuideRef> {
-        let text = self.string_value(node)?;
-        let (guide, section) = match text.split_once(" §") {
-            Some((g, n)) => match n.parse() {
-                Ok(n) => (g, Some(n)),
-                Err(_) => {
-                    self.error(
-                        node.line,
-                        format!("`guide \"{text}\"`: the section after § is a number"),
-                    );
-                    return None;
-                }
-            },
-            None => (text.as_str(), None),
-        };
-        if guide.is_empty()
-            || !guide
-                .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-        {
-            self.error(
-                node.line,
-                format!(
-                    "`guide \"{text}\"` names a guide by its file name, as `guide \"saves §2\"`"
-                ),
-            );
-            return None;
-        }
-        Some(GuideRef {
-            guide: guide.to_string(),
-            section,
-            line: node.line,
-        })
     }
 
     /// `group "Shadows"` with an optional doc string after it.

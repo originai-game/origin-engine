@@ -38,4 +38,4 @@ fn remove {
 }
 ```
 
-<sub>Module `inventory` line 125</sub>
+<sub>Module `inventory` line 119</sub>

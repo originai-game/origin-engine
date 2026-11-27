@@ -39,4 +39,4 @@ component TerrainStamp {
 }
 ```
 
-<sub>Module `terrain` line 73</sub>
+<sub>Module `terrain` line 70</sub>

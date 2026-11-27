@@ -26,7 +26,7 @@ mod values;
 
 pub use r#gen::wiki::CORE_PREFIX;
 pub use index::Index;
-pub use model::{Api, Guide};
+pub use model::Api;
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -174,41 +174,7 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
             )
         })
         .collect();
-    api.guides = guides(&path.join("..").join("guides"))?;
-    let unresolved = validate::guide_refs(&api);
-    if !unresolved.is_empty() {
-        return Err(invalid(unresolved));
-    }
     Ok(api)
-}
-
-/// The guides beside the IDL (`crates/og-api/guides/*.md`), sorted by name;
-/// none when the directory is absent.
-fn guides(dir: &Path) -> Result<Vec<Guide>, ReadError> {
-    let Ok(read) = std::fs::read_dir(dir) else {
-        return Ok(Vec::new());
-    };
-    let mut out = Vec::new();
-    for entry in read {
-        let path = entry
-            .map_err(|e| ReadError::Io(dir.to_path_buf(), e))?
-            .path();
-        let Some(name) = path
-            .extension()
-            .is_some_and(|x| x == "md")
-            .then(|| path.file_stem())
-            .flatten()
-        else {
-            continue;
-        };
-        let text = std::fs::read_to_string(&path).map_err(|e| ReadError::Io(path.clone(), e))?;
-        out.push(Guide {
-            name: name.to_string_lossy().into_owned(),
-            text,
-        });
-    }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(out)
 }
 
 /// One generated file: its path relative to the repository root and its bytes.
@@ -220,7 +186,6 @@ pub struct Generated {
 
 /// Every file the IDL generates, in a fixed order.
 pub fn generate(api: &Api) -> Vec<Generated> {
-    let api = &with_guide_refs(api);
     let ix = Index::new(api);
     vec![
         Generated {
@@ -296,57 +261,46 @@ pub fn generate(api: &Api) -> Vec<Generated> {
 /// The wiki pages alone (`og api gen --wiki`): one page per module and an
 /// index, under [`WIKI_DIR`].
 pub fn generate_wiki(api: &Api) -> Vec<Generated> {
-    wiki_pages(&Index::new(&with_guide_refs(api)))
+    wiki_pages(&Index::new(api))
 }
 
-/// The API as the generators print it: each declaration's `guide` lines
-/// become the last paragraph of its doc, "See `saves §2`.", so the `.d.ts`,
-/// the schema and the wiki all point a reader at the guide.
-fn with_guide_refs(api: &Api) -> Api {
-    use model::{GuideRef, Item, Member};
-    fn see(doc: &mut Vec<String>, refs: &[GuideRef]) {
-        if !refs.is_empty() {
-            let names: Vec<String> = refs.iter().map(|r| format!("`{r}`")).collect();
-            doc.push(format!("See {}.", names.join(", ")));
-        }
+/// Add schema/source-backed reference pages and rebuild the shipped index.
+/// Generation and drift checking use the same combined page set.
+pub fn extend(files: &mut Vec<Generated>, extra: &[Generated]) {
+    if extra
+        .iter()
+        .any(|f| f.path == format!("{WIKI_DIR}/reference.md"))
+    {
+        files
+            .iter_mut()
+            .find(|f| f.path == format!("{WIKI_DIR}/index.md"))
+            .expect("generated wiki index")
+            .contents
+            .push_str("\n[File and component reference](reference.md)\n");
     }
-    let mut api = api.clone();
-    for m in &mut api.modules {
-        see(&mut m.doc, &m.see);
-        for item in &mut m.items {
-            match item {
-                Item::Fn(f) => see(&mut f.doc, &f.see),
-                Item::Struct(s) => {
-                    see(&mut s.doc, &s.see);
-                    for f in &mut s.fields {
-                        see(&mut f.doc, &f.see);
-                    }
-                }
-                Item::Enum(e) => see(&mut e.doc, &e.see),
-                Item::Union(u) => see(&mut u.doc, &u.see),
-                Item::Interface(i) => {
-                    see(&mut i.doc, &i.see);
-                    for mem in &mut i.members {
-                        match mem {
-                            Member::Fn(f) => see(&mut f.doc, &f.see),
-                            Member::Prop(p) => see(&mut p.doc, &p.see),
-                        }
-                    }
-                }
-                Item::Record(r) => {
-                    see(&mut r.doc, &r.see);
-                    for f in &mut r.fields {
-                        see(&mut f.doc, &f.see);
-                    }
-                    for f in &mut r.methods {
-                        see(&mut f.doc, &f.see);
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-    api
+    files.extend(extra.iter().cloned());
+    let index_path = format!("{WIKI_DIR}/{}", search::INDEX_FILE);
+    let prefix = format!("{WIKI_DIR}/");
+    let mut pages: Vec<_> = files
+        .iter()
+        .filter_map(|f| {
+            f.path
+                .strip_prefix(&prefix)
+                .and_then(|p| p.strip_suffix(".md"))
+                .map(|p| (p, f.contents.as_str()))
+        })
+        .collect();
+    pages.sort();
+    let entries: Vec<_> = pages
+        .into_iter()
+        .flat_map(|(p, text)| search::entries(p, text))
+        .collect();
+    let contents = search::SearchIndex::build(&entries).to_text();
+    files
+        .iter_mut()
+        .find(|f| f.path == index_path)
+        .expect("generated search index")
+        .contents = contents;
 }
 
 /// Where the wiki is generated, relative to the repository root: the
@@ -443,7 +397,7 @@ impl fmt::Display for Drift {
 pub fn check(root: &Path, also: &[Generated]) -> Result<Vec<Drift>, ReadError> {
     let api = read(&root.join(IDL_PATH))?;
     let mut files = generate(&api);
-    files.extend(also.iter().cloned());
+    extend(&mut files, also);
     let scratch = scratch_dir();
     let drift = write(&scratch, &files)
         .map(|_| compare(&scratch, root, &files))

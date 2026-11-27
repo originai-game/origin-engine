@@ -21,4 +21,4 @@ struct SharedObjectInfo {
 }
 ```
 
-<sub>Module `shared` line 152</sub>
+<sub>Module `shared` line 145</sub>

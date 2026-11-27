@@ -6,11 +6,9 @@ Timelines: cutscenes and sequences as typed file.timeline declarations under con
 
 An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused.
 
-See `animation §13`.
-
 - **TypeScript**: functions are the namespace `og.timeline`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module timeline {
@@ -58,4 +56,4 @@ column TimelineAsset {
 }
 ```
 
-<sub>Module `timeline` line 9</sub>
+<sub>Module `timeline` line 8</sub>

@@ -286,7 +286,7 @@ fn perf_sprites_20k() {
 }
 
 /// Twenty campfires' particles at once (60 systems): the effects' on-screen
-/// budget (`effects §4`), its main and particles passes held per pass.
+/// budget, its main and particles passes held per pass.
 #[test]
 #[ignore = "requires GPU; perf"]
 fn perf_effects_busy() {

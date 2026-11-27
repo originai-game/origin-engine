@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.
 
-See `combat §2`.
-
 Also known as: bullet, shot, missile, bullet damage, piercing shot, shmup bullet, Unity projectile, Godot bullet Area2D
 
 Token `og.Projectile`, registered under the schema name `og.Projectile`; its value type is `Projectile`.
@@ -25,7 +23,6 @@ Token `og.Projectile`, registered under the schema name `og.Projectile`; its val
 component Projectile {
   aliases "bullet, shot, missile, bullet damage, piercing shot, shmup bullet, Unity projectile, Godot bullet Area2D"
   doc "A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's."
-  guide "combat §2"
   field damage f32 "What each strike takes from the target's og.Health; 0 takes nothing, and is never spent." {
     min 0
     tunable true
@@ -43,4 +40,4 @@ component Projectile {
 }
 ```
 
-<sub>Module `combat` line 89</sub>
+<sub>Module `combat` line 85</sub>

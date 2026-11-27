@@ -33,4 +33,4 @@ fn startQuest {
 }
 ```
 
-<sub>Module `story` line 413</sub>
+<sub>Module `story` line 408</sub>

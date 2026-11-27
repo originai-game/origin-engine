@@ -8,8 +8,6 @@ Module [`loading`](../loading.md) · [index](../index.md)
 
 Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it.
 
-See `loading §13`.
-
 ```ts
 og.loading.stage(world: World, desc?: LoadingStageDesc): Result<void>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_loading_stage` · publish builds: kept
 ```ogt
 fn stage {
   doc "Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it."
-  guide "loading §13"
   param world World "The world."
   param desc LoadingStageDesc "The stage, its fraction and its label."
   returns Result.Void "Refused for a fraction outside 0 to 1."
 }
 ```
 
-<sub>Module `loading` line 36</sub>
+<sub>Module `loading` line 35</sub>

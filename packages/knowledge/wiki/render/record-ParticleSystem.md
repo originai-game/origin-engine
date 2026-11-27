@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
 
-See `looks §14`.
-
 Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`; its value type is `ParticleSystem`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,7 +22,6 @@ Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`;
 ```ogt
 component ParticleSystem {
   doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them."
-  guide "looks §14"
   field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
   field seed u32 "The random seed: systems with different seeds differ."
   field startTick u32 "The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written." {
@@ -41,4 +38,4 @@ component ParticleSystem {
 }
 ```
 
-<sub>Module `render` line 2377</sub>
+<sub>Module `render` line 2283</sub>

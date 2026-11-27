@@ -24,4 +24,4 @@ struct ExploreIntent {
 }
 ```
 
-<sub>Module `game` line 130</sub>
+<sub>Module `game` line 127</sub>

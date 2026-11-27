@@ -17,7 +17,7 @@ Token `og.Destruction`, registered under the schema name `og.Destruction`; its v
 | `debrisLifetime` | `number` | `8` | ≥ 0 | `s` | tunable | How long debris lasts (0: until maxChunks takes it). |
 | `fxLifetime` | `number` | `3` | ≥ 0 | `s` | — | How long a breakFx or hitFx burst's entity lasts before og.destruction despawns it. |
 | `stressIterations` | `number` | `0` | 0 … 1000 | — | — | The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds); a capped, unconverged solve loads distant bonds too little, and what should fall can stand. |
-| `stressBudget` | `number` | `200000` | ≥ 0 | — | tunable | The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit. See `physics §9`. |
+| `stressBudget` | `number` | `200000` | ≥ 0 | — | tunable | The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit. |
 
 ```ogt
 resource Destruction {
@@ -52,7 +52,6 @@ resource Destruction {
     max 1000
   }
   field stressBudget u32 "The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit." {
-    guide "physics §9"
     default 200000
     min 0
     tunable true
@@ -60,4 +59,4 @@ resource Destruction {
 }
 ```
 
-<sub>Module `destruction` line 137</sub>
+<sub>Module `destruction` line 129</sub>

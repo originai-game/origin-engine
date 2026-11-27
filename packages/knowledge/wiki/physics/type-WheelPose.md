@@ -13,7 +13,7 @@ A wheel of an og.Vehicle as the last step left it, for drawing.
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The wheel's centre in world space. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation (steering and spin) in world space. |
 | `contact` | `boolean` | `false` | — | — | — | Whether it touches the ground. |
-| `slip` | `number` | `0` | 0 … 1 | — | — | Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne. See `physics §7`. |
+| `slip` | `number` | `0` | 0 … 1 | — | — | Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne. |
 | `sideSpeed` | `number` | `0` | — | `mps` | — | How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness. |
 | `entity` | `Entity` | `0` | — | — | — | The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels. |
 | `suspensionCompression` | `number` | `0` | — | `m` | — | Rest length minus current suspension length in metres; negative at droop. |
@@ -32,7 +32,6 @@ struct WheelPose {
   field quaternion Quaternion "Its rotation (steering and spin) in world space."
   field contact bool "Whether it touches the ground."
   field slip f32 "Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne." {
-    guide "physics §7"
     min 0
     max 1
   }
@@ -51,4 +50,4 @@ struct WheelPose {
 }
 ```
 
-<sub>Module `physics` line 2530</sub>
+<sub>Module `physics` line 2486</sub>

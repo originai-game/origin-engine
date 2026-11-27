@@ -2,7 +2,6 @@ module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays."
   doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph)."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
-  guide "input"
   core Input
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
@@ -68,7 +67,6 @@ module input {
   struct InputBinding {
     doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
     doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
-    guide "input §1"
     desc true
     field control String "The control; empty for a composite or an unbound slot."
     field negative String "An axis composite's control for -1 (`KeyA`)."
@@ -89,7 +87,6 @@ module input {
 
   struct ActionDesc {
     doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad."
-    guide "input §1"
     desc true
     field name String "Its name."
     field kind ActionKind "Button, one axis or two."
@@ -112,7 +109,6 @@ module input {
       unit ms
     }
     field bufferTicks u32 "How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once." {
-      guide "input §1"
       min 0
       max 600
     }
@@ -130,7 +126,6 @@ module input {
     field vector Vector2 "A two-axis action's value (x right, y up); value and 0 for the others."
     field device InputDevice "The device whose binding drove it last."
     field pressedAt f32 "When in the tick it went down, in seconds from the tick's start (-dt to dt): the time its key or pointer press carried, so its world time is `time.elapsed + pressedAt` and a replay gives it again. 0 when it did not go down this tick or its press carried no time (a gamepad, an on-screen control)." {
-      guide "input §1"
       unit s
     }
     field buffered bool "A press og.input.consume would take now: within its bufferTicks and not taken yet."
@@ -225,7 +220,6 @@ module input {
 
   struct SensitivityDesc {
     doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. Kept by og.input.saveBindings, forgotten by og.input.resetBindings."
-    guide "input §5"
     desc true
     field action String "The action (axis or axis2)."
     field device InputDevice "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick)."
@@ -249,7 +243,6 @@ module input {
     doc "How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state."
     desc true
     field raw bool "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement); where it refuses, the lock is the plain one (MouseInfo.rawUnsupported). Takes effect at the next lock." {
-      guide "input §2"
       default true
     }
   }
@@ -329,7 +322,6 @@ module input {
 
   fn consume {
     doc "Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move."
-    guide "input §1"
     aliases "input buffer, buffered input, consume input, jump buffer, combo buffer"
     param world World "The world."
     param name String "The action."
@@ -383,7 +375,6 @@ module input {
   fn moveRelative {
     doc "A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is."
     aliases "camera relative movement, WASD to world direction, move direction, third person movement, strafe"
-    guide "facing"
     param world World "The world."
     param name String "The two-axis action."
     param camera Quaternion "The camera's rotation (og.Camera.quaternion)."
@@ -545,7 +536,6 @@ module input {
 
   fn setKeyboardLayout {
     doc "Set the keys the player's keyboard layout prints, for glyphs: bindings still name physical keys (KeyboardEvent.code), so only their glyphs change (Z Q S D on AZERTY). The web shell sets it; empty is the US layout (native runs). The host's, one for the page: no world state."
-    guide "input §2"
     param labels List.KeyLabel "Each key's printed label, in place of the last list."
     returns Void
   }
@@ -698,7 +688,7 @@ module input {
   }
 
   struct GamepadInput {
-    doc "A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4)."
+    doc "A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings."
     field pad u32 "Which pad, 0 to 7; omitted is 0. A host keeps a pad's slot while it is connected." {
       max 7
       optional true
@@ -966,7 +956,6 @@ module input {
       unit cssPx
     }
     field movement Vector2 "The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it." {
-      guide "input §2"
       readonly true
       unit cssPx
     }
@@ -1004,7 +993,6 @@ module input {
   resource PointerLock {
     doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
     doc "While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it."
-    guide "input §2"
     field wanted bool "The game wants the pointer locked and the cursor hidden."
     field locked bool "The pointer is locked now, as the host last reported it (the player's Escape releases it while `wanted` stays true; headless runs stay unlocked unless a script injects a pointerLock report)." {
       readonly true
@@ -1013,8 +1001,7 @@ module input {
 
   resource Gamepad {
     doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
-    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
-    guide "input §4"
+    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent; sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
     group "Pads"
     field connectedMask u32 "Connected pads: bit `pad`." {
       readonly true
@@ -1218,7 +1205,6 @@ module input {
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
     field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
-      guide "input §6"
       min -1
       max 1
     }
@@ -1235,7 +1221,6 @@ module input {
     doc "A key went up."
     field key String "The physical key code."
     field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
-      guide "input §6"
       min -1
       max 1
     }
@@ -1252,7 +1237,6 @@ module input {
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
     field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
-      guide "input §6"
       min -1
       max 1
     }
@@ -1269,7 +1253,6 @@ module input {
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
     field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
-      guide "input §6"
       min -1
       max 1
     }

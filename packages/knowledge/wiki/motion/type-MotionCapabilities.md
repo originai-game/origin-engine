@@ -25,4 +25,4 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>Module `motion` line 245</sub>
+<sub>Module `motion` line 241</sub>

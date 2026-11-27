@@ -8,8 +8,6 @@ Module [`shared`](../shared.md) · [index](../index.md)
 
 Set what the game shares besides the transform: its avatar component and its event component. Call it outside a system before og.shared.join; its fingerprint is checked when joining, so every client of a world needs the same shape. Without a call, the transform alone and no events.
 
-See `shared-worlds §2`.
-
 ```ts
 og.shared.shape(world: World, desc?: SharedShapeDesc): Result<void>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_shared_shape` · publish builds: kept
 ```ogt
 fn shape {
   doc "Set what the game shares besides the transform: its avatar component and its event component. Call it outside a system before og.shared.join; its fingerprint is checked when joining, so every client of a world needs the same shape. Without a call, the transform alone and no events."
-  guide "shared-worlds §2"
   param world World "The world."
   param desc SharedShapeDesc "The avatar component and the event component."
   returns Result.Void "Refused inside a system, during a session, or for a component whose packed bytes are too many."
 }
 ```
 
-<sub>Module `shared` line 209</sub>
+<sub>Module `shared` line 202</sub>

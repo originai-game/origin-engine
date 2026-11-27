@@ -38,4 +38,4 @@ fn move {
 }
 ```
 
-<sub>Module `inventory` line 136</sub>
+<sub>Module `inventory` line 130</sub>

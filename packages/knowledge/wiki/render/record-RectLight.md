@@ -10,8 +10,6 @@ A rectangle of light, as three.js RectAreaLight: width by height metres centred 
 
 Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
 
-See `render §3`.
-
 Token `og.RectLight`, registered under the schema name `og.RectLight`; its value type is `RectLight`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -21,14 +19,13 @@ Token `og.RectLight`, registered under the schema name `og.RectLight`; its value
 | `width` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local x, as RectAreaLight.width. |
 | `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
 | `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
-| `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it. See `render §3`. |
-| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. |
+| `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it. |
+| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). |
 
 ```ogt
 component RectLight {
   doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces with twoSided). Shaded with linearly transformed cosines (Heitz et al. 2016). og bake lightmaps traces its exact soft shadows into the bounce light, castShadow or not."
   doc "Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there."
-  guide "render §3"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -51,13 +48,11 @@ component RectLight {
   }
   field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
   field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it." {
-    guide "render §3"
   }
   field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
     default stationary
-    guide "render §4"
   }
 }
 ```
 
-<sub>Module `render` line 4379</sub>
+<sub>Module `render` line 4260</sub>

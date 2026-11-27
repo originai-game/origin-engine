@@ -20,7 +20,7 @@ One streaming group.
 | `trigger` | `string` | `""` | — | — | — | manual, distance, volume or cell. |
 | `memory` | `number` | `0` | — | `bytes` | — | What its assets take once loaded, in bytes. |
 | `bytes` | `number` | `0` | — | `bytes` | — | Its pack's size, in bytes. |
-| `received` | `number` | `0` | — | `bytes` | — | Bytes of its pack received: as they arrive while loading (on the web, from the fetch's body), its size once resident, 0 otherwise. See `loading §12`. |
+| `received` | `number` | `0` | — | `bytes` | — | Bytes of its pack received: as they arrive while loading (on the web, from the fetch's body), its size once resident, 0 otherwise. |
 | `progress` | `number` | `0` | 0 … 1 | — | — | received over bytes, 0 to 1: 1 once resident. For a loading screen's bar; never decide a tick on it in a networked game. |
 | `assets` | `readonly string[]` | `[]` | — | — | — | Its asset ids. |
 | `reason` | `string` | `""` | — | — | — | Why it is queued or failed; empty otherwise. |
@@ -46,7 +46,6 @@ struct StreamStatus {
     unit bytes
   }
   field received f64 "Bytes of its pack received: as they arrive while loading (on the web, from the fetch's body), its size once resident, 0 otherwise." {
-    guide "loading §12"
     unit bytes
   }
   field progress f32 "received over bytes, 0 to 1: 1 once resident. For a loading screen's bar; never decide a tick on it in a networked game." {
@@ -63,4 +62,4 @@ struct StreamStatus {
 }
 ```
 
-<sub>Module `stream` line 78</sub>
+<sub>Module `stream` line 74</sub>

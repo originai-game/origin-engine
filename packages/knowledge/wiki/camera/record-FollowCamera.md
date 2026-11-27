@@ -38,4 +38,4 @@ component FollowCamera {
 }
 ```
 
-<sub>Module `camera` line 332</sub>
+<sub>Module `camera` line 329</sub>

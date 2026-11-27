@@ -30,4 +30,4 @@ fn adReady {
 }
 ```
 
-<sub>Module `platform` line 381</sub>
+<sub>Module `platform` line 372</sub>

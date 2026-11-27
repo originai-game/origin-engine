@@ -32,7 +32,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `maxMsaaSamples` | `number` | `0` | — | — | — | The samples per pixel the scene is multisampled at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off, 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA. See `looks §18`. |
+| `maxMsaaSamples` | `number` | `0` | — | — | — | The samples per pixel the scene is multisampled at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off, 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA. |
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 
 #### Target
@@ -46,7 +46,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitive groups this renderer draws, by name (pixel, posterize, dither, paint, watercolor, surfaceSpace, toon, outline, wireframe, ...). A look that uses one this list lacks still applies; that primitive is not drawn. See `looks §18`. |
+| `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitive groups this renderer draws, by name (pixel, posterize, dither, paint, watercolor, surfaceSpace, toon, outline, wireframe, ...). A look that uses one this list lacks still applies; that primitive is not drawn. |
 
 #### Reflections and targets
 
@@ -81,7 +81,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (never text): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer, 0 without a renderer. Above 1 an image squeezed along one axis keeps the other's detail; at 1 it blurs. See `looks §18`. |
+| `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (never text): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer, 0 without a renderer. Above 1 an image squeezed along one axis keeps the other's detail; at 1 it blurs. |
 
 #### Water
 
@@ -106,7 +106,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `gpuCrowds` | `boolean` | `false` | — | — | — | Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time. Where false, and without a renderer, the CPU culls them: the same members, levels and frame at a higher CPU cost. See `looks §18`. |
+| `gpuCrowds` | `boolean` | `false` | — | — | — | Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time. Where false, and without a renderer, the CPU culls them: the same members, levels and frame at a higher CPU cost. |
 
 #### Decoding
 
@@ -118,20 +118,20 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visibilityBuffer` | `boolean` | `false` | — | — | — | Whether the visibility buffer draws the camera's small clusters of clustered meshes (rasterised in compute). False without a renderer and once the device refused the resolve (visibilityBufferRefused): those clusters then draw on the hardware path. True until the first frame with a clustered mesh. See `looks §18`. |
+| `visibilityBuffer` | `boolean` | `false` | — | — | — | Whether the visibility buffer draws the camera's small clusters of clustered meshes (rasterised in compute). False without a renderer and once the device refused the resolve (visibilityBufferRefused): those clusters then draw on the hardware path. True until the first frame with a clustered mesh. |
 | `visibilityBufferRefused` | `string \| null` | `null` | — | — | — | What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null. |
 
 #### Visual simulation
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer. See `looks §18`. |
+| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer. |
 
 #### 3D world
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use. See `looks §18`. |
+| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use. |
 
 ```ogt
 struct RenderCapabilities {
@@ -150,7 +150,6 @@ struct RenderCapabilities {
   field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8); past it, the shadowed lights brightest at the camera keep theirs."
   group "Antialiasing"
   field maxMsaaSamples u32 "The samples per pixel the scene is multisampled at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off, 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA." {
-    guide "looks §18"
   }
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   group "Target"
@@ -158,7 +157,6 @@ struct RenderCapabilities {
   field height u32 "The render target height in device pixels."
   group "Stylisation"
   field stylise List.String "The Stylise and MaterialStyle primitive groups this renderer draws, by name (pixel, posterize, dither, paint, watercolor, surfaceSpace, toon, outline, wireframe, ...). A look that uses one this list lacks still applies; that primitive is not drawn." {
-    guide "looks §18"
   }
   group "Reflections and targets"
   field ssr bool "Whether PostEffects.ssr draws: true with a renderer, false without one."
@@ -175,7 +173,6 @@ struct RenderCapabilities {
   field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
   group "Filtering"
   field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (never text): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer, 0 without a renderer. Above 1 an image squeezed along one axis keeps the other's detail; at 1 it blurs." {
-    guide "looks §18"
   }
   group "Water"
   field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer. A surface past it that asks reflects by the screen-space and sky reflections instead."
@@ -186,24 +183,20 @@ struct RenderCapabilities {
   field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
   group "Crowds"
   field gpuCrowds bool "Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time. Where false, and without a renderer, the CPU culls them: the same members, levels and frame at a higher CPU cost." {
-    guide "looks §18"
   }
   group "Decoding"
   field exrDecode bool "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
   group "Visibility buffer"
   field visibilityBuffer bool "Whether the visibility buffer draws the camera's small clusters of clustered meshes (rasterised in compute). False without a renderer and once the device refused the resolve (visibilityBufferRefused): those clusters then draw on the hardware path. True until the first frame with a clustered mesh." {
-    guide "looks §18"
   }
   field visibilityBufferRefused Option.String "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
   group "Visual simulation"
   field visualSimulation bool "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer." {
-    guide "looks §18"
   }
   group "3D world"
   field world3d bool "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use." {
-    guide "looks §18"
   }
 }
 ```
 
-<sub>Module `render` line 3044</sub>
+<sub>Module `render` line 2941</sub>

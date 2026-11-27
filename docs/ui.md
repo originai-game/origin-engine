@@ -2,7 +2,7 @@
 
 This document defines the boundaries and acceptance rules for core UI,
 the built-in TSX library and style packs. API signatures belong in the
-generated API; author workflows belong in the guides. CSS terminology
+generated API. Author guides are removed pending redesign. CSS terminology
 describes layout and paint semantics, not a stylesheet authoring API.
 
 ## 1. Scope and ownership
@@ -34,7 +34,7 @@ clocks that decide outcomes stay in the game.
 
 The normative wire, primitive, class, input and accessibility contracts
 are in [`crates/og-ui-next/CONVENTIONS.md`](../crates/og-ui-next/CONVENTIONS.md).
-The author workflow is the [screens guide](../crates/og-api/guides/screens.md).
+Author queries use `og api find/show` and `og ui --help`.
 There are no `.svelte` documents, `<style>` sheets, HTML host tags or CSS
 selector cascade.
 
@@ -201,8 +201,8 @@ Reusable controls live in `packages/engine/src/ui/controls/`, exported
 from `@origingame/engine/ui/components` and individual control paths.
 Their exported props and `fixtures` are authoritative. The library also
 includes radio groups, toolbars, sheets, popovers, menus, numeric fields,
-rich text and other mechanisms; the generated `components`
-guide lists the complete current exports. `og ui eject controls/<name>`
+rich text and other mechanisms; `og api list --kind component`
+lists the current exports. `og ui eject controls/<name>`
 copies one for customization.
 
 | Control | Pack slots | Role / behaviour |
@@ -244,7 +244,7 @@ reduced motion draws none. Scene-only particle features do not draw in
 UI. `Celebration` and `Flourish` compose engine emitters, pack ink and
 sound. There are no `<og-emitter>`, `<og-overlay>` or CSS burst directives.
 Per-element custom shader attachment is not a TSX prop; see the
-[materials guide](../crates/og-api/guides/ui-materials.md) for that boundary.
+`og api show file:ui-material` for that boundary.
 
 On-screen sticks, pads and buttons use `touchStick`, `touchPad`,
 `touchButton`, `deadZone` and `knob`, feeding the same input actions as
@@ -374,7 +374,7 @@ genre merely because it first needed it. Arena owns match/team scores;
 shooter does not duplicate them. Components never supply gameplay rules.
 
 Each directory's README lists its exports; exported props and `fixtures`
-in `.tsx` files are the source of truth. The `components` guide is
+in `.tsx` files are the source of truth. Component API entries are
 generated from the barrel and source, not handwritten. `og ui eject
 --list` enumerates current screens, controls and components.
 
@@ -464,8 +464,7 @@ difference; never record black, blank, broken or clipped output.
 Technical checks catch type/compile errors, missing resources, invalid
 host/shader operations and contract failures. `og ui check` reports
 measurements and findings; `og ui literals` reports suspect values.
-Neither decides taste. Thresholds live in the screens and art-review
-guides: contrast, readable text, touch reach, focus, localization and CPU
+Neither decides taste. Contrast, readable text, touch reach, focus, localization and CPU
 cost all require review. Overlap is a fact, not automatically a defect;
 an intentional badge/ribbon overlap is explained, not redesigned merely
 to silence a finding. Do not prescribe old document diagnostic attributes
@@ -511,7 +510,7 @@ establish visual quality.
 ## 7. Maintenance boundaries
 
 The integration owner owns shared schema, labels, looks, creation,
-packaging, this contract and guides. Component authors own their source,
+packaging and this contract. Component authors own their source,
 READMEs and fixtures; style authors own their recipe/pack and resources.
 Shared API changes are coordinated before consumers adopt them.
 
@@ -521,11 +520,12 @@ The TypeScript renderer writes node ops; Rust owns the host tree on both
 platforms. There is no separate Svelte parse/build/writeback subsystem.
 
 API declarations, component catalogue and wiki are generated from IDL,
-TypeScript UI exports and guides; never hand-edit them. Token output and
+TypeScript UI exports; never hand-edit them. Token output and
 look catalogues follow their generators. Missing capabilities belong in
 the roadmap, not private component workarounds. Per-frame budgets require
 measurement, never an assertion that unmeasured work passed. Author
-knowledge belongs in guides, not shipped skills.
+documentation currently consists of API reference and `og api find/show`;
+guides await redesign, and the engine ships no skills.
 
 The [gate rules](ci.md) own checks, locks, toolchain and landing policy;
 release and platform installation follow [release rules](release.md).

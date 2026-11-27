@@ -10,8 +10,6 @@ Pointer lock for mouse-look (a first- or third-person camera turned by the mouse
 
 While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it.
 
-See `input §2`.
-
 Token `og.PointerLock`, registered under the schema name `og.PointerLock`; its value type is `PointerLock`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -23,7 +21,6 @@ Token `og.PointerLock`, registered under the schema name `og.PointerLock`; its v
 resource PointerLock {
   doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
   doc "While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it."
-  guide "input §2"
   field wanted bool "The game wants the pointer locked and the cursor hidden."
   field locked bool "The pointer is locked now, as the host last reported it (the player's Escape releases it while `wanted` stays true; headless runs stay unlocked unless a script injects a pointerLock report)." {
     readonly true
@@ -31,4 +28,4 @@ resource PointerLock {
 }
 ```
 
-<sub>Module `input` line 1004</sub>
+<sub>Module `input` line 993</sub>

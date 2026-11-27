@@ -8,8 +8,6 @@ Module [`audio`](../audio.md) · [index](../index.md)
 
 Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.
 
-See `audio §2`.
-
 Token `og.AudioListener`, registered under the schema name `og.AudioListener`; its value type is `AudioListener`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -21,7 +19,6 @@ Token `og.AudioListener`, registered under the schema name `og.AudioListener`; i
 ```ogt
 component AudioListener {
   doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z."
-  guide "audio §2"
   field volume f32 "A gain on every spatial source this listener hears." {
     default 1
     min 0
@@ -40,4 +37,4 @@ component AudioListener {
 }
 ```
 
-<sub>Module `audio` line 183</sub>
+<sub>Module `audio` line 181</sub>

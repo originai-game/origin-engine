@@ -13,7 +13,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>Module `game` line 137</sub>
+<sub>Module `game` line 134</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -31,7 +31,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when unset. The engine uses the checked project.ts startup tick when supplied by the host, as og run and og build do."
 ```
 
-<sub>Module `game` line 140</sub>
+<sub>Module `game` line 137</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -49,4 +49,4 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>Module `game` line 141</sub>
+<sub>Module `game` line 138</sub>

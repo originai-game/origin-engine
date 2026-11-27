@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x).
 
-See `facing`.
-
 Also known as: 2D facing angle, sprite rotation angle, Unity eulerAngles.z, Godot Node2D.rotation
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_heading2d` · publish builds: kept
 fn heading2d {
   doc "The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x)."
   aliases "2D facing angle, sprite rotation angle, Unity eulerAngles.z, Godot Node2D.rotation"
-  guide "facing"
   param quaternion Quaternion "The thing's rotation."
   returns f32 "The heading in radians, from -π to π."
 }
 ```
 
-<sub>Module `transform` line 225</sub>
+<sub>Module `transform` line 215</sub>

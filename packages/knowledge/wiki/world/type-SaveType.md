@@ -23,4 +23,4 @@ struct SaveType {
 }
 ```
 
-<sub>Module `world` line 51</sub>
+<sub>Module `world` line 48</sub>

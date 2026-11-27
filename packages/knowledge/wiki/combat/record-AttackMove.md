@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.
 
-See `combat §1`.
-
 Also known as: attack data, move frame data, startup active recovery, hitbox timing, attack definition
 
 Token `og.AttackMove`, registered under the schema name `og.AttackMove`; its value type is `AttackMove`.
@@ -29,7 +27,6 @@ Token `og.AttackMove`, registered under the schema name `og.AttackMove`; its val
 component AttackMove {
   aliases "attack data, move frame data, startup active recovery, hitbox timing, attack definition"
   doc "One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken."
-  guide "combat §1"
   field startup u32 "Ticks before its active window." {
     min 0
     tunable true
@@ -57,4 +54,4 @@ component AttackMove {
 }
 ```
 
-<sub>Module `combat` line 45</sub>
+<sub>Module `combat` line 43</sub>

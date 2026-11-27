@@ -36,4 +36,4 @@ fn craft {
 }
 ```
 
-<sub>Module `inventory` line 167</sub>
+<sub>Module `inventory` line 161</sub>

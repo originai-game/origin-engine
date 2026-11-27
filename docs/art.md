@@ -46,8 +46,8 @@ contract too.
 | `ArtMotion` | stepped animation rate, frames per clip and squash | conform flipbooks and clips, runtime defaults, check |
 | `ArtCamera` | projection, fixed angle, pitch and yaw, field of view and pixel-perfect snap | runtime camera defaults, check |
 
-Every preset (`templates/looks/<slug>.ts`) sets these values, and the
-`looks` guide says how a game uses them. A game's look `extends` a preset
+Every preset (`templates/looks/<slug>.ts`) sets these values.
+A game's look `extends` a preset
 and overrides it field by field.
 
 **The project names its look.** The cook needs the contract before game
@@ -95,7 +95,7 @@ knowledge README's §The art brief, a public contract (AGENTS.md).
   what the conform will do to it, so the art is drawn for it.
 
 Every asset request goes through the brief: the platform's asset
-production and the game agent alike (the `art-review` guide).
+production and the game agent alike.
 
 ### 2.3 Conform: the cook makes every asset meet the contract
 
@@ -165,8 +165,8 @@ outline width; per clip, the rate, held poses and frames against
 viewport of `--sizes`, labelled `<screen>@<viewport>`), the colour count,
 palette hit rate, edge statistics and the captured camera against
 `ArtCamera`. `--json` carries the look's flattened art blocks and the
-scenes no capture reaches. The engine measures and the agent judges (the
-`art-review` guide holds the thresholds); `og build --publish` prints the
+scenes no capture reaches. The engine measures and the agent judges;
+`og build --publish` prints the
 summary as warnings and never refuses a build.
 
 ### 2.6 The catalogue: honest layers, previews, sample scenes
@@ -193,7 +193,7 @@ UI theme their `ui` line names: anime-cel-3d (anime); toy-3d (candy);
 cartoon-2d (cartoon); painterly-3d (fantasy); inked-comic-3d (ink);
 cinematic-realism, minimal-geometric and faceted-low-poly (minimal); pixel,
 pixel-3d-hybrid and low-resolution-3d (pixel); neon-vector (scifi). A
-theme is a recipe in `templates/themes/<name>/` (`crates/og-api/guides/themes.md`).
+theme is a recipe in `templates/themes/<name>/`.
 The validator keeps a look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches
 each one.

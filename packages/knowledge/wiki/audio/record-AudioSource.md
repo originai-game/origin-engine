@@ -63,7 +63,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `dopplerFactor` | `number` | `1` | 0 … 10 | — | tunable | Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2. See `audio §2`. |
+| `dopplerFactor` | `number` | `1` | 0 … 10 | — | tunable | Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2. |
 | `innerAngle` | `number` | `3.1415927` | 0 … 3.1416 | `rad` | tunable | Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians. |
 | `outerAngle` | `number` | `3.1415927` | 0 … 3.1416 | `rad` | tunable | Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle. |
 | `outerGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside outerAngle. |
@@ -171,7 +171,6 @@ component AudioSource {
   }
   group "Doppler and cone"
   field dopplerFactor f32 "Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2." {
-    guide "audio §2"
     default 1
     min 0
     max 10
@@ -206,4 +205,4 @@ component AudioSource {
 }
 ```
 
-<sub>Module `audio` line 55</sub>
+<sub>Module `audio` line 54</sub>

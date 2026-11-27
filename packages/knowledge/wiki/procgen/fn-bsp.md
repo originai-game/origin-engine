@@ -28,4 +28,4 @@ fn bsp {
 }
 ```
 
-<sub>Module `procgen` line 234</sub>
+<sub>Module `procgen` line 233</sub>

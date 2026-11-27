@@ -28,7 +28,7 @@ Token `og.Pointers`, registered under the schema name `og.Pointers`; its value t
 | `start2` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 2 went down. |
 | `start3` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 3 went down. |
 | `start4` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Where pointer 4 went down. |
-| `movement` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it. See `input §2`. |
+| `movement` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it. |
 
 ```ogt
 resource Pointers {
@@ -97,7 +97,6 @@ resource Pointers {
     unit cssPx
   }
   field movement Vector2 "The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it." {
-    guide "input §2"
     readonly true
     unit cssPx
   }
@@ -133,7 +132,7 @@ resource Pointers {
 }
 ```
 
-<sub>Module `input` line 903</sub>
+<sub>Module `input` line 893</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -161,7 +160,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 973</sub>
+<sub>Module `input` line 962</sub>
 
 <a id="member-Pointers-justPressed"></a>
 
@@ -189,7 +188,7 @@ fn justPressed {
 }
 ```
 
-<sub>Module `input` line 978</sub>
+<sub>Module `input` line 967</sub>
 
 <a id="member-Pointers-justReleased"></a>
 
@@ -217,7 +216,7 @@ fn justReleased {
 }
 ```
 
-<sub>Module `input` line 983</sub>
+<sub>Module `input` line 972</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -245,7 +244,7 @@ fn position {
 }
 ```
 
-<sub>Module `input` line 988</sub>
+<sub>Module `input` line 977</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -273,7 +272,7 @@ fn start {
 }
 ```
 
-<sub>Module `input` line 993</sub>
+<sub>Module `input` line 982</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -296,4 +295,4 @@ fn count {
 }
 ```
 
-<sub>Module `input` line 998</sub>
+<sub>Module `input` line 987</sub>

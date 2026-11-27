@@ -3,8 +3,8 @@
 // agent-repo split, OriginGame's packages/game-knowledge/production):
 // the project template plus origin-engine.json and distribution.json as
 // the scaffold overlay game-scaffold/<overlay>/. The engine ships no skills:
-// what an agent reads is `og api find` and `og api show` (the wiki and its
-// guides, in the engine package).
+// what an agent reads is `og api find` and `og api show` (the API reference
+// in the engine package).
 //
 //   bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]
 //

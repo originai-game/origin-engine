@@ -30,4 +30,4 @@ fn load {
 }
 ```
 
-<sub>Module `story` line 306</sub>
+<sub>Module `story` line 302</sub>

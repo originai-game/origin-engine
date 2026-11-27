@@ -10,8 +10,6 @@ A secondary camera, as three.js's setRenderTarget or setViewport: it draws the s
 
 It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame.
 
-See `render §11`.
-
 Also known as: picture-in-picture, rear-view mirror, split screen, second camera, minimap camera
 
 Token `og.CameraView`, registered under the schema name `og.CameraView`; its value type is `CameraView`.
@@ -42,7 +40,6 @@ component CameraView {
   aliases "picture-in-picture, rear-view mirror, split screen, second camera, minimap camera"
   doc "A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame."
   doc "It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame."
-  guide "render §11"
   field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
   field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
     min 0
@@ -113,4 +110,4 @@ component CameraView {
 }
 ```
 
-<sub>Module `render` line 4242</sub>
+<sub>Module `render` line 4125</sub>

@@ -1,7 +1,7 @@
 //! `og model preview --axes`: the engine's axes drawn over each view at the
 //! model's origin, labelled, so the nose can be checked before the model
-//! is used: `+Z FRONT` (blue; the way the object faces and travels, the
-//! facing guide), `+Y UP` (green) and `+X` (red; the object's left). In
+//! is used: `+Z FRONT` (blue; the way the object faces and travels),
+//! `+Y UP` (green) and `+X` (red; the object's left). In
 //! the engine's frame (glTF's: metres, +Y up), whatever the file's own
 //! axes were read as. A model whose nose is not on the blue arrow needs
 //! `model { front … up … }` in its import settings.

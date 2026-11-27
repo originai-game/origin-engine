@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
 
-See `render §9`.
-
 Token `og.Interpolation`, registered under the schema name `og.Interpolation`; its value type is `Interpolation`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -19,9 +17,8 @@ Token `og.Interpolation`, registered under the schema name `og.Interpolation`; i
 ```ogt
 component Interpolation {
   doc "How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does."
-  guide "render §9"
   field off bool "Draw this entity, and everything under it through og.Parent, at the last tick's transform on every frame, never blended: a marker the game already moves every frame, or an object that jumps on purpose (a clock hand that ticks)."
 }
 ```
 
-<sub>Module `render` line 948</sub>
+<sub>Module `render` line 898</sub>

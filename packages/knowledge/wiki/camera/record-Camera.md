@@ -57,7 +57,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `background` | `Color` | `{ r: 0.00699, g: 0.00803, b: 0.01096 }` | — | — | — | The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB. |
-| `backgroundTexture` | `Texture` | `0` | — | — | — | A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none. See `flow §3`. |
+| `backgroundTexture` | `Texture` | `0` | — | — | — | A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none. |
 | `exposure` | `number` | `1` | 0 … 16 | — | tunable | Exposure before tone mapping, as three.js toneMappingExposure. |
 
 #### Shake
@@ -185,7 +185,6 @@ resource Camera {
     default 0.00699 0.00803 0.01096
   }
   field backgroundTexture Texture "A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none." {
-    guide "flow §3"
   }
   field exposure f32 "Exposure before tone mapping, as three.js toneMappingExposure." {
     default 1
@@ -292,7 +291,7 @@ resource Camera {
 }
 ```
 
-<sub>Module `camera` line 7</sub>
+<sub>Module `camera` line 6</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -319,7 +318,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 177</sub>
+<sub>Module `camera` line 175</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -350,7 +349,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 181</sub>
+<sub>Module `camera` line 179</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -380,4 +379,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 187</sub>
+<sub>Module `camera` line 185</sub>

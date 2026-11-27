@@ -572,17 +572,6 @@ step_fixtures() {
   fi
 }
 
-# The guides' recipes (scripts/guide-recipes.ts): every ```ts recipe block
-# in crates/og-api/guides/ written into a project, type-checked and run
-# headless twice; a check error, a throw, an og.assert violation, a site
-# that never fired or two hashes fail it, naming the guide's file and line.
-# Its own test first: a broken recipe must fail there with its line.
-step_guide_recipes() {
-  require_ready guide-recipes native-ready || return 1
-  OG_BIN="$OG_TARGET_DIR/debug/og" bun test ./scripts/guide-recipes.test.ts || return 1
-  bun scripts/guide-recipes.ts --og "$OG_TARGET_DIR/debug/og"
-}
-
 # Every preview slot a release draws (create-game's previewSlots: each look,
 # each variant and each UI pack's gallery card), cooked and run headless by the
 # dev og through templates/looks/preview/render.ts on whatever adapter the host

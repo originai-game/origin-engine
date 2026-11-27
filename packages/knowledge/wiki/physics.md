@@ -8,12 +8,10 @@ The profile is 2D in a `form "2d"` project. In 2D, bodies move in the xy plane a
 
 The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
 
-See `physics`.
-
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 127 more are advanced (`og api show physics --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module physics {
@@ -193,7 +191,7 @@ column RigidBodyType {
 }
 ```
 
-<sub>Module `physics` line 27</sub>
+<sub>Module `physics` line 25</sub>
 
 ```ogt
 column ColliderShape {
@@ -204,7 +202,7 @@ column ColliderShape {
 }
 ```
 
-<sub>Module `physics` line 119</sub>
+<sub>Module `physics` line 113</sub>
 
 ```ogt
 column CombineRule {
@@ -215,7 +213,7 @@ column CombineRule {
 }
 ```
 
-<sub>Module `physics` line 134</sub>
+<sub>Module `physics` line 128</sub>
 
 ```ogt
 column ForceFieldKind {
@@ -226,7 +224,7 @@ column ForceFieldKind {
 }
 ```
 
-<sub>Module `physics` line 217</sub>
+<sub>Module `physics` line 210</sub>
 
 ```ogt
 column JointType {
@@ -237,7 +235,7 @@ column JointType {
 }
 ```
 
-<sub>Module `physics` line 405</sub>
+<sub>Module `physics` line 392</sub>
 
 ```ogt
 column JointMotor {
@@ -248,7 +246,7 @@ column JointMotor {
 }
 ```
 
-<sub>Module `physics` line 420</sub>
+<sub>Module `physics` line 406</sub>
 
 ```ogt
 column JointMotorModel {
@@ -259,7 +257,7 @@ column JointMotorModel {
 }
 ```
 
-<sub>Module `physics` line 433</sub>
+<sub>Module `physics` line 419</sub>
 
 ```ogt
 column VehicleDrive {
@@ -270,7 +268,7 @@ column VehicleDrive {
 }
 ```
 
-<sub>Module `physics` line 929</sub>
+<sub>Module `physics` line 907</sub>
 
 ```ogt
 column VehicleModel {
@@ -281,7 +279,7 @@ column VehicleModel {
 }
 ```
 
-<sub>Module `physics` line 942</sub>
+<sub>Module `physics` line 920</sub>
 
 ```ogt
 column VehicleWheelCast {
@@ -292,7 +290,7 @@ column VehicleWheelCast {
 }
 ```
 
-<sub>Module `physics` line 1265</sub>
+<sub>Module `physics` line 1237</sub>
 
 ```ogt
 column VehicleDifferential {
@@ -303,7 +301,7 @@ column VehicleDifferential {
 }
 ```
 
-<sub>Module `physics` line 1277</sub>
+<sub>Module `physics` line 1249</sub>
 
 ```ogt
 column Simulation {
@@ -314,7 +312,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1373</sub>
+<sub>Module `physics` line 1344</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -325,7 +323,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1605</sub>
+<sub>Module `physics` line 1571</sub>
 
 ## Constants
 
@@ -359,136 +357,136 @@ column SoftBodyShape {
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
 ```
 
-<sub>Module `physics` line 9</sub>
+<sub>Module `physics` line 8</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>Module `physics` line 10</sub>
+<sub>Module `physics` line 9</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>Module `physics` line 11</sub>
+<sub>Module `physics` line 10</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>Module `physics` line 12</sub>
+<sub>Module `physics` line 11</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>Module `physics` line 13</sub>
+<sub>Module `physics` line 12</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>Module `physics` line 14</sub>
+<sub>Module `physics` line 13</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>Module `physics` line 15</sub>
+<sub>Module `physics` line 14</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>Module `physics` line 16</sub>
+<sub>Module `physics` line 15</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>Module `physics` line 17</sub>
+<sub>Module `physics` line 16</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 892</sub>
+<sub>Module `physics` line 871</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 893</sub>
+<sub>Module `physics` line 872</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 894</sub>
+<sub>Module `physics` line 873</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 895</sub>
+<sub>Module `physics` line 874</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 896</sub>
+<sub>Module `physics` line 875</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 897</sub>
+<sub>Module `physics` line 876</sub>
 
 ```ogt
 const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces crushed the character."
 ```
 
-<sub>Module `physics` line 898</sub>
+<sub>Module `physics` line 877</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1380</sub>
+<sub>Module `physics` line 1351</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1381</sub>
+<sub>Module `physics` line 1352</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1382</sub>
+<sub>Module `physics` line 1353</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1383</sub>
+<sub>Module `physics` line 1354</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2201</sub>
+<sub>Module `physics` line 2160</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2202</sub>
+<sub>Module `physics` line 2161</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2203</sub>
+<sub>Module `physics` line 2162</sub>

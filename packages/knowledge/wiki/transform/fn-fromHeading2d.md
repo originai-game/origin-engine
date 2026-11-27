@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up).
 
-See `facing`.
-
 Also known as: 2D angle to rotation, rotate a sprite by an angle, Unity Quaternion.Euler(0, 0, z), Godot Node2D.rotation
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_from_heading2d` · publish builds: kept
 fn fromHeading2d {
   doc "The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up)."
   aliases "2D angle to rotation, rotate a sprite by an angle, Unity Quaternion.Euler(0, 0, z), Godot Node2D.rotation"
-  guide "facing"
   param heading f32 "The 2D heading in radians."
   returns Quaternion
 }
 ```
 
-<sub>Module `transform` line 233</sub>
+<sub>Module `transform` line 222</sub>

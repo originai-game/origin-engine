@@ -6,11 +6,9 @@ Dialogue and quests from checked file.dialogue and file.quest TypeScript declara
 
 Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
 
-See `yarn`.
-
 - **TypeScript**: functions are the namespace `og.story`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module story {

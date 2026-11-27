@@ -14,7 +14,7 @@ interface SpatialIndex {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 223</sub>
+<sub>Module `world` line 218</sub>
 
 <a id="member-SpatialIndex-count"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_spatial_index_get_count` · publish builds: kept
 prop count u32 "The entities it holds."
 ```
 
-<sub>Module `world` line 225</sub>
+<sub>Module `world` line 220</sub>
 
 <a id="member-SpatialIndex-within"></a>
 
@@ -65,7 +65,7 @@ fn within {
 }
 ```
 
-<sub>Module `world` line 226</sub>
+<sub>Module `world` line 221</sub>
 
 <a id="member-SpatialIndex-nearest"></a>
 
@@ -95,4 +95,4 @@ fn nearest {
 }
 ```
 
-<sub>Module `world` line 233</sub>
+<sub>Module `world` line 228</sub>

@@ -8,8 +8,6 @@ Module [`abilities`](../abilities.md) · [index](../index.md)
 
 An og.Ability was used: sent the tick it was.
 
-See `abilities §1`.
-
 Also known as: on cast, ability cast, skill used, spell cast
 
 Token `og.AbilityUsed`, registered under the schema name `og.AbilityUsed`; its value type is `AbilityUsed`.
@@ -23,10 +21,9 @@ Token `og.AbilityUsed`, registered under the schema name `og.AbilityUsed`; its v
 event AbilityUsed {
   aliases "on cast, ability cast, skill used, spell cast"
   doc "An og.Ability was used: sent the tick it was."
-  guide "abilities §1"
   field ability Entity "The og.Ability."
   field owner Entity "Its owner."
 }
 ```
 
-<sub>Module `abilities` line 69</sub>
+<sub>Module `abilities` line 67</sub>

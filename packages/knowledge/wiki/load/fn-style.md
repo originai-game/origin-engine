@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.
 
-See `loading §6`.
-
 ```ts
 og.load.style(world: World, path: string): Result<Style>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_style` · publish builds: kept
 ```ogt
 fn style {
   doc "Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path."
-  guide "loading §6"
   param world World "The world whose UI uses it."
   param path String "The style directory, such as `styles/main` or `@themes/tactical`."
   returns Result.Style "Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse."
 }
 ```
 
-<sub>Module `load` line 438</sub>
+<sub>Module `load` line 417</sub>

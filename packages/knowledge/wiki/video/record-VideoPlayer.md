@@ -8,8 +8,6 @@ Module [`video`](../video.md) · [index](../index.md)
 
 Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames.
 
-See `audio §8`.
-
 Also known as: movie, video, cinematic, FMV, intro video, Unity VideoPlayer, Godot VideoStreamPlayer
 
 Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its value type is `VideoPlayer`.
@@ -23,7 +21,7 @@ Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its v
 | `loop` | `boolean` | `false` | — | — | — | Start again at loopStart past loopEnd (or 0 past the end); otherwise hold the last frame and set finished. |
 | `loopStart` | `number` | `0` | ≥ 0 | `s` | — | With `loop`: where the loop wraps back to, in seconds (0: the start). |
 | `loopEnd` | `number` | `0` | ≥ 0 | `s` | — | With `loop`: where the loop wraps, in seconds (0: the video's end). |
-| `wait` | `boolean` | `false` | — | — | — | A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game. See `audio §8`. |
+| `wait` | `boolean` | `false` | — | — | — | A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game. |
 | `frame` | `number` | `0` | — | — | read only | Written: the frame shown, floor(time * fps). |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a player without loop reached the end. |
 | `texture` | `Texture` | `0` | — | — | read only | Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives. |
@@ -31,7 +29,6 @@ Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its v
 ```ogt
 component VideoPlayer {
   doc "Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames."
-  guide "audio §8"
   aliases "movie, video, cinematic, FMV, intro video, Unity VideoPlayer, Godot VideoStreamPlayer"
   field video Video "The video (og.load.video's `video`); 0 plays nothing."
   field playing bool "Whether time advances." {
@@ -57,7 +54,6 @@ component VideoPlayer {
     unit s
   }
   field wait bool "A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game." {
-    guide "audio §8"
   }
   field frame u32 "Written: the frame shown, floor(time * fps)." {
     readonly true
@@ -71,4 +67,4 @@ component VideoPlayer {
 }
 ```
 
-<sub>Module `video` line 114</sub>
+<sub>Module `video` line 110</sub>

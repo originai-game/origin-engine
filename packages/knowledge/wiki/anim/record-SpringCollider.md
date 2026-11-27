@@ -8,8 +8,6 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
 
-See `animation §8`.
-
 Token `og.SpringCollider`, registered under the schema name `og.SpringCollider`; its value type is `SpringCollider`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -25,7 +23,6 @@ Token `og.SpringCollider`, registered under the schema name `og.SpringCollider`;
 ```ogt
 component SpringCollider {
   doc "A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings."
-  guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose spring bones this keeps out."
   field joint u32 "The joint the collider rides on (an index into the skin's joints)." {
     min 0
@@ -49,4 +46,4 @@ component SpringCollider {
 }
 ```
 
-<sub>Module `anim` line 611</sub>
+<sub>Module `anim` line 604</sub>

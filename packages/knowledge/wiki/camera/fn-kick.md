@@ -8,8 +8,6 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only.
 
-See `camera §4`.
-
 ```ts
 og.camera.kick(world: World, direction: Vector3, distance: number): Result<void>
 ```
@@ -27,7 +25,6 @@ Binding symbol `og_camera_kick` · publish builds: kept
 ```ogt
 fn kick {
   doc "A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only."
-  guide "camera §4"
   param world World "The world."
   param direction Vector3 "The direction to push the view (normalised here; zero does nothing)."
   param distance f32 "How far, in world units."
@@ -35,4 +32,4 @@ fn kick {
 }
 ```
 
-<sub>Module `camera` line 756</sub>
+<sub>Module `camera` line 748</sub>

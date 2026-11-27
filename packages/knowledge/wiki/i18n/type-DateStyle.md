@@ -35,4 +35,4 @@ enum DateStyle {
 }
 ```
 
-<sub>Module `i18n` line 6</sub>
+<sub>Module `i18n` line 5</sub>

@@ -8,9 +8,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
 
-Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
-
-See `input §4`.
+Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent; sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
 
 Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value type is `Gamepad`.
 
@@ -102,8 +100,7 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 ```ogt
 resource Gamepad {
   doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
-  doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
-  guide "input §4"
+  doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent; sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
   group "Pads"
   field connectedMask u32 "Connected pads: bit `pad`." {
     readonly true
@@ -303,7 +300,7 @@ resource Gamepad {
 }
 ```
 
-<sub>Module `input` line 1014</sub>
+<sub>Module `input` line 1002</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -333,7 +330,7 @@ fn connected {
 }
 ```
 
-<sub>Module `input` line 1175</sub>
+<sub>Module `input` line 1162</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -365,7 +362,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 1182</sub>
+<sub>Module `input` line 1169</sub>
 
 <a id="member-Gamepad-justPressed"></a>
 
@@ -397,7 +394,7 @@ fn justPressed {
 }
 ```
 
-<sub>Module `input` line 1190</sub>
+<sub>Module `input` line 1177</sub>
 
 <a id="member-Gamepad-justReleased"></a>
 
@@ -429,7 +426,7 @@ fn justReleased {
 }
 ```
 
-<sub>Module `input` line 1198</sub>
+<sub>Module `input` line 1185</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -461,4 +458,4 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 1206</sub>
+<sub>Module `input` line 1193</sub>

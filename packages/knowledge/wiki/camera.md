@@ -6,12 +6,10 @@ The main camera, as a resource with three.js PerspectiveCamera and OrthographicC
 
 Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
 
-See `camera`.
-
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 20 more are advanced (`og api show camera --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module camera {
@@ -70,7 +68,7 @@ column CameraLensMode {
 }
 ```
 
-<sub>Module `camera` line 203</sub>
+<sub>Module `camera` line 201</sub>
 
 ```ogt
 column CameraGateFit {
@@ -81,7 +79,7 @@ column CameraGateFit {
 }
 ```
 
-<sub>Module `camera` line 216</sub>
+<sub>Module `camera` line 214</sub>
 
 ```ogt
 column CameraExposureMode {
@@ -92,7 +90,7 @@ column CameraExposureMode {
 }
 ```
 
-<sub>Module `camera` line 228</sub>
+<sub>Module `camera` line 226</sub>
 
 ```ogt
 column CameraLensStatus {
@@ -103,7 +101,7 @@ column CameraLensStatus {
 }
 ```
 
-<sub>Module `camera` line 241</sub>
+<sub>Module `camera` line 239</sub>
 
 ## Constants
 
@@ -115,4 +113,4 @@ column CameraLensStatus {
 const MAX_CAMERA_COC_SOURCES u32 4 "Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection."
 ```
 
-<sub>Module `camera` line 247</sub>
+<sub>Module `camera` line 245</sub>

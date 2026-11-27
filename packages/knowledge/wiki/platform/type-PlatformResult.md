@@ -35,4 +35,4 @@ struct PlatformResult {
 }
 ```
 
-<sub>Module `platform` line 99</sub>
+<sub>Module `platform` line 98</sub>

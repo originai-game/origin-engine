@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.
 
-See `physics §8`.
-
 Also known as: bob on the sea, float on water, floating, buoyant hull
 
 Token `og.Buoyancy`, registered under the schema name `og.Buoyancy`; its value type is `Buoyancy`.
@@ -26,7 +24,6 @@ Token `og.Buoyancy`, registered under the schema name `og.Buoyancy`; its value t
 component Buoyancy {
   aliases "bob on the sea, float on water, floating, buoyant hull"
   doc "Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift."
-  guide "physics §8"
   field waterDensity f32 "The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks." {
     default 2
     min 0
@@ -60,4 +57,4 @@ component Buoyancy {
 }
 ```
 
-<sub>Module `physics` line 2117</sub>
+<sub>Module `physics` line 2078</sub>

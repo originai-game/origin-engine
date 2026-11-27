@@ -8,8 +8,6 @@ Module [`interact`](../interact.md) · [index](../index.md)
 
 Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.
 
-See `interaction §1`.
-
 Also known as: interaction focus, player interact, use key, look at target, interaction prompt source, hold to interact
 
 Token `og.Interactor`, registered under the schema name `og.Interactor`; its value type is `Interactor`.
@@ -31,7 +29,6 @@ Token `og.Interactor`, registered under the schema name `og.Interactor`; its val
 component Interactor {
   aliases "interaction focus, player interact, use key, look at target, interaction prompt source, hold to interact"
   doc "Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it."
-  guide "interaction §1"
   field action str.32 "The input action that uses the focus (og.input.defineAction's name); empty uses nothing."
   field range f32 "How far it looks; 0 focuses nothing." {
     min 0
@@ -62,4 +59,4 @@ component Interactor {
 }
 ```
 
-<sub>Module `interact` line 32</sub>
+<sub>Module `interact` line 30</sub>

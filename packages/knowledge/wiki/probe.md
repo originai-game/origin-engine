@@ -12,7 +12,7 @@ Probe entity ids are entity names; an unnamed entity is `#<index>.<generation>`.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module probe {

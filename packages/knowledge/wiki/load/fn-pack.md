@@ -10,8 +10,6 @@ Open a cooked bundle a content catalog's version lists by name (its manifest's `
 
 Completion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle.
 
-See `loading §14`.
-
 ```ts
 og.load.pack(world: World, entry?: CatalogEntry): Result<Asset>
 ```
@@ -28,7 +26,6 @@ Binding symbol `og_load_pack` · publish builds: kept
 ```ogt
 fn pack {
   doc "Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. Once ready it is a runtime bundle as og.load.bundle opens: og.load.bundleInfo, its groups and cells, og.load.release to close it."
-  guide "loading §14"
   doc "Completion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle."
   param world World "The world that owns the asset."
   param entry CatalogEntry "The pack: its catalog, version, and its name as `path`."
@@ -36,4 +33,4 @@ fn pack {
 }
 ```
 
-<sub>Module `load` line 738</sub>
+<sub>Module `load` line 702</sub>

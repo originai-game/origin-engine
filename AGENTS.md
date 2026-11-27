@@ -38,20 +38,18 @@ status `docs/roadmap.md`. Platform contracts implemented here:
     preset or content-ref `look`) and `project.ts` (`defineProject`), plus the
     checked JSON from `og project --json`; the platform never evaluates TS.
   - `og test --json`, `og probe`, `og build --json` and where outputs land
-    (`dist/` and `og-out/`) (testing guide §9); `og new --look --premise
-    --no-prompt` (start guide §1); the launcher's install events
+    (`dist/` and `og-out/`); `og new --look --premise
+    --no-prompt`; the launcher's install events
     (`docs/release.md` §1 The launcher's events).
-- The engine ships no skills. What a game author needs beyond a signature is
-  a guide in `crates/og-api/guides/` (read through `og api find` and
-  `og api show`) or `og` command help. A guide never restates the API and
-  names no platform tool or service. A guide may carry recipes: short
-  examples that compose the API for one mechanism, each type-checked and
-  run by the gate; a recipe is never a game.
+- The engine ships no skills. Author documentation is temporarily the API
+  reference, queried through `og api find` and `og api show`, plus `og`
+  command help. The guide system is deleted pending redesign; do not add
+  replacement manuals under another name.
 
 ## Principles
 
 - **The engine supplies facts and tools; the agent decides.** No engine
-  command scores or refuses on taste; thresholds belong in the guides. A
+  command scores or refuses on taste; the agent chooses thresholds. A
   shipped system carries out a rule the game wrote into its components and
   reports what it did; it never picks a value, ranks a play by taste or
   decides an outcome the game did not state.

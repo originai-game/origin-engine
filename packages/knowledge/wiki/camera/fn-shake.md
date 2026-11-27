@@ -8,8 +8,6 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
 
-See `camera §4`.
-
 Also known as: screen shake, camera shake, screen trembles when hit, hit shake, trauma, Cinemachine impulse
 
 ```ts
@@ -29,11 +27,10 @@ Binding symbol `og_camera_shake` · publish builds: kept
 fn shake {
   doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
   aliases "screen shake, camera shake, screen trembles when hit, hit shake, trauma, Cinemachine impulse"
-  guide "camera §4"
   param world World "The world."
   param trauma f32 "Trauma to add, 0 to 1."
   returns Result.Void
 }
 ```
 
-<sub>Module `camera` line 739</sub>
+<sub>Module `camera` line 733</sub>

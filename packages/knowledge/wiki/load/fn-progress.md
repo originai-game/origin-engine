@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). Answered from what the host has received, for a loading screen; natively a read completes at once.
 
-See `loading §12`.
-
 ```ts
 og.load.progress(world: World, asset: Asset): Result<LoadProgress>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_progress` · publish builds: kept
 ```ogt
 fn progress {
   doc "How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). Answered from what the host has received, for a loading screen; natively a read completes at once."
-  guide "loading §12"
   param world World "The world that owns the asset."
   param asset Asset "The handle."
   returns Result.LoadProgress "Refused for a handle that is not alive."
 }
 ```
 
-<sub>Module `load` line 244</sub>
+<sub>Module `load` line 234</sub>

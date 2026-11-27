@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 The bytes of a ready og.load.data file read as `bytes`.
 
-See `loading §14`.
-
 ```ts
 og.load.dataBytes(world: World, asset: Asset): Result<Uint8Array>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_data_bytes` · publish builds: kept
 ```ogt
 fn dataBytes {
   doc "The bytes of a ready og.load.data file read as `bytes`."
-  guide "loading §14"
   param world World "The world that owns the asset."
   param asset Asset "A handle og.load.data answered."
   returns Result.Bytes "Refused while it is pending, when it failed (with its reason), when read as `json`, or for another kind of asset."
 }
 ```
 
-<sub>Module `load` line 730</sub>
+<sub>Module `load` line 695</sub>

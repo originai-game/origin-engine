@@ -25,4 +25,4 @@ event CellEvent {
 }
 ```
 
-<sub>Module `stream` line 50</sub>
+<sub>Module `stream` line 46</sub>

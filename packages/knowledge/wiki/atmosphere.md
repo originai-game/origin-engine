@@ -8,7 +8,7 @@ The day-night clock is a function of the tick (DayNight.start plus the simulated
 
 - **TypeScript**: functions are the namespace `og.atmosphere`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module atmosphere {
@@ -73,7 +73,7 @@ column CloudKind {
 }
 ```
 
-<sub>Module `atmosphere` line 353</sub>
+<sub>Module `atmosphere` line 344</sub>
 
 ```ogt
 column WindMotorKind {
@@ -84,7 +84,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 751</sub>
+<sub>Module `atmosphere` line 735</sub>
 
 ## Constants
 

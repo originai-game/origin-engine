@@ -17,7 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `pose` | `string` | `""` | — | — | — | The pose taken on arrival; empty is `idle`. |
 | `arrivalHeading` | `number` | `0` | — | `rad` | — | Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes. |
 | `deceleration` | `number` | `3` | ≥ 0 | — | — | Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height. |
-| `acceleration` | `number` | `4` | ≥ 0 | `mps2` | — | How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns). See `animation §10`. |
+| `acceleration` | `number` | `4` | ≥ 0 | `mps2` | — | How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns). |
 
 ```ogt
 struct WalkGoalDesc {
@@ -41,7 +41,6 @@ struct WalkGoalDesc {
     min 0
   }
   field acceleration f32 "How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns)." {
-    guide "animation §10"
     default 4
     min 0
     unit mps2
@@ -49,4 +48,4 @@ struct WalkGoalDesc {
 }
 ```
 
-<sub>Module `motion` line 93</sub>
+<sub>Module `motion` line 92</sub>

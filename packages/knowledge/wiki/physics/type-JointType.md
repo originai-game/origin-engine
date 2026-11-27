@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 How a joint holds its two bodies: Joint.kind.
 
-See `physics §1`.
-
 A string: one of the variants below. The zero value is `"fixed"`.
 
 | Variant | Doc |
@@ -25,7 +23,6 @@ A string: one of the variants below. The zero value is `"fixed"`.
 ```ogt
 enum JointType {
   doc "How a joint holds its two bodies: Joint.kind."
-  guide "physics §1"
   variant fixed "The two bodies move as one."
   variant revolute "A hinge about `axis` (2D: about z), with optional limits and a motor."
   variant prismatic "A slider along `axis`, with optional limits and a motor."
@@ -36,4 +33,4 @@ enum JointType {
 }
 ```
 
-<sub>Module `physics` line 393</sub>
+<sub>Module `physics` line 381</sub>

@@ -37,4 +37,4 @@ struct HeightmapResult {
 }
 ```
 
-<sub>Module `procgen` line 589</sub>
+<sub>Module `procgen` line 588</sub>

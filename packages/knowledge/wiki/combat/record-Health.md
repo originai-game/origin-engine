@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
 
-See `combat §2`.
-
 Also known as: hit points, HP, life, health bar value, damageable
 
 Token `og.Health`, registered under the schema name `og.Health`; its value type is `Health`.
@@ -23,7 +21,6 @@ Token `og.Health`, registered under the schema name `og.Health`; its value type 
 component Health {
   aliases "hit points, HP, life, health bar value, damageable"
   doc "What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage."
-  guide "combat §2"
   field value f32 "What is left." {
     min 0
     tunable true
@@ -32,4 +29,4 @@ component Health {
 }
 ```
 
-<sub>Module `combat` line 109</sub>
+<sub>Module `combat` line 104</sub>

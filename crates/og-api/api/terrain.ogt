@@ -1,7 +1,6 @@
 module terrain {
   doc "Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
   doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident."
-  guide "world §1"
   split world3d
   core Terrain load sample edit TerrainInfo TerrainSampleDesc TerrainSample TerrainBrush
 
@@ -51,7 +50,6 @@ module terrain {
       tunable true
     }
     field lodRing u32 "Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). Levels grow to 128 quads where a coarser level's height error would show (`lodError`)." {
-      guide "world §2"
       min 0
       max 256
     }
@@ -61,7 +59,6 @@ module terrain {
       tunable true
     }
     field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground, fading out over the last 40%. Near the camera the clipmap's levels then grow finer and denser to carry the relief (`lodSpacing` and `lodRing` above 0 decide instead). 0: no displacement." {
-      guide "world §2"
       default 40
       min 0
       max 1000
@@ -91,7 +88,6 @@ module terrain {
 
   component TerrainScatter {
     doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
-    guide "world §3"
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field geometry Geometry "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space."
     field material Material "Its material."
@@ -147,7 +143,6 @@ module terrain {
       tunable true
     }
     field impostor Asset "A glTF (og.load.gltf) of the same mesh cooked with an octahedral impostor (`model { impostor true }`): copies past impostorDistance draw as it. Mesh and impostor bounds must agree in model space, else the scatter is skipped (render.scatterIssue). None: the mesh at every distance." {
-      guide "world §3"
     }
     field impostorDistance f32 "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`." {
       min 0
@@ -182,20 +177,16 @@ module terrain {
       tunable true
     }
     field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (top row along -z, loaded linear), each copy kept while its own value is below the map's. Drawn only, where the renderer culls on the GPU (RenderCapabilities.compute). 0: none." {
-      guide "world §3"
     }
     field gpuPlacement bool "Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU." {
-      guide "world §3"
       default true
     }
     field model Asset "A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material." {
-      guide "world §3"
     }
   }
 
   component Grass {
     doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
-    guide "world §3"
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field layer u32 "The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge." {
       max 15
@@ -348,7 +339,6 @@ module terrain {
       tunable true
     }
     field types List.Entity.3 "Up to three more kinds of blade among its own: entities carrying an og.GrassType (the field's own fields are its first kind). Each clump grows one kind, by `typeMap` or else the kinds' `share`; 0s and entities without an og.GrassType are skipped." {
-      guide "world §3"
     }
     field typeMap Texture "Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share."
     field densityMap Texture "Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none."
@@ -607,13 +597,11 @@ module terrain {
       unit ratio
     }
     field displacement f32 "Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) within og.Terrain's `displacementDistance`, where the layer shows and the ground is not steep. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat." {
-      guide "world §2"
       min 0
       max 4
       unit m
     }
     field cellVariation f32 "How much each cell of the layer's pattern takes its own tone: its normal map's alpha names the cell (0 to 1; opaque for none), and at 1 each cell's brightness and warmth move by up to 25 % and 20 %. 0: none." {
-      guide "world §2"
       min 0
       max 1
       unit ratio

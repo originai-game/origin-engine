@@ -6,11 +6,9 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.DirectionalLight` (component)
 
-The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
+The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades.
 
 Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
-
-See `render §3`.
 
 Also known as: sun, directional light, Godot DirectionalLight3D
 
@@ -20,7 +18,7 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 |---|---|---|---|---|---|---|
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The light's linear colour. |
 | `intensity` | `number` | `3` | ≥ 0 | — | tunable | The radiance multiplier, as three.js DirectionalLight.intensity. |
-| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. |
+| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). |
 | `castShadow` | `boolean` | `true` | — | — | — | Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow. |
 | `shadowDistance` | `number` | `200` | ≥ 1 | `m` | — | How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper. |
 | `shadowSoftness` | `number` | `0` | 0 … 0.2 | — | tunable | Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. |
@@ -33,10 +31,9 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 
 ```ogt
 component DirectionalLight {
-  doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3)."
+  doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades."
   doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
   aliases "sun, directional light, Godot DirectionalLight3D"
-  guide "render §3"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -47,7 +44,6 @@ component DirectionalLight {
   }
   field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
     default stationary
-    guide "render §4"
   }
   field castShadow bool "Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow." {
     default true
@@ -94,4 +90,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>Module `render` line 577</sub>
+<sub>Module `render` line 550</sub>

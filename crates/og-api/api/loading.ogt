@@ -1,6 +1,5 @@
 module loading {
   doc "The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
-  guide "loading §13"
   core stage done idle
 
   enum LoadingScreen {
@@ -35,7 +34,6 @@ module loading {
 
   fn stage {
     doc "Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it."
-    guide "loading §13"
     param world World "The world."
     param desc LoadingStageDesc "The stage, its fraction and its label."
     returns Result.Void "Refused for a fraction outside 0 to 1."
@@ -43,7 +41,6 @@ module loading {
 
   fn done {
     doc "The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing."
-    guide "loading §13"
     param world World "The world."
     returns Result.Void
   }

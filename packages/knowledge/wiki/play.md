@@ -6,7 +6,7 @@ Mechanisms that span domains, as facts. An og.HitVolume (on a bone through og.Bo
 
 - **TypeScript**: functions are the namespace `og.play`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module play {

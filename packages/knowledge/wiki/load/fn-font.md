@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.font`
 
-Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
+Load a cooked font for og.render.text, or an icon set for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook. Optional locale coverage uses og.i18n.
 
 ```ts
 og.load.font(world: World, path: string): Result<Font>
@@ -23,11 +23,11 @@ Binding symbol `og_load_font` · publish builds: kept
 
 ```ogt
 fn font {
-  doc "Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n."
+  doc "Load a cooked font for og.render.text, or an icon set for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook. Optional locale coverage uses og.i18n."
   param world World "The world that owns the font."
   param path String "The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`."
   returns Result.Font
 }
 ```
 
-<sub>Module `load` line 296</sub>
+<sub>Module `load` line 284</sub>

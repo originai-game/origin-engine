@@ -1,23 +1,18 @@
 //! `og api find <words>`, `og api show <name>` and `og api list`: the API
 //! reference one entry at a time. The wiki pages `og api gen` writes (the
 //! knowledge package's `wiki/`, shipped in @origingame/engine) give every
-//! function, component, type, member, constant, value and guide section an
+//! function, component, type, member, constant, value and file input an
 //! anchor (`og_idl::search::entries`). `find` ranks entries with the index
 //! `og api gen` ships beside the pages (`search.tsv`, `og_idl::search`: BM25F
 //! and static embeddings, fused); `show` loads only the matched page(s) and
 //! prints one entry without its IDL source, so an agent reads a few kilobytes
 //! instead of a whole wiki.
 
-use og_idl::search::{Doc, Entry, Hit, SearchIndex, bare, entries, entry_title, section_title};
+use og_idl::search::{Doc, Entry, Hit, SearchIndex, bare, entries};
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-
-/// Guides larger than this print their overview and a numbered section table
-/// unless `--all` is passed, so `og api show components --guide` stays within
-/// a model's context budget.
-const GUIDE_INLINE_MAX_BYTES: usize = 28_000;
 
 /// Cached wiki directory and search index, kept in process by `og mcp`
 /// until [`WikiCache::is_current`] says the wiki changed.
@@ -83,14 +78,8 @@ impl WikiCache {
         )
     }
 
-    pub fn show_output(
-        &self,
-        query: &str,
-        guide: bool,
-        every: bool,
-        json: bool,
-    ) -> Result<String, String> {
-        show_formatted(&self.dir, &self.index, query, None, guide, every, json)
+    pub fn show_output(&self, query: &str, every: bool, json: bool) -> Result<String, String> {
+        show_formatted(&self.dir, &self.index, query, None, every, json)
     }
 
     pub fn list_json(&self, kind: Option<&str>) -> serde_json::Value {
@@ -173,19 +162,10 @@ fn module_of(page: &str) -> &str {
     page.split('/').next().unwrap_or(page)
 }
 
-/// Whether `d` is a guide overview (as opposed to one of its `§N` sections).
-fn is_guide_overview(d: &Doc) -> bool {
-    d.kind == "guide" && !d.name.contains(" §")
-}
-
 /// The entries named `name` (with or without `og.`, any case), matched
-/// against the already-loaded `SearchIndex`: a module's or guide's own name
-/// as written (`input`, not `Input` or `og.Input`) is its overview (a guide
-/// named like a module, `physics`, with `guide`); else the entries named
-/// exactly, else by their last part (`castRay` for `og.physics.castRay`),
-/// each followed by the guide sections titled `name` (`Toggle`,
-/// `LoadingScreen`); else those sections alone.
-fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> {
+/// against the already-loaded index: a module overview, an exact name,
+/// then a member's last part (`castRay` for `og.physics.castRay`).
+fn match_docs<'a>(ix: &'a SearchIndex, name: &str) -> Vec<&'a Doc> {
     let trimmed = name.trim();
     let whole = |kind: &str| -> Vec<&'a Doc> {
         ix.docs
@@ -193,52 +173,25 @@ fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> 
             .filter(|d| d.kind == kind && d.name == trimmed)
             .collect()
     };
-    for kind in if guide {
-        ["guide", "module"]
-    } else {
-        ["module", "guide"]
-    } {
-        let found = whole(kind);
-        if !found.is_empty() {
-            return found;
-        }
+    let found = whole("module");
+    if !found.is_empty() {
+        return found;
     }
     let want = bare(name);
-    let items: Vec<&Doc> = ix
-        .docs
-        .iter()
-        .filter(|d| d.kind != "module" && !is_guide_overview(d))
-        .collect();
-    let titled: Vec<&Doc> = items
-        .iter()
-        .copied()
-        .filter(|d| section_title(d).is_some_and(|t| bare(t) == want))
-        .collect();
-    let named = |mut found: Vec<&'a Doc>| {
-        for d in &titled {
-            if !found.iter().any(|f| std::ptr::eq(*f, *d)) {
-                found.push(d);
-            }
-        }
-        found
-    };
+    let items: Vec<&Doc> = ix.docs.iter().filter(|d| d.kind != "module").collect();
     let exact: Vec<&Doc> = items
         .iter()
         .copied()
         .filter(|d| bare(&d.name) == want)
         .collect();
     if !exact.is_empty() {
-        return named(exact);
+        return exact;
     }
-    let leaf: Vec<&Doc> = items
+    items
         .iter()
         .copied()
         .filter(|d| bare(&d.name).rsplit('.').next() == Some(want.as_str()))
-        .collect();
-    if !leaf.is_empty() {
-        return named(leaf);
-    }
-    titled
+        .collect()
 }
 
 fn load_page(dir: &Path, page: &str) -> std::io::Result<(String, Vec<Entry>)> {
@@ -279,73 +232,15 @@ pub fn render(e: &Entry) -> String {
     format!("{text}\n\n({} · {}; page {}.md)\n", e.name, e.kind, e.page)
 }
 
-/// Render a guide overview: inline all sections when the page fits in
-/// [`GUIDE_INLINE_MAX_BYTES`] or `every` is set; otherwise print the overview
-/// and a compact section table so a huge catalogue guide stays readable.
-fn render_guide_overview(
-    overview: &Entry,
-    page_text: &str,
-    page_entries: &[Entry],
-    every: bool,
-) -> (String, Option<Vec<serde_json::Value>>) {
-    let sections: Vec<&Entry> = page_entries
-        .iter()
-        .filter(|e| e.kind == "guide" && e.name.contains(" §"))
-        .collect();
-    if sections.is_empty() || every || page_text.len() <= GUIDE_INLINE_MAX_BYTES {
-        let mut body = clean_body(&overview.body);
-        for s in &sections {
-            body.push_str("\n\n");
-            body.push_str(&clean_body(&s.body));
-        }
-        let text = format!(
-            "{body}\n\n({} · {}; page {}.md)\n",
-            overview.name, overview.kind, overview.page
-        );
-        return (text, None);
-    }
-    let mut body = clean_body(&overview.body);
-    let _ = writeln!(
-        body,
-        "\n\nSections ({} total, {} KB full page; `og api show \"{} §N\"`, `og api show <Title>`, or `--all`):\n",
-        sections.len(),
-        page_text.len().div_ceil(1024),
-        overview.name
-    );
-    let mut toc = Vec::with_capacity(sections.len());
-    for s in &sections {
-        let title = entry_title(s).unwrap_or("");
-        if title.is_empty() {
-            let _ = writeln!(body, "- `{}`", s.name);
-        } else {
-            let _ = writeln!(body, "- `{}` — {title}", s.name);
-        }
-        toc.push(serde_json::json!({
-            "name": s.name,
-            "title": title,
-            "summary": s.summary,
-        }));
-    }
-    let text = format!(
-        "{}\n\n({} · {}; page {}.md)\n",
-        body.trim_end(),
-        overview.name,
-        overview.kind,
-        overview.page
-    );
-    (text, Some(toc))
-}
-
 fn show_formatted(
     dir: &Path,
     ix: &SearchIndex,
     query: &str,
     kind: Option<&str>,
-    guide: bool,
     every: bool,
     json: bool,
 ) -> Result<String, String> {
-    let matched = match_docs(ix, query, guide);
+    let matched = match_docs(ix, query);
     if matched.is_empty() {
         let near = find(ix, query, kind);
         let mut msg = format!("og api show: no entry named `{query}`.");
@@ -368,8 +263,7 @@ fn show_formatted(
     let mut text_out = String::new();
     let mut json_entries = Vec::new();
     for (i, doc) in matched.iter().enumerate() {
-        let Some((_, page_text, page_entries)) = loaded.iter().find(|(p, _, _)| *p == doc.page)
-        else {
+        let Some((_, _, page_entries)) = loaded.iter().find(|(p, _, _)| *p == doc.page) else {
             continue;
         };
         let Some(entry) = page_entries
@@ -378,21 +272,12 @@ fn show_formatted(
         else {
             continue;
         };
-        let (rendered, sections_toc) = if is_guide_overview(doc) {
-            render_guide_overview(entry, page_text, page_entries, every)
-        } else {
-            (render(entry), None)
-        };
+        let rendered = render(entry);
         let module_members = if entry.kind == "module" {
             Some(members(ix, &entry.page, &entry.body, every))
         } else {
             None
         };
-        let has_guide = entry.kind == "module"
-            && ix
-                .docs
-                .iter()
-                .any(|g| is_guide_overview(g) && g.name == entry.name);
         if json {
             let mut row = serde_json::json!({
                 "name": entry.name,
@@ -406,12 +291,6 @@ fn show_formatted(
             {
                 row["members"] = serde_json::json!(m);
             }
-            if let Some(toc) = sections_toc {
-                row["sections"] = serde_json::json!(toc);
-            }
-            if has_guide {
-                row["guide"] = serde_json::json!(entry.name);
-            }
             json_entries.push(row);
         } else {
             if i > 0 {
@@ -420,13 +299,6 @@ fn show_formatted(
             text_out.push_str(&rendered);
             if let Some(m) = &module_members {
                 text_out.push_str(m);
-            }
-            if has_guide {
-                let _ = writeln!(
-                    text_out,
-                    "The `{0}` guide (how to use it): `og api show {0} --guide`.",
-                    entry.name
-                );
             }
         }
     }
@@ -441,50 +313,13 @@ fn show_formatted(
 }
 
 fn list_value(ix: &SearchIndex, kind: Option<&str>) -> serde_json::Value {
-    let want_modules = kind.is_none() || kind == Some("module");
-    let want_guides = kind.is_none() || kind == Some("guide");
-    let modules: Vec<serde_json::Value> = if want_modules {
-        ix.docs
-            .iter()
-            .filter(|d| d.kind == "module")
-            .map(|d| {
-                serde_json::json!({
-                    "name": d.name,
-                    "page": format!("{}.md", d.page),
-                    "summary": d.summary,
-                })
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-    let guides: Vec<serde_json::Value> = if want_guides {
-        ix.docs
-            .iter()
-            .filter(|d| is_guide_overview(d))
-            .map(|d| {
-                let sections = ix
-                    .docs
-                    .iter()
-                    .filter(|s| s.kind == "guide" && s.page == d.page && s.name.contains(" §"))
-                    .count();
-                serde_json::json!({
-                    "name": d.name,
-                    "page": format!("{}.md", d.page),
-                    "sections": sections,
-                    "summary": d.summary,
-                })
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-    let files: Vec<_> = ix.docs.iter()
-        .filter(|d| d.kind == "file" && !d.name.trim_start_matches("file:").contains('.'))
-        .filter(|_| kind.is_none() || kind == Some("file"))
+    let rows = |want| {
+        ix.docs.iter()
+        .filter(|d| d.kind == want && kind.is_none_or(|k| k == want))
         .map(|d| serde_json::json!({"name": d.name, "page": format!("{}.md", d.page), "summary": d.summary}))
-        .collect();
-    serde_json::json!({ "modules": modules, "guides": guides, "files": files })
+        .collect::<Vec<_>>()
+    };
+    serde_json::json!({ "modules": rows("module"), "files": rows("file"), "components": rows("component") })
 }
 
 /// The wiki directory: `OG_WIKI_DIR`, the engine package's `knowledge/wiki`,
@@ -556,12 +391,21 @@ pub fn index(dir: &Path) -> std::io::Result<SearchIndex> {
 
 /// The entry kinds `og api find --kind` takes.
 pub const KINDS: [&str; 10] = [
-    "module", "fn", "record", "type", "member", "const", "value", "column", "guide", "file",
+    "module",
+    "fn",
+    "record",
+    "type",
+    "member",
+    "const",
+    "value",
+    "column",
+    "component",
+    "file",
 ];
 
 /// `og api find <words> [--kind K] [--limit N] [--json]`,
-/// `og api show <name> [--all] [--guide] [--json]`, or
-/// `og api list [--kind module|guide] [--json]`.
+/// `og api show <name> [--all] [--json]`, or
+/// `og api list [--kind module|file|component] [--json]`.
 pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     let Some(dir) = wiki_dir() else {
         eprintln!(
@@ -574,21 +418,20 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     let mut limit = 12usize;
     let mut json = false;
     let mut every = false;
-    let mut guide = false;
     let mut rest = Vec::new();
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match *a {
             "--kind" => match it.next() {
                 Some(k)
-                    if (cmd == "list" && matches!(*k, "module" | "guide" | "file"))
+                    if (cmd == "list" && matches!(*k, "module" | "component" | "file"))
                         || (cmd != "list" && KINDS.contains(k)) =>
                 {
                     kind = Some(*k);
                 }
                 _ => {
                     if cmd == "list" {
-                        eprintln!("og api list: --kind is module, guide or file");
+                        eprintln!("og api list: --kind is module, component or file");
                     } else {
                         eprintln!("og api {cmd}: --kind is one of {}", KINDS.join(", "));
                     }
@@ -604,7 +447,10 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             },
             "--json" => json = true,
             "--all" => every = true,
-            "--guide" => guide = true,
+            w if w.starts_with('-') => {
+                eprintln!("og api {cmd}: unknown option `{w}`");
+                return ExitCode::from(2);
+            }
             w => rest.push(w),
         }
     }
@@ -638,18 +484,17 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
                 );
             }
         }
-        if let Some(guides) = val["guides"].as_array()
-            && !guides.is_empty()
+        if let Some(components) = val["components"].as_array()
+            && !components.is_empty()
         {
             if kind.is_none() {
                 println!();
             }
-            println!("Guides ({}):", guides.len());
-            for g in guides {
+            println!("Components ({}):", components.len());
+            for g in components {
                 println!(
-                    "  {} ({} §) — {}",
+                    "  {} — {}",
                     g["name"].as_str().unwrap_or(""),
-                    g["sections"].as_u64().unwrap_or(0),
                     g["summary"].as_str().unwrap_or("")
                 );
             }
@@ -679,7 +524,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
         return ExitCode::from(2);
     }
     if cmd == "show" {
-        return match show_formatted(&dir, &ix, &query, kind, guide, every, json) {
+        return match show_formatted(&dir, &ix, &query, kind, every, json) {
             Ok(out) => {
                 print!("{out}");
                 ExitCode::SUCCESS

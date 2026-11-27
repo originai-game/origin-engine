@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 A file of a content catalog's version: what og.load.data reads. A catalog is this game's content, published by its host in immutable versions; its content base is the host's (og run --content, the page's), never game code's.
 
-See `loading §14`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -21,7 +19,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct CatalogEntry {
   doc "A file of a content catalog's version: what og.load.data reads. A catalog is this game's content, published by its host in immutable versions; its content base is the host's (og run --content, the page's), never game code's."
-  guide "loading §14"
   desc true
   field catalog String "The catalog, as the game names it (`world`): 1 to 64 of letters, digits, `.`, `_` and `-`."
   field version String "The version, as the host named it: 1 to 128 of letters, digits, `.`, `_` and `-`."
@@ -29,4 +26,4 @@ struct CatalogEntry {
 }
 ```
 
-<sub>Module `load` line 614</sub>
+<sub>Module `load` line 586</sub>

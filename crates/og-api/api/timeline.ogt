@@ -1,7 +1,6 @@
 module timeline {
   doc "Timelines: cutscenes and sequences as typed file.timeline declarations under content/. Keyed tracks cover camera, transform, animation, audio, captions, events, shots and scenes. og cook builds native tracks; og.load.timeline loads the canonical content ID. See animation and file:timeline."
   doc "An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused."
-  guide "animation §13"
   split timeline
 
   handle TimelineAsset "A loaded timeline: its tracks, paths, sounds and clips."

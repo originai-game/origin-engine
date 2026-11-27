@@ -21,4 +21,4 @@ struct CraftDesc {
 }
 ```
 
-<sub>Module `inventory` line 81</sub>
+<sub>Module `inventory` line 75</sub>

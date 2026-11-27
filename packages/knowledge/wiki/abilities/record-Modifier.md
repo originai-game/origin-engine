@@ -8,8 +8,6 @@ Module [`abilities`](../abilities.md) · [index](../index.md)
 
 A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned.
 
-See `abilities §2`.
-
 Also known as: stat modifier, buff value, debuff value, bonus, multiplier, flat bonus, percent bonus
 
 Token `og.Modifier`, registered under the schema name `og.Modifier`; its value type is `Modifier`.
@@ -24,11 +22,10 @@ Token `og.Modifier`, registered under the schema name `og.Modifier`; its value t
 component Modifier {
   aliases "stat modifier, buff value, debuff value, bonus, multiplier, flat bonus, percent bonus"
   doc "A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned."
-  guide "abilities §2"
   field stat Entity "The og.Stat it changes."
   field op ModifierOp "How it changes it."
   field amount f32 "What it adds (add), joins to the percent sum (percent) or multiplies by 1 + (multiply); 0 changes nothing."
 }
 ```
 
-<sub>Module `abilities` line 87</sub>
+<sub>Module `abilities` line 83</sub>

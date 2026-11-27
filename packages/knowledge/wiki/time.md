@@ -6,20 +6,18 @@ Simulation time. Game code never reads the wall clock; it reads Time.
 
 Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
 
-Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.
-
-See `determinism §5`.
+Every time is counted from the integer tick rate and the tick, exact to f64.
 
 - **TypeScript**: functions are the namespace `og.time`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Time`; 6 more are advanced (`og api show time --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
   doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace."
-  doc "Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5."
+  doc "Every time is counted from the integer tick rate and the tick, exact to f64."
   # declarations follow, each on its own page
 ```
 

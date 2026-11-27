@@ -8,8 +8,6 @@ Module [`input`](../input.md) · [index](../index.md)
 
 A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is.
 
-See `facing`.
-
 Also known as: camera relative movement, WASD to world direction, move direction, third person movement, strafe
 
 ```ts
@@ -30,7 +28,6 @@ Binding symbol `og_input_move_relative` · publish builds: kept
 fn moveRelative {
   doc "A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is."
   aliases "camera relative movement, WASD to world direction, move direction, third person movement, strafe"
-  guide "facing"
   param world World "The world."
   param name String "The two-axis action."
   param camera Quaternion "The camera's rotation (og.Camera.quaternion)."
@@ -38,4 +35,4 @@ fn moveRelative {
 }
 ```
 
-<sub>Module `input` line 383</sub>
+<sub>Module `input` line 375</sub>

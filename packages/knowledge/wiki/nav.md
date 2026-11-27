@@ -6,11 +6,9 @@ Navigation: grids (A* and jump point search, eight-way moves that never cut a bl
 
 Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D.
 
-See `world §9`.
-
 - **TypeScript**: functions are the namespace `og.nav`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module nav {
@@ -90,7 +88,7 @@ column Navigation {
 }
 ```
 
-<sub>Module `nav` line 9</sub>
+<sub>Module `nav` line 8</sub>
 
 ## Constants
 
@@ -107,34 +105,34 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>Module `nav` line 16</sub>
+<sub>Module `nav` line 15</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>Module `nav` line 17</sub>
+<sub>Module `nav` line 16</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>Module `nav` line 18</sub>
+<sub>Module `nav` line 17</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>Module `nav` line 19</sub>
+<sub>Module `nav` line 18</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>Module `nav` line 20</sub>
+<sub>Module `nav` line 19</sub>
 
 ```ogt
 const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
 ```
 
-<sub>Module `nav` line 21</sub>
+<sub>Module `nav` line 20</sub>

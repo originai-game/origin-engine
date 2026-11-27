@@ -1,8 +1,7 @@
 //! Measures of a mesh, as JSON, with no thresholds
 //! (`docs/design.md` §7): counts, bounds, pivot, area, volume, topology,
 //! floaters, self-intersections, UV coverage and overlap, and texture
-//! memory once decoded. The guides say what values are good; the agent
-//! judges.
+//! memory once decoded. The agent judges the values.
 //!
 //! A skinned solid is measured as it is, in its bind pose, and its skin
 //! is reported (`skinned`, bones, weighted vertices).

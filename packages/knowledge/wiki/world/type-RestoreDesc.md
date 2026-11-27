@@ -8,21 +8,17 @@ Module [`world`](../world.md) · [index](../index.md)
 
 How world.restore takes a save.
 
-See `saves §5`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `session` | `boolean` | `false` | — | — | — | Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way. See `saves §4`. |
+| `session` | `boolean` | `false` | — | — | — | Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way. |
 
 ```ogt
 struct RestoreDesc {
   doc "How world.restore takes a save."
   desc true
-  guide "saves §5"
   field session bool "Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way." {
-    guide "saves §4"
   }
 }
 ```

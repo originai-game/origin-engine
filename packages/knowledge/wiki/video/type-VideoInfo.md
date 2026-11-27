@@ -23,7 +23,7 @@ What og.load.video loaded.
 | `streamed` | `boolean` | `false` | — | — | — | Whether it is a stream (`stream: true`: decoded as it plays) rather than a clip of cooked frames. |
 | `aiGenerated` | `boolean` | `false` | — | — | — | Whether the footage was made by a generative model (`aiGenerated: true` in file.video): a game or store labels AI content from it. |
 | `alpha` | `boolean` | `false` | — | — | — | Whether its frames carry the source's alpha (`alpha: true` in file.video): keyed footage drawn over the scene through its texture shows the scene where the matte is clear. |
-| `codec` | `string` | `""` | — | — | — | The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip. See `audio §8`. |
+| `codec` | `string` | `""` | — | — | — | The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip. |
 | `poster` | `Texture` | `0` | — | — | — | A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture. |
 | `qualities` | `readonly string[]` | `[]` | — | — | — | The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip. |
 | `audioLocales` | `readonly string[]` | `[]` | — | — | — | Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists. |
@@ -49,7 +49,6 @@ struct VideoInfo {
   field aiGenerated bool "Whether the footage was made by a generative model (`aiGenerated: true` in file.video): a game or store labels AI content from it."
   field alpha bool "Whether its frames carry the source's alpha (`alpha: true` in file.video): keyed footage drawn over the scene through its texture shows the scene where the matte is clear."
   field codec String "The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip." {
-    guide "audio §8"
   }
   field poster Texture "A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture."
   field qualities List.String "The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip."
@@ -57,4 +56,4 @@ struct VideoInfo {
 }
 ```
 
-<sub>Module `video` line 16</sub>
+<sub>Module `video` line 15</sub>

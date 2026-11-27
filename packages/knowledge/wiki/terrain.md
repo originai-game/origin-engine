@@ -6,12 +6,10 @@ Terrain: a height field over a rectangle, cooked by og cook from a TS file.terra
 
 Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
 
-See `world §1`.
-
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 21 more are advanced (`og api show terrain --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module terrain {
@@ -73,4 +71,4 @@ column TerrainData {
 }
 ```
 
-<sub>Module `terrain` line 10</sub>
+<sub>Module `terrain` line 9</sub>

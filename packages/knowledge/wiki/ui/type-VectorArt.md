@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked SVG subset from a TS file.vector declaration, loaded by og.load.vector."
 ```
 
-<sub>Module `ui` line 457</sub>
+<sub>Module `ui` line 456</sub>

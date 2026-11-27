@@ -1,7 +1,6 @@
   component VirtualCamera {
     doc "A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. og.CameraBrain makes the enabled one with the highest priority live and blends og.Camera to it over the incoming shot's blendTime by its blendEase."
     doc "Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits."
-    guide "camera §2"
     group "Pick"
     field priority i32 "Of the enabled virtual cameras the highest priority is live; of equal ones, the one enabled last (`activated`), then the first in query order." {
       tunable true
@@ -120,7 +119,6 @@
   resource CameraBrain {
     doc "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is."
     doc "Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend."
-    guide "camera §2"
     group "Blending"
     field enabled bool "Drive og.Camera; false leaves it to the game (the vcams' state still updates)." {
       default true
@@ -237,7 +235,6 @@
   fn shake {
     doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
     aliases "screen shake, camera shake, screen trembles when hit, hit shake, trauma, Cinemachine impulse"
-    guide "camera §4"
     param world World "The world."
     param trauma f32 "Trauma to add, 0 to 1."
     returns Result.Void
@@ -245,7 +242,6 @@
 
   fn punch {
     doc "A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. Visual only."
-    guide "camera §4"
     param world World "The world."
     param amount f32 "The fraction to zoom in (negative zooms out), -0.9 to 4."
     returns Result.Void
@@ -253,7 +249,6 @@
 
   fn kick {
     doc "A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only."
-    guide "camera §4"
     param world World "The world."
     param direction Vector3 "The direction to push the view (normalised here; zero does nothing)."
     param distance f32 "How far, in world units."

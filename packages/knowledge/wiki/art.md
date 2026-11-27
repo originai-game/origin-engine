@@ -6,11 +6,9 @@ A game's art contract: what every asset of its style holds, as seven resources a
 
 Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of og-project.json's `look`.
 
-See `art-review §6`.
-
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module art {
@@ -70,7 +68,7 @@ column ArtRotation {
 }
 ```
 
-<sub>Module `art` line 14</sub>
+<sub>Module `art` line 13</sub>
 
 ```ogt
 column ArtFilter {
@@ -81,7 +79,7 @@ column ArtFilter {
 }
 ```
 
-<sub>Module `art` line 28</sub>
+<sub>Module `art` line 27</sub>
 
 ```ogt
 column ArtMips {
@@ -92,7 +90,7 @@ column ArtMips {
 }
 ```
 
-<sub>Module `art` line 42</sub>
+<sub>Module `art` line 41</sub>
 
 ```ogt
 column ArtNormals {
@@ -103,7 +101,7 @@ column ArtNormals {
 }
 ```
 
-<sub>Module `art` line 57</sub>
+<sub>Module `art` line 56</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -114,7 +112,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>Module `art` line 71</sub>
+<sub>Module `art` line 70</sub>
 
 ```ogt
 column ArtBrush {
@@ -125,7 +123,7 @@ column ArtBrush {
 }
 ```
 
-<sub>Module `art` line 85</sub>
+<sub>Module `art` line 84</sub>
 
 ```ogt
 column ArtProjection {
@@ -136,4 +134,4 @@ column ArtProjection {
 }
 ```
 
-<sub>Module `art` line 99</sub>
+<sub>Module `art` line 98</sub>

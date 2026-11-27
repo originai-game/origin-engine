@@ -10,8 +10,6 @@ The shared reverb sounds like this room inside the og.Volume on its entity (none
 
 Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.
 
-See `audio §4`.
-
 Token `og.ReverbZone`, registered under the schema name `og.ReverbZone`; its value type is `ReverbZone`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -26,7 +24,6 @@ Token `og.ReverbZone`, registered under the schema name `og.ReverbZone`; its val
 component ReverbZone {
   doc "The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`."
   doc "Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform."
-  guide "audio §4"
   field bus AudioBus "The bus whose reverb send the zone sets." {
     default sfx
   }
@@ -56,4 +53,4 @@ component ReverbZone {
 }
 ```
 
-<sub>Module `audio` line 621</sub>
+<sub>Module `audio` line 615</sub>

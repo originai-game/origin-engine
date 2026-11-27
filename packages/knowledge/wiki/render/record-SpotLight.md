@@ -19,8 +19,8 @@ Token `og.SpotLight`, registered under the schema name `og.SpotLight`; its value
 | `angle` | `number` | `0.5236` | 0 … 1.5708 | `rad` | tunable | The half-angle of the outer cone, as three.js SpotLight.angle. |
 | `penumbra` | `number` | `0` | 0 … 1 | `ratio` | — | The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra. |
 | `castShadow` | `boolean` | `false` | — | — | — | Cast a shadow map. |
-| `cookie` | `Texture` | `0` | — | — | — | A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern. See `render §3`. |
-| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. |
+| `cookie` | `Texture` | `0` | — | — | — | A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern. |
+| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). |
 
 ```ogt
 component SpotLight {
@@ -59,13 +59,11 @@ component SpotLight {
   }
   field castShadow bool "Cast a shadow map."
   field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern." {
-    guide "render §3"
   }
   field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
     default stationary
-    guide "render §4"
   }
 }
 ```
 
-<sub>Module `render` line 673</sub>
+<sub>Module `render` line 641</sub>

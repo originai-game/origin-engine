@@ -117,7 +117,7 @@ flowchart TD
    - **消除 `og.physics.queries` 的 18 查询全量 Gather 与每帧重建 `BroadPhaseBvh`**：
      - 直接以 `Sim.world`（的 `broad_phase`、`colliders`、`bodies`、`narrow_phase`）作为唯一查询加速结构。
      - 当游戏在 Tick 前（刚启动或恢复快照后、尚未首步）或 Tick 外有变换写入后发起查询时，仅运行一次轻量的 `sync_colliders_for_query`（基于 `StaticRun` 与 `Tracked` 写戳增量同步变动行并增量 `broad_phase.update`），之后同帧所有查询 $O(\log N)$ 零构建开销。
-     - 为保证“系统内查询看到本 Tick 起始态”的确定性契约（[physics.md](../crates/og-api/guides/physics.md#L156)），`og.physics` 步进结束时 `Sim.world` 已经恰好是下一 Tick 开始时的碰撞体态！只需在 `og.terrain` 重放或游戏启动首帧前做一次增量刷新即可，**彻底消除 95% 的查询 CPU 与内存浪费**。
+     - 为保证“系统内查询看到本 Tick 起始态”的确定性契约，`og.physics` 步进结束时 `Sim.world` 已经恰好是下一 Tick 开始时的碰撞体态！只需在 `og.terrain` 重放或游戏启动首帧前做一次增量刷新即可，**彻底消除 95% 的查询 CPU 与内存浪费**。
    - **查询正确性一次修全**：
      - `QueryFilter::exclude` 同时比对 `entity_of(c)` 与 `body_of(c)`（解决复合体自命中）；扩展为支持多实体排除列表与 `QueryFilterFlags`。
      - 查询内直接支持 `scene.hooks`（`ContactHook.ignore`），涵盖布娃娃与 2D 车轮碰撞体。

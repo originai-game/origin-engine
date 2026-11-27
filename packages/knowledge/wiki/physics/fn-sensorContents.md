@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event.
 
-See `physics §5`.
-
 Also known as: trigger contents, who is in the trigger, Godot get_overlapping_bodies, Unity OnTriggerStay, Unreal GetOverlappingActors, pressure plate occupants, entities in zone
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_physics_sensor_contents` · publish builds: kept
 ```ogt
 fn sensorContents {
   doc "Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event."
-  guide "physics §5"
   aliases "trigger contents, who is in the trigger, Godot get_overlapping_bodies, Unity OnTriggerStay, Unreal GetOverlappingActors, pressure plate occupants, entities in zone"
   param world World "The world."
   param sensor Entity "The sensor: an entity whose og.Collider has `sensor` set."
@@ -36,4 +33,4 @@ fn sensorContents {
 }
 ```
 
-<sub>Module `physics` line 2473</sub>
+<sub>Module `physics` line 2430</sub>

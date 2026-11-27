@@ -6,11 +6,9 @@ Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP d
 
 Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
 
-See `world §7`.
-
 - **TypeScript**: functions are the namespace `og.procgen`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module procgen {

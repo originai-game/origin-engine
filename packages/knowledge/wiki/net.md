@@ -6,12 +6,10 @@ Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the 
 
 Systems read og.PlayerInput and give this peer's input with og.net.submit; og.Desync reports the first tick whose hashes differ.
 
-See `networking`.
-
 - **TypeScript**: functions are the namespace `og.net`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Lockstep`, `og.PlayerInput`, `og.SeatDropped`, `og.SeatRejoined`, `og.net.submit`; 16 more are advanced (`og api show net --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module net {
@@ -65,4 +63,4 @@ column NetMode {
 }
 ```
 
-<sub>Module `net` line 14</sub>
+<sub>Module `net` line 13</sub>

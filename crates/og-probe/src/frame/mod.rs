@@ -8,7 +8,7 @@
 pub mod flip;
 
 /// The long side a capture for a model is fitted to unless the caller asks
-/// otherwise (the agents guide, `og api show captures`).
+/// otherwise.
 pub const MODEL_LONG_SIDE: u32 = 1280;
 
 /// A decoded RGBA8 image, rows top to bottom.

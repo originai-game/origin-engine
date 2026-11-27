@@ -8,8 +8,6 @@ Module [`interact`](../interact.md) · [index](../index.md)
 
 An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.
 
-See `interaction §1`.
-
 Also known as: on interact, used, interaction event, picked up, lever pulled
 
 Token `og.Interacted`, registered under the schema name `og.Interacted`; its value type is `Interacted`.
@@ -23,10 +21,9 @@ Token `og.Interacted`, registered under the schema name `og.Interacted`; its val
 event Interacted {
   aliases "on interact, used, interaction event, picked up, lever pulled"
   doc "An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes."
-  guide "interaction §1"
   field interactor Entity "The og.Interactor."
   field target Entity "The og.Interactable."
 }
 ```
 
-<sub>Module `interact` line 65</sub>
+<sub>Module `interact` line 62</sub>

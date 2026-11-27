@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Which ambient occlusion algorithm runs.
 
-See `render §5`.
-
 A string: one of the variants below. The zero value is `"auto"`.
 
 | Variant | Doc |
@@ -22,7 +20,6 @@ A string: one of the variants below. The zero value is `"auto"`.
 ```ogt
 enum AoMethod {
   doc "Which ambient occlusion algorithm runs."
-  guide "render §5"
   variant auto "GTAO."
   variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
   variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
@@ -30,4 +27,4 @@ enum AoMethod {
 }
 ```
 
-<sub>Module `render` line 1091</sub>
+<sub>Module `render` line 1037</sub>

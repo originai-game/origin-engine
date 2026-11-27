@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 An object's, a camera's or a light's up: its local +Y, as a unit vector.
 
-See `facing`.
-
 Also known as: up vector, Unity transform.up
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_up` · publish builds: kept
 fn up {
   doc "An object's, a camera's or a light's up: its local +Y, as a unit vector."
   aliases "up vector, Unity transform.up"
-  guide "facing"
   param quaternion Quaternion "The rotation."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 168</sub>
+<sub>Module `transform` line 165</sub>

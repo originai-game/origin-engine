@@ -26,4 +26,4 @@ struct FriendsDesc {
 }
 ```
 
-<sub>Module `platform` line 309</sub>
+<sub>Module `platform` line 302</sub>

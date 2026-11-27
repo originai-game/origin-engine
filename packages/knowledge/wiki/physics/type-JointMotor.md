@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 What drives a joint: Joint.motor.
 
-See `physics §1`.
-
 A string: one of the variants below. The zero value is `"none"`.
 
 | Variant | Doc |
@@ -21,11 +19,10 @@ A string: one of the variants below. The zero value is `"none"`.
 ```ogt
 enum JointMotor {
   doc "What drives a joint: Joint.motor."
-  guide "physics §1"
   variant none "No motor."
   variant velocity "Drive towards `motorTarget` speed (rad/s or m/s)."
   variant position "Spring towards `motorTarget` angle or position (a servo)."
 }
 ```
 
-<sub>Module `physics` line 412</sub>
+<sub>Module `physics` line 399</sub>

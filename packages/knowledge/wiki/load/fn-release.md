@@ -6,9 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.release`
 
-Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains (loading §10). The boot bundle cannot close.
-
-See `loading §10`.
+Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains. The boot bundle cannot close.
 
 ```ts
 og.load.release(world: World, asset: Asset): Result<void>
@@ -25,12 +23,11 @@ Binding symbol `og_load_release` · publish builds: kept
 
 ```ogt
 fn release {
-  doc "Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains (loading §10). The boot bundle cannot close."
-  guide "loading §10"
+  doc "Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains. The boot bundle cannot close."
   param world World "The world that owns the asset."
   param asset Asset "An uncooked asset handle or a runtime bundle handle."
   returns Result.Void "Accepts a bundle close request; poll status and error for its outcome. Refused for an individual cooked asset, which stays with its bundle (a streamed one with its group)."
 }
 ```
 
-<sub>Module `load` line 754</sub>
+<sub>Module `load` line 717</sub>

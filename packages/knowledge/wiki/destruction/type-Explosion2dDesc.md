@@ -47,4 +47,4 @@ struct Explosion2dDesc {
 }
 ```
 
-<sub>Module `destruction` line 460</sub>
+<sub>Module `destruction` line 449</sub>

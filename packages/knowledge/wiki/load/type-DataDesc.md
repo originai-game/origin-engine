@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 Which catalog file og.load.data reads, and how.
 
-See `loading §14`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -21,7 +19,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct DataDesc {
   doc "Which catalog file og.load.data reads, and how."
-  guide "loading §14"
   desc true
   field entry CatalogEntry "The file."
   field format DataFormat "How to read it."
@@ -29,4 +26,4 @@ struct DataDesc {
 }
 ```
 
-<sub>Module `load` line 629</sub>
+<sub>Module `load` line 600</sub>

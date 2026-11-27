@@ -8,8 +8,6 @@ Module [`shared`](../shared.md) · [index](../index.md)
 
 The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.
 
-See `shared-worlds §4`.
-
 Token `og.SharedCorrected`, registered under the schema name `og.SharedCorrected`; its value type is `SharedCorrected`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -19,9 +17,8 @@ Token `og.SharedCorrected`, registered under the schema name `og.SharedCorrected
 ```ogt
 event SharedCorrected {
   doc "The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player."
-  guide "shared-worlds §4"
   field sequence u32 "The proposal the correction answers."
 }
 ```
 
-<sub>Module `shared` line 116</sub>
+<sub>Module `shared` line 110</sub>

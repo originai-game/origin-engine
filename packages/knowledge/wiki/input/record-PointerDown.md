@@ -16,7 +16,7 @@ Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its v
 | `y` | `number` | `0` | — | `cssPx` | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
 | `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). |
-| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it. See `input §6`. |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it. |
 
 ```ogt
 event PointerDown {
@@ -30,11 +30,10 @@ event PointerDown {
   field button PointerButton "The button."
   field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
   field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
-    guide "input §6"
     min -1
     max 1
   }
 }
 ```
 
-<sub>Module `input` line 1244</sub>
+<sub>Module `input` line 1229</sub>

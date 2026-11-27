@@ -8,11 +8,9 @@ Running tweens are world state (the og.tween state block). og.TweenCompleted rep
 
 Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent.
 
-See `animation §12`.
-
 - **TypeScript**: functions are the namespace `og.tween`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module tween {
@@ -75,7 +73,7 @@ column Tween {
 }
 ```
 
-<sub>Module `tween` line 9</sub>
+<sub>Module `tween` line 8</sub>
 
 ```ogt
 column Ease {
@@ -86,4 +84,4 @@ column Ease {
 }
 ```
 
-<sub>Module `tween` line 44</sub>
+<sub>Module `tween` line 43</sub>

@@ -1,7 +1,6 @@
 module assert {
   doc "Assertions: properties of the game checked as it runs, after the Antithesis SDK's (AssertKind: always, sometimes, reachable, unreachable, each). Each is identified by its name and the place it is called from, which the build records. Nothing an assertion does reaches the world, so a run with them hashes and replays as one without. Violations and coverage go through the probe (`assertions`) into `og run --json` and `og test`."
   doc "Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there."
-  guide "testing §2"
   publish false
   core always sometimes reachable
 

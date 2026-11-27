@@ -8,8 +8,6 @@ Module [`inventory`](../inventory.md) · [index](../index.md)
 
 Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.
 
-See `items §1`.
-
 Also known as: item stack, slot, item count, stack size, held item, item instance
 
 Token `og.ItemStack`, registered under the schema name `og.ItemStack`; its value type is `ItemStack`.
@@ -25,7 +23,6 @@ Token `og.ItemStack`, registered under the schema name `og.ItemStack`; its value
 component ItemStack {
   aliases "item stack, slot, item count, stack size, held item, item instance"
   doc "Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row."
-  guide "items §1"
   field item TableRow "The row of the item table (og.table) it holds; 0 with a count of 0."
   field count u32 "How many it holds; 0 is an empty slot."
   field slot u32 "Written: its slot in its container, from 0." {
@@ -37,4 +34,4 @@ component ItemStack {
 }
 ```
 
-<sub>Module `inventory` line 17</sub>
+<sub>Module `inventory` line 15</sub>

@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
 
-See `looks §15`.
-
 Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe`; its value type is `ReflectionProbe`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -23,7 +21,6 @@ Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe
 ```ogt
 component ReflectionProbe {
   doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces."
-  guide "looks §15"
   field resolution u32 "The side of each cube face in texels; it is rounded to a power of two." {
     default 128
     min 16
@@ -46,4 +43,4 @@ component ReflectionProbe {
 }
 ```
 
-<sub>Module `render` line 3130</sub>
+<sub>Module `render` line 3020</sub>

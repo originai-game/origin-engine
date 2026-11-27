@@ -1,7 +1,6 @@
 module procgen {
   doc "Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP dungeons, wave function collapse, eroded heightmaps, plants and Voronoi mesh fracture. Bulk buffers are TypedArrays."
   doc "Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes."
-  guide "world §7"
   split shape
 
   enum NoiseKind {

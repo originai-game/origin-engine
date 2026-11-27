@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
 
-See `render §7`.
-
 Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fog`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -26,7 +24,7 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 | `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread. |
 | `maxOpacity` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media. |
 | `sky` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much fog covers the sky and clouds (0: clear). Below a cumulus base, or without cumulus, the lower sky stands for distant land and takes land fog. Above a cumulus base it is cloud sea and keeps this share. |
-| `volumetric` | `boolean` | `false` | — | — | — | Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. See `render §7`. |
+| `volumetric` | `boolean` | `false` | — | — | — | Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. |
 | `scattering` | `number` | `0.8` | 0 … 4 | — | tunable | How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect. |
 | `anisotropy` | `number` | `0.6` | -0.95 … 0.95 | — | tunable | Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light. |
 | `volumetricDistance` | `number` | `48` | 4 … 400 | `m` | — | How far from the camera the fog shows shafts and the local lights; past it the fog goes on in its colour, with the sun's light in it unshadowed. |
@@ -34,7 +32,6 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 ```ogt
 resource Fog {
   doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged."
-  guide "render §7"
   field enabled bool "Draw the fog."
   field color Color "The colour the fog tends to (linear, before exposure)." {
     default 0.62 0.68 0.76
@@ -95,7 +92,6 @@ resource Fog {
     tunable true
   }
   field volumetric bool "Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog." {
-    guide "render §7"
   }
   field scattering f32 "How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect." {
     default 0.8

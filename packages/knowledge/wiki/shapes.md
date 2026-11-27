@@ -6,16 +6,15 @@ Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js
 
 They are TypeScript values, not world state: the geometry made from them is what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host. A `type model` asset writes the same calls as text.
 
-See `models §1`.
-
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module shapes {
   doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, bezierCurveTo, arc, absarc, ellipse, closePath, ...) and flattened to points by getPoints. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
   doc "They are TypeScript values, not world state: the geometry made from them is what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host. A `type model` asset writes the same calls as text."
+  place root
   # declarations follow, each on its own page
 ```
 
@@ -51,7 +50,7 @@ const Path2: Path2Class
 value Path2 Path2Class "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
 ```
 
-<sub>Module `shapes` line 184</sub>
+<sub>Module `shapes` line 183</sub>
 
 <a id="value-Shape"></a>
 
@@ -67,4 +66,4 @@ const Shape: ShapeClass
 value Shape ShapeClass "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
 ```
 
-<sub>Module `shapes` line 185</sub>
+<sub>Module `shapes` line 184</sub>

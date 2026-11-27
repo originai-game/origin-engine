@@ -45,48 +45,6 @@ test("the committed package is valid against the platform rules", () => {
   expect(Object.keys(packs(payload(real)))).toEqual(["scaffold:origin-engine-ts"]);
 });
 
-const guide = (r: Roots, name: string) => join(r.pkg, `wiki/guide-${name}.md`);
-
-test("skin terminology requires UI context, not just an unexplained skeletal skin", () => {
-  const problems = added((r) => edit(guide(r, "start"), (s) => `${s}\nRelax only skin-probe stretched regions before welding and LODs.\n\nOpt-in probe-region skin relaxation.\n\nHumanoid motion requires a skin.\n\nreadonly "skins"?: string;\n\nThe probe selects the UI skin for the settings panel.\n`));
-  expect(problems).toEqual([
-    'wiki/guide-start.md: calls a UI style a skin ("The probe selects the UI skin for the settings panel."); og-ui\'s word is style (og.load.style, styles/<name>/)',
-  ]);
-});
-
-test("every og.* name and Type.field a guide writes exists in the generated API", () => {
-  const p = added((r) =>
-    edit(
-      guide(r, "start"),
-      (s) =>
-        `${s}\nCall \`og.render.applyLooks(world, look)\`, set \`og.Sprite.shadowy\`, read \`og.Wobble\` and \`SpriteDesc.dropShadows\`; \`og.load.look\`, \`og.Stylise.paintCanvas\`, \`GameDesc.look\` and \`away.og.ts\` are fine. Compare three.js SpotLight.map, but engine \`SpotLight.map\` is invalid.\n\n\`\`\`ts\nog.ui.textAreaz(world, {});\n\`\`\`\n`,
-    ),
-  );
-  const why = "which the runtime API or authoring declarations do not have; check the name with og api find or in packages/engine/types/{index,author-inputs}.d.ts";
-  expect(p.sort()).toEqual(
-    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz", "SpotLight.map"].map((n) => `wiki/guide-start.md: names \`${n}\`, ${why}`).sort(),
-  );
-});
-
-test("guide fields follow generated author declarations without becoming runtime members", () => {
-  const p = added((r) => {
-    edit(join(r.engine, "types/author-inputs.d.ts"), s => `${s}\nexport interface GuideInput {\nreadonly "knowledgeFixture": boolean;\nreadonly "excludedFixture"?: never;\n/** readonly "commentFixture": boolean; */\n}\nexport type GuideUnion = { readonly "inlineFixture": boolean; readonly "excludedInline"?: never; };\n`);
-    edit(guide(r, "start"), s => `${s}\n\`knowledgeFixture: true\`, \`inlineFixture: true\`, \`excludedFixture: true\`, \`excludedInline: true\`, \`commentFixture: true\`, \`posterSize: 512\`, \`publish: {}\`, \`og.knowledgeFixture\`, \`og.Sprite.knowledgeFixture\`.\n`);
-  });
-  expect(p.map(s => /names `([^`]+)`/.exec(s)![1]).sort()).toEqual([
-    "commentFixture", "excludedFixture", "excludedInline", "og.Sprite.knowledgeFixture", "og.knowledgeFixture",
-  ]);
-});
-
-test("guide pointers distinguish modules from exact API and file names", () => {
-  const p = added((r) =>
-    edit(guide(r, "start"), (s) => `${s}\nRead \`og api show physics\`, \`og api show three-to-og\`, \`og api show og.physics.castRay\`, \`og api show file:terrain\`, \`og api show file:terrain.generate.erosion\`, and \`og api show missing-module\`.\n`),
-  );
-  expect(p).toEqual([
-    "wiki/guide-start.md: names `og api show missing-module`, and the generated wiki has no module or guide missing-module (wiki/index.md lists them; write a type or function as its full name, og.<name>)",
-  ]);
-});
-
 test("brief vocabularies stay in lockstep with Rust cook/synth constants", async () => {
   const repo = join(real.pkg, "..", "..");
   const { MOODS, SFX_PRESETS } = await import("../scripts/brief.ts");
@@ -102,4 +60,11 @@ test("brief vocabularies stay in lockstep with Rust cook/synth constants", async
   const moodsMatch = /pub const MOODS:\s*\[&str;\s*\d+\]\s*=\s*\[([^\]]+)\]/m.exec(lookRs);
   const rustMoods = [...(moodsMatch?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
   expect([...MOODS]).toEqual(rustMoods);
+});
+
+test("skin terminology requires UI context", () => {
+  const problems = added((r) => edit(join(r.pkg, "wiki/ui.md"), (s) => `${s}\nHumanoid motion requires a skin.\n\nThe probe selects the UI skin for the settings panel.\n`));
+  expect(problems).toEqual([
+    'wiki/ui.md: calls a UI style a skin ("The probe selects the UI skin for the settings panel."); og-ui\'s word is style (og.load.style, styles/<name>/)',
+  ]);
 });

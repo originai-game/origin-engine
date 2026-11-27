@@ -14,7 +14,7 @@ A loaded sound.
 | `channels` | `number` | `0` | — | — | — | Interleaved channels. |
 | `frames` | `number` | `0` | — | — | — | Samples per channel. |
 | `seconds` | `number` | `0` | — | `s` | — | Its length. |
-| `chunks` | `number` | `0` | — | — | — | The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest. See `loading §3`. |
+| `chunks` | `number` | `0` | — | — | — | The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest. |
 
 ```ogt
 struct SoundInfo {
@@ -28,9 +28,8 @@ struct SoundInfo {
     unit s
   }
   field chunks u32 "The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest." {
-    guide "loading §3"
   }
 }
 ```
 
-<sub>Module `load` line 135</sub>
+<sub>Module `load` line 132</sub>

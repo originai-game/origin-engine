@@ -41,4 +41,4 @@ struct DescribedCamera {
 }
 ```
 
-<sub>Module `probe` line 712</sub>
+<sub>Module `probe` line 711</sub>

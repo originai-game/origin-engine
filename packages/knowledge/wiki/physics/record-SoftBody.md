@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
 
-See `physics §8`.
-
 Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value type is `SoftBody`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -17,7 +15,7 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `shape` | `SoftBodyShape` | `"sphere"` | — | — | — | sphere, box or mesh. |
 | `radius` | `number` | `0.5` | ≥ 0.01 | `m` | tunable | A sphere's radius. |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | — | A box's full extents. |
-| `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). See `physics §8`. |
+| `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). |
 | `mesh` | `Geometry` | `0` | — | — | — | The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
 | `stiffness` | `number` | `100000` | ≥ 0 | — | tunable | Physical XPBD edge stiffness in N/m; compliance is 1/stiffness (0: off). |
 | `pressure` | `number` | `1` | 0 … 4 | — | tunable | The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth). |
@@ -33,14 +31,13 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `pinTop` | `number` | `0` | ≥ 0 | `m` | — | Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string. |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain one. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). |
 | `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual. |
 | `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Written: the mean of its points, in world space. |
 
 ```ogt
 component SoftBody {
   doc "An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface."
-  guide "physics §8"
   field shape SoftBodyShape "sphere, box or mesh."
   field radius f32 "A sphere's radius." {
     default 0.5
@@ -54,7 +51,6 @@ component SoftBody {
     unit m
   }
   field detail u32 "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one)." {
-    guide "physics §8"
     default 2
     min 0
     max 7
@@ -129,7 +125,6 @@ component SoftBody {
     default true
   }
   field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-    guide "physics §8"
   }
   field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual." {
     default 1
@@ -143,4 +138,4 @@ component SoftBody {
 }
 ```
 
-<sub>Module `physics` line 1612</sub>
+<sub>Module `physics` line 1578</sub>

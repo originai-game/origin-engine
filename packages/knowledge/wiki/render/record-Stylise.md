@@ -8,16 +8,14 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour, ink lines on tonal edges, colour bands by depth, and early 3D's vertex snapping, affine textures and coarse depth. Every primitive is off at its zero value (0, false, none) and then costs nothing. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
 
-See `looks §6`.
-
 Token `og.Stylise`, registered under the schema name `og.Stylise`; its value type is `Stylise`.
 
 #### Pixel grid
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `pixelHeight` | `number` | `0` | 0 … 2160 | — | — | The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale. See `looks §7`. |
-| `pixelUpscale` | `number` | `0` | 0 … 16 | — | — | The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it. See `looks §7`. |
+| `pixelHeight` | `number` | `0` | 0 … 2160 | — | — | The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale. |
+| `pixelUpscale` | `number` | `0` | 0 … 16 | — | — | The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it. |
 | `pixelSnap` | `boolean` | `true` | — | — | — | Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets). |
 
 #### Tones and palette
@@ -52,18 +50,18 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `hatchingColor` | `Color` | `{ r: 0.04, g: 0.035, b: 0.03 }` | — | — | — | The stroke colour (linear): graphite, sepia or ink. |
 | `hatchingPaper` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The paper the strokes lie on (linear): one-ink hatching lifts the ground's light tones towards it, and under hatchingKeepColor the wash lies on the paper's colour at the wash's own lightness (a cream sketchbook, a grey card, a blue print); white keeps the frame's own. |
 | `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes on the surfaces that follow the tone and the form and stay on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same in each instance's own space. |
-| `hatchingDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. See `looks §9`. |
-| `hatchingDistance` | `number` | `0` | ≥ 0 | `m` | tunable | Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. See `looks §9`. |
+| `hatchingDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. |
+| `hatchingDistance` | `number` | `0` | ≥ 0 | `m` | tunable | Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. |
 
 #### Paint
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. See `looks §10`. |
-| `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. See `looks §10`. |
+| `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. |
+| `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. |
 | `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
 | `paintBleed` | `number` | `0` | 0 … 1 | `ratio` | tunable | Colour bleeding across edges into its neighbours, wet in wet; 0 is none. |
-| `paintStrokes` | `number` | `0` | 0 … 1 | `ratio` | tunable | Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance. See `looks §10`. |
+| `paintStrokes` | `number` | `0` | 0 … 1 | `ratio` | tunable | Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance. |
 | `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
 | `paintCanvasStrength` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the canvas texture modulates the frame: 0 none, 1 its full grain. |
 | `paintCanvasScale` | `number` | `1` | 0.125 … 8 | — | — | Canvas texels per logical pixel, with paintCanvasSpace screen (and on the sky). |
@@ -86,7 +84,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `depthBands` | `number` | `0` | 0 … 8 | — | — | Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. See `looks §11`. |
+| `depthBands` | `number` | `0` | 0 … 8 | — | — | Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. |
 | `depthBandsFit` | `boolean` | `false` | — | — | — | Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it. |
 | `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts, unless depthBandsFit is true. |
 | `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true. |
@@ -106,26 +104,26 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `paintDetail` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike. See `looks §10`. |
+| `paintDetail` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike. |
 | `paintCharacterDetail` | `number` | `0.8` | 0 … 1 | `ratio` | tunable | The detail of a skinned mesh's pixels (a character's face and hands) where its material sets less: 0 painted as the rest, 1 kept as drawn. |
 
 #### Watercolour
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `watercolorEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none. See `looks §10`. |
-| `watercolorGranulation` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none. See `looks §10`. |
-| `watercolorTurbulence` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. See `looks §10`. |
+| `watercolorEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none. |
+| `watercolorGranulation` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none. |
+| `watercolorTurbulence` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. |
 | `watercolorDryBrush` | `number` | `0` | 0 … 1 | `ratio` | tunable | A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none. |
 | `watercolorWobble` | `number` | `0` | 0 … 4 | — | tunable | The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none. |
-| `watercolorDilution` | `number` | `0` | 0 … 0.9 | `ratio` | tunable | The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. See `looks §10`. |
+| `watercolorDilution` | `number` | `0` | 0 … 0.9 | `ratio` | tunable | The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. |
 | `watercolorPaper` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The paper's colour (linear): what the wash thins towards and the dry brush leaves bare. |
 
 #### Dither placement
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `ditherSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass. See `looks §8`. |
+| `ditherSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass. |
 
 #### Halftone print
 
@@ -133,28 +131,25 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 |---|---|---|---|---|---|---|
 | `halftoneMode` | `HalftoneMode` | `"ink"` | — | — | — | How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk). |
 | `halftoneMisregistration` | `number` | `0` | 0 … 8 | — | tunable | With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register. |
-| `halftoneRegion` | `HalftoneRegion` | `"all"` | — | — | — | Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera. See `looks §9`. |
+| `halftoneRegion` | `HalftoneRegion` | `"all"` | — | — | — | Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera. |
 
 #### Colour hatching
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `hatchingKeepColor` | `boolean` | `false` | — | — | — | Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. See `looks §9`. |
+| `hatchingKeepColor` | `boolean` | `false` | — | — | — | Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. |
 
 ```ogt
 resource Stylise {
   doc "Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour, ink lines on tonal edges, colour bands by depth, and early 3D's vertex snapping, affine textures and coarse depth. Every primitive is off at its zero value (0, false, none) and then costs nothing. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
-  guide "looks §6"
   group "Pixel grid"
   field pixelHeight u32 "The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale." {
     min 0
     max 2160
-    guide "looks §7"
   }
   field pixelUpscale u32 "The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it." {
     min 0
     max 16
-    guide "looks §7"
   }
   field pixelSnap bool "Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets)." {
     default true
@@ -231,26 +226,22 @@ resource Stylise {
     max 1
     unit ratio
     tunable true
-    guide "looks §9"
   }
   field hatchingDistance f32 "Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged." {
     min 0
     unit m
     tunable true
-    guide "looks §9"
   }
   group "Paint"
   field paintRadius f32 "Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass." {
     min 0
     max 8
     tunable true
-    guide "looks §10"
   }
   field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape." {
     min 0
     max 1
     unit ratio
-    guide "looks §10"
   }
   field paintEdgeDarkening f32 "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none." {
     min 0
@@ -269,7 +260,6 @@ resource Stylise {
     max 1
     unit ratio
     tunable true
-    guide "looks §10"
   }
   field paintCanvas Texture "A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none."
   field paintCanvasStrength f32 "How much the canvas texture modulates the frame: 0 none, 1 its full grain." {
@@ -325,7 +315,6 @@ resource Stylise {
   field depthBands u32 "Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off." {
     min 0
     max 8
-    guide "looks §11"
   }
   field depthBandsFit bool "Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it."
   field depthBandsNear f32 "Where the first band starts, unless depthBandsFit is true." {
@@ -367,7 +356,6 @@ resource Stylise {
   }
   group "Paint detail"
   field paintDetail f32 "How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike." {
-    guide "looks §10"
     default 1
     min 0
     max 1
@@ -387,17 +375,14 @@ resource Stylise {
     max 1
     unit ratio
     tunable true
-    guide "looks §10"
   }
   field watercolorGranulation f32 "Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none." {
     min 0
     max 1
     unit ratio
     tunable true
-    guide "looks §10"
   }
   field watercolorTurbulence f32 "Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none." {
-    guide "looks §10"
     min 0
     max 1
     unit ratio
@@ -419,14 +404,12 @@ resource Stylise {
     max 0.9
     unit ratio
     tunable true
-    guide "looks §10"
   }
   field watercolorPaper Color "The paper's colour (linear): what the wash thins towards and the dry brush leaves bare." {
     default 1 1 1
   }
   group "Dither placement"
   field ditherSpace StyliseSpace "Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass." {
-    guide "looks §8"
   }
   group "Halftone print"
   field halftoneMode HalftoneMode "How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk)."
@@ -436,13 +419,11 @@ resource Stylise {
     tunable true
   }
   field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera." {
-    guide "looks §9"
   }
   group "Colour hatching"
   field hatchingKeepColor bool "Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground." {
-    guide "looks §9"
   }
 }
 ```
 
-<sub>Module `render` line 1796</sub>
+<sub>Module `render` line 1725</sub>

@@ -1,13 +1,12 @@
 //! The description budget `og api check` reports: an IDL description says
 //! what an entry is, its units and defaults, when it errors and its
-//! behavioural contract; workflow, sizes, timings and cross-member caveats
-//! live in the guides (`guide "saves §2"`).
+//! behavioural contract.
 //!
 //! The measuring rule: an entry's description is its `doc` text (the
 //! trailing doc string and every `doc` line), counted in Unicode scalar
 //! values after unescaping, its paragraphs summed. Its parameters, fields,
 //! props, variants, cases and its `returns` doc are entries of their own,
-//! and a `guide` line costs nothing. Modules, functions, methods and types
+//! Modules, functions, methods and types
 //! (struct, enum, union, interface, component, resource, event, handle,
 //! callback, column) have [`ITEM`] characters; everything else (fields,
 //! params, props, variants, cases, returns, consts, values, units) [`FIELD`].

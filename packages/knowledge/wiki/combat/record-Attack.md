@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.
 
-See `combat §1`.
-
 Also known as: attack state machine, combo state, melee attacker, fighting game moves, attack frames, cancel window
 
 Token `og.Attack`, registered under the schema name `og.Attack`; its value type is `Attack`.
@@ -30,7 +28,6 @@ Token `og.Attack`, registered under the schema name `og.Attack`; its value type 
 component Attack {
   aliases "attack state machine, combo state, melee attacker, fighting game moves, attack frames, cancel window"
   doc "An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names."
-  guide "combat §1"
   field move Entity "The og.AttackMove playing (0: idle). Write 0 to stop it (a dodge out of a cancel window); start one with `next`."
   field next Entity "An og.AttackMove to start at the next run whatever the windows (an AI's choice, a scripted move); cleared once taken. A staggered attacker drops it."
   field tick u32 "Written: ticks since the move started (0 its first)." {
@@ -53,4 +50,4 @@ component Attack {
 }
 ```
 
-<sub>Module `combat` line 20</sub>
+<sub>Module `combat` line 19</sub>

@@ -1,12 +1,4 @@
-//! The built-in UI component catalogue: every component, control and screen
-//! `@origingame/engine/ui/components` exports (its `index.tsx`), as one guide
-//! (`crates/og-api/guides/components.md`) that `og api gen` writes from the
-//! components' own source and `og api check` holds equal. Each export gets a
-//! section with its doc comment, its props (the `<Name>Props` interface: each
-//! prop's type and doc comment, and the fields of the row types it names),
-//! the pack slots it dresses (`packClass`), the ground it is drawn on, its
-//! fixtures and the input actions it answers, so `og api find health bar`
-//! answers with the component that draws one.
+//! Individual built-in UI component reference entries, read from TSX source.
 
 use std::collections::BTreeSet;
 use std::fmt::Write;
@@ -20,9 +12,6 @@ use oxc_ast::ast::{
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
 use oxc_span::{GetSpan, SourceType, Span};
-
-/// Where the catalogue lives, from the repository root.
-pub const PATH: &str = "crates/og-api/guides/components.md";
 
 /// The components' directory and the module a game imports them from.
 const DIR: &str = "packages/engine/src/ui/components";
@@ -351,22 +340,9 @@ fn cell(s: &str) -> String {
     s.replace('|', "\\|").replace('\n', " ")
 }
 
-/// The catalogue's text, from the components under `root`.
-pub fn markdown(root: &Path) -> String {
-    let mut out = String::from(
-        "<!-- Generated from the built-in components' source (packages/engine/src/ui/components/index.tsx and the files it exports) by `og api gen`. Do not edit: `og api check` fails on any difference. -->\n\
-# The built-in UI components\n\n\
-Every component, control and screen the engine ships as TSX, one section each: what it draws, its props (from its `<Name>Props` interface, each with its type and what it means; a `?` prop may be left out and has its default in the component), the row types those props name, the pack slots it dresses, its fixtures and the input actions it answers.\n\n\
-Import one by name from `@origingame/engine/ui/components`, or by its path (`@origingame/engine/ui/components/hud/stat-bar`), and mount it or render it inside your own component. Each draws what the game hands it and reports intents through its `on*` props; it never decides costs, rules or rewards. A style pack restyles a component through the slots it names (`packClass(\"Plate\", \"frame\")` in its class) and the theme's roles; to change one beyond that, copy its file (and its string table) into the game and import the copy. The `screens` guide holds the rules a screen keeps (layout, contrast, grounds, input).\n\n\
-A component marked as a piece of a panel is drawn on a panel's ground (inside a `Panel.frame`), never straight over the scene.\n",
-    );
-    let list = match exports(root) {
-        Ok(l) => l,
-        Err(e) => {
-            let _ = writeln!(out, "\nThe catalogue could not be read: {e}");
-            return out;
-        }
-    };
+/// One `(name, body)` per exported component; no whole-page author manual.
+pub fn entries(root: &Path) -> Result<Vec<(String, String)>, String> {
+    let list = exports(root)?;
     let mut comps: Vec<Component> = Vec::new();
     let mut helpers = Vec::new();
     for (name, local, rel) in &list {
@@ -378,34 +354,19 @@ A component marked as a piece of a panel is drawn on a panel's ground (inside a 
             helper(root, local, rel)
                 .map(|h| h.map(|(sig, doc)| helpers.push((name, file_of(rel), sig, doc))))
         };
-        if let Err(e) = got {
-            let _ = writeln!(out, "\n{name}: {e}");
-        }
+        got.map_err(|e| format!("{name}: {e}"))?;
     }
     for (name, file, sig, doc) in helpers {
         match comps.iter_mut().find(|c| c.file == file) {
             Some(c) => c.helpers.push((name.clone(), sig, doc)),
             None => {
-                let _ = writeln!(out, "\n{name}: {file} exports no component to list it on");
+                return Err(format!("{name}: {file} exports no component to list it on"));
             }
         }
     }
-    // The index: each kit's components with their first sentence.
-    let mut kits: Vec<&str> = comps.iter().map(|c| c.kit.as_str()).collect();
-    kits.dedup();
-    let mut seen = BTreeSet::new();
-    kits.retain(|k| seen.insert(*k));
-    out.push_str("\nBy kit (the directory a component is filed in):\n\n");
-    for kit in &kits {
-        let names: Vec<String> = comps
-            .iter()
-            .filter(|c| c.kit == *kit)
-            .map(|c| format!("`{}`", c.name))
-            .collect();
-        let _ = writeln!(out, "- `{kit}`: {}", names.join(", "));
-    }
-    for (n, c) in comps.iter().enumerate() {
-        let _ = write!(out, "\n## {}. {}\n\n", n + 1, c.name);
+    let mut entries = Vec::new();
+    for c in &comps {
+        let mut out = String::new();
         if c.doc.is_empty() {
             out.push_str("(No doc comment.)\n");
         } else {
@@ -479,6 +440,7 @@ A component marked as a piece of a panel is drawn on a panel's ground (inside a 
                 let _ = writeln!(out, "- `{name}{sig}`: {}", doc.replace('\n', " "));
             }
         }
+        entries.push((c.name.clone(), out));
     }
-    out
+    Ok(entries)
 }

@@ -1,6 +1,5 @@
 module table {
   doc "A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them."
-  guide "data"
 
   handle TableRow "A row of a loaded table: a hash of its table's asset id and its own id (52 bits, so exact as a number), never 0. It names the same row after a reload or in a save; a row a table no longer has answers no values (og.table.missing lists who still holds one)."
 

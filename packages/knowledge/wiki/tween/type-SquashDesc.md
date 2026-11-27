@@ -13,7 +13,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `entity` | `Entity` | `0` | — | — | — | The entity. |
-| `impact` | `Partial<Vector3>` | `{}` | — | — | — | The x, y and z factors at the impact; z 0 (or left out) stays at rest. A component left out takes its default: x 1.25, y 0.8, z 0. ArtMotion.squash scales it under a project's art contract. See `animation §12`. |
+| `impact` | `Partial<Vector3>` | `{}` | — | — | — | The x, y and z factors at the impact; z 0 (or left out) stays at rest. A component left out takes its default: x 1.25, y 0.8, z 0. ArtMotion.squash scales it under a project's art contract. |
 | `rest` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | The scale it recovers to. |
 | `duration` | `number` | `0.18` | ≥ 0 | `s` | — | Seconds to recover. |
 | `ease` | `Ease` | `"back.out"` | — | — | — | The recovery curve; back.out overshoots a little, elastic.out wobbles. |
@@ -24,7 +24,6 @@ struct SquashDesc {
   desc true
   field entity Entity "The entity."
   field impact Partial.Vector3 "The x, y and z factors at the impact; z 0 (or left out) stays at rest. A component left out takes its default: x 1.25, y 0.8, z 0. ArtMotion.squash scales it under a project's art contract." {
-    guide "animation §12"
   }
   field rest Vector3 "The scale it recovers to." {
     default 1 1 1
@@ -40,4 +39,4 @@ struct SquashDesc {
 }
 ```
 
-<sub>Module `tween` line 361</sub>
+<sub>Module `tween` line 360</sub>

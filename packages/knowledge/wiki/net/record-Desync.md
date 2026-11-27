@@ -8,8 +8,6 @@ Module [`net`](../net.md) · [index](../index.md)
 
 This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.
 
-See `networking §6`.
-
 Also known as: desync, out of sync, divergence, hash mismatch, simulation drift
 
 Token `og.Desync`, registered under the schema name `og.Desync`; its value type is `Desync`.
@@ -24,11 +22,10 @@ Token `og.Desync`, registered under the schema name `og.Desync`; its value type 
 event Desync {
   doc "This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived."
   aliases "desync, out of sync, divergence, hash mismatch, simulation drift"
-  guide "networking §6"
   field tick u32 "The first divergent tick: the world after it differs (og.Time.tick of the snapshots compared)."
   field peer u32 "The first peer whose world differs from this one."
   field peers u32 "How many peers' worlds differ from this one."
 }
 ```
 
-<sub>Module `net` line 88</sub>
+<sub>Module `net` line 84</sub>

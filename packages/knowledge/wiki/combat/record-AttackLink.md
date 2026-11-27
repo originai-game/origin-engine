@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.
 
-See `combat §1`.
-
 Also known as: combo link, chain, cancel into, follow-up attack, combo route
 
 Token `og.AttackLink`, registered under the schema name `og.AttackLink`; its value type is `AttackLink`.
@@ -25,7 +23,6 @@ Token `og.AttackLink`, registered under the schema name `og.AttackLink`; its val
 component AttackLink {
   aliases "combo link, chain, cancel into, follow-up attack, combo route"
   doc "A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain."
-  guide "combat §1"
   field action str.32 "The input action whose press takes it (og.input.defineAction's name)."
   field to Entity "The og.AttackMove it starts."
   field open u32 "The first tick (from the start of the move it leaves) it can be taken." {
@@ -37,4 +34,4 @@ component AttackLink {
 }
 ```
 
-<sub>Module `combat` line 75</sub>
+<sub>Module `combat` line 72</sub>

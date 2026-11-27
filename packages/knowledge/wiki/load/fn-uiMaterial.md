@@ -6,9 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.uiMaterial`
 
-A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path (ui-materials §2).
-
-See `ui-materials §2`.
+A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path.
 
 ```ts
 og.load.uiMaterial(world: World, path: string): Result<UiMaterial>
@@ -25,12 +23,11 @@ Binding symbol `og_load_ui_material` · publish builds: kept
 
 ```ogt
 fn uiMaterial {
-  doc "A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path (ui-materials §2)."
-  guide "ui-materials §2"
+  doc "A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The canonical asset id, such as `base/materials/materials/rarity`."
   returns Result.UiMaterial "Refused for a path not in the bundle or not a UI material."
 }
 ```
 
-<sub>Module `load` line 412</sub>
+<sub>Module `load` line 393</sub>

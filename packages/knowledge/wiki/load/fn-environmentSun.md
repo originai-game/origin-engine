@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
 
-See `loading §4`.
-
 ```ts
 og.load.environmentSun(world: World, map: EnvironmentMap, rotation?: number, intensity?: number): Result<EnvironmentSun>
 ```
@@ -28,7 +26,6 @@ Binding symbol `og_load_environment_sun` · publish builds: kept
 ```ogt
 fn environmentSun {
   doc "The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time."
-  guide "loading §4"
   param world World "The world whose renderer owns the map."
   param map EnvironmentMap "A map og.load.environment answered."
   param rotation f32 "The Environment.rotation in radians about +Y; applied here, not by the game." {
@@ -41,4 +38,4 @@ fn environmentSun {
 }
 ```
 
-<sub>Module `load` line 342</sub>
+<sub>Module `load` line 328</sub>

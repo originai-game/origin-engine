@@ -6,12 +6,10 @@ Change scenes with assets fetched first: og.scene.preload requests a scene's str
 
 What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
 
-See `loading §12`.
-
 - **TypeScript**: functions are the namespace `og.scene`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.scene.preload`, `og.scene.progress`, `og.scene.change`; 5 more are advanced (`og api show scene --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module scene {

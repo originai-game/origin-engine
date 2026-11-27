@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight.
 
-See `facing`.
-
 Also known as: strafe direction, side vector, Unity transform.right
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_right` · publish builds: kept
 fn right {
   doc "An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight."
   aliases "strafe direction, side vector, Unity transform.right"
-  guide "facing"
   param quaternion Quaternion "The object's rotation."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 160</sub>
+<sub>Module `transform` line 158</sub>

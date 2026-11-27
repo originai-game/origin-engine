@@ -144,7 +144,7 @@ fn every_module_has_a_page_and_every_link_lands() {
 [inline](module.md#node "title")
 [reference][target]
 ![image](image.png)
-[parentheses](guide-(part).md)
+[parentheses](page-(part).md)
 
 [target]: other.md "reference title"
 
@@ -161,23 +161,11 @@ fn every_module_has_a_page_and_every_link_lands() {
         )
         .map(|target| target.into_string())
         .collect::<Vec<_>>(),
-        ["module.md#node", "other.md", "image.png", "guide-(part).md"]
+        ["module.md#node", "other.md", "image.png", "page-(part).md"]
     );
     let w = wiki();
     let index = &w.pages["index.md"];
     assert!(w.pages.contains_key(og_idl::search::INDEX_FILE));
-    // Every guide beside the IDL is a page the index links, its sections anchored.
-    assert!(!w.api.guides.is_empty());
-    for g in &w.api.guides {
-        let page = &w.pages[&format!("guide-{}.md", g.name)];
-        assert!(page.starts_with("<!-- Generated from crates/og-api/api.ogt"));
-        assert!(page.contains(&format!("# The `{}` guide: ", g.name)));
-        assert!(page.contains(&format!(
-            "<a id=\"guide-{}-1\"></a>\n### `{} §1` ",
-            g.name, g.name
-        )));
-        assert!(index.contains(&format!("[`{}`](guide-{}.md)", g.name, g.name)));
-    }
     // Every module has a page the index lists, and its contents link every item.
     for m in &w.api.modules {
         let page = w

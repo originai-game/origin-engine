@@ -1,4 +1,4 @@
-//! The loading screen (IDL `loading`, guides/loading.md §13): who draws it
+//! The loading screen (`og api show loading`): who draws it
 //! (project.ogt's `publish { loading }`), the stages the game reports and
 //! whether it is done. Presentation only: nothing here is world state or
 //! reaches a tick. The host tells its page ([`crate::Hooks::loading`]); a

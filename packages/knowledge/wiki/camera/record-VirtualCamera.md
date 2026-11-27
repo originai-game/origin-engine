@@ -10,8 +10,6 @@ A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it
 
 Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
 
-See `camera §2`.
-
 Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; its value type is `VirtualCamera`.
 
 #### Pick
@@ -91,7 +89,6 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 component VirtualCamera {
   doc "A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. og.CameraBrain makes the enabled one with the highest priority live and blends og.Camera to it over the incoming shot's blendTime by its blendEase."
   doc "Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits."
-  guide "camera §2"
   group "Pick"
   field priority i32 "Of the enabled virtual cameras the highest priority is live; of equal ones, the one enabled last (`activated`), then the first in query order." {
     tunable true
@@ -208,4 +205,4 @@ component VirtualCamera {
 }
 ```
 
-<sub>Module `camera` line 503</sub>
+<sub>Module `camera` line 499</sub>

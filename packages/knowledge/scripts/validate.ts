@@ -1,7 +1,7 @@
 // Validates @origingame/engine-knowledge against the OriginGame platform's
 // knowledge rules (rules/platform.json, transcribed from the platform with
 // scripts/sync-rules.ts; each rule names its platform source), and the
-// package's own contract: a generated wiki with its guides, and a scaffold
+// package's own contract: a generated API reference, and a scaffold
 // overlay whose pin and distribution list match the project template.
 //
 //   bun scripts/validate.ts            problems, then the packs and hashes
@@ -42,18 +42,6 @@ export function readRules(pkg: string): Rules {
   return JSON.parse(readFileSync(join(pkg, "rules/platform.json"), "utf8")) as Rules;
 }
 
-/**
- * The guides the wiki carries (generated from crates/og-api/guides/ by `og api
- * gen` as wiki/guide-<name>.md): workflow and thresholds read through `og api
- * find` and `og api show`, held to the API (every `og.*` name and
- * `Type.field` exists), to their own section references and to the `.ogt`
- * line shape.
- */
-export const GUIDE_PREFIX = "guide-";
-
-/** The og-cli source that cites the guides by section, in the engine repository. */
-export const GUIDE_CITERS = ["crates/og-cli/src/commands/migrate.rs"] as const;
-
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
 export const TEMPLATE_FILES = ["og-project.json", "project.ts", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;
 
@@ -83,11 +71,8 @@ export function validate(roots: Roots = defaultRoots()): string[] {
     }
   }
 
-  guides(roots, rules, problems);
   skinWord(roots, problems);
-  apiNames(roots, problems);
   looks(roots, problems);
-  problems.push(...ogtShape(guideTexts(roots)));
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -142,101 +127,6 @@ function wiki(roots: Roots, problems: string[]): void {
     }
   }
   for (const name of pages) if (name !== "index.md" && !linked.has(name)) problems.push(`wiki/${name}: not linked from any wiki page (a page for a name the IDL no longer has?); run \`og api gen --wiki\``);
-}
-
-/** Tokens a text names as tools, as the platform's production test reads them. */
-function namedTools(text: string, rules: Rules): string[] {
-  const snake = new RegExp(rules.tools.snake);
-  const known = new Set(rules.tools.known);
-  const families = new Set([...known].filter((n) => snake.test(n)).map((n) => n.split("_")[0]!));
-  const notTools = new Set(rules.tools.notTools);
-  const prose = text.replace(/^```[\s\S]*?^```/gm, "");
-  const description = /^description: (.*)$/m.exec(text)?.[1] ?? "";
-  const named = [...[...prose.matchAll(/`([^`\s]+)`/g)].map((m) => m[1]!), ...(description.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) ?? [])]
-    .filter((t) => snake.test(t) && families.has(t.split("_")[0]!) && !notTools.has(t));
-  const unknown = named.filter((t) => !known.has(t));
-  for (const m of text.matchAll(/(?:tools\.call|origin\.execute)\(\s*['"]([^'"]+)['"]/g)) if (!known.has(m[1]!)) unknown.push(m[0]);
-  for (const r of rules.tools.retired) for (const m of text.matchAll(new RegExp(`\\b${r}\\b`, "gi"))) unknown.push(m[0]);
-  return [...new Set(unknown)];
-}
-
-/** The generated wiki's module pages (wiki/<module>.md, index.md left out), by module name. */
-function wikiModules(roots: Roots): Set<string> {
-  const dir = join(roots.pkg, "wiki");
-  if (!existsSync(dir)) return new Set();
-  return new Set(readdirSync(dir).filter((n) => n.endsWith(".md") && n !== "index.md").map((n) => n.slice(0, -3)));
-}
-
-/** The modules or guides a text names as `og api show <name>`: a lowercase word or hyphenated slug, not an exact name such as `og.physics.castRay` or `file:terrain`. */
-export function shownModules(text: string): Set<string> {
-  return new Set([...text.matchAll(/\bog api show ([a-z][a-z0-9-]*)(?![\w.:-])/g)].map((m) => m[1]!));
-}
-
-/**
- * What a guide says of the API it points to: a `reference/<page>.md`
- * pointer reaches no page `og api` serves
- * nothing (`og api show` and `og api find` answer instead), and every
- * `og api show <module>` names a module the wiki has a page for.
- */
-function apiPointers(at: string, text: string, modules: ReadonlySet<string>, guideNames: ReadonlySet<string>): string[] {
-  const problems: string[] = [];
-  for (const page of new Set([...text.matchAll(/\breference\/([a-z0-9-]+\.md)\b/g)].map((m) => m[1]!))) {
-    problems.push(`${at}: names reference/${page}, which no reader opens: name \`og api show <module>\` for a module, \`og api show <exact name>\` for one name, or \`og api find <words>\``);
-  }
-  for (const m of shownModules(text)) {
-    if (!modules.has(m) && !guideNames.has(m)) {
-      problems.push(`${at}: names \`og api show ${m}\`, and the generated wiki has no module or guide ${m} (wiki/index.md lists them; write a type or function as its full name, og.<name>)`);
-    }
-  }
-  return problems;
-}
-
-/** The guide pages of the wiki, by guide name (wiki/guide-<name>.md). */
-export function guideTexts(roots: Roots): Map<string, string> {
-  const dir = join(roots.pkg, "wiki");
-  const out = new Map<string, string>();
-  if (!existsSync(dir)) return out;
-  for (const n of readdirSync(dir).sort()) {
-    if (n.startsWith(GUIDE_PREFIX) && n.endsWith(".md")) out.set(n.slice(GUIDE_PREFIX.length, -3), readFileSync(join(dir, n), "utf8"));
-  }
-  return out;
-}
-
-/** A guide page's numbered sections, as `og api gen` heads them (`### \`testing §2\` Title`). */
-function guideSections(text: string): Set<string> {
-  return new Set([...text.matchAll(/^### `[a-z0-9-]+ §(\d+)` /gm)].map((m) => m[1]!));
-}
-
-/**
- * The guides as one set: each names no tool a Session lacks, no unmounted
- * wiki page and no module the IDL does not generate; every section
- * reference (`testing §2`, `§2` for its own) names a section that exists;
- * every `three-to-og §N` the og-cli source cites (GUIDE_CITERS) is one.
- */
-function guides(roots: Roots, rules: Rules, problems: string[]): void {
-  const texts = guideTexts(roots);
-  const modules = wikiModules(roots);
-  const guideNames = new Set(texts.keys());
-  const sections = new Map([...texts].map(([g, t]) => [g, guideSections(t)]));
-  for (const [g, text] of texts) {
-    const at = `wiki/${GUIDE_PREFIX}${g}.md`;
-    for (const t of namedTools(text, rules)) problems.push(`${at}: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool (crates/og-api/guides/${g}.md)`);
-    problems.push(...apiPointers(at, text, modules, guideNames));
-    problems.push(...sectionRefs(at, g, text, sections));
-  }
-  const repo = join(roots.pkg, "..", "..");
-  if (!existsSync(join(repo, "crates"))) return; // the published package: the sources are not beside it
-  for (const citer of GUIDE_CITERS) {
-    const path = join(repo, citer);
-    if (!existsSync(path)) {
-      problems.push(`${citer}: missing; GUIDE_CITERS in scripts/validate.ts names it`);
-      continue;
-    }
-    for (const m of readFileSync(path, "utf8").matchAll(/\b([a-z0-9]+(?:-[a-z0-9]+)+) §(\d+)/g)) {
-      const have = sections.get(m[1]!);
-      if (have && !have.has(m[2]!)) problems.push(`${citer}: cites ${m[1]} §${m[2]}, which wiki/${GUIDE_PREFIX}${m[1]}.md does not have (its sections: ${[...have].join(", ")})`);
-    }
-  }
 }
 
 function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly PayloadFile[], byPath: Map<string, PayloadFile>, problems: string[]): void {
@@ -300,34 +190,6 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
 }
 
 /**
- * Every section reference of one text (`testing §2`, or `§2` for its own:
- * any guide `sections` holds, or an `og-*` name) names a numbered section
- * that exists: `at` names the text in the messages, `own` the text itself.
- */
-export function sectionRefs(at: string, own: string, text: string, sections: ReadonlyMap<string, ReadonlySet<string>>): string[] {
-  const problems: string[] = [];
-  const prose = text.replace(/^```[\s\S]*?^```/gm, "");
-  const owner = new RegExp(`(og(?:-[a-z0-9]+)+${[...sections.keys()].map((n) => `|${n}`).join("")}) §([A-Za-z][\\w ]*)`, "g");
-  for (const m of prose.matchAll(owner)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a guide's sections by their numbers (## N.)`);
-  for (const m of prose.matchAll(/§(\d+)/g)) {
-    // The text this § belongs to: walk back over a list of §s ("og-core
-    // §9–§11", "art-review §4, §5") to the word before it.
-    const before = prose.slice(0, m.index).split(/\s+/);
-    let i = before.length - 1;
-    while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
-    const word = (before[i] ?? "").replace(/^[(`*]+/, "");
-    let target: string | undefined = own;
-    if (/^og-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(word) || sections.has(word)) target = word;
-    else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
-    if (target === undefined) continue;
-    const have = sections.get(target);
-    if (!have) problems.push(`${at}: refers to ${target} §${m[1]}, and there is no guide ${target}`);
-    else if (!have.has(m[1]!)) problems.push(`${at}: refers to ${target === own ? "its own" : target} §${m[1]}, which ${target === own ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
-  }
-  return problems;
-}
-
-/**
  * What a sentence that says "skin" must also name for the word to be one of
  * its other meanings: a glTF rig's skin (joints, morphs, a model), mesh
  * preparation (deformation, welding, LODs), the
@@ -346,7 +208,7 @@ export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|rig2d|bone|mesh|m
  * UI terminology. Skeletal declarations and their comments are not UI styles.
  */
 function skinWord(roots: Roots, problems: string[]): void {
-  // The wiki og api reads from the package, its guide pages included.
+  // The API reference og api reads from the package.
   const texts: [string, string][] = [];
   const wikiDir = join(roots.pkg, "wiki");
   for (const n of wikiPages(wikiDir)) texts.push([`wiki/${n}`, readFileSync(join(wikiDir, n), "utf8")]);
@@ -360,116 +222,6 @@ function skinWord(roots: Roots, problems: string[]): void {
         }
       }
     }
-  }
-}
-
-/** Runtime names from api.schema.json and author fields from author-inputs.d.ts. */
-export interface ApiNames {
-  /** `og.<name>`: root functions, component, resource and event tokens, and module namespaces. */
-  root: Set<string>;
-  /** `og.<module>.<name>`: a namespace module's functions and values. */
-  members: Map<string, Set<string>>;
-  /** `<Type>.<field>` and `og.<Token>.<field>`: the fields of every struct, desc, component, resource and event. */
-  fields: Map<string, Set<string>>;
-  /** Every runtime or authoring input field name (for unqualified prose snippets). */
-  anyField: Set<string>;
-}
-
-/** `og.` names a guide may write that are not API: each with why. */
-export const NOT_API: Record<string, string> = {};
-
-/** `` `key: value` `` spans whose key is not an engine field: each with why. */
-export const NOT_FIELDS: Record<string, string> = {
-  runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
-  container: "the CSS container shorthand (document stylesheets)",
-  transition: "the CSS transition shorthand (document stylesheets)",
-  gap: "the CSS gap property (document stylesheets)",
-  flex: "the CSS flex shorthand (document stylesheets)",
-  overflow: "the CSS overflow shorthand (document stylesheets)",
-};
-
-export function readApiNames(engine: string): ApiNames | undefined {
-  const path = join(engine, "schema", "api.schema.json");
-  if (!existsSync(path)) return undefined;
-  const schema = JSON.parse(readFileSync(path, "utf8")) as {
-    "x-og-modules"?: { name: string; place: string; functions?: { name: string }[]; values?: { name: string }[] }[];
-    $defs?: Record<string, { "x-og-kind"?: string; properties?: Record<string, unknown> }>;
-  };
-  const names: ApiNames = { root: new Set(), members: new Map(), fields: new Map(), anyField: new Set() };
-  for (const m of schema["x-og-modules"] ?? []) {
-    const fns = [...(m.functions ?? []), ...(m.values ?? [])].map((f) => f.name);
-    if (m.place === "root") for (const f of fns) names.root.add(f);
-    if (m.place === "namespace") {
-      names.root.add(m.name);
-      names.members.set(m.name, new Set(fns));
-    }
-  }
-  for (const [name, def] of Object.entries(schema.$defs ?? {})) {
-    const kind = def["x-og-kind"] ?? "";
-    if (["component", "resource", "event"].includes(kind)) names.root.add(name);
-    if (def.properties) names.fields.set(name, new Set(Object.keys(def.properties)));
-    for (const k of Object.keys(def.properties ?? {})) names.anyField.add(k);
-  }
-  // The cook emits quoted readonly properties in its shipped author
-  // declarations. Ignore comments and union exclusions (`?: never`):
-  // neither declares an accepted input field. These are author fields, not
-  // og.* runtime members; never add them to root, members or runtime fields.
-  const author = readFileSync(join(engine, "types", "author-inputs.d.ts"), "utf8")
-    .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-  for (const m of author.matchAll(/\breadonly "([a-z]\w*)"\??: (?!never\b)/g)) names.anyField.add(m[1]!);
-  return names;
-}
-
-/**
- * Every API name a guide writes resolves in the generated API: `og.<x>` is a
- * root function, a component, resource or event token or a module
- * namespace; `og.<module>.<y>` one of the module's functions or values;
- * `og.<Token>.<field>` and `<Type>.<field>` (for a struct, desc, component,
- * resource or event the IDL declares) one of its fields. Code blocks are
- * read too: an example is API as much as prose is. A file name such as
- * `away.og.ts` is not a name.
- */
-function apiNames(roots: Roots, problems: string[]): void {
-  const api = readApiNames(roots.engine);
-  if (!api) return;
-  for (const [g, text] of guideTexts(roots)) {
-    const at = `wiki/${GUIDE_PREFIX}${g}.md`;
-    const bad = new Set<string>();
-    for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?/g)) {
-      const [whole, head, member] = [x[0], x[1]!, x[2]];
-      if (whole in NOT_API || `og.${head}` in NOT_API) continue;
-      if (!api.root.has(head)) {
-        bad.add(`og.${head}`);
-        continue;
-      }
-      if (member === undefined) continue;
-      const ok = api.members.has(head) ? api.members.get(head)!.has(member) : (api.fields.get(head)?.has(member) ?? false);
-      if (!ok) bad.add(whole);
-    }
-    // A component's generated "Pack slots:" line names pack slots (`Ability.frame`), not API fields.
-    const prose = text.replace(/^Pack slots: .*$/gm, "");
-    for (const x of prose.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
-      // Explicit three.js comparisons name its members, not ours (for example
-      // three.js SpotLight.map versus the engine's SpotLight.cookie).
-      if (/\bthree\.js\s+$/.test(prose.slice(0, x.index))) continue;
-      const have = api.fields.get(x[1]!);
-      if (have && !have.has(x[2]!)) bad.add(x[0]);
-    }
-    // A component, resource or event's value written beside its token
-    // (`world.insert(e, og.AudioSource, { sound, loop: true })`): each key one of its fields.
-    for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Z]\w*)\s*,\s*\{([^{}]*)\}/g)) {
-      const have = api.fields.get(x[1]!);
-      if (!have) continue;
-      for (const part of x[2]!.split(",")) {
-        const key = /^\s*([A-Za-z_]\w*)\s*(?::|$)/.exec(part)?.[1];
-        if (key && !have.has(key)) bad.add(`og.${x[1]}.${key}`);
-      }
-    }
-    // A field set in prose, `` `looping: true` ``: its key is some type's field.
-    for (const x of text.matchAll(/`([a-z]\w*): [^`]+`/g)) {
-      if (!api.anyField.has(x[1]!) && !(x[1]! in NOT_FIELDS)) bad.add(x[1]!);
-    }
-    for (const b of bad) problems.push(`${at}: names \`${b}\`, which the runtime API or authoring declarations do not have; check the name with og api find or in packages/engine/types/{index,author-inputs}.d.ts`);
   }
 }
 
@@ -761,57 +513,6 @@ export function artDoc(roots: Roots, problems: string[]): void {
   const unlisted = withVariants.filter((s) => !rows.some((r) => r.slug === s.slug)).map((s) => s.slug);
   if (unlisted.length) problems.push(`${at} has no row for ${unlisted.join(", ")}`);
 }
-
-/**
- * Every `.ogt` example a guide writes in a code block (```text or a bare
- * fence, as a whole file or a fragment) holds to og-core's parser
- * (crates/og-core/src/ogt.rs `parse`) line by line, so an author who copies
- * it cooks: a `{` ends its key's line, a `}` stands alone on its own, the
- * blocks close, and a file that opens with `type` has `version` and `---`
- * next. A block with no brace and no `type` line is not checked (shell,
- * prose). Strings and `#` comments are read as the parser reads them.
- */
-export function ogtShape(guides: ReadonlyMap<string, string>): string[] {
-  const problems: string[] = [];
-  for (const [guide, md] of guides) {
-    for (const m of md.matchAll(/^( *)```([\w-]*)[^\n]*\n([\s\S]*?)^ *```/gm)) {
-      if (m[2] !== "text" && m[2] !== "") continue;
-      const indent = m[1]!.length;
-      const lines = m[3]!.split("\n").map((l) => l.slice(Math.min(indent, l.length - l.trimStart().length)));
-      const words = lines.map((l) => {
-        const out: string[] = [];
-        for (const t of l.matchAll(/"(?:[^"\\]|\\.)*"|\S+/g)) {
-          if (t[0].startsWith("#")) break;
-          out.push(t[0]);
-        }
-        return out;
-      });
-      const typed = words.find((w) => w.length > 0)?.[0] === "type";
-      if (!typed && !words.some((w) => w.includes("{") || w.includes("}"))) continue;
-      const first = md.slice(0, m.index).split("\n").length + 1;
-      const at = (i: number) => `wiki/${GUIDE_PREFIX}${guide}.md:${first + i}`;
-      if (typed) {
-        const head = words.map((w, i) => [w, i] as const).filter(([w]) => w.length > 0).slice(0, 3);
-        if (head[1]?.[0][0] !== "version" || head[2]?.[0].join(" ") !== "---") problems.push(`${at(head[0]![1])}: an .ogt example opens with \`type\` but not \`version <n>\` and \`---\` after it; the parser refuses a file without its header`);
-      }
-      let depth = 0;
-      words.forEach((w, i) => {
-        const open = w.indexOf("{");
-        if (open >= 0 && open !== w.length - 1) problems.push(`${at(i)}: \`${lines[i]!.trim()}\` opens a block mid-line; the .ogt parser refuses it ('{' must end its line): put each line of the block on its own`);
-        if (w.includes("}") && w.length !== 1) problems.push(`${at(i)}: \`${lines[i]!.trim()}\` closes a block beside other words; the .ogt parser refuses it ('}' must be alone on its line)`);
-        if (open >= 0) depth++;
-        if (w.includes("}")) depth--;
-        if (depth < 0) {
-          problems.push(`${at(i)}: an unmatched '}'`);
-          depth = 0;
-        }
-      });
-      if (depth > 0) problems.push(`${at(lines.length - 1)}: an .ogt example leaves ${depth} block(s) open`);
-    }
-  }
-  return problems;
-}
-
 
 export function bundle(roots: Roots = defaultRoots()): { schemaVersion: 1; files: Record<string, string> } {
   const files: Record<string, string> = {};

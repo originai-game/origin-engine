@@ -29,4 +29,4 @@ event RoomJoined {
 }
 ```
 
-<sub>Module `platform` line 563</sub>
+<sub>Module `platform` line 552</sub>

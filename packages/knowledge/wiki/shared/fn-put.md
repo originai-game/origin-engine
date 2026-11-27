@@ -8,8 +8,6 @@ Module [`shared`](../shared.md) · [index](../index.md)
 
 Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store.
 
-See `shared-worlds §5`.
-
 ```ts
 og.shared.put<C extends AnyComponent>(world: World, key: string, component: C, value: Partial<Value<C>>, desc?: SharedPutDesc): Result<number>
 ```
@@ -29,7 +27,6 @@ Binding symbol `og_shared_put` · publish builds: kept
 ```ogt
 fn put {
   doc "Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store."
-  guide "shared-worlds §5"
   generic C AnyComponent
   param world World "The world."
   param key String "The object's key in this world: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/` (`door/12`)."
@@ -40,4 +37,4 @@ fn put {
 }
 ```
 
-<sub>Module `shared` line 257</sub>
+<sub>Module `shared` line 247</sub>

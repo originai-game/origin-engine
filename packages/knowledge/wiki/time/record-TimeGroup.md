@@ -23,4 +23,4 @@ component TimeGroup {
 }
 ```
 
-<sub>Module `time` line 46</sub>
+<sub>Module `time` line 45</sub>

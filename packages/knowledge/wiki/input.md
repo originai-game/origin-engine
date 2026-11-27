@@ -8,12 +8,10 @@ Gameplay actions (og.input.defineAction) name what the player does instead of th
 
 Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
 
-See `input`.
-
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Input`; 90 more are advanced (`og api show input --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module input {
@@ -132,10 +130,10 @@ module input {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>Module `input` line 8</sub>
+<sub>Module `input` line 7</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
 ```
 
-<sub>Module `input` line 9</sub>
+<sub>Module `input` line 8</sub>

@@ -10,8 +10,6 @@ The shape an entity collides with, attached to its RigidBody (or, without one, a
 
 A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
 
-See `physics §1`.
-
 Also known as: trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape
 
 Token `og.Collider`, registered under the schema name `og.Collider`; its value type is `Collider`.
@@ -42,7 +40,6 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 component Collider {
   doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
   doc "A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children."
-  guide "physics §1"
   aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
   field shape ColliderShape "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a height field), diamond, hexagon, cone (3D) or polyline." {
     label "Shape"
@@ -109,4 +106,4 @@ component Collider {
 }
 ```
 
-<sub>Module `physics` line 141</sub>
+<sub>Module `physics` line 135</sub>

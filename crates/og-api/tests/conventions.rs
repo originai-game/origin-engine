@@ -1,4 +1,4 @@
-//! The names of the API keep their promises (the `conventions` guide): a
+//! The names of the API keep their promises: a
 //! field's name says its unit and its type, so a reader who has learned
 //! one member writes the next one right. Checked over every field of
 //! every struct and record of the IDL.
@@ -40,7 +40,7 @@ const EXCEPTIONS: [(&str, &str, &str); 8] = [
         "ticks",
         "the tick the world was restored from, not a number of ticks",
     ),
-    // The art contract's angles are degrees (conventions §2): the yaw an
+    // The art contract's angles are degrees: the yaw an
     // isometric or dimetric view is drawn at, as an artist names it.
     (
         "ArtCamera.yaw",

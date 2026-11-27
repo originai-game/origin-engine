@@ -23,4 +23,4 @@ event TimelineStarted {
 }
 ```
 
-<sub>Module `timeline` line 42</sub>
+<sub>Module `timeline` line 41</sub>

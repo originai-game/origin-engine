@@ -22,8 +22,7 @@ NEEDS = {
     'bun-test': ('web-ready', 'api-surface', 'drift', 'bun-quick', 'engine-typecheck'),
     # Fixtures run the native og alone: a fixtures-only run builds no wasm.
     'fixtures': ('native-ready',), 'doc-tests': ('rust-build',),
-    # The guides' recipes and the showcases run the native og as fixtures do.
-    'guide-recipes': ('native-ready',), 'showcase': ('native-ready',),
+    'showcase': ('native-ready',),
     # The release's preview slots, cooked and run by the native og.
     'looks': ('native-ready',),
     'browser': ('web-ready', 'api-surface', 'drift', 'engine-typecheck'),
@@ -48,7 +47,7 @@ def stop_group(proc, sig):
 
 
 QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'api-surface', 'bun-quick', 'engine-typecheck', 'wasm-check')
-FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'guide-recipes', 'showcase', 'looks', 'doc-tests', 'browser', 'shape-wasm32')
+FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'showcase', 'looks', 'doc-tests', 'browser', 'shape-wasm32')
 # These consumers can cook the same projects. Serialize them when selected
 # together without adding tests to a scoped run merely to enforce ordering.
 PROJECT_STEPS = {'bun-test', 'fixtures', 'showcase', 'looks', 'browser', 'web-reference'}
@@ -129,7 +128,7 @@ def main():
             break
         wanted = expanded
     # Order early checks before execution, but don't add them to aside scopes.
-    for step in ('rust-cpu', 'rust-gpu', 'fixtures', 'guide-recipes', 'showcase', 'looks'):
+    for step in ('rust-cpu', 'rust-gpu', 'fixtures', 'showcase', 'looks'):
         NEEDS[step] += tuple(s for s in ('drift', 'api-surface', 'engine-typecheck') if s in wanted)
     # OG_GATE_SKIP: steps the coordinator named for an exception (docs/ci.md
     # §Lanes). A dependent still runs; the skip is printed, never a pass.

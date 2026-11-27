@@ -15,7 +15,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `texture` | `Texture \| null` | `null` | — | — | — | The texture from og.load.texture; null draws a solid quad of the colour. |
-| `array` | `TextureArray \| null` | `null` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`. See `looks §13`. |
+| `array` | `TextureArray \| null` | `null` | — | — | — | Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`. |
 | `arrayLayer` | `number` | `0` | — | — | — | With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer. |
 
 #### Placement
@@ -57,8 +57,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
 | `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set. |
-| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step); 0 with no terrain is y = 0. Where an og.Terrain under the anchor is higher, the shadow lies on it: on the plane fitted to its slope, or bent over a hollow or a ridge narrower than the shadow. See `looks §13`. |
-| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite through exposure, bloom and the tone curve. false keeps its colours as given (clamped 0 to 1), still placed, depth tested and sorted, outside exposure, bloom, fog and the curve; grade and screen effects apply. Additive sprites always tone map. See `looks §13`. |
+| `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step); 0 with no terrain is y = 0. Where an og.Terrain under the anchor is higher, the shadow lies on it: on the plane fitted to its slope, or bent over a hollow or a ridge narrower than the shadow. |
+| `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite through exposure, bloom and the tone curve. false keeps its colours as given (clamped 0 to 1), still placed, depth tested and sorted, outside exposure, bloom, fog and the curve; grade and screen effects apply. Additive sprites always tone map. |
 
 #### Billboard and flips
 
@@ -95,7 +95,6 @@ struct SpriteDesc {
   group "Image"
   field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
   field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`." {
-    guide "looks §13"
   }
   field arrayLayer u32 "With `array`: the layer drawn, 0 to the array's layers minus 1 (refused past it). `uv` is the region within the layer."
   group "Placement"
@@ -149,11 +148,9 @@ struct SpriteDesc {
     max 1
   }
   field dropShadowHeight f32 "The height of the level ground the drop shadow lies on (a floor, a deck, a step); 0 with no terrain is y = 0. Where an og.Terrain under the anchor is higher, the shadow lies on it: on the plane fitted to its slope, or bent over a hollow or a ridge narrower than the shadow." {
-    guide "looks §13"
     unit m
   }
   field toneMapped bool "As three.js Material.toneMapped: true draws the sprite through exposure, bloom and the tone curve. false keeps its colours as given (clamped 0 to 1), still placed, depth tested and sorted, outside exposure, bloom, fog and the curve; grade and screen effects apply. Additive sprites always tone map." {
-    guide "looks §13"
     default true
   }
   group "Billboard and flips"
@@ -174,4 +171,4 @@ struct SpriteDesc {
 }
 ```
 
-<sub>Module `render` line 2635</sub>
+<sub>Module `render` line 2540</sub>

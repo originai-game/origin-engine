@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, drawn from a stream forked from og.Rng (`fork("og.weather")`) and kept here, so replays, restores and every host strike alike. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (StandardMaterialDesc.weathering opts a material out); rendering never writes it.
 
-See `render §7`.
-
 Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its value type is `WeatherState`.
 
 #### Wetness
@@ -50,7 +48,7 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shelterSize` | `number` | `64` | 0 … 1024 | `m` | tunable | The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line; past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's. See `render §7`. |
+| `shelterSize` | `number` | `64` | 0 … 1024 | `m` | tunable | The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line; past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's. |
 
 #### State
 
@@ -70,7 +68,6 @@ Written by og.weather; read them, never write them.
 ```ogt
 resource WeatherState {
   doc "The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, drawn from a stream forked from og.Rng (`fork(\"og.weather\")`) and kept here, so replays, restores and every host strike alike. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (StandardMaterialDesc.weathering opts a material out); rendering never writes it."
-  guide "render §7"
   group "Wetness"
   field soakTime f32 "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1)." {
     default 60
@@ -156,7 +153,6 @@ resource WeatherState {
   }
   group "Shelter"
   field shelterSize f32 "The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line; past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's." {
-    guide "render §7"
     default 64
     min 0
     max 1024
@@ -197,4 +193,4 @@ resource WeatherState {
 }
 ```
 
-<sub>Module `atmosphere` line 506</sub>
+<sub>Module `atmosphere` line 494</sub>

@@ -4,11 +4,9 @@
 
 A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them.
 
-See `data`.
-
 - **TypeScript**: functions are the namespace `og.table`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module table {
@@ -52,4 +50,4 @@ column TableRow {
 }
 ```
 
-<sub>Module `table` line 7</sub>
+<sub>Module `table` line 6</sub>

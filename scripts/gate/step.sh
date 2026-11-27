@@ -33,7 +33,7 @@ fi
 case "$1" in
   # nextest schedules the tests within this reservation by adapter memory.
   rust-gpu) og_gpu_acquire_all "gate $1 ($PWD)" || exit 1 ;;
-  bun-test|fixtures|guide-recipes|showcase|looks|browser|web-reference|safari)
+  bun-test|fixtures|showcase|looks|browser|web-reference|safari)
     og_gpu_acquire "gate $1 ($PWD)" || exit 1 ;;
 esac
 if [ -n "${GATE_LOGS:-}" ]; then

@@ -8,8 +8,6 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does).
 
-See `saves §9`.
-
 ```ts
 og.platform.roomCreate(world: World, desc?: RoomDesc): Result<void>
 ```
@@ -26,7 +24,6 @@ Binding symbol `og_platform_room_create` · publish builds: kept
 ```ogt
 fn roomCreate {
   doc "Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does)."
-  guide "saves §9"
   param world World "The world."
   param desc RoomDesc "Its name and capacity." {
     optional true
@@ -35,4 +32,4 @@ fn roomCreate {
 }
 ```
 
-<sub>Module `platform` line 591</sub>
+<sub>Module `platform` line 580</sub>

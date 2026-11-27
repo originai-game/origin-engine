@@ -14,7 +14,7 @@ interface Path2 {
   # members follow, each quoted below
 ```
 
-<sub>Module `shapes` line 20</sub>
+<sub>Module `shapes` line 19</sub>
 
 <a id="member-Path2-moveTo"></a>
 
@@ -45,7 +45,7 @@ fn moveTo {
 }
 ```
 
-<sub>Module `shapes` line 22</sub>
+<sub>Module `shapes` line 21</sub>
 
 <a id="member-Path2-lineTo"></a>
 
@@ -76,7 +76,7 @@ fn lineTo {
 }
 ```
 
-<sub>Module `shapes` line 29</sub>
+<sub>Module `shapes` line 28</sub>
 
 <a id="member-Path2-quadraticCurveTo"></a>
 
@@ -111,7 +111,7 @@ fn quadraticCurveTo {
 }
 ```
 
-<sub>Module `shapes` line 36</sub>
+<sub>Module `shapes` line 35</sub>
 
 <a id="member-Path2-bezierCurveTo"></a>
 
@@ -150,7 +150,7 @@ fn bezierCurveTo {
 }
 ```
 
-<sub>Module `shapes` line 45</sub>
+<sub>Module `shapes` line 44</sub>
 
 <a id="member-Path2-splineThru"></a>
 
@@ -179,7 +179,7 @@ fn splineThru {
 }
 ```
 
-<sub>Module `shapes` line 56</sub>
+<sub>Module `shapes` line 55</sub>
 
 <a id="member-Path2-arc"></a>
 
@@ -220,7 +220,7 @@ fn arc {
 }
 ```
 
-<sub>Module `shapes` line 62</sub>
+<sub>Module `shapes` line 61</sub>
 
 <a id="member-Path2-absarc"></a>
 
@@ -261,7 +261,7 @@ fn absarc {
 }
 ```
 
-<sub>Module `shapes` line 75</sub>
+<sub>Module `shapes` line 74</sub>
 
 <a id="member-Path2-ellipse"></a>
 
@@ -308,7 +308,7 @@ fn ellipse {
 }
 ```
 
-<sub>Module `shapes` line 88</sub>
+<sub>Module `shapes` line 87</sub>
 
 <a id="member-Path2-absellipse"></a>
 
@@ -355,7 +355,7 @@ fn absellipse {
 }
 ```
 
-<sub>Module `shapes` line 105</sub>
+<sub>Module `shapes` line 104</sub>
 
 <a id="member-Path2-setFromPoints"></a>
 
@@ -384,7 +384,7 @@ fn setFromPoints {
 }
 ```
 
-<sub>Module `shapes` line 122</sub>
+<sub>Module `shapes` line 121</sub>
 
 <a id="member-Path2-closePath"></a>
 
@@ -408,7 +408,7 @@ fn closePath {
 }
 ```
 
-<sub>Module `shapes` line 128</sub>
+<sub>Module `shapes` line 127</sub>
 
 <a id="member-Path2-getPoints"></a>
 
@@ -439,4 +439,4 @@ fn getPoints {
 }
 ```
 
-<sub>Module `shapes` line 133</sub>
+<sub>Module `shapes` line 132</sub>

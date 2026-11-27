@@ -8,8 +8,6 @@ Module [`scene`](../scene.md) · [index](../index.md)
 
 Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it.
 
-See `loading §12`.
-
 Also known as: change scene, switch level, load level, Unity SceneManager.LoadScene, Godot change_scene_to_file
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_scene_change` · publish builds: kept
 ```ogt
 fn change {
   doc "Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it."
-  guide "loading §12"
   aliases "change scene, switch level, load level, Unity SceneManager.LoadScene, Godot change_scene_to_file"
   param world World "The world."
   param scene String "A GameDesc.scenes name or the scene's asset id."
@@ -36,4 +33,4 @@ fn change {
 }
 ```
 
-<sub>Module `scene` line 75</sub>
+<sub>Module `scene` line 72</sub>

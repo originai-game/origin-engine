@@ -8,8 +8,6 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
 
-See `animation §8`.
-
 Token `og.FootLock`, registered under the schema name `og.FootLock`; its value type is `FootLock`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -27,7 +25,6 @@ Token `og.FootLock`, registered under the schema name `og.FootLock`; its value t
 ```ogt
 component FootLock {
   doc "Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block)."
-  guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose foot this holds."
   field foot u32 "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends." {
     min 0
@@ -70,4 +67,4 @@ component FootLock {
 }
 ```
 
-<sub>Module `anim` line 441</sub>
+<sub>Module `anim` line 437</sub>

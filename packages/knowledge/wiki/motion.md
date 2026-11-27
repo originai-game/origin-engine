@@ -6,12 +6,10 @@ Generated motion for humanoids: the engine's motion model moves a character betw
 
 Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent.
 
-See `animation §10`.
-
 - **TypeScript**: functions are the namespace `og.motion`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.MotionAgent`, `PoseGoalDesc`, `FaceGoalDesc`, `WalkGoalDesc`, `JumpGoalDesc`, `og.motion.pose`, `og.motion.face`, `og.motion.walkTo`, `og.motion.jump`; 19 more are advanced (`og api show motion --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module motion {
@@ -72,4 +70,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>Module `motion` line 18</sub>
+<sub>Module `motion` line 17</sub>

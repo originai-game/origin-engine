@@ -1188,7 +1188,6 @@ export declare const math: ScalarMath;
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 // A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type.
-// See `saves §3`.
 
 /**
  * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: world.insert and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. Game code's other writes (world.set, a resource field, a column) are stored as given.
@@ -1466,14 +1465,12 @@ export interface SpawnDesc {
 
 /**
  * How world.restore takes a save.
- * See `saves §5`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface RestoreDesc {
   /**
    * Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way.
-   * See `saves §4`.
    *
    * @default false
    */
@@ -1482,7 +1479,6 @@ export interface RestoreDesc {
 
 /**
  * What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew in saved order, their Entity fields pointed at the new ids), sets those resources and leaves the rest of the world as it is.
- * See `saves §2`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -1656,7 +1652,6 @@ export interface SaveEdit {
   transform(name: string, map: RecordFn, desc?: TransformDesc): Result<void>;
   /**
    * Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. Every restore of the same save migrates to the same world and hash; it holds the records a world built at the new version holds, but its hash may differ from that world's by empty archetypes, so compare a split's result record by record, not by hash.
-   * See `saves §5`.
    *
    * @param name The saved type.
    * @param map The old record to the new types' records.
@@ -1702,7 +1697,6 @@ export interface SaveEdit {
 
 /**
  * A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session.
- * See `saves §4`.
  *
  * The payload of the `WorldRestored` event (token `og.WorldRestored`).
  */
@@ -1989,7 +1983,6 @@ export interface World {
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
   /**
    * The world as og-save:4 text: entities, components, names, resources, pending events, module state, schema hashes, the exact engine version and GameDesc.saveVersion. Another engine version or saved layout is refused, never upgraded. Available in every build with identical text on both hosts. SnapshotDesc selects tagged entities or resources. Inside a system it captures mid-tick state without queued structural changes; restore completes that tick. Make this the system's last write. Between ticks it captures the world between ticks.
-   * See `saves`.
    *
    * @param desc The whole world, or a selection: tagged entities and chosen resources.
    * @returns The save, or why not (the world could not be read, or SnapshotDesc names a type this world does not register).
@@ -2004,7 +1997,6 @@ export interface World {
   openSave(save: string): Result<SaveEdit>;
   /**
    * Replace the world with a current-engine snapshot; a selection replaces only its tagged entities and resources. Other engine versions and saved layouts are refused, never automatically upgraded. GameDesc.migrations may explicitly edit game-owned data; a refusal or throw refuses the restore. The session stays unless requested. Applies at tick end inside a system, before the next tick in a command, otherwise at once; the next tick delivers og.WorldRestored. A mid-tick save resumes its tick. Load collider meshes first.
-   * See `saves`.
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether to restore the saved input instead of keeping the host's.
@@ -2463,7 +2455,6 @@ export interface GameDesc {
   readonly saveVersion?: number;
   /**
    * The game's explicit save edits: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save must have the current engine version and og-save:4 envelope; other versions are refused, never converted. Engine records and state are never upgraded.
-   * See `saves §5`.
    *
    * @default []
    */
@@ -2485,14 +2476,12 @@ export interface GameDesc {
 /**
  * `og explore`'s view of a game (GameDesc.explore): the state its archive of cells abstracts and the inputs it perturbs from them. Every field is optional.
  * A cell counts a named entity's fields by its name, unnamed entities as their number and each field's set of values. Numbers are bucketed (an integer up to 16 by value, a number within -1..1 in eighths, others by power of two, NaN and the infinities apart), bools, strings and enums by value. The time is a cell's too, in 64 slices of the search's horizon, unless `ignore` names `@tick`.
- * See `explore §5`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface ExploreDesc {
   /**
    * The fields a cell reads, as `Record.field` or a whole `Record` (a resource or a component): what tells two states apart. Empty: every field of the game's own resources and components.
-   * See `explore §5`.
    *
    * @default []
    */
@@ -2751,8 +2740,7 @@ export interface OriginShifted {
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
 // Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
-// Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.
-// See `determinism §5`.
+// Every time is counted from the integer tick rate and the tick, exact to f64.
 
 /**
  * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
@@ -2970,7 +2958,6 @@ export interface Rng {
 // ── procgen ─────────────────────────────────────────────────────
 // Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP dungeons, wave function collapse, eroded heightmaps, plants and Voronoi mesh fracture. Bulk buffers are TypedArrays.
 // Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
-// See `world §7`.
 
 /**
  * Which procedural noise basis or fractal shaping.
@@ -4515,7 +4502,6 @@ export interface FractureResult {
 // Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays.
 // Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph).
 // Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
-// See `input`.
 
 /** The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. */
 export declare const MAX_POINTERS: 5;
@@ -4576,7 +4562,6 @@ export type ActionKind = "button" | "axis" | "axis2";
 /**
  * One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.
  * Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
- * See `input §1`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -4646,7 +4631,6 @@ export interface InputBinding {
 
 /**
  * A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad.
- * See `input §1`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -4705,7 +4689,6 @@ export interface ActionDesc {
   readonly holdMs?: number;
   /**
    * How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once.
-   * See `input §1`.
    *
    * @default 0
    * @range 0..600
@@ -4745,7 +4728,6 @@ export interface ActionState {
   readonly device: InputDevice;
   /**
    * When in the tick it went down, in seconds from the tick's start (-dt to dt): the time its key or pointer press carried, so its world time is `time.elapsed + pressedAt` and a replay gives it again. 0 when it did not go down this tick or its press carried no time (a gamepad, an on-screen control).
-   * See `input §1`.
    *
    * @unit s (seconds of simulation time)
    */
@@ -4937,7 +4919,6 @@ export interface InputGlyph {
 
 /**
  * The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. Kept by og.input.saveBindings, forgotten by og.input.resetBindings.
- * See `input §5`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -5003,7 +4984,6 @@ export interface KeyLabel {
 export interface MouseDesc {
   /**
    * Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement); where it refuses, the lock is the plain one (MouseInfo.rawUnsupported). Takes effect at the next lock.
-   * See `input §2`.
    *
    * @default true
    */
@@ -5281,7 +5261,7 @@ export interface PointerLockReport {
 export type GamepadLayout = "standard" | "web" | "linux" | "windows" | "macos" | "xinput";
 
 /**
- * A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4).
+ * A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings.
  */
 export interface GamepadInput {
   /**
@@ -5712,7 +5692,6 @@ export interface Pointers {
   readonly start4: Vector2;
   /**
    * The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it.
-   * See `input §2`.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    * @readonly written by the engine
@@ -5755,7 +5734,6 @@ export interface Pointers {
 /**
  * Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default.
  * While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it.
- * See `input §2`.
  *
  * The `PointerLock` resource (token `og.PointerLock`).
  */
@@ -5772,8 +5750,7 @@ export interface PointerLock {
 
 /**
  * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
- * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
- * See `input §4`.
+ * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent; sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
  *
  * The `Gamepad` resource (token `og.Gamepad`).
  */
@@ -6133,7 +6110,6 @@ export interface KeyDown {
   readonly repeat: boolean;
   /**
    * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it.
-   * See `input §6`.
    *
    * @range -1..1
    */
@@ -6166,7 +6142,6 @@ export interface KeyUp {
   readonly key: string;
   /**
    * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it.
-   * See `input §6`.
    *
    * @range -1..1
    */
@@ -6197,7 +6172,6 @@ export interface PointerDown {
   readonly id: number;
   /**
    * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it.
-   * See `input §6`.
    *
    * @range -1..1
    */
@@ -6228,7 +6202,6 @@ export interface PointerUp {
   readonly id: number;
   /**
    * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it.
-   * See `input §6`.
    *
    * @range -1..1
    */
@@ -6298,7 +6271,6 @@ export interface A11yAction {
 // ── camera ──────────────────────────────────────────────────────
 // The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
 // Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
-// See `camera`.
 
 /**
  * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
@@ -6457,7 +6429,6 @@ export interface Camera {
   background: Color;
   /**
    * A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none.
-   * See `flow §3`.
    */
   backgroundTexture: Texture;
   /**
@@ -6719,7 +6690,6 @@ export interface CameraCocDropped {
  * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
  * Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
  * The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
- * See `camera §1`.
  *
  * The value of the `OrbitCamera` component (token `og.OrbitCamera`).
  */
@@ -6968,7 +6938,6 @@ export interface Follow2D {
 
 /**
  * Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
- * See `camera §5`.
  *
  * The value of the `FramingCamera` component (token `og.FramingCamera`).
  */
@@ -7139,7 +7108,6 @@ export interface CameraRail {
 /**
  * A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. og.CameraBrain makes the enabled one with the highest priority live and blends og.Camera to it over the incoming shot's blendTime by its blendEase.
  * Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
- * See `camera §2`.
  *
  * The value of the `VirtualCamera` component (token `og.VirtualCamera`).
  */
@@ -7348,7 +7316,6 @@ export interface VirtualCamera {
 /**
  * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
  * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
- * See `camera §2`.
  *
  * The `CameraBrain` resource (token `og.CameraBrain`).
  */
@@ -7701,7 +7668,6 @@ export interface RenderCaps {
 
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
- * See `render §2`.
  * - `"tier"`: The engine's default method, on every backend (WebGPU, Metal, Vulkan, DX12): 4x MSAA in a 2D project (project.ts's create.form is 2d), where TAA's jitter and history blend would soften nearest-sampled pixel art; TAA in a 3D one.
  * - `"off"`: One sample per pixel.
  * - `"msaa4"`: 4x MSAA (what tier resolves to in a 2D project): sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled.
@@ -7714,7 +7680,6 @@ export type Antialias = "tier" | "off" | "msaa4" | "taa" | "fxaa" | "smaa" | "sm
 
 /**
  * How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.
- * See `render §3`.
  * - `"auto"`: Cube faces.
  * - `"cube"`: Six 90 degree faces: six shadow passes per light.
  * - `"paraboloid"`: Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection).
@@ -7723,7 +7688,6 @@ export type PointShadows = "auto" | "cube" | "paraboloid";
 
 /**
  * What the play surface presents, as og-render's DisplayOutput (RenderOptions.output). Offscreen and headless renderers, and so every capture and reference frame, are sRGB at standard range whatever it says.
- * See `render §5`.
  * - `"best"`: The widest the surface and display offer: extended range (HDR) with the Display P3 gamut, else Display P3 at standard range, else sRGB. A display that reports no headroom (an SDR monitor on a Mac) takes Display P3 at standard range.
  * - `"wide"`: Display P3 at standard range where the surface offers it, never extended range.
  * - `"srgb"`: sRGB at standard range on every surface, the output before wide gamut and HDR.
@@ -7739,7 +7703,6 @@ export type TaaHistory = "bilinear" | "catmullRom";
 
 /**
  * The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly.
- * See `render §2`.
  * - `"taau"`: The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then the tonemap's sharpening at RenderOptions.taaSharpen.
  * - `"fsr3"`: AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, thin-geometry locks, luma instability, Lanczos upsampling, then the tonemap's sharpening at taaSharpen's strength; transparent surfaces feed its reactive mask.
  * - `"auto"`: fsr3 while the scene is drawn smaller than the output (render scale below 1, automatic quality's included), where it keeps the thin and moving detail taau loses; taau at the output's size, which costs less. A device without fsr3 (RenderCapabilities.upscalers) draws taau.
@@ -7780,7 +7743,6 @@ export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascade
 
 /**
  * How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved.
- * See `render §2`.
  * - `"weighted"`: Weighted blended OIT (McGuire and Bavoil 2013) with each pixel's nearest fragment at least 1/8 opaque kept exact (Maule et al. 2013); the layers behind it show as their weighted mean. Any two submission orders agree within half-float rounding. Without fragment storage writes, all are weighted.
  * - `"linkedList"`: Per-pixel fragment lists: up to RenderOptions.transparencyLayers a pixel, sorted by depth (ties by a stable draw and primitive key) and composited exactly in any order. A pixel with more is resolved as weighted and counted (render dump transparency.fallbackPixels). Weighted where lists cannot run.
  */
@@ -7798,7 +7760,6 @@ export type LitFeature = "surfaceWeather" | "gi" | "areaLights" | "decals" | "ca
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
- * See `render §2`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -7827,7 +7788,6 @@ export interface RenderOptions {
   // ── Display ──
   /**
    * What the surface presents: left out (best), extended range and Display P3 where the surface and display offer them, else sRGB. capabilities.hdr and capabilities.wideGamut report the result; the tone curve and the UI's colours follow it.
-   * See `render §5`.
    *
    * @default "best"
    */
@@ -7847,7 +7807,6 @@ export interface RenderOptions {
   // ── Shadows and reflections ──
   /**
    * The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels.
-   * See `render §3`.
    *
    * @default 2048
    * @range 256..4096
@@ -7861,7 +7820,6 @@ export interface RenderOptions {
   readonly pointShadows?: PointShadows;
   /**
    * How many planar reflections (og.Water.planarReflection) draw at once. 1: the first asking (a grid before a mesh); others reflect as if they did not ask, logged once. 2: a second in view mirrors too; shaders read the first's (`planar_reflection`). RenderCapabilities.planarReflections reports it.
-   * See `render §8`.
    *
    * @default 1
    * @range 1..2
@@ -7884,7 +7842,6 @@ export interface RenderOptions {
   // ── Shaders and debugging ──
   /**
    * Optional lit features left out of every lit pipeline, on any host; empty (the default) builds them all. A scene using one left out draws as if it did not, logged once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it.
-   * See `render §10`.
    *
    * @default []
    */
@@ -7922,7 +7879,6 @@ export interface FoliageDesc {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field. Its tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
- * See `render §6`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -8028,7 +7984,6 @@ export interface StandardMaterialDesc {
   readonly opacity?: number;
   /**
    * Blend instead of writing opaque pixels, composited as RenderOptions.transparency says.
-   * See `render §2`.
    *
    * @default false
    */
@@ -8042,7 +7997,6 @@ export interface StandardMaterialDesc {
   readonly alphaTest?: number;
   /**
    * With MSAA (antialias msaa4), an alpha-tested material turns alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage. Without MSAA it cuts half a pixel's change of alpha below alphaTest (where coverage reaches 0): an edge keeps a few more pixels.
-   * See `render §6`.
    *
    * @default false
    */
@@ -8153,7 +8107,6 @@ export interface StandardMaterialDesc {
   readonly outlineColor?: Color;
   /**
    * This material's hull outline width in pixels; 0 is none (PostEffects.outline outlines everything). It lines the silhouette, where one part passes in front of another and creases against other objects, never edges between its own faces; a face at a grazing angle is lined only where it ends.
-   * See `render §6`.
    *
    * @default 0
    * @range 0..31
@@ -8161,7 +8114,6 @@ export interface StandardMaterialDesc {
   readonly outlineWidth?: number;
   /**
    * Whether og.MaterialStyle (a look's scene-wide stylised fields) reaches this material; false keeps it as declared under any look. A material with a physical lobe (any Physical layers field, or ior not 1.5) keeps that shading under the style's toon and takes the rest; its own toon still applies.
-   * See `render §6`.
    *
    * @default true
    */
@@ -8210,7 +8162,6 @@ export interface StandardMaterialDesc {
   readonly clearcoatNormalScale?: Vector2;
   /**
    * A velvet layer brightening grazing angles, as MeshPhysicalMaterial.sheen (KHR_materials_sheen): Estevez and Kulla's Charlie fibres with shadowing and a soft terminator, lit by the environment through its directional albedo, its light taken from the surface below. Strength times sheenColor; 0 none.
-   * See `render §6`.
    *
    * @default 0
    * @range 0..1
@@ -8367,7 +8318,6 @@ export interface StandardMaterialDesc {
   readonly anisotropyMap?: Texture | null;
   /**
    * How much of the diffuse light spreads under the surface before it leaves (skin, wax, marble, jade, milk): the shading softens past the terminator where the surface curves, and with a thickness, light from behind comes through. 0 is none.
-   * See `render §6`.
    *
    * @default 0
    * @range 0..1
@@ -8376,7 +8326,6 @@ export interface StandardMaterialDesc {
   readonly subsurface?: number;
   /**
    * How far light of the red, green and blue channel travels under the surface: skin's by default, red farthest.
-   * See `render §6`.
    *
    * @default { x: 0.0037, y: 0.0014, z: 0.0007 }
    * @range 0..
@@ -8385,7 +8334,6 @@ export interface StandardMaterialDesc {
   readonly subsurfaceRadius?: Vector3;
   /**
    * How much of the surface is strands of hair, running along v with their roots at the top of the image (turned by anisotropyRotation): a white highlight across them, a second in the hair's color nearer the tips, and with a thickness the light behind them comes through. 0 is none.
-   * See `render §6`.
    *
    * @default 0
    * @range 0..1
@@ -8394,7 +8342,6 @@ export interface StandardMaterialDesc {
   readonly hair?: number;
   /**
    * An eye: the radius of the iris in uv, round the centre of the uv square. The base colour within it lies under the cornea and is seen refracted by ior, so the iris has depth and stays in view from the side. 0 is no eye.
-   * See `render §6`.
    *
    * @default 0
    * @range 0..0.5
@@ -8402,7 +8349,6 @@ export interface StandardMaterialDesc {
   readonly irisRadius?: number;
   /**
    * How deep the iris lies under the top of the cornea, in iris radii.
-   * See `render §6`.
    *
    * @default 0.4
    * @range 0..2
@@ -8412,7 +8358,6 @@ export interface StandardMaterialDesc {
   // ── Texture arrays ──
   /**
    * The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none.
-   * See `render §6`.
    *
    * @default null
    */
@@ -8439,7 +8384,6 @@ export interface StandardMaterialDesc {
   // Every map samples TEXCOORD_0; a glTF transform's own texCoord (a second uv set) is not read, and the cook notes it.
   /**
    * The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
-   * See `render §6`.
    *
    * @default { x: 0, y: 0 }
    */
@@ -8536,7 +8480,6 @@ export interface StandardMaterialDesc {
   // ── Wireframe ──
   /**
    * Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide lines, unlit, depth tested, in the surface's colour along each edge (color × map × vertex colour + emissive × emissiveMap) or wireframeColor. Its meshes cast no shadow.
-   * See `render §6`.
    *
    * @default false
    */
@@ -8634,7 +8577,6 @@ export interface Mesh {
   castShadow: boolean;
   /**
    * Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off). false lights it as if unshadowed by every light, while it still casts as castShadow says.
-   * See `render §3`.
    *
    * @default true
    */
@@ -8668,7 +8610,6 @@ export interface Mesh {
   materialLayer: number;
   /**
    * Three.js layers, as Object3D.layers.mask: bit n set puts it on layer n. A camera (og.Camera, og.CameraView, og.Mirror) draws it when their masks share a bit, and og.render.raycast tests it when its own `layers` does. Shadow maps take every caster whatever its layers.
-   * See `render §3`.
    *
    * @default 1
    */
@@ -8677,10 +8618,9 @@ export interface Mesh {
 
 /**
  * How a light may change while the game runs, as Unreal's light mobility: which of its light og bake lightmaps bakes into its scene's lightmaps and light volumes, and which the renderer draws every frame.
- * See `render §4`.
  * - `"movable"`: Moves or changes in any way: drawn whole every frame, and none of its light is baked.
- * - `"stationary"`: Stays where it is; its colour and intensity may change. Drawn every frame, the light it bounces baked; past RenderSettings.staticLightReach its diffuse light may come from probes (render §3). The default.
- * - `"static"`: Never moves or changes: its direct light is baked too, and while its scene's bake is drawn the renderer leaves it out (render §3). Unbaked, it draws as stationary. Under a running og.DayNight a DirectionalLight is movable.
+ * - `"stationary"`: Stays where it is; its colour and intensity may change. Drawn every frame, the light it bounces baked; past RenderSettings.staticLightReach its diffuse light may come from probes. The default.
+ * - `"static"`: Never moves or changes: its direct light is baked too, and while its scene's bake is drawn the renderer leaves it out. Unbaked, it draws as stationary. Under a running og.DayNight a DirectionalLight is movable.
  */
 export type LightMobility = "movable" | "stationary" | "static";
 
@@ -8694,9 +8634,8 @@ export type LightMobility = "movable" | "stationary" | "static";
 export declare function LightMobility(value?: LightMobility, options?: FieldOptions): FieldSpec<"LightMobility">;
 
 /**
- * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
+ * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades.
  * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
- * See `render §3`.
  *
  * The value of the `DirectionalLight` component (token `og.DirectionalLight`).
  */
@@ -8717,7 +8656,6 @@ export interface DirectionalLight {
   intensity: number;
   /**
    * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
-   * See `render §4`.
    *
    * @default "stationary"
    */
@@ -8794,7 +8732,6 @@ export interface DirectionalLight {
 /**
  * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.
  * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
- * See `render §3`.
  *
  * The value of the `PointLight` component (token `og.PointLight`).
  */
@@ -8837,12 +8774,10 @@ export interface PointLight {
   castShadow: boolean;
   /**
    * A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none.
-   * See `render §3`.
    */
   cookie: Texture;
   /**
    * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
-   * See `render §4`.
    *
    * @default "stationary"
    */
@@ -8907,12 +8842,10 @@ export interface SpotLight {
   castShadow: boolean;
   /**
    * A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern.
-   * See `render §3`.
    */
   cookie: Texture;
   /**
    * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
-   * See `render §4`.
    *
    * @default "stationary"
    */
@@ -8939,7 +8872,6 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
 
 /**
  * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page offers the three.
- * See `render §1`.
  * - `"medium"`: The full frame: every quality field at its default.
  * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps.
  * - `"high"`: The full frame refined: FSR 3.1 at every render scale, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once.
@@ -8983,7 +8915,6 @@ export declare function QualityPreset(value?: QualityPreset, options?: FieldOpti
 
 /**
  * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
- * See `render §5`.
  *
  * The `RenderSettings` resource (token `og.RenderSettings`).
  */
@@ -9029,7 +8960,6 @@ export interface RenderSettings {
   bloomIntensity: number;
   /**
    * Below 0 (the default) keeps Origin's bloom. 0 to 1 is three.js UnrealBloomPass at this radius: a half-resolution high pass from bloomThreshold to bloomThreshold + bloomKnee, five Gaussian mips mixed by mix(f, 1.2 - f, radius), added at bloomIntensity as EffectComposer's additive copy.
-   * See `render §5`.
    *
    * @default -1
    * @range -1..1
@@ -9045,12 +8975,10 @@ export interface RenderSettings {
   // ── Exposure and tone mapping ──
   /**
    * Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike.
-   * See `render §5`.
    */
   autoExposure: boolean;
   /**
    * The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further.
-   * See `render §5`.
    *
    * @default -10
    * @range -20..20
@@ -9059,7 +8987,6 @@ export interface RenderSettings {
   autoExposureMin: number;
   /**
    * The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays as dark as its light makes it. Below autoExposureMin it is taken as autoExposureMin.
-   * See `render §5`.
    *
    * @default 10
    * @range -20..20
@@ -9076,7 +9003,6 @@ export interface RenderSettings {
   adaptSpeedUp: number;
   /**
    * How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant.
-   * See `render §5`.
    *
    * @range 0..100
    * @unit evPerSecond (exposure stops (EV) per second of simulation time)
@@ -9104,7 +9030,6 @@ export interface RenderSettings {
   // ── Scene ──
   /**
    * A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full.
-   * See `render §10`.
    *
    * @default 1
    * @range 0..16
@@ -9113,14 +9038,12 @@ export interface RenderSettings {
   lodBias: number;
   /**
    * Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map.
-   * See `render §4`.
    *
    * @default true
    */
   bakedLighting: boolean;
   /**
    * How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.
-   * See `render §3`.
    *
    * @default 0
    * @range 0..
@@ -9136,7 +9059,6 @@ export interface RenderSettings {
   quality: QualityPreset;
   /**
    * Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off.
-   * See `render §3`.
    *
    * @default true
    */
@@ -9211,7 +9133,6 @@ export interface RenderSettings {
   ambientOcclusion: boolean;
   /**
    * The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again.
-   * See `render §5`.
    */
   aoResolution: AoResolutionSetting;
   /**
@@ -9223,7 +9144,6 @@ export interface RenderSettings {
   ssrStepScale: number;
   /**
    * Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame.
-   * See `render §7`.
    *
    * @default 1
    * @range 0..4
@@ -9231,7 +9151,6 @@ export interface RenderSettings {
   volumetricStepScale: number;
   /**
    * Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame.
-   * See `render §2`.
    *
    * @default 4
    * @range 1..4
@@ -9239,7 +9158,6 @@ export interface RenderSettings {
   msaaSamples: number;
   /**
    * Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history.
-   * See `render §1`.
    *
    * @default "auto"
    */
@@ -9247,7 +9165,6 @@ export interface RenderSettings {
   // ── Interpolation ──
   /**
    * Draw what moves between the last two ticks: a frame between ticks blends entities, og.Camera and skinned joints from the tick before the last to the last, showing the world up to one tick late. Frames on a tick boundary, screenshots and captures draw the last tick. Presentation only.
-   * See `render §9`.
    *
    * @default true
    */
@@ -9265,7 +9182,6 @@ export interface RenderSettings {
 
 /**
  * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
- * See `render §9`.
  *
  * The value of the `Interpolation` component (token `og.Interpolation`).
  */
@@ -9380,7 +9296,6 @@ export interface Environment {
   backgroundBlurriness: number;
   /**
    * Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity.
-   * See `render §4`.
    *
    * @default 0
    * @range 0..
@@ -9465,7 +9380,6 @@ export declare function EffectMaterial(value?: EffectMaterial, options?: FieldOp
 
 /**
  * Which ambient occlusion algorithm runs.
- * See `render §5`.
  * - `"auto"`: GTAO.
  * - `"gtao"`: Ground-truth ambient occlusion (3 slices): the better looking one.
  * - `"ssao"`: Hemisphere SSAO with 8 samples: the cheaper one.
@@ -9550,7 +9464,6 @@ export declare function Blend(value?: Blend, options?: FieldOptions): FieldSpec<
 
 /**
  * How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite), a mode of og.Sprite and SpriteDesc. The turn is computed on the GPU from each drawing camera's own axes, so it never feeds back into the simulation. It turns about its anchor (a nine-slice as one panel), `rotation` still turns it in its plane, and its drop shadow is cast by the quad stood upright facing the sun. Without sortY, and tone mapped, it sorts back to front among the transparent meshes by its anchor's view depth; otherwise it keeps the sprite order. World text takes the same modes.
- * See `render §11`.
  * - `"none"`: In the world's xy plane facing +z, as every sprite before billboards.
  * - `"camera"`: In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side).
  * - `"cameraY"`: Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them.
@@ -9569,7 +9482,6 @@ export declare function SpriteFacing(value?: SpriteFacing, options?: FieldOption
 /**
  * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.
  * AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.
- * See `render §5`.
  *
  * The `PostEffects` resource (token `og.PostEffects`).
  */
@@ -9612,7 +9524,6 @@ export interface PostEffects {
   aoDirect: number;
   /**
    * Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere.
-   * See `render §5`.
    *
    * @range 0..
    * @tunable
@@ -9688,7 +9599,6 @@ export interface PostEffects {
   dofFalloff: number;
   /**
    * Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth.
-   * See `looks §19`.
    *
    * @range 0..0.5
    * @tunable
@@ -9832,7 +9742,6 @@ export interface PostEffects {
   // Applied in field order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (white balance in linear light, the rest on the sRGB-encoded colour), baked with the LUT into one 32³ table.
   /**
    * White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off.
-   * See `render §5`.
    *
    * @range -1..1
    * @tunable
@@ -9963,7 +9872,6 @@ export interface PostEffects {
   chromaticAberration: number;
   /**
    * Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame.
-   * See `render §5`.
    *
    * @range -1..1
    * @tunable
@@ -10050,7 +9958,6 @@ export interface PostEffects {
   // ── Screen-space reflections ──
   /**
    * Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass.
-   * See `render §5`.
    */
   ssr: boolean;
   /**
@@ -10073,7 +9980,6 @@ export interface PostEffects {
   ssrThickness: number;
   /**
    * The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them.
-   * See `render §5`.
    *
    * @default 64
    * @range 4..128
@@ -10097,7 +10003,6 @@ export interface PostEffects {
   ssrIntensity: number;
   /**
    * The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them.
-   * See `render §5`.
    *
    * @default 0.6
    * @range 0..1
@@ -10107,7 +10012,6 @@ export interface PostEffects {
   ssrMaxRoughness: number;
   /**
    * Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution.
-   * See `render §5`.
    *
    * @default "half"
    */
@@ -10115,7 +10019,6 @@ export interface PostEffects {
   // ── Custom passes ──
   /**
    * Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors).
-   * See `render §5`.
    *
    * @capacity 8 elements (List.Post.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
@@ -10125,7 +10028,6 @@ export interface PostEffects {
 /**
  * Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo of the bright parts of the bloom chain's first level mirrored through the frame's centre, plus ghosts of the sun and up to seven point and spot lights weighted by how much of each the depth shows, added before the tone curve in exposed light, after bloom and TAA, at a quarter of the frame.
  * Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
- * See `render §5`.
  *
  * The `LensFlare` resource (token `og.LensFlare`).
  */
@@ -10221,7 +10123,6 @@ export interface LensFlare {
 
 /**
  * How GlobalIllumination bounces the light.
- * See `render §4`.
  * - `"screen"`: In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows.
  * - `"probes"`: With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (meshes and terrains) every few frames, gathers light from every side, sky included; every lit surface takes its ambient light from the nearby probes that see it. Coarse: probeSpacing apart.
  * - `"both"`: Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see.
@@ -10240,7 +10141,6 @@ export declare function GiMethod(value?: GiMethod, options?: FieldOptions): Fiel
 /**
  * Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that).
  * Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
- * See `render §4`.
  *
  * The `GlobalIllumination` resource (token `og.GlobalIllumination`).
  */
@@ -10422,7 +10322,6 @@ export declare function OutlinePlace(value?: OutlinePlace, options?: FieldOption
 
 /**
  * Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).
- * See `looks §8`.
  * - `"screen"`: Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it.
  * - `"surface"`: On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms. The frame runs the prepass.
  * - `"object"`: As surface, but in each mesh instance's own space (three planes blended by the instance's normal, in metres along its axes): a moving, turning, scaled or skinned object carries its pattern. Terrain, scattered copies and shader-moved vertices keep the world pattern. It adds an object pass.
@@ -10456,7 +10355,6 @@ export declare function PosterizeMode(value?: PosterizeMode, options?: FieldOpti
 
 /**
  * How Stylise.halftone inks the frame.
- * See `looks §9`.
  * - `"ink"`: One ink (halftoneColor) on paper: dots larger where the image is darker.
  * - `"cmyk"`: Four-colour process print, as comics were printed: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle from halftoneAngle, the inks multiplied on white paper.
  */
@@ -10490,7 +10388,6 @@ export declare function HalftoneRegion(value?: HalftoneRegion, options?: FieldOp
 
 /**
  * Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour, ink lines on tonal edges, colour bands by depth, and early 3D's vertex snapping, affine textures and coarse depth. Every primitive is off at its zero value (0, false, none) and then costs nothing. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
- * See `looks §6`.
  *
  * The `Stylise` resource (token `og.Stylise`).
  */
@@ -10498,14 +10395,12 @@ export interface Stylise {
   // ── Pixel grid ──
   /**
    * The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale.
-   * See `looks §7`.
    *
    * @range 0..2160
    */
   pixelHeight: number;
   /**
    * The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it.
-   * See `looks §7`.
    *
    * @range 0..16
    */
@@ -10631,7 +10526,6 @@ export interface Stylise {
   hatchingSpace: StyliseSpace;
   /**
    * Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass.
-   * See `looks §9`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10640,7 +10534,6 @@ export interface Stylise {
   hatchingDepth: number;
   /**
    * Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged.
-   * See `looks §9`.
    *
    * @range 0..
    * @unit m (metres)
@@ -10650,7 +10543,6 @@ export interface Stylise {
   // ── Paint ──
   /**
    * Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass.
-   * See `looks §10`.
    *
    * @range 0..8
    * @tunable
@@ -10658,7 +10550,6 @@ export interface Stylise {
   paintRadius: number;
   /**
    * How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape.
-   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10682,7 +10573,6 @@ export interface Stylise {
   paintBleed: number;
   /**
    * Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance.
-   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10771,7 +10661,6 @@ export interface Stylise {
   // ── Depth bands ──
   /**
    * Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off.
-   * See `looks §11`.
    *
    * @range 0..8
    */
@@ -10840,7 +10729,6 @@ export interface Stylise {
   // ── Paint detail ──
   /**
    * How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike.
-   * See `looks §10`.
    *
    * @default 1
    * @range 0..1
@@ -10860,7 +10748,6 @@ export interface Stylise {
   // ── Watercolour ──
   /**
    * The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none.
-   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10869,7 +10756,6 @@ export interface Stylise {
   watercolorEdgeDarkening: number;
   /**
    * Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none.
-   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10878,7 +10764,6 @@ export interface Stylise {
   watercolorGranulation: number;
   /**
    * Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none.
-   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -10902,7 +10787,6 @@ export interface Stylise {
   watercolorWobble: number;
   /**
    * The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit.
-   * See `looks §10`.
    *
    * @range 0..0.9
    * @unit ratio (a fraction between 0 and 1)
@@ -10918,7 +10802,6 @@ export interface Stylise {
   // ── Dither placement ──
   /**
    * Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass.
-   * See `looks §8`.
    */
   ditherSpace: StyliseSpace;
   // ── Halftone print ──
@@ -10933,20 +10816,17 @@ export interface Stylise {
   halftoneMisregistration: number;
   /**
    * Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera.
-   * See `looks §9`.
    */
   halftoneRegion: HalftoneRegion;
   // ── Colour hatching ──
   /**
    * Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground.
-   * See `looks §9`.
    */
   hatchingKeepColor: boolean;
 }
 
 /**
  * Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. Each applies to a lit material that leaves that field at its own default; the terrain, grass, scattered copies, impostors and crowds take toon (built-in bands), shadowTint and shadowDarkness. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds the simulation.
- * See `looks §12`.
  *
  * The `MaterialStyle` resource (token `og.MaterialStyle`).
  */
@@ -10977,7 +10857,6 @@ export interface MaterialStyle {
   shadowTintAmount: number;
   /**
    * How far shadowed surfaces fall towards black: where the sun does not reach, a surface loses this share of the sun's ramp and of the ambient light (1: solid black shadows). Point, spot and rect lights and the emissive still show inside it; shadowTint's light is added after it. 0 is off.
-   * See `looks §12`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -11014,7 +10893,6 @@ export interface MaterialStyle {
   outlineColor: Color;
   /**
    * The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one. A surface seen at a grazing angle is lined only where it ends.
-   * See `looks §12`.
    *
    * @range 0..31
    * @tunable
@@ -11064,7 +10942,6 @@ export interface MaterialStyle {
   // ── Toon shading ──
   /**
    * How smooth a toon material's ambient light (the Environment and its hemisphere light) and reflection stay: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), so the bands sit on flat colour; 1 the smooth PBR ambient and reflections.
-   * See `looks §12`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -11087,7 +10964,6 @@ export interface MaterialStyle {
   // ── Wireframe ──
   /**
    * Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's; this style's angle and colour where it sets none), in the colour the surface shows along each edge or wireframeColor; the faces hide the edges behind them. A material's own wireframe draws its edges alone.
-   * See `looks §12`.
    */
   wireframe: boolean;
   /**
@@ -11329,7 +11205,6 @@ export interface LightMask2D {
 
 /**
  * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
- * See `looks §14`.
  *
  * The value of the `Decal` component (token `og.Decal`).
  */
@@ -11422,7 +11297,6 @@ export declare const PARTICLES_ARMED: 4294967295;
 
 /**
  * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
- * See `looks §14`.
  *
  * The value of the `ParticleSystem` component (token `og.ParticleSystem`).
  */
@@ -11928,7 +11802,6 @@ export interface SpriteDesc {
   readonly texture?: Texture | null;
   /**
    * Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`.
-   * See `looks §13`.
    *
    * @default null
    */
@@ -12046,7 +11919,6 @@ export interface SpriteDesc {
   readonly dropShadow?: number;
   /**
    * The height of the level ground the drop shadow lies on (a floor, a deck, a step); 0 with no terrain is y = 0. Where an og.Terrain under the anchor is higher, the shadow lies on it: on the plane fitted to its slope, or bent over a hollow or a ridge narrower than the shadow.
-   * See `looks §13`.
    *
    * @default 0
    * @unit m (metres)
@@ -12054,7 +11926,6 @@ export interface SpriteDesc {
   readonly dropShadowHeight?: number;
   /**
    * As three.js Material.toneMapped: true draws the sprite through exposure, bloom and the tone curve. false keeps its colours as given (clamped 0 to 1), still placed, depth tested and sorted, outside exposure, bloom, fog and the curve; grade and screen effects apply. Additive sprites always tone map.
-   * See `looks §13`.
    *
    * @default true
    */
@@ -12264,7 +12135,6 @@ export interface Sprite {
   shadowOffset: Vector2;
   /**
    * A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow).
-   * See `looks §13`.
    *
    * @range 0..1
    * @tunable
@@ -12298,7 +12168,6 @@ export interface Sprite {
   // ── Outline ──
   /**
    * A pixel outline this many logical pixels wide round the texture's opaque texels (a diamond of whole pixels). A logical pixel is 1 / ArtPixels.unit world units, else a texel. 0 is none, or ArtLine.width under a contract with a unit for a texture the cook did not line. Untextured sprites take none.
-   * See `looks §13`.
    *
    * @range 0..4
    */
@@ -12312,7 +12181,6 @@ export interface Sprite {
   // ── Palette swap ──
   /**
    * A palette swap: a texture of N rows of colours (load it as `kind pixel`), texel i of row r the colour of index i. The sprite draws its texture's index texture (the cook's `<id>#index`) through row paletteRow; flipbook frames swap too. 0 is none; a texture without one draws as it is, with a warning.
-   * See `looks §13`.
    */
   palette: Texture;
   /** The row of `palette` drawn (past the last, the last). */
@@ -12320,13 +12188,11 @@ export interface Sprite {
   // ── Shader ──
   /**
    * Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none.
-   * See `looks §13`.
    */
   material: Material;
   // ── Wind ──
   /**
    * How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only.
-   * See `looks §13`.
    *
    * @range 0..2
    * @tunable
@@ -12657,7 +12523,6 @@ export interface RenderCapabilities {
   // ── Antialiasing ──
   /**
    * The samples per pixel the scene is multisampled at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off, 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA.
-   * See `looks §18`.
    */
   readonly maxMsaaSamples: number;
   /**
@@ -12672,7 +12537,6 @@ export interface RenderCapabilities {
   // ── Stylisation ──
   /**
    * The Stylise and MaterialStyle primitive groups this renderer draws, by name (pixel, posterize, dither, paint, watercolor, surfaceSpace, toon, outline, wireframe, ...). A look that uses one this list lacks still applies; that primitive is not drawn.
-   * See `looks §18`.
    */
   readonly stylise: readonly string[];
   // ── Reflections and targets ──
@@ -12714,7 +12578,6 @@ export interface RenderCapabilities {
   // ── Filtering ──
   /**
    * The anisotropic filtering of sprites and og.ui's images (never text): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer, 0 without a renderer. Above 1 an image squeezed along one axis keeps the other's detail; at 1 it blurs.
-   * See `looks §18`.
    */
   readonly spriteAnisotropy: number;
   // ── Water ──
@@ -12739,7 +12602,6 @@ export interface RenderCapabilities {
   // ── Crowds ──
   /**
    * Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time. Where false, and without a renderer, the CPU culls them: the same members, levels and frame at a higher CPU cost.
-   * See `looks §18`.
    */
   readonly gpuCrowds: boolean;
   // ── Decoding ──
@@ -12750,7 +12612,6 @@ export interface RenderCapabilities {
   // ── Visibility buffer ──
   /**
    * Whether the visibility buffer draws the camera's small clusters of clustered meshes (rasterised in compute). False without a renderer and once the device refused the resolve (visibilityBufferRefused): those clusters then draw on the hardware path. True until the first frame with a clustered mesh.
-   * See `looks §18`.
    */
   readonly visibilityBuffer: boolean;
   /**
@@ -12760,13 +12621,11 @@ export interface RenderCapabilities {
   // ── Visual simulation ──
   /**
    * Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer.
-   * See `looks §18`.
    */
   readonly visualSimulation: boolean;
   // ── 3D world ──
   /**
    * Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use.
-   * See `looks §18`.
    */
   readonly world3d: boolean;
 }
@@ -12794,7 +12653,6 @@ export declare function ReflectionProbeMode(value?: ReflectionProbeMode, options
 
 /**
  * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
- * See `looks §15`.
  *
  * The value of the `ReflectionProbe` component (token `og.ReflectionProbe`).
  */
@@ -12877,7 +12735,6 @@ export type PowerPreference = "highPerformance" | "lowPower";
 
 /**
  * The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so hashes, snapshots, saves and replays never see it. A native run draws every frame at render scale 1 whatever it says, though it draws the preset. og.render.display(world).settings is the whole object to save.
- * See `looks §17`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -12911,7 +12768,6 @@ export interface DisplaySettings {
   readonly renderScale?: number;
   /**
    * Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates. False draws at renderScale and RenderSettings exactly.
-   * See `looks §17`.
    *
    * @default true
    */
@@ -12933,7 +12789,6 @@ export interface DisplaySettings {
   // ── Cloth detail ──
   /**
    * Draw segments per coarse Cloth or SoftBody edge where the device has compute and vertex storage: 0 selects two, 1 to 8 that many (its square of triangles per solve triangle, crack-free Phong tessellation). Points, snapshots and hashes are unchanged. Automatic quality caps it at two, then one.
-   * See `looks §17`.
    *
    * @default 0
    * @range 0..8
@@ -14441,7 +14296,6 @@ export interface RenderTargetDesc {
   readonly format?: RenderTargetFormat;
   /**
    * Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): linear view depth from near (0) to far (1) in rgb, of the opaque meshes and models, alpha cuts applied (transparent meshes, sprites and particles write none), on every tier (RenderCapabilities.renderTargetDepth).
-   * See `render §11`.
    *
    * @default false
    */
@@ -14468,7 +14322,6 @@ export interface RenderTargetInfo {
 /**
  * A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame.
  * It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame.
- * See `render §11`.
  *
  * The value of the `CameraView` component (token `og.CameraView`).
  */
@@ -14653,7 +14506,6 @@ export interface PostError {
 
 /**
  * How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
- * See `render §7`.
  * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening quadratically) lit in compute by the sun through its cascades and by the clustered lights through their shadows and cookies (eight samples a cell), integrated front to back: what the engine draws with.
  * - `"raymarch"`: Each pixel's view ray marched through the fog in 24 jittered steps, lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid.
  */
@@ -14662,7 +14514,6 @@ export type VolumetricFog = "froxel" | "raymarch";
 /**
  * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces with twoSided). Shaded with linearly transformed cosines (Heitz et al. 2016). og bake lightmaps traces its exact soft shadows into the bounce light, castShadow or not.
  * Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
- * See `render §3`.
  *
  * The value of the `RectLight` component (token `og.RectLight`).
  */
@@ -14703,12 +14554,10 @@ export interface RectLight {
   twoSided: boolean;
   /**
    * Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it.
-   * See `render §3`.
    */
   castShadow: boolean;
   /**
    * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
-   * See `render §4`.
    *
    * @default "stationary"
    */
@@ -14718,7 +14567,6 @@ export interface RectLight {
 /**
  * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
  * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.
- * See `render §4`.
  *
  * The value of the `LightVolume` component (token `og.LightVolume`).
  */
@@ -14736,7 +14584,6 @@ export interface LightVolume {
 /**
  * Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce each sweep. Shiny surfaces inside reflect the probes' light, not the sky.
  * Until every probe is relit, and while GlobalIllumination.allowed is false, the box takes its LightVolume's baked probes, else the sky's. Realtime probes win over baked ones; static models keep their lightmaps. Up to eight volumes are drawn. Presentation only; a world that never names it keeps its type table, saves and hash.
- * See `render §4`.
  *
  * The value of the `RealtimeLightVolume` component (token `og.RealtimeLightVolume`).
  */
@@ -14784,7 +14631,6 @@ export interface BakedScene {
 // ── shapes ──────────────────────────────────────────────────────
 // Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, bezierCurveTo, arc, absarc, ellipse, closePath, ...) and flattened to points by getPoints. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine.
 // They are TypeScript values, not world state: the geometry made from them is what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host. A `type model` asset writes the same calls as text.
-// See `models §1`.
 
 /** A shape's holes, as three.js Shape.holes: an array; push a path to add a hole. */
 export interface PathList {
@@ -14944,7 +14790,6 @@ export interface ShapeClass {
 // Load cooked output: `og cook` turns content/**/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/.
 // Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp.
 // The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
-// See `loading §1`.
 
 /**
  * Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. No normalization or resampling.
@@ -15065,7 +14910,6 @@ export interface GltfDesc {
   readonly scene?: number;
   /**
    * Whether the models instantiated from it cast shadows: world.instantiate and a scene's `model` line give their og.Model this castShadow. On when omitted; false turns it off. The flags belong to the asset: another og.load.gltf of the path answers the same handle and sets them again, for later models.
-   * See `loading §2`.
    *
    * @default true
    */
@@ -15093,7 +14937,7 @@ export interface GltfPart {
 }
 
 /**
- * A cooked model's shape in its own space (og.Model's frame before its og.Transform): the axes a principal-axis fit of its triangles finds, its length and its top surface along that length. Place and turn things on a model from these, never from hand measurements (`physics §6.1`).
+ * A cooked model's shape in its own space (og.Model's frame before its og.Transform): the axes a principal-axis fit of its triangles finds, its length and its top surface along that length. Place and turn things on a model from these, never from hand measurements.
  */
 export interface ModelShape {
   /**
@@ -15136,7 +14980,6 @@ export interface GltfInfo {
   readonly variants: readonly string[];
   /**
    * How many punctual lights (KHR_lights_punctual) its default scene has: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place, converted from glTF's units.
-   * See `loading §2`.
    */
   readonly lights: number;
   /**
@@ -15199,7 +15042,6 @@ export interface SoundInfo {
   readonly seconds: number;
   /**
    * The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest.
-   * See `loading §3`.
    */
   readonly chunks: number;
 }
@@ -15256,7 +15098,6 @@ export interface Model {
   flashColor: Color;
   /**
    * Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's; false takes this instance out of every shadow pass. Set from GltfDesc.castShadow unless the scene gives the entity a `Model` table.
-   * See `loading §2`.
    *
    * @default true
    */
@@ -15275,7 +15116,6 @@ export interface Model {
   visible: boolean;
   /**
    * This instance's level of detail bias, multiplied with RenderSettings.lodBias: the renderer draws the coarsest cooked level whose error covers less than a pixel at the model's distance. Above 1 keeps detail farther, below 1 drops it sooner; 0 always draws the full mesh.
-   * See `loading §2`.
    *
    * @default 1
    * @range 0..16
@@ -15290,7 +15130,6 @@ export interface Model {
   layers: number;
   /**
    * How much og.Wind sways this instance, as it sways og.TerrainScatter copies: 0 still (the default), 1 as it blows. Each vertex above the model's origin moves downwind by its height; its shadow and depth move with it. Visual only: the simulation never reads it, and a tick sways the same on every run.
-   * See `loading §2`.
    *
    * @range 0..2
    * @tunable
@@ -15298,12 +15137,10 @@ export interface Model {
   sway: number;
   /**
    * Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model.
-   * See `loading §2`.
    */
   static: boolean;
   /**
    * The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only. -1 draws the glTF's own materials; an index past the model's variants does too.
-   * See `loading §2`.
    *
    * @default -1
    * @range -1..
@@ -15520,7 +15357,6 @@ export interface ImageDataDesc {
 
 /**
  * A file of a content catalog's version: what og.load.data reads. A catalog is this game's content, published by its host in immutable versions; its content base is the host's (og run --content, the page's), never game code's.
- * See `loading §14`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15554,7 +15390,6 @@ export type DataFormat = "json" | "bytes";
 
 /**
  * Which catalog file og.load.data reads, and how.
- * See `loading §14`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15696,7 +15531,6 @@ export interface AssetFailed {
 // Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
 // The profile is 2D in a `form "2d"` project. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
 // The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
-// See `physics`.
 
 /** The most hits og.physics.castRayAll returns. */
 export declare const MAX_RAYCAST_HITS: 256;
@@ -15727,7 +15561,6 @@ export declare const PROFILE_3D: 3;
 
 /**
  * A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract.
- * See `physics §1`.
  * - `"dynamic"`: Moved by the solver; Transform and Velocity are written back every tick.
  * - `"fixed"`: Not moved by the solver; collides with dynamic bodies.
  * - `"kinematic"`: Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Transform is not a next-position target from which velocity is inferred.
@@ -15746,7 +15579,6 @@ export declare function RigidBodyType(value?: RigidBodyType, options?: FieldOpti
 /**
  * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
  * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
- * See `physics §1`.
  *
  * The value of the `RigidBody` component (token `og.RigidBody`).
  */
@@ -15799,7 +15631,6 @@ export interface RigidBody {
   ccd: boolean;
   /**
    * Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. Needs an og.Collider.
-   * See `physics §1`.
    *
    * @unit m (metres)
    * @tunable
@@ -15807,7 +15638,6 @@ export interface RigidBody {
   centerOfMass: Vector3;
   /**
    * How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping.
-   * See `physics §1`.
    *
    * @range 0..100
    * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
@@ -15853,7 +15683,6 @@ export interface RigidBody {
 
 /**
  * What a collider is shaped as: Collider.shape and ShapeDesc.shape.
- * See `physics §1`.
  * - `"box"`: A box of `size` (both profiles).
  * - `"sphere"`: A sphere of `radius` (a circle in 2D).
  * - `"capsule"`: A capsule along y of `radius`, with `height` between the cap centres (both profiles).
@@ -15898,7 +15727,6 @@ export declare function CombineRule(value?: CombineRule, options?: FieldOptions)
 /**
  * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
  * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
- * See `physics §1`.
  *
  * The value of the `Collider` component (token `og.Collider`).
  */
@@ -16029,7 +15857,6 @@ export declare function ForceFieldKind(value?: ForceFieldKind, options?: FieldOp
 
 /**
  * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
- * See `physics §8`.
  *
  * The value of the `ForceField` component (token `og.ForceField`).
  */
@@ -16088,7 +15915,6 @@ export interface Velocity {
 export interface Physics {
   /**
    * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again.
-   * See `physics §2`.
    *
    * @default 3
    * @range 2..3
@@ -16130,7 +15956,6 @@ export interface Physics {
   restSpeed: number;
   /**
    * Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps.
-   * See `physics §3`.
    *
    * @range 0..3600
    * @tunable
@@ -16149,7 +15974,6 @@ export interface Physics {
 
 /**
  * Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.
- * See `physics §5`.
  *
  * The payload of the `CollisionStarted` event (token `og.CollisionStarted`).
  */
@@ -16176,7 +16000,6 @@ export interface CollisionStarted {
   readonly impulse: number;
   /**
    * a's velocity relative to b at `point` as the step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach.
-   * See `physics §5`.
    *
    * @unit mps (metres per second)
    */
@@ -16324,7 +16147,6 @@ export interface Contact {
 
 /**
  * How a joint holds its two bodies: Joint.kind.
- * See `physics §1`.
  * - `"fixed"`: The two bodies move as one.
  * - `"revolute"`: A hinge about `axis` (2D: about z), with optional limits and a motor.
  * - `"prismatic"`: A slider along `axis`, with optional limits and a motor.
@@ -16346,7 +16168,6 @@ export declare function JointType(value?: JointType, options?: FieldOptions): Fi
 
 /**
  * What drives a joint: Joint.motor.
- * See `physics §1`.
  * - `"none"`: No motor.
  * - `"velocity"`: Drive towards `motorTarget` speed (rad/s or m/s).
  * - `"position"`: Spring towards `motorTarget` angle or position (a servo).
@@ -16380,7 +16201,6 @@ export declare function JointMotorModel(value?: JointMotorModel, options?: Field
 
 /**
  * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
- * See `physics §1`.
  *
  * The value of the `Joint` component (token `og.Joint`).
  */
@@ -16530,7 +16350,6 @@ export interface Joint {
 
 /**
  * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
- * See `physics §6`.
  *
  * The value of the `CharacterController` component (token `og.CharacterController`).
  */
@@ -16698,7 +16517,6 @@ export interface CharacterController {
   pushBodies: boolean;
   /**
    * Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does.
-   * See `physics §6`.
    *
    * @default 1000
    * @range 0..
@@ -16708,7 +16526,6 @@ export interface CharacterController {
   pushStrength: number;
   /**
    * The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under.
-   * See `physics §8`.
    *
    * @default 0.5
    * @range 0..1
@@ -16763,7 +16580,6 @@ export interface CharacterController {
 
 /**
  * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
- * See `physics §6`.
  *
  * The value of the `PlatformerController` component (token `og.PlatformerController`).
  */
@@ -16844,7 +16660,6 @@ export interface PlatformerController {
   down: boolean;
   /**
    * A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on.
-   * See `physics §6`.
    *
    * @unit mps (metres per second)
    */
@@ -17055,7 +16870,6 @@ export interface PlatformerController {
   pushBodies: boolean;
   /**
    * The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does.
-   * See `physics §6`.
    *
    * @default 1000
    * @range 0..
@@ -17216,7 +17030,6 @@ export declare function VehicleModel(value?: VehicleModel, options?: FieldOption
  * Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels.
  * Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero.
  * 3D wheels cast the full suspension droop, skip sensors and honour ContactHook.
- * See `physics §7`.
  *
  * The value of the `Vehicle` component (token `og.Vehicle`).
  */
@@ -17330,7 +17143,6 @@ export interface Vehicle {
   antiRollStiffness: number;
   /**
    * The real tyre friction coefficient, multiplied by the ground friction; no hidden scale.
-   * See `physics §7`.
    *
    * @default 1
    * @range 0..
@@ -17339,7 +17151,6 @@ export interface Vehicle {
   grip: number;
   /**
    * Arcade drive torque per driven wheel in N·m, faded towards maxSpeed.
-   * See `physics §7`.
    *
    * @default 2500
    * @range 0..
@@ -17357,7 +17168,6 @@ export interface Vehicle {
   maxSpeed: number;
   /**
    * Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity.
-   * See `physics §7`.
    *
    * @default 2000
    * @range 0..
@@ -17386,7 +17196,6 @@ export interface Vehicle {
   wheelMass: number;
   /**
    * How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over.
-   * See `physics §7`.
    *
    * @range 0..1
    * @tunable
@@ -17476,7 +17285,6 @@ export interface Vehicle {
   model: VehicleModel;
   /**
    * Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip.
-   * See `physics §7`.
    *
    * @range 0..1
    */
@@ -17875,7 +17683,6 @@ export interface Rope {
 
 /**
  * Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation.
- * See `physics §8`.
  * - `"gameplay"`: In the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default.
  * - `"visual"`: By the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape.
  */
@@ -18007,7 +17814,6 @@ export interface Cloth {
   gravityScale: number;
   /**
    * Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces.
-   * See `physics §8`.
    *
    * @unit mps (metres per second)
    * @tunable
@@ -18060,16 +17866,12 @@ export interface Cloth {
    * @default true
    */
   visible: boolean;
-  /**
-   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
-   * See `physics §8`.
-   */
+  /** gameplay (in the tick, world state) or visual (on the GPU, for looks only). */
   simulation: Simulation;
 }
 
 /**
  * A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
- * See `physics §8`.
  *
  * The value of the `Garment` component (token `og.Garment`).
  */
@@ -18196,7 +17998,6 @@ export interface Garment {
   gravityScale: number;
   /**
    * Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off).
-   * See `physics §8`.
    *
    * @unit mps (metres per second)
    * @tunable
@@ -18225,10 +18026,7 @@ export interface Garment {
    * @tunable
    */
   friction: number;
-  /**
-   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
-   * See `physics §8`.
-   */
+  /** gameplay (in the tick, world state) or visual (on the GPU, for looks only). */
   simulation: Simulation;
 }
 
@@ -18251,7 +18049,6 @@ export declare function SoftBodyShape(value?: SoftBodyShape, options?: FieldOpti
 
 /**
  * An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
- * See `physics §8`.
  *
  * The value of the `SoftBody` component (token `og.SoftBody`).
  */
@@ -18277,7 +18074,6 @@ export interface SoftBody {
   size: Vector3;
   /**
    * How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one).
-   * See `physics §8`.
    *
    * @default 2
    * @range 0..7
@@ -18389,10 +18185,7 @@ export interface SoftBody {
    * @default true
    */
   visible: boolean;
-  /**
-   * gameplay (in the tick, world state) or visual (on the GPU, for looks only).
-   * See `physics §8`.
-   */
+  /** gameplay (in the tick, world state) or visual (on the GPU, for looks only). */
   simulation: Simulation;
   /**
    * Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual.
@@ -18568,7 +18361,6 @@ export interface Fluid2D {
 
 /**
  * Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface.
- * See `physics §8`.
  *
  * The value of the `Fluid3D` component (token `og.Fluid3D`).
  */
@@ -18782,7 +18574,6 @@ export interface Fluid3D {
   visible: boolean;
   /**
    * gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still.
-   * See `physics §8`.
    */
   simulation: Simulation;
 }
@@ -19040,7 +18831,6 @@ export interface WaterLine {
 
 /**
  * Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.
- * See `physics §8`.
  *
  * The value of the `Buoyancy` component (token `og.Buoyancy`).
  */
@@ -19162,7 +18952,6 @@ export declare const QUERY_KINEMATIC: 4;
 
 /**
  * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
- * See `physics §4`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -19646,7 +19435,6 @@ export interface WheelPose {
   readonly contact: boolean;
   /**
    * Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne.
-   * See `physics §7`.
    *
    * @range 0..1
    */
@@ -19845,7 +19633,6 @@ export interface SoftBodyPoints {
 export interface PhysicsPhase {
   /**
    * The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack.
-   * See `physics §3`.
    */
   readonly name: string;
   /**
@@ -19862,7 +19649,6 @@ export interface PhysicsPhase {
 
 /**
  * What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them.
- * See `physics §3`.
  */
 export interface PhysicsStats {
   /** The tick the step ran (0 before the first). */
@@ -19929,7 +19715,6 @@ export declare const SEASON_WINTER: 355;
 
 /**
  * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
- * See `render §7`.
  *
  * The `Fog` resource (token `og.Fog`).
  */
@@ -20023,7 +19808,6 @@ export interface Fog {
   sky: number;
   /**
    * Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog.
-   * See `render §7`.
    */
   volumetric: boolean;
   /**
@@ -20054,7 +19838,6 @@ export interface Fog {
 
 /**
  * Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.
- * See `render §7`.
  *
  * The value of the `FogVolume` component (token `og.FogVolume`).
  */
@@ -20085,7 +19868,6 @@ export interface FogVolume {
 
 /**
  * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
- * See `render §7`.
  *
  * The `Sky` resource (token `og.Sky`).
  */
@@ -20206,7 +19988,6 @@ export interface Sky {
 
 /**
  * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
- * See `render §7`.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -20282,7 +20063,6 @@ export interface DayNight {
 
 /**
  * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
- * See `seasons §1`.
  *
  * The `Season` resource (token `og.Season`).
  */
@@ -20316,7 +20096,6 @@ export interface Season {
   latitude: number;
   /**
    * Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date.
-   * See `seasons §2`.
    *
    * @range 0..
    * @unit s (seconds of simulation time)
@@ -20326,7 +20105,6 @@ export interface Season {
   // ── Sun ──
   /**
    * With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path.
-   * See `seasons §3`.
    *
    * @default true
    */
@@ -20369,7 +20147,6 @@ export interface Season {
 
 /**
  * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.
- * See `render §7`.
  *
  * The `PhysicalSky` resource (token `og.PhysicalSky`).
  */
@@ -20442,7 +20219,6 @@ export declare function CloudKind(value?: CloudKind, options?: FieldOptions): Fi
 
 /**
  * Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
- * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
  */
@@ -20537,7 +20313,6 @@ export interface Clouds {
   layerAltitude: number;
   /**
    * How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast.
-   * See `render §7`.
    *
    * @default 1
    * @range 0..1
@@ -20562,7 +20337,6 @@ export interface Clouds {
 
 /**
  * The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
- * See `render §7`.
  *
  * The `Aurora` resource (token `og.Aurora`).
  */
@@ -20659,7 +20433,6 @@ export interface Aurora {
 
 /**
  * The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, drawn from a stream forked from og.Rng (`fork("og.weather")`) and kept here, so replays, restores and every host strike alike. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (StandardMaterialDesc.weathering opts a material out); rendering never writes it.
- * See `render §7`.
  *
  * The `WeatherState` resource (token `og.WeatherState`).
  */
@@ -20790,7 +20563,6 @@ export interface WeatherState {
   // ── Shelter ──
   /**
    * The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line; past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's.
-   * See `render §7`.
    *
    * @default 64
    * @range 0..1024
@@ -20896,7 +20668,6 @@ export interface Weather {
   intensity: number;
   /**
    * How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once.
-   * See `render §7`.
    *
    * @default 20
    * @range 0..600
@@ -20977,7 +20748,6 @@ export interface Weather {
 
 /**
  * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
- * See `render §8`.
  *
  * The `Wind` resource (token `og.Wind`).
  */
@@ -21045,7 +20815,6 @@ export declare function WindMotorKind(value?: WindMotorKind, options?: FieldOpti
 
 /**
  * A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops.
- * See `render §8`.
  *
  * The value of the `WindMotor` component (token `og.WindMotor`).
  */
@@ -21134,7 +20903,6 @@ export interface SeasonInfo {
 
 /**
  * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
- * See `render §8`.
  *
  * The value of the `Water` component (token `og.Water`).
  */
@@ -21158,12 +20926,10 @@ export interface Water {
   depth: number;
   /**
    * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid.
-   * See `render §8`.
    */
   geometry: Geometry;
   /**
    * A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none.
-   * See `render §8`.
    */
   river: Path;
   /**
@@ -21215,7 +20981,6 @@ export interface Water {
   depthFade: number;
   /**
    * How much of each colour the water absorbs per metre of light's path (1/m; sea water about 0.45 0.07 0.03). With it or scattering set the body is physical: what lies below dims along the path down and up, and sun and sky scatter back out; shallow, deep, depthFade and opacity are then unused.
-   * See `render §8`.
    *
    * @default { r: 0, g: 0, b: 0 }
    */
@@ -21294,7 +21059,6 @@ export interface Water {
   reflectivity: number;
   /**
    * Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). As many surfaces a frame as RenderOptions.planarReflections allows.
-   * See `render §8`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -21335,7 +21099,6 @@ export interface Water {
   underwaterColor: Color;
   /**
    * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it.
-   * See `render §8`.
    *
    * @default 0.09
    * @range 0..2
@@ -21362,7 +21125,6 @@ export interface Water {
   // three.js Water and Water2 ripples in place of the travelling waves.
   /**
    * Ripples from a tangent-space normal map (linear; red +x, green +z, blue up) in place of the waves: with flow 0, four layers drifting over the world's xz times normalScale (three.js Water); with a flow, two layers sliding along it, cross-faded (three.js Water2). waveStrength scales slopes. 0: waves.
-   * See `render §8`.
    */
   normalMap: Texture;
   /**
@@ -21375,7 +21137,6 @@ export interface Water {
   normalScale: number;
   /**
    * three.js Water's sun glint: pow(eye · reflect(-sun, normal), 100) times the sun's light times this, through the Fresnel term. With glint it is shaded as three.js Water.js throughout (deep is its waterColor, sunColor the light × glint / 2). 0: the default half-vector highlight and depth colour.
-   * See `render §8`.
    *
    * @range 0..
    * @tunable
@@ -21390,14 +21151,12 @@ export interface Water {
   flow: Vector2;
   /**
    * three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; image top at v 1), over the mesh's uv or the grid from its -x -z corner; with it flow's length is the speed (0 0: 0.03) and the map the direction, for the normal map's layers or the travelling waves. 0: the flow alone.
-   * See `render §8`.
    */
   flowMap: Texture;
   // ── Sea ──
   // A wind-driven ocean on the grid.
   /**
    * The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none.
-   * See `render §8`.
    *
    * @default { x: 0, y: 0 }
    * @unit mps (metres per second)
@@ -21428,7 +21187,6 @@ export interface Water {
   endless: boolean;
   /**
    * The og.Terrain whose heights are the sea's floor (0: none): a wave fades in water shallower than half its length, the sea held under its breaking height (significant height 0.78 × depth); shore trains break into surf. og.physics.waterHeight and og.Buoyancy read the same sea.
-   * See `render §8`.
    */
   seabed: Entity;
   // ── Shore ──
@@ -21478,7 +21236,6 @@ export interface Water {
   meniscus: number;
   /**
    * How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only.
-   * See `render §8`.
    *
    * @default 1
    * @range 0..4
@@ -21554,7 +21311,6 @@ export interface Water2D {
 // Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
 // Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none.
 // Clips bind to nodes by name; assets are not world state.
-// See `animation §7`.
 
 /**
  * A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices).
@@ -21738,7 +21494,6 @@ export interface Skeleton {
 /**
  * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
  * Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
- * See `animation §3`.
  *
  * The value of the `BoneAttachment` component (token `og.BoneAttachment`).
  */
@@ -21754,7 +21509,6 @@ export interface BoneAttachment {
 /**
  * Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade.
  * The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before.
- * See `animation §7`.
  *
  * The value of the `CrowdAnimation` component (token `og.CrowdAnimation`).
  */
@@ -21865,7 +21619,6 @@ export interface AnimationPlayer {
 /**
  * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0).
  * On an og.Flipbook or og.Skeleton2D entity a GraphDesc.sprite graph drives it instead. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins) at its rate, cutting on frame ends and keeping the phase within a state or sync group; a 2D skeleton blends the two heaviest clips and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only.
- * See `animation §9`.
  *
  * The value of the `AnimationGraph` component (token `og.AnimationGraph`).
  */
@@ -22259,7 +22012,6 @@ export interface JointLimit {
 
 /**
  * Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
- * See `animation §8`.
  *
  * The value of the `FootLock` component (token `og.FootLock`).
  */
@@ -22330,7 +22082,6 @@ export interface FootLock {
 
 /**
  * A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
- * See `animation §8`.
  *
  * The value of the `Hang` component (token `og.Hang`).
  */
@@ -22416,7 +22167,6 @@ export declare function SpringSpace(value?: SpringSpace, options?: FieldOptions)
 
 /**
  * A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
- * See `animation §8`.
  *
  * The value of the `SpringBone` component (token `og.SpringBone`).
  */
@@ -22540,7 +22290,6 @@ export declare function SpringColliderShape(value?: SpringColliderShape, options
 
 /**
  * A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
- * See `animation §8`.
  *
  * The value of the `SpringCollider` component (token `og.SpringCollider`).
  */
@@ -22586,7 +22335,6 @@ export interface SpringCollider {
 
 /**
  * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers; each says where it came from (`state`, `layer`) and whether its clip weighed most of its layer (`dominant`), and the game decides which to act on.
- * See `animation §3`.
  *
  * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
  */
@@ -22613,7 +22361,6 @@ export interface AnimationEvent {
   readonly layer: number;
   /**
    * Its clip weighed most of its layer this tick (a player's clips count as one layer). One clip per layer is dominant each tick, whether or not it fired; a tie goes to the state entered, then to the later clip of a blend.
-   * See `animation §3`.
    */
   readonly dominant: boolean;
 }
@@ -22982,7 +22729,6 @@ export type FlipMode = "loop" | "pingPong" | "once";
 /**
  * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` sheet's texture array. Played by og.flipbook by scaled time (Time.scaledDt), after the game's systems.
  * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent; the playback position is world state (the og.flipbook state block). A sprite graph on the entity writes clip, time and speed.
- * See `animation §9`.
  *
  * The value of the `Flipbook` component (token `og.Flipbook`).
  */
@@ -23116,7 +22862,6 @@ export declare function Rig2D(value?: Rig2D, options?: FieldOptions): FieldSpec<
 /**
  * Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it.
  * Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block).
- * See `animation §9`.
  *
  * The value of the `Skeleton2D` component (token `og.Skeleton2D`).
  */
@@ -23328,7 +23073,6 @@ export interface Skeleton2DBox {
 // Tweens: animate any numeric field of a component (og.Transform.position, a game's own f32) to a target over time with an easing curve, a delay, repeat and yoyo, in sequences or in parallel. Advanced by og.tween after the game's systems, before og.anim and physics, by scaled time unless unscaled.
 // Running tweens are world state (the og.tween state block). og.TweenCompleted reports one that ends on its own. og.tween.squash and og.tween.flash are feel presets.
 // Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent.
-// See `animation §12`.
 
 /**
  * A running tween or group.
@@ -24049,7 +23793,6 @@ export interface SquashDesc {
   readonly entity?: Entity;
   /**
    * The x, y and z factors at the impact; z 0 (or left out) stays at rest. A component left out takes its default: x 1.25, y 0.8, z 0. ArtMotion.squash scales it under a project's art contract.
-   * See `animation §12`.
    *
    * @default {}
    */
@@ -24131,7 +23874,6 @@ export interface FlashDesc {
 // ── tilemap ─────────────────────────────────────────────────────
 // Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (checked file.tilemap TS, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
 // Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
-// See `world §6`.
 
 /**
  * A loaded map: its layers, tilesets and objects.
@@ -24581,7 +24323,6 @@ export interface FillDesc {
 // ── audio ───────────────────────────────────────────────────────
 // Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
 // The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream.
-// See `audio`.
 
 /** SoundEnded.reason: a one-shot played to its end. */
 export declare const SOUND_FINISHED: 0;
@@ -24804,7 +24545,6 @@ export interface AudioSource {
   // ── Doppler and cone ──
   /**
    * Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2.
-   * See `audio §2`.
    *
    * @default 1
    * @range 0..10
@@ -24855,7 +24595,6 @@ export interface AudioSource {
 
 /**
  * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.
- * See `audio §2`.
  *
  * The value of the `AudioListener` component (token `og.AudioListener`).
  */
@@ -25226,7 +24965,6 @@ export interface AudioBusFx {
 /**
  * A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master. The first node in query order for an index counts; a removed node's sources play on their `bus`.
  * The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
- * See `audio §1`.
  *
  * The value of the `AudioBusNode` component (token `og.AudioBusNode`).
  */
@@ -25257,7 +24995,6 @@ export interface AudioBusNode {
 /**
  * A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. Each tick og.audio moves `weight` by tickDuration / fade and sends the blend in the stream; bus gains ramp linearly across each tick.
  * At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz to the snapshot's cutoffs, log2-linear in w. Snapshots multiply gains and meet filters (the lowest low-pass and highest high-pass, AudioBusFx's included); they never write og.Audio or og.AudioBusFx.
- * See `audio §4`.
  *
  * The value of the `AudioSnapshot` component (token `og.AudioSnapshot`).
  */
@@ -25320,7 +25057,6 @@ export declare function AudioEventOrder(value?: AudioEventOrder, options?: Field
 /**
  * An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it.
  * The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream (og.Rng's seed forked with the label og.audio, kept in the world), so the same seed and triggers play the same sounds on every host and replay. Each play spawns a voice entity, an og.AudioSource parented to this one, despawned when it ends; only `played`, `last`, `index`, `bag` and `voices` feed back.
- * See `audio §1`.
  *
  * The value of the `AudioEvent` component (token `og.AudioEvent`).
  */
@@ -25504,7 +25240,6 @@ export interface SoundDesc {
 /**
  * The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`.
  * Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.
- * See `audio §4`.
  *
  * The value of the `ReverbZone` component (token `og.ReverbZone`).
  */
@@ -25991,7 +25726,6 @@ export interface SfxSamples {
 // ── nav ─────────────────────────────────────────────────────────
 // Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch.
 // Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D.
-// See `world §9`.
 
 /**
  * A grid, a navmesh or a flow field agents plan on.
@@ -26329,7 +26063,6 @@ export interface NavFilter {
 
 /**
  * Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation.
- * See `world §9`.
  *
  * The value of the `Crowd` component (token `og.Crowd`).
  */
@@ -26902,7 +26635,6 @@ export interface NavRebuild {
 // ── ai ──────────────────────────────────────────────────────────
 // Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
-// See `world §10`.
 
 /**
  * A loaded behaviour tree or state machine.
@@ -27251,7 +26983,6 @@ export interface AiDescription {
 // ── story ───────────────────────────────────────────────────────
 // Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning.
 // Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
-// See `yarn`.
 
 /**
  * How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork.
@@ -27418,7 +27149,6 @@ export interface StartDesc {
   readonly vars?: unknown;
   /**
    * A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`.
-   * See `yarn §9`.
    *
    * @default ""
    */
@@ -27553,7 +27283,6 @@ export interface DialogueView {
   readonly speaker: SpeakerView;
   /**
    * The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot.
-   * See `yarn §8`.
    */
   readonly shot: string;
   /** The choices, when it waits on them; empty while a line waits for og.story.advance. */
@@ -27564,7 +27293,6 @@ export interface DialogueView {
   readonly lastCheck: RollView | null;
   /**
    * It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then.
-   * See `yarn §9`.
    */
   readonly held: boolean;
   /** The conversation has ended (the view keeps its last line). */
@@ -27857,7 +27585,6 @@ export interface QuestView {
 
 // ── platform ────────────────────────────────────────────────────
 // Platform services as host capabilities: the cloud store and save slots, leaderboards, telemetry, Origin Point, AI marks, purchases, ads, achievements, the player, friends, invites, share and rooms. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them; every id it hands back is opaque and scoped to this game. Calls are asynchronous: each returns a request number at once and its answer arrives at the start of a later tick (og.PlatformAnswered, og.platform.result), host input like key presses. A host that lacks a method answers it `unavailable`.
-// See `saves §7`.
 
 /**
  * The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions.
@@ -28122,14 +27849,12 @@ export interface PlatformInfo {
   readonly host: string;
   /**
    * The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one.
-   * See `saves §7`.
    */
   readonly capabilities: readonly string[];
   /** Calls not answered yet. */
   readonly pending: number;
   /**
    * Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock), `system` (the native host's), `fixed` (`og run --clock` and playtests: it starts where told and moves with the ticks) or `none`.
-   * See `saves §7`.
    */
   readonly clock: string;
 }
@@ -28167,7 +27892,6 @@ export type PlatformNoticeKind = "purchase" | "entitlements" | "invite" | "catal
 
 /**
  * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
- * See `saves §8`.
  *
  * The payload of the `PlatformNotice` event (token `og.PlatformNotice`).
  */
@@ -28576,7 +28300,6 @@ export interface RoomMessage {
 // ── i18n ────────────────────────────────────────────────────────
 // Localization: one file.strings declaration per locale under content/, messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its fallback table, then the base. It also sets the UI's font chain and direction.
 // Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
-// See `localization`.
 
 /**
  * How much of a date to write (CLDR's styles; en shown).
@@ -28693,7 +28416,6 @@ export type DurationStyle = "clock" | "short";
 // ── ui ──────────────────────────────────────────────────────────
 // The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
 // Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
-// See `components`.
 
 /**
  * How the lines of a label align.
@@ -29551,7 +29273,6 @@ export interface UiScope {
 
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-// See `combat §1`, `interaction §1`, `items §1`, `abilities §1`.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -29560,7 +29281,6 @@ export interface UiScope {
 
 /**
  * The actions the engine ships. Arguments follow the action, separated by `:`.
- * See `testing §7`.
  * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked.
  * - `"listen"`: `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.
  * - `"touch_move_to"`: `touch_move_to:<ui id>`: move the pointer to a UI element.
@@ -30491,7 +30211,6 @@ export interface EntityDump {
 
 /**
  * Why the main camera draws an entity or not, the first that holds.
- * See `testing §4`.
  * - `"drawn"`: A drawable of it survives the camera's cull.
  * - `"hlod"`: Its model is drawn by an HLOD proxy in its place.
  * - `"hidden"`: A component of it that draws has `visible` false; detail names the field.
@@ -31125,7 +30844,6 @@ export interface EngineProbe extends RuntimeProbe {
    * The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`).
    * Size: width and height both 0 (or absent) is the render target's size; both 1 to 4096 renders that size with the same camera; one zero and one not is malformed. On the web the readback is asynchronous: requested on tick N, answered on N + 1.
    * Fit: a long side past `fit` (CAPTURE_FIT, 1280, by default; 0 keeps the size) is downscaled by area mean. Region: a box of the surface (CSS px) cut before fitting.
-   * See `captures §1`.
    *
    * @param width Width in pixels; 0 is the render target's. Default `0`.
    * @param height Height in pixels; 0 is the render target's. Default `0`.
@@ -31136,7 +30854,6 @@ export interface EngineProbe extends RuntimeProbe {
   capture(width?: number, height?: number, fit?: number, region?: ScreenBox | null): Capture | null;
   /**
    * The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does.
-   * See `captures §1`.
    *
    * @param views The cameras.
    * @param width Width in pixels; 0 is the render target's. Default `0`.
@@ -31147,7 +30864,6 @@ export interface EngineProbe extends RuntimeProbe {
   captureViews(views: readonly Viewpoint[], width?: number, height?: number, fit?: number): ViewFrames | null;
   /**
    * Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked.
-   * See `testing §4`.
    *
    * @param id The probe id.
    * @returns Null for an unknown entity, or a host without a scene view.
@@ -31156,7 +30872,6 @@ export interface EngineProbe extends RuntimeProbe {
   /**
    * The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it.
    * The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does.
-   * See `captures §2`.
    *
    * @param desc The size, the fit, what to mark and how many.
    * @returns Null without a renderer.
@@ -31281,7 +30996,6 @@ export interface EngineProbe extends RuntimeProbe {
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
 // Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
-// See `world §1`.
 
 /**
  * A loaded terrain: its heights, control map and layers.
@@ -31355,7 +31069,6 @@ export interface Terrain {
   lodSpacing: number;
   /**
    * Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). Levels grow to 128 quads where a coarser level's height error would show (`lodError`).
-   * See `world §2`.
    *
    * @range 0..256
    */
@@ -31369,7 +31082,6 @@ export interface Terrain {
   lodError: number;
   /**
    * Metres from the camera within which layers with a `displacement` raise and lower the drawn ground, fading out over the last 40%. Near the camera the clipmap's levels then grow finer and denser to carry the relief (`lodSpacing` and `lodRing` above 0 decide instead). 0: no displacement.
-   * See `world §2`.
    *
    * @default 40
    * @range 0..1000
@@ -31414,7 +31126,6 @@ export interface TerrainStamp {
 
 /**
  * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
- * See `world §3`.
  *
  * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
  */
@@ -31505,7 +31216,6 @@ export interface TerrainScatter {
   sway: number;
   /**
    * A glTF (og.load.gltf) of the same mesh cooked with an octahedral impostor (`model { impostor true }`): copies past impostorDistance draw as it. Mesh and impostor bounds must agree in model space, else the scatter is skipped (render.scatterIssue). None: the mesh at every distance.
-   * See `world §3`.
    */
   impostor: Asset;
   /**
@@ -31555,26 +31265,22 @@ export interface TerrainScatter {
   avoidWater: number;
   /**
    * Thins the copies where its red channel is below 1, over the terrain's extent (top row along -z, loaded linear), each copy kept while its own value is below the map's. Drawn only, where the renderer culls on the GPU (RenderCapabilities.compute). 0: none.
-   * See `world §3`.
    */
   densityMap: Texture;
   /**
    * Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU.
-   * See `world §3`.
    *
    * @default true
    */
   gpuPlacement: boolean;
   /**
    * A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material.
-   * See `world §3`.
    */
   model: Asset;
 }
 
 /**
  * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
- * See `world §3`.
  *
  * The value of the `Grass` component (token `og.Grass`).
  */
@@ -31792,7 +31498,6 @@ export interface Grass {
   recovery: number;
   /**
    * Up to three more kinds of blade among its own: entities carrying an og.GrassType (the field's own fields are its first kind). Each clump grows one kind, by `typeMap` or else the kinds' `share`; 0s and entities without an og.GrassType are skipped.
-   * See `world §3`.
    *
    * @capacity 3 elements (List.Entity.3): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
@@ -32287,7 +31992,6 @@ export interface TerrainLayerDesc {
   readonly macroVariation?: number;
   /**
    * Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) within og.Terrain's `displacementDistance`, where the layer shows and the ground is not steep. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat.
-   * See `world §2`.
    *
    * @default 0
    * @range 0..4
@@ -32296,7 +32000,6 @@ export interface TerrainLayerDesc {
   readonly displacement?: number;
   /**
    * How much each cell of the layer's pattern takes its own tone: its normal map's alpha names the cell (0 to 1; opaque for none), and at 1 each cell's brightness and warmth move by up to 25 % and 20 %. 0: none.
-   * See `world §2`.
    *
    * @default 0
    * @range 0..1
@@ -32459,7 +32162,6 @@ export interface TerrainCreateDesc {
 // ── stream ──────────────────────────────────────────────────────
 // Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.
 // World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
-// See `world §4`.
 
 /**
  * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). Its box (or sphere) is the og.Volume on its entity; without one the cell is a point at the entity's position. The volume's `fade` is not read: `load` and `unload` are the cell's distances.
@@ -32491,12 +32193,10 @@ export interface StreamCell {
   pin: boolean;
   /**
    * Keep what happened in it: on unload its entities as they are are kept in the world's og.cells state (in snapshots, saves and the hash) and come back so when it loads again. False: it loads as authored every time.
-   * See `world §5`.
    */
   persist: boolean;
   /**
    * The most of its entities spawned per tick while it loads (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell unwanted before then despawns what it spawned and sends nothing.
-   * See `world §5`.
    */
   budget: number;
   /**
@@ -32522,7 +32222,6 @@ export interface StreamAnchor {
   reach: number;
   /**
    * The fastest it moves, for reading ahead: a cell's asset group is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed. Read only for fetching, never by a tick (0: fetched at the load distance).
-   * See `world §5`.
    *
    * @range 0..
    * @unit mps (metres per second)
@@ -32565,7 +32264,7 @@ export interface CellEvent {
  * - `"unloaded"`: Not wanted; models stay hidden, textures use stand-ins and sounds play silence.
  * - `"queued"`: Wanted, waiting for room in the memory budget.
  * - `"loading"`: Admitted: its pack is being read (its memory already counts).
- * - `"resident"`: Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness. Its tick is host input: the same on every native run, not on the web; simulation that must match across hosts waits on a cell group (world §4).
+ * - `"resident"`: Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness. Its tick is host input: the same on every native run, not on the web; simulation that must match across hosts waits on a cell group.
  * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
  */
 export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
@@ -32635,7 +32334,6 @@ export interface StreamStatus {
   readonly bytes: number;
   /**
    * Bytes of its pack received: as they arrive while loading (on the web, from the fetch's body), its size once resident, 0 otherwise.
-   * See `loading §12`.
    *
    * @unit bytes (bytes)
    */
@@ -32700,7 +32398,6 @@ export interface StreamBudget {
 // ── video ───────────────────────────────────────────────────────
 // Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream: true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
 // Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
-// See `audio §8`.
 
 /**
  * Cooked footage: its frames as a texture array, its sound (og.load.video).
@@ -32766,7 +32463,6 @@ export interface VideoInfo {
   readonly alpha: boolean;
   /**
    * The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip.
-   * See `audio §8`.
    */
   readonly codec: string;
   /**
@@ -32826,14 +32522,12 @@ export interface VideoCapabilities {
   readonly hardware: boolean;
   /**
    * The widest stream this decoder plays in real time at 30 fps; wider ones still play, with frames held where decoding falls behind. rav1d-wasm plays a larger stream's 720p rendition, cooked beside it, instead.
-   * See `audio §8`.
    */
   readonly maxWidth: number;
   /** The tallest, as maxWidth. */
   readonly maxHeight: number;
   /**
    * The codecs streams decode in here, preferred first (`av1`, `hevc`, `h264`; AV1 last where only rav1d-wasm decodes it): a stream plays the first it was cooked in (VideoInfo.codec). Empty where nothing streams.
-   * See `audio §8`.
    */
   readonly codecs: readonly string[];
 }
@@ -32879,7 +32573,6 @@ export interface MediaIntent {
 
 /**
  * Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames.
- * See `audio §8`.
  *
  * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
  */
@@ -32927,7 +32620,6 @@ export interface VideoPlayer {
   loopEnd: number;
   /**
    * A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game.
-   * See `audio §8`.
    */
   wait: boolean;
   /**
@@ -32953,7 +32645,6 @@ export interface VideoPlayer {
 // ── debug ───────────────────────────────────────────────────────
 // Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch.
 // Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state.
-// See `testing §8`.
 
 /**
  * How a debug shape looks and how long it lasts.
@@ -33003,7 +32694,6 @@ export interface DebugDrawDesc {
 // ── assert ──────────────────────────────────────────────────────
 // Assertions: properties of the game checked as it runs, after the Antithesis SDK's (AssertKind: always, sometimes, reachable, unreachable, each). Each is identified by its name and the place it is called from, which the build records. Nothing an assertion does reaches the world, so a run with them hashes and replays as one without. Violations and coverage go through the probe (`assertions`) into `og run --json` and `og test`.
 // Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there.
-// See `testing §2`.
 
 /**
  * What an assertion asks.
@@ -33248,7 +32938,6 @@ export interface WorldBounds {
 // ── path ────────────────────────────────────────────────────────
 // Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed. catmullRom passes through every point (tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...`, linear joins straight segments; a closed path joins its last point to its first and wraps t.
 // Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state.
-// See `world §8`.
 
 /**
  * A path: its points, kind and arc-length table.
@@ -33414,7 +33103,6 @@ export interface PathFollower {
 // ── timeline ────────────────────────────────────────────────────
 // Timelines: cutscenes and sequences as typed file.timeline declarations under content/. Keyed tracks cover camera, transform, animation, audio, captions, events, shots and scenes. og cook builds native tracks; og.load.timeline loads the canonical content ID. See animation and file:timeline.
 // An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused.
-// See `animation §13`.
 
 /**
  * A loaded timeline: its tracks, paths, sounds and clips.
@@ -33586,7 +33274,6 @@ export interface TimelineCaption {
 // ── net ─────────────────────────────────────────────────────────
 // Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep and join a room (og.platform.roomJoin); once the room holds `players` peers the authority (the lowest peer number) starts, and tick t runs when every seated player's input for t is in (in rollback, on a prediction re-run when the input differs).
 // Systems read og.PlayerInput and give this peer's input with og.net.submit; og.Desync reports the first tick whose hashes differ.
-// See `networking`.
 
 /**
  * How a room's peers take their ticks (og.Lockstep.mode).
@@ -33606,7 +33293,6 @@ export declare function NetMode(value?: NetMode, options?: FieldOptions): FieldS
 
 /**
  * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
- * See `networking §1`.
  *
  * The `Lockstep` resource (token `og.Lockstep`).
  */
@@ -33628,7 +33314,6 @@ export interface Lockstep {
   readonly localPlayer: number;
   /**
    * Ticks between a player's input and the tick it acts on: the time the input has to cross the room.
-   * See `networking §3`.
    *
    * @default 2
    * @range 1..30
@@ -33669,7 +33354,6 @@ export interface Lockstep {
   rejoin: boolean;
   /**
    * In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame).
-   * See `networking §3`.
    *
    * @default 8
    * @range 1..30
@@ -33716,7 +33400,6 @@ export interface PlayerInput {
 
 /**
  * This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.
- * See `networking §6`.
  *
  * The payload of the `Desync` event (token `og.Desync`).
  */
@@ -33956,7 +33639,6 @@ export interface LockstepStatus {
 // ── shared ──────────────────────────────────────────────────────
 // Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.
 // The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
-// See `shared-worlds`.
 
 /**
  * Where this client's session stands (og.SharedWorld.state).
@@ -33979,7 +33661,6 @@ export declare function SharedState(value?: SharedState, options?: FieldOptions)
 
 /**
  * This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it.
- * See `shared-worlds §2`.
  *
  * The `SharedWorld` resource (token `og.SharedWorld`).
  */
@@ -33993,7 +33674,6 @@ export interface SharedWorld {
   sendRateHz: number;
   /**
    * How far behind the newest server time remote avatars are drawn: two snapshots at the server's 20 Hz by default, so a lost one is covered.
-   * See `shared-worlds §3`.
    *
    * @default 100
    * @range 0..1000
@@ -34024,7 +33704,6 @@ export interface SharedWorld {
 
 /**
  * Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared.
- * See `shared-worlds §2`.
  *
  * The value of the `SharedAvatar` component (token `og.SharedAvatar`).
  */
@@ -34037,7 +33716,6 @@ export interface SharedAvatar {
 
 /**
  * Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
- * See `shared-worlds §3`.
  *
  * The value of the `RemoteAvatar` component (token `og.RemoteAvatar`).
  */
@@ -34072,7 +33750,6 @@ export interface RemoteAvatar {
 
 /**
  * A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object.
- * See `shared-worlds §5`.
  *
  * The value of the `SharedObject` component (token `og.SharedObject`).
  */
@@ -34143,7 +33820,6 @@ export interface PresenceLeft {
 
 /**
  * The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.
- * See `shared-worlds §4`.
  *
  * The payload of the `SharedCorrected` event (token `og.SharedCorrected`).
  */
@@ -34347,7 +34023,6 @@ export interface SharedStatus {
 // ── art ─────────────────────────────────────────────────────────
 // A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame.
 // Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of og-project.json's `look`.
-// See `art-review §6`.
 
 /**
  * How the style's pixel art turns (ArtPixels.rotation).
@@ -34740,7 +34415,6 @@ export interface ArtCamera {
 // ── motion ──────────────────────────────────────────────────────
 // Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...).
 // Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent.
-// See `animation §10`.
 
 /**
  * What a goal asks for.
@@ -34928,7 +34602,6 @@ export interface WalkGoalDesc {
   readonly deceleration?: number;
   /**
    * How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns).
-   * See `animation §10`.
    *
    * @default 4
    * @range 0..
@@ -34939,7 +34612,6 @@ export interface WalkGoalDesc {
 
 /**
  * A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7).
- * See `animation §10`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -35047,7 +34719,6 @@ export interface LookAtDesc {
 
 /**
  * An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.
- * See `animation §11`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -35180,7 +34851,6 @@ export interface MotionCapabilities {
 // ── destruction ─────────────────────────────────────────────────
 // Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells.
 // It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts.
-// See `physics §9`.
 
 /**
  * Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold.
@@ -35233,7 +34903,6 @@ export declare const CAUSE_CARVE: 6;
 /**
  * Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). A standing prop (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (its piece's hull) on an og.Chunk, replacing the entity's own Collider and RigidBody. A moving prop (a dynamic or kinematic body) collides as itself until its first break, when its chunks replace its Collider, RigidBody and Velocity, moving as it moved. Then each chunk draws its piece of the hidden model (its tint, variant, shadows).
  * Chunks' colliders and mass follow og.Transform.scale's mean.
- * See `physics §9`.
  *
  * The value of the `Destructible` component (token `og.Destructible`).
  */
@@ -35249,7 +34918,6 @@ export interface Destructible {
   toughness: number;
   /**
    * The stress its bonds hold in tension and shear before they weaken; compression holds thirty times as much, shear more by `friction`, and a bond breaks outright at twice the stress. 0 turns the stress solver off.
-   * See `physics §9`.
    *
    * @default 30000
    * @range 0..
@@ -35259,7 +34927,6 @@ export interface Destructible {
   strength: number;
   /**
    * How much more shear a bond holds per pascal of compression across it (Mohr–Coulomb: the tangent of the friction angle). 0 is shear at strength alone.
-   * See `physics §9`.
    *
    * @default 0.7
    * @range 0..4
@@ -35268,7 +34935,6 @@ export interface Destructible {
   friction: number;
   /**
    * The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's); 1 is tension at strength. At 0.1 or below, with strength above 0, a standing block also needs its weight within the middle third of what bears it from below, or it comes loose whole.
-   * See `physics §9`.
    *
    * @default 1
    * @range 0..1
@@ -35286,7 +34952,6 @@ export interface Destructible {
   density: number;
   /**
    * A collision's impulse (og.CollisionStarted.impulse) that does no damage: the excess is the hit's damage and, on a prop that stood still, the push its broken-loose pieces take along the striker's path (shared by falloff, none faster than the striker closed); a moving prop's keep their velocity.
-   * See `physics §9`.
    *
    * @default 30
    * @range 0..
@@ -35319,7 +34984,6 @@ export interface Destructible {
   hitFx: ParticleEmitter;
   /**
    * A composed effect (og.load.vfx) played where each island breaks loose, beside breakFx: dust, grit, a sound and a shake in one file, each played to its end. 0 none.
-   * See `effects §1`.
    */
   breakVfx: VfxAsset;
   /**
@@ -35328,7 +34992,6 @@ export interface Destructible {
   hitVfx: VfxAsset;
   /**
    * GPU-only debris: a shattering chunk's pieces under og.Destruction.debrisVolume never become bodies but fly on the GPU for debrisLifetime, never touching the simulation (none drawn without visualDebris); this mesh-particle emitter bursts finer grains where they land. 0: every piece is a body.
-   * See `physics §9`.
    */
   debris: ParticleEmitter;
   /**
@@ -35475,7 +35138,6 @@ export interface Destruction {
   stressIterations: number;
   /**
    * The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit.
-   * See `physics §9`.
    *
    * @default 200000
    * @range 0..
@@ -35575,7 +35237,6 @@ export interface ExplosionDesc {
   readonly damage?: number;
   /**
    * The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does. The pieces it drives apart pull on the bonds between them.
-   * See `physics §9`.
    *
    * @default 2000
    * @range 0..
@@ -35679,7 +35340,6 @@ export interface DestructionCapabilities {
 /**
  * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
  * Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
- * See `physics §9`.
  *
  * The value of the `PixelTerrain` component (token `og.PixelTerrain`).
  */
@@ -35987,7 +35647,6 @@ export interface Fracture2dDesc {
 // ── vfx ─────────────────────────────────────────────────────────
 // Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds.
 // An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).
-// See `loading §11`.
 
 /**
  * A loaded composed effect (og.load.vfx): its elements and the emitters, effect materials, meshes, textures and sounds they name.
@@ -36045,13 +35704,13 @@ export interface Vfx {
    */
   emission: number;
   /**
-   * Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3).
+   * Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours.
    *
    * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
    */
   hue: number;
   /**
-   * Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast.
+   * Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (file:vfx): one file, a critical hit or a weaker cast.
    *
    * @capacity 4 elements (List.f32.4): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
@@ -36204,7 +35863,6 @@ export interface VfxInfo {
 
 // ── sight ───────────────────────────────────────────────────────
 // Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame.
-// See `world §11`.
 
 /**
  * The plane an og.SightMap lies in.
@@ -36224,7 +35882,6 @@ export declare function SightPlane(value?: SightPlane, options?: FieldOptions): 
 
 /**
  * Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered.
- * See `world §11`.
  *
  * The value of the `SightMap` component (token `og.SightMap`).
  */
@@ -36269,7 +35926,6 @@ export interface SightMap {
 
 /**
  * A team's eyes on the og.SightMap: from its entity's world position it sees every cell within `radius` that no og.SightBlocker hides (symmetric: between two open cells, one sees the other exactly when the other sees it). A blocker's near face is seen. Height is not looked at.
- * See `world §11`.
  *
  * The value of the `Sight` component (token `og.Sight`).
  */
@@ -36293,7 +35949,6 @@ export interface Sight {
 
 /**
  * Stops sight on the og.SightMap: the cells whose centre lies inside the og.Volume on its entity (a box or a sphere, at its entity's pose, cut at its own height) hide what is behind them. Without an og.Volume it blocks nothing. A wall thinner than a cell may fall between cell centres: make it at least a cell thick.
- * See `world §11`.
  *
  * The value of the `SightBlocker` component (token `og.SightBlocker`).
  */
@@ -36311,9 +35966,8 @@ export interface SightBlocker {
 
 
 // ── flow ────────────────────────────────────────────────────────
-// A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
+// A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice.
 // og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
-// See `flow`.
 
 /**
  * A flow to start.
@@ -36958,7 +36612,6 @@ export interface FlowQteResult {
 // ── scene ───────────────────────────────────────────────────────
 // Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`).
 // What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
-// See `loading §12`.
 
 /**
  * The scene og.scene.change put in place and the one it waits to put in place: world state, saved, restored and hashed. Registered at the first og.scene.change; a world that never changes scene keeps its type table, saves and hash.
@@ -37055,7 +36708,6 @@ export interface ScenePreload {
 
 // ── loading ─────────────────────────────────────────────────────
 // The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
-// See `loading §13`.
 
 /**
  * Who draws the loading screen (project.ts `publish.loading`).
@@ -37381,7 +37033,6 @@ export interface Candidate {
 
 // ── combat ──────────────────────────────────────────────────────
 // The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing or an og.Projectile takes its damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.
-// See `combat §1`.
 
 /**
  * Where an og.Attack is in its move.
@@ -37403,7 +37054,6 @@ export declare function AttackPhase(value?: AttackPhase, options?: FieldOptions)
 
 /**
  * An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.
- * See `combat §1`.
  *
  * The value of the `Attack` component (token `og.Attack`).
  */
@@ -37462,7 +37112,6 @@ export interface Attack {
 
 /**
  * One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.
- * See `combat §1`.
  *
  * The value of the `AttackMove` component (token `og.AttackMove`).
  */
@@ -37521,7 +37170,6 @@ export interface AttackMove {
 
 /**
  * A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.
- * See `combat §1`.
  *
  * The value of the `AttackLink` component (token `og.AttackLink`).
  */
@@ -37550,7 +37198,6 @@ export interface AttackLink {
 
 /**
  * A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.
- * See `combat §2`.
  *
  * The value of the `Projectile` component (token `og.Projectile`).
  */
@@ -37583,7 +37230,6 @@ export interface Projectile {
 
 /**
  * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
- * See `combat §2`.
  *
  * The value of the `Health` component (token `og.Health`).
  */
@@ -37601,7 +37247,6 @@ export interface Health {
 
 /**
  * How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.
- * See `combat §2`.
  *
  * The value of the `Hurt` component (token `og.Hurt`).
  */
@@ -37644,7 +37289,6 @@ export interface Hurt {
 
 /**
  * A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.
- * See `combat §2`.
  *
  * The payload of the `Damaged` event (token `og.Damaged`).
  */
@@ -37678,7 +37322,6 @@ export interface Damaged {
 
 /**
  * A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).
- * See `combat §2`.
  *
  * The payload of the `Died` event (token `og.Died`).
  */
@@ -37705,7 +37348,6 @@ export interface CombatAttackers {
 
 // ── interact ────────────────────────────────────────────────────
 // The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing.
-// See `interaction §1`.
 
 /**
  * How an og.Interactor picks its focus among the candidates in range, in its cone and in sight.
@@ -37726,7 +37368,6 @@ export declare function InteractRule(value?: InteractRule, options?: FieldOption
 
 /**
  * Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens.
- * See `interaction §1`.
  *
  * The value of the `Interactable` component (token `og.Interactable`).
  */
@@ -37747,7 +37388,6 @@ export interface Interactable {
 
 /**
  * Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.
- * See `interaction §1`.
  *
  * The value of the `Interactor` component (token `og.Interactor`).
  */
@@ -37809,7 +37449,6 @@ export interface Interactor {
 
 /**
  * An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.
- * See `interaction §1`.
  *
  * The payload of the `Interacted` event (token `og.Interacted`).
  */
@@ -37822,7 +37461,6 @@ export interface Interacted {
 
 /**
  * A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.
- * See `interaction §2`.
  *
  * The value of the `Door` component (token `og.Door`).
  */
@@ -37851,7 +37489,6 @@ export interface Door {
 
 /**
  * Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it.
- * See `interaction §2`.
  *
  * The value of the `Toggle` component (token `og.Toggle`).
  */
@@ -37864,7 +37501,6 @@ export interface Toggle {
 
 /**
  * A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.
- * See `interaction §2`.
  *
  * The value of the `Grab` component (token `og.Grab`).
  */
@@ -37920,7 +37556,6 @@ export interface InteractEntities {
 
 // ── table ───────────────────────────────────────────────────────
 // A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them.
-// See `data`.
 
 /**
  * A row of a loaded table: a hash of its table's asset id and its own id (52 bits, so exact as a number), never 0. It names the same row after a reload or in a save; a row a table no longer has answers no values (og.table.missing lists who still holds one).
@@ -37983,11 +37618,9 @@ export interface MissingRow {
 
 // ── inventory ───────────────────────────────────────────────────
 // The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing.
-// See `items §1`.
 
 /**
  * Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.
- * See `items §1`.
  *
  * The value of the `Container` component (token `og.Container`).
  */
@@ -38009,7 +37642,6 @@ export interface Container {
 
 /**
  * Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.
- * See `items §1`.
  *
  * The value of the `ItemStack` component (token `og.ItemStack`).
  */
@@ -38034,7 +37666,6 @@ export interface ItemStack {
 
 /**
  * An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.
- * See `items §2`.
  *
  * The value of the `Pickup` component (token `og.Pickup`).
  */
@@ -38045,7 +37676,6 @@ export interface Pickup {
 
 /**
  * What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.
- * See `items §2`.
  *
  * The value of the `Collector` component (token `og.Collector`).
  */
@@ -38056,7 +37686,6 @@ export interface Collector {
 
 /**
  * An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.
- * See `items §2`.
  *
  * The payload of the `PickedUp` event (token `og.PickedUp`).
  */
@@ -38139,7 +37768,6 @@ export interface CraftDesc {
 
 // ── abilities ───────────────────────────────────────────────────
 // The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used.
-// See `abilities §1`.
 
 /**
  * What a second og.Status of the same kind on the same target does to the first.
@@ -38177,7 +37805,6 @@ export declare function ModifierOp(value?: ModifierOp, options?: FieldOptions): 
 
 /**
  * Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
- * See `abilities §1`.
  *
  * The value of the `Ability` component (token `og.Ability`).
  */
@@ -38244,7 +37871,6 @@ export interface Ability {
 
 /**
  * An og.Ability was used: sent the tick it was.
- * See `abilities §1`.
  *
  * The payload of the `AbilityUsed` event (token `og.AbilityUsed`).
  */
@@ -38257,7 +37883,6 @@ export interface AbilityUsed {
 
 /**
  * A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick.
- * See `abilities §2`.
  *
  * The value of the `Stat` component (token `og.Stat`).
  */
@@ -38274,7 +37899,6 @@ export interface Stat {
 
 /**
  * A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned.
- * See `abilities §2`.
  *
  * The value of the `Modifier` component (token `og.Modifier`).
  */
@@ -38291,7 +37915,6 @@ export interface Modifier {
 
 /**
  * An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out.
- * See `abilities §2`.
  *
  * The value of the `Status` component (token `og.Status`).
  */
@@ -38377,7 +38000,6 @@ export interface AbilityEntities {
 export declare namespace og {
   /**
    * A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session.
-   * See `saves §4`.
    */
   const WorldRestored: EventType<WorldRestored>;
   /**
@@ -38443,7 +38065,6 @@ export declare namespace og {
     function lookAt(eye: Vector3, target: Vector3, up?: Vector3): Quaternion;
     /**
      * The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt.
-     * See `facing`.
      *
      * @param position Where the object is.
      * @param target What it faces.
@@ -38452,42 +38073,36 @@ export declare namespace og {
     function face(position: Vector3, target: Vector3, up?: Vector3): Quaternion;
     /**
      * The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward.
-     * See `facing`.
      *
      * @param quaternion The object's rotation.
      */
     function forward(quaternion: Quaternion): Vector3;
     /**
      * An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight.
-     * See `facing`.
      *
      * @param quaternion The object's rotation.
      */
     function right(quaternion: Quaternion): Vector3;
     /**
      * An object's, a camera's or a light's up: its local +Y, as a unit vector.
-     * See `facing`.
      *
      * @param quaternion The rotation.
      */
     function up(quaternion: Quaternion): Vector3;
     /**
      * The way a camera or a light with this rotation looks: its local -Z, as a unit vector.
-     * See `facing`.
      *
      * @param quaternion The camera's or the light's rotation (og.Camera.quaternion).
      */
     function cameraForward(quaternion: Quaternion): Vector3;
     /**
      * A camera's or a light's right: its local +X, the right of the screen, as a unit vector.
-     * See `facing`.
      *
      * @param quaternion The camera's or the light's rotation (og.Camera.quaternion).
      */
     function cameraRight(quaternion: Quaternion): Vector3;
     /**
      * The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z).
-     * See `facing`.
      *
      * @param quaternion The object's rotation.
      * @returns The heading in radians, from -π to π.
@@ -38495,14 +38110,12 @@ export declare namespace og {
     function heading(quaternion: Quaternion): number;
     /**
      * The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X.
-     * See `facing`.
      *
      * @param heading The heading in radians.
      */
     function fromHeading(heading: number): Quaternion;
     /**
      * The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. og.transform.face is the 3D one, and turns a sprite out of the plane.
-     * See `facing`.
      *
      * @param position Where the thing is (its xy).
      * @param target What it faces (its xy); the same point as the position gives no turn.
@@ -38510,14 +38123,12 @@ export declare namespace og {
     function face2d(position: Vector3, target: Vector3): Quaternion;
     /**
      * The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z).
-     * See `facing`.
      *
      * @param quaternion The thing's rotation.
      */
     function forward2d(quaternion: Quaternion): Vector3;
     /**
      * The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x).
-     * See `facing`.
      *
      * @param quaternion The thing's rotation.
      * @returns The heading in radians, from -π to π.
@@ -38525,7 +38136,6 @@ export declare namespace og {
     function heading2d(quaternion: Quaternion): number;
     /**
      * The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up).
-     * See `facing`.
      *
      * @param heading The 2D heading in radians.
      */
@@ -38553,8 +38163,7 @@ export declare namespace og {
   /**
    * Simulation time. Game code never reads the wall clock; it reads Time.
    * Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
-   * Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.
-   * See `determinism §5`.
+   * Every time is counted from the integer tick rate and the tick, exact to f64.
    */
   namespace time {
     /**
@@ -38596,7 +38205,6 @@ export declare namespace og {
   /**
    * Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP dungeons, wave function collapse, eroded heightmaps, plants and Voronoi mesh fracture. Bulk buffers are TypedArrays.
    * Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
-   * See `world §7`.
    */
   namespace procgen {
     /**
@@ -38704,13 +38312,11 @@ export declare namespace og {
   /**
    * Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default.
    * While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it.
-   * See `input §2`.
    */
   const PointerLock: ResourceType<{ readonly wanted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, PointerLock>;
   /**
    * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
-   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
-   * See `input §4`.
+   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent; sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
    */
   const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly devices: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly buttons4: FieldSpec<"u32">; readonly buttons5: FieldSpec<"u32">; readonly buttons6: FieldSpec<"u32">; readonly buttons7: FieldSpec<"u32">; readonly justPressed0: FieldSpec<"u32">; readonly justPressed1: FieldSpec<"u32">; readonly justPressed2: FieldSpec<"u32">; readonly justPressed3: FieldSpec<"u32">; readonly justPressed4: FieldSpec<"u32">; readonly justPressed5: FieldSpec<"u32">; readonly justPressed6: FieldSpec<"u32">; readonly justPressed7: FieldSpec<"u32">; readonly justReleased0: FieldSpec<"u32">; readonly justReleased1: FieldSpec<"u32">; readonly justReleased2: FieldSpec<"u32">; readonly justReleased3: FieldSpec<"u32">; readonly justReleased4: FieldSpec<"u32">; readonly justReleased5: FieldSpec<"u32">; readonly justReleased6: FieldSpec<"u32">; readonly justReleased7: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly leftStick4: FieldSpec<"Vector2">; readonly leftStick5: FieldSpec<"Vector2">; readonly leftStick6: FieldSpec<"Vector2">; readonly leftStick7: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly rightStick4: FieldSpec<"Vector2">; readonly rightStick5: FieldSpec<"Vector2">; readonly rightStick6: FieldSpec<"Vector2">; readonly rightStick7: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2">; readonly triggers4: FieldSpec<"Vector2">; readonly triggers5: FieldSpec<"Vector2">; readonly triggers6: FieldSpec<"Vector2">; readonly triggers7: FieldSpec<"Vector2"> }, Gamepad>;
   /**
@@ -38739,7 +38345,6 @@ export declare namespace og {
    * Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays.
    * Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph).
    * Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
-   * See `input`.
    */
   namespace input {
     /**
@@ -38786,7 +38391,6 @@ export declare namespace og {
     function action(world: World, name: string): ActionState | null;
     /**
      * Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move.
-     * See `input §1`.
      *
      * @param world The world.
      * @param name The action.
@@ -38837,7 +38441,6 @@ export declare namespace og {
     function actionVector(world: World, name: string): Vector2;
     /**
      * A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is.
-     * See `facing`.
      *
      * @param world The world.
      * @param name The two-axis action.
@@ -38990,7 +38593,6 @@ export declare namespace og {
     function sensitivity(world: World, action: string, device?: InputDevice): SensitivityDesc;
     /**
      * Set the keys the player's keyboard layout prints, for glyphs: bindings still name physical keys (KeyboardEvent.code), so only their glyphs change (Z Q S D on AZERTY). The web shell sets it; empty is the US layout (native runs). The host's, one for the page: no world state.
-     * See `input §2`.
      *
      * @param labels Each key's printed label, in place of the last list.
      */
@@ -39034,7 +38636,6 @@ export declare namespace og {
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
    * The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
-   * See `camera §1`.
    */
   const OrbitCamera: ComponentType<{ readonly target: FieldSpec<"Vector3">; readonly distance: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly polar: FieldSpec<"f32">; readonly minPolarAngle: FieldSpec<"f32">; readonly maxPolarAngle: FieldSpec<"f32">; readonly rotateSpeed: FieldSpec<"f32">; readonly zoomSpeed: FieldSpec<"f32">; readonly autoRotate: FieldSpec<"bool">; readonly autoRotateSpeed: FieldSpec<"f32">; readonly enabled: FieldSpec<"bool">; readonly dragging: FieldSpec<"bool">; readonly pointer: FieldSpec<"Vector2"> }, OrbitCamera>;
   /**
@@ -39047,7 +38648,6 @@ export declare namespace og {
   const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly smoothTimeY: FieldSpec<"f32">; readonly lookAhead: FieldSpec<"f32">; readonly lookAheadMax: FieldSpec<"Vector2">; readonly lookAheadSmoothing: FieldSpec<"f32">; readonly lead: FieldSpec<"Vector2">; readonly last: FieldSpec<"Vector2">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
   /**
    * Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
-   * See `camera §5`.
    */
   const FramingCamera: ComponentType<{ readonly height: FieldSpec<"f32">; readonly centre: FieldSpec<"Vector3">; readonly beats: ListSpec<"f32">; readonly area: FieldSpec<"Vector2">; readonly ticks: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32"> }, FramingCamera>;
   /**
@@ -39061,13 +38661,11 @@ export declare namespace og {
   /**
    * A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. og.CameraBrain makes the enabled one with the highest priority live and blends og.Camera to it over the incoming shot's blendTime by its blendEase.
    * Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
-   * See `camera §2`.
    */
   const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly lensMode: FieldSpec<"CameraLensMode">; readonly focalLength: FieldSpec<"f32">; readonly sensorSize: FieldSpec<"Vector2">; readonly gateFit: FieldSpec<"CameraGateFit">; readonly aperture: FieldSpec<"f32">; readonly focusDistance: FieldSpec<"f32">; readonly shutterSpeed: FieldSpec<"f32">; readonly iso: FieldSpec<"f32">; readonly exposureMode: FieldSpec<"CameraExposureMode">; readonly ev100: FieldSpec<"f32">; readonly lensShift: FieldSpec<"Vector2">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly recoverTime: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
   /**
    * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
    * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
-   * See `camera §2`.
    */
   const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly soloBlend: FieldSpec<"f32">; readonly soloEase: FieldSpec<"Ease">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly fromLensProjection: FieldSpec<"Vector3">; readonly fromCocSources: ListSpec<"f32">; readonly fromPost: FieldSpec<"Vector2">; readonly fromPostPhysical: FieldSpec<"bool">; readonly cocExcluded: FieldSpec<"u32">; readonly cocDropCount: FieldSpec<"u32">; readonly lastCocDrop: ListSpec<"f32">; readonly lastCocDropFrame: FieldSpec<"u32">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
   /** The live virtual camera changed (sent by the og.camera system; read the tick after). */
@@ -39075,12 +38673,10 @@ export declare namespace og {
   /**
    * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
    * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
-   * See `camera`.
    */
   namespace camera {
     /**
      * Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
-     * See `camera §4`.
      *
      * @param world The world.
      * @param trauma Trauma to add, 0 to 1.
@@ -39088,7 +38684,6 @@ export declare namespace og {
     function shake(world: World, trauma: number): Result<void>;
     /**
      * A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. Visual only.
-     * See `camera §4`.
      *
      * @param world The world.
      * @param amount The fraction to zoom in (negative zooms out), -0.9 to 4.
@@ -39096,7 +38691,6 @@ export declare namespace og {
     function punch(world: World, amount: number): Result<void>;
     /**
      * A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only.
-     * See `camera §4`.
      *
      * @param world The world.
      * @param direction The direction to push the view (normalised here; zero does nothing).
@@ -39110,27 +38704,23 @@ export declare namespace og {
    */
   const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32">; readonly layers: FieldSpec<"u32"> }, Mesh>;
   /**
-   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
+   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
-   * See `render §3`.
    */
   const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly mobility: FieldSpec<"LightMobility">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
-   * See `render §3`.
    */
   const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly mobility: FieldSpec<"LightMobility"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
   const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly mobility: FieldSpec<"LightMobility"> }, SpotLight>;
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
-   * See `render §5`.
    */
   const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly skyCaptureSliced: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
-   * See `render §9`.
    */
   const Interpolation: ComponentType<{ readonly off: FieldSpec<"bool"> }, Interpolation>;
   /**
@@ -39140,29 +38730,24 @@ export declare namespace og {
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.
    * AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.
-   * See `render §5`.
    */
   const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofTiltShift: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly screenBlur: FieldSpec<"ScreenBlur">; readonly screenBlurStrength: FieldSpec<"f32">; readonly screenBlurCenter: FieldSpec<"Vector2">; readonly screenBlurAngle: FieldSpec<"f32">; readonly screenBlurSamples: FieldSpec<"u32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly ssrMaxRoughness: FieldSpec<"f32">; readonly ssrResolution: FieldSpec<"AoResolution">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo of the bright parts of the bloom chain's first level mirrored through the frame's centre, plus ghosts of the sun and up to seven point and spot lights weighted by how much of each the depth shows, added before the tone curve in exposed light, after bloom and TAA, at a quarter of the frame.
    * Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
-   * See `render §5`.
    */
   const LensFlare: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly ghosts: FieldSpec<"u32">; readonly ghostSpacing: FieldSpec<"f32">; readonly ghostThreshold: FieldSpec<"f32">; readonly haloRadius: FieldSpec<"f32">; readonly haloThickness: FieldSpec<"f32">; readonly haloThreshold: FieldSpec<"f32">; readonly chromaticAberration: FieldSpec<"f32">; readonly starburst: FieldSpec<"bool">; readonly sun: FieldSpec<"f32">; readonly lights: FieldSpec<"f32"> }, LensFlare>;
   /**
    * Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that).
    * Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
-   * See `render §4`.
    */
   const GlobalIllumination: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly method: FieldSpec<"GiMethod">; readonly intensity: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly rays: FieldSpec<"u32">; readonly occlusion: FieldSpec<"f32">; readonly resolution: FieldSpec<"AoResolution">; readonly probeSpacing: FieldSpec<"f32">; readonly probeCascades: FieldSpec<"u32">; readonly probeRays: FieldSpec<"u32">; readonly allowed: FieldSpec<"bool"> }, GlobalIllumination>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour, ink lines on tonal edges, colour bands by depth, and early 3D's vertex snapping, affine textures and coarse depth. Every primitive is off at its zero value (0, false, none) and then costs nothing. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
-   * See `looks §6`.
    */
   const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly posterizeMode: FieldSpec<"PosterizeMode">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingPaper: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly hatchingDistance: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintStrokes: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsFit: FieldSpec<"bool">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32">; readonly paintDetail: FieldSpec<"f32">; readonly paintCharacterDetail: FieldSpec<"f32">; readonly watercolorEdgeDarkening: FieldSpec<"f32">; readonly watercolorGranulation: FieldSpec<"f32">; readonly watercolorTurbulence: FieldSpec<"f32">; readonly watercolorDryBrush: FieldSpec<"f32">; readonly watercolorWobble: FieldSpec<"f32">; readonly watercolorDilution: FieldSpec<"f32">; readonly watercolorPaper: FieldSpec<"Color">; readonly ditherSpace: FieldSpec<"StyliseSpace">; readonly halftoneMode: FieldSpec<"HalftoneMode">; readonly halftoneMisregistration: FieldSpec<"f32">; readonly halftoneRegion: FieldSpec<"HalftoneRegion">; readonly hatchingKeepColor: FieldSpec<"bool"> }, Stylise>;
   /**
    * Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. Each applies to a lit material that leaves that field at its own default; the terrain, grass, scattered copies, impostors and crowds take toon (built-in bands), shadowTint and shadowDarkness. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds the simulation.
-   * See `looks §12`.
    */
   const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly outlineNearCap: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32">; readonly toonAmbient: FieldSpec<"f32">; readonly toonSoftness: FieldSpec<"f32">; readonly outlinePlace: FieldSpec<"OutlinePlace">; readonly wireframe: FieldSpec<"bool">; readonly wireframeAngle: FieldSpec<"f32">; readonly wireframeColor: FieldSpec<"Color"> }, MaterialStyle>;
   /**
@@ -39183,12 +38768,10 @@ export declare namespace og {
   const LightMask2D: ComponentType<{ readonly layers: FieldSpec<"u32"> }, LightMask2D>;
   /**
    * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
-   * See `looks §14`.
    */
   const Decal: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly normalMap: FieldSpec<"Texture">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly metallic: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
-   * See `looks §14`.
    */
   const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, ParticleSystem>;
   /**
@@ -39218,7 +38801,6 @@ export declare namespace og {
   const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly intervalTicks: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
   /**
    * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.
-   * See `looks §15`.
    */
   const ReflectionProbe: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly intervalTicks: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
   /**
@@ -39232,7 +38814,6 @@ export declare namespace og {
   /**
    * A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame.
    * It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame.
-   * See `render §11`.
    */
   const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly everyTicks: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
   /**
@@ -39242,19 +38823,16 @@ export declare namespace og {
   /**
    * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces with twoSided). Shaded with linearly transformed cosines (Heitz et al. 2016). og bake lightmaps traces its exact soft shadows into the bounce light, castShadow or not.
    * Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
-   * See `render §3`.
    */
   const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool">; readonly mobility: FieldSpec<"LightMobility"> }, RectLight>;
   /**
    * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
    * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.
-   * See `render §4`.
    */
   const LightVolume: ComponentType<{ readonly spacing: FieldSpec<"f32"> }, LightVolume>;
   /**
    * Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce each sweep. Shiny surfaces inside reflect the probes' light, not the sky.
    * Until every probe is relit, and while GlobalIllumination.allowed is false, the box takes its LightVolume's baked probes, else the sky's. Realtime probes win over baked ones; static models keep their lightmaps. Up to eight volumes are drawn. Presentation only; a world that never names it keeps its type table, saves and hash.
-   * See `render §4`.
    */
   const RealtimeLightVolume: ComponentType<{ readonly updatesPerFrame: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32"> }, RealtimeLightVolume>;
   /**
@@ -39277,14 +38855,12 @@ export declare namespace og {
     function snapCamera(world: World): void;
     /**
      * Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. Covers what the world draws now, regardless of camera direction, with every lit feature; content spawned later compiles on first draw. Asynchronous where supported; otherwise runs on the frame's thread. After the next frame it also builds the UI's documents on a copy of the UI and physics' height-field chunk shapes, once, so the first played frame does not. Presentation only: nothing a tick reads changes.
-     * See `loading §12`.
      *
      * @param world The world whose renderer compiles.
      */
     function compile(world: World): void;
     /**
      * Set the fade-in of entity's og.Model or light when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s; a light ramps its intensity instead. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.
-     * See `world §5`.
      *
      * @param world The world whose renderer draws it.
      * @param entity The entity with the og.Model or the light, or the cell.
@@ -39391,7 +38967,6 @@ export declare namespace og {
     function setShaderParam(world: World, material: Material, name: string, value: readonly number[]): Result<void>;
     /**
      * Apply a look: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes, except the art contract's, which are left as they are when undeclared. A look that switches the stylisation starts TAA's history over.
-     * See `looks §16`.
      *
      * @param world The world whose look changes.
      * @param look The look, from og.load.look.
@@ -39400,7 +38975,6 @@ export declare namespace og {
     function applyLook(world: World, look: Look): Result<void>;
     /**
      * Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields, so what the probe and dump_world show is what the next frame draws. Medium is every field's default. The device caps shadowedLights by RenderCapabilities.maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value. Inside a system, the system must declare RenderSettings among its writes.
-     * See `looks §16`.
      *
      * @param world The world whose RenderSettings change.
      * @param preset The preset.
@@ -39699,7 +39273,6 @@ export declare namespace og {
    * Load cooked output: `og cook` turns content/**\/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/.
    * Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp.
    * The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
-   * See `loading §1`.
    */
   namespace load {
     /**
@@ -39713,7 +39286,6 @@ export declare namespace og {
     /**
      * Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.
      * Scene, sub-scene and model dependencies resolve from their own bundle first, with loads cached per bundle and path. An id absent there falls back to the boot bundle, then ready bundles in open order. Direct og.load calls use that fallback order.
-     * See `world §4`.
      *
      * @param world The world that owns the asset.
      * @param path The cooked directory, relative to the project (or the page), such as `dlc/cooked`.
@@ -39730,7 +39302,6 @@ export declare namespace og {
     function bundleInfo(world: World, asset: Asset): Result<BundleInfo>;
     /**
      * How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). Answered from what the host has received, for a loading screen; natively a read completes at once.
-     * See `loading §12`.
      *
      * @param world The world that owns the asset.
      * @param asset The handle.
@@ -39747,7 +39318,6 @@ export declare namespace og {
     /**
      * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
      * A MagicaVoxel `.vox` cooks to a glTF and loads here too, its frames as clips og.AnimationPlayer plays; its import settings size and place it.
-     * See `loading §2`.
      *
      * @param world The world that owns the asset.
      * @param path The asset id, such as `models/ship.glb`.
@@ -39772,7 +39342,7 @@ export declare namespace og {
      */
     function prefab(world: World, path: string): Result<Asset>;
     /**
-     * Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
+     * Load a cooked font for og.render.text, or an icon set for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook. Optional locale coverage uses og.i18n.
      *
      * @param world The world that owns the font.
      * @param path The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`.
@@ -39789,7 +39359,6 @@ export declare namespace og {
     /**
      * Load a cooked sound for the audio module. Sounds are `.wav`, `.mp3`, `.ogg` (Vorbis) and `.flac` files under assets/ (and procedural `.ogt` presets): og cook decodes each to 16-bit PCM and encodes it to QOA, so every format plays, streams and loops the same. The asset id keeps the source's extension (`audio/theme.mp3`).
      * A long sound can be cooked in chunks that follow the playheads (SoundInfo.chunks), so it is never resident whole; it plays sample for sample as the whole file would. A sound cooked in chunks cannot join a streaming group.
-     * See `loading §3`.
      *
      * @param world The world that owns the sound.
      * @param path The sound's asset id, such as `audio/blip.wav`.
@@ -39805,7 +39374,6 @@ export declare namespace og {
     function lut(world: World, path: string): Result<Lut>;
     /**
      * A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
-     * See `loading §4`.
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical content id, such as `base/env/studio`.
@@ -39814,7 +39382,6 @@ export declare namespace og {
     function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
      * The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
-     * See `loading §4`.
      *
      * @param world The world whose renderer owns the map.
      * @param map A map og.load.environment answered.
@@ -39825,7 +39392,6 @@ export declare namespace og {
     function environmentSun(world: World, map: EnvironmentMap, rotation?: number, intensity?: number): Result<EnvironmentSun>;
     /**
      * The Environment.rotation that puts a cooked map's sun at `azimuth` around a view direction, so a sky is turned by where its sun should be ("light from behind the camera's left") instead of by a hand-tuned angle. The answer is exact for the map's extracted sun (og.load.environmentSun at rotation 0); its elevation is the map's, reported in `elevation`.
-     * See `render §4`.
      *
      * @param world The world whose renderer owns the map.
      * @param map A map og.load.environment answered, cooked with its sun extracted.
@@ -39836,7 +39402,6 @@ export declare namespace og {
     function environmentSunRotation(world: World, map: EnvironmentMap, view: Vector3, azimuth: number): Result<EnvironmentSunTurn>;
     /**
      * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters and events. Every line runs the same in compute and on the CPU path. The textures, texture array, mesh model, effect material and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
-     * See `loading §5`.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `fx/sparks.ogt`.
@@ -39845,7 +39410,6 @@ export declare namespace og {
     function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**
      * An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel and hook shader, loaded with it. Loaded once per path.
-     * See `effect-files §2`.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `fx/slash.ogt`.
@@ -39854,7 +39418,6 @@ export declare namespace og {
     function effect(world: World, path: string): Result<EffectMaterial>;
     /**
      * A material shader for og.render.shaderMaterial, from a cooked TS file.shader declaration (its WGSL compiled by the cook for every back end): mode {kind:'hooks'} (the default) defines hooks of the lit shader; mode {kind:'full',lit:true|false} defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path.
-     * See `loading §6`.
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical asset id, such as `base/shaders/dissolve`.
@@ -39878,8 +39441,7 @@ export declare namespace og {
      */
     function vector(world: World, path: string): Result<VectorArt>;
     /**
-     * A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path (ui-materials §2).
-     * See `ui-materials §2`.
+     * A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical asset id, such as `base/materials/materials/rarity`.
@@ -39897,7 +39459,6 @@ export declare namespace og {
     /**
      * Load a cooked TS file['texture-array'] declaration as one 2D-array texture: 1..256 equally sized images, in declaration order, encoded for their kind. Each layer is also a texture, `<path>#layer<n>`. Repeated loads return the same array.
      * Sprites (SpriteDesc.array, og.Sprite.array) and 2D particle emitters draw from it, one draw per array. In a streaming group it loads once the group is resident (refused before, naming the group), draws nothing while the group is away and returns under the same handle.
-     * See `loading §8`.
      *
      * @param world The world whose renderer owns the array.
      * @param path The array's canonical asset id, such as `base/tiles/ground`.
@@ -39906,7 +39467,6 @@ export declare namespace og {
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
      * Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.
-     * See `loading §6`.
      *
      * @param world The world whose UI uses it.
      * @param path The style directory, such as `styles/main` or `@themes/tactical`.
@@ -39915,7 +39475,6 @@ export declare namespace og {
     function style(world: World, path: string): Result<Style>;
     /**
      * Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID.
-     * See `loading §6`, `looks §1`.
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical content id, such as `base/looks/main`.
@@ -39972,7 +39531,6 @@ export declare namespace og {
     /**
      * Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
      * Clips are cooked as f32 samples or, with `animation { compress true }` in the model's import settings, as quantised keys within a tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse.
-     * See `loading §7`.
      *
      * @param world The world whose animation owns the assets.
      * @param path The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted).
@@ -39997,7 +39555,6 @@ export declare namespace og {
     function rig(world: World, path: string): Result<Rig>;
     /**
      * Load a cooked file.flipbook by canonical content ID and register its native sheet with og.flipbook. Author a texture ref with grid, frames or explicit atlas input, or animated GIF/WebP/APNG sources packed into <id>#sheet. array: true produces a texture array (FlipbookInfo.array), frame n drawn as layer n. A streaming sheet loads only when its group is resident; sprites draw nothing while it is away. Repeated loads return the same handles.
-     * See `loading §8`.
      *
      * @param world The world whose animation and renderer own it.
      * @param path The sheet's canonical content ID, such as `base/sprites/hero`.
@@ -40013,8 +39570,7 @@ export declare namespace og {
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
     /**
-     * Load cooked footage authored with file.video in content/**\/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.
-     * See `loading §9`.
+     * Load cooked footage authored with file.video in content/**\/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here. Loading the same path again answers the same handles.
      *
      * @param world The world whose renderer and audio own it.
      * @param path The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts.
@@ -40039,7 +39595,6 @@ export declare namespace og {
     function timeline(world: World, path: string): Result<TimelineAsset>;
     /**
      * Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file) or an Effekseer effect (`.efkproj`, `.efkefc`) the cook converts, with every emitter, effect material, model, flipbook sheet and sound it names. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle.
-     * See `loading §11`.
      *
      * @param world The world.
      * @param path The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`.
@@ -40057,7 +39612,6 @@ export declare namespace og {
     /**
      * Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are checked against the budget before it is decoded, off the engine's thread. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why).
      * Completion is host input, applied at a tick boundary and journaled, so a replay puts it in place at the same tick. It is local to each session: an asset's status is not world state and is in no snapshot or hash.
-     * See `loading §10`.
      *
      * @param world The world that owns the asset.
      * @param name A name for it in errors and dumps, such as `drawings/cat.png`.
@@ -40070,7 +39624,6 @@ export declare namespace og {
      * Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs. Its size, triangles and image headers are checked against the budget at the call; then its images decode off the engine's thread and its primitives convert at tick boundaries. The handle is pending until the model is in place, then ready (world.instantiate spawns it, og.load.gltfInfo describes it) or failed (og.load.error says why).
      * It reads materials, nodes and scenes, without skins, animations or levels of detail.
      * Completion is host input, journaled as og.load.imageData's is.
-     * See `loading §10`.
      *
      * @param world The world that owns the asset.
      * @param name A name for it in errors and dumps, such as `creations/kite.glb`; its textures are `<name>#tex<n>`.
@@ -40082,7 +39635,6 @@ export declare namespace og {
     /**
      * Load an HDR environment from bytes, uncooked, at run time, for Environment.map: an equirectangular Radiance .hdr (or .exr where RenderCapabilities.exrDecode is true), twice as wide as tall. Its size is checked against the budget before it is decoded off the engine's thread; the renderer GGX-prefilters it on the GPU when it first draws with it. The handle is pending until the map is in place, then ready (og.load.environmentInfo) or failed (og.load.error); until then Environment lights by the sky.
      * Completion is host input, journaled as og.load.imageData's is.
-     * See `loading §10`.
      *
      * @param world The world that owns the asset.
      * @param name A name for it in errors and dumps, such as `uploads/sunset.hdr`.
@@ -40094,7 +39646,6 @@ export declare namespace og {
     /**
      * Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. The file is read from the host's content base against its version manifest's integrity; game code names no URL. The handle is pending, then ready (og.load.dataJson, og.load.dataBytes) or failed, og.load.error starting with its reason.
      * Completion is host input, journaled with its tick and integrity, so a replay reads the same bytes in at the same tick. og.load.release frees it.
-     * See `loading §14`.
      *
      * @param world The world that owns the asset.
      * @param desc The file and how to read it.
@@ -40103,7 +39654,6 @@ export declare namespace og {
     function data(world: World, desc?: DataDesc): Result<Asset>;
     /**
      * The value of a ready og.load.data file read as `json`.
-     * See `loading §14`.
      *
      * @param world The world that owns the asset.
      * @param asset A handle og.load.data answered.
@@ -40112,7 +39662,6 @@ export declare namespace og {
     function dataJson(world: World, asset: Asset): Result<unknown>;
     /**
      * The bytes of a ready og.load.data file read as `bytes`.
-     * See `loading §14`.
      *
      * @param world The world that owns the asset.
      * @param asset A handle og.load.data answered.
@@ -40122,7 +39671,6 @@ export declare namespace og {
     /**
      * Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. Once ready it is a runtime bundle as og.load.bundle opens: og.load.bundleInfo, its groups and cells, og.load.release to close it.
      * Completion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle.
-     * See `loading §14`.
      *
      * @param world The world that owns the asset.
      * @param entry The pack: its catalog, version, and its name as `path`.
@@ -40138,8 +39686,7 @@ export declare namespace og {
      */
     function environmentInfo(world: World, asset: Asset): Result<EnvironmentInfo>;
     /**
-     * Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains (loading §10). The boot bundle cannot close.
-     * See `loading §10`.
+     * Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains. The boot bundle cannot close.
      *
      * @param world The world that owns the asset.
      * @param asset An uncooked asset handle or a runtime bundle handle.
@@ -40172,18 +39719,15 @@ export declare namespace og {
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
-   * See `physics §1`.
    */
   const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly airDrag: FieldSpec<"f32">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool">; readonly dominance: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly gyroscopic: FieldSpec<"bool">; readonly additionalSolverIterations: FieldSpec<"u32"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
-   * See `physics §1`.
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"ColliderShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly roundRadius: FieldSpec<"f32">; readonly frictionCombine: FieldSpec<"CombineRule">; readonly restitutionCombine: FieldSpec<"CombineRule">; readonly solverLayers: FieldSpec<"u32">; readonly solverMask: FieldSpec<"u32">; readonly enabled: FieldSpec<"bool"> }, Collider>;
   /**
    * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
-   * See `physics §8`.
    */
   const ForceField: ComponentType<{ readonly kind: FieldSpec<"ForceFieldKind">; readonly direction: FieldSpec<"Vector3">; readonly strength: FieldSpec<"f32">; readonly enabled: FieldSpec<"bool"> }, ForceField>;
   /**
@@ -40196,7 +39740,6 @@ export declare namespace og {
   const Physics: ResourceType<{ readonly profile: FieldSpec<"u32">; readonly gravity: FieldSpec<"Vector3">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly restSpeed: FieldSpec<"f32">; readonly sleepTicks: FieldSpec<"u32">; readonly sleepSpeed: FieldSpec<"f32"> }, Physics>;
   /**
    * Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.
-   * See `physics §5`.
    */
   const CollisionStarted: EventType<CollisionStarted>;
   /** Two solid colliders stopped touching, or one of them went away. */
@@ -40229,17 +39772,14 @@ export declare namespace og {
   const Contact: EventType<Contact>;
   /**
    * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
-   * See `physics §1`.
    */
   const Joint: ComponentType<{ readonly kind: FieldSpec<"JointType">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"JointMotor">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool">; readonly lockAxes: FieldSpec<"u32">; readonly motorModel: FieldSpec<"JointMotorModel"> }, Joint>;
   /**
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
-   * See `physics §6`.
    */
   const CharacterController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly addVelocity: FieldSpec<"Vector3">; readonly rootDelta: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly jumpBuffer: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly inheritedVelocity: FieldSpec<"Vector3">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
    * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
-   * See `physics §6`.
    */
   const PlatformerController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly wallCoyoteTime: FieldSpec<"f32">; readonly wallCoyote: FieldSpec<"f32">; readonly lastWall: FieldSpec<"i32">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly droppingThrough: FieldSpec<"Entity">; readonly run: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly addVelocity: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayMask: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
   /**
@@ -40250,7 +39790,6 @@ export declare namespace og {
    * Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels.
    * Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero.
    * 3D wheels cast the full suspension droop, skip sensors and honour ContactHook.
-   * See `physics §7`.
    */
   const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly compressionDamping: FieldSpec<"f32">; readonly reboundDamping: FieldSpec<"f32">; readonly bumpStopStiffness: FieldSpec<"f32">; readonly antiRollStiffness: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"VehicleDrive">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly wheelCast: FieldSpec<"VehicleWheelCast">; readonly brakeBias: FieldSpec<"f32">; readonly aeroDrag: FieldSpec<"f32">; readonly aeroDownforce: FieldSpec<"f32">; readonly rollingResistance: FieldSpec<"f32">; readonly ackermann: FieldSpec<"f32">; readonly steeringFade: FieldSpec<"f32">; readonly abs: FieldSpec<"f32">; readonly tcs: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"VehicleModel">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly engineInertia: FieldSpec<"f32">; readonly clutchStrength: FieldSpec<"f32">; readonly engineBraking: FieldSpec<"f32">; readonly differential: FieldSpec<"VehicleDifferential">; readonly differentialStrength: FieldSpec<"f32">; readonly awdBias: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
   /**
@@ -40267,12 +39806,10 @@ export declare namespace og {
   const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly tether: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly lift: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Cloth>;
   /**
    * A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
-   * See `physics §8`.
    */
   const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly backstopRadius: FieldSpec<"f32">; readonly bodyRadius: FieldSpec<"f32">; readonly teleportDistance: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly lift: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"Simulation"> }, Garment>;
   /**
    * An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
-   * See `physics §8`.
    */
   const SoftBody: ComponentType<{ readonly shape: FieldSpec<"SoftBodyShape">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly tetraStiffness: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
   /**
@@ -40281,7 +39818,6 @@ export declare namespace og {
   const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly vorticity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
   /**
    * Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface.
-   * See `physics §8`.
    */
   const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly vorticity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Fluid3D>;
   /**
@@ -40298,7 +39834,6 @@ export declare namespace og {
   const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
   /**
    * Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.
-   * See `physics §8`.
    */
   const Buoyancy: ComponentType<{ readonly waterDensity: FieldSpec<"f32">; readonly samples: FieldSpec<"u32">; readonly drag: FieldSpec<"f32">; readonly angularDrag: FieldSpec<"f32">; readonly submerged: FieldSpec<"f32"> }, Buoyancy>;
   /**
@@ -40309,12 +39844,10 @@ export declare namespace og {
    * Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
    * The profile is 2D in a `form "2d"` project. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
    * The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
-   * See `physics`.
    */
   namespace physics {
     /**
      * Resize a character capsule after checking headroom and the final volume. Keeps its feet fixed by adjusting Collider.offset, preserves body velocity and joints, and returns false without changing anything when blocked. Works in both physics profiles, inside a system or between ticks; inside a system read Transform, Parent and the controller and write Collider.
-     * See `physics §6`.
      *
      * @param world The world.
      * @param entity An entity with CharacterController or PlatformerController and a capsule Collider.
@@ -40325,7 +39858,6 @@ export declare namespace og {
     function resizeCharacter(world: World, entity: Entity, height: number, radius: number): Result<boolean>;
     /**
      * The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform.
-     * See `physics §8`.
      *
      * @param world The world.
      * @param point The point, in world space, in metres (an og.WaterLine reads x and y).
@@ -40344,7 +39876,6 @@ export declare namespace og {
     function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
     /**
      * The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it.
-     * See `physics §4`.
      *
      * @param world The world.
      * @param desc The ray and the filter.
@@ -40414,7 +39945,6 @@ export declare namespace og {
     function velocityAtPoint(world: World, entity: Entity, point: Vector3): Result<Vector3 | null>;
     /**
      * Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event.
-     * See `physics §5`.
      *
      * @param world The world.
      * @param sensor The sensor: an entity whose og.Collider has `sensor` set.
@@ -40571,47 +40101,38 @@ export declare namespace og {
   }
   /**
    * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
-   * See `render §7`.
    */
   const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;
   /**
    * Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.
-   * See `render §7`.
    */
   const FogVolume: ComponentType<{ readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly scattering: FieldSpec<"f32"> }, FogVolume>;
   /**
    * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
-   * See `render §7`.
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
    * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky, its LUT and the light share that frame's time. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
-   * See `render §7`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f64">; readonly speed: FieldSpec<"f64">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
    * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
-   * See `seasons §1`.
    */
   const Season: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly latitude: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly sun: FieldSpec<"bool">; readonly temperature: FieldSpec<"f32">; readonly temperatureRange: FieldSpec<"f32">; readonly dayRange: FieldSpec<"f32">; readonly day: FieldSpec<"f32"> }, Season>;
   /**
    * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.
-   * See `render §7`.
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
    * Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
-   * See `render §7`.
    */
   const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly kind: FieldSpec<"CloudKind">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32"> }, Clouds>;
   /**
    * The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
-   * See `render §7`.
    */
   const Aurora: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly activity: FieldSpec<"f32">; readonly curtains: FieldSpec<"u32">; readonly direction: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly energy: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly greenColor: FieldSpec<"Color">; readonly redColor: FieldSpec<"Color">; readonly nitrogenColor: FieldSpec<"Color"> }, Aurora>;
   /**
    * The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, drawn from a stream forked from og.Rng (`fork("og.weather")`) and kept here, so replays, restores and every host strike alike. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (StandardMaterialDesc.weathering opts a material out); rendering never writes it.
-   * See `render §7`.
    */
   const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly puddleLimit: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly dustTime: FieldSpec<"f32">; readonly washTime: FieldSpec<"f32">; readonly dustColor: FieldSpec<"Color">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly shelterSize: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly dust: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
   /**
@@ -40624,17 +40145,14 @@ export declare namespace og {
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly drawnKind: FieldSpec<"u32">; readonly drawnIntensity: FieldSpec<"f32">; readonly fadingKind: FieldSpec<"u32">; readonly fadingIntensity: FieldSpec<"f32">; readonly settling: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
    * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
-   * See `render §8`.
    */
   const Wind: ResourceType<{ readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32">; readonly turbulence: FieldSpec<"f32">; readonly gustSize: FieldSpec<"f32"> }, Wind>;
   /**
    * A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops.
-   * See `render §8`.
    */
   const WindMotor: ComponentType<{ readonly kind: FieldSpec<"WindMotorKind">; readonly radius: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, WindMotor>;
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
-   * See `render §8`.
    */
   const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly depth: FieldSpec<"f32">; readonly geometry: FieldSpec<"Geometry">; readonly river: FieldSpec<"Path">; readonly riverWidth: FieldSpec<"f32">; readonly riverSpeed: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly absorption: FieldSpec<"Color">; readonly scattering: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32">; readonly foamStreaks: FieldSpec<"f32">; readonly meniscus: FieldSpec<"f32">; readonly dynamicWaves: FieldSpec<"f32">; readonly spray: FieldSpec<"f32"> }, Water>;
   /**
@@ -40654,7 +40172,6 @@ export declare namespace og {
     function timeOfDay(world: World): number;
     /**
      * The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature: an undeclared one is refused and logged once, and the answer is then og.Season's defaults, or the day's mean temperature.
-     * See `seasons §1`.
      *
      * @param world The world.
      */
@@ -40667,13 +40184,11 @@ export declare namespace og {
   /**
    * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
    * Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
-   * See `animation §3`.
    */
   const BoneAttachment: ComponentType<{ readonly node: FieldSpec<"u32"> }, BoneAttachment>;
   /**
    * Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade.
    * The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before.
-   * See `animation §7`.
    */
   const CrowdAnimation: ComponentType<{ readonly skeleton: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly clip: FieldSpec<"ClipAsset">; readonly offset: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly rate: FieldSpec<"f32"> }, CrowdAnimation>;
   /**
@@ -40683,7 +40198,6 @@ export declare namespace og {
   /**
    * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0).
    * On an og.Flipbook or og.Skeleton2D entity a GraphDesc.sprite graph drives it instead. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins) at its rate, cutting on frame ends and keeping the phase within a state or sync group; a 2D skeleton blends the two heaviest clips and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only.
-   * See `animation §9`.
    */
   const AnimationGraph: ComponentType<{ readonly asset: FieldSpec<"GraphAsset">; readonly weight: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly p0: FieldSpec<"f32">; readonly p1: FieldSpec<"f32">; readonly p2: FieldSpec<"f32">; readonly p3: FieldSpec<"f32">; readonly p4: FieldSpec<"f32">; readonly p5: FieldSpec<"f32">; readonly p6: FieldSpec<"f32">; readonly p7: FieldSpec<"f32">; readonly state: FieldSpec<"u32">; readonly stateTime: FieldSpec<"f32"> }, AnimationGraph>;
   /**
@@ -40704,33 +40218,27 @@ export declare namespace og {
   const JointLimit: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly axis: FieldSpec<"Vector3">; readonly swing: FieldSpec<"f32">; readonly twistMin: FieldSpec<"f32">; readonly twistMax: FieldSpec<"f32"> }, JointLimit>;
   /**
    * Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
-   * See `animation §8`.
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly groundReach: FieldSpec<"f32">; readonly pelvisDrop: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
   /**
    * A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
-   * See `animation §8`.
    */
   const Hang: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly grip: FieldSpec<"u32">; readonly point: FieldSpec<"Vector3">; readonly anchor: FieldSpec<"Vector3">; readonly facing: FieldSpec<"Vector3">; readonly lay: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly limbs: ListSpec<"Entity">; readonly reach: ListSpec<"f32">; readonly held: FieldSpec<"bool"> }, Hang>;
   /**
    * A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
-   * See `animation §8`.
    */
   const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly stiffness: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly tailOffset: FieldSpec<"Vector3">; readonly teleportDistance: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly wind: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly colliders: FieldSpec<"u32">; readonly worldColliders: FieldSpec<"u32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
   /**
    * A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
-   * See `animation §8`.
    */
   const SpringCollider: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly shape: FieldSpec<"SpringColliderShape">; readonly offset: FieldSpec<"Vector3">; readonly tail: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, SpringCollider>;
   /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers; each says where it came from (`state`, `layer`) and whether its clip weighed most of its layer (`dominant`), and the game decides which to act on.
-   * See `animation §3`.
    */
   const AnimationEvent: EventType<AnimationEvent>;
   /**
    * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` sheet's texture array. Played by og.flipbook by scaled time (Time.scaledDt), after the game's systems.
    * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent; the playback position is world state (the og.flipbook state block). A sprite graph on the entity writes clip, time and speed.
-   * See `animation §9`.
    */
   const Flipbook: ComponentType<{ readonly sheet: FieldSpec<"FlipbookSheet">; readonly clip: FieldSpec<"u32">; readonly speed: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly finished: FieldSpec<"bool">; readonly loops: FieldSpec<"u32"> }, Flipbook>;
   /**
@@ -40740,7 +40248,6 @@ export declare namespace og {
   /**
    * Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it.
    * Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block).
-   * See `animation §9`.
    */
   const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly skin: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly blendClip: FieldSpec<"u32">; readonly blendTime: FieldSpec<"f32">; readonly blend: FieldSpec<"f32"> }, Skeleton2D>;
   /**
@@ -40755,12 +40262,10 @@ export declare namespace og {
    * Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
    * Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none.
    * Clips bind to nodes by name; assets are not world state.
-   * See `animation §7`.
    */
   namespace anim {
     /**
      * A node's matrix in the skeleton entity's frame, including node ancestors, as three.js Bone.matrixWorld relative to its SkinnedMesh; no entity/parent transforms. Game systems run before og.anim: reads see the previous completed animation tick's final FootLock/IK/LookAt/spring pose, never the interpolated draw or this tick's new inputs. Rest before the first tick or after an asset change. Reads never advance animation; snapshot restore is immediate. Declare read access to og.Skeleton.
-     * See `animation §3`.
      *
      * @param world The world whose animation poses the entity.
      * @param entity The entity with og.Skeleton.
@@ -40785,8 +40290,7 @@ export declare namespace og {
      */
     function humanoid(world: World, desc?: HumanoidDesc): Result<Humanoid>;
     /**
-     * A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does (guide §7), then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers.
-     * See `animation §7`.
+     * A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does, then each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones share a limb's twist. Same name, duration and markers.
      *
      * @param world The world whose animation owns the skeletons and the clip.
      * @param desc The clip, the two skeletons and their rigs.
@@ -40795,7 +40299,6 @@ export declare namespace og {
     function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
     /**
      * A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers. Mirroring twice gives the clip back.
-     * See `animation §7`.
      *
      * @param world The world whose animation owns the skeleton and the clip.
      * @param desc The clip and its skeleton.
@@ -40850,7 +40353,6 @@ export declare namespace og {
    * Tweens: animate any numeric field of a component (og.Transform.position, a game's own f32) to a target over time with an easing curve, a delay, repeat and yoyo, in sequences or in parallel. Advanced by og.tween after the game's systems, before og.anim and physics, by scaled time unless unscaled.
    * Running tweens are world state (the og.tween state block). og.TweenCompleted reports one that ends on its own. og.tween.squash and og.tween.flash are feel presets.
    * Timelines (og.tween.timeline) are GSAP's, over entity fields, rendered from the playhead; callbacks are names sent as og.TweenEvent.
-   * See `animation §12`.
    */
   namespace tween {
     /**
@@ -40948,7 +40450,6 @@ export declare namespace og {
   /**
    * Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (checked file.tilemap TS, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
    * Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
-   * See `world §6`.
    */
   namespace tilemap {
     /**
@@ -41027,7 +40528,6 @@ export declare namespace og {
   const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly outerGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool">; readonly userBus: FieldSpec<"u32"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.
-   * See `audio §2`.
    */
   const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly panningModel: FieldSpec<"PanningModel"> }, AudioListener>;
   /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
@@ -41040,25 +40540,21 @@ export declare namespace og {
   /**
    * A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master. The first node in query order for an index counts; a removed node's sources play on their `bus`.
    * The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
-   * See `audio §1`.
    */
   const AudioBusNode: ComponentType<{ readonly index: FieldSpec<"u32">; readonly parent: FieldSpec<"u32">; readonly volume: FieldSpec<"f32"> }, AudioBusNode>;
   /**
    * A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. Each tick og.audio moves `weight` by tickDuration / fade and sends the blend in the stream; bus gains ramp linearly across each tick.
    * At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz to the snapshot's cutoffs, log2-linear in w. Snapshots multiply gains and meet filters (the lowest low-pass and highest high-pass, AudioBusFx's included); they never write og.Audio or og.AudioBusFx.
-   * See `audio §4`.
    */
   const AudioSnapshot: ComponentType<{ readonly active: FieldSpec<"bool">; readonly fade: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly volume: ListSpec<"f32">; readonly lowpass: ListSpec<"f32">; readonly highpass: ListSpec<"f32"> }, AudioSnapshot>;
   /**
    * An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it.
    * The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream (og.Rng's seed forked with the label og.audio, kept in the world), so the same seed and triggers play the same sounds on every host and replay. Each play spawns a voice entity, an og.AudioSource parented to this one, despawned when it ends; only `played`, `last`, `index`, `bag` and `voices` feed back.
-   * See `audio §1`.
    */
   const AudioEvent: ComponentType<{ readonly sounds: ListSpec<"Sound">; readonly weights: ListSpec<"f32">; readonly order: FieldSpec<"AudioEventOrder">; readonly volume: FieldSpec<"f32">; readonly volumeJitter: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pitchJitter: FieldSpec<"f32">; readonly cooldown: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly steal: FieldSpec<"bool">; readonly bus: FieldSpec<"AudioBus">; readonly userBus: FieldSpec<"u32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly trigger: FieldSpec<"bool">; readonly played: FieldSpec<"u32">; readonly last: FieldSpec<"f64">; readonly index: FieldSpec<"u32">; readonly bag: FieldSpec<"u32">; readonly voices: FieldSpec<"u32"> }, AudioEvent>;
   /**
    * The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`.
    * Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform.
-   * See `audio §4`.
    */
   const ReverbZone: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly send: FieldSpec<"f32">; readonly room: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, ReverbZone>;
   /**
@@ -41076,7 +40572,6 @@ export declare namespace og {
   /**
    * Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
    * The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream.
-   * See `audio`.
    */
   namespace audio {
     /**
@@ -41114,7 +40609,6 @@ export declare namespace og {
     /**
      * How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency and the mixer's buffer; 0 headless. Host input, written to og.Audio between ticks, so a replay carries it.
      * Inside a system og.Audio must be among its reads or writes.
-     * See `audio §3`.
      *
      * @param world The world.
      * @returns Seconds; 0 headless.
@@ -41135,7 +40629,6 @@ export declare namespace og {
   const NavFilter: ComponentType<{ readonly areaCosts: ListSpec<"f32">; readonly excluded: ListSpec<"u32"> }, NavFilter>;
   /**
    * Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation.
-   * See `world §9`.
    */
   const Crowd: ComponentType<{ readonly neighbours: FieldSpec<"u32">; readonly horizon: FieldSpec<"f32">; readonly obstacleHorizon: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, Crowd>;
   /**
@@ -41145,7 +40638,6 @@ export declare namespace og {
   /**
    * Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch.
    * Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D.
-   * See `world §9`.
    */
   namespace nav {
     /**
@@ -41334,7 +40826,6 @@ export declare namespace og {
   /**
    * Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
-   * See `world §10`.
    */
   namespace ai {
     /**
@@ -41436,7 +40927,6 @@ export declare namespace og {
   /**
    * Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning.
    * Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
-   * See `yarn`.
    */
   namespace story {
     /**
@@ -41473,7 +40963,6 @@ export declare namespace og {
     function view(world: World, conversation: number): DialogueView | null;
     /**
      * A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice.
-     * See `yarn §9`.
      *
      * @param world The world.
      * @param dialogue The dialogue's name (StoryAsset.name).
@@ -41654,7 +41143,6 @@ export declare namespace og {
   const PlatformAnswered: EventType<PlatformAnswered>;
   /**
    * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
-   * See `saves §8`.
    */
   const PlatformNotice: EventType<PlatformNotice>;
   /**
@@ -41677,7 +41165,6 @@ export declare namespace og {
   const RoomMessage: EventType<RoomMessage>;
   /**
    * Platform services as host capabilities: the cloud store and save slots, leaderboards, telemetry, Origin Point, AI marks, purchases, ads, achievements, the player, friends, invites, share and rooms. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them; every id it hands back is opaque and scoped to this game. Calls are asynchronous: each returns a request number at once and its answer arrives at the start of a later tick (og.PlatformAnswered, og.platform.result), host input like key presses. A host that lacks a method answers it `unavailable`.
-   * See `saves §7`.
    */
   namespace platform {
     /**
@@ -41698,7 +41185,6 @@ export declare namespace og {
     function storeSet(world: World, desc?: StoreSetDesc): Result<number>;
     /**
      * Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: a catalog notice (og.PlatformNotice) is a hint a host may never send.
-     * See `saves §11`.
      *
      * @param world The world.
      * @param catalog The catalog's name, as og.load.data's CatalogEntry.catalog.
@@ -41778,7 +41264,6 @@ export declare namespace og {
     function saveSettings(world: World, value: unknown): Result<number>;
     /**
      * Save a long text under a slot, in as many store keys as it needs, with one request. The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. A slot takes at most 17 keys (two banks and the manifest).
-     * See `saves §6`.
      *
      * @param world The world.
      * @param desc The slot, the text and what a title shows of it.
@@ -41787,7 +41272,6 @@ export declare namespace og {
     function saveSlot(world: World, desc?: SaveSlotDesc): Result<number>;
     /**
      * Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it.
-     * See `saves §1`.
      *
      * @param world The world.
      * @param desc The slot, and whether to read its meta alone.
@@ -41804,7 +41288,6 @@ export declare namespace og {
     function products(world: World, desc?: ProductsDesc): Result<number>;
     /**
      * Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume.
-     * See `saves §8`.
      *
      * @param world The world.
      * @param desc The product and how many.
@@ -41813,7 +41296,6 @@ export declare namespace og {
     function purchase(world: World, desc?: PurchaseDesc): Result<number>;
     /**
      * What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed.
-     * See `saves §8`.
      *
      * @param world The world.
      * @returns The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise.
@@ -41950,14 +41432,12 @@ export declare namespace og {
     function info(world: World): PlatformInfo;
     /**
      * Everything the host handed this engine, oldest first, with the tick it was handed at: platform answers are host input, and `og replay record --platform-journal` hands these back at the same ticks, so a web session, whose answers come when the page delivers them, replays natively. A publish build keeps none.
-     * See `saves §7`.
      *
      * @param world The world.
      */
     function journal(world: World): readonly PlatformHanded[];
     /**
      * The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values.
-     * See `saves §7`.
      *
      * @param world The world.
      * @returns UTC milliseconds; 0 until a host has told the time (`none`).
@@ -41965,7 +41445,6 @@ export declare namespace og {
     function now(world: World): number;
     /**
      * Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does).
-     * See `saves §9`.
      *
      * @param world The world.
      * @param desc Its name and capacity.
@@ -42028,7 +41507,6 @@ export declare namespace og {
   /**
    * Localization: one file.strings declaration per locale under content/, messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its fallback table, then the base. It also sets the UI's font chain and direction.
    * Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
-   * See `localization`.
    */
   namespace i18n {
     /**
@@ -42119,7 +41597,6 @@ export declare namespace og {
   /**
    * The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
    * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
-   * See `components`.
    */
   namespace ui {
     /**
@@ -42219,7 +41696,6 @@ export declare namespace og {
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-   * See `combat §1`, `interaction §1`, `items §1`, `abilities §1`.
    */
   namespace systems {
     /**
@@ -42291,12 +41767,10 @@ export declare namespace og {
   const TerrainStamp: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly blend: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool"> }, TerrainStamp>;
   /**
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
-   * See `world §3`.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32">; readonly noiseScale: FieldSpec<"f32">; readonly noiseThreshold: FieldSpec<"f32">; readonly footprint: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly avoidWater: FieldSpec<"f32">; readonly densityMap: FieldSpec<"Texture">; readonly gpuPlacement: FieldSpec<"bool">; readonly model: FieldSpec<"Asset"> }, TerrainScatter>;
   /**
    * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
-   * See `world §3`.
    */
   const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32">; readonly recovery: FieldSpec<"f32">; readonly types: ListSpec<"Entity">; readonly typeMap: FieldSpec<"Texture">; readonly densityMap: FieldSpec<"Texture">; readonly heightMap: FieldSpec<"Texture"> }, Grass>;
   /**
@@ -42314,7 +41788,6 @@ export declare namespace og {
   /**
    * Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
    * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
-   * See `world §1`.
    */
   namespace terrain {
     /**
@@ -42421,7 +41894,6 @@ export declare namespace og {
   /**
    * Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.
    * World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
-   * See `world §4`.
    */
   namespace stream {
     /**
@@ -42470,13 +41942,11 @@ export declare namespace og {
   const MediaIntent: EventType<MediaIntent>;
   /**
    * Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames.
-   * See `audio §8`.
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f64">; readonly loopEnd: FieldSpec<"f64">; readonly wait: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
    * Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream: true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
    * Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
-   * See `audio §8`.
    */
   namespace video {
     /**
@@ -42503,7 +41973,6 @@ export declare namespace og {
   /**
    * Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch.
    * Development only: in publish builds every member does nothing and answers its default. Debug draw is rendering: it never feeds back into the simulation and is not world state.
-   * See `testing §8`.
    */
   namespace debug {
     /**
@@ -42600,7 +42069,6 @@ export declare namespace og {
   /**
    * Assertions: properties of the game checked as it runs, after the Antithesis SDK's (AssertKind: always, sometimes, reachable, unreachable, each). Each is identified by its name and the place it is called from, which the build records. Nothing an assertion does reaches the world, so a run with them hashes and replays as one without. Violations and coverage go through the probe (`assertions`) into `og run --json` and `og test`.
    * Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there.
-   * See `testing §2`.
    */
   namespace assert {
     /**
@@ -42657,7 +42125,6 @@ export declare namespace og {
   /**
    * Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed. catmullRom passes through every point (tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...`, linear joins straight segments; a closed path joins its last point to its first and wraps t.
    * Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state.
-   * See `world §8`.
    */
   namespace path {
     /**
@@ -42718,7 +42185,6 @@ export declare namespace og {
   /**
    * Timelines: cutscenes and sequences as typed file.timeline declarations under content/. Keyed tracks cover camera, transform, animation, audio, captions, events, shots and scenes. og cook builds native tracks; og.load.timeline loads the canonical content ID. See animation and file:timeline.
    * An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused.
-   * See `animation §13`.
    */
   namespace timeline {
     /**
@@ -42772,7 +42238,6 @@ export declare namespace og {
   }
   /**
    * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
-   * See `networking §1`.
    */
   const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelayTicks: FieldSpec<"u32">; readonly hashEveryTicks: FieldSpec<"u32">; readonly running: FieldSpec<"bool">; readonly mode: FieldSpec<"NetMode">; readonly stallTimeoutMs: FieldSpec<"u32">; readonly rejoin: FieldSpec<"bool">; readonly maxPredictionTicks: FieldSpec<"u32"> }, Lockstep>;
   /**
@@ -42781,7 +42246,6 @@ export declare namespace og {
   const PlayerInput: ComponentType<{ readonly player: FieldSpec<"u32">; readonly buttons: FieldSpec<"u32">; readonly x: FieldSpec<"f32">; readonly y: FieldSpec<"f32">; readonly aimX: FieldSpec<"f32">; readonly aimY: FieldSpec<"f32">; readonly tick: FieldSpec<"u32"> }, PlayerInput>;
   /**
    * This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.
-   * See `networking §6`.
    */
   const Desync: EventType<Desync>;
   /**
@@ -42799,12 +42263,10 @@ export declare namespace og {
   /**
    * Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep and join a room (og.platform.roomJoin); once the room holds `players` peers the authority (the lowest peer number) starts, and tick t runs when every seated player's input for t is in (in rollback, on a prediction re-run when the input differs).
    * Systems read og.PlayerInput and give this peer's input with og.net.submit; og.Desync reports the first tick whose hashes differ.
-   * See `networking`.
    */
   namespace net {
     /**
      * Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
-     * See `networking §3`.
      *
      * @param world The world.
      * @param input The buttons and axes.
@@ -42866,7 +42328,6 @@ export declare namespace og {
     function finalHash(world: World, tick: number): string | null;
     /**
      * The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus, ...). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers.
-     * See `networking §6`.
      *
      * @param world The world.
      */
@@ -42874,22 +42335,18 @@ export declare namespace og {
   }
   /**
    * This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it.
-   * See `shared-worlds §2`.
    */
   const SharedWorld: ResourceType<{ readonly sendRateHz: FieldSpec<"u32">; readonly interpDelayMs: FieldSpec<"u32">; readonly extrapolateMs: FieldSpec<"u32">; readonly state: FieldSpec<"SharedState">; readonly inSight: FieldSpec<"u32"> }, SharedWorld>;
   /**
    * Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared.
-   * See `shared-worlds §2`.
    */
   const SharedAvatar: ComponentType<{ readonly kind: FieldSpec<"u32"> }, SharedAvatar>;
   /**
    * Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
-   * See `shared-worlds §3`.
    */
   const RemoteAvatar: ComponentType<{ readonly id: FieldSpec<"u32">; readonly kind: FieldSpec<"u32">; readonly sinceTick: FieldSpec<"f64">; readonly jumpedTick: FieldSpec<"f64"> }, RemoteAvatar>;
   /**
    * A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object.
-   * See `shared-worlds §5`.
    */
   const SharedObject: ComponentType<{ readonly version: FieldSpec<"u32"> }, SharedObject>;
   /**
@@ -42908,7 +42365,6 @@ export declare namespace og {
   const PresenceLeft: EventType<PresenceLeft>;
   /**
    * The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.
-   * See `shared-worlds §4`.
    */
   const SharedCorrected: EventType<SharedCorrected>;
   /**
@@ -42926,12 +42382,10 @@ export declare namespace og {
   /**
    * Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.
    * The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
-   * See `shared-worlds`.
    */
   namespace shared {
     /**
      * Set what the game shares besides the transform: its avatar component and its event component. Call it outside a system before og.shared.join; its fingerprint is checked when joining, so every client of a world needs the same shape. Without a call, the transform alone and no events.
-     * See `shared-worlds §2`.
      *
      * @param world The world.
      * @param desc The avatar component and the event component.
@@ -42940,7 +42394,6 @@ export declare namespace og {
     function shape(world: World, desc?: SharedShapeDesc): Result<void>;
     /**
      * Join a shared world: the host asks its session provider for a connection (an endpoint and a token the engine never reads), the engine says hello, and og.SharedJoined arrives once the server takes this client in. The og.SharedAvatar entity is what it shares. A lost connection reconnects by itself.
-     * See `shared-worlds §2`.
      *
      * @param world The world.
      * @param desc The world to join.
@@ -42956,7 +42409,6 @@ export declare namespace og {
     function leave(world: World): Result<void>;
     /**
      * Move this avatar anywhere at once (a map click, a portal): its og.Transform is set and the next proposal is a teleport, which the server takes past the speed rule when its policy allows, and remote clients draw at once instead of moving it across.
-     * See `shared-worlds §4`.
      *
      * @param world The world.
      * @param position Where, in world space.
@@ -42982,7 +42434,6 @@ export declare namespace og {
     function events<C extends AnyComponent>(world: World, component: C): Result<readonly Value<C>[]>;
     /**
      * Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store.
-     * See `shared-worlds §5`.
      *
      * @param world The world.
      * @param key The object's key in this world: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/` (`door/12`).
@@ -42994,7 +42445,6 @@ export declare namespace og {
     function put<C extends AnyComponent>(world: World, key: string, component: C, value: Partial<Value<C>>, desc?: SharedPutDesc): Result<number>;
     /**
      * Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it.
-     * See `shared-worlds §5`.
      *
      * @param world The world.
      * @param key The object's key.
@@ -43058,7 +42508,6 @@ export declare namespace og {
   /**
    * Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...).
    * Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent.
-   * See `animation §10`.
    */
   namespace motion {
     /**
@@ -43149,7 +42598,6 @@ export declare namespace og {
     function capabilities(world: World): MotionCapabilities;
     /**
      * Where the motion model runs: gpu (the default, beside the renderer, cheapest per character) or cpu (across the lanes, each generation spread over the ticks before it is due, for a few characters). A presentation setting of this engine, outside the world: a snapshot does not keep it. No tick waits for it; results apply when they come back. A change after the first agent loads the model again and every agent's generated motion starts again.
-     * See `animation §10`.
      *
      * @param world The world.
      * @param backend cpu or gpu.
@@ -43158,7 +42606,6 @@ export declare namespace og {
     function setBackend(world: World, backend: MotionBackend): Result<void>;
     /**
      * Presentation-only readiness on both hosts, for a host's cover: ready once generated frames and their palette exist for the current rendered frame (authored fallback does not count), or failed with a reason. Game logic must not branch on it: it depends on GPU timing and is outside snapshots and hashes; a development build warns when a system reads it on the gpu backend.
-     * See `animation §10`.
      *
      * @param world The world.
      * @param entity An entity with an og.MotionAgent.
@@ -43175,7 +42622,6 @@ export declare namespace og {
   /**
    * Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). A standing prop (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (its piece's hull) on an og.Chunk, replacing the entity's own Collider and RigidBody. A moving prop (a dynamic or kinematic body) collides as itself until its first break, when its chunks replace its Collider, RigidBody and Velocity, moving as it moved. Then each chunk draws its piece of the hidden model (its tint, variant, shadows).
    * Chunks' colliders and mass follow og.Transform.scale's mean.
-   * See `physics §9`.
    */
   const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly tension: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly breakVfx: FieldSpec<"VfxAsset">; readonly hitVfx: FieldSpec<"VfxAsset">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
@@ -43191,7 +42637,6 @@ export declare namespace og {
   /**
    * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
    * Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
-   * See `physics §9`.
    */
   const PixelTerrain: ComponentType<{ readonly width: FieldSpec<"u32">; readonly height: FieldSpec<"u32">; readonly cellSize: FieldSpec<"f32">; readonly chunk: FieldSpec<"u32">; readonly ground: FieldSpec<"f32">; readonly bedrock: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly bedrockColor: FieldSpec<"Color">; readonly grain: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly tolerance: FieldSpec<"f32">; readonly minPiece: FieldSpec<"u32">; readonly maxPieces: FieldSpec<"u32">; readonly solid: FieldSpec<"u32"> }, PixelTerrain>;
   /**
@@ -43205,7 +42650,6 @@ export declare namespace og {
   /**
    * Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells.
    * It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts.
-   * See `physics §9`.
    */
   namespace destruction {
     /**
@@ -43311,7 +42755,6 @@ export declare namespace og {
   /**
    * Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds.
    * An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).
-   * See `loading §11`.
    */
   namespace vfx {
     /**
@@ -43333,27 +42776,22 @@ export declare namespace og {
   }
   /**
    * Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered.
-   * See `world §11`.
    */
   const SightMap: ComponentType<{ readonly cell: FieldSpec<"f32">; readonly plane: FieldSpec<"SightPlane">; readonly team: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly explored: FieldSpec<"f32">; readonly drawn: FieldSpec<"bool"> }, SightMap>;
   /**
    * A team's eyes on the og.SightMap: from its entity's world position it sees every cell within `radius` that no og.SightBlocker hides (symmetric: between two open cells, one sees the other exactly when the other sees it). A blocker's near face is seen. Height is not looked at.
-   * See `world §11`.
    */
   const Sight: ComponentType<{ readonly team: FieldSpec<"u32">; readonly radius: FieldSpec<"f32"> }, Sight>;
   /**
    * Stops sight on the og.SightMap: the cells whose centre lies inside the og.Volume on its entity (a box or a sphere, at its entity's pose, cut at its own height) hide what is behind them. Without an og.Volume it blocks nothing. A wall thinner than a cell may fall between cell centres: make it at least a cell thick.
-   * See `world §11`.
    */
   const SightBlocker: ComponentType<{ readonly enabled: FieldSpec<"bool"> }, SightBlocker>;
   /**
    * Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame.
-   * See `world §11`.
    */
   namespace sight {
     /**
      * Whether a team sees a point this tick: the point's cell of the og.SightMap is within one of the team's og.Sight and not hidden. Use it to hide what stands in the fog (an enemy unit is drawn while `visible` holds for the player's team) and for what an AI may know.
-     * See `world §11`.
      *
      * @param world The world.
      * @param team The team (0 to 31).
@@ -43410,9 +42848,8 @@ export declare namespace og {
   /** A quick-time event resolved with a grade (`perfect`, `good`, or `miss`). */
   const FlowQteResult: EventType<FlowQteResult>;
   /**
-   * A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
+   * A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice.
    * og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
-   * See `flow`.
    */
   namespace flow {
     /**
@@ -43551,7 +42988,7 @@ export declare namespace og {
      */
     function jump(world: World, flow: Entity, desc?: FlowJumpDesc): Result<void>;
     /**
-     * Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide flow §5). Systems may call it.
+     * Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's. Systems may call it.
      *
      * @param world The world.
      * @param flow The flow.
@@ -43586,12 +43023,10 @@ export declare namespace og {
   /**
    * Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`).
    * What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
-   * See `loading §12`.
    */
   namespace scene {
     /**
      * Load a scene and what it spawns with (its models, their textures and pipelines, its sub-scenes and prefabs) without placing it, and ask for every streaming group it declares (og.stream.request) until og.scene.release, so it is fetched and prepared while the current scene plays and is drawn whole the frame it is placed. Calling it again does nothing more. Systems may call it.
-     * See `loading §12`.
      *
      * @param world The world.
      * @param scene A GameDesc.scenes name or the scene's asset id.
@@ -43600,7 +43035,6 @@ export declare namespace og {
     function preload(world: World, scene: string): Result<Asset>;
     /**
      * How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
-     * See `loading §12`.
      *
      * @param world The world.
      * @param scene A GameDesc.scenes name or the scene's asset id.
@@ -43617,7 +43051,6 @@ export declare namespace og {
     function release(world: World, scene: string): Result<void>;
     /**
      * Replace the current scene with this one as the next tick starts: the current scene's root and every entity under it are despawned (the boot scene's own entities, with their descendants, for the first change), then the new scene spawns under a new root and og.SceneChanged is sent. Entities the game spawned outside a scene stay. It preloads the scene, and the previous scene's preload is released. Systems may call it.
-     * See `loading §12`.
      *
      * @param world The world.
      * @param scene A GameDesc.scenes name or the scene's asset id.
@@ -43633,12 +43066,10 @@ export declare namespace og {
   }
   /**
    * The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
-   * See `loading §13`.
    */
   namespace loading {
     /**
      * Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. Presentation only: nothing a tick reads changes. Systems may call it.
-     * See `loading §13`.
      *
      * @param world The world.
      * @param desc The stage, its fraction and its label.
@@ -43647,7 +43078,6 @@ export declare namespace og {
     function stage(world: World, desc?: LoadingStageDesc): Result<void>;
     /**
      * The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing.
-     * See `loading §13`.
      *
      * @param world The world.
      */
@@ -43692,42 +43122,34 @@ export declare namespace og {
   }
   /**
    * An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.
-   * See `combat §1`.
    */
   const Attack: ComponentType<{ readonly move: FieldSpec<"Entity">; readonly next: FieldSpec<"Entity">; readonly tick: FieldSpec<"u32">; readonly phase: FieldSpec<"AttackPhase">; readonly swing: FieldSpec<"u32">; readonly swingMove: FieldSpec<"Entity">; readonly cancelable: FieldSpec<"bool">; readonly starters: ListSpec<"Entity">; readonly volumes: ListSpec<"Entity"> }, Attack>;
   /**
    * One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.
-   * See `combat §1`.
    */
   const AttackMove: ComponentType<{ readonly startup: FieldSpec<"u32">; readonly active: FieldSpec<"u32">; readonly recovery: FieldSpec<"u32">; readonly damage: FieldSpec<"f32">; readonly volumes: FieldSpec<"u32">; readonly cancelOpen: FieldSpec<"u32">; readonly cancelClose: FieldSpec<"u32">; readonly links: ListSpec<"Entity"> }, AttackMove>;
   /**
    * A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.
-   * See `combat §1`.
    */
   const AttackLink: ComponentType<{ readonly action: FieldSpec<"str">; readonly to: FieldSpec<"Entity">; readonly open: FieldSpec<"u32">; readonly close: FieldSpec<"u32"> }, AttackLink>;
   /**
    * A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.
-   * See `combat §2`.
    */
   const Projectile: ComponentType<{ readonly damage: FieldSpec<"f32">; readonly shooter: FieldSpec<"Entity">; readonly pierce: FieldSpec<"u32">; readonly struck: FieldSpec<"u32"> }, Projectile>;
   /**
    * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
-   * See `combat §2`.
    */
   const Health: ComponentType<{ readonly value: FieldSpec<"f32">; readonly dead: FieldSpec<"bool"> }, Health>;
   /**
    * How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.
-   * See `combat §2`.
    */
   const Hurt: ComponentType<{ readonly invulnerableTicks: FieldSpec<"u32">; readonly invulnerableUntil: FieldSpec<"u32">; readonly staggerTicks: FieldSpec<"u32">; readonly staggeredUntil: FieldSpec<"u32">; readonly knockback: FieldSpec<"f32"> }, Hurt>;
   /**
    * A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.
-   * See `combat §2`.
    */
   const Damaged: EventType<Damaged>;
   /**
    * A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).
-   * See `combat §2`.
    */
   const Died: EventType<Died>;
   /**
@@ -43736,32 +43158,26 @@ export declare namespace og {
   const CombatAttackers: ResourceType<{ readonly attackers: ListSpec<"Entity"> }, CombatAttackers>;
   /**
    * Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens.
-   * See `interaction §1`.
    */
   const Interactable: ComponentType<{ readonly priority: FieldSpec<"u32">; readonly holdTicks: FieldSpec<"u32">; readonly disabled: FieldSpec<"bool"> }, Interactable>;
   /**
    * Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.
-   * See `interaction §1`.
    */
   const Interactor: ComponentType<{ readonly action: FieldSpec<"str">; readonly range: FieldSpec<"f32">; readonly cone: FieldSpec<"f32">; readonly sight: FieldSpec<"bool">; readonly sightMask: FieldSpec<"u32">; readonly rule: FieldSpec<"InteractRule">; readonly eye: FieldSpec<"Vector3">; readonly focus: FieldSpec<"Entity">; readonly progress: FieldSpec<"u32">; readonly holding: FieldSpec<"Entity"> }, Interactor>;
   /**
    * An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.
-   * See `interaction §1`.
    */
   const Interacted: EventType<Interacted>;
   /**
    * A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.
-   * See `interaction §2`.
    */
   const Door: ComponentType<{ readonly open: FieldSpec<"bool">; readonly toggle: FieldSpec<"Entity">; readonly mesh: FieldSpec<"Navigation">; readonly link: FieldSpec<"u32">; readonly linkOpen: FieldSpec<"bool">; readonly linked: FieldSpec<"bool"> }, Door>;
   /**
    * Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it.
-   * See `interaction §2`.
    */
   const Toggle: ComponentType<{ readonly on: FieldSpec<"bool">; readonly plate: FieldSpec<"bool"> }, Toggle>;
   /**
    * A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.
-   * See `interaction §2`.
    */
   const Grab: ComponentType<{ readonly carry: FieldSpec<"Vector3">; readonly throwSpeed: FieldSpec<"f32">; readonly heldBy: FieldSpec<"Entity"> }, Grab>;
   /**
@@ -43770,7 +43186,6 @@ export declare namespace og {
   const InteractEntities: ResourceType<{ readonly interactors: ListSpec<"Entity">; readonly toggles: ListSpec<"Entity">; readonly doors: ListSpec<"Entity"> }, InteractEntities>;
   /**
    * A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**\/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them.
-   * See `data`.
    */
   namespace table {
     /**
@@ -43836,27 +43251,22 @@ export declare namespace og {
   }
   /**
    * Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.
-   * See `items §1`.
    */
   const Container: ComponentType<{ readonly slots: FieldSpec<"u32">; readonly stack: FieldSpec<"str"> }, Container>;
   /**
    * Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.
-   * See `items §1`.
    */
   const ItemStack: ComponentType<{ readonly item: FieldSpec<"TableRow">; readonly count: FieldSpec<"u32">; readonly slot: FieldSpec<"u32">; readonly container: FieldSpec<"Entity"> }, ItemStack>;
   /**
    * An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.
-   * See `items §2`.
    */
   const Pickup: ComponentType<{ readonly partial: FieldSpec<"bool"> }, Pickup>;
   /**
    * What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.
-   * See `items §2`.
    */
   const Collector: ComponentType<{ readonly container: FieldSpec<"Entity"> }, Collector>;
   /**
    * An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.
-   * See `items §2`.
    */
   const PickedUp: EventType<PickedUp>;
   /**
@@ -43865,7 +43275,6 @@ export declare namespace og {
   const InventoryEntities: ResourceType<{ readonly containers: ListSpec<"Entity">; readonly pickups: ListSpec<"Entity"> }, InventoryEntities>;
   /**
    * The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing.
-   * See `items §1`.
    */
   namespace inventory {
     /**
@@ -43961,27 +43370,20 @@ export declare namespace og {
   }
   /**
    * Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
-   * See `abilities §1`.
    */
   const Ability: ComponentType<{ readonly owner: FieldSpec<"Entity">; readonly action: FieldSpec<"str">; readonly maxCharges: FieldSpec<"u32">; readonly charges: FieldSpec<"u32">; readonly rechargeTicks: FieldSpec<"u32">; readonly rechargedTicks: FieldSpec<"u32">; readonly lockTicks: FieldSpec<"u32">; readonly lockLeftTicks: FieldSpec<"u32">; readonly pool: FieldSpec<"Entity">; readonly cost: FieldSpec<"f32"> }, Ability>;
-  /**
-   * An og.Ability was used: sent the tick it was.
-   * See `abilities §1`.
-   */
+  /** An og.Ability was used: sent the tick it was. */
   const AbilityUsed: EventType<AbilityUsed>;
   /**
    * A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick.
-   * See `abilities §2`.
    */
   const Stat: ComponentType<{ readonly base: FieldSpec<"f32">; readonly value: FieldSpec<"f32"> }, Stat>;
   /**
    * A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned.
-   * See `abilities §2`.
    */
   const Modifier: ComponentType<{ readonly stat: FieldSpec<"Entity">; readonly op: FieldSpec<"ModifierOp">; readonly amount: FieldSpec<"f32"> }, Modifier>;
   /**
    * An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out.
-   * See `abilities §2`.
    */
   const Status: ComponentType<{ readonly kind: FieldSpec<"str">; readonly stacking: FieldSpec<"StatusStacking">; readonly ticks: FieldSpec<"u32">; readonly stacks: FieldSpec<"u32">; readonly maxStacks: FieldSpec<"u32">; readonly strength: FieldSpec<"f32">; readonly applied: FieldSpec<"bool"> }, Status>;
   /**
@@ -43990,7 +43392,6 @@ export declare namespace og {
   const AbilityEntities: ResourceType<{ readonly abilities: ListSpec<"Entity">; readonly stats: ListSpec<"Entity">; readonly statuses: ListSpec<"Entity">; readonly modifiers: ListSpec<"Entity"> }, AbilityEntities>;
   /**
    * The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used.
-   * See `abilities §1`.
    */
   namespace abilities {
     /**

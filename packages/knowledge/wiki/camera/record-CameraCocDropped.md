@@ -25,4 +25,4 @@ event CameraCocDropped {
 }
 ```
 
-<sub>Module `camera` line 249</sub>
+<sub>Module `camera` line 247</sub>

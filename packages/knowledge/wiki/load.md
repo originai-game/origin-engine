@@ -8,12 +8,10 @@ Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an
 
 The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
 
-See `loading §1`.
-
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 82 more are advanced (`og api show load --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module load {
@@ -60,7 +58,7 @@ module load {
 | [`og.load.scene`](load/fn-scene.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked file.scene declaration. |
 | [`og.load.prefab`](load/fn-prefab.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked file.prefab declaration: one entity tree authored once and placed many times, docs/design.md §2.5. |
 | [`og.PrefabLink`](load/record-PrefabLink.md) | component |  | Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. |
-| [`og.load.font`](load/fn-font.md) | function | `(world: World, path: string): Result<Font>` | Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. |
+| [`og.load.font`](load/fn-font.md) | function | `(world: World, path: string): Result<Font>` | Load a cooked font for og.render.text, or an icon set for UiDesc.icons.font. |
 | [`og.load.fontInfo`](load/fn-fontInfo.md) | function | `(world: World, font: Font): Result<FontInfo>` | A loaded font's metrics. |
 | [`og.load.sound`](load/fn-sound.md) | function | `(world: World, path: string): Result<Sound>` | Load a cooked sound for the audio module. |
 | [`og.load.lut`](load/fn-lut.md) | function | `(world: World, path: string): Result<Lut>` | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). |
@@ -142,7 +140,7 @@ column TextureArray {
 }
 ```
 
-<sub>Module `load` line 30</sub>
+<sub>Module `load` line 29</sub>
 
 ```ogt
 column Asset {
@@ -153,7 +151,7 @@ column Asset {
 }
 ```
 
-<sub>Module `load` line 37</sub>
+<sub>Module `load` line 36</sub>
 
 ```ogt
 column Sound {
@@ -164,7 +162,7 @@ column Sound {
 }
 ```
 
-<sub>Module `load` line 44</sub>
+<sub>Module `load` line 43</sub>
 
 ```ogt
 column Font {
@@ -175,7 +173,7 @@ column Font {
 }
 ```
 
-<sub>Module `load` line 51</sub>
+<sub>Module `load` line 50</sub>
 
 ```ogt
 column Style {
@@ -186,4 +184,4 @@ column Style {
 }
 ```
 
-<sub>Module `load` line 58</sub>
+<sub>Module `load` line 57</sub>

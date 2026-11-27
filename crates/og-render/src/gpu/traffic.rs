@@ -1,5 +1,5 @@
 //! What the renderer moves between the CPU and the GPU, counted where it
-//! moves (`og run --perf`, guide perf): every upload (`write_buffer`,
+//! moves (`og run --perf`): every upload (`write_buffer`,
 //! `write_texture`), every buffer made, every readback started
 //! (`map_async`), every blocking wait for the GPU, and every pipeline
 //! made, with its time. The crate makes each through this module only

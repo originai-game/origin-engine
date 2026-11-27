@@ -6,17 +6,16 @@ Assertions: properties of the game checked as it runs, after the Antithesis SDK'
 
 Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there.
 
-See `testing §2`.
-
 - **TypeScript**: functions are the namespace `og.assert`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
 - **Core** (what most games use): `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable`; 15 more are advanced (`og api show assert --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module assert {
   doc "Assertions: properties of the game checked as it runs, after the Antithesis SDK's (AssertKind: always, sometimes, reachable, unreachable, each). Each is identified by its name and the place it is called from, which the build records. Nothing an assertion does reaches the world, so a run with them hashes and replays as one without. Violations and coverage go through the probe (`assertions`) into `og run --json` and `og test`."
   doc "Beside them, every tick of a development or test build checks the default invariants from reflection. Not in publish builds: every member does nothing there."
+  publish false
   # declarations follow, each on its own page
 ```
 

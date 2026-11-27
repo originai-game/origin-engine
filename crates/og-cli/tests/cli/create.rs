@@ -108,8 +108,8 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
 }
 
 /// The creation a tool runs: no terminal and no --no-prompt, the chosen
-/// look and premise, --force over a nonempty directory (the start guide
-/// §1). An unknown look is refused, naming the ones
+/// look and premise, --force over a nonempty directory.
+/// An unknown look is refused, naming the ones
 /// there are, and writes nothing.
 #[test]
 fn create_without_a_terminal_writes_the_chosen_look() {

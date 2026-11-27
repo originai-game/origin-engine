@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 Load a cooked file.flipbook by canonical content ID and register its native sheet with og.flipbook. Author a texture ref with grid, frames or explicit atlas input, or animated GIF/WebP/APNG sources packed into <id>#sheet. array: true produces a texture array (FlipbookInfo.array), frame n drawn as layer n. A streaming sheet loads only when its group is resident; sprites draw nothing while it is away. Repeated loads return the same handles.
 
-See `loading §8`.
-
 ```ts
 og.load.flipbook(world: World, path: string): Result<FlipbookInfo>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_flipbook` · publish builds: kept
 ```ogt
 fn flipbook {
   doc "Load a cooked file.flipbook by canonical content ID and register its native sheet with og.flipbook. Author a texture ref with grid, frames or explicit atlas input, or animated GIF/WebP/APNG sources packed into <id>#sheet. array: true produces a texture array (FlipbookInfo.array), frame n drawn as layer n. A streaming sheet loads only when its group is resident; sprites draw nothing while it is away. Repeated loads return the same handles."
-  guide "loading §8"
   param world World "The world whose animation and renderer own it."
   param path String "The sheet's canonical content ID, such as `base/sprites/hero`."
   returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
 }
 ```
 
-<sub>Module `load` line 520</sub>
+<sub>Module `load` line 495</sub>

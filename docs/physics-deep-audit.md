@@ -38,7 +38,7 @@ flowchart LR
 
 2. **非骨骼父级 `og.Parent` 层级被静态碰撞体及 `fixed`/`kinematic` 刚体完全忽略**
    - [gather.rs](../crates/og-physics/src/gather.rs#L453-L472) 与 [gather.rs](../crates/og-physics/src/gather.rs#L504-L518) 仅在 `under_parent_frame(...)`（骨骼挂载）为真时计算世界矩阵。
-   - 任何挂载在普通容器/房间/关卡根节点 `og.Parent` 下的静态碰撞体或刚体，都被放在**局部坐标**（原点附近），与渲染的 `MatrixWorld` 彻底错位，直接违背 [physics.md](../crates/og-api/guides/physics.md#L67) 契约。
+   - 任何挂载在普通容器/房间/关卡根节点 `og.Parent` 下的静态碰撞体或刚体，都被放在**局部坐标**（原点附近），与渲染的 `MatrixWorld` 彻底错位，直接违背物理世界坐标契约。
 
 3. **复合刚体质量双倍计入且 `centerOfMass` 失效/错位**
    - [stepping.rs](../crates/og-physics/src/rigid/sim/stepping.rs#L171-L191) 将 `body.mass` 按比例分摊给自身 `m[0]` 和子碰撞体 `m[1..]`，随后对自身调用 [colliders.rs](../crates/og-physics/src/rigid/sim/colliders.rs#L216-L242) 的 `centred()`。

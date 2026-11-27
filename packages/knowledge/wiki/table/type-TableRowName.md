@@ -23,4 +23,4 @@ struct TableRowName {
 }
 ```
 
-<sub>Module `table` line 22</sub>
+<sub>Module `table` line 21</sub>

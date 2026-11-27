@@ -28,4 +28,4 @@ fn locale {
 }
 ```
 
-<sub>Module `i18n` line 62</sub>
+<sub>Module `i18n` line 61</sub>

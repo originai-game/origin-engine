@@ -24,4 +24,4 @@ struct DateFormat {
 }
 ```
 
-<sub>Module `i18n` line 24</sub>
+<sub>Module `i18n` line 23</sub>

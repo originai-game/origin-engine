@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 How Stylise.halftone inks the frame.
 
-See `looks §9`.
-
 A string: one of the variants below. The zero value is `"ink"`.
 
 | Variant | Doc |
@@ -22,8 +20,7 @@ enum HalftoneMode {
   doc "How Stylise.halftone inks the frame."
   variant ink "One ink (halftoneColor) on paper: dots larger where the image is darker."
   variant cmyk "Four-colour process print, as comics were printed: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle from halftoneAngle, the inks multiplied on white paper."
-  guide "looks §9"
 }
 ```
 
-<sub>Module `render` line 1768</sub>
+<sub>Module `render` line 1698</sub>

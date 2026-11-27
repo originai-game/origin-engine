@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
 
-See `looks §14`.
-
 Token `og.Decal`, registered under the schema name `og.Decal`; its value type is `Decal`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -31,7 +29,6 @@ Token `og.Decal`, registered under the schema name `og.Decal`; its value type is
 ```ogt
 component Decal {
   doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept)."
-  guide "looks §14"
   field texture Texture "The image (og.load.texture): its colour times color, its alpha the coverage. A sheet of several marks is one texture, each decal a uvMin to uvMax region of it. 0 is a solid colour."
   field normalMap Texture "A tangent-space normal map over the same region (og.load.texture; glTF's convention: +X along u, +Y up the image) that bends the surface under the decal: a crack, a bullet hole's rim, embossed lettering. 0 is none."
   field color Color "A linear colour multiplied with the texture." {
@@ -82,4 +79,4 @@ component Decal {
 }
 ```
 
-<sub>Module `render` line 2323</sub>
+<sub>Module `render` line 2230</sub>

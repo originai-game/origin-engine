@@ -16,10 +16,6 @@ pub struct Api {
     /// declaration exactly as written (the wiki). Empty when the model was
     /// not read from text.
     pub source: Vec<String>,
-    /// The hand-written guides beside the IDL (`crates/og-api/guides/<name>.md`),
-    /// by name: each becomes a wiki page whose numbered sections are entries
-    /// of `og api find` and `og api show`.
-    pub guides: Vec<Guide>,
     /// The part files `read` concatenated, as (lines before it, file name);
     /// empty when the model was parsed from one text.
     pub parts: Vec<(usize, String)>,
@@ -31,96 +27,6 @@ impl Api {
         match self.parts.iter().rev().find(|(n, _)| *n < line) {
             Some((n, name)) => (name, line - n),
             None => ("api.ogt", line),
-        }
-    }
-}
-
-/// One guide: workflow, thresholds and pitfalls that no signature states.
-#[derive(Debug, Clone)]
-pub struct Guide {
-    /// The file's stem (`testing`), what `og api show` takes.
-    pub name: String,
-    /// The Markdown as written: a `# Title`, a summary paragraph and `## N. ` sections.
-    pub text: String,
-}
-
-impl Guide {
-    /// The numbers of its `## N. ` sections, outside code fences.
-    pub fn sections(&self) -> Vec<u32> {
-        let mut fence = false;
-        let mut out = Vec::new();
-        for line in self.text.lines() {
-            if line.starts_with("```") {
-                fence = !fence;
-            }
-            if let Some((n, _)) = (!fence)
-                .then(|| line.strip_prefix("## "))
-                .flatten()
-                .and_then(|h| h.split_once(". "))
-                && let Ok(n) = n.parse()
-            {
-                out.push(n);
-            }
-        }
-        out
-    }
-}
-
-impl Api {
-    /// Every `guide` reference in the IDL, in declaration order.
-    pub fn guide_refs(&self) -> Vec<&GuideRef> {
-        let mut out = Vec::new();
-        for m in &self.modules {
-            out.extend(&m.see);
-            for item in &m.items {
-                match item {
-                    Item::Fn(f) => out.extend(&f.see),
-                    Item::Struct(s) => {
-                        out.extend(&s.see);
-                        out.extend(s.fields.iter().flat_map(|f| &f.see));
-                    }
-                    Item::Enum(e) => out.extend(&e.see),
-                    Item::Union(u) => out.extend(&u.see),
-                    Item::Interface(i) => {
-                        out.extend(&i.see);
-                        for mem in &i.members {
-                            match mem {
-                                Member::Fn(f) => out.extend(&f.see),
-                                Member::Prop(p) => out.extend(&p.see),
-                            }
-                        }
-                    }
-                    Item::Record(r) => {
-                        out.extend(&r.see);
-                        out.extend(r.fields.iter().flat_map(|f| &f.see));
-                        for f in &r.methods {
-                            out.extend(&f.see);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        out
-    }
-}
-
-/// `guide "saves §2"` on a declaration: where its workflow, thresholds and
-/// pitfalls are written. The generators append "See `saves §2`." to its doc.
-#[derive(Debug, Clone, PartialEq)]
-pub struct GuideRef {
-    /// The guide's name (`saves`), a file of `crates/og-api/guides/`.
-    pub guide: String,
-    /// Its `## N.` section, or the whole guide.
-    pub section: Option<u32>,
-    pub line: usize,
-}
-
-impl fmt::Display for GuideRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.section {
-            Some(n) => write!(f, "{} §{n}", self.guide),
-            None => f.write_str(&self.guide),
         }
     }
 }
@@ -177,7 +83,6 @@ pub struct Module {
     /// packages/engine/scripts/wasm-modules.json): a game that uses one of
     /// them loads these. Empty: its members are in the primary module.
     pub split: Vec<String>,
-    pub see: Vec<GuideRef>,
     pub items: Vec<Item>,
     pub line: usize,
 }
@@ -400,8 +305,6 @@ pub struct Function {
     /// forwarded to its symbol (a callback table, a cache, an access check),
     /// so the generated runtime member calls `src/runtime/custom.ts` instead.
     pub custom: bool,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -452,7 +355,6 @@ pub struct Field {
     /// live-entity invariant does not read it.
     pub weak: bool,
     pub optional: bool,
-    pub see: Vec<GuideRef>,
     /// The `group` heading it sits under, if any.
     pub group: Option<String>,
     pub line: usize,
@@ -470,8 +372,6 @@ pub struct Struct {
     pub fields: Vec<Field>,
     /// The headings over its fields, in order.
     pub groups: Vec<FieldGroup>,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -493,8 +393,6 @@ pub struct Enum {
     /// Template string alternatives with `${string}` holes. These extend
     /// string arguments, not the fixed variants of numeric enum columns.
     pub patterns: Vec<Variant>,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -515,8 +413,6 @@ pub struct Union {
     pub aliases: Vec<String>,
     pub tag: String,
     pub cases: Vec<Case>,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -531,7 +427,6 @@ pub struct Prop {
     pub host: bool,
     /// `custom`: as a fn's, a getter `src/runtime/custom.ts` implements.
     pub custom: bool,
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -575,8 +470,6 @@ pub struct Interface {
     /// view with its own checks), so no class is generated for it.
     pub custom: bool,
     pub members: Vec<Member>,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     pub line: usize,
 }
 
@@ -637,8 +530,6 @@ pub struct Record {
     pub groups: Vec<FieldGroup>,
     /// Resources only: methods on the resource value.
     pub methods: Vec<Function>,
-    /// `guide` lines: the guide sections that carry its workflow.
-    pub see: Vec<GuideRef>,
     /// Its own `split` line, replacing its module's: the engine wasm
     /// modules whose code runs once a world holds it. `None`: the module's.
     pub split: Option<Vec<String>>,

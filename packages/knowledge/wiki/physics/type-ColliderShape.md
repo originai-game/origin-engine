@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 What a collider is shaped as: Collider.shape and ShapeDesc.shape.
 
-See `physics §1`.
-
 A string: one of the variants below. The zero value is `"box"`.
 
 | Variant | Doc |
@@ -29,7 +27,6 @@ A string: one of the variants below. The zero value is `"box"`.
 ```ogt
 enum ColliderShape {
   doc "What a collider is shaped as: Collider.shape and ShapeDesc.shape."
-  guide "physics §1"
   variant box "A box of `size` (both profiles)."
   variant sphere "A sphere of `radius` (a circle in 2D)."
   variant capsule "A capsule along y of `radius`, with `height` between the cap centres (both profiles)."
@@ -44,4 +41,4 @@ enum ColliderShape {
 }
 ```
 
-<sub>Module `physics` line 103</sub>
+<sub>Module `physics` line 98</sub>

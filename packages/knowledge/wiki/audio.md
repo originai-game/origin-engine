@@ -6,12 +6,10 @@ Sound: inside the tick, the engine's og.audio system (after the game's systems a
 
 The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream.
 
-See `audio`.
-
 - **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.AudioSource`, `SoundDesc`, `og.audio.createSound`; 35 more are advanced (`og api show audio --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module audio {
@@ -85,7 +83,7 @@ column AudioBus {
 }
 ```
 
-<sub>Module `audio` line 22</sub>
+<sub>Module `audio` line 21</sub>
 
 ```ogt
 column AudioResampler {
@@ -96,7 +94,7 @@ column AudioResampler {
 }
 ```
 
-<sub>Module `audio` line 41</sub>
+<sub>Module `audio` line 40</sub>
 
 ```ogt
 column PanningModel {
@@ -107,7 +105,7 @@ column PanningModel {
 }
 ```
 
-<sub>Module `audio` line 48</sub>
+<sub>Module `audio` line 47</sub>
 
 ```ogt
 column AudioEventOrder {
@@ -118,7 +116,7 @@ column AudioEventOrder {
 }
 ```
 
-<sub>Module `audio` line 502</sub>
+<sub>Module `audio` line 497</sub>
 
 ## Constants
 
@@ -135,34 +133,34 @@ column AudioEventOrder {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>Module `audio` line 7</sub>
+<sub>Module `audio` line 6</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>Module `audio` line 8</sub>
+<sub>Module `audio` line 7</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>Module `audio` line 9</sub>
+<sub>Module `audio` line 8</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>Module `audio` line 10</sub>
+<sub>Module `audio` line 9</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>Module `audio` line 11</sub>
+<sub>Module `audio` line 10</sub>
 
 ```ogt
 const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
 ```
 
-<sub>Module `audio` line 12</sub>
+<sub>Module `audio` line 11</sub>

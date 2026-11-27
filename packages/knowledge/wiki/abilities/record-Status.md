@@ -8,8 +8,6 @@ Module [`abilities`](../abilities.md) · [index](../index.md)
 
 An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out.
 
-See `abilities §2`.
-
 Also known as: status effect, buff, debuff, poison, burn, slow, haste, stun, shield, damage over time, aura
 
 Token `og.Status`, registered under the schema name `og.Status`; its value type is `Status`.
@@ -28,7 +26,6 @@ Token `og.Status`, registered under the schema name `og.Status`; its value type 
 component Status {
   aliases "status effect, buff, debuff, poison, burn, slow, haste, stun, shield, damage over time, aura"
   doc "An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out."
-  guide "abilities §2"
   field kind str.32 "Which statuses on one target are one effect; empty never merges."
   field stacking StatusStacking "What one of the same kind applied after it does."
   field ticks u32 "Ticks left; 0 lasts until it is despawned." {
@@ -48,4 +45,4 @@ component Status {
 }
 ```
 
-<sub>Module `abilities` line 96</sub>
+<sub>Module `abilities` line 91</sub>

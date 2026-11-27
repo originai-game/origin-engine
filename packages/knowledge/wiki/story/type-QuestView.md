@@ -47,4 +47,4 @@ struct QuestView {
 }
 ```
 
-<sub>Module `story` line 287</sub>
+<sub>Module `story` line 283</sub>

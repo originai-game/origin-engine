@@ -33,4 +33,4 @@ struct LoadingStatus {
 }
 ```
 
-<sub>Module `loading` line 24</sub>
+<sub>Module `loading` line 23</sub>

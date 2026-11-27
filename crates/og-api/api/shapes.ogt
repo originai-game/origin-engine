@@ -1,7 +1,6 @@
 module shapes {
   doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, bezierCurveTo, arc, absarc, ellipse, closePath, ...) and flattened to points by getPoints. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
   doc "They are TypeScript values, not world state: the geometry made from them is what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host. A `type model` asset writes the same calls as text."
-  guide "models §1"
   place root
 
   interface PathList {

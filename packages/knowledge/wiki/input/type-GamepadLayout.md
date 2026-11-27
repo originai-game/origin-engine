@@ -31,4 +31,4 @@ enum GamepadLayout {
 }
 ```
 
-<sub>Module `input` line 690</sub>
+<sub>Module `input` line 680</sub>

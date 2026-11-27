@@ -6,11 +6,9 @@ Paths: a curve through or controlled by points, measured by arc length so a para
 
 Make one with og.path.create, or declare it in a scene and find it with og.path.find. Paths are assets, not world state.
 
-See `world §8`.
-
 - **TypeScript**: functions are the namespace `og.path`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module path {
@@ -57,7 +55,7 @@ column Path {
 }
 ```
 
-<sub>Module `path` line 8</sub>
+<sub>Module `path` line 7</sub>
 
 ```ogt
 column PathKind {
@@ -68,4 +66,4 @@ column PathKind {
 }
 ```
 
-<sub>Module `path` line 22</sub>
+<sub>Module `path` line 21</sub>

@@ -1,9 +1,7 @@
 //! `shape repair <mesh> [-o out]`: the file's parts joined and repaired
 //! (`og_shape::tools::repair`), as JSON: what each step changed and the
 //! measures after. With `-o`, writes the repaired solid (a plain GLB,
-//! OBJ or STL). The zero value of every option does the least; the
-//! settings that worked on the acceptance meshes are in
-//! `guides/meshtools.md`.
+//! OBJ or STL). The zero value of every option does the least.
 
 use std::path::PathBuf;
 

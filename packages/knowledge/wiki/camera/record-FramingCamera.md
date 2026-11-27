@@ -8,8 +8,6 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
 
-See `camera §5`.
-
 Also known as: framing camera, shot list, composition, rule of thirds, Cinemachine framing transposer, screen position
 
 Token `og.FramingCamera`, registered under the schema name `og.FramingCamera`; its value type is `FramingCamera`.
@@ -27,7 +25,6 @@ Token `og.FramingCamera`, registered under the schema name `og.FramingCamera`; i
 ```ogt
 component FramingCamera {
   doc "Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
-  guide "camera §5"
   aliases "framing camera, shot list, composition, rule of thirds, Cinemachine framing transposer, screen position"
   field height f32 "The subject's height, the length a beat's screen height measures (a character's standing height); 0 frames nothing." {
     min 0
@@ -55,4 +52,4 @@ component FramingCamera {
 }
 ```
 
-<sub>Module `camera` line 407</sub>
+<sub>Module `camera` line 404</sub>

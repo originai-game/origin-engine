@@ -8,8 +8,6 @@ Module [`input`](../input.md) · [index](../index.md)
 
 A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad.
 
-See `input §1`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -22,14 +20,13 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `threshold` | `number` | `0.5` | 0.01 … 1 | — | — | Where an analog value presses it (a button; and an axis's down). |
 | `deadzone` | `number` | `0` | 0 … 0.95 | — | — | A dead zone on its combined value (radial for two axes), after each binding's own. |
 | `holdMs` | `number` | `0` | ≥ 0 | `ms` | — | How long it is down before `held` (0: never), counted in ticks. |
-| `bufferTicks` | `number` | `0` | 0 … 600 | — | — | How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once. See `input §1`. |
+| `bufferTicks` | `number` | `0` | 0 … 600 | — | — | How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once. |
 | `locked` | `boolean` | `false` | — | — | — | The player cannot rebind it (pause, a debug key). |
 | `toggle` | `boolean` | `false` | — | — | — | A button whose press turns it on and the next press off (a hold's alternative, XAG 107); the player may change it (og.input.setToggle). |
 
 ```ogt
 struct ActionDesc {
   doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad."
-  guide "input §1"
   desc true
   field name String "Its name."
   field kind ActionKind "Button, one axis or two."
@@ -52,7 +49,6 @@ struct ActionDesc {
     unit ms
   }
   field bufferTicks u32 "How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once." {
-    guide "input §1"
     min 0
     max 600
   }
@@ -61,4 +57,4 @@ struct ActionDesc {
 }
 ```
 
-<sub>Module `input` line 90</sub>
+<sub>Module `input` line 88</sub>

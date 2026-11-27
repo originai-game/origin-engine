@@ -157,7 +157,7 @@ export const unavailable = (method: string, host = "this host"): PlatformAnswer 
 
 // ── content catalogs ───────────────────────────────────────────────────
 
-/** `catalog.head`'s answer data: a catalog's current version and its manifest's integrity (crates/og-api/guides/saves.md §11). */
+/** `catalog.head`'s answer data: a catalog's current version and its manifest's integrity. */
 export interface CatalogHead {
   readonly catalog: string;
   readonly version: string;

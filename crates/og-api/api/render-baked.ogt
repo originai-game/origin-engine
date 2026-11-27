@@ -2,7 +2,6 @@
 
   enum VolumetricFog {
     doc "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog)."
-    guide "render §7"
     variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening quadratically) lit in compute by the sun through its cascades and by the clustered lights through their shadows and cookies (eight samples a cell), integrated front to back: what the engine draws with."
     variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid."
   }
@@ -10,7 +9,6 @@
   component RectLight {
     doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces with twoSided). Shaded with linearly transformed cosines (Heitz et al. 2016). og bake lightmaps traces its exact soft shadows into the bounce light, castShadow or not."
     doc "Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there."
-    guide "render §3"
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -33,18 +31,15 @@
     }
     field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
     field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it." {
-      guide "render §3"
     }
     field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
       default stationary
-      guide "render §4"
     }
   }
 
   component LightVolume {
     doc "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces."
     doc "The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene."
-    guide "render §4"
     field spacing f32 "The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side)." {
       default 1
       min 0.1
@@ -56,7 +51,6 @@
   component RealtimeLightVolume {
     doc "Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce each sweep. Shiny surfaces inside reflect the probes' light, not the sky."
     doc "Until every probe is relit, and while GlobalIllumination.allowed is false, the box takes its LightVolume's baked probes, else the sky's. Realtime probes win over baked ones; static models keep their lightmaps. Up to eight volumes are drawn. Presentation only; a world that never names it keeps its type table, saves and hash."
-    guide "render §4"
     split render3d
     field updatesPerFrame u32 "Probes relit a frame once every one has been (at most 8 a frame over every volume; the first sweep takes 8). 0 relights them once and keeps them: a bake at run time." {
       default 2

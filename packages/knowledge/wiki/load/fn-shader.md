@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 A material shader for og.render.shaderMaterial, from a cooked TS file.shader declaration (its WGSL compiled by the cook for every back end): mode {kind:'hooks'} (the default) defines hooks of the lit shader; mode {kind:'full',lit:true|false} defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path.
 
-See `loading §6`.
-
 ```ts
 og.load.shader(world: World, path: string): Result<Shader>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_shader` · publish builds: kept
 ```ogt
 fn shader {
   doc "A material shader for og.render.shaderMaterial, from a cooked TS file.shader declaration (its WGSL compiled by the cook for every back end): mode {kind:'hooks'} (the default) defines hooks of the lit shader; mode {kind:'full',lit:true|false} defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path."
-  guide "loading §6"
   param world World "The world whose renderer owns it."
   param path String "The canonical asset id, such as `base/shaders/dissolve`."
   returns Result.Shader "Refused for a path not in the bundle or not a shader."
 }
 ```
 
-<sub>Module `load` line 390</sub>
+<sub>Module `load` line 372</sub>

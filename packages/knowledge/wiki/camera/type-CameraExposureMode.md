@@ -25,4 +25,4 @@ enum CameraExposureMode {
 }
 ```
 
-<sub>Module `camera` line 222</sub>
+<sub>Module `camera` line 220</sub>

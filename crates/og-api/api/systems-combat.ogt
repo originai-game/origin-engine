@@ -1,6 +1,5 @@
 module combat {
   doc "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing or an og.Projectile takes its damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing."
-  guide "combat §1"
 
   enum AttackPhase {
     doc "Where an og.Attack is in its move."
@@ -20,7 +19,6 @@ module combat {
   component Attack {
     aliases "attack state machine, combo state, melee attacker, fighting game moves, attack frames, cancel window"
     doc "An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names."
-    guide "combat §1"
     field move Entity "The og.AttackMove playing (0: idle). Write 0 to stop it (a dodge out of a cancel window); start one with `next`."
     field next Entity "An og.AttackMove to start at the next run whatever the windows (an AI's choice, a scripted move); cleared once taken. A staggered attacker drops it."
     field tick u32 "Written: ticks since the move started (0 its first)." {
@@ -45,7 +43,6 @@ module combat {
   component AttackMove {
     aliases "attack data, move frame data, startup active recovery, hitbox timing, attack definition"
     doc "One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken."
-    guide "combat §1"
     field startup u32 "Ticks before its active window." {
       min 0
       tunable true
@@ -75,7 +72,6 @@ module combat {
   component AttackLink {
     aliases "combo link, chain, cancel into, follow-up attack, combo route"
     doc "A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain."
-    guide "combat §1"
     field action str.32 "The input action whose press takes it (og.input.defineAction's name)."
     field to Entity "The og.AttackMove it starts."
     field open u32 "The first tick (from the start of the move it leaves) it can be taken." {
@@ -89,7 +85,6 @@ module combat {
   component Projectile {
     aliases "bullet, shot, missile, bullet damage, piercing shot, shmup bullet, Unity projectile, Godot bullet Area2D"
     doc "A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's."
-    guide "combat §2"
     field damage f32 "What each strike takes from the target's og.Health; 0 takes nothing, and is never spent." {
       min 0
       tunable true
@@ -109,7 +104,6 @@ module combat {
   component Health {
     aliases "hit points, HP, life, health bar value, damageable"
     doc "What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage."
-    guide "combat §2"
     field value f32 "What is left." {
       min 0
       tunable true
@@ -120,7 +114,6 @@ module combat {
   component Hurt {
     aliases "invulnerability frames, i-frames, invincibility, hit stun, stagger, knockback, flinch"
     doc "How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`."
-    guide "combat §2"
     field invulnerableTicks u32 "Ticks from a hit in which further hits are ignored; 0 ignores none." {
       min 0
       tunable true
@@ -145,7 +138,6 @@ module combat {
   event Damaged {
     aliases "on damage, took damage, hit landed, damage event, damage number"
     doc "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order."
-    guide "combat §2"
     field target Entity "The entity with the og.Health."
     field source Entity "The attacker (og.HitEvent.owner), or the og.Projectile's shooter."
     field move Entity "The og.AttackMove whose swing it was; 0 for an og.Projectile."
@@ -164,7 +156,6 @@ module combat {
   event Died {
     aliases "on death, killed, health reached zero, death event"
     doc "A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set)."
-    guide "combat §2"
     field entity Entity "The entity with the og.Health."
     field source Entity "The attacker whose hit it was, or the og.Projectile's shooter."
   }

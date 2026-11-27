@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform.
 
-See `physics §8`.
-
 Also known as: is underwater, water depth, in water, swimming, water current, flow velocity, wave normal, water at point
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_physics_water` · publish builds: kept
 ```ogt
 fn water {
   doc "The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform."
-  guide "physics §8"
   aliases "is underwater, water depth, in water, swimming, water current, flow velocity, wave normal, water at point"
   param world World "The world."
   param point Vector3 "The point, in world space, in metres (an og.WaterLine reads x and y)."
@@ -36,4 +33,4 @@ fn water {
 }
 ```
 
-<sub>Module `physics` line 2184</sub>
+<sub>Module `physics` line 2144</sub>

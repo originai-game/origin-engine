@@ -42,4 +42,4 @@ component Chunk {
 }
 ```
 
-<sub>Module `destruction` line 96</sub>
+<sub>Module `destruction` line 88</sub>

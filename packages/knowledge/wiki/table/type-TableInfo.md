@@ -25,4 +25,4 @@ struct TableInfo {
 }
 ```
 
-<sub>Module `table` line 14</sub>
+<sub>Module `table` line 13</sub>

@@ -8,8 +8,6 @@ Module [`world`](../world.md) · [index](../index.md)
 
 A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session.
 
-See `saves §4`.
-
 Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; its value type is `WorldRestored`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -20,7 +18,6 @@ Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; i
 ```ogt
 event WorldRestored {
   doc "A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session."
-  guide "saves §4"
   field from u32 "The tick the world was at when the restore applied." {
     unit ticks
   }
@@ -30,4 +27,4 @@ event WorldRestored {
 }
 ```
 
-<sub>Module `world` line 183</sub>
+<sub>Module `world` line 179</sub>

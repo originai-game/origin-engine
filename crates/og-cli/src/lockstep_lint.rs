@@ -1,8 +1,8 @@
 //! The determinism lint `og check` runs over every game: the JavaScript a
 //! game can reach that the engine does not own, so that a replay, a save
 //! restored on the other host, a playtest's end hash or a lockstep peer
-//! differs (docs/design.md §2.4 and §2.10, the `determinism` guide's §1 and
-//! §3). Game code runs in a Worker or in bun with the whole of JavaScript
+//! differs (docs/design.md §2.4 and §2.10).
+//! Game code runs in a Worker or in bun with the whole of JavaScript
 //! in scope: nothing is hidden from it, so this report is what tells an
 //! author. Math.sin, Math.pow and the rest are implementation-approximated,
 //! so V8, JavaScriptCore and SpiderMonkey round them differently;

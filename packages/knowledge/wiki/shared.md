@@ -6,12 +6,10 @@ Shared worlds: visitors of one large world see each other's avatars in real time
 
 The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
 
-See `shared-worlds`.
-
 - **TypeScript**: functions are the namespace `og.shared`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.SharedAvatar`, `og.RemoteAvatar`, `og.shared.join`, `og.shared.status`; 27 more are advanced (`og api show shared --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module shared {
@@ -75,4 +73,4 @@ column SharedState {
 }
 ```
 
-<sub>Module `shared` line 17</sub>
+<sub>Module `shared` line 16</sub>

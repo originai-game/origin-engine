@@ -10,8 +10,6 @@ Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, up
 
 Completion is host input, applied at a tick boundary and journaled, so a replay puts it in place at the same tick. It is local to each session: an asset's status is not world state and is in no snapshot or hash.
 
-See `loading §10`.
-
 ```ts
 og.load.imageData(world: World, name: string, bytes: Uint8Array, desc?: ImageDataDesc): Result<Asset>
 ```
@@ -30,7 +28,6 @@ Binding symbol `og_load_image_data` · publish builds: kept
 ```ogt
 fn imageData {
   doc "Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are checked against the budget before it is decoded, off the engine's thread. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why)."
-  guide "loading §10"
   doc "Completion is host input, applied at a tick boundary and journaled, so a replay puts it in place at the same tick. It is local to each session: an asset's status is not world state and is in no snapshot or hash."
   param world World "The world that owns the asset."
   param name String "A name for it in errors and dumps, such as `drawings/cat.png`."
@@ -40,4 +37,4 @@ fn imageData {
 }
 ```
 
-<sub>Module `load` line 679</sub>
+<sub>Module `load` line 649</sub>

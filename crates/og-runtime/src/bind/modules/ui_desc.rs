@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 // ── ui: decoding descs ──────────────────────────────────────────────────────
 
 /// A linear component as the 8-bit sRGB channel og-ui draws, clamped to 0
-/// to 1: the API's `Color` is linear RGB (the `conventions` guide §6) and
+/// to 1: the API's `Color` is linear RGB and
 /// og-ui's [`Srgba`] is a colour as a style authors it. `color.fromHex` of
 /// an 8-bit channel comes back as that channel.
 pub(crate) fn srgb8(linear: f32) -> u8 {

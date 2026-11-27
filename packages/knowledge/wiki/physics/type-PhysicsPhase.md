@@ -10,7 +10,7 @@ One phase of the last physics step, for og.physics.stats.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `name` | `string` | `""` | — | — | — | The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack. See `physics §3`. |
+| `name` | `string` | `""` | — | — | — | The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack. |
 | `ms` | `number` | `0` | — | `ms` | — | Wall-clock time it took (0 where the host has no clock); never world state. |
 | `split` | `boolean` | `false` | — | — | — | Whether any of its work ran on the lanes pool: rapier's stages when the step went to the pool, the other phases when they split by bodies, contact pairs, ragdolls, soft bodies or particles. |
 
@@ -18,7 +18,6 @@ One phase of the last physics step, for og.physics.stats.
 struct PhysicsPhase {
   doc "One phase of the last physics step, for og.physics.stats."
   field name String "The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack." {
-    guide "physics §3"
   }
   field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
     unit ms
@@ -27,4 +26,4 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>Module `physics` line 2711</sub>
+<sub>Module `physics` line 2666</sub>

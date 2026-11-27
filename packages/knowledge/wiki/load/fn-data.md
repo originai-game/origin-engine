@@ -10,8 +10,6 @@ Read a file of a content catalog at run time: static, versioned content the game
 
 Completion is host input, journaled with its tick and integrity, so a replay reads the same bytes in at the same tick. og.load.release frees it.
 
-See `loading §14`.
-
 ```ts
 og.load.data(world: World, desc?: DataDesc): Result<Asset>
 ```
@@ -28,7 +26,6 @@ Binding symbol `og_load_data` · publish builds: kept
 ```ogt
 fn data {
   doc "Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. The file is read from the host's content base against its version manifest's integrity; game code names no URL. The handle is pending, then ready (og.load.dataJson, og.load.dataBytes) or failed, og.load.error starting with its reason."
-  guide "loading §14"
   doc "Completion is host input, journaled with its tick and integrity, so a replay reads the same bytes in at the same tick. og.load.release frees it."
   param world World "The world that owns the asset."
   param desc DataDesc "The file and how to read it."
@@ -36,4 +33,4 @@ fn data {
 }
 ```
 
-<sub>Module `load` line 713</sub>
+<sub>Module `load` line 680</sub>

@@ -2,7 +2,6 @@ module reflect {
   doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
   doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
   doc "A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type."
-  guide "saves §3"
   place top
   core Vector2 Vector3 Quaternion Color FieldOptions f32 u32 defineComponent defineResource
 

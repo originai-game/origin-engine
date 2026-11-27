@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `GamepadInput` (struct)
 
-A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4).
+A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -20,7 +20,7 @@ A gamepad's raw state, whole (an engine extension of protocol 5): the host sends
 
 ```ogt
 struct GamepadInput {
-  doc "A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4)."
+  doc "A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings."
   field pad u32 "Which pad, 0 to 7; omitted is 0. A host keeps a pad's slot while it is connected." {
     max 7
     optional true
@@ -47,4 +47,4 @@ struct GamepadInput {
 }
 ```
 
-<sub>Module `input` line 700</sub>
+<sub>Module `input` line 690</sub>

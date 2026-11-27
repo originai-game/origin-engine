@@ -8,8 +8,6 @@ Module [`interact`](../interact.md) · [index](../index.md)
 
 A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.
 
-See `interaction §2`.
-
 Also known as: door, gate, open close door, navmesh door, Unity NavMeshLink door, locked passage
 
 Token `og.Door`, registered under the schema name `og.Door`; its value type is `Door`.
@@ -27,7 +25,6 @@ Token `og.Door`, registered under the schema name `og.Door`; its value type is `
 component Door {
   aliases "door, gate, open close door, navmesh door, Unity NavMeshLink door, locked passage"
   doc "A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`."
-  guide "interaction §2"
   field open bool "Whether it is open; write it to open or close it from the game."
   field toggle Entity "An og.Toggle (a lever, a pressure plate) whose `on` it follows; 0: using it flips it."
   field mesh Navigation "The navmesh its link is on (og.nav.build, og.nav.load); 0: no link."
@@ -41,4 +38,4 @@ component Door {
 }
 ```
 
-<sub>Module `interact` line 73</sub>
+<sub>Module `interact` line 69</sub>

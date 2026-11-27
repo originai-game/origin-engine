@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID.
 
-See `loading §6`, `looks §1`.
-
 ```ts
 og.load.look(world: World, path: string): Result<Look>
 ```
@@ -26,12 +24,10 @@ Binding symbol `og_load_look` · publish builds: kept
 ```ogt
 fn look {
   doc "Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID."
-  guide "loading §6"
-  guide "looks §1"
   param world World "The world whose renderer owns it."
   param path String "The canonical content id, such as `base/looks/main`."
   returns Result.Look "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load."
 }
 ```
 
-<sub>Module `load` line 446</sub>
+<sub>Module `load` line 424</sub>

@@ -27,4 +27,4 @@ enum VideoQuality {
 }
 ```
 
-<sub>Module `video` line 43</sub>
+<sub>Module `video` line 41</sub>

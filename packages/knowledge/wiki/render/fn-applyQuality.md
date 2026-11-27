@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields, so what the probe and dump_world show is what the next frame draws. Medium is every field's default. The device caps shadowedLights by RenderCapabilities.maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value. Inside a system, the system must declare RenderSettings among its writes.
 
-See `looks §16`.
-
 Also known as: graphics quality, low medium high graphics, graphics options menu, quality preset
 
 ```ts
@@ -29,11 +27,10 @@ Binding symbol `og_render_apply_quality` · publish builds: kept
 fn applyQuality {
   aliases "graphics quality, low medium high graphics, graphics options menu, quality preset"
   doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields, so what the probe and dump_world show is what the next frame draws. Medium is every field's default. The device caps shadowedLights by RenderCapabilities.maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value. Inside a system, the system must declare RenderSettings among its writes."
-  guide "looks §16"
   param world World "The world whose RenderSettings change."
   param preset GraphicsQuality "The preset."
   returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."
 }
 ```
 
-<sub>Module `render` line 3213</sub>
+<sub>Module `render` line 3101</sub>

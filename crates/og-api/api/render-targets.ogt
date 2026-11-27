@@ -35,7 +35,6 @@
     }
     field format RenderTargetFormat "How its colour is stored."
     field depth bool "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): linear view depth from near (0) to far (1) in rgb, of the opaque meshes and models, alpha cuts applied (transparent meshes, sprites and particles write none), on every tier (RenderCapabilities.renderTargetDepth)." {
-      guide "render §11"
     }
   }
 
@@ -59,7 +58,6 @@
     aliases "picture-in-picture, rear-view mirror, split screen, second camera, minimap camera"
     doc "A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rect over the finished image and under the UI. Views draw lowest order first, all before the frame."
     doc "It draws what the main camera draws on its own layers. An ldr target and a viewport carry its exposure and the frame's tone curve; an hdr target carries linear radiance. Neither runs the frame's post effects; screen sprites, the UI, debug draw, trails and 2D fluids stay on the main frame."
-    guide "render §11"
     field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
     field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
       min 0

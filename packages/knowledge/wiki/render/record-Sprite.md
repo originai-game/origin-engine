@@ -79,7 +79,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `shadow` | `number` | `0` | 0 … 1 | — | tunable | A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer. |
 | `shadowSize` | `Vector2` | `{ x: 0, y: 0 }` | ≥ 0 | `m` | — | The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width. |
 | `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
-| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow). See `looks §13`. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | tunable | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow). |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on; where an og.Terrain under the anchor is higher, the terrain (SpriteDesc.dropShadowHeight). |
 
 #### Visibility
@@ -94,27 +94,27 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `outline` | `number` | `0` | 0 … 4 | — | — | A pixel outline this many logical pixels wide round the texture's opaque texels (a diamond of whole pixels). A logical pixel is 1 / ArtPixels.unit world units, else a texel. 0 is none, or ArtLine.width under a contract with a unit for a texture the cook did not line. Untextured sprites take none. See `looks §13`. |
+| `outline` | `number` | `0` | 0 … 4 | — | — | A pixel outline this many logical pixels wide round the texture's opaque texels (a diamond of whole pixels). A logical pixel is 1 / ArtPixels.unit world units, else a texel. 0 is none, or ArtLine.width under a contract with a unit for a texture the cook did not line. Untextured sprites take none. |
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The outline's linear colour; at its default, the art contract's ArtLine.color when the line comes from the contract. |
 
 #### Palette swap
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `palette` | `Texture` | `0` | — | — | — | A palette swap: a texture of N rows of colours (load it as `kind pixel`), texel i of row r the colour of index i. The sprite draws its texture's index texture (the cook's `<id>#index`) through row paletteRow; flipbook frames swap too. 0 is none; a texture without one draws as it is, with a warning. See `looks §13`. |
+| `palette` | `Texture` | `0` | — | — | — | A palette swap: a texture of N rows of colours (load it as `kind pixel`), texel i of row r the colour of index i. The sprite draws its texture's index texture (the cook's `<id>#index`) through row paletteRow; flipbook frames swap too. 0 is none; a texture without one draws as it is, with a warning. |
 | `paletteRow` | `number` | `0` | — | — | — | The row of `palette` drawn (past the last, the last). |
 
 #### Shader
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `material` | `Material` | `0` | — | — | — | Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none. See `looks §13`. |
+| `material` | `Material` | `0` | — | — | — | Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none. |
 
 #### Wind
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `sway` | `number` | `0` | 0 … 2 | — | tunable | How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only. See `looks §13`. |
+| `sway` | `number` | `0` | 0 … 2 | — | tunable | How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only. |
 
 ```ogt
 component Sprite {
@@ -201,7 +201,6 @@ component Sprite {
     unit m
   }
   field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape flattened along the sun onto the ground under it (dropShadowHeight, or the og.Terrain there), faded where that ground lies in the sun's shadow, drawn before every sprite of its layer (SpriteDesc.dropShadow)." {
-    guide "looks §13"
     min 0
     max 1
     tunable true
@@ -221,7 +220,6 @@ component Sprite {
   }
   group "Outline"
   field outline f32 "A pixel outline this many logical pixels wide round the texture's opaque texels (a diamond of whole pixels). A logical pixel is 1 / ArtPixels.unit world units, else a texel. 0 is none, or ArtLine.width under a contract with a unit for a texture the cook did not line. Untextured sprites take none." {
-    guide "looks §13"
     min 0
     max 4
   }
@@ -230,16 +228,13 @@ component Sprite {
   }
   group "Palette swap"
   field palette Texture "A palette swap: a texture of N rows of colours (load it as `kind pixel`), texel i of row r the colour of index i. The sprite draws its texture's index texture (the cook's `<id>#index`) through row paletteRow; flipbook frames swap too. 0 is none; a texture without one draws as it is, with a warning." {
-    guide "looks §13"
   }
   field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
   group "Shader"
   field material Material "Draw through a material shader's hooks: a material from og.render.shaderMaterial (a shader of `mode hooks` or `mode sprite`). vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light, surface_emissive adds light after it; surface_normal is not called. 0 is none." {
-    guide "looks §13"
   }
   group "Wind"
   field sway f32 "How much og.Wind moves the sprite's parts: 0 still, 1 as it blows. Its texture is cooked with `sway` in its import settings; the wood stands, the leaves lean and loop downwind (whole texels on pixel art). A flipbook, slices, a palette or a material draw it whole. Visual only." {
-    guide "looks §13"
     min 0
     max 2
     tunable true
@@ -247,4 +242,4 @@ component Sprite {
 }
 ```
 
-<sub>Module `render` line 2727</sub>
+<sub>Module `render` line 2629</sub>

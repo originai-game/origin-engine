@@ -28,4 +28,4 @@ fn capabilities {
 }
 ```
 
-<sub>Module `destruction` line 313</sub>
+<sub>Module `destruction` line 303</sub>

@@ -25,4 +25,4 @@ enum LoadingScreen {
 }
 ```
 
-<sub>Module `loading` line 6</sub>
+<sub>Module `loading` line 5</sub>

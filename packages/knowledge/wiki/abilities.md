@@ -4,11 +4,9 @@
 
 The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used.
 
-See `abilities §1`.
-
 - **TypeScript**: functions are the namespace `og.abilities`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module abilities {
@@ -53,7 +51,7 @@ column StatusStacking {
 }
 ```
 
-<sub>Module `abilities` line 12</sub>
+<sub>Module `abilities` line 11</sub>
 
 ```ogt
 column ModifierOp {
@@ -64,4 +62,4 @@ column ModifierOp {
 }
 ```
 
-<sub>Module `abilities` line 26</sub>
+<sub>Module `abilities` line 25</sub>

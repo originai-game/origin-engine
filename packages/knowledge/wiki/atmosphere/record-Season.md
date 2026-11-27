@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
 
-See `seasons §1`.
-
 Token `og.Season`, registered under the schema name `og.Season`; its value type is `Season`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -23,13 +21,13 @@ Token `og.Season`, registered under the schema name `og.Season`; its value type 
 | `start` | `number` | `172` | 0 … 365 | — | tunable | The day of the year at tick 0, counted from New Year's midnight: SEASON_SPRING 79, SEASON_SUMMER 172, SEASON_AUTUMN 265 and SEASON_WINTER 355 are the northern equinoxes and solstices. |
 | `speed` | `number` | `0` | 0 … 365 | — | tunable | Days per simulated second (0 holds the date; 0.05: a season in half an hour). |
 | `latitude` | `number` | `45` | -90 … 90 | `deg` | tunable | Degrees north of the equator. South of it (negative) the same date is the opposite season and the noon sun stands in the north. |
-| `change` | `number` | `0` | ≥ 0 | `s` | tunable | Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date. See `seasons §2`. |
+| `change` | `number` | `0` | ≥ 0 | `s` | tunable | Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date. |
 
 #### Sun
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `sun` | `boolean` | `true` | — | — | — | With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path. See `seasons §3`. |
+| `sun` | `boolean` | `true` | — | — | — | With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path. |
 
 #### Climate
 
@@ -50,7 +48,6 @@ Written by og.season; read them, never write them.
 ```ogt
 resource Season {
   doc "The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash."
-  guide "seasons §1"
   field enabled bool "Run the year."
   group "Calendar"
   field start f32 "The day of the year at tick 0, counted from New Year's midnight: SEASON_SPRING 79, SEASON_SUMMER 172, SEASON_AUTUMN 265 and SEASON_WINTER 355 are the northern equinoxes and solstices." {
@@ -72,14 +69,12 @@ resource Season {
     tunable true
   }
   field change f32 "Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date." {
-    guide "seasons §2"
     min 0
     unit s
     tunable true
   }
   group "Sun"
   field sun bool "With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path." {
-    guide "seasons §3"
     default true
   }
   group "Climate"
@@ -109,4 +104,4 @@ resource Season {
 }
 ```
 
-<sub>Module `atmosphere` line 249</sub>
+<sub>Module `atmosphere` line 244</sub>

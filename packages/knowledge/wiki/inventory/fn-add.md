@@ -38,4 +38,4 @@ fn add {
 }
 ```
 
-<sub>Module `inventory` line 114</sub>
+<sub>Module `inventory` line 108</sub>

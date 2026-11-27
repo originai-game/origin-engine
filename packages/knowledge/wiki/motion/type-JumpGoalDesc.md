@@ -8,8 +8,6 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7).
 
-See `animation §10`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,7 +22,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct JumpGoalDesc {
   doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7)."
-  guide "animation §10"
   desc true
   field height f32 "The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale)." {
     default 0.5
@@ -55,4 +52,4 @@ struct JumpGoalDesc {
 }
 ```
 
-<sub>Module `motion` line 121</sub>
+<sub>Module `motion` line 119</sub>

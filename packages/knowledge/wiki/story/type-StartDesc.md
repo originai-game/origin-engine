@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `node` | `string` | `""` | — | — | — | The node to start at (empty: the first non-bark Yarn node). |
 | `cast` | `unknown` | `null` | — | — | — | Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera). |
 | `vars` | `unknown` | `null` | — | — | — | Starting values for #og-local variables, `{ mood: 2 }`. |
-| `hold` | `string` | `""` | — | — | — | A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`. See `yarn §9`. |
+| `hold` | `string` | `""` | — | — | — | A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`. |
 
 ```ogt
 struct StartDesc {
@@ -27,9 +27,8 @@ struct StartDesc {
   field cast Json "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera)."
   field vars Json "Starting values for #og-local variables, `{ mood: 2 }`."
   field hold String "A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`." {
-    guide "yarn §9"
   }
 }
 ```
 
-<sub>Module `story` line 86</sub>
+<sub>Module `story` line 85</sub>

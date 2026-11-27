@@ -8,12 +8,10 @@ Game code sets players, graph parameters and IK targets; og.anim writes the pose
 
 Clips bind to nodes by name; assets are not world state.
 
-See `animation §7`.
-
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 69 more are advanced (`og api show anim --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module anim {
@@ -88,7 +86,7 @@ module anim {
 | [`HumanoidDesc`](anim/type-HumanoidDesc.md) | desc struct |  | A skeleton and, optionally, the rig that says how its bones are named. |
 | [`og.anim.humanoid`](anim/fn-humanoid.md) | function | `(world: World, desc?: HumanoidDesc): Result<Humanoid>` | The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it. |
 | [`RetargetDesc`](anim/type-RetargetDesc.md) | desc struct |  | A clip made for one skeleton, to play on another (other proportions, rest pose or bone names). |
-| [`og.anim.retarget`](anim/fn-retarget.md) | function | `(world: World, desc?: RetargetDesc): Result<ClipInfo>` | A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does (guide §7), then each animated humanoid bone turns as the source's does from it… |
+| [`og.anim.retarget`](anim/fn-retarget.md) | function | `(world: World, desc?: RetargetDesc): Result<ClipInfo>` | A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does, then each animated humanoid bone turns as the source's does from its rest pose… |
 | [`MirrorDesc`](anim/type-MirrorDesc.md) | desc struct |  | A clip to play on the other side of the skeleton it was made for. |
 | [`og.anim.mirror`](anim/fn-mirror.md) | function | `(world: World, desc?: MirrorDesc): Result<ClipInfo>` | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in m… |
 | [`FlipbookSheet`](anim/type-FlipbookSheet.md) | handle |  | A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook. |
@@ -141,7 +139,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>Module `anim` line 12</sub>
+<sub>Module `anim` line 11</sub>
 
 ```ogt
 column ClipAsset {
@@ -152,7 +150,7 @@ column ClipAsset {
 }
 ```
 
-<sub>Module `anim` line 19</sub>
+<sub>Module `anim` line 18</sub>
 
 ```ogt
 column GraphAsset {
@@ -163,7 +161,7 @@ column GraphAsset {
 }
 ```
 
-<sub>Module `anim` line 26</sub>
+<sub>Module `anim` line 25</sub>
 
 ```ogt
 column RootMotion {
@@ -174,7 +172,7 @@ column RootMotion {
 }
 ```
 
-<sub>Module `anim` line 40</sub>
+<sub>Module `anim` line 39</sub>
 
 ```ogt
 column RootMotionMode {
@@ -185,7 +183,7 @@ column RootMotionMode {
 }
 ```
 
-<sub>Module `anim` line 53</sub>
+<sub>Module `anim` line 52</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -196,7 +194,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>Module `anim` line 66</sub>
+<sub>Module `anim` line 65</sub>
 
 ```ogt
 column IkSolver {
@@ -207,7 +205,7 @@ column IkSolver {
 }
 ```
 
-<sub>Module `anim` line 79</sub>
+<sub>Module `anim` line 78</sub>
 
 ```ogt
 column IkSpace {
@@ -218,7 +216,7 @@ column IkSpace {
 }
 ```
 
-<sub>Module `anim` line 92</sub>
+<sub>Module `anim` line 91</sub>
 
 ```ogt
 column SpringSpace {
@@ -229,7 +227,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 529</sub>
+<sub>Module `anim` line 523</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -240,7 +238,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 604</sub>
+<sub>Module `anim` line 597</sub>
 
 ```ogt
 column Rig {
@@ -251,7 +249,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 820</sub>
+<sub>Module `anim` line 809</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -262,7 +260,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 891</sub>
+<sub>Module `anim` line 878</sub>
 
 ```ogt
 column Rig2D {
@@ -273,4 +271,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 994</sub>
+<sub>Module `anim` line 980</sub>

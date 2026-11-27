@@ -28,4 +28,4 @@ fn budget {
 }
 ```
 
-<sub>Module `stream` line 149</sub>
+<sub>Module `stream` line 144</sub>

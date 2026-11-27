@@ -1,5 +1,5 @@
 //! `og render --keyframes`: the frames of a render where something happened,
-//! with a timeline synced to ticks (the captures guide). A frame is a key
+//! with a timeline synced to ticks. A frame is a key
 //! frame when
 //!
 //! - it is the first of the render (`start`) or of a `--jobs` part (`part`:

@@ -428,8 +428,8 @@ fn stop_group(group: Target) {
 }
 
 /// `og dev --web`: the project's development web build served on `host:port`
-/// with every edit pushed to the open page (src/node/dev-web.ts; guide
-/// testing §og dev --web). It cooks and builds once, then keeps one
+/// with every edit pushed to the open page (src/node/dev-web.ts).
+/// It cooks and builds once, then keeps one
 /// `og cook --watch` and bundles the game's code on each src/ change; a cook,
 /// bundle or type error is reported on the page and in `_dev/status`, never
 /// an exit. Signals reach the server's whole process group, as the native

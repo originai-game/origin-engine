@@ -27,4 +27,4 @@ struct StoryAsset {
 }
 ```
 
-<sub>Module `story` line 77</sub>
+<sub>Module `story` line 76</sub>

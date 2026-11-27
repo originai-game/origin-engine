@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "knowledge/wiki and og api",
+      "change": "Removed all Markdown author guides, wiki/guide-*.md pages, guide recipes, guide search entries and the api show --guide / api_list guide options. The search.tsv format is now version 6. og migrate reports reference names instead of numbered guide sections.",
+      "fix": "Use og api find/show for API members, file:<type> checked inputs and named UI components. File entries now come directly from input schemas; component entries come from their TypeScript source. Consume the wiki and index shipped by the same engine version; stop opening or mounting guide pages. Author guides will be redesigned separately."
+    }
+  ]
+}

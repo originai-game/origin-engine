@@ -10,8 +10,6 @@ Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaled
 
 Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block).
 
-See `animation §9`.
-
 Token `og.Skeleton2D`, registered under the schema name `og.Skeleton2D`; its value type is `Skeleton2D`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -33,7 +31,6 @@ Token `og.Skeleton2D`, registered under the schema name `og.Skeleton2D`; its val
 component Skeleton2D {
   doc "Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it."
   doc "Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block)."
-  guide "animation §9"
   field rig Rig2D "The rig (og.load.rig2d's `rig`); 0 is none."
   field clip u32 "The clip: an index into Rig2DInfo.clips (og.anim.clip finds one by name)." {
     min 0
@@ -74,4 +71,4 @@ component Skeleton2D {
 }
 ```
 
-<sub>Module `anim` line 1001</sub>
+<sub>Module `anim` line 987</sub>

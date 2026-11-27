@@ -3,8 +3,8 @@
 Normative: the engine's current design. Open work is in `docs/roadmap.md`;
 the UI is `docs/ui.md`; the gate, toolchain and reference frames are
 `docs/ci.md`. Signatures, fields and defaults are the IDL's
-(`crates/og-api/api/`) and the generated wiki's; workflows and thresholds are
-the guides' (`crates/og-api/guides/`). This document states the structure,
+(`crates/og-api/api/`) and the generated wiki's. Author documentation currently
+consists of API reference and `og api find/show`; guides await redesign. This document states the structure,
 the contracts and the invariants they rest on.
 
 ## 1. Problem and non-goals
@@ -276,8 +276,7 @@ invalidated by the compiler itself.
   restore, rollback, fork or capture-only run would lose it. `og check`
   fails on it (OG9101, `crates/og-cli/src/module_state.rs`): module-scope
   bindings or containers a function writes, and state a closure handed to
-  `defineSystem` or `og.game` keeps between ticks. The determinism guide
-  lists what it does not see.
+  `defineSystem` or `og.game` keeps between ticks.
 
 ### 2.5 Scenes and assets
 
@@ -319,8 +318,7 @@ or a `.gltf` with `data:` URIs). The result draws as a cooked asset does.
   alone; a load over a limit is refused naming the limit, the value and the
   fix, and nothing is allocated for it.
 - **The reader** (og-bundle `runtime::UncookedGltf`) builds the same
-  `CookedModel` a cooked blob decodes to. What it skips and what it refuses
-  by name is in the loading guide.
+  `CookedModel` a cooked blob decodes to. It reports unsupported inputs by name.
 - **Off the engine's thread.** Images decode in the browser on the web and on
   a worker thread natively; a glTF's primitives are converted at tick
   boundaries within `frameMs` on the web.
@@ -486,7 +484,7 @@ the probe's CPU description of a frame.
   no hidden state behind the fields. The device caps some and says so in
   RenderCapabilities.
 - **three.js parity for ports**: opt-in fields that reproduce what three.js
-  and its common passes draw, each off by default (the three-to-og guide).
+  and its common passes draw, each off by default.
 - Capture: a readback path from the render graph used by the probe on both
   hosts; on the web it reads the OffscreenCanvas target.
 
@@ -561,7 +559,7 @@ A reconnection resets both and requires a new subscription.
 - **Animation**: glTF skins and clips, blend trees and state machines as
   data, root motion, additive layers, two-bone and FABRIK IK, blendshapes.
   The cook reports skin binding diagnostics (`skinDiagnostics`) as
-  information and changes nothing (the animation guide).
+  information and changes nothing.
 - **Destruction** (`og.destruction`): props are prefractured in the cook,
   never at run time. Bond damage, the support graph and Blast's stress
   solver (ported to f32 with fixed orders) run in the tick before physics;
@@ -797,9 +795,6 @@ ported.
   WAV and video (ba1539dca); web start preloads the pack fonts the code
   explicitly reaches, so `og.load.font` in `start` succeeds on both hosts
   (67286f24f).
-- **The workflow** (the spec, framing, asset preflight, the route, the
-  thresholds and the hand-over) is the video-to-game guide's,
-  `crates/og-api/guides/video-to-game.md`.
 
 ### 2.10 Lockstep
 
@@ -856,7 +851,7 @@ frame the entity from fixed cameras; the view is render state, never written
 to og.Camera, so no snapshot, replay or hash sees it, and it is not built
 into publish. `og compare <reference> <render>` prints silhouette IoU and
 CIEDE2000 differences and writes one comparison sheet, the same numbers and
-bytes on every run. Thresholds are the art-review guide's.
+bytes on every run. The reviewer decides thresholds.
 
 ### 2.12 Shared worlds
 
@@ -1039,7 +1034,7 @@ schedule actions on sim time. Core actions ship with the engine; a module or
 a game registers more. Unknown actions warn and continue. The core actions
 (`screenshot`, pointer and keyboard input, `teleport`, the `dump_*` family,
 `set`, the clock controls, `describe`, `expect`, `quit`) are
-listed with their arguments by `og` command help and the testing guide.
+listed with their arguments by `og` command help.
 
 ### 3.4 Probe
 
@@ -1175,7 +1170,7 @@ anything unclassified or unresolved selects, unselected suites count as
 | stale typed view used after a structural change | throws with the owning tick and the system name |
 | dead handle | error value `{ok:false, reason}`; never a trap |
 | system writes a component it did not declare | refused at registration with the field name |
-| wall-clock read, `Math.random`, a timer, `fetch` or the browser's storage in game code | reachable, reported: the engine hides none of JavaScript. `og check` reports each use as a warning with its replacement (og.Time, og.Rng, `math`, og.platform, og.load) and never refuses; `// og-ok` marks a line that only draws (`crates/og-cli/src/lockstep_lint.rs`, the determinism guide §1). What a game reaches that way is outside replays, saves and the platform |
+| wall-clock read, `Math.random`, a timer, `fetch` or the browser's storage in game code | reachable, reported: the engine hides none of JavaScript. `og check` reports each use as a warning with its replacement (og.Time, og.Rng, `math`, og.platform, og.load) and never refuses; `// og-ok` marks a line that only draws (`crates/og-cli/src/lockstep_lint.rs`). What a game reaches that way is outside replays, saves and the platform |
 | wasm trap (engine bug) | the shell shows the crash card with the last 200 log lines and the world dump; telemetry uploads the report |
 | WebGPU unavailable | not supported: the player shell says so instead of starting the engine (§8) |
 | cook stamp mismatch at load | refuse with the asset path and the two stamps |

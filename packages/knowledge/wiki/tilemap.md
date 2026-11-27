@@ -6,12 +6,10 @@ Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map 
 
 Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
 
-See `world §6`.
-
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.Tilemap`, `TilemapInfo`, `SetTileDesc`, `og.tilemap.setTile`, `og.tilemap.getTile`; 16 more are advanced (`og api show tilemap --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module tilemap {
@@ -65,4 +63,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>Module `tilemap` line 10</sub>
+<sub>Module `tilemap` line 9</sub>

@@ -1,7 +1,6 @@
 module story {
   doc "Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning."
   doc "Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error."
-  guide "yarn"
   split story
 
   enum StorySaliency {
@@ -91,7 +90,6 @@ module story {
     field cast Json "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera)."
     field vars Json "Starting values for #og-local variables, `{ mood: 2 }`."
     field hold String "A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`." {
-      guide "yarn §9"
     }
   }
 
@@ -161,13 +159,11 @@ module story {
     field voiceTicksLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
     field speaker SpeakerView "Who says it."
     field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot." {
-      guide "yarn §8"
     }
     field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
     field timer Option.TimerView "The choice timer, while it runs."
     field lastCheck Option.RollView "The last active check this conversation rolled."
     field held bool "It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then." {
-      guide "yarn §9"
     }
     field ended bool "The conversation has ended (the view keeps its last line)."
   }
@@ -331,7 +327,6 @@ module story {
     param world World "The world."
     param dialogue String "The dialogue's name (StoryAsset.name)."
     returns Result.List.GraphNode "Refused for a dialogue that is not loaded."
-    guide "yarn §9"
   }
 
   fn history {

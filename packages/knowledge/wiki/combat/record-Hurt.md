@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.
 
-See `combat §2`.
-
 Also known as: invulnerability frames, i-frames, invincibility, hit stun, stagger, knockback, flinch
 
 Token `og.Hurt`, registered under the schema name `og.Hurt`; its value type is `Hurt`.
@@ -26,7 +24,6 @@ Token `og.Hurt`, registered under the schema name `og.Hurt`; its value type is `
 component Hurt {
   aliases "invulnerability frames, i-frames, invincibility, hit stun, stagger, knockback, flinch"
   doc "How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`."
-  guide "combat §2"
   field invulnerableTicks u32 "Ticks from a hit in which further hits are ignored; 0 ignores none." {
     min 0
     tunable true
@@ -49,4 +46,4 @@ component Hurt {
 }
 ```
 
-<sub>Module `combat` line 120</sub>
+<sub>Module `combat` line 114</sub>

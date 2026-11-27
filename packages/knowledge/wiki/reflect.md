@@ -8,18 +8,17 @@ The inspector, Tune, the probe, scene text and the wiki read this one schema. Ea
 
 A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type.
 
-See `saves §3`.
-
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `FieldOptions`, `f32()`, `u32()`, `Vector2()`, `Vector3()`, `Quaternion()`, `Color()`, `defineComponent`, `defineResource`; 7 more are advanced (`og api show reflect --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module reflect {
   doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
   doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
   doc "A field holds one value, or a list of at most a fixed number of one number type or handle (`list(u32(), 8)`, the list factory below). A handle is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Entity()`: every handle type has its factory, named as the type), never another; a `u32` field refuses one and an `f64` loses its type."
+  place top
   # declarations follow, each on its own page
 ```
 
@@ -74,7 +73,7 @@ column f32 {
 }
 ```
 
-<sub>Module `reflect` line 23</sub>
+<sub>Module `reflect` line 22</sub>
 
 ```ogt
 column f64 {
@@ -85,7 +84,7 @@ column f64 {
 }
 ```
 
-<sub>Module `reflect` line 30</sub>
+<sub>Module `reflect` line 29</sub>
 
 ```ogt
 column u32 {
@@ -96,7 +95,7 @@ column u32 {
 }
 ```
 
-<sub>Module `reflect` line 37</sub>
+<sub>Module `reflect` line 36</sub>
 
 ```ogt
 column i32 {
@@ -107,7 +106,7 @@ column i32 {
 }
 ```
 
-<sub>Module `reflect` line 44</sub>
+<sub>Module `reflect` line 43</sub>
 
 ```ogt
 column bool {
@@ -118,7 +117,7 @@ column bool {
 }
 ```
 
-<sub>Module `reflect` line 51</sub>
+<sub>Module `reflect` line 50</sub>
 
 ```ogt
 column Vector2 {
@@ -129,7 +128,7 @@ column Vector2 {
 }
 ```
 
-<sub>Module `reflect` line 58</sub>
+<sub>Module `reflect` line 57</sub>
 
 ```ogt
 column Vector3 {
@@ -140,7 +139,7 @@ column Vector3 {
 }
 ```
 
-<sub>Module `reflect` line 65</sub>
+<sub>Module `reflect` line 64</sub>
 
 ```ogt
 column Quaternion {
@@ -151,7 +150,7 @@ column Quaternion {
 }
 ```
 
-<sub>Module `reflect` line 72</sub>
+<sub>Module `reflect` line 71</sub>
 
 ```ogt
 column Matrix4 {
@@ -162,7 +161,7 @@ column Matrix4 {
 }
 ```
 
-<sub>Module `reflect` line 79</sub>
+<sub>Module `reflect` line 78</sub>
 
 ```ogt
 column Color {
@@ -173,7 +172,7 @@ column Color {
 }
 ```
 
-<sub>Module `reflect` line 86</sub>
+<sub>Module `reflect` line 85</sub>
 
 ```ogt
 column str {
@@ -185,7 +184,7 @@ column str {
 }
 ```
 
-<sub>Module `reflect` line 93</sub>
+<sub>Module `reflect` line 92</sub>
 
 ```ogt
 column list {
@@ -195,4 +194,4 @@ column list {
 }
 ```
 
-<sub>Module `reflect` line 101</sub>
+<sub>Module `reflect` line 100</sub>

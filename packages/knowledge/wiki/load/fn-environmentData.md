@@ -10,8 +10,6 @@ Load an HDR environment from bytes, uncooked, at run time, for Environment.map: 
 
 Completion is host input, journaled as og.load.imageData's is.
 
-See `loading §10`.
-
 ```ts
 og.load.environmentData(world: World, name: string, bytes: Uint8Array, desc?: EnvironmentDataDesc): Result<Asset>
 ```
@@ -30,7 +28,6 @@ Binding symbol `og_load_environment_data` · publish builds: kept
 ```ogt
 fn environmentData {
   doc "Load an HDR environment from bytes, uncooked, at run time, for Environment.map: an equirectangular Radiance .hdr (or .exr where RenderCapabilities.exrDecode is true), twice as wide as tall. Its size is checked against the budget before it is decoded off the engine's thread; the renderer GGX-prefilters it on the GPU when it first draws with it. The handle is pending until the map is in place, then ready (og.load.environmentInfo) or failed (og.load.error); until then Environment lights by the sky."
-  guide "loading §10"
   doc "Completion is host input, journaled as og.load.imageData's is."
   param world World "The world that owns the asset."
   param name String "A name for it in errors and dumps, such as `uploads/sunset.hdr`."
@@ -40,4 +37,4 @@ fn environmentData {
 }
 ```
 
-<sub>Module `load` line 702</sub>
+<sub>Module `load` line 670</sub>

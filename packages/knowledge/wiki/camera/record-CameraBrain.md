@@ -10,8 +10,6 @@ Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinema
 
 Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
 
-See `camera §2`.
-
 Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its value type is `CameraBrain`.
 
 #### Blending
@@ -67,7 +65,6 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 resource CameraBrain {
   doc "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is."
   doc "Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend."
-  guide "camera §2"
   group "Blending"
   field enabled bool "Drive og.Camera; false leaves it to the game (the vcams' state still updates)." {
     default true
@@ -173,4 +170,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>Module `camera` line 622</sub>
+<sub>Module `camera` line 617</sub>

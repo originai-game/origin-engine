@@ -8,8 +8,6 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed.
 
-See `saves §8`.
-
 ```ts
 og.platform.entitlements(world: World): number
 ```
@@ -25,10 +23,9 @@ Binding symbol `og_platform_entitlements` · publish builds: kept
 ```ogt
 fn entitlements {
   doc "What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed."
-  guide "saves §8"
   param world World "The world."
   returns u32 "The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise."
 }
 ```
 
-<sub>Module `platform` line 353</sub>
+<sub>Module `platform` line 345</sub>

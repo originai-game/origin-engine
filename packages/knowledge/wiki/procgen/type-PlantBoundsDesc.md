@@ -24,4 +24,4 @@ struct PlantBoundsDesc {
 }
 ```
 
-<sub>Module `procgen` line 805</sub>
+<sub>Module `procgen` line 804</sub>

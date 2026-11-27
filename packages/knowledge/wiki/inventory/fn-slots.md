@@ -31,4 +31,4 @@ fn slots {
 }
 ```
 
-<sub>Module `inventory` line 87</sub>
+<sub>Module `inventory` line 81</sub>

@@ -13,19 +13,12 @@ use std::collections::BTreeMap;
 /// The index's file name in the wiki directory.
 pub const INDEX_FILE: &str = "search.tsv";
 
-/// How many guide sections the first [`GUIDE_WINDOW`] results may hold:
-/// a guide's sections share words, so without a cap one query's sections
-/// crowd out the API entries they name. The others follow the window.
-const GUIDE_CAP: usize = 1;
-/// The results the guide cap applies to (the five a reader looks at).
-const GUIDE_WINDOW: usize = 5;
-
 /// One anchored entry of a wiki page.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entry {
     /// The documented name, as the heading or row writes it (`og.CharacterController`, `Camera.lookAt`, `BODY_STATIC`).
     pub name: String,
-    /// The anchor's kind: module, guide, fn, record, type, member, const, value or column.
+    /// The anchor's kind: module, fn, record, type, member, const, value, column, file or component.
     pub kind: String,
     /// The page, relative to the wiki directory and without `.md` (`physics`, `physics/record-CharacterController`).
     pub page: String,
@@ -39,16 +32,11 @@ pub struct Entry {
 pub fn entries(page: &str, text: &str) -> Vec<Entry> {
     let lines: Vec<&str> = text.lines().collect();
     let mut out = Vec::new();
-    // The page's module overview (`# The `input` module` to its contents):
-    // `og api show input`; a guide's page is its overview whole (`og api show testing`).
-    if let Some(h) = lines.iter().position(|l| {
-        l.starts_with("# The `") && (l.ends_with("` module") || l.contains("` guide: "))
-    }) {
-        let kind = if lines[h].ends_with("` module") {
-            "module"
-        } else {
-            "guide"
-        };
+    // The page's module overview (`# The `input` module` to its contents).
+    if let Some(h) = lines
+        .iter()
+        .position(|l| l.starts_with("# The `") && l.ends_with("` module"))
+    {
         let end = lines[h..]
             .iter()
             .position(|l| l.starts_with("## ") || block_anchor(l).is_some())
@@ -60,7 +48,7 @@ pub fn entries(page: &str, text: &str) -> Vec<Entry> {
             .unwrap_or_default();
         out.push(Entry {
             name: between(lines[h], '`', '`').unwrap_or_default().to_string(),
-            kind: kind.to_string(),
+            kind: "module".to_string(),
             page: page.to_string(),
             summary,
             body: lines[h..end].join("\n").trim().to_string(),
@@ -111,25 +99,11 @@ pub fn entries(page: &str, text: &str) -> Vec<Entry> {
                 .find(|l| !l.trim().is_empty())
                 .map(|l| first_sentence(l))
                 .unwrap_or_default();
-            let summary = if kind == "guide" {
-                let heading_title = heading
-                    .splitn(3, '`')
-                    .nth(2)
-                    .map(str::trim)
-                    .filter(|t| !t.is_empty());
-                match heading_title {
-                    Some(t) if raw_summary.is_empty() => t.to_string(),
-                    Some(t) => clip_summary(&format!("{t} — {raw_summary}")),
-                    None => raw_summary,
-                }
-            } else {
-                raw_summary
-            };
             out.push(Entry {
                 name,
                 kind,
                 page: page.to_string(),
-                summary,
+                summary: raw_summary,
                 body: block.join("\n").trim().to_string(),
             });
             i = j;
@@ -288,12 +262,9 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
             aliases.push_str(rest);
             continue;
         }
-        // A table row's first cell is a field, parameter, variant or member
-        // name; a guide section's tables (a component's props) are only its
-        // body, so their many words do not outweigh what an entry is named
-        // and says it does.
+        // A table row's first cell is a field, parameter, variant or member name.
         if let Some(rest) = line.strip_prefix("| ") {
-            if let Some(cell) = rest.split('|').next().filter(|_| e.kind != "guide") {
+            if let Some(cell) = rest.split('|').next() {
                 members.push_str(cell);
                 members.push(' ');
             }
@@ -306,46 +277,14 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
         }
         body.push(' ');
     }
-    // A guide section's first sentence (a component's whole doc comment,
-    // often) scores as the body it opens, not as a summary a whole entry
-    // stands behind.
-    let guide = e.kind == "guide";
-    let name = match (guide, title(e)) {
-        (true, Some(t)) => format!("{} {} {t}", e.name, e.name.rsplit('.').next().unwrap_or("")),
-        _ => format!("{} {}", e.name, e.name.rsplit('.').next().unwrap_or("")),
-    };
+    let name = format!("{} {}", e.name, e.name.rsplit('.').next().unwrap_or(""));
     [
         tokens(&name),
-        if guide {
-            Vec::new()
-        } else {
-            tokens(&e.summary)
-        },
+        tokens(&e.summary),
         tokens(&members),
         tokens(&body),
         tokens(&aliases),
     ]
-}
-
-/// A guide section's title: its heading after the name (`### `components
-/// §38` Crosshair`).
-pub fn entry_title(e: &Entry) -> Option<&str> {
-    e.body
-        .lines()
-        .find(|l| l.starts_with('#'))
-        .and_then(|h| h.splitn(3, '`').nth(2))
-        .map(str::trim)
-        .filter(|t| !t.is_empty())
-}
-
-fn title(e: &Entry) -> Option<&str> {
-    entry_title(e)
-}
-
-/// A guide section's heading title ([`Doc::title`]); none for any other
-/// entry or an untitled section.
-pub fn section_title(doc: &Doc) -> Option<&str> {
-    Some(doc.title.as_str()).filter(|t| !t.is_empty())
 }
 
 /// One entry of the index: what `find` prints, and its fields' lengths.
@@ -355,9 +294,6 @@ pub struct Doc {
     pub kind: String,
     pub page: String,
     pub summary: String,
-    /// A guide section's heading title (`Button` for `components §12`
-    /// Button), from [`entry_title`]; empty for any other entry.
-    pub title: String,
     pub len: [u32; NF],
     /// The entry's embedding (crate::embed), int8 with its scale.
     pub vec: Vec<i8>,
@@ -380,15 +316,7 @@ pub struct Hit {
 /// name is the densest statement of purpose), its aliases, its summary and
 /// the first hundred words of its prose, code and tables left out.
 fn embed_text(e: &Entry) -> String {
-    // A guide section is named by its heading's title (`components §38`
-    // Crosshair), not its number. Tables (a component's props, a function's
-    // parameters) are left out: their many words pull an entry towards
-    // every query.
-    let guide = e.kind == "guide";
-    let leaf = guide
-        .then(|| title(e))
-        .flatten()
-        .unwrap_or_else(|| e.name.trim_start_matches("og."));
+    let leaf = e.name.trim_start_matches("og.");
     let mut name = String::new();
     let mut prev_lower = false;
     for c in leaf.chars() {
@@ -427,8 +355,7 @@ fn embed_text(e: &Entry) -> String {
         .lines()
         .find_map(|l| l.strip_prefix(crate::r#gen::wiki::ALSO_KNOWN_AS))
         .unwrap_or("");
-    // A guide section's first sentence opens its prose already.
-    let summary = if guide { "" } else { e.summary.as_str() };
+    let summary = e.summary.as_str();
     format!(
         "{name}. {name}. {aliases}. {aliases}. {summary} {}",
         words.join(" ")
@@ -477,11 +404,6 @@ impl SearchIndex {
                 kind: e.kind.clone(),
                 page: e.page.clone(),
                 summary: e.summary.clone(),
-                title: (e.kind == "guide" && e.name.contains(" §"))
-                    .then(|| entry_title(e))
-                    .flatten()
-                    .unwrap_or("")
-                    .to_string(),
                 len: std::array::from_fn(|k| f[k].len() as u32),
                 vec,
                 vscale,
@@ -494,7 +416,7 @@ impl SearchIndex {
     /// refers to another row: inserting a document leaves other rows unchanged.
     pub fn to_text(&self) -> String {
         let mut out = String::from(
-            "# og api find index 5: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8); section title\n",
+            "# og api find index 6: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8)\n",
         );
         let mut words = vec![Vec::new(); self.docs.len()];
         for (word, posts) in &self.terms {
@@ -507,14 +429,13 @@ impl SearchIndex {
         }
         for (d, words) in self.docs.iter().zip(words) {
             out.push_str(&format!(
-                "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\t{}\n",
+                "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\n",
                 d.name,
                 d.kind,
                 d.page,
                 d.len.map(|n| n.to_string()).join(","),
                 d.vscale,
                 og_core::base64::encode(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
-                d.title.replace(['\t', '\n'], " "),
                 d.summary.replace(['\t', '\n'], " ")
             ));
             out.push_str("words\t");
@@ -527,7 +448,7 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        if lines.next()?.split(':').next()? != "# og api find index 5" {
+        if lines.next()?.split(':').next()? != "# og api find index 6" {
             return None;
         }
         for line in lines {
@@ -547,14 +468,12 @@ impl SearchIndex {
                         .into_iter()
                         .map(|x| x as i8)
                         .collect();
-                    let title = cols.next()?.to_string();
                     let summary = cols.next().unwrap_or("").to_string();
                     ix.docs.push(Doc {
                         name,
                         kind,
                         page,
                         summary,
-                        title,
                         len,
                         vec,
                         vscale,
@@ -659,7 +578,6 @@ impl SearchIndex {
                         .any(|w| w == name.as_slice())
             };
             matches(doc.name.rsplit('.').next().unwrap_or(""))
-                || section_title(doc).is_some_and(matches)
         };
         let exact = |doc: &Doc| {
             let name = bare(&doc.name);
@@ -669,19 +587,6 @@ impl SearchIndex {
                 || (!spelled.is_empty()
                     && tokens(doc.name.rsplit('.').next().unwrap_or("")).concat() == spelled)
         };
-        // A guide section titled as the query leads only when no other
-        // section shares its title: `Button` names one section, `Pitfalls`
-        // or `Recipes` heads one in many guides and names none of them.
-        let mut titles: BTreeMap<String, usize> = BTreeMap::new();
-        for t in self.docs.iter().filter_map(section_title) {
-            *titles.entry(bare(t)).or_default() += 1;
-        }
-        let title_exact = |doc: &Doc| {
-            section_title(doc).is_some_and(|t| {
-                titles.get(&bare(t)) == Some(&1)
-                    && (bare(t) == want || (!spelled.is_empty() && tokens(t).concat() == spelled))
-            })
-        };
         let mut out: Vec<(usize, f64)> = score
             .into_iter()
             .map(|(d, s)| (d as usize, s))
@@ -689,7 +594,7 @@ impl SearchIndex {
                 self.docs
                     .iter()
                     .enumerate()
-                    .filter_map(|(d, doc)| (exact(doc) || title_exact(doc)).then_some((d, 0.0))),
+                    .filter_map(|(d, doc)| exact(doc).then_some((d, 0.0))),
             )
             .fold(BTreeMap::<usize, f64>::new(), |mut m, (d, s)| {
                 *m.entry(d).or_default() += s;
@@ -703,8 +608,6 @@ impl SearchIndex {
                     d,
                     s + if exact(doc) {
                         100.0
-                    } else if title_exact(doc) {
-                        80.0
                     } else if holds(doc) {
                         PHRASE
                     } else {
@@ -739,7 +642,6 @@ impl SearchIndex {
                         .any(|w| w == name.as_slice())
             };
             matches(doc.name.rsplit('.').next().unwrap_or(""))
-                || section_title(doc).is_some_and(matches)
         };
         let model = crate::embed::model();
         let q = model.embed(query);
@@ -798,26 +700,7 @@ impl SearchIndex {
                 .total_cmp(&a.score)
                 .then_with(|| self.docs[a.doc].name.cmp(&self.docs[b.doc].name))
         });
-        // Past the cap, a guide section (not one named or titled exactly:
-        // only a title one section holds scores 0.8) waits until
-        // the window is full; the order is otherwise the score's.
-        let mut kept = Vec::with_capacity(out.len());
-        let mut later = Vec::new();
-        let mut guides = 0;
-        for h in out {
-            let guide = self.docs[h.doc].kind == "guide" && h.score < 0.8;
-            if guide && guides >= GUIDE_CAP && kept.len() < GUIDE_WINDOW {
-                later.push(h);
-                continue;
-            }
-            guides += usize::from(guide);
-            kept.push(h);
-            if kept.len() == GUIDE_WINDOW {
-                kept.append(&mut later);
-            }
-        }
-        kept.append(&mut later);
-        kept
+        out
     }
 }
 

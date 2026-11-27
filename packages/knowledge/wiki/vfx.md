@@ -6,16 +6,15 @@ Composed effects: one effect (a fireball's impact, a heal, a level-up) as a time
 
 An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false).
 
-See `loading §11`.
-
 - **TypeScript**: functions are the namespace `og.vfx`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.VfxEvent`, `VfxSpawnDesc`, `og.vfx.spawn`; 5 more are advanced (`og api show vfx --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module vfx {
   doc "Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, glows, flipbooks, shakes and sounds."
+  doc "An og.Vfx plays one from its startTick at its entity's MatrixWorld. Its visuals come from (asset, seed, startTick, the tick) alone, never world state, so a replay, restore or seek draws the same. In the tick the og.vfx system sends an og.VfxEvent for each `event` line, plays each `shake` and `sound`, and despawns an ended non-looping effect with its sounds (unless `despawn` is false)."
   # declarations follow, each on its own page
 ```
 
@@ -51,4 +50,4 @@ column VfxAsset {
 }
 ```
 
-<sub>Module `vfx` line 9</sub>
+<sub>Module `vfx` line 8</sub>

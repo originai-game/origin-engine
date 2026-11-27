@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
 
-See `physics §8`.
-
 Also known as: gravity zone, low gravity room, gravity well, pull objects towards a point, attract or repel bodies, updraft, jump pad, tractor beam, anti-gravity area, whirlpool
 
 Token `og.ForceField`, registered under the schema name `og.ForceField`; its value type is `ForceField`.
@@ -25,7 +23,6 @@ Token `og.ForceField`, registered under the schema name `og.ForceField`; its val
 component ForceField {
   aliases "gravity zone, low gravity room, gravity well, pull objects towards a point, attract or repel bodies, updraft, jump pad, tractor beam, anti-gravity area, whirlpool"
   doc "An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run."
-  guide "physics §8"
   field kind ForceFieldKind "How it accelerates."
   field direction Vector3 "A directional field's direction and a vortex's axis, in the entity's space (it turns with the entity); its length does not matter." {
     default 0 1 0
@@ -41,4 +38,4 @@ component ForceField {
 }
 ```
 
-<sub>Module `physics` line 224</sub>
+<sub>Module `physics` line 217</sub>

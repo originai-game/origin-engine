@@ -1,7 +1,6 @@
 module motion {
   doc "Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...)."
   doc "Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent."
-  guide "animation §10"
   split motion
   core MotionAgent pose face walkTo jump PoseGoalDesc FaceGoalDesc WalkGoalDesc JumpGoalDesc
 
@@ -111,7 +110,6 @@ module motion {
       min 0
     }
     field acceleration f32 "How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns)." {
-      guide "animation §10"
       default 4
       min 0
       unit mps2
@@ -120,7 +118,6 @@ module motion {
 
   struct JumpGoalDesc {
     doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7)."
-    guide "animation §10"
     desc true
     field height f32 "The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale)." {
       default 0.5
@@ -187,7 +184,6 @@ module motion {
 
   struct ReactionDesc {
     doc "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only."
-    guide "animation §11"
     desc true
     field action String "The canonical motion-action content ID, such as base/actions/brace. Empty releases the current reaction."
     field direction Vector3 "World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing."
@@ -331,7 +327,6 @@ module motion {
 
   fn setBackend {
     doc "Where the motion model runs: gpu (the default, beside the renderer, cheapest per character) or cpu (across the lanes, each generation spread over the ticks before it is due, for a few characters). A presentation setting of this engine, outside the world: a snapshot does not keep it. No tick waits for it; results apply when they come back. A change after the first agent loads the model again and every agent's generated motion starts again."
-    guide "animation §10"
     param world World "The world."
     param backend MotionBackend "cpu or gpu."
     returns Result.Void "Refused for none."
@@ -339,7 +334,6 @@ module motion {
 
   fn presentation {
     doc "Presentation-only readiness on both hosts, for a host's cover: ready once generated frames and their palette exist for the current rendered frame (authored fallback does not count), or failed with a reason. Game logic must not branch on it: it depends on GPU timing and is outside snapshots and hashes; a development build warns when a system reads it on the gpu backend."
-    guide "animation §10"
     param world World "The world."
     param entity Entity "An entity with an og.MotionAgent."
     returns Result.MotionPresentationStatus "Refused for an entity without og.MotionAgent."

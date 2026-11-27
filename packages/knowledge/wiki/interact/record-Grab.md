@@ -8,8 +8,6 @@ Module [`interact`](../interact.md) · [index](../index.md)
 
 A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.
 
-See `interaction §2`.
-
 Also known as: pick up, carry, throw object, hold item, grab physics object, Half-Life gravity gun
 
 Token `og.Grab`, registered under the schema name `og.Grab`; its value type is `Grab`.
@@ -24,7 +22,6 @@ Token `og.Grab`, registered under the schema name `og.Grab`; its value type is `
 component Grab {
   aliases "pick up, carry, throw object, hold item, grab physics object, Half-Life gravity gun"
   doc "A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody."
-  guide "interaction §2"
   field carry Vector3 "Where it is carried, in the carrier's frame (forward +Z)." {
     unit m
     worldspace none
@@ -40,4 +37,4 @@ component Grab {
 }
 ```
 
-<sub>Module `interact` line 97</sub>
+<sub>Module `interact` line 91</sub>

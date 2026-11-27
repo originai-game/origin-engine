@@ -12,8 +12,6 @@ Suspension stiffness and damping are per chassis kilogram. Drive and brake are w
 
 3D wheels cast the full suspension droop, skip sensors and honour ContactHook.
 
-See `physics §7`.
-
 Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value type is `Vehicle`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -32,14 +30,14 @@ Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value typ
 | `reboundDamping` | `number` | `0` | ≥ 0 | — | tunable | Rebound damping per chassis kilogram; zero disables it. |
 | `bumpStopStiffness` | `number` | `0` | ≥ 0 | — | tunable | Progressive bump stop coefficient, N/m²; zero disables it. |
 | `antiRollStiffness` | `number` | `0` | ≥ 0 | — | tunable | Opposite wheels on the same axle exchange this many N per metre of compression difference; zero disables it (3D). |
-| `grip` | `number` | `1` | ≥ 0 | — | tunable | The real tyre friction coefficient, multiplied by the ground friction; no hidden scale. See `physics §7`. |
-| `engineForce` | `number` | `2500` | ≥ 0 | — | tunable | Arcade drive torque per driven wheel in N·m, faded towards maxSpeed. See `physics §7`. |
+| `grip` | `number` | `1` | ≥ 0 | — | tunable | The real tyre friction coefficient, multiplied by the ground friction; no hidden scale. |
+| `engineForce` | `number` | `2500` | ≥ 0 | — | tunable | Arcade drive torque per driven wheel in N·m, faded towards maxSpeed. |
 | `maxSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The top speed: the engine's force fades out towards it (throttle against the motion brakes first). |
-| `brakeForce` | `number` | `2000` | ≥ 0 | — | tunable | Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity. See `physics §7`. |
+| `brakeForce` | `number` | `2000` | ≥ 0 | — | tunable | Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity. |
 | `maxSteer` | `number` | `0.55` | 0 … 1.2 | `rad` | tunable | The front wheels' largest steering angle (3D). |
 | `drive` | `VehicleDrive` | `"rear"` | — | — | — | Which wheels drive: rear, front or all. |
 | `wheelMass` | `number` | `20` | ≥ 0.01 | `kg` | tunable | Wheel mass in both profiles; spin inertia is half the mass times radius squared. |
-| `rollInfluence` | `number` | `0` | 0 … 1 | — | tunable | How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over. See `physics §7`. |
+| `rollInfluence` | `number` | `0` | 0 … 1 | — | tunable | How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over. |
 | `wheelCast` | `VehicleWheelCast` | `"ray"` | — | — | — | 3D wheel contact cast shape; cylinder axle follows steering, width is half its radius. |
 | `brakeBias` | `number` | `0` | 0 … 1 | — | tunable | Zero disables bias (equal torque per wheel); otherwise the front axle share of service braking. |
 | `aeroDrag` | `number` | `0` | ≥ 0 | — | tunable | Quadratic drag coefficient in kg/m; zero disables drag. |
@@ -53,7 +51,7 @@ Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value typ
 | `contacts` | `number` | `0` | — | — | read only | Written: how many wheels touch the ground. |
 | `slip` | `number` | `0` | 0 … 1 | — | read only | Written after the step: largest regularised wheel slip, zero gripping towards one sliding, in either profile. |
 | `model` | `VehicleModel` | `"arcade"` | — | — | — | Arcade torque or an engine flywheel coupled through a clutch and gearbox to measured wheel angular velocities. Drivetrain requires nonzero engineInertia and clutchStrength. |
-| `handbrake` | `number` | `0` | 0 … 1 | — | — | Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip. See `physics §7`. |
+| `handbrake` | `number` | `0` | 0 … 1 | — | — | Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip. |
 | `handbrakeGrip` | `number` | `0.2` | 0 … 1 | — | tunable | Handbrake wheels' friction multiplier at full handbrake, in either profile. |
 | `gears` | `readonly number[]` | `[]` | — | — | a list of at most 8 `f32` (`List.f32.8`): reads a frozen copy, writes a whole array | Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82. |
 | `reverseRatio` | `number` | `3.2` | ≥ 0 | — | tunable | Drivetrain: the reverse gear's ratio. |
@@ -79,7 +77,6 @@ component Vehicle {
   doc "Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels."
   doc "Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero."
   doc "3D wheels cast the full suspension droop, skip sensors and honour ContactHook."
-  guide "physics §7"
   field throttle f32 "The accelerator, -1 (reverse) to 1. Set it every tick." {
     min -1
     max 1
@@ -149,13 +146,11 @@ component Vehicle {
     tunable true
   }
   field grip f32 "The real tyre friction coefficient, multiplied by the ground friction; no hidden scale." {
-    guide "physics §7"
     default 1
     min 0
     tunable true
   }
   field engineForce f32 "Arcade drive torque per driven wheel in N·m, faded towards maxSpeed." {
-    guide "physics §7"
     default 2500
     min 0
     tunable true
@@ -167,7 +162,6 @@ component Vehicle {
     tunable true
   }
   field brakeForce f32 "Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity." {
-    guide "physics §7"
     default 2000
     min 0
     tunable true
@@ -188,7 +182,6 @@ component Vehicle {
     tunable true
   }
   field rollInfluence f32 "How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over." {
-    guide "physics §7"
     min 0
     max 1
     tunable true
@@ -245,7 +238,6 @@ component Vehicle {
   field model VehicleModel "Arcade torque or an engine flywheel coupled through a clutch and gearbox to measured wheel angular velocities. Drivetrain requires nonzero engineInertia and clutchStrength." {
   }
   field handbrake f32 "Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip." {
-    guide "physics §7"
     min 0
     max 1
   }
@@ -333,4 +325,4 @@ component Vehicle {
 }
 ```
 
-<sub>Module `physics` line 949</sub>
+<sub>Module `physics` line 927</sub>

@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 The value of a ready og.load.data file read as `json`.
 
-See `loading §14`.
-
 ```ts
 og.load.dataJson(world: World, asset: Asset): Result<unknown>
 ```
@@ -26,11 +24,10 @@ Binding symbol `og_load_data_json` · publish builds: kept
 ```ogt
 fn dataJson {
   doc "The value of a ready og.load.data file read as `json`."
-  guide "loading §14"
   param world World "The world that owns the asset."
   param asset Asset "A handle og.load.data answered."
   returns Result.Json "Refused while it is pending, when it failed (with its reason), when read as `bytes`, or for another kind of asset."
 }
 ```
 
-<sub>Module `load` line 722</sub>
+<sub>Module `load` line 688</sub>

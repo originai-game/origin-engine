@@ -8,8 +8,6 @@ Module [`inventory`](../inventory.md) · [index](../index.md)
 
 An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.
 
-See `items §2`.
-
 Also known as: on pickup, item collected, loot taken
 
 Token `og.PickedUp`, registered under the schema name `og.PickedUp`; its value type is `PickedUp`.
@@ -25,7 +23,6 @@ Token `og.PickedUp`, registered under the schema name `og.PickedUp`; its value t
 event PickedUp {
   aliases "on pickup, item collected, loot taken"
   doc "An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved."
-  guide "items §2"
   field collector Entity "The og.Collector."
   field pickup Entity "The og.Pickup; despawned when og.inventory returns once it is empty."
   field item TableRow "The row taken."
@@ -33,4 +30,4 @@ event PickedUp {
 }
 ```
 
-<sub>Module `inventory` line 45</sub>
+<sub>Module `inventory` line 40</sub>

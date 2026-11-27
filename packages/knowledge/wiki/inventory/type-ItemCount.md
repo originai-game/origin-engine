@@ -21,4 +21,4 @@ struct ItemCount {
 }
 ```
 
-<sub>Module `inventory` line 61</sub>
+<sub>Module `inventory` line 55</sub>

@@ -27,4 +27,4 @@ enum AttackPhase {
 }
 ```
 
-<sub>Module `combat` line 5</sub>
+<sub>Module `combat` line 4</sub>

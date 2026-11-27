@@ -30,4 +30,4 @@ fn fracture {
 }
 ```
 
-<sub>Module `destruction` line 292</sub>
+<sub>Module `destruction` line 282</sub>

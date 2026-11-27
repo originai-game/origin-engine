@@ -1,5 +1,5 @@
 //! Content catalog files at run time (IDL `load`: `data`, `dataJson`,
-//! `dataBytes`; guide loading §14): static, versioned content the game's
+//! `dataBytes`): static, versioned content the game's
 //! host publishes, read by catalog, version and path from the content base
 //! the host set (`og run --content <dir>`, the page's `content`).
 //!

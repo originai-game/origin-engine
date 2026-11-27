@@ -8,8 +8,6 @@ Module [`net`](../net.md) · [index](../index.md)
 
 Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
 
-See `networking §1`.
-
 Also known as: deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent
 
 Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value type is `Lockstep`.
@@ -19,19 +17,18 @@ Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value t
 | `enabled` | `boolean` | `false` | — | — | — | Whether the world takes its ticks in lockstep when in a room. |
 | `players` | `number` | `2` | 1 … 16 | — | — | The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for. |
 | `localPlayer` | `number` | `0` | — | — | read only | This peer's seat, the og.PlayerInput.player its input drives; `players` while it watches (a peer beyond the seats). 0 before the start. |
-| `inputDelayTicks` | `number` | `2` | 1 … 30 | `ticks` | — | Ticks between a player's input and the tick it acts on: the time the input has to cross the room. See `networking §3`. |
+| `inputDelayTicks` | `number` | `2` | 1 … 30 | `ticks` | — | Ticks between a player's input and the tick it acts on: the time the input has to cross the room. |
 | `hashEveryTicks` | `number` | `10` | 0 … 600 | `ticks` | — | How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing. |
 | `running` | `boolean` | `false` | — | — | read only | Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off). |
 | `mode` | `NetMode` | `"lockstep"` | — | — | — | lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's). |
 | `stallTimeoutMs` | `number` | `5000` | 0 … 600000 | `ms` | — | Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's. |
 | `rejoin` | `boolean` | `true` | — | — | — | Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's. |
-| `maxPredictionTicks` | `number` | `8` | 1 … 30 | `ticks` | — | In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). See `networking §3`. |
+| `maxPredictionTicks` | `number` | `8` | 1 … 30 | `ticks` | — | In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). |
 
 ```ogt
 resource Lockstep {
   doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
   aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation, same simulation on every peer, only inputs sent"
-  guide "networking §1"
   field enabled bool "Whether the world takes its ticks in lockstep when in a room."
   field players u32 "The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for." {
     default 2
@@ -42,7 +39,6 @@ resource Lockstep {
     readonly true
   }
   field inputDelayTicks u32 "Ticks between a player's input and the tick it acts on: the time the input has to cross the room." {
-    guide "networking §3"
     default 2
     min 1
     max 30
@@ -68,7 +64,6 @@ resource Lockstep {
     default true
   }
   field maxPredictionTicks u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame)." {
-    guide "networking §3"
     default 8
     min 1
     max 30
@@ -77,4 +72,4 @@ resource Lockstep {
 }
 ```
 
-<sub>Module `net` line 21</sub>
+<sub>Module `net` line 20</sub>

@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set."
 ```
 
-<sub>Module `load` line 25</sub>
+<sub>Module `load` line 24</sub>

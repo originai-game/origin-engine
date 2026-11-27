@@ -35,7 +35,7 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | wasm-bindgen glue | `crates/og-host-web/src/generated/glue.rs` | the web host's exports |
 | napi glue | `crates/og-host-node/src/generated/glue.rs` | the native host's exports |
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |
-| wiki: one page per module, guides and `search.tsv` | `packages/knowledge/wiki/` | agents, through `og api find` / `og api show` / `og api list` and `@origingame/engine` |
+| wiki: module/member, file input and component references, and `search.tsv` | `packages/knowledge/wiki/` | agents, through `og api find` / `og api show` / `og api list` and `@origingame/engine` |
 
 Every generated file's header names `api.ogt`, meaning the concatenated
 IDL. Wiki pages quote each declaration's IDL text
@@ -103,8 +103,8 @@ comment   = "#" to the end of the line, where "#" starts a token
 ## The IDL
 
 Top level: `package "<npm name>"`, `doc "..."` lines, `unit <name> "<doc>"`
-and `module <name> { ... }`. A module holds `doc`, optional `guide "<guide> §N"`
-references, `place namespace|root|top`, `publish false`, `split <module>`, and
+and `module <name> { ... }`. A module holds `doc`,
+`place namespace|root|top`, `publish false`, `split <module>`, and
 `core <items...>`, then declarations.
 
 Most declarations accept a trailing quoted doc on their own line
@@ -115,13 +115,8 @@ A function, record, struct, enum, union or interface may also carry one
 Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
 `og api find` scores it as a field of its own; no other output reads it.
 
-Three keys keep entries short and the entry point narrow:
+Two keys keep entries short and the entry point narrow:
 
-- `guide "saves §2"` (or `guide "saves"`) on a module, fn, type, record,
-  field or prop: where its workflow, thresholds and pitfalls are written.
-  The guide must exist in `crates/og-api/guides/` with a `## 2.` section
-  (`og_idl::read` refuses it otherwise); the generators end the doc with
-  "See `saves §2`." in the `.d.ts`, the schema and the wiki.
 - `group "Heading" "optional doc"` in a struct or record: the fields after
   it, to the next group, are a section of the wiki's field table and sit
   under a `// ── Heading ──` comment in the `.d.ts`. Groups never reorder a
@@ -138,7 +133,8 @@ an entry's doc text in Unicode characters, its paragraphs summed, at most
 600 for modules, functions and types and 300 for fields, params, props,
 variants, cases, returns, consts, values and units. A description keeps
 what the entry is, its units and defaults, when it errors and its
-contract; workflow, sizes, timings and cross-member caveats go to a guide.
+contract. Author documentation currently consists of this API reference
+and `og api find/show`; the guide system is removed pending redesign.
 The check fails when more are over than `budget::BACKLOG`, which falls to
 zero as the backlog clears; `og api check --budget` lists them.
 

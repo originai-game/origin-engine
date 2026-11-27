@@ -8,8 +8,6 @@ Module [`abilities`](../abilities.md) · [index](../index.md)
 
 Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
 
-See `abilities §1`.
-
 Also known as: skill, spell, cooldown, charges, ability slot, mana cost, Unreal GAS ability, special move
 
 Token `og.Ability`, registered under the schema name `og.Ability`; its value type is `Ability`.
@@ -31,7 +29,6 @@ Token `og.Ability`, registered under the schema name `og.Ability`; its value typ
 component Ability {
   aliases "skill, spell, cooldown, charges, ability slot, mana cost, Unreal GAS ability, special move"
   doc "Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop)."
-  guide "abilities §1"
   field owner Entity "Who uses it, as og.AbilityUsed reports."
   field action str.32 "The input action that uses it; empty: only og.abilities.use."
   field maxCharges u32 "The charges it holds at most; 0 is never used." {
@@ -65,4 +62,4 @@ component Ability {
 }
 ```
 
-<sub>Module `abilities` line 33</sub>
+<sub>Module `abilities` line 32</sub>

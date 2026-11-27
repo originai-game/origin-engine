@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt.
 
-See `facing`.
-
 Also known as: turn towards, rotate to face, look rotation, Unity Quaternion.LookRotation
 
 ```ts
@@ -30,7 +28,6 @@ Binding symbol `og_transform_face` · publish builds: kept
 fn face {
   doc "The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt."
   aliases "turn towards, rotate to face, look rotation, Unity Quaternion.LookRotation"
-  guide "facing"
   param position Vector3 "Where the object is."
   param target Vector3 "What it faces."
   param up Vector3 "The up direction; the zero vector means +Y." {

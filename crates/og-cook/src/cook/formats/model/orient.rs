@@ -1,7 +1,7 @@
 //! A model's stated orientation (`front: '-x', up: '+y'` in its
 //! import settings): the file's axes that are the object's front (its
 //! nose, the way it travels) and its up, turned in the cook to the
-//! engine's +Z and +Y (the facing guide), as other engines' importers take
+//! engine's +Z and +Y, as other engines' importers take
 //! a forward and an up axis. A generated or bought model often faces
 //! another way; the game then places it as authored, with no turn of its
 //! own.

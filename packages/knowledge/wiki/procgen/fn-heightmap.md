@@ -31,4 +31,4 @@ fn heightmap {
 }
 ```
 
-<sub>Module `procgen` line 606</sub>
+<sub>Module `procgen` line 605</sub>

@@ -23,4 +23,4 @@ resource InventoryEntities {
 }
 ```
 
-<sub>Module `inventory` line 55</sub>
+<sub>Module `inventory` line 49</sub>

@@ -70,8 +70,7 @@
 //!
 //! `<out>/<effect>.json` (default out: `<project>/og-out/vfx-preview`)
 //! holds every number; they are printed as a table, or with `--json` as one
-//! array. These are facts: what is too big or too slow is the `effects`
-//! guide's to say.
+//! array. These are facts: the game author decides what is too big or too slow.
 
 use crate::project::{self, Project};
 use image::RgbaImage;

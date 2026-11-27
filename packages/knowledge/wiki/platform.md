@@ -4,12 +4,10 @@
 
 Platform services as host capabilities: the cloud store and save slots, leaderboards, telemetry, Origin Point, AI marks, purchases, ads, achievements, the player, friends, invites, share and rooms. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them; every id it hands back is opaque and scoped to this game. Calls are asynchronous: each returns a request number at once and its answer arrives at the start of a later tick (og.PlatformAnswered, og.platform.result), host input like key presses. A host that lacks a method answers it `unavailable`.
 
-See `saves §7`.
-
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 78 more are advanced (`og api show platform --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module platform {
@@ -121,28 +119,28 @@ module platform {
 const CORE_ONLY_METHODS List.String "store.get store.set store.list leaderboard.submit leaderboard.top leaderboard.around telemetry catalog.head" "The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions."
 ```
 
-<sub>Module `platform` line 6</sub>
+<sub>Module `platform` line 5</sub>
 
 ```ogt
 const SERVICE_METHODS List.String "purchase.products purchase.buy purchase.entitlements purchase.consume ad.ready ad.show achievement.unlock achievement.progress achievement.list player.get friends.list invite.send invite.list share" "The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). They need the platform's services, so a host without one answers it `unavailable`."
 ```
 
-<sub>Module `platform` line 7</sub>
+<sub>Module `platform` line 6</sub>
 
 ```ogt
 const HOST_EXTENSIONS List.String "point ai.mark" "Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md)."
 ```
 
-<sub>Module `platform` line 8</sub>
+<sub>Module `platform` line 7</sub>
 
 ```ogt
 const ERROR_CODES List.String "offline timeout invalid unauthorized not_found conflict too_large rate_limited unavailable failed cancelled no_fill" "Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES."
 ```
 
-<sub>Module `platform` line 9</sub>
+<sub>Module `platform` line 8</sub>
 
 ```ogt
 const RETRYABLE_CODES List.String "offline timeout unavailable rate_limited no_fill" "The error codes whose call may succeed later (`retryable: true`)."
 ```
 
-<sub>Module `platform` line 10</sub>
+<sub>Module `platform` line 9</sub>

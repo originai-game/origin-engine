@@ -14,7 +14,7 @@ Token `og.Weather`, registered under the schema name `og.Weather`; its value typ
 |---|---|---|---|---|---|---|
 | `kind` | `number` | `0` | 0 … 4 | — | label “Kind” | WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4. |
 | `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: the share of the particles born, the fog, the cover and the dimming. The weather drawn follows it over `change`, keeping the particles in the air. |
-| `change` | `number` | `20` | 0 … 600 | `s` | tunable | How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once. See `render §7`. |
+| `change` | `number` | `20` | 0 … 600 | `s` | tunable | How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once. |
 | `drawnKind` | `number` | `0` | — | — | read only | The kind drawn now, which follows `kind` (written by the tick). |
 | `drawnIntensity` | `number` | `-1` | — | — | read only | The intensity drawn now, which follows `intensity` over `change`; -1 before the first tick (written by the tick). |
 | `fadingKind` | `number` | `0` | — | — | read only | The kind thinning out after a switch, 0 when none is (written by the tick). |
@@ -41,7 +41,6 @@ resource Weather {
     tunable true
   }
   field change f32 "How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once." {
-    guide "render §7"
     default 20
     min 0
     max 600
@@ -92,4 +91,4 @@ resource Weather {
 }
 ```
 
-<sub>Module `atmosphere` line 643</sub>
+<sub>Module `atmosphere` line 629</sub>

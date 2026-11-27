@@ -226,8 +226,8 @@ pub fn axes_input(t: &AxisTurn, output: Axis) -> Axis {
         .unwrap_or(output)
 }
 
-/// The numbers that tell which way a mesh stands, with no verdict
-/// (`guides/meshtools.md`): its box, where its origin sits, which way
+/// The numbers that tell which way a mesh stands, with no verdict:
+/// its box, where its origin sits, which way
 /// its surface faces, and where its mass sits in the box.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct AxisMeasures {

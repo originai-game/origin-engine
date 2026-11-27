@@ -27,7 +27,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | XPBD constraint passes per substep. |
 | `damping` | `number` | `0.9` | 0 … 100 | `perSecond` | tunable | Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces. See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the cloth and the tick (0: steady). |
 | `radius` | `number` | `0.04` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
 | `thickness` | `number` | `0` | ≥ 0 | `m` | tunable | Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself. |
@@ -35,7 +35,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading). |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (on the GPU, for looks only). |
 
 ```ogt
 component Cloth {
@@ -105,7 +105,6 @@ component Cloth {
     tunable true
   }
   field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces." {
-    guide "physics §8"
     unit mps
     tunable true
   }
@@ -141,9 +140,8 @@ component Cloth {
     default true
   }
   field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-    guide "physics §8"
   }
 }
 ```
 
-<sub>Module `physics` line 1385</sub>
+<sub>Module `physics` line 1356</sub>

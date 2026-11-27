@@ -37,4 +37,4 @@ component CameraZone {
 }
 ```
 
-<sub>Module `camera` line 436</sub>
+<sub>Module `camera` line 432</sub>

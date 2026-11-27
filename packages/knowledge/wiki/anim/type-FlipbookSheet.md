@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook."
 ```
 
-<sub>Module `anim` line 889</sub>
+<sub>Module `anim` line 876</sub>

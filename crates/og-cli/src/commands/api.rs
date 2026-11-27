@@ -105,25 +105,6 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
             println!("removed {path}");
         }
     }
-    // The written guides (the component catalogue from the components' TSX,
-    // the effect packs from their manifests, the cook grammar); the wiki reads them with the others.
-    let guides = match written_guides(root) {
-        Ok(g) => g,
-        Err(e) => {
-            eprintln!("og api gen: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-    for (path, text) in guides {
-        let file = root.join(path);
-        if std::fs::read_to_string(&file).ok().as_deref() != Some(text.as_str()) {
-            if let Err(e) = std::fs::write(&file, &text) {
-                eprintln!("og api gen: cannot write {}: {e}", file.display());
-                return ExitCode::FAILURE;
-            }
-            println!("wrote {path}");
-        }
-    }
     let api = match og_idl::read(&root.join(og_idl::IDL_PATH)) {
         Ok(api) => api,
         Err(e) => {
@@ -136,6 +117,13 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
     } else {
         og_idl::generate(&api)
     };
+    match reference_pages(root) {
+        Ok(extra) => og_idl::extend(&mut files, &extra),
+        Err(e) => {
+            eprintln!("og api gen: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     if !wiki {
         match author_declarations() {
             Ok(file) => files.push(file),
@@ -258,34 +246,36 @@ fn presets(root: &Path) -> Result<Presets, String> {
     Ok(Presets { files, stale })
 }
 
-/// The guides `og api gen` writes from other sources than the IDL, as (path, text).
-fn written_guides(root: &Path) -> Result<[(&'static str, String); 6], String> {
-    Ok([
-        (
-            crate::ui_components::PATH,
-            crate::ui_components::markdown(root),
-        ),
-        (
-            crate::ui_api_docs::UI_TSX_PATH,
-            crate::ui_api_docs::ui_tsx_markdown(root)?,
-        ),
-        (
-            crate::ui_api_docs::THEME_TOKENS_PATH,
-            crate::ui_api_docs::theme_tokens_markdown(root)?,
-        ),
-        (
-            crate::ui_api_docs::PLAYTEST_PATH,
-            crate::ui_api_docs::playtest_markdown(root)?,
-        ),
-        (
-            crate::vfx_catalogue::PATH,
-            crate::vfx_catalogue::markdown(root),
-        ),
-        (
-            og_cook::cook::file_types::PATH,
-            og_cook::cook::file_types::markdown()?,
-        ),
-    ])
+/// Small reference pages, not author manuals: fields come from the checked
+/// input schemas and props from the components' own TypeScript declarations.
+fn reference_pages(root: &Path) -> Result<Vec<og_idl::Generated>, String> {
+    let mut files = Vec::new();
+    let mut index = String::from(
+        "<!-- Generated from crates/og-api/api.ogt and checked input/component declarations by og api gen. -->\n\n# File and component reference\n\n",
+    );
+    for (kind, entries) in [
+        ("file", og_cook::cook::file_types::entries()?),
+        ("component", crate::ui_components::entries(root)?),
+    ] {
+        for (name, body) in entries {
+            let query = if kind == "file" {
+                format!("file:{name}")
+            } else {
+                name.clone()
+            };
+            let path = format!("reference/{kind}-{name}.md");
+            index.push_str(&format!("- [`{query}`]({path})\n"));
+            files.push(og_idl::Generated {
+                path: format!("{}/{path}", og_idl::WIKI_DIR),
+                contents: format!("<!-- Generated from crates/og-api/api.ogt and checked input/component declarations by og api gen. -->\n\n<a id=\"{kind}-{name}\"></a>\n### `{query}`\n\n{body}"),
+            });
+        }
+    }
+    files.push(og_idl::Generated {
+        path: format!("{}/reference.md", og_idl::WIKI_DIR),
+        contents: index,
+    });
+    Ok(files)
 }
 
 /// The description budget (`og_idl::budget`): a summary, or with `--budget`
@@ -318,7 +308,7 @@ fn api_budget(root: &Path, list: bool) -> ExitCode {
     );
     if over.len() > BACKLOG {
         eprintln!(
-            "og api check: more descriptions are over budget than the backlog of {BACKLOG}: move workflow, sizes, timings and cross-member caveats to a guide and point at it with `guide \"<guide> §N\"` (crates/og-idl/src/budget.rs states the rule)"
+            "og api check: more descriptions are over budget than the backlog of {BACKLOG}: keep each entry's description focused on its contract (crates/og-idl/src/budget.rs states the rule)"
         );
         return ExitCode::FAILURE;
     }
@@ -340,18 +330,9 @@ fn api_check(root: &Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let guides = match written_guides(root) {
-        Ok(g) => g,
-        Err(e) => {
-            eprintln!("og api check: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let written = guides
+    let stale: Vec<og_idl::Drift> = presets
+        .files
         .into_iter()
-        .map(|(path, text)| (path.to_string(), text))
-        .chain(presets.files);
-    let stale: Vec<og_idl::Drift> = written
         .filter(|(path, text)| {
             std::fs::read_to_string(root.join(path)).ok().as_deref() != Some(text.as_str())
         })
@@ -367,6 +348,13 @@ fn api_check(root: &Path) -> ExitCode {
     };
     match author_declarations() {
         Ok(file) => ui.push(file),
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
+    match reference_pages(root) {
+        Ok(files) => ui.extend(files),
         Err(e) => {
             eprintln!("og api check: {e}");
             return ExitCode::FAILURE;

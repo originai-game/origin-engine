@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
 
-See `render §7`.
-
 Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type is `Aurora`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -31,7 +29,6 @@ Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type 
 ```ogt
 resource Aurora {
   doc "The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only."
-  guide "render §7"
   field enabled bool "Draw the aurora."
   field intensity f32 "How bright the display is: 1 a bright display against a night sky, 0.3 a faint one." {
     default 1
@@ -94,4 +91,4 @@ resource Aurora {
 }
 ```
 
-<sub>Module `atmosphere` line 442</sub>
+<sub>Module `atmosphere` line 431</sub>

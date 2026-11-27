@@ -14,7 +14,7 @@ interface Path2Class {
   # members follow, each quoted below
 ```
 
-<sub>Module `shapes` line 160</sub>
+<sub>Module `shapes` line 159</sub>
 
 <a id="member-Path2Class-new"></a>
 
@@ -45,4 +45,4 @@ fn new {
 }
 ```
 
-<sub>Module `shapes` line 162</sub>
+<sub>Module `shapes` line 161</sub>

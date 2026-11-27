@@ -95,13 +95,13 @@ pub trait Lifecycle: Wire {
     fn og_shared_take(&self, engine: u32) -> String;
     /// One shared-world event from the host, JSON: `{ type: "host", host }` (what carries sessions here: the provider's name, or `none`), `{ type: "open", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: "message", bytes }` (base64), `{ type: "closed", reason }` or `{ type: "refused", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event.
     fn og_shared_deliver(&self, engine: u32, event: String) -> bool;
-    /// Name the content base og.load.data reads catalogs from (guide loading §14), for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web).
+    /// Name the content base og.load.data reads catalogs from, for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web).
     fn og_engine_set_content(&self, engine: u32, base: String);
     /// Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's.
     fn og_engine_trace(&self, engine: u32, on: bool);
     /// The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take).
     fn og_engine_trace_take(&self, engine: u32, last: bool) -> String;
-    /// Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`, guide perf).
+    /// Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`).
     fn og_engine_perf(&self, engine: u32, on: bool);
     /// The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. The record is the engine's only one of frame times: `frame interval` (a presenting host's, og_present_frame's) and `frame work` are its lines.
     fn og_engine_perf_report(&self, engine: u32, budgets: String) -> String;

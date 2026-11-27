@@ -316,8 +316,8 @@ export function bareStage(frame: { width: number; height: number; rgba: Uint8Arr
 interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][]; textTransform?: number[]; clip?: number[] }
 
 /**
- * The texts of a UI dump that read under the screens guide's contrast bar (crates/og-api/guides/screens.md
- * §5: 4.5:1, 3:1 over 24 px; a disabled control's text is exempt) on the ground the frame shows under
+ * The texts of a UI dump below WCAG AA contrast (4.5:1, 3:1 over 24 px;
+ * a disabled control's text is exempt) on the ground the frame shows under
  * their lines. The ground is the pixels of each line's box, padded a fifth of its height all round,
  * least like the ink (the glyphs are the rest: bold figures fill more than half the bare box), so
  * art, a translucent plate over the stage and a halo all count as drawn; the worse fifth

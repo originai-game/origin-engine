@@ -21,4 +21,4 @@ struct RollDesc {
 }
 ```
 
-<sub>Module `inventory` line 75</sub>
+<sub>Module `inventory` line 69</sub>

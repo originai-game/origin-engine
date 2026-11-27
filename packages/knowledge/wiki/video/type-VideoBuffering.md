@@ -25,4 +25,4 @@ struct VideoBuffering {
 }
 ```
 
-<sub>Module `video` line 51</sub>
+<sub>Module `video` line 49</sub>

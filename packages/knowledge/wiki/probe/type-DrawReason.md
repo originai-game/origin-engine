@@ -8,8 +8,6 @@ Module [`probe`](../probe.md) · [index](../index.md)
 
 Why the main camera draws an entity or not, the first that holds.
 
-See `testing §4`.
-
 A string: one of the variants below. The zero value is `"drawn"`.
 
 | Variant | Doc |
@@ -28,7 +26,6 @@ A string: one of the variants below. The zero value is `"drawn"`.
 ```ogt
 enum DrawReason {
   doc "Why the main camera draws an entity or not, the first that holds."
-  guide "testing §4"
   variant drawn "A drawable of it survives the camera's cull."
   variant hlod "Its model is drawn by an HLOD proxy in its place."
   variant hidden "A component of it that draws has `visible` false; detail names the field."

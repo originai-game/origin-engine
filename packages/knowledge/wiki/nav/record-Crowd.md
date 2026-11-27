@@ -8,8 +8,6 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation.
 
-See `world §9`.
-
 Token `og.Crowd`, registered under the schema name `og.Crowd`; its value type is `Crowd`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -22,7 +20,6 @@ Token `og.Crowd`, registered under the schema name `og.Crowd`; its value type is
 ```ogt
 component Crowd {
   doc "Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; perfectly symmetric meetings are kept from locking by the engine. Without one an agent has only og.Steering's separation."
-  guide "world §9"
   field neighbours u32 "How many nearest agents it avoids (at most 32)." {
     default 8
     min 0
@@ -52,4 +49,4 @@ component Crowd {
 }
 ```
 
-<sub>Module `nav` line 220</sub>
+<sub>Module `nav` line 219</sub>

@@ -51,7 +51,6 @@
       tunable true
     }
     field groundHeight f32 "Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity." {
-      guide "render §4"
       default 0
       min 0
       unit m
@@ -108,7 +107,6 @@
 
   enum AoMethod {
     doc "Which ambient occlusion algorithm runs."
-    guide "render §5"
     variant auto "GTAO."
     variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
     variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
@@ -178,7 +176,6 @@
 
   enum SpriteFacing {
     doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite), a mode of og.Sprite and SpriteDesc. The turn is computed on the GPU from each drawing camera's own axes, so it never feeds back into the simulation. It turns about its anchor (a nine-slice as one panel), `rotation` still turns it in its plane, and its drop shadow is cast by the quad stood upright facing the sun. Without sortY, and tone mapped, it sorts back to front among the transparent meshes by its anchor's view depth; otherwise it keeps the sprite order. World text takes the same modes."
-    guide "render §11"
     variant none "In the world's xy plane facing +z, as every sprite before billboards."
     variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
     variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
@@ -194,7 +191,6 @@
   resource PostEffects {
     doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation."
     doc "AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it."
-    guide "render §5"
     group "Ambient occlusion"
     field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
     field aoRadius f32 "The world-space radius searched for occluders." {
@@ -219,7 +215,6 @@
       tunable true
     }
     field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere." {
-      guide "render §5"
       min 0
       tunable true
     }
@@ -269,7 +264,6 @@
       min 0
       max 0.5
       tunable true
-      guide "looks §19"
     }
     field dofQuality DofQuality "Taps per pixel."
     group "Motion blur"
@@ -354,7 +348,6 @@
     }
     group "Colour adjustments" "Applied in field order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (white balance in linear light, the rest on the sRGB-encoded colour), baked with the LUT into one 32³ table."
     field temperature f32 "White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off." {
-      guide "render §5"
       min -1
       max 1
       tunable true
@@ -443,7 +436,6 @@
       tunable true
     }
     field lensDistortion f32 "Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame." {
-      guide "render §5"
       min -1
       max 1
       tunable true
@@ -501,7 +493,6 @@
     field shakeSeed u32 "The shake's noise seed."
     group "Screen-space reflections"
     field ssr bool "Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass." {
-      guide "render §5"
     }
     field ssrMaxDistance f32 "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance." {
       default 100
@@ -516,7 +507,6 @@
       tunable true
     }
     field ssrSteps u32 "The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them." {
-      guide "render §5"
       default 64
       min 4
       max 128
@@ -534,7 +524,6 @@
       tunable true
     }
     field ssrMaxRoughness f32 "The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them." {
-      guide "render §5"
       default 0.6
       min 0
       max 1
@@ -542,19 +531,16 @@
       tunable true
     }
     field ssrResolution AoResolution "Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution." {
-      guide "render §5"
       default half
     }
     group "Custom passes"
     field custom List.Post.8 "Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors)." {
-      guide "render §5"
     }
   }
 
   resource LensFlare {
     doc "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo of the bright parts of the bloom chain's first level mirrored through the frame's centre, plus ghosts of the sun and up to seven point and spot lights weighted by how much of each the depth shows, added before the tone curve in exposed light, after bloom and TAA, at a quarter of the frame."
     doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
-    guide "render §5"
     field enabled bool "Draw the lens flare."
     field intensity f32 "How much of the flare is added (Filament adds its flare at its bloom strength, 0.1)." {
       default 0.1
@@ -615,7 +601,6 @@
 
   enum GiMethod {
     doc "How GlobalIllumination bounces the light."
-    guide "render §4"
     variant screen "In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows."
     variant probes "With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (meshes and terrains) every few frames, gathers light from every side, sky included; every lit surface takes its ambient light from the nearby probes that see it. Coarse: probeSpacing apart."
     variant both "Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see."
@@ -631,7 +616,6 @@
   resource GlobalIllumination {
     doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that)."
     doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
-    guide "render §4"
     split render3d
     field enabled bool "Bounce the light."
     field method GiMethod "In screen space, with probes, or both."

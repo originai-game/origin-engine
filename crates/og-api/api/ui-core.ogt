@@ -1,7 +1,6 @@
 module ui {
   doc "The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back."
   doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree."
-  guide "components"
 
   enum TextAlign {
     doc "How the lines of a label align."

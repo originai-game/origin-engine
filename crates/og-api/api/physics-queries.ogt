@@ -4,7 +4,6 @@
 
   struct QueryFilter {
     doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
-    guide "physics §4"
     desc true
     field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
     field includeSensors bool "Also report sensors."
@@ -205,7 +204,6 @@
 
   fn castRay {
     doc "The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it."
-    guide "physics §4"
     aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
     param world World "The world."
     param desc RaycastDesc "The ray and the filter."
@@ -272,7 +270,6 @@
 
   fn sensorContents {
     doc "Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event."
-    guide "physics §5"
     aliases "trigger contents, who is in the trigger, Godot get_overlapping_bodies, Unity OnTriggerStay, Unreal GetOverlappingActors, pressure plate occupants, entities in zone"
     param world World "The world."
     param sensor Entity "The sensor: an entity whose og.Collider has `sensor` set."
@@ -335,7 +332,6 @@
     field quaternion Quaternion "Its rotation (steering and spin) in world space."
     field contact bool "Whether it touches the ground."
     field slip f32 "Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne." {
-      guide "physics §7"
       min 0
       max 1
     }
@@ -511,7 +507,6 @@
   struct PhysicsPhase {
     doc "One phase of the last physics step, for og.physics.stats."
     field name String "The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack." {
-      guide "physics §3"
     }
     field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
       unit ms
@@ -521,7 +516,6 @@
 
   struct PhysicsStats {
     doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
-    guide "physics §3"
     field tick f64 "The tick the step ran (0 before the first)."
     field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
     field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."

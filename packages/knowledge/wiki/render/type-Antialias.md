@@ -8,8 +8,6 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
 
-See `render §2`.
-
 A string: one of the variants below. The zero value is `"tier"`.
 
 | Variant | Doc |
@@ -25,7 +23,6 @@ A string: one of the variants below. The zero value is `"tier"`.
 ```ogt
 enum Antialias {
   doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
-  guide "render §2"
   variant tier "The engine's default method, on every backend (WebGPU, Metal, Vulkan, DX12): 4x MSAA in a 2D project (project.ts's create.form is 2d), where TAA's jitter and history blend would soften nearest-sampled pixel art; TAA in a 3D one."
   variant off "One sample per pixel."
   variant msaa4 "4x MSAA (what tier resolves to in a 2D project): sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."

@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface.
 
-See `physics §8`.
-
 Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value type is `Fluid3D`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -44,12 +42,11 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 | `drawScale` | `number` | `0.6` | 0.1 … 2 | — | — | The drawn size of each particle (times radius). |
 | `smoothing` | `number` | `1` | 0 … 2 | — | — | How much the surface is smoothed (0: beads, 1: one surface). |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
-| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still. See `physics §8`. |
+| `simulation` | `Simulation` | `"gameplay"` | — | — | — | gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still. |
 
 ```ogt
 component Fluid3D {
   doc "Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface."
-  guide "physics §8"
   split physics world3d
   field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144." {
     default 2000
@@ -185,9 +182,8 @@ component Fluid3D {
     default true
   }
   field simulation Simulation "gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
-    guide "physics §8"
   }
 }
 ```
 
-<sub>Module `physics` line 1816</sub>
+<sub>Module `physics` line 1779</sub>

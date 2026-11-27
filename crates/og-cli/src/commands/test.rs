@@ -10,7 +10,7 @@
 //! tests' report and the summary go to stderr): the `check` event first
 //! (unless `--no-check`), one `playtest` event per playtest file that ran,
 //! in the files' order, and a `test` event last, with the check's
-//! `{ok, ms, errors}`. The fields are in the testing guide §8.
+//! `{ok, ms, errors}`.
 //! `--filter` selects suite files by a case-sensitive substring of their
 //! project-relative path (with `/` separators), before any tests execute;
 //! `--skip` (repeatable) leaves out the suites whose path contains its

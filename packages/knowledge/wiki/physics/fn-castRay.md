@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it.
 
-See `physics §4`.
-
 Also known as: ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_physics_cast_ray` · publish builds: kept
 ```ogt
 fn castRay {
   doc "The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it."
-  guide "physics §4"
   aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
   param world World "The world."
   param desc RaycastDesc "The ray and the filter."
@@ -36,4 +33,4 @@ fn castRay {
 }
 ```
 
-<sub>Module `physics` line 2406</sub>
+<sub>Module `physics` line 2364</sub>

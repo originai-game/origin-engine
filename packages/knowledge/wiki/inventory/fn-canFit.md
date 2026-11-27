@@ -35,4 +35,4 @@ fn canFit {
 }
 ```
 
-<sub>Module `inventory` line 104</sub>
+<sub>Module `inventory` line 98</sub>

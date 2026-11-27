@@ -33,4 +33,4 @@ fn setLocale {
 }
 ```
 
-<sub>Module `i18n` line 54</sub>
+<sub>Module `i18n` line 53</sub>

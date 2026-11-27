@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.
 
-See `render §7`.
-
 Also known as: local fog, fog in an area, ground mist in a hollow, smoke filling a room, fog bank, haze in a cave, steam, volumetric fog zone
 
 Token `og.FogVolume`, registered under the schema name `og.FogVolume`; its value type is `FogVolume`.
@@ -24,7 +22,6 @@ Token `og.FogVolume`, registered under the schema name `og.FogVolume`; its value
 component FogVolume {
   aliases "local fog, fog in an area, ground mist in a hollow, smoke filling a room, fog bank, haze in a cave, steam, volumetric fog zone"
   doc "Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera."
-  guide "render §7"
   split world3d
   field color Color "The fog's colour: what it tints the light it scatters." {
     default 1 1 1
@@ -44,4 +41,4 @@ component FogVolume {
 }
 ```
 
-<sub>Module `atmosphere` line 100</sub>
+<sub>Module `atmosphere` line 98</sub>

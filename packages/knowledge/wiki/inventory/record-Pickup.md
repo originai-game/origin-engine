@@ -8,8 +8,6 @@ Module [`inventory`](../inventory.md) · [index](../index.md)
 
 An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.
 
-See `items §2`.
-
 Also known as: pickup, loot drop, collectible, coin, item on the ground, auto pickup
 
 Token `og.Pickup`, registered under the schema name `og.Pickup`; its value type is `Pickup`.
@@ -22,9 +20,8 @@ Token `og.Pickup`, registered under the schema name `og.Pickup`; its value type 
 component Pickup {
   aliases "pickup, loot drop, collectible, coin, item on the ground, auto pickup"
   doc "An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty."
-  guide "items §2"
   field partial bool "Take what fits and leave the rest lying; otherwise it is taken whole or not at all."
 }
 ```
 
-<sub>Module `inventory` line 31</sub>
+<sub>Module `inventory` line 28</sub>

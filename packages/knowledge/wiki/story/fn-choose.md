@@ -32,4 +32,4 @@ fn choose {
 }
 ```
 
-<sub>Module `story` line 357</sub>
+<sub>Module `story` line 352</sub>

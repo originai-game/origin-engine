@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
 
-See `render §8`.
-
 Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `Wind`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -23,7 +21,6 @@ Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `
 ```ogt
 resource Wind {
   doc "The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind."
-  guide "render §8"
   split render3d
   field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
     default 1 0 0
@@ -59,4 +56,4 @@ resource Wind {
 }
 ```
 
-<sub>Module `atmosphere` line 707</sub>
+<sub>Module `atmosphere` line 692</sub>

@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward.
 
-See `facing`.
-
 Also known as: front, facing direction, heading vector, Unity transform.forward, three.js getWorldDirection
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_forward` · publish builds: kept
 fn forward {
   doc "The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward."
   aliases "front, facing direction, heading vector, Unity transform.forward, three.js getWorldDirection"
-  guide "facing"
   param quaternion Quaternion "The object's rotation."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 152</sub>
+<sub>Module `transform` line 151</sub>

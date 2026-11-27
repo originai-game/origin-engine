@@ -23,4 +23,4 @@ event StreamEvent {
 }
 ```
 
-<sub>Module `stream` line 72</sub>
+<sub>Module `stream` line 68</sub>

@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
 
-See `physics §1`.
-
 Token `og.Joint`, registered under the schema name `og.Joint`; its value type is `Joint`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -43,7 +41,6 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 ```ogt
 component Joint {
   doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
-  guide "physics §1"
   field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF)." {
     label "Kind"
   }
@@ -127,4 +124,4 @@ component Joint {
 }
 ```
 
-<sub>Module `physics` line 440</sub>
+<sub>Module `physics` line 426</sub>

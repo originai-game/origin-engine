@@ -66,7 +66,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             // the platform serves this build's cooked/ (docs/web-export.md
             // §Asset base).
             // The content base, over project.ogt's `publish { content }`:
-            // where og.load.data reads catalogs (guide loading §14).
+            // where og.load.data reads catalogs.
             flag @ ("--assets" | "--content") => {
                 let Some(a) = args.get(i + 1) else {
                     eprintln!("og build: {flag} takes a URL. {USAGE}");

@@ -30,4 +30,4 @@ fn load {
 }
 ```
 
-<sub>Module `i18n` line 47</sub>
+<sub>Module `i18n` line 46</sub>

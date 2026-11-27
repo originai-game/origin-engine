@@ -6,11 +6,9 @@ Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile
 
 An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
 
-See `world §10`.
-
 - **TypeScript**: functions are the namespace `og.ai`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module ai {
@@ -66,7 +64,7 @@ column Behaviour {
 }
 ```
 
-<sub>Module `ai` line 9</sub>
+<sub>Module `ai` line 8</sub>
 
 ## Constants
 
@@ -81,22 +79,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>Module `ai` line 16</sub>
+<sub>Module `ai` line 15</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>Module `ai` line 17</sub>
+<sub>Module `ai` line 16</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>Module `ai` line 18</sub>
+<sub>Module `ai` line 17</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>Module `ai` line 19</sub>
+<sub>Module `ai` line 18</sub>

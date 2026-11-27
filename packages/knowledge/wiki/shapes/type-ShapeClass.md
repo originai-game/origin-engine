@@ -14,7 +14,7 @@ interface ShapeClass {
   # members follow, each quoted below
 ```
 
-<sub>Module `shapes` line 172</sub>
+<sub>Module `shapes` line 171</sub>
 
 <a id="member-ShapeClass-new"></a>
 
@@ -45,4 +45,4 @@ fn new {
 }
 ```
 
-<sub>Module `shapes` line 174</sub>
+<sub>Module `shapes` line 173</sub>

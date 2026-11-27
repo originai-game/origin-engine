@@ -10,8 +10,6 @@ Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a 
 
 Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
 
-See `render §5`.
-
 Token `og.LensFlare`, registered under the schema name `og.LensFlare`; its value type is `LensFlare`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -33,7 +31,6 @@ Token `og.LensFlare`, registered under the schema name `og.LensFlare`; its value
 resource LensFlare {
   doc "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo of the bright parts of the bloom chain's first level mirrored through the frame's centre, plus ghosts of the sun and up to seven point and spot lights weighted by how much of each the depth shows, added before the tone curve in exposed light, after bloom and TAA, at a quarter of the frame."
   doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
-  guide "render §5"
   field enabled bool "Draw the lens flare."
   field intensity f32 "How much of the flare is added (Filament adds its flare at its bloom strength, 0.1)." {
     default 0.1
@@ -93,4 +90,4 @@ resource LensFlare {
 }
 ```
 
-<sub>Module `render` line 1536</sub>
+<sub>Module `render` line 1470</sub>

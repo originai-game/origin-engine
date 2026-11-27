@@ -1,4 +1,4 @@
-//! Scene preloading and scene changes (IDL `scene`, guides/loading.md §12).
+//! Scene preloading and scene changes (`og api show scene`).
 //!
 //! og.scene.preload loads a scene and asks for every streaming group it
 //! declares (og.stream.request, kept until og.scene.release), so its packs

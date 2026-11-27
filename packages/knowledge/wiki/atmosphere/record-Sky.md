@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
 
-See `render §7`.
-
 Token `og.Sky`, registered under the schema name `og.Sky`; its value type is `Sky`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -35,7 +33,6 @@ Token `og.Sky`, registered under the schema name `og.Sky`; its value type is `Sk
 ```ogt
 resource Sky {
   doc "A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself."
-  guide "render §7"
   field enabled bool "Draw and light by this sky."
   field zenith Color "Overhead." {
     default 0.18 0.36 0.78
@@ -108,4 +105,4 @@ resource Sky {
 }
 ```
 
-<sub>Module `atmosphere` line 122</sub>
+<sub>Module `atmosphere` line 119</sub>

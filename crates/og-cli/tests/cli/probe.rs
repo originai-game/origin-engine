@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 /// `og probe capture_views` writes each frame beside --out as
 /// `<stem>-<view>.png` and prints its path in place of the base64, as
-/// `capture`'s png (testing §9): the frames never reach stdout.
+/// `capture`'s png: the frames never reach stdout.
 #[test]
 fn capture_views_writes_each_frame_beside_out_and_prints_its_path() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

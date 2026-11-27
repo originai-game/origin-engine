@@ -112,7 +112,6 @@ dates, no absolute paths, files in sorted order
   outputs (`id`, `file`, `bytes`; an omitted id can share a file with a
   retained one, so the bytes are not savings), `removed_files` relative to
   `cooked/`, and `computed` loads (`source`, `line`, `prefix`, `reason`).
-  The rules are the `assets` guide's (`og api show assets`).
 - `delivery` lists runtime bundle directories, their files relative to `cooked/`
   and whether they belong to the base boot dependency closure. Cook build
   intermediates and duplicate payloads are excluded from the export. Lazy
@@ -249,8 +248,8 @@ Chrome, intact, with one byte changed and with its manifest changed.
 
 ### Content base
 
-og.load.data reads a game's content catalogs (the og-api guide loading
-§14) from a content base, which is not the asset base: `og build
+og.load.data reads a game's content catalogs
+from a content base, which is not the asset base: `og build
 --content <url>`, else project.ogt `publish { content "<url>" }`, under
 the asset base's rules for the URL. The build writes the page's
 configuration `content` and og-build.json's `content: { base, origin }`;
@@ -904,7 +903,7 @@ rooms. A part that is not a provider is left out with a line in the log.
 In a publish build a provider whose `host` is `local` answers the platform
 services `unavailable`: a published page never fakes a purchase.
 
-Content catalogs (og-api guide saves §11, loading §14): a provider may
+Content catalogs: a provider may
 name the game's content base, `content: { base() }` (one https directory
 for every catalog of the game, read once when the engine starts), which
 takes the place of the build's `--content`. `staticCatalog(base, { inner,

@@ -357,8 +357,7 @@ pub fn particles_scene() -> RenderScene {
 
 /// Twenty campfires on a 5 × 4 grid at night, 60 particle systems in all
 /// (additive flame sheets, soft alpha smoke, embers bouncing on the depth),
-/// framed so every one is in view: the effects' on-screen budget
-/// (`effects §4`) as a frame-time baseline. Perf only.
+/// framed so every one is in view as a frame-time baseline. Perf only.
 pub fn effects_busy_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);

@@ -14,7 +14,7 @@ interface PathList {
   # members follow, each quoted below
 ```
 
-<sub>Module `shapes` line 7</sub>
+<sub>Module `shapes` line 6</sub>
 
 <a id="member-PathList-length"></a>
 
@@ -32,7 +32,7 @@ prop length u32 "How many holes." {
 }
 ```
 
-<sub>Module `shapes` line 9</sub>
+<sub>Module `shapes` line 8</sub>
 
 <a id="member-PathList-push"></a>
 
@@ -61,4 +61,4 @@ fn push {
 }
 ```
 
-<sub>Module `shapes` line 12</sub>
+<sub>Module `shapes` line 11</sub>

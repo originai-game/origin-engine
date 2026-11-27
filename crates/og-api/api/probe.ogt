@@ -477,7 +477,6 @@ module probe {
 
   enum DrawReason {
     doc "Why the main camera draws an entity or not, the first that holds."
-    guide "testing §4"
     variant drawn "A drawable of it survives the camera's cull."
     variant hlod "Its model is drawn by an HLOD proxy in its place."
     variant hidden "A component of it that draws has `visible` false; detail names the field."
@@ -898,7 +897,6 @@ module probe {
       doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
       doc "Size: width and height both 0 (or absent) is the render target's size; both 1 to 4096 renders that size with the same camera; one zero and one not is malformed. On the web the readback is asynchronous: requested on tick N, answered on N + 1."
       doc "Fit: a long side past `fit` (CAPTURE_FIT, 1280, by default; 0 keeps the size) is downscaled by area mean. Region: a box of the surface (CSS px) cut before fitting."
-      guide "captures §1"
       aliases "screenshot, take a screenshot, grab the screen, frame capture, crop, zoom"
       publish true
       param width u32 "Width in pixels; 0 is the render target's." {
@@ -917,7 +915,6 @@ module probe {
     }
     fn captureViews {
       doc "The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does."
-      guide "captures §1"
       aliases "multiple viewpoints, several cameras, views, angles, front side top, multi-view capture"
       param views List.Viewpoint "The cameras."
       param width u32 "Width in pixels; 0 is the render target's." {
@@ -933,7 +930,6 @@ module probe {
     }
     fn visible {
       doc "Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked."
-      guide "testing §4"
       aliases "why is it not drawn, invisible, not showing, culled, frustum, hidden"
       param id String "The probe id."
       returns Option.Visibility "Null for an unknown entity, or a host without a scene view."
@@ -941,7 +937,6 @@ module probe {
     fn marks {
       doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it."
       doc "The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does."
-      guide "captures §2"
       aliases "set of mark, set-of-mark, som, annotated screenshot, labelled screenshot, numbered boxes"
       param desc MarksDesc "The size, the fit, what to mark and how many." {
         flatten true

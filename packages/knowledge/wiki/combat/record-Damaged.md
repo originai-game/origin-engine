@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.
 
-See `combat §2`.
-
 Also known as: on damage, took damage, hit landed, damage event, damage number
 
 Token `og.Damaged`, registered under the schema name `og.Damaged`; its value type is `Damaged`.
@@ -29,7 +27,6 @@ Token `og.Damaged`, registered under the schema name `og.Damaged`; its value typ
 event Damaged {
   aliases "on damage, took damage, hit landed, damage event, damage number"
   doc "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order."
-  guide "combat §2"
   field target Entity "The entity with the og.Health."
   field source Entity "The attacker (og.HitEvent.owner), or the og.Projectile's shooter."
   field move Entity "The og.AttackMove whose swing it was; 0 for an og.Projectile."
@@ -46,4 +43,4 @@ event Damaged {
 }
 ```
 
-<sub>Module `combat` line 145</sub>
+<sub>Module `combat` line 138</sub>

@@ -8,8 +8,6 @@ Module [`inventory`](../inventory.md) · [index](../index.md)
 
 Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.
 
-See `items §1`.
-
 Also known as: inventory, backpack, bag, chest, stash, item container, slots, Unity inventory, storage box
 
 Token `og.Container`, registered under the schema name `og.Container`; its value type is `Container`.
@@ -23,7 +21,6 @@ Token `og.Container`, registered under the schema name `og.Container`; its value
 component Container {
   aliases "inventory, backpack, bag, chest, stash, item container, slots, Unity inventory, storage box"
   doc "Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order."
-  guide "items §1"
   field slots u32 "How many stacks it holds; 0 holds nothing. Lowering it keeps the slots past it: they hold and give what they hold but take nothing new." {
     min 0
     max 1024
@@ -33,4 +30,4 @@ component Container {
 }
 ```
 
-<sub>Module `inventory` line 5</sub>
+<sub>Module `inventory` line 4</sub>

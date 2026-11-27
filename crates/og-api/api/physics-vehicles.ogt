@@ -30,7 +30,6 @@
     doc "Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels."
     doc "Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero."
     doc "3D wheels cast the full suspension droop, skip sensors and honour ContactHook."
-    guide "physics §7"
     field throttle f32 "The accelerator, -1 (reverse) to 1. Set it every tick." {
       min -1
       max 1
@@ -100,13 +99,11 @@
       tunable true
     }
     field grip f32 "The real tyre friction coefficient, multiplied by the ground friction; no hidden scale." {
-      guide "physics §7"
       default 1
       min 0
       tunable true
     }
     field engineForce f32 "Arcade drive torque per driven wheel in N·m, faded towards maxSpeed." {
-      guide "physics §7"
       default 2500
       min 0
       tunable true
@@ -118,7 +115,6 @@
       tunable true
     }
     field brakeForce f32 "Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity." {
-      guide "physics §7"
       default 2000
       min 0
       tunable true
@@ -139,7 +135,6 @@
       tunable true
     }
     field rollInfluence f32 "How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over." {
-      guide "physics §7"
       min 0
       max 1
       tunable true
@@ -196,7 +191,6 @@
     field model VehicleModel "Arcade torque or an engine flywheel coupled through a clutch and gearbox to measured wheel angular velocities. Drivetrain requires nonzero engineInertia and clutchStrength." {
     }
     field handbrake f32 "Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip." {
-      guide "physics §7"
       min 0
       max 1
     }

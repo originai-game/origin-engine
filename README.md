@@ -44,7 +44,7 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 - **Text in, blobs out.** Scenes and assets are line-based `.ogt` text, cooked
   into `.ogb` blobs with a type hash, a schema version and a cook stamp.
 - **Built for an agent author.** Desc structs whose zero value is a sensible
-  default, errors as values, three.js vocabulary, a generated wiki and guides
+  default, errors as values, three.js vocabulary and a generated API reference
   behind `og api find`/`show`, and `og` commands that check what a reviewer checks
   by eye (`og ui check`).
 
@@ -187,7 +187,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   (`og.commands`), the inspector and transform gizmos in development builds.
 - Data-parallel lanes inside a system, on rayon natively and Workers on the
   web, with the same results (og-lanes).
-- The knowledge package: the generated API wiki with the engine's guides,
+- The knowledge package: the generated API reference,
   the style catalogue (`packages/knowledge`, shipped inside
   `@origingame/engine` as `knowledge/`).
 
@@ -263,7 +263,7 @@ packages/
   engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the built-in UI components and screens (src/ui); a dist's engine/
   create           @origingame/create-game: the templates `og new` writes; a dist's create/
   design           @origingame/design: the design language and tokens shared with origin-agent; a dist's design/
-  knowledge        the generated wiki (API and guides), looks, scaffold (shipped inside the engine package)
+  knowledge        the generated API reference, looks, scaffold (shipped inside the engine package)
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
   vfx-packs        the downloadable effect packs (docs/vfx-packs.md §5)
 templates/         looks/, styles/, fonts/, locales/, tools/

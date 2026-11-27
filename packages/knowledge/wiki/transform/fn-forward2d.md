@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z).
 
-See `facing`.
-
 Also known as: 2D facing direction, sprite forward, Unity transform.right in 2D, Godot Node2D transform.x
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_forward2d` · publish builds: kept
 fn forward2d {
   doc "The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z)."
   aliases "2D facing direction, sprite forward, Unity transform.right in 2D, Godot Node2D transform.x"
-  guide "facing"
   param quaternion Quaternion "The thing's rotation."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 217</sub>
+<sub>Module `transform` line 208</sub>

@@ -140,7 +140,6 @@ module transform {
   fn face {
     doc "The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt."
     aliases "turn towards, rotate to face, look rotation, Unity Quaternion.LookRotation"
-    guide "facing"
     param position Vector3 "Where the object is."
     param target Vector3 "What it faces."
     param up Vector3 "The up direction; the zero vector means +Y." {
@@ -152,7 +151,6 @@ module transform {
   fn forward {
     doc "The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward."
     aliases "front, facing direction, heading vector, Unity transform.forward, three.js getWorldDirection"
-    guide "facing"
     param quaternion Quaternion "The object's rotation."
     returns Vector3
   }
@@ -160,7 +158,6 @@ module transform {
   fn right {
     doc "An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight."
     aliases "strafe direction, side vector, Unity transform.right"
-    guide "facing"
     param quaternion Quaternion "The object's rotation."
     returns Vector3
   }
@@ -168,7 +165,6 @@ module transform {
   fn up {
     doc "An object's, a camera's or a light's up: its local +Y, as a unit vector."
     aliases "up vector, Unity transform.up"
-    guide "facing"
     param quaternion Quaternion "The rotation."
     returns Vector3
   }
@@ -176,7 +172,6 @@ module transform {
   fn cameraForward {
     doc "The way a camera or a light with this rotation looks: its local -Z, as a unit vector."
     aliases "view direction, look direction, camera front, three.js Camera.getWorldDirection"
-    guide "facing"
     param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
     returns Vector3
   }
@@ -184,7 +179,6 @@ module transform {
   fn cameraRight {
     doc "A camera's or a light's right: its local +X, the right of the screen, as a unit vector."
     aliases "screen right, camera strafe direction"
-    guide "facing"
     param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
     returns Vector3
   }
@@ -192,7 +186,6 @@ module transform {
   fn heading {
     doc "The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z)."
     aliases "yaw, facing angle, compass direction, Unity eulerAngles.y, three.js rotation.y"
-    guide "facing"
     param quaternion Quaternion "The object's rotation."
     returns f32 "The heading in radians, from -π to π."
   }
@@ -200,7 +193,6 @@ module transform {
   fn fromHeading {
     doc "The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X."
     aliases "yaw to rotation, rotation from an angle, Unity Quaternion.Euler(0, y, 0), three.js rotation.y"
-    guide "facing"
     param heading f32 "The heading in radians."
     returns Quaternion
   }
@@ -208,7 +200,6 @@ module transform {
   fn face2d {
     doc "The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. og.transform.face is the 3D one, and turns a sprite out of the plane."
     aliases "2D look at, rotate a sprite towards, aim in 2D, Unity 2D LookAt, Godot Node2D.look_at"
-    guide "facing"
     param position Vector3 "Where the thing is (its xy)."
     param target Vector3 "What it faces (its xy); the same point as the position gives no turn."
     returns Quaternion
@@ -217,7 +208,6 @@ module transform {
   fn forward2d {
     doc "The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z)."
     aliases "2D facing direction, sprite forward, Unity transform.right in 2D, Godot Node2D transform.x"
-    guide "facing"
     param quaternion Quaternion "The thing's rotation."
     returns Vector3
   }
@@ -225,7 +215,6 @@ module transform {
   fn heading2d {
     doc "The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x)."
     aliases "2D facing angle, sprite rotation angle, Unity eulerAngles.z, Godot Node2D.rotation"
-    guide "facing"
     param quaternion Quaternion "The thing's rotation."
     returns f32 "The heading in radians, from -π to π."
   }
@@ -233,7 +222,6 @@ module transform {
   fn fromHeading2d {
     doc "The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up)."
     aliases "2D angle to rotation, rotate a sprite by an angle, Unity Quaternion.Euler(0, 0, z), Godot Node2D.rotation"
-    guide "facing"
     param heading f32 "The 2D heading in radians."
     returns Quaternion
   }

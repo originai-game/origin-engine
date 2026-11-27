@@ -8,8 +8,6 @@ Module [`shared`](../shared.md) · [index](../index.md)
 
 Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it.
 
-See `shared-worlds §5`.
-
 ```ts
 og.shared.remove(world: World, key: string, expect: number | null): Result<number>
 ```
@@ -27,7 +25,6 @@ Binding symbol `og_shared_remove` · publish builds: kept
 ```ogt
 fn remove {
   doc "Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it."
-  guide "shared-worlds §5"
   param world World "The world."
   param key String "The object's key."
   param expect Option.u32 "Only while it has this version; null: whatever it has."
@@ -35,4 +32,4 @@ fn remove {
 }
 ```
 
-<sub>Module `shared` line 269</sub>
+<sub>Module `shared` line 258</sub>

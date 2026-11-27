@@ -8,7 +8,7 @@
 // Writes `cartoon-2d/` (the cartoon-2d look) and one pack a variant of it:
 // `cartoon-2d-watercolor`, `cartoon-2d-storybook`, `cartoon-2d-rubber-hose`.
 // Each effect is one checked `file.vfx2d` Pixel VFX Forge declaration
-// (`content/<name>.ts`, the `pixel-vfx` guide), drawn supersampled (`supersample`)
+// (`content/<name>.ts`), drawn supersampled (`supersample`)
 // so its edges are smooth, its fills flat bands of two to four tones and its
 // contour the variant's line: a 2 px dark warm brown for cartoon-2d, none
 // (pigment rims instead) for watercolour, a 1 px coloured line a shade
@@ -614,8 +614,8 @@ An effect's pixels are the character's (96 to 160 px): draw the sprite at
 The same names, timing and pivots are in every cartoon pack
 (\`cartoon-2d\`, \`cartoon-2d-watercolor\`, \`cartoon-2d-storybook\`,
 \`cartoon-2d-rubber-hose\`), so a game changes look by changing the pack.
-Each one-shot effect sends an og.FlipbookEvent \`impact\` (the \`pixel-vfx\`
-guide). No gameplay, scoring, damage or UI logic; text is left to the
+Each one-shot effect sends an og.FlipbookEvent \`impact\`.
+No gameplay, scoring, damage or UI logic; text is left to the
 game's UI.
 
 | Effect | Plays | Placement |

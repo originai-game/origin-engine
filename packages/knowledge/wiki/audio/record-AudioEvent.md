@@ -10,8 +10,6 @@ An audio event: one of a set of sounds played on each trigger, with pitch and vo
 
 The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream (og.Rng's seed forked with the label og.audio, kept in the world), so the same seed and triggers play the same sounds on every host and replay. Each play spawns a voice entity, an og.AudioSource parented to this one, despawned when it ends; only `played`, `last`, `index`, `bag` and `voices` feed back.
 
-See `audio §1`.
-
 Token `og.AudioEvent`, registered under the schema name `og.AudioEvent`; its value type is `AudioEvent`.
 
 #### Sounds
@@ -70,7 +68,6 @@ Token `og.AudioEvent`, registered under the schema name `og.AudioEvent`; its val
 component AudioEvent {
   doc "An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it."
   doc "The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream (og.Rng's seed forked with the label og.audio, kept in the world), so the same seed and triggers play the same sounds on every host and replay. Each play spawns a voice entity, an og.AudioSource parented to this one, despawned when it ends; only `played`, `last`, `index`, `bag` and `voices` feed back."
-  guide "audio §1"
   group "Sounds"
   field sounds List.Sound.8 "The variations (og.load.sound or og.audio.createSound); 0s are skipped."
   field weights List.f32.8 "Weights of a random pick, by position in `sounds`; past the list's length 1."
@@ -163,4 +160,4 @@ component AudioEvent {
 }
 ```
 
-<sub>Module `audio` line 509</sub>
+<sub>Module `audio` line 504</sub>

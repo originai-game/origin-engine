@@ -4,11 +4,9 @@
 
 Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame.
 
-See `world §11`.
-
 - **TypeScript**: functions are the namespace `og.sight`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module sight {
@@ -49,4 +47,4 @@ column SightPlane {
 }
 ```
 
-<sub>Module `sight` line 12</sub>
+<sub>Module `sight` line 11</sub>

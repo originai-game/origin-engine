@@ -8,8 +8,6 @@ Module [`load`](../load.md) · [index](../index.md)
 
 Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file) or an Effekseer effect (`.efkproj`, `.efkefc`) the cook converts, with every emitter, effect material, model, flipbook sheet and sound it names. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle.
 
-See `loading §11`.
-
 Also known as: Effekseer, efkproj, efkefc, Effekseer import, import a particle effect
 
 ```ts
@@ -28,7 +26,6 @@ Binding symbol `og_load_vfx` · publish builds: kept
 ```ogt
 fn vfx {
   doc "Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file) or an Effekseer effect (`.efkproj`, `.efkefc`) the cook converts, with every emitter, effect material, model, flipbook sheet and sound it names. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle."
-  guide "loading §11"
   aliases "Effekseer, efkproj, efkefc, Effekseer import, import a particle effect"
   param world World "The world."
   param path String "The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`."
@@ -36,4 +33,4 @@ fn vfx {
 }
 ```
 
-<sub>Module `load` line 557</sub>
+<sub>Module `load` line 530</sub>

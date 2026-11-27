@@ -28,7 +28,7 @@ pub fn og_platform_store_get(world: u32, key: String) -> Result<u32, String> {
 }
 
 /// og.platform.catalogHead: the current version of one of the game's
-/// content catalogs (guide saves §11). Its answer pins that version's
+/// content catalogs. Its answer pins that version's
 /// manifest for og.load.data ([`crate::world::data::pin`]).
 pub fn og_platform_catalog_head(world: u32, catalog: String) -> Result<u32, String> {
     if !valid_key(&catalog) {

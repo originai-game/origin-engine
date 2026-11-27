@@ -37,4 +37,4 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>Module `nav` line 481</sub>
+<sub>Module `nav` line 479</sub>

@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X.
 
-See `facing`.
-
 Also known as: yaw to rotation, rotation from an angle, Unity Quaternion.Euler(0, y, 0), three.js rotation.y
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_from_heading` · publish builds: kept
 fn fromHeading {
   doc "The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X."
   aliases "yaw to rotation, rotation from an angle, Unity Quaternion.Euler(0, y, 0), three.js rotation.y"
-  guide "facing"
   param heading f32 "The heading in radians."
   returns Quaternion
 }
 ```
 
-<sub>Module `transform` line 200</sub>
+<sub>Module `transform` line 193</sub>

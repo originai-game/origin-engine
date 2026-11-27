@@ -12,8 +12,6 @@ It reads materials, nodes and scenes, without skins, animations or levels of det
 
 Completion is host input, journaled as og.load.imageData's is.
 
-See `loading §10`.
-
 ```ts
 og.load.gltfData(world: World, name: string, bytes: Uint8Array, desc?: GltfDataDesc): Result<Asset>
 ```
@@ -32,7 +30,6 @@ Binding symbol `og_load_gltf_data` · publish builds: kept
 ```ogt
 fn gltfData {
   doc "Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs. Its size, triangles and image headers are checked against the budget at the call; then its images decode off the engine's thread and its primitives convert at tick boundaries. The handle is pending until the model is in place, then ready (world.instantiate spawns it, og.load.gltfInfo describes it) or failed (og.load.error says why)."
-  guide "loading §10"
   doc "It reads materials, nodes and scenes, without skins, animations or levels of detail."
   doc "Completion is host input, journaled as og.load.imageData's is."
   param world World "The world that owns the asset."
@@ -43,4 +40,4 @@ fn gltfData {
 }
 ```
 
-<sub>Module `load` line 690</sub>
+<sub>Module `load` line 659</sub>

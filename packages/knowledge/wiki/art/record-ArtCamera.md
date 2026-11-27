@@ -49,4 +49,4 @@ resource ArtCamera {
 }
 ```
 
-<sub>Module `art` line 224</sub>
+<sub>Module `art` line 223</sub>

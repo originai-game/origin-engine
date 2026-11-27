@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.
 
-See `render §7`.
-
 Token `og.PhysicalSky`, registered under the schema name `og.PhysicalSky`; its value type is `PhysicalSky`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -25,7 +23,6 @@ Token `og.PhysicalSky`, registered under the schema name `og.PhysicalSky`; its v
 ```ogt
 resource PhysicalSky {
   doc "A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick."
-  guide "render §7"
   field enabled bool "Draw the sky by scattering."
   field haze f32 "How much haze the air holds, a multiplier on Earth's aerosols (1: a clear day; 0: pure air; 5 to 10: a hazy or smoggy day, a whiter sky and a wider glow round the sun)." {
     default 1
@@ -60,4 +57,4 @@ resource PhysicalSky {
 }
 ```
 
-<sub>Module `atmosphere` line 309</sub>
+<sub>Module `atmosphere` line 301</sub>

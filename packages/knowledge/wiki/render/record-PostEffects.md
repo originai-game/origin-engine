@@ -10,8 +10,6 @@ The post stack beyond RenderSettings' bloom, exposure and tone mapping, and came
 
 AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.
 
-See `render §5`.
-
 Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its value type is `PostEffects`.
 
 #### Ambient occlusion
@@ -24,7 +22,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
 | `aoResolution` | `AoResolution` | `"half"` | — | — | — | Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full. |
 | `aoDirect` | `number` | `0` | 0 … 1 | — | tunable | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. |
-| `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. See `render §5`. |
+| `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. |
 
 #### Outlines
 
@@ -45,7 +43,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `dofFocusRange` | `number` | `2` | ≥ 0 | `m` | tunable | The half-width of the sharp band around it. |
 | `dofMaxBlur` | `number` | `0.012` | 0 … 0.1 | — | — | The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p). |
 | `dofFalloff` | `number` | `4` | ≥ 0 | — | — | How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away. |
-| `dofTiltShift` | `number` | `0` | 0 … 0.5 | — | tunable | Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. See `looks §19`. |
+| `dofTiltShift` | `number` | `0` | 0 … 0.5 | — | tunable | Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. |
 | `dofQuality` | `DofQuality` | `"low"` | — | — | — | Taps per pixel. |
 
 #### Motion blur
@@ -99,7 +97,7 @@ Applied in field order to the display colour after the tone curve and the LUT, e
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `temperature` | `number` | `0` | -1 … 1 | — | tunable | White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. See `render §5`. |
+| `temperature` | `number` | `0` | -1 … 1 | — | tunable | White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. |
 | `tint` | `number` | `0` | -1 … 1 | — | tunable | White balance: towards magenta (positive) or green (negative), as Lightroom's and Unity's Tint divided by 100; 0 is off. |
 | `brightness` | `number` | `0` | -1 … 1 | — | tunable | Added to every channel of the display colour; 0 is off. |
 | `contrast` | `number` | `0` | -1 … 1 | — | tunable | Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off. |
@@ -129,7 +127,7 @@ Applied in field order to the display colour after the tone curve and the LUT, e
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `chromaticAberration` | `number` | `0` | 0 … 20 | — | tunable | Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off. |
-| `lensDistortion` | `number` | `0` | -1 … 1 | — | tunable | Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. See `render §5`. |
+| `lensDistortion` | `number` | `0` | -1 … 1 | — | tunable | Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. |
 | `lensDistortionCenter` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | tunable, worldspace `none` | The lens's centre, in fractions of the frame from the top left. |
 
 #### Grain and sharpening
@@ -161,26 +159,25 @@ Applied in field order to the display colour after the tone curve and the LUT, e
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `ssr` | `boolean` | `false` | — | — | — | Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. See `render §5`. |
+| `ssr` | `boolean` | `false` | — | — | — | Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. |
 | `ssrMaxDistance` | `number` | `100` | ≥ 0 | `m` | tunable | How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance. |
 | `ssrThickness` | `number` | `0.3` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
-| `ssrSteps` | `number` | `64` | 4 … 128 | — | — | The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. See `render §5`. |
+| `ssrSteps` | `number` | `64` | 4 … 128 | — | — | The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. |
 | `ssrFade` | `number` | `0.15` | 0 … 1 | `ratio` | — | The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). |
 | `ssrIntensity` | `number` | `1` | 0 … 1 | — | tunable | How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are). |
-| `ssrMaxRoughness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. See `render §5`. |
-| `ssrResolution` | `AoResolution` | `"half"` | — | — | — | Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. See `render §5`. |
+| `ssrMaxRoughness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. |
+| `ssrResolution` | `AoResolution` | `"half"` | — | — | — | Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. |
 
 #### Custom passes
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `custom` | `readonly Post[]` | `[]` | — | — | a list of at most 8 `Post` (`List.Post.8`): reads a frozen copy, writes a whole array | Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. |
+| `custom` | `readonly Post[]` | `[]` | — | — | a list of at most 8 `Post` (`List.Post.8`): reads a frozen copy, writes a whole array | Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). |
 
 ```ogt
 resource PostEffects {
   doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation."
   doc "AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it."
-  guide "render §5"
   group "Ambient occlusion"
   field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
   field aoRadius f32 "The world-space radius searched for occluders." {
@@ -205,7 +202,6 @@ resource PostEffects {
     tunable true
   }
   field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere." {
-    guide "render §5"
     min 0
     tunable true
   }
@@ -255,7 +251,6 @@ resource PostEffects {
     min 0
     max 0.5
     tunable true
-    guide "looks §19"
   }
   field dofQuality DofQuality "Taps per pixel."
   group "Motion blur"
@@ -340,7 +335,6 @@ resource PostEffects {
   }
   group "Colour adjustments" "Applied in field order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (white balance in linear light, the rest on the sRGB-encoded colour), baked with the LUT into one 32³ table."
   field temperature f32 "White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off." {
-    guide "render §5"
     min -1
     max 1
     tunable true
@@ -429,7 +423,6 @@ resource PostEffects {
     tunable true
   }
   field lensDistortion f32 "Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame." {
-    guide "render §5"
     min -1
     max 1
     tunable true
@@ -487,7 +480,6 @@ resource PostEffects {
   field shakeSeed u32 "The shake's noise seed."
   group "Screen-space reflections"
   field ssr bool "Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass." {
-    guide "render §5"
   }
   field ssrMaxDistance f32 "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance." {
     default 100
@@ -502,7 +494,6 @@ resource PostEffects {
     tunable true
   }
   field ssrSteps u32 "The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them." {
-    guide "render §5"
     default 64
     min 4
     max 128
@@ -520,7 +511,6 @@ resource PostEffects {
     tunable true
   }
   field ssrMaxRoughness f32 "The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them." {
-    guide "render §5"
     default 0.6
     min 0
     max 1
@@ -528,14 +518,12 @@ resource PostEffects {
     tunable true
   }
   field ssrResolution AoResolution "Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution." {
-    guide "render §5"
     default half
   }
   group "Custom passes"
   field custom List.Post.8 "Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors)." {
-    guide "render §5"
   }
 }
 ```
 
-<sub>Module `render` line 1176</sub>
+<sub>Module `render` line 1120</sub>

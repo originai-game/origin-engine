@@ -34,4 +34,4 @@ fn telemetry {
 }
 ```
 
-<sub>Module `platform` line 179</sub>
+<sub>Module `platform` line 175</sub>

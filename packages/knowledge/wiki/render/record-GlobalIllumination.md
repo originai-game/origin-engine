@@ -10,8 +10,6 @@ Global illumination: light bounces between surfaces, so shade is lit by what sta
 
 Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
 
-See `render §4`.
-
 Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumination`; its value type is `GlobalIllumination`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -34,7 +32,6 @@ Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumi
 resource GlobalIllumination {
   doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light away, as ambient occlusion does (with PostEffects.ao on, its term does that)."
   doc "Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
-  guide "render §4"
   split render3d
   field enabled bool "Bounce the light."
   field method GiMethod "In screen space, with probes, or both."
@@ -95,4 +92,4 @@ resource GlobalIllumination {
 }
 ```
 
-<sub>Module `render` line 1613</sub>
+<sub>Module `render` line 1545</sub>

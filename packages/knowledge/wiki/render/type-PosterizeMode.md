@@ -23,4 +23,4 @@ enum PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1755</sub>
+<sub>Module `render` line 1685</sub>

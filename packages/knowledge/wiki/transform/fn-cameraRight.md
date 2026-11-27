@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 A camera's or a light's right: its local +X, the right of the screen, as a unit vector.
 
-See `facing`.
-
 Also known as: screen right, camera strafe direction
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_camera_right` · publish builds: kept
 fn cameraRight {
   doc "A camera's or a light's right: its local +X, the right of the screen, as a unit vector."
   aliases "screen right, camera strafe direction"
-  guide "facing"
   param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 184</sub>
+<sub>Module `transform` line 179</sub>

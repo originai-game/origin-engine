@@ -25,4 +25,4 @@ struct LootEntry {
 }
 ```
 
-<sub>Module `inventory` line 67</sub>
+<sub>Module `inventory` line 61</sub>

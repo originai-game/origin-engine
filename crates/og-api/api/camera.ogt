@@ -1,7 +1,6 @@
 module camera {
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
   doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras."
-  guide "camera"
   core Camera Follow2D shake
 
   resource Camera {
@@ -90,7 +89,6 @@ module camera {
       default 0.00699 0.00803 0.01096
     }
     field backgroundTexture Texture "A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none." {
-      guide "flow §3"
     }
     field exposure f32 "Exposure before tone mapping, as three.js toneMappingExposure." {
       default 1

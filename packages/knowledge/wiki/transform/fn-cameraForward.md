@@ -8,8 +8,6 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The way a camera or a light with this rotation looks: its local -Z, as a unit vector.
 
-See `facing`.
-
 Also known as: view direction, look direction, camera front, three.js Camera.getWorldDirection
 
 ```ts
@@ -28,10 +26,9 @@ Binding symbol `og_transform_camera_forward` · publish builds: kept
 fn cameraForward {
   doc "The way a camera or a light with this rotation looks: its local -Z, as a unit vector."
   aliases "view direction, look direction, camera front, three.js Camera.getWorldDirection"
-  guide "facing"
   param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
   returns Vector3
 }
 ```
 
-<sub>Module `transform` line 176</sub>
+<sub>Module `transform` line 172</sub>

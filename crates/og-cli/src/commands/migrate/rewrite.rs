@@ -526,7 +526,7 @@ impl Ctx {
             |c: &mut Self, v: &[String]| v.iter().map(|a| c.expr(a, notes)).collect::<Vec<_>>();
         let transform = |field: &str| format!("world.set({name}, og.Transform, {{ {field} }});");
         match var {
-            Var::Manual(what, section) => Done::Manual(what.to_string(), *section),
+            Var::Manual(what, section) => Done::Manual(what.to_string(), section),
             Var::TextureLoader => Done::Manual(
                 "no loader object: og.load.texture(world, \"<asset id>\")".into(),
                 S_LOAD,
@@ -551,7 +551,7 @@ impl Ctx {
                     if notes.len() == before {
                         notes.push(Note { kind: Kind::Manual, text: format!("`{}` is not an entity this file spawns: spawn it, or instantiate the loaded model", short(&a.join(", "))), section: S_GRAPH });
                     }
-                    return Done::Lines(Vec::new(), 0);
+                    return Done::Lines(Vec::new(), S_GRAPH);
                 }
                 if let Some(a) = whole_call(rest, "remove") {
                     let a = ex(self, &a);
@@ -616,7 +616,7 @@ impl Ctx {
                     );
                 }
                 if matches!(assignment(rest), Some(("fov" | "near" | "far" | "zoom", _))) {
-                    return Done::Lines(Vec::new(), 0); // same name on og.Camera: left as written
+                    return Done::Lines(Vec::new(), S_LIGHT); // same name on og.Camera: left as written
                 }
                 Done::Manual(
                     format!("no og mapping for the camera's `{}`", short(rest)),

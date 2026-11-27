@@ -1,7 +1,6 @@
 module audio {
   doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
   doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream."
-  guide "audio"
   core AudioSource createSound SoundDesc
 
   const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
@@ -146,7 +145,6 @@ module audio {
     }
     group "Doppler and cone"
     field dopplerFactor f32 "Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2." {
-      guide "audio §2"
       default 1
       min 0
       max 10
@@ -182,7 +180,6 @@ module audio {
 
   component AudioListener {
     doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z."
-    guide "audio §2"
     field volume f32 "A gain on every spatial source this listener hears." {
       default 1
       min 0
@@ -452,7 +449,6 @@ module audio {
   component AudioBusNode {
     doc "A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master. The first node in query order for an index counts; a removed node's sources play on their `bus`."
     doc "The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash."
-    guide "audio §1"
     field index u32 "The bus's index, 4 to 15." {
       default 4
       min 4
@@ -473,7 +469,6 @@ module audio {
   component AudioSnapshot {
     doc "A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. Each tick og.audio moves `weight` by tickDuration / fade and sends the blend in the stream; bus gains ramp linearly across each tick."
     doc "At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz to the snapshot's cutoffs, log2-linear in w. Snapshots multiply gains and meet filters (the lowest low-pass and highest high-pass, AudioBusFx's included); they never write og.Audio or og.AudioBusFx."
-    guide "audio §4"
     field active bool "Blends in while true, out while false."
     field fade f32 "Seconds a full blend in or out takes; 0 is at once." {
       default 0.5
@@ -509,7 +504,6 @@ module audio {
   component AudioEvent {
     doc "An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it."
     doc "The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream (og.Rng's seed forked with the label og.audio, kept in the world), so the same seed and triggers play the same sounds on every host and replay. Each play spawns a voice entity, an og.AudioSource parented to this one, despawned when it ends; only `played`, `last`, `index`, `bag` and `voices` feed back."
-    guide "audio §1"
     group "Sounds"
     field sounds List.Sound.8 "The variations (og.load.sound or og.audio.createSound); 0s are skipped."
     field weights List.f32.8 "Weights of a random pick, by position in `sounds`; past the list's length 1."
@@ -621,7 +615,6 @@ module audio {
   component ReverbZone {
     doc "The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). While the og.AudioListener is inside, og.audio eases the reverb's room size, damping and one bus's send towards the zone's, fading with the volume's `fade`."
     doc "Each tick the listener's weight in every zone (`weight`) is a function of its position, the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream. It never writes Audio.reverbRoom, Audio.reverbDamping or AudioBusFx.reverb, the open air's; it sits at its world transform."
-    guide "audio §4"
     field bus AudioBus "The bus whose reverb send the zone sets." {
       default sfx
     }
@@ -935,7 +928,6 @@ module audio {
   fn outputLatency {
     custom true
     doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency and the mixer's buffer; 0 headless. Host input, written to og.Audio between ticks, so a replay carries it."
-    guide "audio §3"
     doc "Inside a system og.Audio must be among its reads or writes."
     param world World "The world."
     returns f64 "Seconds; 0 headless."

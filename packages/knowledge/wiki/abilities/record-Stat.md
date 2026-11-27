@@ -8,8 +8,6 @@ Module [`abilities`](../abilities.md) · [index](../index.md)
 
 A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick.
 
-See `abilities §2`.
-
 Also known as: attribute, stat, character stats, speed stat, strength, armor value, mana pool, stamina, Unreal attribute set
 
 Token `og.Stat`, registered under the schema name `og.Stat`; its value type is `Stat`.
@@ -23,7 +21,6 @@ Token `og.Stat`, registered under the schema name `og.Stat`; its value type is `
 component Stat {
   aliases "attribute, stat, character stats, speed stat, strength, armor value, mana pool, stamina, Unreal attribute set"
   doc "A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick."
-  guide "abilities §2"
   field base f32 "Its own number: a pool's amount (og.Ability.cost takes from it), a level's strength."
   field value f32 "Written: the base with its modifiers applied, each tick." {
     readonly true
@@ -31,4 +28,4 @@ component Stat {
 }
 ```
 
-<sub>Module `abilities` line 77</sub>
+<sub>Module `abilities` line 74</sub>

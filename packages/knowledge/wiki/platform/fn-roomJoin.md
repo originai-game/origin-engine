@@ -33,4 +33,4 @@ fn roomJoin {
 }
 ```
 
-<sub>Module `platform` line 601</sub>
+<sub>Module `platform` line 589</sub>

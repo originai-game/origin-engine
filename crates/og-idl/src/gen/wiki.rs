@@ -1,5 +1,5 @@
 //! The wiki generator (design §3.1): `packages/knowledge/wiki/`, a short
-//! `index.md` of the modules and guides, one overview page per module (its
+//! `index.md` of the modules, one overview page per module (its
 //! contents with signatures and one-line summaries, its values, column kinds
 //! and constants) and one small page per function, record, interface and
 //! type under `<module>/`, so an agent reads kilobytes, not a module. Every declaration is quoted from `api.ogt` exactly as written,
@@ -20,62 +20,6 @@ pub fn pages(ix: &Index<'_>) -> Vec<(String, String)> {
         let (page, items) = module_pages(ix, m, &binds);
         out.push((format!("{}.md", m.name), page));
         out.extend(items);
-    }
-    for g in &ix.api.guides {
-        out.push((format!("guide-{}.md", g.name), guide_page(g)));
-    }
-    out
-}
-
-// ── guides ──────────────────────────────────────────────────────────────────
-
-/// A guide's summary: the first paragraph after its `# ` title.
-fn guide_summary(text: &str) -> String {
-    text.lines()
-        .skip_while(|l| !l.starts_with("# "))
-        .skip(1)
-        .skip_while(|l| l.trim().is_empty())
-        .take_while(|l| !l.trim().is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// A guide as a wiki page: its title as `# The \`name\` guide`, then each
-/// `## N. Title` section under an anchor, headed `### \`name §N\` Title`, so
-/// `og api` reads the guide as one entry and each section as another.
-fn guide_page(g: &Guide) -> String {
-    let mut out = String::new();
-    let _ = writeln!(out, "<!-- {GENERATED_BY} -->\n");
-    let mut lines = g.text.lines().peekable();
-    let title = lines
-        .by_ref()
-        .find_map(|l| l.strip_prefix("# "))
-        .unwrap_or(&g.name)
-        .to_string();
-    let _ = writeln!(out, "# The `{}` guide: {title}", g.name);
-    let mut fence = false;
-    for line in lines {
-        if line.starts_with("```") {
-            fence = !fence;
-        }
-        let section = (!fence)
-            .then(|| line.strip_prefix("## "))
-            .flatten()
-            .and_then(|h| h.split_once(". "))
-            .filter(|(n, _)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
-        match section {
-            Some((n, heading)) => {
-                let _ = writeln!(
-                    out,
-                    "<a id=\"guide-{}-{n}\"></a>\n### `{} §{n}` {heading}",
-                    g.name, g.name
-                );
-            }
-            None => {
-                out.push_str(line);
-                out.push('\n');
-            }
-        }
     }
     out
 }
@@ -730,7 +674,7 @@ fn module_pages(
             m.name
         );
     }
-    out.push_str("- **Index**: [every module and guide](index.md).\n\n");
+    out.push_str("- **Index**: [every module](index.md).\n\n");
     quote(
         &mut out,
         ix,
@@ -1024,22 +968,6 @@ fn index(ix: &Index<'_>) -> String {
         );
     }
     out.push('\n');
-
-    if !api.guides.is_empty() {
-        out.push_str(
-            "## Guides\n\nWorkflow, thresholds and pitfalls no signature states, written by hand beside the IDL (`crates/og-api/guides/`). `og api show <guide>` prints one; `og api find` returns their sections.\n\n| Guide | Summary |\n|---|---|\n",
-        );
-        for g in &api.guides {
-            let _ = writeln!(
-                out,
-                "| [`{}`](guide-{}.md) | {} |",
-                g.name,
-                g.name,
-                cell(&guide_summary(&g.text))
-            );
-        }
-        out.push('\n');
-    }
 
     if !api.units.is_empty() {
         out.push_str(

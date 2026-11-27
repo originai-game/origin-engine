@@ -45,4 +45,4 @@ struct NoiseGridDesc {
 }
 ```
 
-<sub>Module `procgen` line 55</sub>
+<sub>Module `procgen` line 54</sub>

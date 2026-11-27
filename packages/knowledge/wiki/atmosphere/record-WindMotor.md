@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops.
 
-See `render §8`.
-
 Token `og.WindMotor`, registered under the schema name `og.WindMotor`; its value type is `WindMotor`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -21,7 +19,6 @@ Token `og.WindMotor`, registered under the schema name `og.WindMotor`; its value
 ```ogt
 component WindMotor {
   doc "A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops."
-  guide "render §8"
   split render3d
   field kind WindMotorKind "How it pushes."
   field radius f32 "How far it reaches." {
@@ -41,4 +38,4 @@ component WindMotor {
 }
 ```
 
-<sub>Module `atmosphere` line 758</sub>
+<sub>Module `atmosphere` line 742</sub>

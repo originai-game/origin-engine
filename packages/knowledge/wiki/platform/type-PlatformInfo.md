@@ -11,22 +11,20 @@ What answers platform calls here.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `host` | `string` | `""` | — | — | — | `player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`. |
-| `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one. See `saves §7`. |
+| `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one. |
 | `pending` | `number` | `0` | — | — | — | Calls not answered yet. |
-| `clock` | `string` | `""` | — | — | — | Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock), `system` (the native host's), `fixed` (`og run --clock` and playtests: it starts where told and moves with the ticks) or `none`. See `saves §7`. |
+| `clock` | `string` | `""` | — | — | — | Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock), `system` (the native host's), `fixed` (`og run --clock` and playtests: it starts where told and moves with the ticks) or `none`. |
 
 ```ogt
 struct PlatformInfo {
   doc "What answers platform calls here."
   field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
   field capabilities List.String "The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one." {
-    guide "saves §7"
   }
   field pending u32 "Calls not answered yet."
   field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock), `system` (the native host's), `fixed` (`og run --clock` and playtests: it starts where told and moves with the ticks) or `none`." {
-    guide "saves §7"
   }
 }
 ```
 
-<sub>Module `platform` line 114</sub>
+<sub>Module `platform` line 113</sub>

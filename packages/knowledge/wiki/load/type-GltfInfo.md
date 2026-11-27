@@ -15,7 +15,7 @@ What a loaded glTF holds.
 | `parts` | `readonly GltfPart[]` | `[]` | — | — | — | Placed primitives in the default scene, in draw order. |
 | `materials` | `readonly Material[]` | `[]` | — | — | — | Its materials, in glTF order, then the default material. |
 | `variants` | `readonly string[]` | `[]` | — | — | — | Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants. |
-| `lights` | `number` | `0` | — | — | — | How many punctual lights (KHR_lights_punctual) its default scene has: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place, converted from glTF's units. See `loading §2`. |
+| `lights` | `number` | `0` | — | — | — | How many punctual lights (KHR_lights_punctual) its default scene has: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place, converted from glTF's units. |
 | `shape` | `ModelShape \| null` | `null` | — | — | — | Its shape facts from the cook; null for an uncooked load (og.load.gltfData) or a model without triangles. |
 | `animations` | `readonly string[]` | `[]` | — | — | — | Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name. |
 
@@ -28,11 +28,10 @@ struct GltfInfo {
   field materials List.Material "Its materials, in glTF order, then the default material."
   field variants List.String "Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants."
   field lights u32 "How many punctual lights (KHR_lights_punctual) its default scene has: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place, converted from glTF's units." {
-    guide "loading §2"
   }
   field shape Option.ModelShape "Its shape facts from the cook; null for an uncooked load (og.load.gltfData) or a model without triangles."
   field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
 }
 ```
 
-<sub>Module `load` line 103</sub>
+<sub>Module `load` line 101</sub>

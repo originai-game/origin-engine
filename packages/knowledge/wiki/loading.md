@@ -4,12 +4,10 @@
 
 The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
 
-See `loading §13`.
-
 - **TypeScript**: functions are the namespace `og.loading`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `og.loading.stage`, `og.loading.done`, `og.loading.idle`; 4 more are advanced (`og api show loading --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module loading {

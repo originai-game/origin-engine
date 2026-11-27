@@ -10,8 +10,6 @@ One binding of an action: a control, or a composite of parts. A binding with nei
 
 Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
 
-See `input §1`.
-
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -31,7 +29,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct InputBinding {
   doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
   doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
-  guide "input §1"
   desc true
   field control String "The control; empty for a composite or an unbound slot."
   field negative String "An axis composite's control for -1 (`KeyA`)."
@@ -51,4 +48,4 @@ struct InputBinding {
 }
 ```
 
-<sub>Module `input` line 68</sub>
+<sub>Module `input` line 67</sub>

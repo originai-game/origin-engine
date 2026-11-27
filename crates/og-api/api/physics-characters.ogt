@@ -1,6 +1,5 @@
   component CharacterController {
     doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
-    guide "physics §6"
     aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
     field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
       min 0
@@ -98,14 +97,12 @@
       default true
     }
     field pushStrength f32 "Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does." {
-      guide "physics §6"
       default 1000
       min 0
       unit newton
       tunable true
     }
     field waterSpeed f32 "The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under." {
-      guide "physics §8"
       default 0.5
       min 0
       max 1
@@ -138,7 +135,6 @@
 
   component PlatformerController {
     doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
-    guide "physics §6"
     field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
       min 0
       unit kg
@@ -181,7 +177,6 @@
     field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
     field down bool "Held to drop through a one-way platform."
     field addVelocity Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on." {
-      guide "physics §6"
       unit mps
     }
     field maxSpeed f32 "The top running speed." {
@@ -319,7 +314,6 @@
       default true
     }
     field pushStrength f32 "The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does." {
-      guide "physics §6"
       default 1000
       min 0
       unit newton
@@ -388,7 +382,6 @@
 
   fn resizeCharacter {
     doc "Resize a character capsule after checking headroom and the final volume. Keeps its feet fixed by adjusting Collider.offset, preserves body velocity and joints, and returns false without changing anything when blocked. Works in both physics profiles, inside a system or between ticks; inside a system read Transform, Parent and the controller and write Collider."
-    guide "physics §6"
     param world World "The world."
     param entity Entity "An entity with CharacterController or PlatformerController and a capsule Collider."
     param height f32 "New cylindrical segment height (as Collider.height), excluding caps; finite and >= 0."

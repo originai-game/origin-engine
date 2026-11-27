@@ -47,7 +47,6 @@ mod cli {
     mod create;
     mod generating;
     mod maintenance;
-    mod model;
     mod probe;
     mod ui;
 }

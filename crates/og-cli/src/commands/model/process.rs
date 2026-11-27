@@ -1,5 +1,5 @@
 //! `shape process <mesh> (--budget N | --ratio R) [-o out.glb]`: the mesh tools'
-//! chain on one file (`guides/meshtools.md`): import → join → repair →
+//! chain on one file: import → join → repair →
 //! decimate to the triangle budget (or `--ratio R` of what the repair
 //! leaves) → place → unwrap → textures → measure →
 //! export,

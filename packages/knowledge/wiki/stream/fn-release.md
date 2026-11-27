@@ -30,4 +30,4 @@ fn release {
 }
 ```
 
-<sub>Module `stream` line 142</sub>
+<sub>Module `stream` line 137</sub>

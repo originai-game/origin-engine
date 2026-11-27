@@ -300,7 +300,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | Lane | Checks |
 |---|---|
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside the crates in `scripts/gate-exclude.txt`, generated API drift, engine TypeScript checks, non-engine package tests, and the one wasm32 check of the wasm-only crates (feature matrix and lanes variants) |
-| `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the guides' recipes, the showcases' playtests, the browser tests of packages/engine's `test:browser` |
+| `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the showcases' playtests, the browser tests of packages/engine's `test:browser` |
 
 Quick includes the knowledge repository rules: `bun-quick` preserves the
 `packages/knowledge` test script's `bun scripts/validate.ts` preparation before
@@ -425,7 +425,6 @@ split, and the lowest such crate is its cause.
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests using the dev addon and gate-produced wasm (`OG_GATE=1`), after engine typecheck, drift and surface checks. A scoped Bun landing also selects the native suites, but Bun doesn't wait for their results. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton; needs only the native `og`, so `--only fixtures` builds no wasm. | full |
-| `guide-recipes` | `scripts/guide-recipes.ts`: every ```` ```ts recipe ```` block in `crates/og-api/guides/*.md` is a whole `src/main.ts`, written into a project under `target/guide-recipes/`. Following `ts/ogt/json/text recipe file=assets/...` fences attach project-relative files to that entry; traversal and reserved paths are refused. Multi-file recipes explicitly run `og cook --json` first, then all recipes are type-checked and run headless twice (`og run --json`, 120 ticks, or `ticks=N` on the main fence). A cook/check error, a throw, a violated og.assert, an uncovered site, no assertion, or different end hashes fails with the guide's file and line. Its own test (`scripts/guide-recipes.test.ts`, with the step's og) runs broken recipes first; bun-quick skips its engine runs. | full |
 | `looks` | `templates/looks/preview/render.ts` over every preview slot a release draws (create-game's `previewSlots`: each look, variant and UI pack's gallery card), cooked and run headless by the dev og on the host's adapter. A cook or run failure fails it here rather than on the GPU host after a pack; frames are judged by `scripts/release.sh previews`, and `release.sh pack` runs the same slots with the packed og in the packed layout (`previews --check`). | full |
 | `showcase` | `og test` for each changed `showcase/*/` with tests, after `bun scripts/assets.ts ensure`, as `fixtures` does. Each showcase keeps a `tests/play.og.ts` that plays it through its keys (or its simulation alone), requires an og.assert.reachable site in its source and ends two runs on one hash. | full |
 | `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |

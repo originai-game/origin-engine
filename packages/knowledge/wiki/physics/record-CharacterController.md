@@ -8,8 +8,6 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
 
-See `physics §6`.
-
 Also known as: player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D
 
 Token `og.CharacterController`, registered under the schema name `og.CharacterController`; its value type is `CharacterController`.
@@ -39,8 +37,8 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `coyoteTime` | `number` | `0.1` | ≥ 0 | `s` | tunable | After leaving an edge, a jump still starts within this time. |
 | `maxFallSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The fastest fall. |
 | `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into, with at most `pushStrength`. |
-| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does. See `physics §6`. |
-| `waterSpeed` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under. See `physics §8`. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does. |
+| `waterSpeed` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on walkable ground after the step. |
 | `sliding` | `boolean` | `false` | — | — | read only | Written: sliding down a slope steeper than maxSlope. |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Written: the velocity it moved at this tick (the platform's carry included). |
@@ -52,7 +50,6 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 ```ogt
 component CharacterController {
   doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
-  guide "physics §6"
   aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
   field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
     min 0
@@ -150,14 +147,12 @@ component CharacterController {
     default true
   }
   field pushStrength f32 "Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does." {
-    guide "physics §6"
     default 1000
     min 0
     unit newton
     tunable true
   }
   field waterSpeed f32 "The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under." {
-    guide "physics §8"
     default 0.5
     min 0
     max 1
@@ -189,4 +184,4 @@ component CharacterController {
 }
 ```
 
-<sub>Module `physics` line 524</sub>
+<sub>Module `physics` line 509</sub>

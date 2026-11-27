@@ -2,7 +2,7 @@
 //! (newline-delimited JSON-RPC 2.0, MCP's stdio transport), so an agent
 //! calls it as tools instead of shell commands.
 //!
-//! The tools keep the contracts the agent already relies on (testing §9):
+//! The tools keep the contracts the agent already relies on:
 //!
 //! - `probe` makes one probe call in process and answers exactly what
 //!   `og probe` prints: the result as JSON, a refusal (`false`, `null`) as a
@@ -129,7 +129,7 @@ impl Server {
                         "protocolVersion": version,
                         "capabilities": { "tools": {} },
                         "serverInfo": { "name": "og", "version": env!("CARGO_PKG_VERSION") },
-                        "instructions": "The Origin Engine tool. `api_list`, `api_find` and `api_show` answer the API and its guides (`api_show start`, `api_show testing`); `create`, `check`, `cook`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `frame`, `cost`, `ui`, `style`, `model`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `fmt`, `font`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members).",
+                        "instructions": "The Origin Engine tool. `api_list`, `api_find` and `api_show` query API members, checked file inputs and UI components (`api_show og.physics.castRay`, `api_show file:terrain`, `api_show Button`); `create`, `check`, `cook`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `frame`, `cost`, `ui`, `style`, `model`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `fmt`, `font`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members).",
                     }),
                 )
             }
@@ -208,12 +208,11 @@ impl Server {
                 let what = a
                     .get("name")
                     .and_then(Value::as_str)
-                    .ok_or("api_show: name is the entry, module or guide")?;
+                    .ok_or("api_show: name is an API entry, module, file input or component")?;
                 let every = a.get("all").and_then(Value::as_bool).unwrap_or(false);
-                let guide = a.get("guide").and_then(Value::as_bool).unwrap_or(false);
                 let as_json = a.get("json").and_then(Value::as_bool).unwrap_or(false);
                 return Ok(match self.wiki() {
-                    Ok(wiki) => match wiki.show_output(what, guide, every, as_json) {
+                    Ok(wiki) => match wiki.show_output(what, every, as_json) {
                         Ok(text) => {
                             let mut out = json!({
                                 "content": [{ "type": "text", "text": text }],
@@ -232,9 +231,9 @@ impl Server {
             "api_list" => {
                 let kind = a.get("kind").and_then(Value::as_str);
                 if let Some(k) = kind
-                    && !matches!(k, "module" | "guide" | "file")
+                    && !matches!(k, "module" | "component" | "file")
                 {
-                    return Err("api_list: kind must be `module`, `guide` or `file`".into());
+                    return Err("api_list: kind must be `module`, `component` or `file`".into());
                 }
                 return Ok(match self.wiki() {
                     Ok(wiki) => {
@@ -864,7 +863,7 @@ fn tools() -> Value {
             "run",
             "`og run --headless --json`: cook, check, bundle and run the game with a command script; its JSON on stdout. With `port`, the game starts in the background and the answer is its probe's hello: call `probe` on that port, read stderr with `run_logs`, and stop it with probe commands {\"script\": \"0:quit\"}.",
             json!({
-                "project": project, "commands": s("The command script, `t:action[:args];...` (testing §7)."),
+                "project": project, "commands": s("The command script, `t:action[:args];...`; `og run --help` lists the actions."),
                 "commandsFile": s("UTF-8 script file, relative to the server's working directory; use instead of commands for long scripts."),
                 "ticks": n("Ticks to run."), "seed": n("The seed."), "size": s("WxH."),
                 "out": s("Where screenshots and dumps land (default og-out/)."),
@@ -1164,29 +1163,28 @@ fn tools() -> Value {
         ),
         tool(
             "api_find",
-            "`og api find --json` (in-process cached index): rank API and guide entries matching words.",
+            "`og api find --json` (in-process cached index): rank API, file input and component entries matching words.",
             json!({
                 "words": s("A name, a purpose, a typo."),
-                "kind": s("module, fn, record, type, member, const, value, column or guide."),
+                "kind": s("module, fn, record, type, member, const, value, column, file or component."),
                 "limit": n("How many."),
             }),
             &["words"],
         ),
         tool(
             "api_show",
-            "`og api show` (in-process cached index): one API entry, module, UI component or guide (`og.physics.castRay`, `probe`, `Button`, `testing`, `start`, `saves §2`).",
+            "`og api show` (in-process cached index): one API entry, module, checked file input or UI component (`og.physics.castRay`, `probe`, `file:terrain`, `Button`).",
             json!({
-                "name": s("The entry, module, component or guide."), "all": b("Every member of a module, or every section of a large guide."),
-                "guide": b("The guide, when a module has the same name."),
+                "name": s("The entry, module, file input or component."), "all": b("Every member of a module."),
                 "json": b("Return structured JSON."),
             }),
             &["name"],
         ),
         tool(
             "api_list",
-            "`og api list --json` (in-process cached index): list every API module and guide with summaries.",
+            "`og api list --json` (in-process cached index): list API modules, checked file inputs and components with summaries.",
             json!({
-                "kind": { "type": "string", "enum": ["module", "guide", "file"] },
+                "kind": { "type": "string", "enum": ["module", "component", "file"] },
             }),
             &[],
         ),

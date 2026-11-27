@@ -1,5 +1,5 @@
 //! The run's performance record (`og run --perf`, the web shell's
-//! `perf()`, guide perf): one fixed-size row of plain counters per
+//! `perf()`): one fixed-size row of plain counters per
 //! frame (drawn, or a frame with nothing to draw it), written into a ring allocated when it is turned on, and a report
 //! made from it only when asked (at exit). Measurement only: nothing in the
 //! tick reads it. It is the engine's only record of frame times: `og run

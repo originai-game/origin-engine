@@ -32,4 +32,4 @@ fn formatCurrency {
 }
 ```
 
-<sub>Module `i18n` line 113</sub>
+<sub>Module `i18n` line 112</sub>

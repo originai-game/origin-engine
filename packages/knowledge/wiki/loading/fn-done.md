@@ -8,8 +8,6 @@ Module [`loading`](../loading.md) · [index](../index.md)
 
 The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing.
 
-See `loading §13`.
-
 ```ts
 og.loading.done(world: World): Result<void>
 ```
@@ -25,10 +23,9 @@ Binding symbol `og_loading_done` · publish builds: kept
 ```ogt
 fn done {
   doc "The game's loading is done: a `page` screen uncovers the canvas, the page hears `og:loaded`, and with `game` the play gate (if any) shows. Call it once og.loading.idle is true, so the first frame shown draws the whole scene. Calling it again does nothing."
-  guide "loading §13"
   param world World "The world."
   returns Result.Void
 }
 ```
 
-<sub>Module `loading` line 44</sub>
+<sub>Module `loading` line 42</sub>

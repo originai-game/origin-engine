@@ -27,4 +27,4 @@ event SceneChanged {
 }
 ```
 
-<sub>Module `scene` line 23</sub>
+<sub>Module `scene` line 22</sub>

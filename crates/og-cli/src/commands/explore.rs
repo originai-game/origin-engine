@@ -8,8 +8,7 @@
 //! minimal input trace, replays it from tick 0 in this process, in a fresh
 //! `og run` and on the web host, and writes report.json, a repro and a
 //! bun:test playtest per finding into --out (default <project>/og-out/explore).
-//! The guide is `crates/og-api/guides/explore.md`. Exit 0 (whatever was
-//! found: the report says it), 1 a failure, 2 a usage error.
+//! Exit 0 (whatever was found: the report says it), 1 a failure, 2 a usage error.
 
 use crate::project::{self, Project};
 use std::path::Path;

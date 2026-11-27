@@ -6,11 +6,9 @@ Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og
 
 Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
 
-See `audio §8`.
-
 - **TypeScript**: functions are the namespace `og.video`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module video {
@@ -54,4 +52,4 @@ column Video {
 }
 ```
 
-<sub>Module `video` line 9</sub>
+<sub>Module `video` line 8</sub>

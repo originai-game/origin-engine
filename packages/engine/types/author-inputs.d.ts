@@ -1790,7 +1790,7 @@ readonly "$ogRef": (string);
 readonly "blendWeight"?: (number);
 /** The ground point under where the map was photographed: the dome's centre is groundHeight above it. */
 readonly "groundCenter"?: (ReadonlyArray<(number)> & { readonly length: 3 });
-/** Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. See `render §4`. */
+/** Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. */
 readonly "groundHeight"?: (number);
 /** The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance. */
 readonly "groundRadius"?: (number);
@@ -1840,7 +1840,7 @@ readonly "start"?: (number);
 readonly "sunColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
 /** How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread. */
 readonly "sunPower"?: (number);
-/** Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. See `render §7`. */
+/** Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. */
 readonly "volumetric"?: (boolean);
 /** How far from the camera the fog shows shafts and the local lights; past it the fog goes on in its colour, with the sun's light in it unshadowed. */
 readonly "volumetricDistance"?: (number);
@@ -1860,7 +1860,7 @@ readonly "outlineDistance"?: (number);
 readonly "outlineNearCap"?: (number);
 /** Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside. */
 readonly "outlinePlace"?: ("inside" | "outside" | "both") & (string);
-/** The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one. A surface seen at a grazing angle is lined only where it ends. See `looks §12`. */
+/** The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one. A surface seen at a grazing angle is lined only where it ends. */
 readonly "outlineWidth"?: (number);
 /** Rim (fresnel) light for materials without their own (linear). */
 readonly "rimColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
@@ -1868,7 +1868,7 @@ readonly "rimColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((
 readonly "rimIntensity"?: (number);
 /** How tight the rim is (higher: thinner). */
 readonly "rimPower"?: (number);
-/** How far shadowed surfaces fall towards black: where the sun does not reach, a surface loses this share of the sun's ramp and of the ambient light (1: solid black shadows). Point, spot and rect lights and the emissive still show inside it; shadowTint's light is added after it. 0 is off. See `looks §12`. */
+/** How far shadowed surfaces fall towards black: where the sun does not reach, a surface loses this share of the sun's ramp and of the ambient light (1: solid black shadows). Point, spot and rect lights and the emissive still show inside it; shadowTint's light is added after it. 0 is off. */
 readonly "shadowDarkness"?: (number);
 /** The colour the shadowed side of a toon or lit surface moves towards instead of black (linear): the cool or warm shadow of illustration. */
 readonly "shadowTint"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
@@ -1882,11 +1882,11 @@ readonly "surfaceScale"?: (number);
 readonly "surfaceStrength"?: (number);
 /** Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway. */
 readonly "toon"?: (boolean);
-/** How smooth a toon material's ambient light (the Environment and its hemisphere light) and reflection stay: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), so the bands sit on flat colour; 1 the smooth PBR ambient and reflections. See `looks §12`. */
+/** How smooth a toon material's ambient light (the Environment and its hemisphere light) and reflection stay: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), so the bands sit on flat colour; 1 the smooth PBR ambient and reflections. */
 readonly "toonAmbient"?: (number);
 /** The toon bands' and highlight's edges, anti-aliased over this many pixels (lilToon's screen-space smoothing); 0 hard steps that only TAA softens. */
 readonly "toonSoftness"?: (number);
-/** Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's; this style's angle and colour where it sets none), in the colour the surface shows along each edge or wireframeColor; the faces hide the edges behind them. A material's own wireframe draws its edges alone. See `looks §12`. */
+/** Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's; this style's angle and colour where it sets none), in the colour the surface shows along each edge or wireframeColor; the faces hide the edges behind them. A material's own wireframe draws its edges alone. */
 readonly "wireframe"?: (boolean);
 /** The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge. */
 readonly "wireframeAngle"?: (number);
@@ -1904,7 +1904,7 @@ readonly "aoIntensity"?: (number);
 readonly "aoMethod"?: ("auto" | "gtao" | "ssao" | "screen") & (string);
 /** The world-space radius searched for occluders. */
 readonly "aoRadius"?: (number);
-/** Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. See `render §5`. */
+/** Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. */
 readonly "aoRadiusScale"?: (number);
 /** Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full. */
 readonly "aoResolution"?: ("full" | "half") & (string);
@@ -1920,7 +1920,7 @@ readonly "brightness"?: (number);
 readonly "chromaticAberration"?: (number);
 /** Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off. */
 readonly "contrast"?: (number);
-/** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. */
+/** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). */
 readonly "custom"?: (ReadonlyArray<({
 readonly "$ogRef": (string);
 })> | (number extends (({
@@ -1938,7 +1938,7 @@ readonly "dofFocusRange"?: (number);
 readonly "dofMaxBlur"?: (number);
 /** Taps per pixel. */
 readonly "dofQuality"?: ("low" | "high") & (string);
-/** Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. See `looks §19`. */
+/** Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. */
 readonly "dofTiltShift"?: (number);
 /** Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off. */
 readonly "filmGrain"?: (number);
@@ -1970,7 +1970,7 @@ readonly "grayscale"?: (number);
 readonly "hue"?: (number);
 /** How far each colour goes towards its complement; 0 is off. */
 readonly "invert"?: (number);
-/** Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. See `render §5`. */
+/** Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. */
 readonly "lensDistortion"?: (number);
 /** The lens's centre, in fractions of the frame from the top left. */
 readonly "lensDistortionCenter"?: (ReadonlyArray<(number)> & { readonly length: 2 });
@@ -2022,7 +2022,7 @@ readonly "shakeMaxRoll"?: (number);
 readonly "shakeSeed"?: (number);
 /** Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off. */
 readonly "sharpen"?: (number);
-/** Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. See `render §5`. */
+/** Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. */
 readonly "ssr"?: (boolean);
 /** The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). */
 readonly "ssrFade"?: (number);
@@ -2030,15 +2030,15 @@ readonly "ssrFade"?: (number);
 readonly "ssrIntensity"?: (number);
 /** How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance. */
 readonly "ssrMaxDistance"?: (number);
-/** The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. See `render §5`. */
+/** The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. */
 readonly "ssrMaxRoughness"?: (number);
-/** Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. See `render §5`. */
+/** Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. */
 readonly "ssrResolution"?: ("full" | "half") & (string);
-/** The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. See `render §5`. */
+/** The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. */
 readonly "ssrSteps"?: (number);
 /** How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. */
 readonly "ssrThickness"?: (number);
-/** White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. See `render §5`. */
+/** White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. */
 readonly "temperature"?: (number);
 /** Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off. */
 readonly "threshold"?: (number);
@@ -2058,21 +2058,21 @@ readonly "vignetteRadius"?: (number);
 readonly "vignetteSmoothness"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::procedural::RenderSettings": ({
-/** How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. See `render §5`. */
+/** How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. */
 readonly "adaptSpeedDown"?: (number);
 /** How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure. */
 readonly "adaptSpeedUp"?: (number);
 /** PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. */
 readonly "ambientOcclusion"?: (boolean);
-/** The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. See `render §5`. */
+/** The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. */
 readonly "aoResolution"?: ("postEffects" | "full" | "half") & (string);
-/** Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike. See `render §5`. */
+/** Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike. */
 readonly "autoExposure"?: (boolean);
-/** The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays as dark as its light makes it. Below autoExposureMin it is taken as autoExposureMin. See `render §5`. */
+/** The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays as dark as its light makes it. Below autoExposureMin it is taken as autoExposureMin. */
 readonly "autoExposureMax"?: (number);
-/** The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further. See `render §5`. */
+/** The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further. */
 readonly "autoExposureMin"?: (number);
-/** Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. See `render §4`. */
+/** Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. */
 readonly "bakedLighting"?: (boolean);
 /** Light above the threshold bleeds into its surroundings. */
 readonly "bloom"?: (boolean);
@@ -2082,7 +2082,7 @@ readonly "bloomContrast"?: (number);
 readonly "bloomIntensity"?: (number);
 /** Softens the threshold over threshold plus or minus knee; 0 is a hard cut. */
 readonly "bloomKnee"?: (number);
-/** Below 0 (the default) keeps Origin's bloom. 0 to 1 is three.js UnrealBloomPass at this radius: a half-resolution high pass from bloomThreshold to bloomThreshold + bloomKnee, five Gaussian mips mixed by mix(f, 1.2 - f, radius), added at bloomIntensity as EffectComposer's additive copy. See `render §5`. */
+/** Below 0 (the default) keeps Origin's bloom. 0 to 1 is three.js UnrealBloomPass at this radius: a half-resolution high pass from bloomThreshold to bloomThreshold + bloomKnee, five Gaussian mips mixed by mix(f, 1.2 - f, radius), added at bloomIntensity as EffectComposer's additive copy. */
 readonly "bloomRadius"?: (number);
 /** Brightness after exposure where bloom starts; 1 is display white. */
 readonly "bloomThreshold"?: (number);
@@ -2090,21 +2090,21 @@ readonly "bloomThreshold"?: (number);
 readonly "environmentIntensity"?: (number);
 /** A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. */
 readonly "exposure"?: (number);
-/** Draw what moves between the last two ticks: a frame between ticks blends entities, og.Camera and skinned joints from the tick before the last to the last, showing the world up to one tick late. Frames on a tick boundary, screenshots and captures draw the last tick. Presentation only. See `render §9`. */
+/** Draw what moves between the last two ticks: a frame between ticks blends entities, og.Camera and skinned joints from the tick before the last to the last, showing the world up to one tick late. Frames on a tick boundary, screenshots and captures draw the last tick. Presentation only. */
 readonly "interpolate"?: (boolean);
-/** A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full. See `render §10`. */
+/** A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full. */
 readonly "lodBias"?: (number);
 /** At most this many composed effects (og.Vfx) drawn at once: past it the oldest one-shot effects are left out, then the oldest looping ones, and the probe's dump_render counts them (vfx.dropped). 64; the low preset 32, high 128. Drawing only: their events, shakes and sounds still come. */
 readonly "maxVfx"?: (number);
 /** At most this many particle slots (the emitters' maxParticles, summed) among the og.Vfx drawn: past it the oldest one-shot effects are left out, then the oldest looping ones, as with maxVfx. 65536; the low preset 32768, high 131072. */
 readonly "maxVfxParticles"?: (number);
-/** Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame. See `render §2`. */
+/** Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame. */
 readonly "msaaSamples"?: (number);
 /** Every particle system's emission times this (0 to 1); an emitter left with fewer than 8 particles alive at once keeps more, so a flash or a ring stays whole. The low preset draws 0.5. Drawing only: particle events and collisions are the full emitter's. */
 readonly "particleEmission"?: (number);
 /** The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set. */
 readonly "quality"?: ("none" | "low" | "medium" | "high") & (string);
-/** Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off. See `render §3`. */
+/** Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off. */
 readonly "rectShadows"?: (boolean);
 /** PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. */
 readonly "screenSpaceReflections"?: (boolean);
@@ -2124,17 +2124,17 @@ readonly "snapDistance"?: (number);
 readonly "softParticles"?: (boolean);
 /** PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps. */
 readonly "ssrStepScale"?: (number);
-/** How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole. See `render §3`. */
+/** How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole. */
 readonly "staticLightReach"?: (number);
 /** Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. */
 readonly "toneMapped"?: (boolean);
 /** Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none. */
 readonly "toneMapping"?: ("aces" | "agx" | "none" | "neutral") & (string);
-/** Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. See `render §1`. */
+/** Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. */
 readonly "upscaler"?: ("taau" | "fsr3" | "auto") & (string);
 /** A volumetric og.Fog (Fog.volumetric) is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even. */
 readonly "volumetricFog"?: (boolean);
-/** Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. See `render §7`. */
+/** Fog.volumetric's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. */
 readonly "volumetricStepScale"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::procedural::Sky": ({
@@ -2176,7 +2176,7 @@ readonly "zenith"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((st
 readonly "Reflected_og_cook::cook::source_schemas::procedural::Stylise": ({
 /** How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off. */
 readonly "affineTexturing"?: (number);
-/** Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. See `looks §11`. */
+/** Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. */
 readonly "depthBands"?: (number);
 /** Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true. */
 readonly "depthBandsFar"?: (number);
@@ -2196,7 +2196,7 @@ readonly "depthBits"?: (number);
 readonly "dither"?: ("none" | "bayer2" | "bayer4" | "bayer8" | "blueNoise" | "interleavedGradient") & (string);
 /** The size of one dither cell in logical pixels. */
 readonly "ditherScale"?: (number);
-/** Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass. See `looks §8`. */
+/** Where the dither's cells lie: screen, a grid over the frame (it crawls as the camera moves); surface, cells on the surfaces at least ditherScale pixels on the screen each way, the sky's on a cube round the camera; object, in each mesh instance's own space. Off screen the frame runs the prepass. */
 readonly "ditherSpace"?: ("screen" | "surface" | "object") & (string);
 /** The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands. */
 readonly "ditherStrength"?: (number);
@@ -2210,7 +2210,7 @@ readonly "halftoneColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 }))
 readonly "halftoneMisregistration"?: (number);
 /** How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk). */
 readonly "halftoneMode"?: ("ink" | "cmyk") & (string);
-/** Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera. See `looks §9`. */
+/** Which tones the halftone prints on: all, the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots, a tint over the region's own colour at most 0.4 of a cell wide. They fade to flat ink on surfaces turned away from the camera. */
 readonly "halftoneRegion"?: ("all" | "shade" | "highlight") & (string);
 /** The dot grid's pitch in logical pixels. */
 readonly "halftoneSize"?: (number);
@@ -2222,11 +2222,11 @@ readonly "hatching"?: (number);
 readonly "hatchingAngle"?: (number);
 /** The stroke colour (linear): graphite, sepia or ink. */
 readonly "hatchingColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
-/** Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. See `looks §9`. */
+/** Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. */
 readonly "hatchingDepth"?: (number);
-/** Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. See `looks §9`. */
+/** Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. */
 readonly "hatchingDistance"?: (number);
-/** Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. See `looks §9`. */
+/** Colour hatching: the ground is a light wash of its own colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. */
 readonly "hatchingKeepColor"?: (boolean);
 /** How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). */
 readonly "hatchingLevels"?: (number);
@@ -2250,7 +2250,7 @@ readonly "inkNormalThreshold"?: (number);
 readonly "inkThreshold"?: (number);
 /** The line width in logical pixels. */
 readonly "inkWidth"?: (number);
-/** How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. See `looks §10`. */
+/** How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. */
 readonly "paintAnisotropy"?: (number);
 /** Colour bleeding across edges into its neighbours, wet in wet; 0 is none. */
 readonly "paintBleed"?: (number);
@@ -2268,23 +2268,23 @@ readonly "paintCanvasStrength"?: (number);
 readonly "paintCanvasWorldScale"?: (number);
 /** The detail of a skinned mesh's pixels (a character's face and hands) where its material sets less: 0 painted as the rest, 1 kept as drawn. */
 readonly "paintCharacterDetail"?: (number);
-/** How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike. See `looks §10`. */
+/** How far detail keeps its shape under paintRadius: a pixel's radius shrinks by its detail (its material's StandardMaterialDesc.paintDetail, or paintCharacterDetail on a skinned mesh) times this, and no stroke crosses an object's edge. Above 0 the frame runs the prepass; 0 paints every pixel alike. */
 readonly "paintDetail"?: (number);
 /** Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. */
 readonly "paintEdgeDarkening"?: (number);
-/** Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. See `looks §10`. */
+/** Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. */
 readonly "paintRadius"?: (number);
-/** Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance. See `looks §10`. */
+/** Brush strokes in the paint, sized by paintRadius: marks along each stroke (the image's structure, or a slowly turning lay over flat regions), their own light and dark, and ragged edges where strokes meet. 0 is none; 1 bold, visible at a glance. */
 readonly "paintStrokes"?: (number);
 /** Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none. */
 readonly "palette"?: ({
 readonly "$ogRef": (string);
 });
-/** The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale. See `looks §7`. */
+/** The logical resolution: the scene is rendered this many pixels tall and scaled up to the output by a whole number (pixelUpscale) with nearest filtering; 0 renders at the output's resolution. The width follows the output's aspect, at most the output's width over the scale. */
 readonly "pixelHeight"?: (number);
 /** Snap the camera and world sprites to the logical pixel grid, so a moving orthographic camera scrolls by whole pixels and sprites in a 3D world keep their edges (pixel sprites in 3D sets). */
 readonly "pixelSnap"?: (boolean);
-/** The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it. See `looks §7`. */
+/** The whole-number scale from the logical to the output resolution, a hard request: honoured whenever pixelHeight times it fits the output's height, else the largest that fits; 0 takes the largest that fits. A frame that does not fill the output is centred with Camera.background round it. */
 readonly "pixelUpscale"?: (number);
 /** Tones per colour channel after tone mapping (2 to 64): smooth gradients become flat steps; 0 is off. */
 readonly "posterize"?: (number);
@@ -2292,17 +2292,17 @@ readonly "posterize"?: (number);
 readonly "posterizeMode"?: ("channel" | "tone") & (string);
 /** Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off. */
 readonly "vertexSnap"?: (number);
-/** The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. See `looks §10`. */
+/** The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. */
 readonly "watercolorDilution"?: (number);
 /** A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none. */
 readonly "watercolorDryBrush"?: (number);
-/** The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none. See `looks §10`. */
+/** The wash's dark rim, drawn after paintRadius's strokes: pigment pooled two to three pixels wide at a wash's outer boundary (a colour step wider than a line, or a silhouette against something farther), the colour there raised to one plus the strength. Seams and creases get none; 0 is none. */
 readonly "watercolorEdgeDarkening"?: (number);
-/** Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none. See `looks §10`. */
+/** Pigment settling into the paper's grain: a density from the paper's relief (paintCanvas, else a noise) thins each colour towards watercolorPaper on the peaks and thickens it in the pits, weighed by the pigment load so the paper and pale washes stay clean; the wash keeps its mean value. 0 is none. */
 readonly "watercolorGranulation"?: (number);
 /** The paper's colour (linear): what the wash thins towards and the dry brush leaves bare. */
 readonly "watercolorPaper"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
-/** Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. See `looks §10`. */
+/** Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. */
 readonly "watercolorTurbulence"?: (number);
 /** The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none. */
 readonly "watercolorWobble"?: (number);
@@ -6510,7 +6510,7 @@ readonly "castShadow"?: (boolean);
 readonly "color"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
 /** The radiance multiplier, as three.js DirectionalLight.intensity. */
 readonly "intensity"?: (number);
-/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. */
+/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). */
 readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 /** With shadowBox: the depth bias toward the light (three.js shadow.bias times its camera's depth range). 0 is one texel. Leaf cards need a few centimetres or they shadow each other dark. */
 readonly "shadowBias"?: (number);
@@ -6556,7 +6556,7 @@ readonly "Reflected_og_cook::cook::source_schemas::media::timeline::PointLight":
 readonly "castShadow"?: (boolean);
 /** The light's linear colour. */
 readonly "color"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
-/** A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none. See `render §3`. */
+/** A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none. */
 readonly "cookie"?: ({
 readonly "$ogRef": (string);
 });
@@ -6564,7 +6564,7 @@ readonly "$ogRef": (string);
 readonly "distance"?: (number);
 /** Luminous intensity: the radiance at one metre for a zero-radius source, before the distance fade. */
 readonly "intensity"?: (number);
-/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. */
+/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). */
 readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 /** The spherical source radius: softens near-source falloff and widens specular highlights. Zero keeps a point source; independent of distance and shadow softness. */
 readonly "radius"?: (number);
@@ -6580,7 +6580,7 @@ readonly "aoIntensity"?: (number);
 readonly "aoMethod"?: ("auto" | "gtao" | "ssao" | "screen") & (string);
 /** The world-space radius searched for occluders. */
 readonly "aoRadius"?: (number);
-/** Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. See `render §5`. */
+/** Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. */
 readonly "aoRadiusScale"?: (number);
 /** Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full. */
 readonly "aoResolution"?: ("full" | "half") & (string);
@@ -6596,7 +6596,7 @@ readonly "brightness"?: (number);
 readonly "chromaticAberration"?: (number);
 /** Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off. */
 readonly "contrast"?: (number);
-/** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. */
+/** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). */
 readonly "custom"?: (ReadonlyArray<({
 readonly "$ogRef": (string);
 })> | (number extends (({
@@ -6614,7 +6614,7 @@ readonly "dofFocusRange"?: (number);
 readonly "dofMaxBlur"?: (number);
 /** Taps per pixel. */
 readonly "dofQuality"?: ("low" | "high") & (string);
-/** Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. See `looks §19`. */
+/** Tilt-shift: above 0 the sharp band is a strip across the image's middle, this fraction of its height either side of the centre line, at any camera distance; blur grows above it as far and below it as near, full at dofTiltShift times (1 + dofFalloff) past it. 0 focuses by depth. */
 readonly "dofTiltShift"?: (number);
 /** Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off. */
 readonly "filmGrain"?: (number);
@@ -6648,7 +6648,7 @@ readonly "grayscale"?: (number);
 readonly "hue"?: (number);
 /** How far each colour goes towards its complement; 0 is off. */
 readonly "invert"?: (number);
-/** Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. See `render §5`. */
+/** Barrel (positive: lines bow out) or pincushion (negative: in) distortion; 0 is off. Radius in pixels at any aspect; a barrel keeps its farthest corner on the image. After the depth-reading Stylise passes, before palette quantisation; the UI is not bent, pointer raycasts see the undistorted frame. */
 readonly "lensDistortion"?: (number);
 /** The lens's centre, in fractions of the frame from the top left. */
 readonly "lensDistortionCenter"?: (ReadonlyArray<(number)> & { readonly length: 2 });
@@ -6702,7 +6702,7 @@ readonly "shakeSeed"?: (number);
 readonly "shakeTrauma"?: (number);
 /** Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off. */
 readonly "sharpen"?: (number);
-/** Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. See `render §5`. */
+/** Stochastic, denoised screen-space reflections (after FidelityFX SSSR and Frostbite): a GGX-lobe ray a pixel up to ssrMaxRoughness through a depth pyramid, reflecting the previous frame's lit image; on a miss, the probes', probe GI's and environment's. Opaque, perspective 3D; turns on the prepass. */
 readonly "ssr"?: (boolean);
 /** The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). */
 readonly "ssrFade"?: (number);
@@ -6710,15 +6710,15 @@ readonly "ssrFade"?: (number);
 readonly "ssrIntensity"?: (number);
 /** How far a reflected ray marches, in world units; the last fifth fades into the probes'. The march's cost is set by ssrSteps, not by the distance. */
 readonly "ssrMaxDistance"?: (number);
-/** The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. See `render §5`. */
+/** The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. */
 readonly "ssrMaxRoughness"?: (number);
-/** Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. See `render §5`. */
+/** Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness. Full: one ray per pixel, denoised at full resolution. */
 readonly "ssrResolution"?: ("full" | "half") & (string);
-/** The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. See `render §5`. */
+/** The hierarchical march's iterations along each ray, each crossing a cell of the min-max depth pyramid's current level; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. */
 readonly "ssrSteps"?: (number);
 /** How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. */
 readonly "ssrThickness"?: (number);
-/** White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. See `render §5`. */
+/** White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. */
 readonly "temperature"?: (number);
 /** Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off. */
 readonly "threshold"?: (number);
@@ -6738,7 +6738,7 @@ readonly "vignetteRadius"?: (number);
 readonly "vignetteSmoothness"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::media::timeline::RectLight": ({
-/** Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it. See `render §3`. */
+/** Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it. */
 readonly "castShadow"?: (boolean);
 /** The light's linear colour. */
 readonly "color"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
@@ -6746,7 +6746,7 @@ readonly "color"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((str
 readonly "height"?: (number);
 /** The emitted radiance (luminance), as three.js RectAreaLight.intensity. */
 readonly "intensity"?: (number);
-/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. */
+/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). */
 readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 /** Emit from the back face as well (a hanging panel lit both ways). */
 readonly "twoSided"?: (boolean);
@@ -6760,7 +6760,7 @@ readonly "angle"?: (number);
 readonly "castShadow"?: (boolean);
 /** The light's linear colour. */
 readonly "color"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
-/** A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern. See `render §3`. */
+/** A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern. */
 readonly "cookie"?: ({
 readonly "$ogRef": (string);
 });
@@ -6768,7 +6768,7 @@ readonly "$ogRef": (string);
 readonly "distance"?: (number);
 /** Luminous intensity on the axis: the radiance at one metre for a zero-radius source, before the distance fade. */
 readonly "intensity"?: (number);
-/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. */
+/** How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). */
 readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 /** The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra. */
 readonly "penumbra"?: (number);

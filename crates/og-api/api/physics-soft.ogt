@@ -83,7 +83,6 @@
 
   enum Simulation {
     doc "Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation."
-    guide "physics §8"
     variant gameplay "In the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
     variant visual "By the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
   }
@@ -167,7 +166,6 @@
       tunable true
     }
     field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces." {
-      guide "physics §8"
       unit mps
       tunable true
     }
@@ -203,13 +201,11 @@
       default true
     }
     field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-      guide "physics §8"
     }
   }
 
   component Garment {
     doc "A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied."
-    guide "physics §8"
     field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
     field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
       default 0.2
@@ -287,7 +283,6 @@
       tunable true
     }
     field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off)." {
-      guide "physics §8"
       unit mps
       tunable true
     }
@@ -308,7 +303,6 @@
       tunable true
     }
     field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-      guide "physics §8"
     }
   }
 
@@ -329,7 +323,6 @@
 
   component SoftBody {
     doc "An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface."
-    guide "physics §8"
     field shape SoftBodyShape "sphere, box or mesh."
     field radius f32 "A sphere's radius." {
       default 0.5
@@ -343,7 +336,6 @@
       unit m
     }
     field detail u32 "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one)." {
-      guide "physics §8"
       default 2
       min 0
       max 7
@@ -418,7 +410,6 @@
       default true
     }
     field simulation Simulation "gameplay (in the tick, world state) or visual (on the GPU, for looks only)." {
-      guide "physics §8"
     }
     field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated; 1 when simulation is visual." {
       default 1
@@ -533,7 +524,6 @@
 
   component Fluid3D {
     doc "Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface."
-    guide "physics §8"
     split physics world3d
     field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144." {
       default 2000
@@ -669,7 +659,6 @@
       default true
     }
     field simulation Simulation "gameplay (in the tick, world state) or visual (MLS-MPM on the GPU, for looks only): the tick holds none of its particles, so og.physics.fluid3dParticles answers none and buoyancy and groups ignore it. Without RenderCapabilities.visualSimulation it draws the spawn box still." {
-      guide "physics §8"
     }
   }
 

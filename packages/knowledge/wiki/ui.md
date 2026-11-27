@@ -6,11 +6,9 @@ The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwi
 
 Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
 
-See `components`.
-
 - **TypeScript**: functions are the namespace `og.ui`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module ui {
@@ -91,7 +89,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 460</sub>
+<sub>Module `ui` line 459</sub>
 
 ```ogt
 column UiMaterial {
@@ -102,4 +100,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 467</sub>
+<sub>Module `ui` line 466</sub>

@@ -9,7 +9,7 @@ A system declares what it reads and writes; a write to an undeclared component i
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Core** (what most games use): `SystemDesc`, `defineSystem`; 10 more are advanced (`og api show system --all`).
-- **Index**: [every module and guide](index.md).
+- **Index**: [every module](index.md).
 
 ```ogt
 module system {

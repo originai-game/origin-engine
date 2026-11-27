@@ -8,8 +8,6 @@ Module [`sight`](../sight.md) · [index](../index.md)
 
 Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered.
 
-See `world §11`.
-
 Also known as: fog of war, FOW, unexplored map, shroud, line of sight map, vision map, reveal the map, RTS fog, roguelike field of view, FOV, minimap fog, dark unexplored area
 
 Token `og.SightMap`, registered under the schema name `og.SightMap`; its value type is `SightMap`.
@@ -27,7 +25,6 @@ Token `og.SightMap`, registered under the schema name `og.SightMap`; its value t
 component SightMap {
   aliases "fog of war, FOW, unexplored map, shroud, line of sight map, vision map, reveal the map, RTS fog, roguelike field of view, FOV, minimap fog, dark unexplored area"
   doc "Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered."
-  guide "world §11"
   field cell f32 "A cell's side. A map has at most 512 cells a side: a larger extent takes a larger cell." {
     default 1
     min 0.05
@@ -52,4 +49,4 @@ component SightMap {
 }
 ```
 
-<sub>Module `sight` line 19</sub>
+<sub>Module `sight` line 18</sub>

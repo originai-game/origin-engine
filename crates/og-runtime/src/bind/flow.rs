@@ -1,4 +1,4 @@
-//! A game's flow (IDL `flow`, guides/flow.md): a Yarn dialogue of
+//! A game's flow (`og api show flow`): a Yarn dialogue of
 //! segments. `og.flow.load` prepares a loaded dialogue: each node with an
 //! `og-flow` header names its segment, a timeline of footage (its own video
 //! track, which plays on a deck), a live scene (a `scene` track), or both.

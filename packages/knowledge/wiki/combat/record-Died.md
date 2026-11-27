@@ -8,8 +8,6 @@ Module [`combat`](../combat.md) · [index](../index.md)
 
 A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).
 
-See `combat §2`.
-
 Also known as: on death, killed, health reached zero, death event
 
 Token `og.Died`, registered under the schema name `og.Died`; its value type is `Died`.
@@ -23,10 +21,9 @@ Token `og.Died`, registered under the schema name `og.Died`; its value type is `
 event Died {
   aliases "on death, killed, health reached zero, death event"
   doc "A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set)."
-  guide "combat §2"
   field entity Entity "The entity with the og.Health."
   field source Entity "The attacker whose hit it was, or the og.Projectile's shooter."
 }
 ```
 
-<sub>Module `combat` line 164</sub>
+<sub>Module `combat` line 156</sub>

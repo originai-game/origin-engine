@@ -349,5 +349,4 @@ the optional authored normal, packed roughness and cavity maps. Pin the
 accepted sources and maps in the platform's asset store as ordinary game
 assets. A changed brief is a new request, not permission to overwrite art
 the maker accepted. The engine calls no paid service and performs no
-runtime inference. The districts guide §4 describes the processing and
-its limitations.
+runtime inference. Query `og api show file:materials` for its checked input.

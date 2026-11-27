@@ -8,8 +8,6 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
 
-See `render §7`.
-
 Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type is `Clouds`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -26,14 +24,13 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 | `detail` | `number` | `0.35` | 0 … 1 | `ratio` | tunable | How deep fine noise erodes their surface (0: smooth lumps, 0.35: billows, 1: wispy). |
 | `layer` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The high thin layer's cover (0: none). |
 | `layerAltitude` | `number` | `8000` | ≥ 0 | `m` | tunable | The high layer's height (kept above the cumulus). |
-| `shadows` | `number` | `1` | 0 … 1 | `ratio` | tunable | How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast. See `render §7`. |
+| `shadows` | `number` | `1` | 0 … 1 | `ratio` | tunable | How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast. |
 | `steps` | `number` | `48` | 8 … 256 | — | — | Samples along each view ray through the cumulus: more is smoother and costs more. |
 | `seed` | `number` | `1` | — | — | — | Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout. |
 
 ```ogt
 resource Clouds {
   doc "Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only."
-  guide "render §7"
   field enabled bool "Draw the clouds."
   field kind CloudKind "The kind of cloud in the volumetric layer."
   field coverage f32 "How much of the sky the clouds cover: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
@@ -101,7 +98,6 @@ resource Clouds {
     max 1
     unit ratio
     tunable true
-    guide "render §7"
   }
   field steps u32 "Samples along each view ray through the cumulus: more is smoother and costs more." {
     default 48
@@ -114,4 +110,4 @@ resource Clouds {
 }
 ```
 
-<sub>Module `atmosphere` line 360</sub>
+<sub>Module `atmosphere` line 351</sub>

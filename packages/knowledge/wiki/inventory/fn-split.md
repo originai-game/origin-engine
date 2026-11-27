@@ -36,4 +36,4 @@ fn split {
 }
 ```
 
-<sub>Module `inventory` line 147</sub>
+<sub>Module `inventory` line 141</sub>

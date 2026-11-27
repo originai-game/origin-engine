@@ -8,8 +8,6 @@ Module [`shared`](../shared.md) · [index](../index.md)
 
 Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
 
-See `shared-worlds §3`.
-
 Also known as: other visitors online, remote avatar, networked avatar, replicated entity, ghost, proxy
 
 Token `og.RemoteAvatar`, registered under the schema name `og.RemoteAvatar`; its value type is `RemoteAvatar`.
@@ -25,7 +23,6 @@ Token `og.RemoteAvatar`, registered under the schema name `og.RemoteAvatar`; its
 component RemoteAvatar {
   doc "Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote."
   aliases "other visitors online, remote avatar, networked avatar, replicated entity, ghost, proxy"
-  guide "shared-worlds §3"
   field id u32 "This client's number for it, while it is in sight." {
     readonly true
   }
@@ -43,4 +40,4 @@ component RemoteAvatar {
 }
 ```
 
-<sub>Module `shared` line 61</sub>
+<sub>Module `shared` line 57</sub>

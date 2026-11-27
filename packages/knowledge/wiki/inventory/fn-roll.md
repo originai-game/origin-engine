@@ -34,4 +34,4 @@ fn roll {
 }
 ```
 
-<sub>Module `inventory` line 177</sub>
+<sub>Module `inventory` line 171</sub>

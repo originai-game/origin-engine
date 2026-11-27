@@ -25,4 +25,4 @@ enum StatusStacking {
 }
 ```
 
-<sub>Module `abilities` line 5</sub>
+<sub>Module `abilities` line 4</sub>
