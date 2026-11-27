@@ -1,4 +1,4 @@
-//! og-ai through its public API: a guard's behaviour parsed from text and
+//! og-ai through its public API: a guard's behaviour compiled from fields and
 //! ticked in a world with og.nav, the way the runtime mounts them.
 //!
 //! Ways it could fail: two runs or a restored snapshot decide differently
@@ -32,46 +32,23 @@ struct Tuning {
 }
 
 const GUARD: &str = r#"
-type behaviour
-version 1
----
-name "guard"
-key bites 0
-route beat {
-  point 2 2 0
-  point 8 2 0
-}
-tree {
-  ReactiveFallback {
-    ReactiveSequence flee {
-      check Health.hp below 20
-      flee {
-        distance 6
-      }
-    }
-    ReactiveSequence attack {
-      check sees
-      check targetDistance below 1.2
-      command bite {
-        cooldown 0.5
-      }
-    }
-    ReactiveSequence chase {
-      check sees
-      chase {
-        speed 3
-      }
-    }
-    ReactiveSequence alarm {
-      check Game.alarm
-      move_to 5 9 0
-    }
-    patrol beat {
-      wait 0.5
-      speed 2
-    }
-  }
-}
+{"name":"guard","keys":{"bites":0},"routes":{"beat":[[2,2,0],[8,2,0]]},
+ "root":{"kind":"tree","node":{"kind":"selector","children":[
+   {"kind":"sequence","name":"flee","children":[
+     {"kind":"check","check":{"operand":"Health.hp","op":"below","value":20}},
+     {"kind":"action","action":{"kind":"flee","key":"target","distance":6}}]},
+   {"kind":"sequence","name":"attack","children":[
+     {"kind":"check","check":{"operand":"sees","op":"truthy"}},
+     {"kind":"check","check":{"operand":"targetDistance","op":"below","value":1.2}},
+     {"kind":"action","action":{"kind":"command","name":"bite","args":[],"cooldown":0.5}}]},
+   {"kind":"sequence","name":"chase","children":[
+     {"kind":"check","check":{"operand":"sees","op":"truthy"}},
+     {"kind":"action","action":{"kind":"chase","key":"target","speed":3,"reach":0.5}}]},
+   {"kind":"sequence","name":"alarm","children":[
+     {"kind":"check","check":{"operand":"Game.alarm","op":"truthy"}},
+     {"kind":"action","action":{"kind":"move-to","point":[5,9,0]}}]},
+   {"kind":"action","action":{"kind":"patrol","route":"beat","wait":0.5,"speed":2,"loops":true}}
+ ]}}}
 "#;
 
 struct Scene {
@@ -130,7 +107,9 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
         },
     )
     .unwrap();
-    let parsed = Behaviour::parse(behaviour).unwrap();
+    let input: og_ai::definition::Behaviour = serde_json::from_str(behaviour).unwrap();
+    let parsed =
+        Behaviour::from_definition(input, &mut |id| Err(format!("unknown subtree {id}"))).unwrap();
     let data = parsed.to_bytes().unwrap();
     let native = Behaviour::from_bytes(&data).unwrap();
     assert_eq!(native, parsed);

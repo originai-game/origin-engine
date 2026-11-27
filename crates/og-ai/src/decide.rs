@@ -3,4 +3,6 @@
 
 pub mod agent;
 pub mod asset;
+mod compile;
+pub mod definition;
 pub mod tree;

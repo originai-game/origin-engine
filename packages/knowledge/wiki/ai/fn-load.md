@@ -6,7 +6,7 @@ Module [`ai`](../ai.md) · [index](../index.md)
 
 ### `og.ai.load`
 
-A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.
+Load native behaviour fields compiled from a checked file.behaviour declaration. Subtrees are already inlined; loading never reads author files.
 
 Also known as: load a behaviour tree, behaviour tree asset, state machine asset
 
@@ -17,7 +17,7 @@ og.ai.load(world: World, path: string): Result<BehaviourInfo>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
-| `path` | `string` | no | The behaviour asset, such as `ai/slime.ogt`. |
+| `path` | `string` | no | Canonical behaviour content ID, such as 'base/ai/slime'. |
 
 **Returns** `Result<BehaviourInfo>`: Refused for a path that is not a cooked behaviour.
 
@@ -26,9 +26,9 @@ Binding symbol `og_ai_load` · publish builds: kept
 ```ogt
 fn load {
   aliases "load a behaviour tree, behaviour tree asset, state machine asset"
-  doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets."
+  doc "Load native behaviour fields compiled from a checked file.behaviour declaration. Subtrees are already inlined; loading never reads author files."
   param world World "The world."
-  param path String "The behaviour asset, such as `ai/slime.ogt`."
+  param path String "Canonical behaviour content ID, such as 'base/ai/slime'."
   returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
 }
 ```

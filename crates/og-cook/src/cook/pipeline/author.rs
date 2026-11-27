@@ -44,6 +44,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("model-program", &model::MODEL),
     ("table", &table::TABLE),
     ("district", &district::DISTRICT),
+    ("behaviour", &behaviour::BEHAVIOUR),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.

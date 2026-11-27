@@ -33935,7 +33935,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed)."),
+                doc: doc!("Its arguments joined by spaces (at most 255 UTF-8 bytes; longer ones are refused during compilation)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

@@ -16,7 +16,7 @@ A loaded behaviour.
 | `states` | `readonly string[]` | `[]` | — | — | — | A machine's states, by index (AiAgent.state). |
 | `nodes` | `readonly string[]` | `[]` | — | — | — | Its nodes' names, by index (AiAgent.node). |
 | `keys` | `readonly string[]` | `[]` | — | — | — | Its declared blackboard keys (its subtrees' too). |
-| `subtrees` | `readonly string[]` | `[]` | — | — | — | The behaviours its `use` nodes inline, every one reached, in the order first met. |
+| `subtrees` | `readonly string[]` | `[]` | — | — | — | Canonical IDs of the behaviours its subtree nodes inline, every one reached, in the order first met. |
 
 ```ogt
 struct BehaviourInfo {
@@ -27,7 +27,7 @@ struct BehaviourInfo {
   field states List.String "A machine's states, by index (AiAgent.state)."
   field nodes List.String "Its nodes' names, by index (AiAgent.node)."
   field keys List.String "Its declared blackboard keys (its subtrees' too)."
-  field subtrees List.String "The behaviours its `use` nodes inline, every one reached, in the order first met."
+  field subtrees List.String "Canonical IDs of the behaviours its subtree nodes inline, every one reached, in the order first met."
 }
 ```
 

@@ -253,7 +253,6 @@ export type Input_behaviour = ({
 readonly "keys"?: (Readonly<Record<string, (Input_behaviourDefinitions["Value"])>>);
 readonly "name": (string);
 readonly "root": (Input_behaviourDefinitions["Root"]);
-/** Named patrol points in world units. */
 readonly "routes"?: (Readonly<Record<string, (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))>>);
 });
 export interface Input_behaviourDefinitions {
@@ -303,10 +302,9 @@ readonly "kind": ("game") & (string);
 readonly "name": (string);
 })) & { readonly "cooldown"?: never; readonly "distance"?: never; readonly "key"?: never; readonly "loops"?: never; readonly "point"?: never; readonly "radius"?: never; readonly "reach"?: never; readonly "route"?: never; readonly "seconds"?: never; readonly "speed"?: never; readonly "value"?: never; readonly "wait"?: never; }));
 readonly "Check": ({
-/** Dynamic comparison operand; exclusive with value (domain check). */
+/** Dynamic comparison operand, exclusive with value. */
 readonly "against"?: ((string) | (null));
 readonly "op": (Input_behaviourDefinitions["Op"]);
-/** Blackboard key or reflected Component.field / Resource.field path. */
 readonly "operand": (string);
 readonly "value"?: (((Input_behaviourDefinitions["Value"])) | ((null)));
 });
@@ -333,46 +331,59 @@ readonly "Curve": ("linear" | "inverse" | "quadratic" | "sqrt" | "smooth" | "ste
 readonly "Node": (((({
 readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("selector") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("sequence") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("steps") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "all": (boolean);
 readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("parallel") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
 readonly "kind": ("invert") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
 readonly "kind": ("succeed") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
 readonly "kind": ("repeat") & (string);
+readonly "name"?: ((string) | (null));
 readonly "times": (number);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
 readonly "kind": ("cooldown") & (string);
+readonly "name"?: ((string) | (null));
 readonly "seconds": (number);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
 readonly "kind": ("timeout") & (string);
+readonly "name"?: ((string) | (null));
 readonly "seconds": (number);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "check": (Input_behaviourDefinitions["Check"]);
 readonly "kind": ("check") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "child"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "action": (Input_behaviourDefinitions["Action"]);
 readonly "kind": ("action") & (string);
+readonly "name"?: ((string) | (null));
 })) & { readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "kind": ("subtree") & (string);
+readonly "name"?: ((string) | (null));
 readonly "source": (Input_behaviourDefinitions["ContentRef"]);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "times"?: never; }) | ((({
 readonly "inertia": (number);
 readonly "kind": ("utility") & (string);
+readonly "name"?: ((string) | (null));
 readonly "options": (ReadonlyArray<(Input_behaviourDefinitions["UtilityOption"])> | (number extends ((Input_behaviourDefinitions["UtilityOption"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }));
 readonly "Op": ("is" | "not" | "below" | "above" | "atMost" | "atLeast" | "truthy") & (string);

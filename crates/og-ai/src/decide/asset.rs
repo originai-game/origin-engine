@@ -1,47 +1,11 @@
-//! The behaviour asset: an `.ogt` of `type behaviour` holding a behaviour
-//! tree (`tree { ... }`) or a state machine (`machine { ... }`), its
-//! blackboard keys and its patrol routes. Parsing validates everything a
-//! tick would trip over (unknown node kinds, operators, routes, states,
-//! missing children), each error naming its line and the fix, so a cooked
-//! behaviour always runs.
-//!
-//! ```text
-//! type behaviour
-//! version 1
-//! ---
-//! name "slime"
-//! key alert 0
-//! route beat {
-//!   point 11 6.5 0
-//!   point 16 6.5 0
-//! }
-//! tree {
-//!   ReactiveFallback {
-//!     ReactiveSequence flee {
-//!       check Slime.hp below 20
-//!       flee
-//!     }
-//!     ReactiveSequence chase {
-//!       check sees
-//!       chase
-//!     }
-//!     patrol beat
-//!   }
-//! }
-//! ```
+//! Validated native behaviour trees, machines, keys and routes. Named
+//! definitions compile once; loading decodes fields and never author text.
 
 mod cooked;
-mod grammar;
-mod parse;
 mod validate;
-pub use grammar::LINES;
 
 use og_core::glam::Vec3;
-use og_core::ogt::{Block, Document, Entry, Value as OgtValue};
 use serde::{Deserialize, Serialize};
-
-/// The `.ogt` type of a behaviour.
-pub const BEHAVIOUR_TYPE: &str = "behaviour";
 
 /// A blackboard value.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -87,17 +51,6 @@ pub enum Op {
 }
 
 impl Op {
-    fn parse(w: &str) -> Option<Op> {
-        Some(match w {
-            "is" => Op::Is,
-            "not" => Op::Not,
-            "below" => Op::Below,
-            "above" => Op::Above,
-            "atMost" => Op::AtMost,
-            "atLeast" => Op::AtLeast,
-            _ => return None,
-        })
-    }
     pub fn name(self) -> &'static str {
         match self {
             Op::Is => "is",
@@ -216,15 +169,6 @@ pub enum Curve {
 }
 
 impl Curve {
-    const NAMES: &[(&str, Curve)] = &[
-        ("linear", Curve::Linear),
-        ("inverse", Curve::Inverse),
-        ("quadratic", Curve::Quadratic),
-        ("sqrt", Curve::Sqrt),
-        ("smooth", Curve::Smooth),
-        ("step", Curve::Step),
-    ];
-
     /// The score for input `v` between `lo` and `hi` (plain f32 arithmetic and sqrt).
     pub fn score(self, v: f32, lo: f32, hi: f32) -> f32 {
         let t = if hi != lo {
@@ -294,7 +238,7 @@ pub enum Kind {
     },
     Check(Check),
     Action(Action),
-    /// Another behaviour's tree, inlined (`use "ai/patrol.ogt"`): its one child.
+    /// Another behaviour's tree, inlined from its canonical reference: its one child.
     Subtree {
         path: String,
     },
@@ -314,11 +258,9 @@ pub enum Kind {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     pub kind: Kind,
-    /// A label (`ReactiveSequence chase`) or the node's kind and argument (`patrol beat`).
+    /// The declared label, or the node kind when no label was supplied.
     pub name: String,
     pub children: Vec<usize>,
-    /// The source line.
-    pub line: usize,
 }
 
 /// A transition of a state machine: to `to` when every check holds and the
@@ -347,7 +289,7 @@ pub enum Root {
     Machine { states: Vec<State>, initial: usize },
 }
 
-/// A parsed behaviour.
+/// A compiled behaviour.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Behaviour {
     pub name: String,
@@ -357,13 +299,10 @@ pub struct Behaviour {
     pub routes: Vec<(String, Vec<Vec3>)>,
     pub nodes: Vec<Node>,
     pub root: Root,
-    /// The behaviours its `use` nodes inline, every one reached, in the
+    /// The behaviours its subtree nodes inline, every one reached, in the
     /// order first met.
     pub subtrees: Vec<String>,
 }
-
-/// Reads a subtree's text by its asset path (`use "ai/patrol.ogt"`).
-pub type Resolve<'a> = &'a mut dyn FnMut(&str) -> Result<String, String>;
 
 /// The keys og.ai writes every tick from the agent's perception and body.
 pub const BUILTIN_KEYS: &[&str] = &[

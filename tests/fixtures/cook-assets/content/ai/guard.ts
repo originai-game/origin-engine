@@ -1,48 +1,30 @@
-type behaviour
-version 1
----
-# The guard's state machine (og.ai; `og api show ai`). It
-# patrols its post until it sees the trickster in its view cone, raises the
-# alarm (the game's `alarm` command) and chases; when it loses sight it
-# searches where it last saw it for 3 seconds, then goes back to its post.
-name "guard"
-route post {
-  point -6 0 -3
-  point -6 0 4
-  point -1 0 6
-}
-machine {
-  initial patrol
-  state patrol {
-    patrol post {
-      wait 1
-      speed 1.5
-    }
-    to alert {
-      check sees
-    }
-  }
-  state alert {
-    entry {
-      command alarm
-    }
-    chase {
-      speed 3
-      reach 1.5
-    }
-    to search {
-      check sees is false
-    }
-  }
-  state search {
-    move_to lastSeen {
-      speed 2
-    }
-    to alert {
-      check sees
-    }
-    to patrol {
-      after 3
-    }
-  }
-}
+import { file } from '@origingame/engine/author';
+
+// Patrol, raise the alarm and chase on sight, then search the last seen point.
+export default file.behaviour({
+  name: 'guard',
+  routes: { post: [[-6, 0, -3], [-6, 0, 4], [-1, 0, 6]] },
+  root: {
+    kind: 'machine', initial: 'patrol', states: [
+      {
+        name: 'patrol',
+        body: { kind: 'action', name: 'patrol post', action: { kind: 'patrol', route: 'post', wait: 1, speed: 1.5, loops: true } },
+        transitions: [{ to: 'alert', checks: [{ operand: 'sees', op: 'truthy' }] }],
+      },
+      {
+        name: 'alert',
+        enter: [{ kind: 'command', name: 'alarm', args: [], cooldown: 0 }],
+        body: { kind: 'action', name: 'chase', action: { kind: 'chase', key: 'target', speed: 3, reach: 1.5 } },
+        transitions: [{ to: 'search', checks: [{ operand: 'sees', op: 'is', value: false }] }],
+      },
+      {
+        name: 'search',
+        body: { kind: 'action', name: 'move_to lastSeen', action: { kind: 'move-to', key: 'lastSeen', speed: 2 } },
+        transitions: [
+          { to: 'alert', checks: [{ operand: 'sees', op: 'truthy' }] },
+          { to: 'patrol', after: 3 },
+        ],
+      },
+    ],
+  },
+});

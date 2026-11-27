@@ -1,7 +1,6 @@
 //! File reference from the actual cook registry and parser line tables.
 use super::kinds;
 use crate::grammar::Line;
-use std::collections::BTreeSet;
 use std::fmt::Write;
 
 pub const PATH: &str = "crates/og-api/guides/file-types.md";
@@ -138,6 +137,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "strings" {
                 out.push_str("Output: a native locale table loaded with og.load.strings. Fonts are ordered canonical content refs, bound to actual font outputs. Locale/fallback tags are canonicalized; direction defaults to the locale. Entries preserve Unicode and compile ICU messages before cook. Importing the TS declaration in UI code registers only its cooked ID; author code never runs in the game. og i18n tables --json reads checked tables across modules; --index returns IDs/paths without content evaluation. Extraction writes direct literals only and refuses computed/shared expressions. No string-table author or runtime OGT parser remains. See localization.\n\n");
             }
+            if ty == "behaviour" {
+                out.push_str("Output: native behaviour nodes, keys, routes and state machines loaded with og.ai.load by canonical ID. Named subtree refs inline checked tree inputs; cycles, machine subtrees and conflicting routes are rejected. Helper imports and all reached subtrees invalidate warm cooks. Runtime og.ai.create accepts the same structured definition with cooked subtree IDs as strings. No behaviour author/runtime text parser or sibling guessing remains. See world.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -146,24 +148,6 @@ pub fn markdown() -> Result<String, String> {
             "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `{input}` under assets/.\n"
         );
         match ty {
-            "behaviour" => {
-                let scopes: BTreeSet<_> = og_ai::asset::LINES
-                    .iter()
-                    .flat_map(|f| f.within.iter().copied())
-                    .collect();
-                for scope in scopes {
-                    let fields: Vec<_> = og_ai::asset::LINES
-                        .iter()
-                        .filter(|f| f.within.contains(&scope))
-                        .copied()
-                        .collect();
-                    if scope == "root" {
-                        table(&mut out, &fields);
-                    } else {
-                        block(&mut out, &format!("behaviour.{scope}"), &fields);
-                    }
-                }
-            }
             "quest" => {
                 for scope in ["quest", "reward", "stage", "objective"] {
                     let fields: Vec<_> = og_story::asset::QUEST_LINES

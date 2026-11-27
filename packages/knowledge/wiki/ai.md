@@ -2,7 +2,7 @@
 
 # The `ai` module
 
-Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.
 
 An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
 
@@ -14,7 +14,7 @@ See `world §10`.
 
 ```ogt
 module ai {
-  doc "Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots."
   # declarations follow, each on its own page
 ```
@@ -35,13 +35,13 @@ module ai {
 | [`og.Perception`](ai/record-Perception.md) | component |  | What an agent sees and hears. |
 | [`og.Perceivable`](ai/record-Perceivable.md) | component |  | Something agents of other teams can see. |
 | [`og.AiChanged`](ai/record-AiChanged.md) | event |  | An agent's state or running node changed (systems read it the tick after). |
-| [`og.AiActionStarted`](ai/record-AiActionStarted.md) | event |  | A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. |
+| [`og.AiActionStarted`](ai/record-AiActionStarted.md) | event |  | A game action (kind: 'game' in a behaviour) started: play its animation, open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. |
 | [`og.AiActionStopped`](ai/record-AiActionStopped.md) | event |  | A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). |
 | [`BehaviourInfo`](ai/type-BehaviourInfo.md) | struct |  | A loaded behaviour. |
 | [`NoiseDesc`](ai/type-NoiseDesc.md) | desc struct |  | A noise agents may hear next tick. |
 | [`AiDescription`](ai/type-AiDescription.md) | struct |  | What an agent is doing. |
-| [`og.ai.load`](ai/fn-load.md) | function | `(world: World, path: string): Result<BehaviourInfo>` | A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets. |
-| [`og.ai.parse`](ai/fn-parse.md) | function | `(world: World, text: string): Result<BehaviourInfo>` | A behaviour from text, now (tests and generated behaviours; assets go through og cook). |
+| [`og.ai.load`](ai/fn-load.md) | function | `(world: World, path: string): Result<BehaviourInfo>` | Load native behaviour fields compiled from a checked file.behaviour declaration. |
+| [`og.ai.create`](ai/fn-create.md) | function | `(world: World, definition: unknown): Result<BehaviourInfo>` | Compile a structured behaviour now. |
 | [`og.ai.get`](ai/fn-get.md) | function | `(world: World, entity: Entity, key: string): unknown` | A blackboard value of an agent as of its last think. |
 | [`og.ai.set`](ai/fn-set.md) | function | `(world: World, entity: Entity, key: string, value: unknown): Result<void>` | Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`. |
 | [`og.ai.restart`](ai/fn-restart.md) | function | `(world: World, entity: Entity): Result<void>` | Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its entry actions run again), a tree at its root, every timer and cooldown reset, the bl… |

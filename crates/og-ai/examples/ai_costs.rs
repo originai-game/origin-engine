@@ -22,43 +22,20 @@ struct Health {
 }
 
 const GUARD: &str = r#"
-type behaviour
-version 1
----
-name "guard"
-route beat {
-  point 4 4 0
-  point 60 4 0
-  point 60 60 0
-  point 4 60 0
-}
-tree {
-  ReactiveFallback {
-    ReactiveSequence flee {
-      check Health.hp below 20
-      flee {
-        distance 6
-      }
-    }
-    ReactiveSequence bite {
-      check sees
-      check targetDistance below 1
-      command bite {
-        cooldown 0.5
-      }
-    }
-    ReactiveSequence chase {
-      check sees
-      chase {
-        speed 3
-      }
-    }
-    patrol beat {
-      wait 0.5
-      speed 2
-    }
-  }
-}
+{"name":"guard","routes":{"beat":[[4,4,0],[60,4,0],[60,60,0],[4,60,0]]},
+ "root":{"kind":"tree","node":{"kind":"selector","children":[
+   {"kind":"sequence","name":"flee","children":[
+     {"kind":"check","check":{"operand":"Health.hp","op":"below","value":20}},
+     {"kind":"action","action":{"kind":"flee","key":"target","distance":6}}]},
+   {"kind":"sequence","name":"bite","children":[
+     {"kind":"check","check":{"operand":"sees","op":"truthy"}},
+     {"kind":"check","check":{"operand":"targetDistance","op":"below","value":1}},
+     {"kind":"action","action":{"kind":"command","name":"bite","args":[],"cooldown":0.5}}]},
+   {"kind":"sequence","name":"chase","children":[
+     {"kind":"check","check":{"operand":"sees","op":"truthy"}},
+     {"kind":"action","action":{"kind":"chase","key":"target","speed":3,"reach":0.5}}]},
+   {"kind":"action","action":{"kind":"patrol","route":"beat","wait":0.5,"speed":2,"loops":true}}
+ ]}}}
 "#;
 
 fn world(think_every_ticks: u32, active: bool) -> (World, Vec<Entity>) {
@@ -107,11 +84,13 @@ fn world(think_every_ticks: u32, active: bool) -> (World, Vec<Entity>) {
         },
     )
     .unwrap();
-    let b = ai
-        .behaviours
-        .lock()
-        .unwrap()
-        .insert(Behaviour::parse(GUARD).unwrap());
+    let b = ai.behaviours.lock().unwrap().insert(
+        Behaviour::from_definition(
+            serde_json::from_str::<og_ai::definition::Behaviour>(GUARD).unwrap(),
+            &mut |id| Err(format!("unknown subtree {id}")),
+        )
+        .unwrap(),
+    );
     for k in 0..200u32 {
         let p = Vec3::new(
             2.0 + (k % 20) as f32 * 3.0,

@@ -39,7 +39,7 @@ pub(crate) mod wind;
 /// What the hosts call of the bindings (`og_runtime::*`).
 pub mod exports {
     pub use super::ai::{
-        og_ai_describe, og_ai_finish, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse,
+        og_ai_create, og_ai_describe, og_ai_finish, og_ai_get, og_ai_load, og_ai_noise,
         og_ai_restart, og_ai_set,
     };
     pub use super::anim::{

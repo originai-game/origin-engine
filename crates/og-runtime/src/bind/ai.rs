@@ -1,4 +1,4 @@
-//! The IDL's `ai` module over og-ai: behaviours (cooked or from text),
+//! The IDL's `ai` module over og-ai: behaviours (cooked or structured),
 //! blackboard access, noises and descriptions. The behaviour registry is
 //! the engine's (`agents::Modules::behaviours`); og.ai's system and memories are
 //! the world's.
@@ -96,8 +96,16 @@ pub(crate) fn load(
     })()
 }
 
-pub fn og_ai_parse(world: u32, text: String) -> Result<crate::host::wire::BehaviourInfo, String> {
-    engine(world).and_then(|_| insert(world, Behaviour::parse(&text)?, None))
+pub fn og_ai_create(
+    world: u32,
+    definition: String,
+) -> Result<crate::host::wire::BehaviourInfo, String> {
+    engine(world)?;
+    let input: og_ai::definition::Behaviour =
+        serde_json::from_str(&definition).map_err(|e| e.to_string())?;
+    let behaviour =
+        Behaviour::from_definition(input, &mut |id| Ok((id.clone(), cooked(world, &id)?)))?;
+    insert(world, behaviour, None)
 }
 
 pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {

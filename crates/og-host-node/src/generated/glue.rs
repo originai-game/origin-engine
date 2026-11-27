@@ -2535,10 +2535,10 @@ pub fn og_ai_load(env: Env, world: u32, path: String) -> String {
     <Host as AiApi>::og_ai_load(&Host, world, path)
 }
 
-#[napi(js_name = "og_ai_parse")]
-pub fn og_ai_parse(env: Env, world: u32, text: String) -> String {
+#[napi(js_name = "og_ai_create")]
+pub fn og_ai_create(env: Env, world: u32, definition: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as AiApi>::og_ai_parse(&Host, world, text)
+    <Host as AiApi>::og_ai_create(&Host, world, definition)
 }
 
 #[napi(js_name = "og_ai_get")]

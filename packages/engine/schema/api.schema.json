@@ -10996,7 +10996,7 @@
     },
     {
       "name": "ai",
-      "doc": "Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.\nAn entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.\nSee `world §10`.",
+      "doc": "Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.\nAn entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.\nSee `world §10`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -11041,7 +11041,7 @@
       "functions": [
         {
           "name": "load",
-          "doc": "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.",
+          "doc": "Load native behaviour fields compiled from a checked file.behaviour declaration. Subtrees are already inlined; loading never reads author files.",
           "params": [
             {
               "name": "world",
@@ -11053,7 +11053,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The behaviour asset, such as `ai/slime.ogt`."
+              "doc": "Canonical behaviour content ID, such as 'base/ai/slime'."
             }
           ],
           "returns": "Result<BehaviourInfo>",
@@ -11061,8 +11061,8 @@
           "publish": true
         },
         {
-          "name": "parse",
-          "doc": "A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets.",
+          "name": "create",
+          "doc": "Compile a structured behaviour now. Uses file.behaviour's definition shape, except subtree source values are canonical cooked behaviour ID strings rather than author ref tokens. Uses the same native compiler and validation as cook; no text parser.",
           "params": [
             {
               "name": "world",
@@ -11071,14 +11071,14 @@
               "doc": "The world."
             },
             {
-              "name": "text",
-              "type": "String",
+              "name": "definition",
+              "type": "Json",
               "optional": false,
-              "doc": "The behaviour's `.ogt` text."
+              "doc": "{name, keys?, routes?, root}; root is {kind:'tree',node} or {kind:'machine',initial,states}. See file:behaviour for the generated definition schema."
             }
           ],
           "returns": "Result<BehaviourInfo>",
-          "returnsDoc": "Refused with the first error's line and the fix.",
+          "returnsDoc": "Refused for invalid definitions or missing cooked subtrees.",
           "publish": true
         },
         {
@@ -48732,7 +48732,7 @@
     "AiActionStarted": {
       "x-og-kind": "event",
       "x-og-module": "ai",
-      "description": "A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.",
+      "description": "A game action (kind: 'game' in a behaviour) started: play its animation, open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.",
       "type": "object",
       "properties": {
         "entity": {
@@ -48751,7 +48751,7 @@
         },
         "args": {
           "type": "string",
-          "description": "Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed)."
+          "description": "Its arguments joined by spaces (at most 255 UTF-8 bytes; longer ones are refused during compilation)."
         }
       },
       "required": [
@@ -48841,7 +48841,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The behaviours its `use` nodes inline, every one reached, in the order first met."
+          "description": "Canonical IDs of the behaviours its subtree nodes inline, every one reached, in the order first met."
         }
       },
       "required": [

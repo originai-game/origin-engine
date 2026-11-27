@@ -25540,10 +25540,10 @@
     {
       "id": 377,
       "kind": "fn",
-      "path": "og.ai.parse",
-      "symbol": "og_ai_parse",
+      "path": "og.ai.create",
+      "symbol": "og_ai_create",
       "module": "ai",
-      "name": "parse",
+      "name": "create",
       "params": [
         {
           "name": "world",
@@ -25551,8 +25551,8 @@
           "optional": false
         },
         {
-          "name": "text",
-          "type": "String",
+          "name": "definition",
+          "type": "Json",
           "optional": false
         }
       ],

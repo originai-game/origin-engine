@@ -869,8 +869,8 @@ export interface HostAbi<A, V> {
   og_nav_path_of(world: number, entity: number): string;
   /** `og.ai.load` */
   og_ai_load(world: number, path: string): string;
-  /** `og.ai.parse` */
-  og_ai_parse(world: number, text: string): string;
+  /** `og.ai.create` */
+  og_ai_create(world: number, definition: string): string;
   /** `og.ai.get` */
   og_ai_get(world: number, entity: number, key: string): string;
   /** `og.ai.set` */
@@ -1794,7 +1794,7 @@ export const SYMBOLS: readonly string[] = [
   "og_nav_nearest",
   "og_nav_path_of",
   "og_ai_load",
-  "og_ai_parse",
+  "og_ai_create",
   "og_ai_get",
   "og_ai_set",
   "og_ai_restart",

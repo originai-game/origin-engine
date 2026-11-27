@@ -953,8 +953,8 @@ pub trait NavApi: Wire {
 pub trait AiApi: Wire {
     /// `og.ai.load`
     fn og_ai_load(&self, world: u32, path: String) -> String;
-    /// `og.ai.parse`
-    fn og_ai_parse(&self, world: u32, text: String) -> String;
+    /// `og.ai.create`
+    fn og_ai_create(&self, world: u32, definition: String) -> String;
     /// `og.ai.get`
     fn og_ai_get(&self, world: u32, entity: f64, key: String) -> String;
     /// `og.ai.set`
@@ -1979,7 +1979,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_nav_nearest",
     "og_nav_path_of",
     "og_ai_load",
-    "og_ai_parse",
+    "og_ai_create",
     "og_ai_get",
     "og_ai_set",
     "og_ai_restart",

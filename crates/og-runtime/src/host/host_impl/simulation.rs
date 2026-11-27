@@ -316,8 +316,8 @@ macro_rules! __og_host_bindings_simulation {
             fn og_ai_load(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_ai_load(world, path))
             }
-            fn og_ai_parse(&self, world: u32, text: String) -> String {
-                $crate::host_impl::answer($crate::og_ai_parse(world, text))
+            fn og_ai_create(&self, world: u32, definition: String) -> String {
+                $crate::host_impl::answer($crate::og_ai_create(world, definition))
             }
             fn og_ai_get(&self, world: u32, entity: f64, key: String) -> String {
                 $crate::host_impl::json($crate::og_ai_get(world, entity, key))

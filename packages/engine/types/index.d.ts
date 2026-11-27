@@ -26900,7 +26900,7 @@ export interface NavRebuild {
 
 
 // ── ai ──────────────────────────────────────────────────────────
-// Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+// Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
 // See `world §10`.
 
@@ -27135,7 +27135,7 @@ export interface AiChanged {
 }
 
 /**
- * A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+ * A game action (kind: 'game' in a behaviour) started: play its animation, open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
  *
  * The payload of the `AiActionStarted` event (token `og.AiActionStarted`).
  */
@@ -27147,7 +27147,7 @@ export interface AiActionStarted {
   /** The action's name (at most 63 bytes). */
   readonly name: string;
   /**
-   * Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed).
+   * Its arguments joined by spaces (at most 255 UTF-8 bytes; longer ones are refused during compilation).
    */
   readonly args: string;
 }
@@ -27182,7 +27182,9 @@ export interface BehaviourInfo {
   readonly nodes: readonly string[];
   /** Its declared blackboard keys (its subtrees' too). */
   readonly keys: readonly string[];
-  /** The behaviours its `use` nodes inline, every one reached, in the order first met. */
+  /**
+   * Canonical IDs of the behaviours its subtree nodes inline, every one reached, in the order first met.
+   */
   readonly subtrees: readonly string[];
 }
 
@@ -41323,7 +41325,7 @@ export declare namespace og {
   /** An agent's state or running node changed (systems read it the tick after). */
   const AiChanged: EventType<AiChanged>;
   /**
-   * A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+   * A game action (kind: 'game' in a behaviour) started: play its animation, open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
    */
   const AiActionStarted: EventType<AiActionStarted>;
   /**
@@ -41331,27 +41333,27 @@ export declare namespace og {
    */
   const AiActionStopped: EventType<AiActionStopped>;
   /**
-   * Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+   * Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots.
    * See `world §10`.
    */
   namespace ai {
     /**
-     * A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.
+     * Load native behaviour fields compiled from a checked file.behaviour declaration. Subtrees are already inlined; loading never reads author files.
      *
      * @param world The world.
-     * @param path The behaviour asset, such as `ai/slime.ogt`.
+     * @param path Canonical behaviour content ID, such as 'base/ai/slime'.
      * @returns Refused for a path that is not a cooked behaviour.
      */
     function load(world: World, path: string): Result<BehaviourInfo>;
     /**
-     * A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets.
+     * Compile a structured behaviour now. Uses file.behaviour's definition shape, except subtree source values are canonical cooked behaviour ID strings rather than author ref tokens. Uses the same native compiler and validation as cook; no text parser.
      *
      * @param world The world.
-     * @param text The behaviour's `.ogt` text.
-     * @returns Refused with the first error's line and the fix.
+     * @param definition {name, keys?, routes?, root}; root is {kind:'tree',node} or {kind:'machine',initial,states}. See file:behaviour for the generated definition schema.
+     * @returns Refused for invalid definitions or missing cooked subtrees.
      */
-    function parse(world: World, text: string): Result<BehaviourInfo>;
+    function create(world: World, definition: unknown): Result<BehaviourInfo>;
     /**
      * A blackboard value of an agent as of its last think.
      *

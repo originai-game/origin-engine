@@ -59,7 +59,7 @@ pub(super) const KINDS: &[Kind] = &[
     },
     Kind {
         name: "behaviour",
-        schema: || behaviour::Behaviour::schema(),
+        schema: || behaviour::schema(),
     },
     Kind {
         name: "dialogue",

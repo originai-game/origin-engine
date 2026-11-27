@@ -170,11 +170,11 @@ pub fn check(
     s: &Senses,
     mem: &AgentMem,
     fx: &mut Effects,
-    line: usize,
+    node: usize,
     name: &str,
 ) -> bool {
     let missing = |fx: &mut Effects, what: &str| {
-        fx.warnings.push(format!("behaviour '{name}' line {line}: no key or field '{what}' (a key of the behaviour, Component.field of the agent or Resource.field); the check fails"));
+        fx.warnings.push(format!("behaviour '{name}' node {node}: no key or field '{what}' (a key of the behaviour, Component.field of the agent or Resource.field); the check fails"));
     };
     // The value compared with: the literal, or the key or field read now.
     let value = match &c.against {
@@ -363,7 +363,7 @@ impl Walker<'_, '_> {
                 self.tick(kids[0], mem)
             }
             Kind::Check(c) => {
-                if check(c, self.s, mem, self.fx, node.line, &self.b.name) {
+                if check(c, self.s, mem, self.fx, i, &self.b.name) {
                     Status::Success
                 } else {
                     Status::Failure

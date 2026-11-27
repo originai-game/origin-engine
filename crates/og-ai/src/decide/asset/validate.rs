@@ -60,7 +60,9 @@ fn action(a: &Action, routes: usize) -> bool {
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
                 && nonnegative(*cooldown)
         }
-        Action::Game { name, .. } => !name.is_empty(),
+        Action::Game { name, args } => {
+            !name.is_empty() && name.len() < 64 && args.join(" ").len() <= 255
+        }
     }
 }
 impl Behaviour {

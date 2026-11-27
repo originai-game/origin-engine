@@ -1,5 +1,5 @@
 module ai {
-  doc "Enemy and NPC AI as data: behaviour trees (BehaviorTree.CPP's control names) and tick state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "Enemy and NPC AI as checked data: file.behaviour TypeScript declarations compile trees and tick state machines to native fields. Perception checks sight cones against physics occlusion and hears spatial sounds and game noises; each agent has a blackboard."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent or runs one of the game's commands before the next tick. Deterministic; memories and blackboards are in snapshots."
   guide "world §10"
   split nav
@@ -138,11 +138,11 @@ module ai {
   }
 
   event AiActionStarted {
-    doc "A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
+    doc "A game action (kind: 'game' in a behaviour) started: play its animation, open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
     field entity Entity "The agent."
     field node u32 "The action's node, an index into BehaviourInfo.nodes."
     field name String "The action's name (at most 63 bytes)."
-    field args String "Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed)."
+    field args String "Its arguments joined by spaces (at most 255 UTF-8 bytes; longer ones are refused during compilation)."
   }
 
   event AiActionStopped {
@@ -161,7 +161,7 @@ module ai {
     field states List.String "A machine's states, by index (AiAgent.state)."
     field nodes List.String "Its nodes' names, by index (AiAgent.node)."
     field keys List.String "Its declared blackboard keys (its subtrees' too)."
-    field subtrees List.String "The behaviours its `use` nodes inline, every one reached, in the order first met."
+    field subtrees List.String "Canonical IDs of the behaviours its subtree nodes inline, every one reached, in the order first met."
   }
 
   struct NoiseDesc {
@@ -193,17 +193,17 @@ module ai {
 
   fn load {
     aliases "load a behaviour tree, behaviour tree asset, state machine asset"
-    doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets."
+    doc "Load native behaviour fields compiled from a checked file.behaviour declaration. Subtrees are already inlined; loading never reads author files."
     param world World "The world."
-    param path String "The behaviour asset, such as `ai/slime.ogt`."
+    param path String "Canonical behaviour content ID, such as 'base/ai/slime'."
     returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
   }
 
-  fn parse {
-    doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets."
+  fn create {
+    doc "Compile a structured behaviour now. Uses file.behaviour's definition shape, except subtree source values are canonical cooked behaviour ID strings rather than author ref tokens. Uses the same native compiler and validation as cook; no text parser."
     param world World "The world."
-    param text String "The behaviour's `.ogt` text."
-    returns Result.BehaviourInfo "Refused with the first error's line and the fix."
+    param definition Json "{name, keys?, routes?, root}; root is {kind:'tree',node} or {kind:'machine',initial,states}. See file:behaviour for the generated definition schema."
+    returns Result.BehaviourInfo "Refused for invalid definitions or missing cooked subtrees."
   }
 
   fn get {

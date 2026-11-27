@@ -14,6 +14,174 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// The public behaviour cook/load contract: canonical transitive subtrees,
+/// native machine indices, route relocation and captured helper invalidation.
+#[test]
+fn typed_behaviours_inline_native_trees_and_refresh_machine_consumers() {
+    let root = crate::temp::TempDir::new("typed-behaviours");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'ai',entry:'src/main.ts',dependsOn:['north'],modules:[{id:'north',root:'modules/north'}]});",
+    );
+    let machine = "import {file,ref} from '@origingame/engine/author';export default file.behaviour({name:'guard😀',keys:{rank:7},routes:{a:[[1,2,3]]},root:{kind:'machine',initial:'active',states:[{name:'idle',transitions:[{to:'active',after:0.25}]},{name:'active',enter:[{kind:'set',key:'rank',value:11}],exit:[{kind:'stop'}],body:{kind:'subtree',source:ref('north/patrol')},transitions:[{to:'idle',checks:[{operand:'Health.hp',op:'below',against:'Tuning.flee'}]}]}]}});";
+    let patrol = "import {file,ref} from '@origingame/engine/author';export default file.behaviour({name:'patrol',keys:{rank:1,point:[2,3,7]},routes:{z:[[-3,5,8],[9,-2,4]]},root:{kind:'tree',node:{kind:'sequence',name:'route then pause',children:[{kind:'action',action:{kind:'patrol',route:'z',wait:0.125,speed:'Tuning.speed',loops:false}},{kind:'subtree',source:ref('north/leaf')}]}}});";
+    let leaf = "import {file} from '@origingame/engine/author';import {hold} from '../lib/options.ts';export default file.behaviour({name:'leaf',root:{kind:'tree',node:{kind:'action',action:{kind:'wait',seconds:hold}}}});";
+    write("content/machine.ts", machine);
+    write("modules/north/content/patrol.ts", patrol);
+    write("modules/north/content/leaf.ts", leaf);
+    write("modules/north/lib/options.ts", "export const hold=0.375;");
+    let mut first = Vec::new();
+    for threads in [1, 4] {
+        let report = cook_project(
+            &root,
+            &CookOptions {
+                threads,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let blob = bundle.read("base/machine").unwrap();
+        let data = bundle.behaviour_data("base/machine", &blob).unwrap();
+        let b = og_ai::Behaviour::from_bytes(&data).unwrap();
+        assert_eq!(b.name, "guard😀");
+        assert_eq!(b.subtrees, ["north/patrol", "north/leaf"]);
+        assert_eq!(
+            b.keys.iter().find(|k| k.0 == "rank").unwrap().1,
+            og_ai::Value::Num(7.0)
+        );
+        assert_eq!(b.routes[1].0, "z");
+        assert_eq!(b.routes[1].1[1].to_array(), [9.0, -2.0, 4.0]);
+        assert!(b.nodes.iter().any(|n| matches!(&n.kind, og_ai::Kind::Action(og_ai::Action::Patrol {route:1,loops:false,speed:Some(og_ai::Speed::Read(s)),..}) if s=="Tuning.speed")));
+        let og_ai::Root::Machine { states, initial } = &b.root else {
+            panic!("expected a machine")
+        };
+        assert_eq!(*initial, 1);
+        assert_eq!(states[0].transitions[0].to, 1);
+        assert_eq!(states[1].transitions[0].to, 0);
+        assert_eq!(
+            states[1].transitions[0].checks[0].against.as_deref(),
+            Some("Tuning.flee")
+        );
+        assert!(matches!(
+            states[1].enter[0],
+            og_ai::Action::Set {
+                value: og_ai::Value::Num(11.0),
+                ..
+            }
+        ));
+        assert!(b.nodes.iter().any(|n| matches!(
+            n.kind,
+            og_ai::Kind::Action(og_ai::Action::Wait { seconds: 0.375 })
+        )));
+        if first.is_empty() {
+            first = blob.to_vec();
+        } else {
+            assert_eq!(&*blob, first);
+        }
+        let mut trailing = data;
+        trailing.push(0);
+        assert!(og_ai::Behaviour::from_bytes(&trailing).is_err());
+    }
+    write("modules/north/lib/options.ts", "export const hold=0.875;");
+    let changed = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(changed.ok(), "{:?}", changed.errors());
+    assert!(
+        changed
+            .cooked_outputs()
+            .iter()
+            .any(|o| o.id == "base/machine")
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let blob = bundle.read("base/machine").unwrap();
+    assert_ne!(&*blob, first);
+    let b = og_ai::Behaviour::from_bytes(&bundle.behaviour_data("base/machine", &blob).unwrap())
+        .unwrap();
+    assert!(b.nodes.iter().any(|n| matches!(
+        n.kind,
+        og_ai::Kind::Action(og_ai::Action::Wait { seconds: 0.875 })
+    )));
+    assert!(
+        cook_project(&root, &CookOptions::default())
+            .unwrap()
+            .cooked_outputs()
+            .is_empty()
+    );
+    for (path, invalid, expected) in [
+        (
+            "modules/north/content/patrol.ts",
+            patrol.replace("route:'z'", "route:'absent'"),
+            "absent",
+        ),
+        (
+            "modules/north/content/patrol.ts",
+            patrol.replace("kind:'sequence'", "kind:'unknown'"),
+            "kind",
+        ),
+        (
+            "modules/north/content/leaf.ts",
+            leaf.replace(
+                "{kind:'action',action:{kind:'wait',seconds:hold}}",
+                "{kind:'subtree',source:{\u{0024}ogRef:'north/patrol'}}",
+            ),
+            "cycle",
+        ),
+        (
+            "content/machine.ts",
+            machine.replace("to:'idle'", "to:'missing'"),
+            "missing",
+        ),
+        (
+            "content/machine.ts",
+            machine.replace("against:'Tuning.flee'", "against:'Tuning.flee',value:4"),
+            "exactly one",
+        ),
+        (
+            "content/machine.ts",
+            machine.replace("{kind:'stop'}", "{kind:'wait',seconds:1}"),
+            "actions",
+        ),
+        (
+            "content/machine.ts",
+            machine.replace("routes:{a:[[1,2,3]]}", "routes:{z:[[1,2,3]]}"),
+            "different points",
+        ),
+    ] {
+        write(path, &invalid);
+        let error = match cook_project(&root, &CookOptions::default()) {
+            Ok(report) => {
+                assert!(!report.ok());
+                format!("{:?}", report.errors())
+            }
+            Err(error) => error.to_string(),
+        };
+        assert!(error.contains(expected), "{error}");
+        write("content/machine.ts", machine);
+        write("modules/north/content/patrol.ts", patrol);
+        write("modules/north/content/leaf.ts", leaf);
+    }
+    write(
+        "assets/old.ogt",
+        "type behaviour\nversion 1\n---\ntree { stop }\n",
+    );
+    assert!(!cook_project(&root, &CookOptions::default()).unwrap().ok());
+    std::fs::remove_dir_all(root.join("content")).unwrap();
+    std::fs::remove_dir_all(root.join("modules")).unwrap();
+    // Loading an already cooked machine needs none of its author/subtree files.
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let blob = bundle.read("base/machine").unwrap();
+    let b = og_ai::Behaviour::from_bytes(&bundle.behaviour_data("base/machine", &blob).unwrap())
+        .unwrap();
+    assert_eq!(b.subtrees, ["north/patrol", "north/leaf"]);
+}
+
 /// Modules, delivery and residency are independent: selecting a package must
 /// neither rebuild another region nor turn a build-only input into a download.
 #[test]

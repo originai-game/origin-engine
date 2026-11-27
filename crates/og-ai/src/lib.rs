@@ -1,5 +1,5 @@
 //! Origin Engine AI as data (design §2.7): behaviour trees and state
-//! machines declared in `.ogt` (`type behaviour`), perception, per-agent
+//! machines compiled from named definitions, perception, per-agent
 //! blackboards, and the `og.ai` system that thinks for every `og.AiAgent`
 //! and moves it through [`nav`]. Deterministic: agents think in query order,
 //! wander points and sight rays depend only on the world, and memories,
@@ -8,7 +8,7 @@
 //! | Module | What it holds |
 //! |---|---|
 //! | [`sense`] | what an agent sees and hears: `og.Perception`, `og.Perceivable`, and the host's seams ([`SightRay`], [`Hearing`]) |
-//! | [`decide::asset`] | [`Behaviour`]: the parsed and validated tree or machine, keys, routes; [`Value`], [`Check`], [`Action`], [`Kind`] |
+//! | [`decide::asset`] | [`Behaviour`]: the compiled and validated tree or machine, keys, routes; [`Value`], [`Check`], [`Action`], [`Kind`] |
 //! | [`decide::tree`] | ticking: [`tree::think`], [`AgentMem`], [`Status`] |
 //! | [`decide::agent`] | the agent's records: `og.AiAgent`, `og.AiChanged` and the action events |
 //! | [`nav`], [`steer`] | where it can walk and how it avoids the others |
@@ -25,9 +25,9 @@ pub use decide::agent::{
     enable_action_stopped, enable_actions, has_actions,
 };
 pub use decide::asset::{
-    Action, BEHAVIOUR_TYPE, BUILTIN_KEYS, Behaviour, Check, Consideration, Curve, Kind, Op,
-    Resolve, Root, Speed, Value,
+    Action, BUILTIN_KEYS, Behaviour, Check, Consideration, Curve, Kind, Op, Root, Speed, Value,
 };
+pub use decide::definition;
 pub use decide::tree::{AI_INTERRUPTED, AgentMem, Status};
 pub use decide::{asset, tree};
 pub use sense::{HeardSounds, Hearing, NEVER, Noise, Parent, Perceivable, Perception, SightRay};

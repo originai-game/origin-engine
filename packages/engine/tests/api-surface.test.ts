@@ -140,11 +140,21 @@ test("every function, method and property the IDL declares exists on the runtime
   expect(missing).toEqual([]);
 });
 
-test("og.load.textureArray and probe.listen reach the host", () => {
+test("asset loading, structured behaviour creation and probe.listen reach the host", () => {
   // No bundle is open: the host answers a refusal, not a TypeError.
   const r = og.load.textureArray(engine.world, "missing.ogt") as { ok: boolean };
   expect(r.ok).toBe(false);
   expect(() => engine.probe.listen(0.5)).not.toThrow();
+  const behaviour = must(og.ai.create(engine.world, {
+    name: "surface-machine", keys: { mood: 7 },
+    root: { kind: "machine", initial: "active", states: [
+      { name: "idle", transitions: [{ to: "active", after: 0.25 }] },
+      { name: "active", body: { kind: "action", name: "pause", action: { kind: "wait", seconds: 0.375 } } },
+    ] },
+  }));
+  expect(behaviour).toMatchObject({ name: "surface-machine", kind: "machine", states: ["idle", "active"], nodes: ["pause"], keys: ["mood"] });
+  expect(og.ai.create(engine.world, { name: "invalid", root: { kind: "tree", node: { kind: "action", action: { kind: "wait", seconds: -1 } } } }).ok).toBe(false);
+  expect(og.ai.create(engine.world, { name: "missing", root: { kind: "tree", node: { kind: "subtree", source: "base/missing" } } }).ok).toBe(false);
 });
 
 // ── the other way round ──────────────────────────────────────────────────

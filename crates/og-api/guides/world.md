@@ -574,16 +574,19 @@ export default file.scene({
 
 ## 10. AI behaviours
 
-- Behaviour trees and state machines are `type behaviour` `.ogt` files;
+- Behaviour trees and state machines are checked `file.behaviour` declarations
+  in `content/**/*.ts`, loaded by canonical content ID with og.ai.load.
+  Runtime creation uses og.ai.create with the same structured shape and
+  cooked subtree ID strings instead of author ref tokens. No text parser remains;
   perception gives sight cones checked against physics occlusion and
   hearing of spatial sounds and game noises; each agent has a blackboard.
-- Trees use BehaviorTree.CPP's control names. ReactiveFallback rechecks
-  priority from its first child each think; ReactiveSequence rechecks its
-  conditions from its first child; Sequence resumes its running child but
+- Trees follow BehaviorTree.CPP's control semantics. `selector` rechecks
+  priority from its first child each think; `sequence` rechecks its
+  conditions from its first child; `steps` resumes its running child but
   restarts after a failure or completion (it is not SequenceWithMemory). A
   higher-priority branch halts the lower running one and resets its
-  sequence cursor; game actions receive AI_INTERRUPTED. Inverter flips
-  success and failure, ForceSuccess turns either into success; both keep
+  sequence cursor; game actions receive AI_INTERRUPTED. `invert` flips
+  success and failure, `succeed` turns either into success; both keep
   running. Command cooldowns are explicit engine state.
 - A machine's states run entry and exit action blocks. Machines are tick machines, not XState statecharts: at most one
   transition per think, exit then entry (also on a self-transition), then
@@ -597,7 +600,7 @@ export default file.scene({
   targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the
   agent's component fields (`Hp.now`) and resource fields
   (`Game.alarm`), and compare with a literal or another key or field read
-  each time (`check Foe.hp below Tuning.fleeHp`): keep thresholds in a
+  each time (`{operand:'Foe.hp', op:'below', against:'Tuning.fleeHp'}`): keep thresholds in a
   tuning resource so they are tuned without editing behaviours.
 - og.ai.restart starts a behaviour afresh. `dump_ai:<entity>` writes an
   agent's state, running node and blackboard: read it before guessing why

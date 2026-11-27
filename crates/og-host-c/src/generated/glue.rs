@@ -2114,8 +2114,8 @@ unsafe extern "C" fn og_ai_load(args: *const crate::OgValue, out: *mut crate::Og
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ai_parse(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as AiApi>::og_ai_parse(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_ai_create(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as AiApi>::og_ai_create(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3942,7 +3942,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_nav_nearest", arity: 4, call: og_nav_nearest },
     crate::Symbol { name: c"og_nav_path_of", arity: 2, call: og_nav_path_of },
     crate::Symbol { name: c"og_ai_load", arity: 2, call: og_ai_load },
-    crate::Symbol { name: c"og_ai_parse", arity: 2, call: og_ai_parse },
+    crate::Symbol { name: c"og_ai_create", arity: 2, call: og_ai_create },
     crate::Symbol { name: c"og_ai_get", arity: 3, call: og_ai_get },
     crate::Symbol { name: c"og_ai_set", arity: 4, call: og_ai_set },
     crate::Symbol { name: c"og_ai_restart", arity: 2, call: og_ai_restart },

@@ -1,114 +1,92 @@
-//! Behaviours (`type behaviour`): validated by og-ai and stored as text.
-
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
-};
-use crate::format::{self, Area, BlobKind};
+//! Checked definitions compile to native fields with canonical subtree inputs.
+use super::*;
 use og_blob::BlobWriter;
-
-pub(crate) const BEHAVIOUR_TYPE: &str = "behaviour";
-
-/// Parses a behaviour source, reading its `use` subtrees from the assets
-/// root; `read` sees every subtree file (its path and bytes) as it is read.
-fn parse_behaviour(
-    s: &Source,
-    text: &str,
-    read: &mut dyn FnMut(&str, &[u8]),
-) -> Result<og_ai::Behaviour, String> {
-    let root = assets_root(s);
-    let mut resolve = |p: &str| -> Result<String, String> {
-        let id = crate::runtime::asset_id(p);
-        let bytes = std::fs::read(root.join(id)).map_err(|e| format!("cannot read it: {e}"))?;
-        read(id, &bytes);
-        String::from_utf8(bytes).map_err(|_| "a behaviour is text (UTF-8)".to_string())
-    };
-    og_ai::Behaviour::parse_with(text, crate::runtime::asset_id(&s.rel), &mut resolve)
-}
-
-/// What a behaviour's stamp covers beyond its own bytes: every subtree
-/// file its `use` nodes reach, by path and hash (so editing a subtree
-/// re-validates the trees that use it).
-pub(crate) fn behaviour_dependencies(s: &Source) -> String {
-    let mut deps = Vec::new();
-    let text = String::from_utf8_lossy(&s.bytes);
-    let _ = parse_behaviour(s, &text, &mut |p, b| {
-        deps.push(format!("{p}={:016x}", super::hash_bytes(b)));
-    });
-    deps.join("\n")
-}
-
-pub(crate) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError("a behaviour is text (UTF-8)".into()))?;
-    let b = parse_behaviour(s, text, &mut |_, _| {}).map_err(CookError)?;
-    let data = b.to_bytes().map_err(CookError)?;
-    let mut w = BlobWriter::new(
-        format::Behaviour::type_hash(),
-        format::Behaviour::schema_version(),
-        stamp,
-    );
-    w.table(
-        "meta",
-        &[format::BehaviourMeta {
-            data_bytes: data.len() as u32,
-        }],
-        format::row_hash::<format::BehaviourMeta>(),
-    )
-    .raw("data", data, 16);
-    let kind = match &b.root {
-        og_ai::Root::Tree(_) => "a tree".to_string(),
-        og_ai::Root::Machine { states, .. } => format!("a machine of {} states", states.len()),
-    };
-    Ok((
-        w.finish(),
-        vec![if b.subtrees.is_empty() {
-            format!("behaviour '{}': {kind}, {} nodes", b.name, b.nodes.len())
-        } else {
-            format!(
-                "behaviour '{}': {kind}, {} nodes, using {}",
-                b.name,
-                b.nodes.len(),
-                b.subtrees.join(", ")
-            )
-        }],
-    ))
-}
 
 pub(crate) static BEHAVIOUR: KindDef = KindDef {
     name: "behaviour",
     extensions: &[],
-    types: &[BEHAVIOUR_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan,
 };
-
-/// The kinds this module cooks.
 pub(crate) static KINDS: &[&KindDef] = &[&BEHAVIOUR];
 
+fn compile(
+    source: &Source,
+    sources: &[Source],
+    chain: &mut Vec<String>,
+    deps: &mut Vec<u8>,
+) -> Result<og_ai::Behaviour, String> {
+    if chain.contains(&source.rel) {
+        return Err(format!(
+            "behaviour subtree cycle: {} -> {}",
+            chain.join(" -> "),
+            source.rel
+        ));
+    }
+    chain.push(source.rel.clone());
+    deps.extend_from_slice(&source.hash.to_le_bytes());
+    let input: source_schemas::media::behaviour::Behaviour = source.input()?;
+    let result = og_ai::Behaviour::from_definition(input, &mut |reference| {
+        let sub = sources
+            .iter()
+            .find(|s| s.rel == reference.id && s.kind == &BEHAVIOUR)
+            .ok_or_else(|| format!("'{}' is not a behaviour input", reference.id))?;
+        Ok((sub.rel.clone(), compile(sub, sources, chain, deps)?))
+    });
+    chain.pop();
+    result
+}
+
 fn plan<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
+    cx: &Cx<'a>,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    // The stamp covers every subtree its `use` nodes reach.
-    let deps = behaviour_dependencies(s);
-    let st = stamp(&[Area::Data], &[b"behaviour", &hash, deps.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Behaviour::NAME,
-        st,
-        Box::new(Cook(s)),
-    ));
+    let result = (|| -> Result<_, String> {
+        let mut deps = Vec::new();
+        let b = compile(s, cx.sources, &mut Vec::new(), &mut deps)?;
+        state
+            .parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .extend(b.subtrees.iter().cloned());
+        let data = b.to_bytes()?;
+        let st = stamp(&[Area::Data], &[b"behaviour", &hash, &deps, &data]);
+        Ok((st, Cook(data)))
+    })();
+    match result {
+        Ok((st, job)) => outs.push((s.rel.clone(), format::Behaviour::NAME, st, Box::new(job))),
+        Err(error) => state.early_errors.push((
+            s.rel.clone(),
+            "behaviour",
+            format!("{}: {error}", s.path.display()),
+        )),
+    }
 }
 
-/// A behaviour's one output.
-struct Cook<'a>(&'a Source);
-
-impl Job for Cook<'_> {
+struct Cook(Vec<u8>);
+impl Job for Cook {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_behaviour(self.0, p.stamp)
+        let mut w = BlobWriter::new(
+            format::Behaviour::type_hash(),
+            format::Behaviour::schema_version(),
+            p.stamp,
+        );
+        w.table(
+            "meta",
+            &[format::BehaviourMeta {
+                data_bytes: self.0.len() as u32,
+            }],
+            format::row_hash::<format::BehaviourMeta>(),
+        )
+        .raw("data", self.0.clone(), 16);
+        Ok((w.finish(), Vec::new()))
+    }
+    fn action(&self) -> Action<'_> {
+        Action::Input(&self.0, false)
     }
 }

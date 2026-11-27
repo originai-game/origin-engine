@@ -2114,8 +2114,8 @@ pub fn og_ai_load(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ai_parse(world: u32, text: String) -> String {
-    <Host as AiApi>::og_ai_parse(&Host, world, text)
+pub fn og_ai_create(world: u32, definition: String) -> String {
+    <Host as AiApi>::og_ai_create(&Host, world, definition)
 }
 
 #[wasm_bindgen]

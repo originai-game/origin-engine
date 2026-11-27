@@ -771,7 +771,7 @@ export const og = Object.freeze({
   }),
   ai: Object.freeze({
     load: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_ai_load(world.id, path)) as unknown,
-    parse: (world: { readonly id: number }, text: string): unknown => JSON.parse(abi().og_ai_parse(world.id, text)) as unknown,
+    create: (world: { readonly id: number }, definition: unknown): unknown => JSON.parse(abi().og_ai_create(world.id, JSON.stringify(definition ?? null))) as unknown,
     get: (world: { readonly id: number }, entity: number, key: string): unknown => JSON.parse(abi().og_ai_get(world.id, entity, key)) as unknown,
     set: (world: { readonly id: number }, entity: number, key: string, value: unknown): unknown => JSON.parse(abi().og_ai_set(world.id, entity, key, JSON.stringify(value ?? null))) as unknown,
     restart: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_ai_restart(world.id, entity)) as unknown,
