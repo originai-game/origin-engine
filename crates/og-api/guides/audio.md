@@ -230,51 +230,39 @@ og.AudioSource in step with the picture.
   frames and key frames, so a player is at the same frame whichever codec
   it plays; an executor always decodes the AV1.
 
-## 9. Synthesised SFX (`og sfx` and `type sfx`)
+## 9. Synthesised SFX (`og sfx` and `file.sfx`)
 
-Short sound effects can be authored directly as `type sfx` `.ogt` files without external audio editors: `og cook` renders them at 48 kHz mono and encodes them like any other sound asset (loaded with `og.load.sound` and played on `og.AudioSource` or `og.AudioEvent`).
+Author sound declarations in `content/**/*.ts`: `og cook` renders them at 48 kHz mono and encodes them like any other sound asset. Load the canonical content ID with `og.load.sound` and play it on `og.AudioSource` or `og.AudioEvent`. There is no OGT SFX author entry.
 
 - `og sfx` lists the built-in presets, each with a line on how it sounds.
 - `og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file>`
-  writes the preset with those settings: `--out sfx/coin.ogt` as an asset
+  writes the preset with those settings: `--out content/sfx/coin.ts` as an asset
   `og cook` synthesises, `--out coin.wav` rendered to a 16-bit WAV to
   listen to. `--out` is required.
-- `og sfx library <dir>` writes every preset's `.ogt` into `dir`.
+- `og sfx library content/sfx` writes every preset's TS declaration into that directory.
 
-A `type sfx` file names a preset, adds layers, or both (the preset's
+A `file.sfx` declaration names a preset, adds layers, or both (the preset's
 layers first, then its own):
 
-```text
-type sfx
-version 1
----
-preset "coin"   # one of the names `og sfx` lists
-seed 3          # a variation; 0 is the preset as designed
-pitch 1.2       # frequency multiplier
-length 1        # duration multiplier
-volume 0.8
-layer {
-  wave sine
-  freq 440
-  freq_end 110
-  attack 0.002
-  sustain 0.04
-  decay 0.2
-  lowpass 2400
-  gain 0.7
-}
+```ts
+import { file } from "@origingame/engine/author";
+
+export default file.sfx({
+  preset: "coin",
+  seed: 3,
+  pitch: 1.2,
+  volume: 0.8,
+  layers: [{ wave: "sine", freq: 440, freqEnd: 110, attack: 0.002,
+    sustain: 0.04, decay: 0.2, lowpass: 2400, gain: 0.7 }],
+});
 ```
 
-- Top-level entries: `preset`, `seed`, `pitch`, `length`, `volume`, and
-  any number of `layer` blocks (`synth` is the same). A file needs a
-  `preset` or at least one `layer`; a sound lasts at most 30 seconds.
-- A layer's entries: `wave` (`sine`, `square`, `saw`, `triangle`,
-  `noise`), `freq` and `freq_end` in Hz (or `slide`, octaves per second),
-  `arp` (a frequency multiplier applied `arp_at` seconds in),
-  `vib_depth` and `vib_rate`, the envelope `attack`, `sustain`, `decay`,
-  `sustain_level` (0 to 1) and `release` in seconds, `punch` (extra level
-  in the sustain, 0 to 1), `duty` (a square's, 0.01 to 0.99), `lowpass`
-  with `lp_slide` and `q`, `highpass` in Hz, FM with `fm_freq` (Hz) and
-  `fm_index` (radians), `drive` (soft clipping), `gain`, and `delay` (its
-  start, in seconds). An entry it does not know is refused, naming the
-  ones it takes.
+A file needs a preset or at least one layer; a rendered sound lasts at most
+30 seconds. The generated `file:sfx` reference and project declarations give
+the exact camelCase fields. CLI seeds are u32 and numeric options must be finite.
+A sample layer uses an inline `{kind:"pcm", samples, rate}` or a
+`{kind:"file", source:"assets/recording.wav"}`. Source paths are canonical and
+relative to the owning module's assets/ or sources/, never to the declaration's
+directory. Recordings are captured before cache lookup; stereo averages to mono.
+The explicit envelope controls duration even when the sample loops. FM is
+oscillator-only. See generating for a sampled-layer recipe.

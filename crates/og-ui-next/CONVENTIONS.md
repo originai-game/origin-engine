@@ -679,8 +679,8 @@ entry, a variant, an icon, an event's sound. Fonts add faces.
   "images": { "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8 } },
   "icons": { "star": "art/star.svg" },
   "sounds": {
-    "press": { "clips": ["@styles/shared/sfx-tap.ogt"], "volume": [0.24, 0.3], "pitch": [1.04, 1.16] },
-    "Button.plate": { "hover": { "clips": ["@styles/shared/sfx-tap2.ogt"], "volume": 0.08 } }
+    "press": { "clips": ["@styles/shared/sfx/default/tap.ogg"], "volume": [0.24, 0.3], "pitch": [1.04, 1.16] },
+    "Button.plate": { "hover": { "clips": ["@styles/shared/sfx/default/tick.ogg"], "volume": 0.08 } }
   }
 }
 ```

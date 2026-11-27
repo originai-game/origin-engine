@@ -113,6 +113,10 @@ fn differences(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> 
 /// remain.
 fn small_template(root: &Path) {
     copy_dir(&template_assets(), &root.join("assets"));
+    copy_dir(
+        &template_assets().with_file_name("content"),
+        &root.join("content"),
+    );
     let assets = root.join("assets");
     for t in ["textures/stone.png", "textures/stone_n.png"] {
         let img = image::open(assets.join(t)).unwrap();
@@ -140,6 +144,7 @@ fn every_thread_count_cooks_the_same_bytes() {
         let _ = std::fs::remove_dir_all(dir);
         crate::init_project(dir);
         copy_dir(&source.join("assets"), &dir.join("assets"));
+        copy_dir(&source.join("content"), &dir.join("content"));
         let options = CookOptions {
             threads,
             ..Default::default()
@@ -190,6 +195,10 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     let _ = std::fs::remove_dir_all(&root);
     crate::init_project(&root);
     copy_dir(&template_assets(), &root.join("assets"));
+    copy_dir(
+        &template_assets().with_file_name("content"),
+        &root.join("content"),
+    );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let b = Bundle::open(&root.join("cooked")).expect("the manifest loads");

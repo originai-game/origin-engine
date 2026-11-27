@@ -1244,7 +1244,7 @@ function audioMain(argv: string[]): number {
   if (json) console.log(JSON.stringify(brief, null, 2));
   else {
     for (const c of brief.cues) console.log(`# music ${c.id} -> assets/${c.file}\n${c.prompt}\n`);
-    for (const e of brief.sfx) console.log(`# sfx ${e.id} -> assets/${e.file}${e.preset ? ` (until then assets/audio/${e.preset}.ogt)` : ""}\n${e.prompt}\n`);
+    for (const e of brief.sfx) console.log(`# sfx ${e.id} -> assets/${e.file}${e.preset ? ` (until then content/audio/${e.preset}.ts, loaded as base/audio/${e.preset})` : ""}\n${e.prompt}\n`);
   }
   return 0;
 }
@@ -1571,7 +1571,7 @@ export function rigParts(template: string): RigPart[] {
 // style, mood and genre (project.ts's create choices, or the platform's
 // creation form) and its premise, the request for each music cue and each
 // sound effect the game needs, plus the procedural presets `og cook`
-// synthesises instead (`type sfx`), so a game is never silent
+// synthesises instead (`file.sfx`), so a game is never silent
 // while its generated audio is pending. Pure and deterministic; a public
 // contract beside artBrief (README §The audio brief).
 
@@ -1653,7 +1653,7 @@ export interface SfxBrief {
   readonly format: AudioFormat;
 }
 
-/** A procedural sound og cook synthesises: write `ogt` to `assets/<file>`, then `og.load.sound(world, file)`. */
+/** A procedural sound: write `ts` to project-relative `file`, then load `base/audio/<id>`. */
 export interface SfxPresetBrief {
   readonly id: string;
   readonly preset: SfxPreset;
@@ -1661,10 +1661,10 @@ export interface SfxPresetBrief {
   readonly pitch: number;
   readonly length: number;
   readonly volume: number;
-  /** `audio/<id>.ogt`. */
+  /** `content/audio/<id>.ts`, relative to the project root. */
   readonly file: string;
-  /** The `type sfx` document, as `og sfx <preset> --out` writes it. */
-  readonly ogt: string;
+  /** The `file.sfx` declaration, as `og sfx <preset> --out` writes it. */
+  readonly ts: string;
 }
 
 export interface AudioBrief {
@@ -1903,8 +1903,8 @@ export function audioBrief(input: AudioBriefInput): AudioBrief {
       const length = round2(s.length);
       const volume = bus === "ui" ? (id === "ui-hover" ? 0.3 : 0.6) : 1;
       presets.push({
-        id, preset, seed, pitch, length, volume, file: `audio/${id}.ogt`,
-        ogt: `type sfx\nversion 1\n---\n# ${what} (audioBrief: ${music}, ${mood}). og.load.sound(world, "audio/${id}.ogt") plays it until audio/${id}.wav exists.\npreset ${JSON.stringify(preset)}\nseed ${seed}\npitch ${pitch}\nlength ${length}\nvolume ${volume}\n`,
+        id, preset, seed, pitch, length, volume, file: `content/audio/${id}.ts`,
+        ts: `import { file } from "@origingame/engine/author";\n\nexport default file.sfx(${JSON.stringify({ preset, seed, pitch, length, volume }, null, 2)});\n`,
       });
     }
     return { id, event: what, prompt: lines.join("\n"), seconds, bus, variants, preset: presetId, file: `audio/${id}.wav`, format: SFX_FORMAT };

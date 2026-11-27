@@ -172,7 +172,7 @@ import { audioBrief, readAudioChoices } from "@origingame/create-game";
 const b = audioBrief({ ...readAudioChoices("path/to/game"), premise: "a bakery that keeps time" });
 b.cues;     // [{ id, role, prompt, bpm, mode, bars, seconds, loop, stems, intensity, file: "music/<id>.ogg", format }]
 b.sfx;      // [{ id, event, prompt, seconds, bus, variants, preset, file: "audio/<id>.wav", format }]
-b.presets;  // [{ id, preset, seed, pitch, length, volume, file: "audio/<id>.ogt", ogt }]: write ogt to assets/<file>
+b.presets;  // [{ id, preset, seed, pitch, length, volume, file: "content/audio/<id>.ts", ts }]: write ts to project-relative file; load base/audio/<id>
 ```
 
 These are a public contract like the art brief: `audioBrief`,

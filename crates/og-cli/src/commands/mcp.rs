@@ -1097,12 +1097,12 @@ fn tools() -> Value {
         ),
         tool(
             "sfx",
-            "`og sfx`: list procedural sound presets, synthesise one into `.ogt`/`.wav`, or write a library.",
+            "`og sfx`: list procedural sound presets, write a TS content declaration or listening WAV, or write a TS library.",
             json!({
                 "preset": s("Preset name (omit to list all presets) or `library`."),
                 "seed": n("Synth RNG seed."), "pitch": { "type": "number" },
                 "length": { "type": "number" }, "volume": { "type": "number" },
-                "out": s("Output `.ogt` or `.wav` path."), "args": args,
+                "out": s("Output `content/**/*.ts` declaration or `.wav` path."), "args": args,
             }),
             &[],
         ),

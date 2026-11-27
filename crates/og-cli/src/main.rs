@@ -205,7 +205,7 @@ commands:
                       against each string table: per locale, the keys it lacks and the arguments nothing passes;
                       --write adds the keys the base table lacks to it (assets/strings/en.ogt
                       when there is none); --check exits 1 while any table is incomplete
-  sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
+  sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ts|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),

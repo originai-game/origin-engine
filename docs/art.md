@@ -292,11 +292,11 @@ The audio counterpart of §2.2: `audioBrief({ music, mood, genre,
 premise? })` in the same `brief.ts`, re-exported by
 `@origingame/create-game`, is a pure, deterministic public contract (a
 change is a break with a breaking changelog entry). `readAudioChoices`
-reads its input from project.ogt's `create` block, and an unknown value
+reads its input from checked project.ts's `create` choices, and an unknown value
 throws naming the known ones. It returns the shared direction and avoid
 list, the music cues (title, the genre's cues, victory and defeat), the
 sound effects (the UI's and the genre's) and, for each effect a
-procedural og cook preset fits, the `type sfx` document that stands in
+procedural og cook preset fits, the `file.sfx` TS declaration that stands in
 until the generated file exists. The knowledge README's §The audio brief
 holds the shapes and formats. The platform's generation takes these
 requests as they are (`docs/platform-asks.md` ask 26).

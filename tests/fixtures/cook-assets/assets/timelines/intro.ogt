@@ -58,12 +58,12 @@ track audio {
     volume 0.6
   }
   key 5 {
-    sound "audio/click.ogt"
+    sound "base/audio/click"
   }
 }
 track music {
   key 6 {
-    sound "audio/sting.ogt"
+    sound "base/audio/sting"
     volume 0.7
     fadeIn 0.3
     fadeOut 1

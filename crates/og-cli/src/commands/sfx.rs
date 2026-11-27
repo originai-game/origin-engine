@@ -1,16 +1,16 @@
-//! `og sfx`: the procedural sound-preset library (og-cook's `type sfx`).
+//! `og sfx`: typed declarations for the procedural sound-preset library.
 //!
 //! - `og sfx` lists the presets;
-//! - `og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>`
+//! - `og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ts|file.wav>`
 //!   writes the preset as an asset (`og cook` synthesises it into a sound)
 //!   or renders it to a 16-bit WAV;
-//! - `og sfx library <dir>` writes every preset's `.ogt` into `dir`.
+//! - `og sfx library <dir>` writes every preset's TS declaration into `dir`.
 
-use og_cook::cook::sfx::{PRESETS, RATE, Variation, preset_ogt, render};
+use og_cook::cook::sfx::{PRESETS, RATE, Variation, preset_ts, render};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og sfx | og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav> | og sfx library <dir>";
+const USAGE: &str = "usage: og sfx | og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ts|file.wav> | og sfx library <dir>";
 
 fn wav(samples: &[i16]) -> Vec<u8> {
     let data = (samples.len() * 2) as u32;
@@ -50,8 +50,8 @@ fn go(args: &[&str]) -> Result<(), String> {
         }
         ["library", dir] => {
             for (name, _) in PRESETS {
-                let path = Path::new(dir).join(format!("{name}.ogt"));
-                write(&path, preset_ogt(name, Variation::default()).as_bytes())?;
+                let path = Path::new(dir).join(format!("{name}.ts"));
+                write(&path, preset_ts(name, Variation::default()).as_bytes())?;
             }
             println!("og sfx: {} presets in {dir}", PRESETS.len());
             Ok(())
@@ -68,12 +68,20 @@ fn go(args: &[&str]) -> Result<(), String> {
                     .get(i + 1)
                     .ok_or(format!("{} needs a value. {USAGE}", rest[i]))?;
                 let num = || {
-                    value
+                    let number = value
                         .parse::<f64>()
-                        .map_err(|_| format!("{} takes a number", rest[i]))
+                        .map_err(|_| format!("{} takes a finite number", rest[i]))?;
+                    if !number.is_finite() {
+                        return Err(format!("{} takes a finite number", rest[i]));
+                    }
+                    Ok(number)
                 };
                 match rest[i] {
-                    "--seed" => v.seed = num()?.max(0.0) as u32,
+                    "--seed" => {
+                        v.seed = value
+                            .parse::<u32>()
+                            .map_err(|_| "--seed takes a u32".to_string())?
+                    }
                     "--pitch" => v.pitch = num()?,
                     "--length" => v.length = num()?,
                     "--volume" => v.volume = num()?,
@@ -83,13 +91,18 @@ fn go(args: &[&str]) -> Result<(), String> {
                 i += 2;
             }
             let out = out.ok_or(format!("--out is required. {USAGE}"))?;
+            if v.volume < 0.0 {
+                return Err("--volume must be nonnegative".into());
+            }
             let path = Path::new(&out);
             if out.ends_with(".wav") {
                 write(path, &wav(&render(name, v).expect("a listed preset")))?;
-            } else if out.ends_with(".ogt") {
-                write(path, preset_ogt(name, v).as_bytes())?;
+            } else if out.ends_with(".ts") {
+                write(path, preset_ts(name, v).as_bytes())?;
             } else {
-                return Err(format!("--out is a .ogt (an asset) or a .wav. {USAGE}"));
+                return Err(format!(
+                    "--out is a .ts content declaration or a .wav. {USAGE}"
+                ));
             }
             println!("og sfx: wrote {out}");
             Ok(())

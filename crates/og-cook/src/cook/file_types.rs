@@ -64,6 +64,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "vector" {
                 out.push_str("Output: vector triangles loaded with og.load.vector. Exactly one source (an explicit canonical module-relative SVG path, such as assets/ui/emblem.svg) or inline svg string is required. The SVG subset and curve flattening remain the native tessellator's; tolerance is positive view-box units, omitted uses the longer view-box side / 2000. External SVG bytes participate in cook stamps; no sibling/assets fallback is used.\n\n");
             }
+            if ty == "sfx" {
+                out.push_str("Output: an ordinary mono 48 kHz sound loaded with og.load.sound. A preset or at least one layer is required; preset layers precede custom layers. Rendering is limited to 30 seconds. A sample is either inline PCM or an explicit canonical path in the owning module's assets/ or sources/; stereo recordings average to mono. Sample bytes participate in cook stamps. FM is oscillator-only. og sfx writes TS declarations or listening WAVs.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -208,12 +211,6 @@ pub fn markdown() -> Result<String, String> {
                         block(&mut out, &format!("animgraph.{path}"), fields);
                     }
                 }
-            }
-            "sfx" => {
-                out.push_str("Field coverage: complete parser line tables. Output: ordinary cooked sound through the shared oscillator synthesizer; load with og.load.sound. Existing alternate spellings are listed, not new compatibility paths.\n\n");
-                table(&mut out, super::sfx::LINES);
-                block(&mut out, "sfx.layer", super::sfx::LAYER_LINES);
-                block(&mut out, "sfx.layer.sample", super::sfx::SAMPLE_LINES);
             }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");

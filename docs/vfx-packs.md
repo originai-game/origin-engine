@@ -19,8 +19,11 @@ existing install never replaced). Its effects name their assets as
 A pack is whole in its directory: nothing it draws or plays needs a line
 in the game. The marks its effects leave (a scorch, a bullet hole, a wet
 patch) are `decal` elements naming textures of the pack (`texture`,
-`normal`), and its sounds are `type sfx` files of the pack, synthesised
-by the cook, which `sound` elements name. A pack ships no recorded audio.
+`normal`). Synthesised sounds are `file.sfx` declarations in the destination
+project's `content/`, not `type sfx` files under the copied `assets/` directory;
+`sound` elements name their canonical `<module>/<content-relative-stem>` IDs.
+A pack ships no recorded audio. The current asset-directory installer does
+not install TS declarations; copy those sources into `content/` explicitly.
 
 `extension.json`: `format` 1, `kind` `"vfx"`, `name` (lowercase letters,
 digits and `-`, unique in the library: `effekseer-<contributor>`,

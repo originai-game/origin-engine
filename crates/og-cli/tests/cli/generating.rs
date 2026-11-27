@@ -1947,13 +1947,14 @@ fn generated_pcm_cooks_as_an_authored_sound() {
         text(&old)
     );
     std::fs::remove_file(assets.join("made.ogt")).unwrap();
-    std::fs::write(assets.join("sampled.ogt"), "type sfx\nversion 1\n---\nlayer {\nsample {\nsource \"authored.wav\"\nloop true\n}\nattack 0\nsustain 0.01\ndecay 0\ngain 1\n}\n").unwrap();
+    std::fs::write(root.join("content/sampled.ts"), "import {file} from '@origingame/engine/author'; export default file.sfx({layers:[{sample:{kind:'file',source:'assets/authored.wav',looping:true,reference:440},freq:880,attack:0,sustain:0.01,decay:0,gain:1}]});").unwrap();
+    std::fs::write(root.join("content/sample-pcm.ts"), "import {file} from '@origingame/engine/author'; export default file.sfx({layers:[{sample:{kind:'pcm',samples:Float32Array.from({length:300},(_,i)=>[-24575/65536,-8191/65536,16383/65536][i%3]),rate:22050,looping:true,reference:440},freq:880,attack:0,sustain:0.01,decay:0,gain:1}]});").unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let decoded = || {
         og_cook::runtime::Bundle::open(&root.join("cooked"))
             .unwrap()
-            .load_sound("sampled.ogt")
+            .load_sound("base/sampled")
             .unwrap()
             .decode()
             .unwrap()
@@ -1961,8 +1962,18 @@ fn generated_pcm_cooks_as_an_authored_sound() {
     };
     let first = decoded();
     assert!(first.iter().any(|&v| v != 0));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        first,
+        bundle
+            .load_sound("base/sample-pcm")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .samples
+    );
     // Changing only the recording must invalidate the sample-based synth,
-    // including an existing shared-cache entry for the unchanged SFX text.
+    // including an existing shared-cache entry for the unchanged declaration.
     let mut writer = hound::WavWriter::create(
         assets.join("authored.wav"),
         hound::WavSpec {
@@ -1977,17 +1988,79 @@ fn generated_pcm_cooks_as_an_authored_sound() {
         writer.write_sample(0i16).unwrap();
     }
     writer.finalize().unwrap();
-    std::fs::write(assets.join("zero.ogt"), "type sfx\nversion 1\n---\nlayer {\nsample {\nsamples 0\nrate 8000\nloop true\n}\nattack 0\nsustain 0.01\ndecay 0\ngain 1\n}\n").unwrap();
+    std::fs::write(root.join("content/zero.ts"), "import {file} from '@origingame/engine/author'; export default file.sfx({layers:[{sample:{kind:'pcm',samples:[0],rate:8000,looping:true},attack:0,sustain:0.01,decay:0,gain:1}]});").unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     assert_ne!(first, decoded());
     let silence = og_cook::runtime::Bundle::open(&root.join("cooked"))
         .unwrap()
-        .load_sound("zero.ogt")
+        .load_sound("base/zero")
         .unwrap()
         .decode()
         .unwrap();
     assert_eq!(decoded(), silence.samples);
+
+    // The CLI's author declaration and listening WAV describe the same sound.
+    for out in ["content/preset.ts", "assets/preset.wav"] {
+        let generated = og()
+            .args([
+                "sfx", "laser", "--seed", "23", "--pitch", "1.17", "--length", "0.6", "--volume",
+                "0.65", "--out", out,
+            ])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(generated.status.success(), "{}", text(&generated));
+    }
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle
+            .load_sound("base/preset")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .samples,
+        bundle
+            .load_sound("preset.wav")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .samples
+    );
+
+    for (source, message) in [
+        ("{}", "needs a preset or at least one layer"),
+        ("{layers:[{sustain:31}]}", "above the 30 s limit"),
+        (
+            "{layers:[{sample:{kind:'pcm',samples:[0],rate:8000},fmIndex:1}]}",
+            "sample layers reject FM",
+        ),
+        ("{layers:[{freq:0}]}", "/layers"),
+        (
+            "{layers:[{sample:{kind:'file',source:'../authored.wav'}}]}",
+            "sample.source",
+        ),
+    ] {
+        std::fs::write(root.join("content/bad.ts"), format!("import {{file}} from '@origingame/engine/author'; export default file.sfx({source});")).unwrap();
+        let out = cook();
+        assert!(!out.status.success(), "accepted {source}");
+        assert!(text(&out).contains(message), "{}", text(&out));
+    }
+    std::fs::remove_file(root.join("content/bad.ts")).unwrap();
+    std::fs::write(
+        assets.join("old.ogt"),
+        "type sfx\nversion 1\n---\npreset \"click\"\n",
+    )
+    .unwrap();
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("sfx OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
 }
 
 /// Typed source attributes cross the public cook/load boundary, including

@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, presetLook, readAudioChoices, readLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, audioBrief, presetLook, readAudioChoices, readLook } from "../scripts/brief.ts";
 import { readProjectOutput } from "../scripts/project-output.ts";
 
 const temps: string[] = [];
@@ -66,10 +66,25 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
   writeFileSync(join(dir, "src/main.ts"), "throw new Error('GAME_MUST_NOT_EXECUTE');");
   writeFileSync(join(dir, "assets/looks/brief.ogt"), 'type look\nversion 1\n---\nextends "pixel"\nmood "cold"\n');
   const choices = join(dir, "lib/choices.ts");
-  writeFileSync(choices, 'export const choices = { form: "2d", music: "ambient", genre: "adventure" };');
+  writeFileSync(choices, 'export const choices = { form: "2d", music: "ambient", genre: "rpg" };');
   const look = readLook(dir);
   expect([look.profile, look.style?.slug, look.mood]).toEqual(["2d", "pixel", "cold"]);
-  expect(readAudioChoices(dir)).toEqual({ music: "ambient", genre: "adventure", mood: "cold" });
+  expect(readAudioChoices(dir)).toEqual({ music: "ambient", genre: "rpg", mood: "cold" });
+  const audio = audioBrief(readAudioChoices(dir));
+  expect(audio.presets.length).toBeGreaterThan(0);
+  for (const preset of audio.presets) {
+    expect(preset.file).toBe(`content/audio/${preset.id}.ts`);
+    mkdirSync(join(dir, "content/audio"), { recursive: true });
+    writeFileSync(join(dir, preset.file), preset.ts);
+  }
+  const cooked = Bun.spawnSync([process.env.OG_BIN!, "cook", dir, "--json"]);
+  expect(cooked.exitCode, new TextDecoder().decode(cooked.stderr)).toBe(0);
+  const indexed = Bun.spawnSync([process.env.OG_BIN!, "assets", "--project", dir, "--json"]);
+  expect(indexed.exitCode).toBe(0);
+  const assets = JSON.parse(new TextDecoder().decode(indexed.stdout)).assets as { id: string; kind: string }[];
+  for (const preset of audio.presets) {
+    expect(assets.find((a) => a.id === `base/audio/${preset.id}`)?.kind).toBe("sound");
+  }
   writeFileSync(choices, 'export const choices = { form: "3d", music: "orchestral", genre: "strategy" };');
   expect(readLook(dir).profile).toBe("3d");
   expect(readAudioChoices(dir)).toEqual({ music: "orchestral", genre: "strategy", mood: "cold" });

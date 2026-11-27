@@ -678,7 +678,7 @@ export default og.game({
     if (!entity.ok) throw new Error(entity.reason);
     world.insert(entity.value, og.Tilemap, { map: loaded.value.map });
     const sound = og.load.sound(world, "base/signal");
-    const sampled = og.load.sound(world, "sampled.ogt");
+    const sampled = og.load.sound(world, "base/sampled");
     og.assert.always(sampled.ok, "sample-based synthesis cooks as a normal sound", {});
     const source = { samples: [0.25], rate: 8000, reference: 440, loop: true };
     const layer = { sample: source, freq: 880, attack: 0, sustain: 0.01, decay: 0, gain: 1 };
@@ -769,25 +769,18 @@ const samples = Float32Array.from({ length: 600 }, (_, i) => [-2, 0.25, 0.5, -0.
 export default file.sound({ rate: 22050, channels: 2, samples });
 ```
 
-SFX layers can also use a recording instead of an oscillator. A `sample` block accepts either `source "recording.wav"` relative to the SFX file, or explicit mono `samples` and `rate`. Stereo files average to mono. `reference` gives the layer frequency for original-speed playback, and `loop` wraps only the source, not the explicit envelope. Slide, vibrato, filters and drive use the same synth as oscillators; FM is oscillator-only. The file's content participates in the cook cache key even when the SFX text did not change.
+SFX layers can also use a recording instead of an oscillator. A sample is either `{kind:"file", source:"assets/recording.wav"}` with an explicit canonical module-relative path, or `{kind:"pcm", samples, rate}` with mono samples. Stereo files average to mono. `reference` gives the layer frequency for original-speed playback, and `looping` wraps only the source, not the explicit envelope. Slide, vibrato, filters and drive use the same synth as oscillators; FM is oscillator-only. The file's bytes participate in the cook cache key even when the declaration did not change.
 
-```ogt recipe file=assets/sampled.ogt
-type sfx
-version 1
----
-layer {
-  sample {
-    samples 0.25 -0.5 0.75
-    rate 8000
-    reference 440
-    loop true
-  }
-  freq 880
-  attack 0.002
-  sustain 0.01
-  decay 0.004
-  gain 0.5
-}
+```ts recipe file=content/sampled.ts
+import { file } from "@origingame/engine/author";
+
+export default file.sfx({
+  layers: [{
+    sample: { kind: "pcm", samples: new Float32Array([0.25, -0.5, 0.75]),
+      rate: 8000, reference: 440, looping: true },
+    freq: 880, attack: 0.002, sustain: 0.01, decay: 0.004, gain: 0.5,
+  }],
+});
 ```
 
 <a id="guide-generating-7"></a>
