@@ -188,7 +188,8 @@ function scratchGame(pack: string, og: string): { root: string; game: string; na
   const ext = readJson(join(pack, "extension.json"));
   // A vfx2d effect plays only in a 2D project.
   const form = ext.tags?.dim === "2d" ? ["--form", "2d"] : [];
-  const made = spawnSync("bun", [join(ROOT, "packages/create/bin/create.ts"), game, ...form], { encoding: "utf8" });
+  // create runs og itself (og i18n tables): the og under review, not one on PATH.
+  const made = spawnSync("bun", [join(ROOT, "packages/create/bin/create.ts"), game, ...form], { encoding: "utf8", env: { ...process.env, OG_BIN: og } });
   if (made.status !== 0) fail(made.stdout + made.stderr);
   mkdirSync(join(game, "assets"), { recursive: true });
   const r = spawnSync(og, ["vfx", "add", pack, game, "--any-engine"], { encoding: "utf8" });
