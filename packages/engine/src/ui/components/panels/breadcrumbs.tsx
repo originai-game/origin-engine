@@ -1,5 +1,5 @@
 import { For, Icon, Line, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./breadcrumbs.en.ogt";
+import "./breadcrumbs.en.strings.ts";
 
 export interface BreadcrumbsProps {
   /** The crumbs, the current page last: each { id, label, icon, current }, current true on the last. */

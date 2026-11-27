@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.breadcrumbs.name" "导航路径"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.breadcrumbs.name": "导航路径"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "en"
-string "screen.flow-screen.skip" "Skip"
-string "screen.flow-screen.buffering" "Buffering…"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.flow-screen.buffering": "Buffering…",
+    "screen.flow-screen.skip": "Skip"
+  },
+  "fonts": [],
+  "locale": "en"
+});

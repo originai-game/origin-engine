@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./progress-ring.en.ogt";
+import "./progress-ring.en.strings.ts";
 
 export interface ProgressRingProps {
   /** Done, 0 to 1. */

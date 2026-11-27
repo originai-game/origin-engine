@@ -1,5 +1,5 @@
 import { View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./split-view.en.ogt";
+import "./split-view.en.strings.ts";
 
 export interface SplitViewProps {
   /** The start pane's share of the room, 0 to 1; the game keeps it from the divider's drag events. Default 0.5. */

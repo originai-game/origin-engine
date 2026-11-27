@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "shooter.damage.name" "Incoming damage"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "shooter.damage.name": "Incoming damage"
+  },
+  "fonts": [],
+  "locale": "en"
+});

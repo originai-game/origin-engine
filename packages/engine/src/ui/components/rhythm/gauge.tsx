@@ -1,5 +1,5 @@
 import { For, Show, Text, View, t, packClass } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmGaugeProps {
   /** What it measures: life (the run fails at empty) or fever (a charge the player spends when full); on data-kind. Default "life". */

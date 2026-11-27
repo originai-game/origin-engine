@@ -1,13 +1,18 @@
-type strings
-version 1
----
-locale "en"
-string "component.compass.name" "Compass"
-string "component.compass.n" "N"
-string "component.compass.ne" "NE"
-string "component.compass.e" "E"
-string "component.compass.se" "SE"
-string "component.compass.s" "S"
-string "component.compass.sw" "SW"
-string "component.compass.w" "W"
-string "component.compass.nw" "NW"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.compass.e": "E",
+    "component.compass.n": "N",
+    "component.compass.name": "Compass",
+    "component.compass.ne": "NE",
+    "component.compass.nw": "NW",
+    "component.compass.s": "S",
+    "component.compass.se": "SE",
+    "component.compass.sw": "SW",
+    "component.compass.w": "W"
+  },
+  "fonts": [],
+  "locale": "en"
+});

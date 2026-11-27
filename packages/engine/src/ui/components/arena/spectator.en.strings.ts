@@ -1,15 +1,20 @@
-type strings
-version 1
----
-locale "en"
-string "spectator.title" "Spectating"
-string "spectator.free" "Free camera"
-string "spectator.following" "Following player"
-string "spectator.choose" "Choose a player"
-string "spectator.current" "Watching"
-string "spectator.targets" "Players to watch"
-string "spectator.loading" "Loading players…"
-string "spectator.empty" "No players to watch"
-string "spectator.previous" "Previous"
-string "spectator.next" "Next"
-string "spectator.leave" "Leave"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "spectator.choose": "Choose a player",
+    "spectator.current": "Watching",
+    "spectator.empty": "No players to watch",
+    "spectator.following": "Following player",
+    "spectator.free": "Free camera",
+    "spectator.leave": "Leave",
+    "spectator.loading": "Loading players…",
+    "spectator.next": "Next",
+    "spectator.previous": "Previous",
+    "spectator.targets": "Players to watch",
+    "spectator.title": "Spectating"
+  },
+  "fonts": [],
+  "locale": "en"
+});

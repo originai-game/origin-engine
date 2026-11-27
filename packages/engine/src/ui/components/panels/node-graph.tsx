@@ -1,5 +1,5 @@
 import { For, Icon, Line, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./node-graph.en.ogt";
+import "./node-graph.en.strings.ts";
 
 export interface NodeGraphProps {
   /** The nodes: each { id, x, y, label, icon, state, shape, team }, x and y their centres in graph units; state available, locked, active, done or current (a rim and a dim as well as a colour); shape circle, square, hex or diamond; team ally, enemy or empty (pair a side with a shape, so sides are not told by colour alone). */

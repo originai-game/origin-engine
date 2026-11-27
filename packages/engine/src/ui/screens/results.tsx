@@ -4,7 +4,7 @@ import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { Counter } from "../controls/counter";
 import { Progress } from "../controls/progress";
-import "./results.en.ogt";
+import "./results.en.strings.ts";
 
 export interface ResultsScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

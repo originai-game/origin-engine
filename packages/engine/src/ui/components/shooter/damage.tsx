@@ -1,5 +1,5 @@
 import { For, Show, Text, View, formatNumber, t, packClass } from "@origingame/engine/ui";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface DamageHit {
   id: string;

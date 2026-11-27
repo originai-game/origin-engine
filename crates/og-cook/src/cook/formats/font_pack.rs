@@ -47,7 +47,7 @@ pub(crate) fn shipped_languages(sources: &[Source]) -> std::collections::BTreeSe
     let mut out: std::collections::BTreeSet<String> = sources
         .iter()
         .filter(|s| s.kind == &crate::cook::systems::strings::STRINGS)
-        .filter_map(|s| og_i18n::StringTable::parse(std::str::from_utf8(&s.bytes).ok()?).ok())
+        .filter_map(|s| s.strings.as_ref())
         .map(|t| og_i18n::hyphenation::dictionary_language(&t.locale))
         .collect();
     if out.is_empty() {
@@ -148,7 +148,7 @@ pub(crate) fn check_segmentation(sources: &[Source]) -> Vec<(String, String)> {
         .iter()
         .filter(|s| s.kind == &crate::cook::systems::strings::STRINGS)
         .filter_map(|s| {
-            let t = og_i18n::StringTable::parse(std::str::from_utf8(&s.bytes).ok()?).ok()?;
+            let t = s.strings.as_ref()?;
             let attr = og_i18n::segmenter::dictionary_for(&t.locale)?;
             (!packs.iter().any(|m| names_dictionary(m, attr))).then(|| {
                 (

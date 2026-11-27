@@ -2,7 +2,7 @@ import { createSignal, For, Icon, Show, Text, View, formatNumber, packClass, t, 
 import { Button } from "../controls/button";
 import { Slider } from "../controls/slider";
 import { Switch } from "../controls/switch";
-import "./hud-editor.en.ogt";
+import "./hud-editor.en.strings.ts";
 
 /** One editable HUD element's placement and presentation inside the safe area. */
 export interface HudRegion {

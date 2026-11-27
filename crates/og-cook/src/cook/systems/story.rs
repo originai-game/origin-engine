@@ -85,14 +85,12 @@ pub(crate) fn cook_story(
 /// every key they show is in it, and every argument its message takes is
 /// passed. As (source, line) warnings; nothing without a string table.
 pub(crate) fn check_story_keys(
-    tables: &[(&str, &[u8])],
+    tables: &[(&str, &og_i18n::StringTable)],
     stories: &[(&str, &[u8])],
     functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
 ) -> Vec<(String, String)> {
-    let parsed: Vec<og_i18n::StringTable> = tables
-        .iter()
-        .filter_map(|(_, b)| og_i18n::StringTable::parse(std::str::from_utf8(b).ok()?).ok())
-        .collect();
+    let parsed: Vec<og_i18n::StringTable> =
+        tables.iter().map(|(_, table)| (*table).clone()).collect();
     let Some(base) = og_i18n::base_table(&parsed) else {
         return Vec::new();
     };

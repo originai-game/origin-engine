@@ -1,7 +1,7 @@
 import { Icon, Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { NodeGraph } from "../components/panels/node-graph";
 import { Button } from "../controls/button";
-import "./flow-chart.en.ogt";
+import "./flow-chart.en.strings.ts";
 
 export interface FlowChartScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

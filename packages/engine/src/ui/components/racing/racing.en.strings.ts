@@ -1,94 +1,99 @@
-type strings
-version 1
----
-locale "en"
-string "racing.telemetry.name" "Telemetry"
-string "racing.telemetry.speed" "{speed, number} {units}"
-string "racing.telemetry.gearValue" "Gear {gear}"
-string "racing.telemetry.rpm" "Engine speed"
-string "racing.telemetry.rpmValue" "{rpm, number} rpm"
-string "racing.telemetry.lights" "Shift lights"
-string "racing.telemetry.shift" "Shift"
-string "racing.lap.name" "Place and lap times"
-string "racing.lap.lap" "Lap"
-string "racing.lap.position" "Position"
-string "racing.lap.of" "/{total, number}"
-string "racing.lap.ofSpaced" "/ {total, number}"
-string "racing.lap.lapValue" "Lap {lap, number} of {laps, number}"
-string "racing.lap.positionValue" "Position {position, number} of {racers, number}"
-string "racing.lap.pending" "–"
-string "racing.lap.up" "{n, plural, one {Up # place} other {Up # places}}"
-string "racing.lap.down" "{n, plural, one {Down # place} other {Down # places}}"
-string "racing.lap.times" "Lap times"
-string "racing.lap.current" "Current"
-string "racing.lap.best" "Best"
-string "racing.lap.last" "Last"
-string "racing.lap.split" "Split"
-string "racing.lap.none" "–:––.–––"
-string "racing.lap.ahead" "Ahead"
-string "racing.lap.behind" "Behind"
-string "racing.lap.even" "Level"
-string "racing.lap.splitAhead" "{sector} ahead {delta}"
-string "racing.lap.splitBehind" "{sector} behind {delta}"
-string "racing.lap.splitEven" "{sector} level {delta}"
-string "racing.lap.newBest" "Best lap"
-string "racing.lap.finalLap" "Final lap"
-string "racing.lap.timeLeft" "Time left"
-string "racing.standings.name" "Standings"
-string "racing.standings.empty" "No racers yet"
-string "racing.standings.leader" "Leader"
-string "racing.standings.pitting" "Pit"
-string "racing.standings.retired" "DNF"
-string "racing.standings.finished" "Fin"
-string "racing.standings.pittingName" "In the pits"
-string "racing.standings.retiredName" "Did not finish"
-string "racing.standings.finishedName" "Finished"
-string "racing.banner.name" "Race"
-string "racing.banner.go" "Go!"
-string "racing.banner.finalLap" "Final lap"
-string "racing.banner.finish" "Finish"
-string "racing.map.name" "Track map"
-string "racing.map.length" "Track length"
-string "racing.boost.name" "Boost"
-string "racing.pedals.name" "Pedals"
-string "racing.pedals.throttle" "Thr"
-string "racing.pedals.brake" "Brk"
-string "racing.pedals.throttleName" "Throttle"
-string "racing.pedals.brakeName" "Brake"
-string "racing.car.name" "Car"
-string "racing.car.tyres" "Tyres"
-string "racing.car.fuel" "Fuel"
-string "racing.car.fuelLow" "Fuel low"
-string "racing.car.pit" "Box this lap"
-string "racing.bonus.name" "Bonus"
-string "racing.garage.title" "Garage"
-string "racing.garage.vehicles" "Vehicles"
-string "racing.garage.stats" "Performance"
-string "racing.garage.empty" "No vehicles yet"
-string "racing.garage.owned" "Owned"
-string "racing.garage.locked" "Locked"
-string "racing.garage.driving" "Driving"
-string "racing.garage.select" "Drive"
-string "racing.garage.buy" "Buy {price}"
-string "racing.garage.short" "Too costly"
-string "racing.garage.back" "Back"
-string "racing.garage.prev" "Previous car"
-string "racing.garage.next" "Next car"
-string "racing.garage.count" "{n, number} of {total, number}"
-string "racing.results.title" "Results"
-string "racing.results.empty" "No finishers"
-string "racing.results.position" "Pos"
-string "racing.results.driver" "Driver"
-string "racing.results.time" "Time"
-string "racing.results.points" "Pts"
-string "racing.results.fastest" "Fastest lap"
-string "racing.results.bestLap" "Fastest lap {time} · {name}"
-string "racing.results.bestLapTime" "Fastest lap {time}"
-string "racing.results.unplaced" "–"
-string "racing.results.dnf" "DNF"
-string "racing.results.dsq" "DSQ"
-string "racing.results.dnfName" "Did not finish"
-string "racing.results.dsqName" "Disqualified"
-string "racing.results.you" "You"
-string "racing.results.continue" "Continue"
-string "racing.results.retry" "Retry"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "racing.banner.finalLap": "Final lap",
+    "racing.banner.finish": "Finish",
+    "racing.banner.go": "Go!",
+    "racing.banner.name": "Race",
+    "racing.bonus.name": "Bonus",
+    "racing.boost.name": "Boost",
+    "racing.car.fuel": "Fuel",
+    "racing.car.fuelLow": "Fuel low",
+    "racing.car.name": "Car",
+    "racing.car.pit": "Box this lap",
+    "racing.car.tyres": "Tyres",
+    "racing.garage.back": "Back",
+    "racing.garage.buy": "Buy {price}",
+    "racing.garage.count": "{n, number} of {total, number}",
+    "racing.garage.driving": "Driving",
+    "racing.garage.empty": "No vehicles yet",
+    "racing.garage.locked": "Locked",
+    "racing.garage.next": "Next car",
+    "racing.garage.owned": "Owned",
+    "racing.garage.prev": "Previous car",
+    "racing.garage.select": "Drive",
+    "racing.garage.short": "Too costly",
+    "racing.garage.stats": "Performance",
+    "racing.garage.title": "Garage",
+    "racing.garage.vehicles": "Vehicles",
+    "racing.lap.ahead": "Ahead",
+    "racing.lap.behind": "Behind",
+    "racing.lap.best": "Best",
+    "racing.lap.current": "Current",
+    "racing.lap.down": "{n, plural, one {Down # place} other {Down # places}}",
+    "racing.lap.even": "Level",
+    "racing.lap.finalLap": "Final lap",
+    "racing.lap.lap": "Lap",
+    "racing.lap.lapValue": "Lap {lap, number} of {laps, number}",
+    "racing.lap.last": "Last",
+    "racing.lap.name": "Place and lap times",
+    "racing.lap.newBest": "Best lap",
+    "racing.lap.none": "–:––.–––",
+    "racing.lap.of": "/{total, number}",
+    "racing.lap.ofSpaced": "/ {total, number}",
+    "racing.lap.pending": "–",
+    "racing.lap.position": "Position",
+    "racing.lap.positionValue": "Position {position, number} of {racers, number}",
+    "racing.lap.split": "Split",
+    "racing.lap.splitAhead": "{sector} ahead {delta}",
+    "racing.lap.splitBehind": "{sector} behind {delta}",
+    "racing.lap.splitEven": "{sector} level {delta}",
+    "racing.lap.timeLeft": "Time left",
+    "racing.lap.times": "Lap times",
+    "racing.lap.up": "{n, plural, one {Up # place} other {Up # places}}",
+    "racing.map.length": "Track length",
+    "racing.map.name": "Track map",
+    "racing.pedals.brake": "Brk",
+    "racing.pedals.brakeName": "Brake",
+    "racing.pedals.name": "Pedals",
+    "racing.pedals.throttle": "Thr",
+    "racing.pedals.throttleName": "Throttle",
+    "racing.results.bestLap": "Fastest lap {time} · {name}",
+    "racing.results.bestLapTime": "Fastest lap {time}",
+    "racing.results.continue": "Continue",
+    "racing.results.dnf": "DNF",
+    "racing.results.dnfName": "Did not finish",
+    "racing.results.driver": "Driver",
+    "racing.results.dsq": "DSQ",
+    "racing.results.dsqName": "Disqualified",
+    "racing.results.empty": "No finishers",
+    "racing.results.fastest": "Fastest lap",
+    "racing.results.points": "Pts",
+    "racing.results.position": "Pos",
+    "racing.results.retry": "Retry",
+    "racing.results.time": "Time",
+    "racing.results.title": "Results",
+    "racing.results.unplaced": "–",
+    "racing.results.you": "You",
+    "racing.standings.empty": "No racers yet",
+    "racing.standings.finished": "Fin",
+    "racing.standings.finishedName": "Finished",
+    "racing.standings.leader": "Leader",
+    "racing.standings.name": "Standings",
+    "racing.standings.pitting": "Pit",
+    "racing.standings.pittingName": "In the pits",
+    "racing.standings.retired": "DNF",
+    "racing.standings.retiredName": "Did not finish",
+    "racing.telemetry.gearValue": "Gear {gear}",
+    "racing.telemetry.lights": "Shift lights",
+    "racing.telemetry.name": "Telemetry",
+    "racing.telemetry.rpm": "Engine speed",
+    "racing.telemetry.rpmValue": "{rpm, number} rpm",
+    "racing.telemetry.shift": "Shift",
+    "racing.telemetry.speed": "{speed, number} {units}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

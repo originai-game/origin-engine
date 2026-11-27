@@ -1,12 +1,17 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "vote.title" "地图投票"
-string "vote.options" "地图"
-string "vote.selected" "你的投票"
-string "vote.winner" "胜出"
-string "vote.closed" "投票已结束"
-string "vote.loading" "正在加载地图…"
-string "vote.empty" "暂无可用地图"
-string "vote.tally" "票数：{count}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "vote.closed": "投票已结束",
+    "vote.empty": "暂无可用地图",
+    "vote.loading": "正在加载地图…",
+    "vote.options": "地图",
+    "vote.selected": "你的投票",
+    "vote.tally": "票数：{count}",
+    "vote.title": "地图投票",
+    "vote.winner": "胜出"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

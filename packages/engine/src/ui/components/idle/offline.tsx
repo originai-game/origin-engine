@@ -1,6 +1,6 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./idle.en.ogt";
+import "./idle.en.strings.ts";
 
 export interface IdleOfflineProps {
   /** The panel's heading; empty takes the group's (Welcome back). */

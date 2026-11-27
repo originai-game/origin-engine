@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgComboProps {
   /** The hits in the chain; 0 hides the counter. */

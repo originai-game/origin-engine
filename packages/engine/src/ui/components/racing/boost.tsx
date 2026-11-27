@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, Show, Text, View, t, packClass } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingBoostProps {
   /** The meter's name as the game words it (Nitro, ERS, Boost); empty takes the kit's (Boost). */

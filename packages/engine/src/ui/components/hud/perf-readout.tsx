@@ -1,5 +1,5 @@
 import { Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./perf-readout.en.ogt";
+import "./perf-readout.en.strings.ts";
 
 export interface PerfReadoutProps {
   /** Frames per second; negative means unavailable, zero is a real reading. */

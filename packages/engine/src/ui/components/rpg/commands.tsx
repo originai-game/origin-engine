@@ -1,5 +1,5 @@
 import { For, Icon, packClass, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgCommandsProps {
   /** The commands in order, keyed rows of { id, label, icon, enabled }: label as the game words it (Attack, Skills, Spells, Items, Defend, Flee). */

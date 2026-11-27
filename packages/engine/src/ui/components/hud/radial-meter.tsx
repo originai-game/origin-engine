@@ -1,5 +1,5 @@
 import { Show, View, packClass, t } from "@origingame/engine/ui";
-import "./radial-meter.en.ogt";
+import "./radial-meter.en.strings.ts";
 
 export interface RadialMeterProps {
   /** The value in wheels: 1 is one full wheel, up to 3. */

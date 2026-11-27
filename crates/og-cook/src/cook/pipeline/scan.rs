@@ -370,6 +370,7 @@ pub(crate) fn scan_with(
         let path = at
             .get(id)
             .cloned()
+            .or_else(|| code.tables.get(id).cloned())
             .or_else(|| look::style_path(id).map(Path::to_path_buf))
             .unwrap_or_else(|| assets_dir.join(id));
         files.push((id.clone(), path));
@@ -412,8 +413,15 @@ pub(crate) fn scan_with(
             // Shipped declarations use the same closed TS evaluator, schemas
             // and canonical IR as project content, never an OGT bridge. The
             // reserved @styles/ prefix names the engine's styles root.
-            (None, "ts") if rel.starts_with("@styles/") && builtins.contains_key(rel) => {
-                let file = rel.strip_prefix("@styles/").expect("built-in style id");
+            (None, "ts")
+                if (rel.starts_with("@styles/")
+                    || rel.starts_with("@ui/") && rel.ends_with(".strings.ts"))
+                    && builtins.contains_key(rel) =>
+            {
+                let file = rel
+                    .strip_prefix("@styles/")
+                    .or_else(|| rel.strip_prefix("@ui/"))
+                    .expect("built-in declaration id");
                 let mut root = path.clone();
                 for _ in file.split('/') {
                     root.pop();
@@ -519,7 +527,7 @@ pub(crate) fn scan_with(
             Some(bytes) => bytes,
             None => read(rel, path)?,
         };
-        sources.push(Source {
+        let mut source = Source {
             rel: rel.clone(),
             path: path.clone(),
             kind,
@@ -535,12 +543,18 @@ pub(crate) fn scan_with(
             video: None,
             timeline: None,
             motion_action: None,
+            strings: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
             conformed: None,
             fracture: None,
-        });
+        };
+        if source.kind == &strings::STRINGS {
+            source.strings =
+                Some(strings::declaration(source.input().map_err(CookError)?).map_err(CookError)?);
+        }
+        sources.push(source);
     }
     // The walk reads a directory's subdirectories before its `import.ogt`.
     defaults.sort_by_key(|d| d.depth());

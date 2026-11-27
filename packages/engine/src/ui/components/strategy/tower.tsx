@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, packClass, Scroll, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
-import "./strategy.en.ogt";
+import "./strategy.en.strings.ts";
 
 export interface StrategyTowerProps {
   /** The tower's name; empty takes the kit's (Tower). */

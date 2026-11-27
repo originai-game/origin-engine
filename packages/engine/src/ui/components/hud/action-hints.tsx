@@ -1,5 +1,5 @@
 import { For, Show, Text, View, createSignal, t, type UiEvent } from "@origingame/engine/ui";
-import "./action-hints.en.ogt";
+import "./action-hints.en.strings.ts";
 
 export interface ActionHintsProps {
   /** The hints, a keyed collection of { action, hint, hold }: action the og-input action whose glyph its cap shows on the device used last, hint what it does (Buy), hold true when it fires on a hold (its fill grows while the action or a press holds it). */

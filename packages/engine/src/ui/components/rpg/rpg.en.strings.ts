@@ -1,59 +1,64 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.card.equip" "Equip"
-string "rpg.card.use" "Use"
-string "rpg.card.drop" "Drop"
-string "rpg.character.attributes" "Attributes"
-string "rpg.character.unequip" "Unequip"
-string "rpg.quests.updated" "Updated"
-string "rpg.quest.objectives" "Objectives"
-string "rpg.quest.rewards" "Rewards"
-string "rpg.quest.optional" "Optional"
-string "rpg.quest.track" "Track"
-string "rpg.quest.untrack" "Stop tracking"
-string "rpg.quest.locate" "Show on map"
-string "rpg.map.name" "Map"
-string "rpg.map.places" "Places"
-string "rpg.map.legend" "Legend"
-string "rpg.place.mark" "Mark"
-string "rpg.place.unmark" "Unmark"
-string "rpg.place.travel" "Fast travel"
-string "rpg.party.name" "Party"
-string "rpg.party.empty" "No companions"
-string "rpg.party.level" "Level {level}"
-string "rpg.party.health" "Health"
-string "rpg.party.mana" "Mana"
-string "rpg.party.down" "Down"
-string "rpg.turns.name" "Turn order"
-string "rpg.turns.round" "Round {round}"
-string "rpg.turns.ally" "Ally"
-string "rpg.turns.enemy" "Enemy"
-string "rpg.turns.neutral" "Neutral"
-string "rpg.party.lv" "Lv"
-string "rpg.party.figure" "{now} / {max}"
-string "rpg.enemy.name" "Enemy"
-string "rpg.commands.name" "Actions"
-string "rpg.menu.name" "Menu"
-string "rpg.menu.close" "Close"
-string "rpg.objective.name" "Objective"
-string "rpg.leader.level" "Lv {level}"
-string "rpg.leader.max" "/ {max}"
-string "rpg.effects.name" "Effects"
-string "rpg.companions.member" "{name}, {state}"
-string "rpg.companions.fallen" "Fallen"
-string "rpg.minimap.north" "N"
-string "rpg.lock.target" "Locked on {name}"
-string "rpg.lock.none" "No target"
-string "rpg.skills.name" "Skills"
-string "rpg.combo.hits" "{count} hits"
-string "rpg.combo.word" "Hits"
-string "rpg.combo.bonus" "Damage ×{value}"
-string "rpg.hits.name" "Damage"
-string "rpg.hits.heal" "+{amount}"
-string "rpg.lootfeed.name" "Loot"
-string "rpg.hints.name" "Controls"
-string "rpg.xp.name" "Experience"
-string "rpg.xp.caption" "Lv {level} · {share} to next"
-string "rpg.xp.share" "{share} to next"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.card.drop": "Drop",
+    "rpg.card.equip": "Equip",
+    "rpg.card.use": "Use",
+    "rpg.character.attributes": "Attributes",
+    "rpg.character.unequip": "Unequip",
+    "rpg.combo.bonus": "Damage ×{value}",
+    "rpg.combo.hits": "{count} hits",
+    "rpg.combo.word": "Hits",
+    "rpg.commands.name": "Actions",
+    "rpg.companions.fallen": "Fallen",
+    "rpg.companions.member": "{name}, {state}",
+    "rpg.effects.name": "Effects",
+    "rpg.enemy.name": "Enemy",
+    "rpg.hints.name": "Controls",
+    "rpg.hits.heal": "+{amount}",
+    "rpg.hits.name": "Damage",
+    "rpg.leader.level": "Lv {level}",
+    "rpg.leader.max": "/ {max}",
+    "rpg.lock.none": "No target",
+    "rpg.lock.target": "Locked on {name}",
+    "rpg.lootfeed.name": "Loot",
+    "rpg.map.legend": "Legend",
+    "rpg.map.name": "Map",
+    "rpg.map.places": "Places",
+    "rpg.menu.close": "Close",
+    "rpg.menu.name": "Menu",
+    "rpg.minimap.north": "N",
+    "rpg.objective.name": "Objective",
+    "rpg.party.down": "Down",
+    "rpg.party.empty": "No companions",
+    "rpg.party.figure": "{now} / {max}",
+    "rpg.party.health": "Health",
+    "rpg.party.level": "Level {level}",
+    "rpg.party.lv": "Lv",
+    "rpg.party.mana": "Mana",
+    "rpg.party.name": "Party",
+    "rpg.place.mark": "Mark",
+    "rpg.place.travel": "Fast travel",
+    "rpg.place.unmark": "Unmark",
+    "rpg.quest.locate": "Show on map",
+    "rpg.quest.objectives": "Objectives",
+    "rpg.quest.optional": "Optional",
+    "rpg.quest.rewards": "Rewards",
+    "rpg.quest.track": "Track",
+    "rpg.quest.untrack": "Stop tracking",
+    "rpg.quests.updated": "Updated",
+    "rpg.skills.name": "Skills",
+    "rpg.turns.ally": "Ally",
+    "rpg.turns.enemy": "Enemy",
+    "rpg.turns.name": "Turn order",
+    "rpg.turns.neutral": "Neutral",
+    "rpg.turns.round": "Round {round}",
+    "rpg.xp.caption": "Lv {level} · {share} to next",
+    "rpg.xp.name": "Experience",
+    "rpg.xp.share": "{share} to next"
+  },
+  "fonts": [],
+  "locale": "en"
+});

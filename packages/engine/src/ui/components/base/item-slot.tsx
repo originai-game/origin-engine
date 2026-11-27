@@ -1,6 +1,6 @@
 import { Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
-import "./item-slot.en.ogt";
+import "./item-slot.en.strings.ts";
 
 export interface ItemSlotProps {
   /** The item name, also its accessible name and tooltip. Empty slots use the localized empty-slot name. */

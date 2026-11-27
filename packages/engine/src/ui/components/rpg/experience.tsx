@@ -1,5 +1,5 @@
 import { packClass, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgExperienceProps {
   /** The level now; 0 hides the caption's level. */

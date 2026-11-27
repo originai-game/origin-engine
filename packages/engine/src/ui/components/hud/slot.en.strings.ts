@@ -1,8 +1,13 @@
-type strings
-version 1
----
-locale "en"
-string "hud.slot.state" "{name}, {state}"
-string "hud.slot.charges" "Charges"
-string "hud.slot.charge" "Ultimate charge"
-string "hud.slot.count" "×{count}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.slot.charge": "Ultimate charge",
+    "hud.slot.charges": "Charges",
+    "hud.slot.count": "×{count}",
+    "hud.slot.state": "{name}, {state}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

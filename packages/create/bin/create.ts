@@ -4,7 +4,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
-import { CREATION_CHOICES, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput, profileOf } from "./knowledge.ts";
+import { CREATION_CHOICES, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput, profileOf, readStringTables } from "./knowledge.ts";
 import type { CreationChoices, CreationInput, View } from "./knowledge.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
@@ -254,7 +254,9 @@ export function create(options: CreateOptions): Created {
   const config = "src/shell-config.ts";
   writeFileSync(join(dir, config), `// Creation choices configure the shell here; changing project.ts alone does not regenerate code.\nexport const shellConfig = ${JSON.stringify({ name, platform: choices.platform, input: choices.input, lang: choices.lang, genre: choices.genre, languageNames: Object.fromEntries(choices.lang.map((l) => [l, new Intl.DisplayNames([l], { type: "language" }).of(l) ?? l])) }, null, 2)};\n`);
   const locales = [...new Set(["en", ...choices.lang])];
-  const english = readFileSync(join(template, "assets/strings/shell.en.ogt"), "utf8");
+  const english = readStringTables(template).find(t => t.id === "base/strings/shell.en");
+  if (!english) throw new Error("scaffold has no base/strings/shell.en table");
+  const builtinTables = readStringTables(template, true);
   const chinese: Record<string, string> = {
     "shell.pause": "暂停", "shell.general": "通用", "shell.volume": "主音量", "shell.textScale": "文字大小",
     "shell.reducedMotion": "减少动态效果", "shell.language": "语言", "shell.saved": "进度已保存",
@@ -262,31 +264,29 @@ export function create(options: CreateOptions): Created {
     "shell.volume.about": "整个游戏的音量。", "shell.textScale.about": "放大所有菜单和字幕文字。",
     "shell.reducedMotion.about": "缩短过渡并关闭游玩不需要的动态效果。", "shell.language.about": "菜单和文本使用的语言。",
     "shell.quitToMenu": "返回主菜单？", "shell.quitToMenu.about": "上次存档之后的进度将会丢失。", "shell.quitToMenu.confirm": "返回主菜单",
-    "shell.cancel": "取消", "shell.tip": "在 assets/strings 中修改这条提示。",
+    "shell.cancel": "取消", "shell.tip": "在 content/strings 中修改这条提示。",
   };
-  const screens = join(template, "../../engine/src/ui/screens");
   for (const locale of locales) {
     // Seed every requested locale with the available built-in translation, otherwise English.
     // These are ordinary authored tables: the author fills translations not shipped by the engine.
     const messages = new Map<string, string>();
-    const read = (table: string) => {
-      for (const line of table.split("\n")) {
-        const m = /^string ("(?:[^"\\]|\\.)*") ("(?:[^"\\]|\\.)*")$/.exec(line);
-        if (m) messages.set(JSON.parse(m[1]!), JSON.parse(m[2]!));
-      }
+    const read = (entries: Readonly<Record<string, string>>) => {
+      for (const [key,value] of Object.entries(entries)) messages.set(key, value);
     };
-    read(english);
+    read(english.entries);
     for (const screen of ["title", "main-menu", "pause", "settings", "save-load", "confirm", "loading", "controls", "credits"]) {
-      read(readFileSync(join(screens, `${screen}.en.ogt`), "utf8"));
-      const translated = join(screens, `${screen}.${locale.startsWith("zh") && !/Hant|TW|HK/.test(locale) ? "zh-CN" : locale}.ogt`);
-      if (existsSync(translated)) read(readFileSync(translated, "utf8"));
+      const en = builtinTables.find(t => t.path === `screens/${screen}.en.strings.ts`);
+      if (!en) throw new Error(`no built-in ${screen} English table`);
+      read(en.entries);
+      const translated = builtinTables.find(t => t.path === `screens/${screen}.${locale.startsWith("zh") && !/Hant|TW|HK/.test(locale) ? "zh-CN" : locale}.strings.ts`);
+      if (translated) read(translated.entries);
     }
     if (locale.startsWith("zh") && !/Hant|TW|HK/.test(locale)) for (const [key, value] of Object.entries(chinese)) messages.set(key, value);
-    const path = `assets/strings/shell.${locale}.ogt`;
-    writeFileSync(join(dir, path), `type strings\nversion 1\n---\nlocale ${JSON.stringify(locale)}\n${[...messages].map(([key, value]) => `string ${JSON.stringify(key)} ${JSON.stringify(value)}`).join("\n")}\n`);
+    const path = `content/strings/shell.${locale}.ts`;
+    writeFileSync(join(dir, path), `import { file } from '@origingame/engine/author';\nexport default file.strings(${JSON.stringify({locale, entries: Object.fromEntries(messages)}, null, 2)});\n`);
     if (locale !== "en") written.push(path);
   }
-  writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../assets/strings/shell.${l}.ogt";`).join("\n") + "\n");
+  writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../content/strings/shell.${l}.ts";`).join("\n") + "\n");
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);

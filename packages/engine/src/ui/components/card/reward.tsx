@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { CardFace } from "./face";
-import "./card.en.ogt";
+import "./card.en.strings.ts";
 
 export interface CardRewardProps {
   /** The heading as the game words it (Choose a reward, Treasure). */

@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmSongSelectProps {
   /** The page's heading (a pack or folder name); empty takes the kit's (Songs). */

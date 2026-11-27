@@ -1,1340 +1,1348 @@
-type strings
-version 1
----
-# The UI kit's ar strings (og.i18n; templates/ui-kit/README.md §Locales).
-locale "ar"
-fonts "fonts/NotoSansArabic-subset.ttf"
-string "gallery.button" "المعرض"
-string "menu.title" "مغامرة الأصل"
-string "menu.subtitle" "مغامرة صغيرة"
-string "menu.greeting" "العودة إلى المغامرة"
-string "menu.mixed" "مغامرة صغيرة Origin 原点"
-string "menu.play" "العب"
-string "menu.continue" "متابعة"
-string "menu.settings" "الإعدادات"
-string "menu.quit" "خروج"
-string "menu.footer" "الإصدار {version}"
-string "pause.title" "متوقف مؤقتًا"
-string "pause.resume" "استئناف"
-string "pause.settings" "الإعدادات"
-string "pause.quit" "العودة إلى القائمة"
-string "hud.level" "1-2 الطاحونة القديمة"
-string "hud.coins" "{n, plural, zero {لا عملات} one {عملة واحدة} two {عملتان} few {# عملات} many {# عملة} other {# عملة}}"
-string "confirm.title" "حذف هذا الحفظ؟"
-string "confirm.message" "سيضيع تقدمك في الخانة [b]{slot}[/b]. [color=danger]لا يمكن التراجع عن ذلك.[/color]"
-string "confirm.delete" "حذف"
-string "confirm.cancel" "إلغاء"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
-string "settings.title" "الإعدادات"
-string "settings.audio" "الصوت"
-string "settings.graphics" "الرسومات"
-string "settings.controls" "التحكم"
-string "settings.language" "اللغة"
-string "settings.master" "الرئيسي"
-string "settings.music" "الموسيقى"
-string "settings.effects" "المؤثرات"
-string "settings.mute" "كتم كل الأصوات"
-string "settings.quality" "الجودة"
-string "settings.low" "منخفضة"
-string "settings.medium" "متوسطة"
-string "settings.high" "عالية"
-string "settings.fps" "إظهار معدل الإطارات"
-string "settings.motion" "تقليل الحركة"
-string "settings.contrast" "تباين عالٍ"
-string "settings.sensitivity" "الحساسية"
-string "settings.invert" "عكس النظر العمودي"
-string "settings.vibration" "الاهتزاز"
-string "settings.done" "تم"
-string "shop.title" "المتجر"
-string "shop.price" "السعر"
-string "shop.buy" "شراء"
-string "shop.short" "الرصيد غير كافٍ"
-string "shop.owned" "مملوك"
-string "shop.empty" "لا شيء للبيع هنا"
-string "inventory.hint" "اختر عنصرًا. اسحبه إلى خانة أخرى لنقله."
-string "inventory.count" "العدد"
-string "leaderboard.error" "تعذّر تحميل النتائج."
-string "leaderboard.retry" "إعادة المحاولة"
-string "tutorial.skip" "تخطي"
-string "tutorial.next" "التالي"
-string "tutorial.done" "تم"
-string "tutorial.step" "{step} من {count}"
-string "cutscene.skip" "تخطي"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
-string "hud.pause" "إيقاف مؤقت"
-string "hud.jump" "قفز"
-string "hud.fire" "إطلاق"
-string "hud.kills" "قتلى"
-string "hud.weapon" "كاربين"
-string "hud.sector" "القطاع 4"
-string "hud.stage" "المستوى 7"
-string "hud.moves" "حركات متبقية"
-string "hud.target" "الهدف {target}"
-string "hud.tap" "انقر"
-string "hud.generatorLevel" "مستوى {level}"
-string "hud.rate" "+{rate}/ث"
-string "hud.gold" "ذهب"
-string "hud.gems" "جواهر"
-string "hud.farm" "مزرعة"
-string "hud.mill" "طاحونة"
-string "hud.forge" "حدادة"
-string "hud.lap" "لفة"
-string "hud.best" "الأفضل {best}"
-string "hud.boost" "تعزيز"
-string "hud.brake" "فرامل"
-string "hud.left" "يسار"
-string "hud.right" "يمين"
-string "hud.unit" "كم/س"
-string "gacha.rate.event" "فرصة [b]50%[/b] أن تكون شخصية الخمس نجوم التالية هي [color=highlight]أريا[/color]. إن خسرتها فالتالية لها."
-string "gacha.rate.standard" "شخصية [b]5 نجوم[/b] مضمونة خلال [b]90[/b] استدعاء."
-# The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
-string "list.separator" "، "
-string "hint.back" "رجوع"
-string "time.days" "{d} ي {h} س"
-string "time.hours" "{h} س {m} د"
-string "time.minutes" "{m} د"
-string "cards.title" "القتال"
-string "cards.yourTurn" "دورك"
-string "cards.enemyTurn" "دور العدو"
-string "cards.energy" "الطاقة"
-string "cards.endTurn" "إنهاء الدور"
-string "cards.waiting" "انتظار…"
-string "cards.hand" "اليد"
-string "cards.target" "اختر هدفًا"
-string "cards.taunt" "خلف استفزاز"
-string "cards.health" "صحة {name}"
-string "cards.foe.cultist" "المتعصب"
-string "cards.foe.louse" "القملة الحمراء"
-string "cards.strike.name" "ضربة"
-string "cards.strike.text" "أحدث [b]6[/b] ضرر."
-string "cards.type.strike" "هجوم"
-string "cards.defend.name" "دفاع"
-string "cards.defend.text" "اكسب [b]5[/b] [color=info]صد[/color]."
-string "cards.type.defend" "مهارة"
-string "cards.bash.name" "سحق"
-string "cards.bash.text" "أحدث [b]8[/b] ضرر. طبّق 2 [color=warn]ضعف[/color]."
-string "cards.type.bash" "هجوم"
-string "cards.anger.name" "غضب"
-string "cards.anger.text" "أحدث [b]6[/b] ضرر. أضف نسخة إلى المهملات."
-string "cards.type.anger" "هجوم"
-string "cards.inflame.name" "اشتعال"
-string "cards.inflame.text" "اكسب [b]2[/b] [color=danger]قوة[/color]."
-string "cards.type.inflame" "قدرة"
-string "cards.wound.name" "جرح"
-string "cards.wound.text" "لا يمكن لعبها."
-string "cards.type.wound" "حالة"
-string "rewards.title" "تم تطهير الغرفة"
-string "rewards.choose" "اختر بركة"
-string "rewards.chooseTwo" "اختر بركتين ثم أكّد"
-string "rewards.taken" "أُخذ: {list}"
-string "rewards.rerollCost" "50 ذهبًا"
-string "rewards.skip" "تخطَّ · خذ 25 ذهبًا"
-string "rewards.skipped" "25 ذهبًا"
-string "rewards.reroll" "إعادة"
-string "rewards.banish" "نفي"
-string "rewards.confirm" "تأكيد"
-string "rewards.hint.take" "خذ"
-string "rewards.thunder.title" "ضربة الرعد"
-string "rewards.thunder.kind" "هبة حارس العاصفة"
-string "rewards.thunder.text" "تستدعي هجماتك [b]صواعق[/b] تُحدث [color=highlight]+30[/color] ضرر."
-string "rewards.vigor.title" "قلب الزهرة الحديدية"
-string "rewards.vigor.kind" "هبة السيدة الحديدية"
-string "rewards.vigor.text" "[b]+25%[/b] للصحة القصوى، وتشفى [color=success]10[/color] مع كل غرفة تُطهَّر."
-string "rewards.vigor.tag" "ترقية"
-string "rewards.crown.title" "تاج العصور"
-string "rewards.crown.kind" "أثر"
-string "rewards.crown.text" "ابدأ كل قتال بـ [b]2[/b] [color=info]طاقة[/color] إضافية."
-string "rewards.crown.tag" "جديد"
-string "rewards.crown.locked" "اهزم الزعيم الثاني لفتحه"
-string "rewards.frost.title" "قضمة الصقيع"
-string "rewards.frost.kind" "هبة ناسجة الصقيع"
-string "rewards.frost.text" "الضربات [color=info]تُجمّد[/color] الأعداء وتبطئهم [b]20%[/b]."
-string "rewards.gold.title" "اللمسة المذهّبة"
-string "rewards.gold.kind" "هبة قديس العملة"
-string "rewards.gold.text" "اكسب [b]40[/b] ذهبًا الآن و[b]5[/b] مع كل قتيل."
-string "rewards.blade.title" "نصل الغسق"
-string "rewards.blade.kind" "سلاح"
-string "rewards.blade.text" "يترك اندفاعك نصلًا يُحدث [b]18[/b] ضرر."
-string "rewards.blade.tag" "المستوى 3 إلى 4"
-string "gacha.banner.event" "لافتة محدودة · شخصية"
-string "gacha.banner.weapon" "لافتة محدودة · سلاح"
-string "gacha.banner.std" "لافتة دائمة"
-string "gacha.title.aria" "مستدعية مدّ القمر"
-string "gacha.title.kael" "الجمرة"
-string "gacha.title.mira" "حارسة البستان"
-string "gacha.pity" "مضمون خلال {left}"
-string "gacha.summon1" "استدعاء ×1"
-string "gacha.summonN" "استدعاء ×{n}"
-string "gacha.short" "غير كافٍ"
-string "gacha.details" "التفاصيل"
-string "gacha.history" "السجل"
-string "gacha.done" "تم"
-string "gacha.skip" "تخطَّ"
-string "gacha.tap" "انقر للمتابعة"
-string "gacha.continue" "متابعة"
-string "gacha.new" "جديد"
-string "gacha.kind.character" "شخصية"
-string "gacha.kind.weapon" "سلاح"
-string "gacha.rarity.common" "عادي"
-string "gacha.rarity.uncommon" "غير شائع"
-string "gacha.rarity.rare" "نادر"
-string "gacha.rarity.epic" "ملحمي"
-string "gacha.rarity.legendary" "أسطوري"
-string "gacha.rarity.mythic" "خرافي"
-string "gacha.extra.shards" "+{n} شظايا نجمية"
-string "gacha.unit.warden" "سيف الحارس"
-string "gacha.unit.fang" "ناب الجمر"
-string "gacha.unit.sling" "مقلاع الصياد"
-string "gacha.unit.cudgel" "هراوة البلوط"
-string "gacha.unit.spear" "رمح الليل"
-string "gacha.unit.tome" "كتاب المد"
-string "gacha.unit.steel" "فولاذ عادي"
-string "gear.title" "المخزون"
-string "gear.sub" "اسحب للنقل · Shift يقسم الكومة · R يدير"
-string "gear.sub.touch" "اسحب للنقل · اضغط مطولًا للخيارات"
-string "gear.class" "فارس مقدس، المستوى {level}"
-string "gear.power" "قوة العتاد"
-string "gear.attributes" "السمات"
-string "gear.backpack" "الحقيبة"
-string "gear.stash" "المخبأ"
-string "gear.locked" "مقفل"
-string "gear.unusable" "لا يمكن استخدامه"
-string "gear.empty" "فارغ"
-string "gear.rotate" "تدوير"
-string "gear.relicLocked" "يُفتح عند المستوى {level}"
-string "gear.menu.use" "استخدام"
-string "gear.menu.split" "قسمة الكومة"
-string "gear.menu.drop" "إسقاط"
-string "gear.hint.place" "التقاط / وضع"
-string "gear.hint.menu" "قائمة الغرض"
-string "gear.hint.putBack" "إرجاع"
-string "gear.slot.relic" "أثر"
-string "gear.slot.hands" "اليدان"
-string "gear.slot.chest" "الصدر"
-string "gear.slot.main" "اليد الرئيسية"
-string "gear.slot.ring" "خاتم"
-string "gear.slot.head" "الرأس"
-string "gear.slot.neck" "العنق"
-string "gear.slot.off" "اليد الثانوية"
-string "gear.slot.feet" "القدمان"
-string "gear.stat.armor" "الدرع"
-string "gear.stat.strength" "القوة"
-string "gear.stat.fire" "مقاومة النار"
-string "gear.stat.speed" "سرعة الحركة"
-string "gear.stat.cooldowns" "فترات التهدئة"
-string "gear.item.greatsword" "جالب الرماد"
-string "gear.item.bow" "قوس عدّاء الريح"
-string "gear.item.potions" "جرعة شفاء"
-string "gear.item.mana" "جرعة مانا"
-string "gear.item.ring" "خاتم الوادي"
-string "gear.item.helm" "تاج الأشواك"
-string "gear.item.plate" "عصا سحرية"
-string "gear.item.gloves" "قفازات"
-string "gear.item.gem" "شظية نجم"
-string "gear.item.boots" "حذاء العجلة"
-string "gear.item.scroll" "مفتاح حديدي"
-string "gear.item.ore" "بلورة خام"
-string "gear.item.amulet" "تميمة الياقوت"
-string "gear.item.shield" "درع البلوط"
-string "gear.item.robe" "رداء الساحر"
-string "gear.item.dagger" "سيف حديدي"
-# The saga map, match-3 board and idle previews (src/patterns.ts).
-string "saga.title" "المراحل"
-string "saga.world" "جزر السماء"
-string "saga.sub" "{stars} من {max} نجمة"
-string "saga.level" "المرحلة {label}"
-string "saga.boss" "زعيم، المرحلة {label}"
-string "saga.stars" "{n} من {max} نجوم"
-string "saga.here" "أنت هنا"
-string "saga.play" "العب المرحلة {level}"
-string "board.level" "المرحلة"
-string "board.moves" "الحركات المتبقية"
-string "board.score" "النقاط"
-string "board.goals" "الأهداف"
-string "board.goal.blue" "اجمع الجواهر الزرقاء"
-string "board.goal.ice" "حطّم بلاطات الجليد"
-string "board.progress" "{have} من {need}"
-string "board.done" "تم"
-string "idle.title" "نواة نكسس"
-string "idle.sub" "ابنِ المولّدات ثم ارتقِ لتنال الشظايا"
-string "idle.energy" "الطاقة"
-string "idle.rate" "+{rate} / ث"
-string "idle.perSec" "+{rate} / ث"
-string "idle.generators" "المولّدات"
-string "idle.buyAmount" "كمية الشراء"
-string "idle.buy" "شراء ×{n}"
-string "idle.level" "مستوى {level}"
-string "idle.owned" "المملوك: {owned}"
-string "idle.unlock" "اجمع {cost} طاقة"
-string "idle.prestige" "الارتقاء"
-string "idle.ascendFor" "ارتقِ لتنال"
-string "idle.shards" "+{n} شظية"
-string "idle.point.reset" "يعيد ضبط المولّدات والطاقة"
-string "idle.point.keep" "تقدّم دائم"
-string "idle.point.stronger" "أقوى مع كل ارتقاء"
-string "idle.ascend" "ارتقِ"
-string "idle.hint.buy" "شراء"
-string "idle.gen.solar" "مصفوفة شمسية"
-string "idle.gen.fusion" "مفاعل اندماج"
-string "idle.gen.orbital" "مجمّع مداري"
-string "idle.gen.drill" "مثقاب كمّي"
-string "idle.gen.dyson" "حلقة دايسون"
-string "idle.gen.forge" "مصهر نجمي"
-# The store and the battle pass (src/patterns.ts).
-string "store.title" "المتجر"
-string "store.sub" "عروض جديدة كل يوم"
-string "store.gems" "الجواهر"
-string "store.coins" "العملات"
-string "store.featured" "مميّز"
-string "store.daily" "عروض اليوم"
-string "store.packs" "حزم الجواهر"
-string "store.item.tide" "حزمة مدّ القمر"
-string "store.item.ashbringer" "حامل الرماد"
-string "store.item.crown" "تاج الأشواك"
-string "store.item.potions" "جرعة شفاء ×5"
-string "store.item.mana" "قارورة مانا ×5"
-string "store.item.ember" "خاتم الجمر"
-string "store.item.amulet" "تميمة الياقوت"
-string "store.item.key" "مفتاح حديدي"
-string "store.kind.tide" "حزمة · 4 عناصر"
-string "store.kind.ashbringer" "سيف عظيم"
-string "store.kind.crown" "خوذة"
-string "store.kind.potions" "مادة مستهلكة"
-string "store.kind.mana" "مادة مستهلكة"
-string "store.kind.ember" "خاتم"
-string "store.kind.amulet" "تميمة"
-string "store.kind.key" "مفتاح"
-string "store.kind.gems1" "صرّة جواهر"
-string "store.kind.gems2" "صندوق جواهر"
-string "store.kind.gems3" "كنز من الجواهر"
-string "store.gemPack" "{n} جوهرة"
-string "store.badge.limited" "محدود"
-string "store.badge.new" "جديد"
-string "store.badge.popular" "رائج"
-string "store.badge.best" "الأوفر"
-string "store.contents.aria" "آريا، مستدعية المد"
-string "store.contents.lantern" "فانوس القمر"
-string "store.contents.glitter" "1,600 من شظايا النجوم"
-string "store.contents.frame" "إطار الملف الشخصي"
-string "store.free" "مجاني"
-string "store.owned" "مملوك"
-string "store.soldOut" "نفد"
-string "store.left" "بقي {left}"
-string "store.save" "−{pct}٪"
-string "store.refresh" "يتجدد بعد"
-string "store.topUp" "احصل على المزيد من {name}"
-string "store.hint.buy" "شراء"
-string "store.confirm" "شراء مقابل {price} {currency}؟"
-string "store.buy" "شراء"
-string "store.cancel" "إلغاء"
-string "pass.title" "تذكرة المعركة"
-string "pass.season" "الموسم 4 · مدّ النيون"
-string "pass.free" "مجاني"
-string "pass.premium" "مميّز"
-string "pass.level" "المستوى {n}"
-string "pass.xp" "{xp} / {need} نقطة خبرة"
-string "pass.claim" "استلم"
-string "pass.claimAll" "استلم الكل ({n})"
-string "pass.claimed" "تم الاستلام"
-string "pass.unlock" "افتح المميّز"
-string "pass.reach" "بلوغ المستوى {n}"
-string "pass.reward.chest" "صندوق الموسم"
-string "pass.reward.gold" "عملات"
-string "pass.reward.crystal" "جواهر"
-string "pass.reward.healing-draught" "جرعة شفاء"
-string "pass.reward.mana-vial" "قارورة مانا"
-string "pass.reward.ember-ring" "خاتم الجمر"
-string "pass.reward.sapphire-amulet" "تميمة الياقوت"
-string "pass.reward.boots" "حذاء العجلة"
-string "pass.reward.arcane-staff" "عصا سحرية"
-string "pass.reward.gauntlets" "قفازات"
-string "pass.reward.aria" "آريا، مستدعية المد"
-string "pass.reward.kael" "كايل، الجمرة"
-string "pass.reward.mira" "ميرا البستان"
-string "menu.event" "مد ضوء القمر"
-string "menu.eventWhen" "لافتة محدودة - بقي 3 أيام"
-string "menu.event.kawaii" "مسرح ضوء النجوم"
-string "menu.event.storybook" "درب الفوانيس"
-string "menu.event.cartoon" "مغامرة الثعلب"
-# The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
-string "dlg.mira" "ميرا"
-string "dlg.aria" "آريا"
-string "dlg.gate.open" "تُفتح البوابة عند الفجر. هل أنت مستعد للعبور؟"
-string "dlg.gate.ready" "أنا مستعد. هيا بنا."
-string "dlg.gate.persuade" "أخبريني أولًا بما ينتظرنا وراءها."
-string "dlg.gate.read" "لقد رأيتِ هذه النظرة من قبل."
-string "dlg.gate.who" "من غيرنا يعرف بأمر البوابة؟"
-string "dlg.gate.toll" "ادفع رسوم الحارس."
-string "dlg.gate.need" "تحتاج {need} رصيدًا إضافيًا"
-string "dlg.gate.notyet" "ليس بعد."
-string "dlg.who" "أمينة الأرشيف فقط، وقد لزمت الصمت تسع سنين."
-string "dlg.secret" "وراءها يقع المرصد القديم. وما رأته الخرائط ما زال هناك."
-string "dlg.refuse" "سترى ذلك بنفسك، أو لن تراه أبدًا."
-string "dlg.ready" "إذن نرحل قبل أن ينقلب المد."
-string "dlg.stat.charm" "الإقناع"
-string "dlg.stat.insight" "البصيرة"
-string "dlg.skip" "تخطٍّ"
-string "dlg.log" "السجل"
-string "dlg.auto" "تلقائي"
-string "dlg.continue" "متابعة"
-string "dlg.unavailable" "غير متاح"
-string "dlg.check" "{stat} · {chance}"
-string "dlg.passed" "نجاح"
-string "dlg.failed" "فشل"
-string "log.title" "السجل"
-string "log.close" "إغلاق"
-string "log.replay" "تشغيل الصوت"
-string "log.empty" "لم يُقل شيء بعد."
-string "vn.n1" "ظل المطر يلاحق القافلة ثلاثة أيام حتى لاحت أضواء لومارش أخيرًا بين القصب."
-string "vn.a1" "هناك. ما زالت العبّارة تعمل، إن كان الحارس العجوز مستيقظًا."
-string "vn.a2" "ابقَ قريبًا مني في السوق. لومارش لا تنسى الوجوه."
-string "vn.stay" "ابقَ إلى جانبها."
-string "vn.wander" "تسلل لتلقي نظرة حولك."
-string "vn.stay.r" "حسنًا. أبقِ قلنسوتك مرفوعة."
-string "vn.wander.r" "حسنًا. قابلني عند العبّارة قبل الجرس الثاني."
-string "q.title" "المهام"
-string "q.track" "تتبّع"
-string "q.tracked" "متتبَّعة"
-string "q.map" "اعرض على الخريطة"
-string "q.objectives" "الأهداف"
-string "q.rewards" "المكافآت"
-string "q.optional" "اختياري"
-string "q.giver" "من {giver}"
-string "q.new" "جديدة"
-string "q.active" "نشطة"
-string "q.completed" "مكتملة"
-string "q.failed" "فاشلة"
-string "q.empty" "لا مهام بعد."
-string "q.back" "رجوع"
-string "q.complete" "اكتملت"
-string "q.tab.main" "الرئيسية"
-string "q.tab.side" "الجانبية"
-string "q.tab.daily" "اليومية"
-string "quest.dawn" "بوابة الفجر"
-string "quest.dawn.summary" "تؤمن ميرا بأن البوابة المختومة فوق سكايريتش تُفتح ساعة واحدة عند الفجر. اجمع ما تحتاجه الخرائط القديمة قبل أن تعبر."
-string "quest.dawn.reach" "اصل إلى البوابة قبل الفجر"
-string "quest.dawn.charts" "استعد خرائط النجوم"
-string "quest.dawn.archivist" "اسأل أمينة الأرشيف عن الختم"
-string "quest.dawn.sealer" "اعرف من ختم البوابة"
-string "quest.mill" "ذئاب عند الطاحونة"
-string "quest.mill.summary" "قطيع العجوز برام يتناقص. اطرد الذئاب من طاحونة الوادي قبل المحاق القادم."
-string "quest.mill.wolves" "اطرد الذئاب"
-string "quest.supply" "رحلة الإمداد"
-string "quest.supply.summary" "يحتاج معالجو لومارش إلى بتلات القمر لجرعات الليلة."
-string "quest.supply.petals" "اجمع بتلات القمر"
-string "quest.letters" "رسائل إلى لومارش"
-string "quest.letters.summary" "احمل رسائل الطحّان إلى أخته عبر المستنقع."
-string "quest.letters.deliver" "سلّم الرسائل"
-string "quest.tide" "انقلاب المد"
-string "quest.tide.summary" "تغادر آخر عبّارة حين ينقلب المد. ولم تنتظر."
-string "quest.tide.ferry" "اصل إلى العبّارة قبل المد"
-string "npc.miller" "العجوز برام"
-string "region.skyreach" "جزر سكايريتش"
-string "region.mill" "طاحونة الوادي"
-string "region.marsh" "لومارش"
-string "item.crystal" "بلورة ضوء النجوم"
-string "item.ring" "خاتم الجمر"
-string "item.gold" "ذهب"
-string "item.potion" "جرعة شفاء"
-# The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
-string "ship.class" "فرقاطة قيادة · أسطول الشفق"
-string "ship.hull" "الهيكل"
-string "ship.shields" "الدروع"
-string "ship.reactor" "المفاعل"
-string "turn.title" "ترتيب الأدوار"
-string "turn.hostile" "معادٍ"
-string "turn.acting" "يتحرك الآن"
-string "ab.title" "القدرات"
-string "ab.kinetic" "ضربة حركية"
-string "ab.kinetic.text" "يُلحق ضررًا كبيرًا بهدف."
-string "ab.deflector" "حاجز الانحراف"
-string "ab.deflector.text" "يقوّي الدروع لدور واحد."
-string "ab.squadron" "إطلاق السرب"
-string "ab.squadron.text" "ينشر مقاتلات هجومية لثلاثة أدوار."
-string "ab.repair" "طائرات الإصلاح"
-string "ab.repair.text" "تُصلح الهيكل بمرور الوقت."
-string "ab.gravity" "بئر الجاذبية"
-string "ab.gravity.text" "يجذب الأعداء ويبطئهم."
-string "ab.overcharge" "شحن زائد"
-string "ab.overcharge.text" "يزيد ضرر الأسلحة 50 % لدورين."
-string "ab.endTurn" "إنهاء الدور"
-string "sector.title" "خريطة القطاع"
-string "sector.allied" "حليف"
-string "sector.hostile" "معادٍ"
-string "sector.current" "القطاع الحالي"
-string "hangar.title" "حظيرة الأسطول"
-string "hangar.classes" "فئات السفن"
-string "hangar.stats" "مواصفات السفينة"
-string "hangar.hull" "الهيكل"
-string "hangar.shields" "الدروع"
-string "hangar.speed" "السرعة"
-string "hangar.firepower" "القوة النارية"
-string "hangar.upgrade" "مستوى التطوير"
-string "hangar.alloy" "سبيكة"
-string "hangar.commission" "تكليف"
-string "hangar.commissioned" "انضمّت {name} إلى الأسطول"
-string "hangar.compare" "مقارنة"
-string "hangar.frigates" "الفرقاطات"
-string "hangar.frigates.line" "سريعة ومرنة وأساسية."
-string "hangar.frigates.class" "فئة الفرقاطة"
-string "hangar.frigates.flavour" "فرقاطة خط أمامي متعددة المهام للاستطلاع والمرافقة والاستجابة السريعة. حيثما صمد الخط، كانت فانغارد هناك أولًا."
-string "hangar.cruisers" "الطرادات"
-string "hangar.cruisers.line" "متوازنة وموثوقة."
-string "hangar.cruisers.class" "فئة الطراد"
-string "hangar.cruisers.flavour" "سفينة مرافقة ثقيلة بدروع متعددة الطبقات تحمي قلب التشكيل بينما تتقدم الفرقاطات."
-string "hangar.carriers" "حاملات الطائرات"
-string "hangar.carriers.line" "تقود الميدان."
-string "hangar.carriers.class" "فئة الحاملة"
-string "hangar.carriers.flavour" "حظيرة متنقلة تطلق المقاتلات وتستعيدها، بطيئة الدوران لكنها لا تكون وحيدة أبدًا."
-string "hangar.modules" "الوحدات"
-string "hangar.modules.line" "وسّع أسطولك."
-string "hangar.modules.class" "وحدة محطة"
-string "hangar.modules.flavour" "هيكل معياري يرسو على أي حاملة: ورشة أو مصفوفة استشعار أو مستودع إمداد."
-# The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
-string "lobby.title" "العب"
-string "lobby.ready" "جاهز"
-string "lobby.notReady" "غير جاهز"
-string "lobby.readyUp" "استعد"
-string "lobby.start" "ابحث عن مباراة"
-string "lobby.cancel" "إلغاء"
-string "lobby.searching" "جارٍ البحث"
-string "lobby.estimate" "المتوقع {time}"
-string "lobby.invite" "دعوة"
-string "lobby.level" "المستوى {level}"
-string "lobby.leader" "قائد الفريق"
-string "lobby.found" "تم العثور على مباراة"
-string "lobby.accept" "قبول"
-string "lobby.accepted" "تم القبول"
-string "lobby.decline" "رفض"
-string "lobby.modeLabel" "الوضع"
-string "lobby.mode.ranked" "مصنّفة"
-string "lobby.mode.detail" "5 ضد 5 · بوابة سكايريتش"
-string "lobby.rank.diamond" "ماسي II"
-string "lobby.rank.immortal" "خالد I"
-string "lobby.rank.platinum" "بلاتيني III"
-string "lobby.rank.gold" "ذهبي I"
-string "chars.title" "اختر مقاتلك"
-string "chars.lock" "تثبيت"
-string "chars.locked" "تم التثبيت"
-string "chars.taken" "محجوز"
-string "chars.random" "عشوائي"
-string "chars.unlock" "يُفتح عند المستوى {level}"
-string "chars.role.mage" "ساحر"
-string "chars.role.duelist" "مبارز"
-string "chars.role.support" "داعم"
-string "chars.role.ranger" "جوّال"
-string "chars.role.vanguard" "طليعة"
-string "chars.about.aria" "تحوّل ضوء القمر إلى نصال تضرب من بعيد."
-string "chars.about.kael" "سريع الحركة؛ كل ضربة ثالثة تكسر الدفاع."
-string "chars.about.mira" "تشفي الصف وتقيّد الأعداء بالكروم."
-string "chars.about.wren" "تَسِم الهدف ثم لا تخطئه أبدًا."
-string "chars.about.vesper" "يقايض صحته بعواصف من الظل."
-string "chars.about.maren" "تصمد في المقدمة بالدرع والراية."
-string "chars.about.torvin" "يبني الأبراج من الخردة وسط القتال."
-string "chars.about.brann" "يبيع بضائعه ليجمع ذهب عتاد الفريق."
-string "chars.about.vell" "تضرب مرتين ثم تختفي."
-string "chars.about.cultist" "يستدعي الآلهة القديمة ويدفع الثمن دمًا."
-string "vs.mark" "VS"
-string "vs.record" "{w} فوز · {l} خسارة"
-string "vs.stage" "الجولة 1 · بوابة سكايريتش"
-string "vs.skip" "تخطٍّ"
-string "draft.title" "الاختيار"
-string "draft.blue" "الفريق الأزرق"
-string "draft.red" "الفريق الأحمر"
-string "draft.ban" "حظر"
-string "draft.waiting" "في الانتظار"
-string "draft.bans" "المحظورات"
-string "draft.banned" "محظور"
-string "draft.picked" "تم اختياره"
-string "draft.phase.pick" "مرحلة الاختيار · دورك"
-string "draft.phase.theirs" "مرحلة الاختيار · دور الأحمر"
-string "draft.phase.ban" "مرحلة الحظر · دورك"
-string "map.title" "المملكة الممزقة"
-string "map.travel" "انتقال سريع"
-string "map.track" "تعيين نقطة طريق"
-string "map.untrack" "إزالة نقطة الطريق"
-string "map.unknown" "؟؟؟"
-string "map.close" "إغلاق"
-string "map.kind.quest" "المهام"
-string "map.kind.objective" "الأهداف"
-string "map.kind.fastTravel" "الانتقال السريع"
-string "map.kind.shop" "المتاجر"
-string "map.kind.poi" "المعالم"
-string "map.kind.boss" "الزعماء"
-string "map.region.frost" "قمم فروستسباير"
-string "map.region.dusk" "غابة الغسق"
-string "map.region.amber" "حقول الكهرمان"
-string "map.region.redmesa" "الهضاب الحمراء"
-string "map.region.delta" "دلتا سولتريتش"
-string "map.place.sela" "ميناء سيلا"
-string "map.place.amberhold" "قلعة العنبر"
-string "map.place.mill" "طاحونة الوادي"
-string "map.place.market" "سوق مفترق الطرق"
-string "map.place.duskhold" "حصن الغسق"
-string "map.place.light" "منارة سولتريتش"
-string "map.place.wyrm" "تنين غابة الأشواك"
-string "map.about.sela" "تبحر عبّارات الميناء إلى جزر سكايريتش عند الفجر."
-string "map.about.amberhold" "مقرّ الملك القديم المطلّ على الحقول."
-string "map.about.mill" "اطرد الذئاب قبل المحاق."
-string "map.about.market" "يلتقي التجار من كل طريق هنا عند الظهر."
-string "map.about.duskhold" "حصن مهدّم ابتلعته الغابة منذ زمن."
-string "map.about.light" "أشعل المنارة للسفن التائهة."
-string "map.about.wyrm" "شيء ما يتحرك تحت أشجار الصنوبر القديمة."
-string "song.title" "اختيار الأغنية"
-string "song.bpm" "BPM"
-string "song.length" "المدة"
-string "song.best" "أفضل نتيجة"
-string "song.grade" "التقدير"
-string "song.fullCombo" "كومبو كامل"
-string "song.accuracy" "الدقة"
-string "song.play" "العب"
-string "song.preview" "معاينة"
-string "song.new" "جديد"
-string "song.chart.easy" "سهل"
-string "song.chart.normal" "عادي"
-string "song.chart.hard" "صعب"
-string "song.chart.expert" "خبير"
-string "song.chart.master" "محترف"
-# The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
-string "garage.title" "المرأب"
-string "garage.cat.engine" "المحرك"
-string "garage.cat.wheels" "العجلات"
-string "garage.cat.suspension" "التعليق"
-string "garage.cat.exhaust" "العادم"
-string "garage.cat.brakes" "المكابح"
-string "garage.cat.aero" "الديناميكا الهوائية"
-string "garage.cat.livery" "الطلاء"
-string "garage.cat.next" "الفئة التالية"
-string "garage.part" "{part} {tier}"
-string "garage.tier.stock" "أصلي"
-string "garage.tier.street" "شارع"
-string "garage.tier.sport" "رياضي"
-string "garage.tier.race" "سباق"
-string "garage.tier.works" "مصنعي"
-string "garage.needsClass" "يتطلب الفئة {cls}"
-string "garage.desc.engine" "قوة أكبر في أعلى نطاق الدوران، مقابل دواسة أكثر حدة."
-string "garage.desc.wheels" "جنوط أخف وإطارات أشد تماسكًا تحفظ المسار في المنعطفات السريعة."
-string "garage.desc.suspension" "نوابض ومخمدات أصلب: ميل أقل وقيادة أكثر صلابة."
-string "garage.desc.exhaust" "عادم أكثر انسيابًا لانطلاق أسرع وصوت أعلى."
-string "garage.desc.brakes" "أقراص وفكوك أكبر تتوقف متأخرة وتتلاشى أقل."
-string "garage.desc.aero" "جناح أعلى يضغط السيارة نحو الأرض عند السرعة."
-string "garage.stat.power" "القوة"
-string "garage.stat.handling" "التحكم"
-string "garage.stat.braking" "الكبح"
-string "garage.stat.launch" "الانطلاق"
-string "garage.stat.speed" "السرعة القصوى"
-string "garage.layer.base" "الطلاء الأساسي"
-string "garage.layer.stripe" "الشريط"
-string "garage.layer.number" "الرقم 7"
-string "garage.layer.sponsor" "الراعي"
-string "garage.layer.added" "ملصق {n}"
-string "garage.kind.paint" "طلاء"
-string "garage.kind.vinyl" "فينيل"
-string "garage.kind.decal" "ملصق"
-string "garage.performance" "الأداء"
-string "garage.class" "الفئة"
-string "garage.current" "الحالي"
-string "garage.preview" "المعاينة"
-string "garage.equip" "تركيب"
-string "garage.equipped" "مركّب"
-string "garage.buy" "شراء"
-string "garage.locked" "مقفل"
-string "garage.free" "مجاني"
-string "garage.short" "غير كافٍ"
-string "garage.layers" "الطبقات"
-string "garage.color" "اللون"
-string "garage.addLayer" "إضافة طبقة"
-string "garage.delete" "حذف"
-string "garage.up" "تحريك لأعلى"
-string "garage.down" "تحريك لأسفل"
-string "garage.visible" "مرئي"
-string "ledger.title" "الميزانية"
-string "ledger.income" "الإيرادات"
-string "ledger.expenses" "النفقات"
-string "ledger.treasury" "الخزينة"
-string "ledger.population" "السكان"
-string "ledger.tab.month" "شهر"
-string "ledger.tab.quarter" "ربع سنة"
-string "ledger.tab.year" "سنة"
-string "ledger.period.month" "ش{n}"
-string "ledger.period.quarter" "ر{n}"
-string "ledger.period.year" "س{n}"
-string "ledger.line.residential" "ضريبة السكن"
-string "ledger.line.commercial" "الضريبة التجارية"
-string "ledger.line.industrial" "الضريبة الصناعية"
-string "ledger.line.tourism" "السياحة"
-string "ledger.line.police" "الشرطة"
-string "ledger.line.fire" "الإطفاء"
-string "ledger.line.health" "الرعاية الصحية"
-string "ledger.line.education" "التعليم"
-string "ledger.line.transit" "النقل العام"
-string "ledger.line.parks" "الحدائق"
-string "ledger.line.power" "الكهرباء"
-string "ledger.line.water" "المياه"
-string "ledger.warn.police" "تمويل ناقص: الجريمة ترتفع"
-string "ledger.warn.fire" "تمويل ناقص: الحرائق تنتشر"
-string "ledger.warn.health" "تمويل ناقص: الطوابير تطول"
-string "ledger.warn.education" "تمويل ناقص: الفصول ممتلئة"
-string "ledger.warn.transit" "تمويل ناقص: تقليص الخطوط"
-string "ledger.warn.parks" "تمويل ناقص: الحدائق مهملة"
-string "ledger.warn.power" "تمويل ناقص: انقطاع الكهرباء"
-string "ledger.warn.water" "تمويل ناقص: ضغط منخفض"
-string "ledger.col.name" "الاسم"
-string "ledger.col.amount" "المبلغ"
-string "ledger.col.change" "التغير"
-string "ledger.col.budget" "الميزانية"
-string "ledger.total" "الإجمالي"
-string "ledger.net" "الصافي"
-string "ledger.history" "السجل"
-string "ledger.breakdown" "التفصيل"
-string "ledger.other" "أخرى"
-string "ledger.locked" "مقفل"
-string "ledger.hint.period" "الفترة التالية"
-string "ledger.overlays" "الطبقات"
-string "ledger.overlay.off" "بلا طبقة"
-string "ledger.overlay.traffic" "المرور"
-string "ledger.overlay.traffic.low" "انسيابي"
-string "ledger.overlay.traffic.high" "اختناق"
-string "ledger.overlay.power" "الكهرباء"
-string "ledger.overlay.power.low" "بلا كهرباء"
-string "ledger.overlay.power.high" "تغذية كاملة"
-string "ledger.overlay.water" "المياه"
-string "ledger.overlay.water.low" "جاف"
-string "ledger.overlay.water.high" "ضغط كامل"
-string "ledger.overlay.pollution" "التلوث"
-string "ledger.overlay.pollution.low" "نظيف"
-string "ledger.overlay.pollution.high" "سام"
-string "ledger.overlay.landValue" "قيمة الأرض"
-string "ledger.overlay.landValue.low" "منخفضة"
-string "ledger.overlay.landValue.high" "مرتفعة"
-string "ledger.overlay.crime" "الجريمة"
-string "ledger.overlay.crime.low" "آمن"
-string "ledger.overlay.crime.high" "خطِر"
-string "chat.title" "الدردشة"
-string "chat.ch.all" "الكل"
-string "chat.ch.party" "الفريق"
-string "chat.ch.guild" "النقابة"
-string "chat.ch.trade" "التجارة"
-string "chat.ch.whisper" "همس"
-string "chat.ch.system" "النظام"
-string "chat.msg.1" "انضم Riven إلى الفريق."
-string "chat.msg.2" "غارة الليلة في التاسعة، أحضروا الجرعات."
-string "chat.msg.3" "أبيع {0}، راسلوني بعروضكم."
-string "chat.msg.4" "نلتقي عند {0} قبل أن تُفتح البوابة."
-string "chat.msg.5" "@Lumen هل تستطيع تحمّل أول هجوم؟"
-string "chat.msg.6" "شكرًا على المساعدة سابقًا!"
-string "chat.msg.7" "انظروا ماذا سقط: {0}"
-string "chat.msg.8" "@Juno فاتورة الإصلاح على حسابي."
-string "chat.msg.9" "جاهز متى كنت جاهزًا."
-string "chat.link.ember" "خاتم الجمر"
-string "chat.link.amberhold" "أمبرهولد"
-string "chat.link.ashbringer" "حامل الرماد"
-string "chat.placeholder" "اكتب شيئًا…"
-string "chat.send" "إرسال"
-string "chat.new" "{n} جديدة"
-string "chat.channel" "القناة"
-string "rts.target" "{command}: اختر هدفًا"
-string "rts.cancel" "إلغاء"
-string "rts.queue" "إضافة للطابور"
-string "rts.back" "رجوع"
-string "rts.stat.attack" "الهجوم"
-string "rts.stat.armour" "الدرع"
-string "rts.stat.speed" "السرعة"
-string "rts.cmd.stop" "توقف"
-string "rts.cmd.patrol" "دورية"
-string "rts.cmd.gather" "جمع"
-string "rts.cmd.repair" "إصلاح"
-string "rts.cmd.rally" "نقطة التجمع"
-string "rts.cmd.build" "بناء"
-string "rts.cmd.barracks" "الثكنة"
-string "rts.cmd.tower" "برج الرماة"
-string "rts.cmd.farm" "مزرعة"
-string "rts.cmd.wall" "سور حجري"
-string "rts.cmd.forge" "الحدادة"
-string "rts.cmd.keep" "القلعة"
-string "rts.unit.worker" "قروي"
-string "rts.unit.knight" "فارس"
-string "rts.unit.archer" "رامٍ"
-string "rts.kind.worker" "عامل · خفيف"
-string "rts.kind.knight" "فرسان · ثقيل"
-string "rts.kind.archer" "بعيد المدى · خفيف"
-# The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
-string "photo.title" "وضع التصوير"
-string "photo.tab.camera" "الكاميرا"
-string "photo.tab.lens" "العدسة"
-string "photo.tab.filters" "المرشحات"
-string "photo.tab.frames" "الإطارات"
-string "photo.ctl.fov" "مجال الرؤية"
-string "photo.ctl.roll" "الميل"
-string "photo.ctl.height" "الارتفاع"
-string "photo.ctl.focus" "مسافة التركيز"
-string "photo.ctl.aperture" "فتحة العدسة"
-string "photo.ctl.exposure" "التعريض"
-string "photo.ctl.vignette" "التظليل الطرفي"
-string "photo.filter.none" "بلا"
-string "photo.filter.vivid" "زاهٍ"
-string "photo.filter.noir" "نوار"
-string "photo.filter.sepia" "بني داكن"
-string "photo.filter.cool" "بارد"
-string "photo.frame.none" "بلا"
-string "photo.frame.cinema" "سينما"
-string "photo.frame.polaroid" "فوري"
-string "photo.frame.film" "فيلم"
-string "photo.capture" "التقاط"
-string "photo.hide" "إخفاء الواجهة"
-string "photo.grid" "الشبكة"
-string "photo.reset" "إعادة ضبط"
-string "photo.exit" "خروج"
-string "photo.strength" "الشدة"
-string "photo.hint" "اضغط أي مفتاح لإظهار عناصر التحكم"
-string "loadout.title" "العتاد"
-string "loadout.tab" "العتاد {n}"
-string "loadout.next" "العتاد التالي"
-string "loadout.slot.primary" "الرئيسي"
-string "loadout.slot.secondary" "الثانوي"
-string "loadout.slot.melee" "قتال قريب"
-string "loadout.slot.lethal" "قاتل"
-string "loadout.slot.tactical" "تكتيكي"
-string "loadout.slot.field" "ترقية ميدانية"
-string "loadout.item.primary" "AR-7 رافن"
-string "loadout.item.secondary" "VX-9 مسدس"
-string "loadout.item.melee" "سكين قتالي"
-string "loadout.item.lethal" "قنبلة شظايا"
-string "loadout.item.tactical" "منشط"
-string "loadout.item.field" "طائرة استطلاع"
-string "loadout.level" "مستوى {n}"
-string "loadout.unlocks" "يُفتح عند المستوى {n}"
-string "loadout.class.assault" "بندقية هجومية"
-string "loadout.class.pistol" "مسدس"
-string "loadout.class.blade" "نصل"
-string "loadout.class.grenade" "قنبلة"
-string "loadout.class.drone" "طائرة مسيّرة"
-string "loadout.rarity.uncommon" "غير شائع"
-string "loadout.rarity.rare" "نادر"
-string "loadout.rarity.epic" "ملحمي"
-string "loadout.desc.primary" "موثوقة في كل مدى، وأثبت مع كل ملحق."
-string "loadout.desc.secondary" "سحب سريع حين تفرغ البندقية."
-string "loadout.desc.melee" "صامت ودائمًا جاهز."
-string "loadout.desc.lethal" "تنفجر بعد ثلاث ثوانٍ وتطهّر غرفة."
-string "loadout.desc.tactical" "يشفي فورًا ويسرّع خطاك."
-string "loadout.desc.field" "يحدد كل عدو في مرماه."
-string "loadout.stat.damage" "الضرر"
-string "loadout.stat.range" "المدى"
-string "loadout.stat.fireRate" "معدل الإطلاق"
-string "loadout.stat.mobility" "الحركة"
-string "loadout.stat.control" "التحكم"
-string "loadout.point.stock" "الأخمص"
-string "loadout.point.optic" "المنظار"
-string "loadout.point.laser" "الليزر"
-string "loadout.point.magazine" "المخزن"
-string "loadout.point.underbarrel" "أسفل السبطانة"
-string "loadout.point.muzzle" "الفوهة"
-string "loadout.att.stock" "أخمص تكتيكي"
-string "loadout.att.optic" "منظار هولو MK.2"
-string "loadout.att.laser" "ليزر تكتيكي"
-string "loadout.att.magazine" "مخزن موسّع"
-string "loadout.att.underbarrel" "مقبض رينجر"
-string "loadout.att.muzzle" "كاتم فانغارد"
-string "loadout.stats" "إحصاءات السلاح"
-string "loadout.attachments" "الملحقات"
-string "loadout.empty" "فارغ"
-string "loadout.remove" "إزالة"
-string "loadout.locked" "مقفل"
-string "deck.title" "المجموعة"
-string "deck.name" "فروستفاير"
-string "deck.all" "الكل"
-string "deck.search" "ابحث عن البطاقات"
-string "deck.sortBy" "الترتيب"
-string "deck.sort.cost" "التكلفة"
-string "deck.sort.name" "الاسم"
-string "deck.sort.rarity" "الندرة"
-string "deck.sort.owned" "المملوك"
-string "deck.cards" "البطاقات"
-string "deck.mine" "مجموعتي"
-string "deck.curve" "منحنى المانا"
-string "deck.types" "الأنواع"
-string "deck.done" "تم"
-string "deck.full" "المجموعة ممتلئة"
-string "deck.limit" "لا يُسمح بنسخ أخرى"
-string "deck.unowned" "غير مملوكة"
-string "deck.none" "لا توجد بطاقات مطابقة"
-string "deck.kind.unit" "وحدة"
-string "deck.kind.spell" "تعويذة"
-string "deck.kind.relic" "أثر"
-string "deck.kinds.unit" "الوحدات"
-string "deck.kinds.spell" "التعاويذ"
-string "deck.kinds.relic" "الآثار"
-string "deck.rarity.common" "شائع"
-string "deck.rarity.uncommon" "غير شائع"
-string "deck.rarity.rare" "نادر"
-string "deck.rarity.epic" "ملحمي"
-string "deck.rarity.legendary" "أسطوري"
-string "deck.card.strike" "ضربة"
-string "deck.card.defend" "دفاع"
-string "deck.card.bash" "سحق"
-string "deck.card.anger" "غضب"
-string "deck.card.inflame" "إشعال"
-string "deck.card.wound" "جرح"
-string "deck.card.fireball" "كرة نارية"
-string "deck.card.bulwark" "فارس الحصن"
-string "deck.card.rogue" "لص الليل"
-string "deck.card.potion" "الجرعة الخضراء"
-string "deck.card.storm" "نصل العاصفة"
-string "deck.card.serpent" "ثعبان الطحلب"
-string "deck.card.ice" "شظية الصقيع"
-string "deck.card.horn" "بوق الحرب"
-string "deck.card.golem" "الغولم القديم"
-string "deck.card.owl" "البومة المرافقة"
-string "deck.card.scroll" "الرونة المشتعلة"
-string "deck.card.egg" "بيضة الجمر"
-string "deck.text.strike" "يُلحق 6 ضرر."
-string "deck.text.defend" "اكسب 5 دروع."
-string "deck.text.bash" "يُلحق 8 ضرر ويصعق الهدف."
-string "deck.text.anger" "يُلحق 4 ضرر وينسخ هذه البطاقة إلى يدك."
-string "deck.text.inflame" "اكسب 2 قوة."
-string "deck.text.wound" "لا يمكن لعبها."
-string "deck.text.fireball" "يُلحق 10 ضرر بوحدة و2 بجيرانها."
-string "deck.text.bulwark" "حارس. الحلفاء بجانبه يتلقون ضررًا أقل بـ1."
-string "deck.text.rogue" "تخفٍّ. عند الهجوم: اسحب بطاقة."
-string "deck.text.potion" "اشفِ 8 وأزل سمًّا."
-string "deck.text.storm" "يُلحق 5 ضرر بكل الأعداء."
-string "deck.text.serpent" "سم 3. يكبر حين يُسمَّم عدو."
-string "deck.text.ice" "جمّد وحدة واسحب بطاقة."
-string "deck.text.horn" "وحداتك تنال +1 هجوم هذا الدور."
-string "deck.text.golem" "حارس. لا يتلقى ضرر التعاويذ."
-string "deck.text.owl" "عند اللعب: انظر إلى أعلى 3 بطاقات."
-string "deck.text.scroll" "تعويذتك التالية تكلّف 2 أقل."
-string "deck.text.egg" "بعد ثلاثة أدوار، يفقس تنين 9/9."
-string "vn.gallery.title" "المعرض"
-string "vn.all" "الكل"
-string "vn.chapter.one" "الفصل 1"
-string "vn.chapter.two" "الفصل 2"
-string "vn.chapter.three" "الفصل 3"
-string "vn.chapter.four" "النهايات"
-string "vn.nextChapter" "الفصل التالي"
-string "vn.seen" "شوهد {n} / {total}"
-string "vn.locked" "؟؟؟"
-string "vn.new" "جديد"
-string "vn.close" "إغلاق"
-string "vn.prev" "السابق"
-string "vn.next" "التالي"
-string "vn.cg.riverboat" "المركب النهري"
-string "vn.cg.lantern" "ليلة الفوانيس"
-string "vn.cg.library" "نائم في البرج"
-string "vn.cg.storm" "عبّارة العاصفة"
-string "vn.cg.duel" "مبارزة السطح"
-string "vn.cg.dawn" "بوابة الفجر"
-string "vn.hint.storm" "اركب العبّارة في الفصل 2"
-string "vn.hint.dawn" "بلوغ النهاية السعيدة"
-string "vn.routes.title" "مخطط المسارات"
-string "vn.routes.chart" "المسارات"
-string "vn.scene.arrival" "الوصول"
-string "vn.scene.lanterns" "المهرجان"
-string "vn.scene.tower" "البرج"
-string "vn.scene.ferry" "العبّارة"
-string "vn.scene.rooftop" "السطح"
-string "vn.scene.dawn" "الفجر"
-string "vn.scene.drowned" "ضاع في النهر"
-string "vn.scene.oath" "القسم"
-string "vn.ending.good" "نهاية سعيدة"
-string "vn.ending.bad" "نهاية سيئة"
-string "vn.choice.follow" "اتبع ميرا"
-string "vn.choice.study" "ابقَ للدراسة"
-string "vn.choice.trust" "ثق بها"
-string "vn.choice.storm" "أبحر نحو العاصفة"
-string "vn.jump" "انتقل إلى هنا"
-string "vn.now" "الآن"
-string "vn.scenes" "{n} / {total} مشاهد"
-string "set.title" "الإعدادات"
-string "set.page.graphics" "الرسومات"
-string "set.page.audio" "الصوت"
-string "set.page.controls" "التحكم"
-string "set.page.access" "إمكانية الوصول"
-string "set.page.language" "اللغة"
-string "set.page.hud" "تخطيط الواجهة"
-string "set.nextPage" "الصفحة التالية"
-string "set.section.display" "العرض"
-string "set.section.screen" "الشاشة"
-string "set.section.keyboard" "لوحة المفاتيح"
-string "set.section.mouse" "الفأرة"
-string "set.quality" "إعداد الجودة"
-string "set.quality.about" "مقدار التفاصيل في كل إطار. الأقل أسرع."
-string "set.quality.low" "منخفضة"
-string "set.quality.medium" "متوسطة"
-string "set.quality.high" "عالية"
-string "set.scale" "مقياس العرض"
-string "set.scale.about" "دقة المشهد ثلاثي الأبعاد نسبةً إلى الشاشة. تبقى الواجهة حادة."
-string "set.cap" "حد الإطارات"
-string "set.cap.about" "أقصى عدد إطارات في الثانية. الأقل يوفّر الطاقة."
-string "set.cap.display" "الشاشة"
-string "set.cap.fps30" "30"
-string "set.cap.fps60" "60"
-string "set.cap.fps120" "120"
-string "set.vsync" "المزامنة العمودية"
-string "set.vsync.about" "ينتظر الشاشة بين الإطارات: بلا تمزق مع تأخير أكبر قليلًا."
-string "set.fullscreen" "ملء الشاشة"
-string "set.fullscreen.about" "تملأ اللعبة الشاشة."
-string "set.aspect" "نسبة العرض"
-string "set.aspect.about" "تلتزم الواجهة بهذا الشكل على الشاشات الأعرض ولا تتمدد."
-string "set.safe" "منطقة الواجهة الآمنة"
-string "set.safe.about" "مدى بُعد الواجهة عن الحواف."
-string "set.master" "مستوى الصوت الرئيسي"
-string "set.master.about" "كل أصوات اللعبة."
-string "set.music" "الموسيقى"
-string "set.music.about" "اضبط مستوى الموسيقى. لا يؤثر في الأصوات."
-string "set.effects" "المؤثرات"
-string "set.effects.about" "الخطوات والضربات وأصوات الواجهة."
-string "set.voice" "الأصوات"
-string "set.voice.about" "أصوات الشخصيات."
-string "set.subtitles" "الترجمة"
-string "set.subtitles.about" "الكلمات المنطوقة على الشاشة."
-string "set.layout" "تخطيط لوحة المفاتيح"
-string "set.layout.about" "تُربط المفاتيح بمكانها وتُسمّى بحروف تخطيطك."
-string "set.layout.qwerty" "QWERTY"
-string "set.layout.azerty" "AZERTY"
-string "set.layout.qwertz" "QWERTZ"
-string "set.moveUp" "التقدم"
-string "set.moveUp.about" ""
-string "set.moveLeft" "التحرك يسارًا"
-string "set.moveLeft.about" ""
-string "set.jumpKey" "القفز"
-string "set.jumpKey.about" ""
-string "set.sensitivity" "حساسية الفأرة"
-string "set.sensitivity.about" "مدى دوران المنظور مع حركة الفأرة."
-string "set.invert" "عكس المحور الرأسي"
-string "set.invert.about" "تحريك الفأرة لأعلى ينظر للأسفل."
-string "set.raw" "الإدخال الخام"
-string "set.raw.about" "الفأرة كما تتحرك دون تسارع النظام."
-string "set.resetBindings" "إعادة ضبط كل الأزرار"
-string "set.resetBindings.about" "إعادة كل إجراء إلى مفاتيحه الأولى."
-string "set.textSize" "حجم النص"
-string "set.textSize.about" "كل كلمات الواجهة بحجم أكبر."
-string "set.contrast" "تباين عالٍ"
-string "set.contrast.about" "لوحات أغمق وكلمات وحواف أسطع."
-string "set.reduceMotion" "تقليل الحركة"
-string "set.reduceMotion.about" "يُثبَّت الاهتزاز والتكبير والانزلاق."
-string "set.colorblind" "مرشح الألوان"
-string "set.colorblind.about" "ألوان معدّلة لكل نوع من عمى الألوان."
-string "set.colorblind.off" "إيقاف"
-string "set.colorblind.protan" "عمى الأحمر"
-string "set.colorblind.deutan" "عمى الأخضر"
-string "set.colorblind.tritan" "عمى الأزرق"
-string "set.language" "اللغة"
-string "set.language.about" "كلمات اللعبة وأصواتها."
-string "set.apply" "تطبيق"
-string "set.saved" "حُفظت الإعدادات"
-string "set.revert" "تراجع"
-string "set.defaults" "الافتراضي"
-string "set.confirm" "هل تحتفظ بإعدادات العرض هذه؟"
-string "set.keep" "احتفاظ"
-string "set.reverting" "التراجع خلال {n} ث"
-string "set.hudNote" "حرّك عناصر الواجهة وغيّر حجمها وشفافيتها فوق اللعبة."
-string "set.editHud" "تحرير الواجهة"
-string "set.changed" "تغيّر"
-# The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
-string "sc.action" "حركة ومنصات"
-string "sc.action.blurb" "العنوان والواجهة والإيقاف والتعليم والتحميل والنتائج"
-string "sc.shooter" "التصويب ومعركة البقاء"
-string "sc.shooter.blurb" "واجهة المباراة ولوحة النقاط والعتاد والردهة"
-string "sc.puzzle" "الألغاز والألعاب الخفيفة"
-string "sc.puzzle.blurb" "لوحة المطابقة وخريطة المراحل والمتجر"
-string "sc.management" "الإدارة والانتظار والحياة"
-string "sc.management.blurb" "واجهة البلدة والمولدات والسجل وخريطة المدينة"
-string "sc.racing" "السباقات والرياضة"
-string "sc.racing.blurb" "واجهة السباق والمرآب والتوقيت وبث كرة القدم"
-string "sc.page.title" "العنوان"
-string "sc.page.hud" "الواجهة"
-string "sc.page.pause" "إيقاف"
-string "sc.page.tutorial" "تعليم"
-string "sc.page.loading" "تحميل"
-string "sc.page.results" "النتائج"
-string "sc.page.scoreboard" "لوحة النقاط"
-string "sc.page.loadout" "العتاد"
-string "sc.page.lobby" "الردهة"
-string "sc.page.board" "اللوحة"
-string "sc.page.saga" "خريطة المراحل"
-string "sc.page.store" "المتجر"
-string "sc.page.generators" "المولدات"
-string "sc.page.ledger" "السجل"
-string "sc.page.cityMap" "خريطة المدينة"
-string "sc.page.garage" "المرآب"
-string "sc.page.leaderboard" "المتصدرون"
-string "sc.page.sportsHud" "المباراة"
-string "sc.page.matchFacts" "نهاية المباراة"
-string "sc.pause" "إيقاف"
-string "sc.you" "أنت"
-string "sc.health" "الصحة"
-string "sc.energy" "الطاقة"
-string "sc.time" "الوقت"
-string "sc.combo" "سلسلة"
-string "sc.comboBreak" "انقطاع"
-string "sc.stat.score" "النقاط"
-string "sc.stat.coins" "العملات"
-string "sc.stat.time" "الوقت"
-string "sc.reward.gold" "ذهب"
-string "sc.reward.crystal" "بلورة"
-string "sc.action.save" "الفصل 3 · 4س 12د"
-string "sc.action.news" "حدث سلسلة الجمر متاح الآن"
-string "sc.action.objective" "اصل إلى بوابة الجرف"
-string "sc.action.place" "سلسلة الجمر"
-string "sc.action.tip" "اضغط القفز مطولًا لتقفز أعلى، واضغطه مرة أخرى في الهواء لقفزة ثانية."
-string "sc.action.clear" "اكتملت المرحلة"
-string "sc.action.game" "سقوط الجمر"
-string "sc.action.open" "افتح"
-string "sc.action.door" "البوابة القديمة"
-string "sc.action.jump" "قفز"
-string "sc.action.attack" "هجوم"
-string "sc.tutorial.1.title" "اركض"
-string "sc.tutorial.1.text" "تحرك بالأسهم أو العصا؛ تُحسب العملات التي تمر بها هنا."
-string "sc.tutorial.2.title" "صحتك"
-string "sc.tutorial.2.text" "كل قطعة ضربة واحدة، والجزء الباهت يتناقص بعد الضربة."
-string "sc.tutorial.3.title" "سابق الوقت"
-string "sc.tutorial.3.text" "اصل إلى البوابة قبل انتهاء المؤقت."
-string "sc.tutorial.4.title" "واصل الحركة"
-string "sc.tutorial.4.text" "الضربات المتتالية تبني سلسلتك ومكافأتها."
-string "sc.tutorial.5.title" "خذ استراحة"
-string "sc.tutorial.5.text" "أوقف في أي وقت من الزاوية؛ رحلتك تنتظرك."
-string "sc.shooter.enemy" "عدو"
-string "sc.shooter.supply" "إمدادات"
-string "sc.shooter.zone" "السبخة"
-string "sc.shooter.ring" "تضيق الحلقة"
-string "sc.shooter.drone" "طائرة استطلاع"
-string "sc.shooter.frag" "قنبلة شظايا"
-string "sc.shooter.stim" "منشط"
-string "sc.shooter.ultimate" "حاجز"
-string "sc.shooter.auto" "آلي"
-string "sc.shooter.reloading" "إعادة التلقيم"
-string "sc.shooter.reload" "لقّم"
-string "sc.shooter.fire" "أطلق"
-string "sc.manage.gold" "ذهب"
-string "sc.manage.wood" "خشب"
-string "sc.manage.food" "طعام"
-string "sc.manage.people" "السكان"
-string "sc.manage.date" "الربيع، اليوم 12"
-string "sc.manage.play" "تشغيل"
-string "sc.manage.fast" "سريع"
-string "sc.manage.goal.grow" "بلدة تنمو"
-string "sc.manage.goal.people" "السكان"
-string "sc.manage.goal.park" "ابنِ حديقة"
-string "sc.manage.goal.trade" "افتح التجارة"
-string "sc.manage.goal.market" "أكمل السوق"
-string "sc.manage.plot" "قطعة فارغة"
-string "sc.manage.cost" "البناء {cost} · الصيانة {upkeep}/يوم"
-string "sc.race.pos" "المركز"
-string "sc.race.lap" "اللفة"
-string "sc.race.final" "اللفة الأخيرة"
-string "sc.race.current" "زمن اللفة"
-string "sc.race.best" "الأفضل"
-string "sc.race.last" "السابقة"
-string "sc.race.split" "الفارق"
-string "sc.race.leader" "المتصدر"
-string "sc.race.pit" "الصيانة"
-string "sc.race.out" "خارج"
-string "sc.race.fastest" "أسرع لفة"
-string "sc.race.kmh" "كم/س"
-string "sc.race.left" "يسار"
-string "sc.race.right" "يمين"
-string "sc.race.brake" "فرامل"
-string "sc.race.boost" "تعزيز"
-string "sc.race.week" "هذا الأسبوع"
-string "sc.race.league" "الدوري الذهبي"
-string "sc.race.circuit" "حلقة ميريديان"
-string "sc.race.go" "انطلق!"
-string "sc.race.checkpoint" "نقطة التفتيش {n}"
-string "sc.race.wrongWay" "اتجاه خاطئ"
-string "sc.race.finish" "خط النهاية"
-string "sc.race.ord3" "الثالث"
-string "sc.race.drift" "انجراف!"
-string "sc.race.podium" "المركز الثالث"
-string "sc.race.overtakes" "التجاوزات"
-string "sc.race.topSpeed" "السرعة القصوى"
-string "sc.race.clean" "قطاعات نظيفة"
-string "sc.race.credits" "الرصيد"
-string "sc.sports.half2" "الشوط الثاني"
-string "sc.sports.corner" "ركلة ركنية"
-string "sc.sports.sub" "تبديل"
-string "sc.sports.off" "خروج"
-string "sc.sports.on" "دخول"
-string "sc.sports.ft" "نهاية"
-string "sc.sports.pen" "جزاء"
-string "sc.sports.possession" "الاستحواذ"
-string "sc.sports.shots" "التسديدات"
-string "sc.sports.onTarget" "على المرمى"
-string "sc.sports.passes" "التمريرات"
-string "sc.sports.fouls" "الأخطاء"
-string "sc.moba" "ساحات المعارك الجماعية"
-string "sc.moba.blurb" "واجهة المسار والاختيار مع الحظر"
-string "sc.rpg" "تقمص الأدوار"
-string "sc.rpg.blurb" "واجهة القتال والعتاد وسجل المهام وحوار"
-string "sc.mmo" "الألعاب الجماعية والغارات"
-string "sc.mmo.blurb" "واجهة الغارة بإطاراتها وأشرطتها، والدردشة"
-string "sc.roguelike" "الروغلايك والبطاقات"
-string "sc.roguelike.blurb" "واجهة الجولة ويد البطاقات والمكافآت والرزمة"
-string "sc.strategy" "الاستراتيجية"
-string "sc.strategy.blurb" "لوحة الاستراتيجية الآنية والدفاع بالأبراج وتكتيك السفن"
-string "sc.gacha" "السحب والجمع"
-string "sc.gacha.blurb" "لافتة وسحب العشرة، وتذكرة الموسم"
-string "sc.rhythm" "الإيقاع"
-string "sc.rhythm.blurb" "شاشة اللعب بأربعة مسارات واختيار الأغنية"
-string "sc.fighting" "القتال والحفلات"
-string "sc.fighting.blurb" "واجهة الجولة واختيار الشخصية وشاشة المواجهة"
-string "sc.narrative" "القصص والروايات المصورة"
-string "sc.narrative.blurb" "صندوق النص ومخطط المسارات ومعرض الصور"
-string "sc.survival" "النجاة"
-string "sc.survival.blurb" "الحيويات والحالات والبوصلة وشريط الأدوات"
-string "sc.horror" "الرعب"
-string "sc.horror.blurb" "واجهة تُبقي كل شيء تقريبًا خارج الشاشة"
-string "sc.openworld" "العالم المفتوح"
-string "sc.openworld.blurb" "واجهة الاستكشاف وخريطة العالم ووضع التصوير"
-string "sc.page.draft" "الاختيار"
-string "sc.page.gear" "العتاد"
-string "sc.page.quests" "المهام"
-string "sc.page.dialogue" "الحوار"
-string "sc.page.chat" "الدردشة"
-string "sc.page.cards" "البطاقات"
-string "sc.page.rewards" "المكافآت"
-string "sc.page.deck" "الرزمة"
-string "sc.page.rts" "اللوحة"
-string "sc.page.td" "الدفاع"
-string "sc.page.shipStatus" "السفينة"
-string "sc.page.turnOrder" "ترتيب الأدوار"
-string "sc.page.abilityCards" "القدرات"
-string "sc.page.sectorMap" "خريطة القطاع"
-string "sc.page.hangar" "حظيرة السفن"
-string "sc.page.gacha" "اللافتة"
-string "sc.page.pass" "التذكرة"
-string "sc.page.songs" "الأغاني"
-string "sc.page.select" "الاختيار"
-string "sc.page.versus" "المواجهة"
-string "sc.page.vn" "صندوق النص"
-string "sc.page.routes" "المسارات"
-string "sc.page.cgGallery" "المعرض"
-string "sc.page.worldMap" "خريطة العالم"
-string "sc.page.photo" "التصوير"
-string "sc.mana" "المانا"
-string "sc.moba.attack" "هجوم"
-string "sc.moba.dash" "اندفاع"
-string "sc.moba.ward" "حماية"
-string "sc.moba.frost" "صقيع"
-string "sc.moba.ult" "عاصفة نار"
-string "sc.rpg.elite" "نخبة"
-string "sc.rpg.zone" "سرداب الرماد"
-string "sc.rpg.quest" "اختم السرداب"
-string "sc.rpg.seals" "الأختام المضاءة"
-string "sc.rpg.boss" "اهزم الحارس"
-string "sc.rpg.side" "أعشاب لإلسا"
-string "sc.rpg.moss" "طحلب القبور"
-string "sc.rpg.potion" "جرعة شفاء"
-string "sc.rpg.vial" "قارورة مانا"
-string "sc.rpg.whirl" "زوبعة"
-string "sc.rpg.ward" "درع الرون"
-string "sc.rpg.nova" "انفجار الصقيع"
-string "sc.rpg.storm" "عاصفة رعدية"
-string "sc.rpg.level" "المستوى 24"
-string "sc.rpg.xp" "الخبرة"
-string "sc.mmo.might" "القوة"
-string "sc.mmo.ward" "حماية"
-string "sc.mmo.burn" "حرق الروح"
-string "sc.mmo.title" "سيد القبو"
-string "sc.mmo.cast" "مطر الظلال"
-string "sc.mmo.raid" "القبو الغارق"
-string "sc.mmo.adds" "الحراس المهزومون"
-string "sc.mmo.boss" "فورثول"
-string "sc.mmo.zone" "القبو الغارق"
-string "sc.mmo.heal" "مداواة"
-string "sc.mmo.strike" "ضربة"
-string "sc.mmo.food" "وليمة"
-string "sc.mmo.key" "مفتاح القبو"
-string "sc.mmo.bomb" "عبوة ناسفة"
-string "sc.mmo.venom" "سم"
-string "sc.mmo.blink" "وميض"
-string "sc.mmo.free" "تحرر"
-string "sc.rogue.flame" "حد الجمر"
-string "sc.rogue.frost" "لمسة الجليد"
-string "sc.rogue.thunder" "خطوة العاصفة"
-string "sc.rogue.heart" "قلب العملاق"
-string "sc.rogue.curse" "السلسلة المكسورة"
-string "sc.rogue.room" "الحجرة {n}"
-string "sc.rogue.special" "خاص"
-string "sc.rogue.cast" "إلقاء"
-string "sc.rogue.dash" "اندفاع"
-string "sc.td.gold" "ذهب"
-string "sc.td.lives" "الأرواح"
-string "sc.td.waves" "الموجات"
-string "sc.td.next" "الموجة التالية"
-string "sc.td.send" "استدعِها"
-string "sc.td.archer" "برج الرماة"
-string "sc.td.wall" "سور"
-string "sc.td.barracks" "ثكنة"
-string "sc.td.forge" "مصهر"
-string "sc.rhythm.perfect" "مثالي"
-string "sc.rhythm.great" "رائع"
-string "sc.rhythm.good" "جيد"
-string "sc.rhythm.early" "مبكر"
-string "sc.rhythm.late" "متأخر"
-string "sc.rhythm.accuracy" "الدقة {pct}%"
-string "sc.rhythm.progress" "تقدم الأغنية"
-string "sc.rhythm.life" "الحياة"
-string "sc.fight.hits" "ضربات"
-string "sc.fight.super" "الخارقة"
-string "sc.fight.kick" "ركلة"
-string "sc.fight.punch" "لكمة"
-string "sc.fight.special" "خاصة"
-string "sc.survival.gather" "اجمع"
-string "sc.survival.birch" "جذع بتولا"
-string "sc.survival.camp" "المخيم"
-string "sc.survival.day" "اليوم {n}"
-string "sc.survival.wet" "مبتل"
-string "sc.survival.rested" "مرتاح"
-string "sc.survival.food" "الطعام"
-string "sc.survival.water" "الماء"
-string "sc.survival.stamina" "التحمل"
-string "sc.survival.swing" "تأرجح"
-string "sc.survival.axe" "فأس"
-string "sc.survival.bow" "قوس"
-string "sc.survival.torch" "شعلة"
-string "sc.survival.berries" "توت"
-string "sc.survival.shield" "درع"
-string "sc.horror.hide" "اختبئ"
-string "sc.horror.wardrobe" "خزانة"
-string "sc.horror.objective" "الهدف"
-string "sc.horror.find" "اعثر على مفتاح الكنيسة"
-string "sc.horror.battery" "البطارية"
-string "sc.horror.run" "اركض"
-string "sc.open.shrine" "مزار فايل"
-string "sc.open.talk" "تحدث"
-string "sc.open.quest" "الأجراس الصامتة"
-string "sc.open.step" "اذهب إلى المزار"
-string "sc.open.tower" "تسلق برج المراقبة"
-string "sc.open.glide" "انزلق"
-string "screen.common.back" "رجوع"
-string "screen.leaderboard.title" "المتصدرون"
-string "screen.leaderboard.global" "عالمي"
-string "screen.leaderboard.friends" "الأصدقاء"
-string "screen.leaderboard.league" "الدوري"
-string "screen.loading.tip" "نصيحة"
-string "screen.loading.continue" "متابعة"
-string "screen.main-menu.continue" "متابعة"
-string "screen.main-menu.newGame" "لعبة جديدة"
-string "screen.main-menu.modes" "الأنماط"
-string "screen.main-menu.settings" "الإعدادات"
-string "screen.main-menu.credits" "الشكر"
-string "screen.main-menu.quit" "خروج"
-string "screen.main-menu.newsEyebrow" "الأخبار"
-string "screen.pause.title" "متوقف مؤقتًا"
-string "screen.pause.resume" "استئناف"
-string "screen.pause.settings" "الإعدادات"
-string "screen.pause.controls" "التحكم"
-string "screen.pause.save" "حفظ"
-string "screen.pause.load" "تحميل"
-string "screen.pause.quitToMenu" "العودة للقائمة"
-string "screen.pause.quit" "إنهاء اللعبة"
-string "screen.results.summary" "الملخص"
-string "screen.results.graphs" "الرسوم"
-string "screen.results.board" "لوحة النقاط"
-string "screen.results.best" "الأفضل"
-string "screen.results.replay" "شاهد الإعادة"
-string "screen.results.again" "العب مجددًا"
-string "screen.results.continue" "متابعة"
-string "screen.tutorial.skip" "تخطَّ"
-string "screen.tutorial.next" "التالي"
+// The UI kit's ar strings (og.i18n; templates/ui-kit/README.md §Locales).
+// og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
+// The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
+// The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
+// The saga map, match-3 board and idle previews (src/patterns.ts).
+// The store and the battle pass (src/patterns.ts).
+// The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
+// The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
+// The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
+// The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
+// The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
+// The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "rtl",
+  "entries": {
+    "ab.deflector": "حاجز الانحراف",
+    "ab.deflector.text": "يقوّي الدروع لدور واحد.",
+    "ab.endTurn": "إنهاء الدور",
+    "ab.gravity": "بئر الجاذبية",
+    "ab.gravity.text": "يجذب الأعداء ويبطئهم.",
+    "ab.kinetic": "ضربة حركية",
+    "ab.kinetic.text": "يُلحق ضررًا كبيرًا بهدف.",
+    "ab.overcharge": "شحن زائد",
+    "ab.overcharge.text": "يزيد ضرر الأسلحة 50 % لدورين.",
+    "ab.repair": "طائرات الإصلاح",
+    "ab.repair.text": "تُصلح الهيكل بمرور الوقت.",
+    "ab.squadron": "إطلاق السرب",
+    "ab.squadron.text": "ينشر مقاتلات هجومية لثلاثة أدوار.",
+    "ab.title": "القدرات",
+    "board.done": "تم",
+    "board.goal.blue": "اجمع الجواهر الزرقاء",
+    "board.goal.ice": "حطّم بلاطات الجليد",
+    "board.goals": "الأهداف",
+    "board.level": "المرحلة",
+    "board.moves": "الحركات المتبقية",
+    "board.progress": "{have} من {need}",
+    "board.score": "النقاط",
+    "cards.anger.name": "غضب",
+    "cards.anger.text": "أحدث [b]6[/b] ضرر. أضف نسخة إلى المهملات.",
+    "cards.bash.name": "سحق",
+    "cards.bash.text": "أحدث [b]8[/b] ضرر. طبّق 2 [color=warn]ضعف[/color].",
+    "cards.defend.name": "دفاع",
+    "cards.defend.text": "اكسب [b]5[/b] [color=info]صد[/color].",
+    "cards.endTurn": "إنهاء الدور",
+    "cards.enemyTurn": "دور العدو",
+    "cards.energy": "الطاقة",
+    "cards.foe.cultist": "المتعصب",
+    "cards.foe.louse": "القملة الحمراء",
+    "cards.hand": "اليد",
+    "cards.health": "صحة {name}",
+    "cards.inflame.name": "اشتعال",
+    "cards.inflame.text": "اكسب [b]2[/b] [color=danger]قوة[/color].",
+    "cards.strike.name": "ضربة",
+    "cards.strike.text": "أحدث [b]6[/b] ضرر.",
+    "cards.target": "اختر هدفًا",
+    "cards.taunt": "خلف استفزاز",
+    "cards.title": "القتال",
+    "cards.type.anger": "هجوم",
+    "cards.type.bash": "هجوم",
+    "cards.type.defend": "مهارة",
+    "cards.type.inflame": "قدرة",
+    "cards.type.strike": "هجوم",
+    "cards.type.wound": "حالة",
+    "cards.waiting": "انتظار…",
+    "cards.wound.name": "جرح",
+    "cards.wound.text": "لا يمكن لعبها.",
+    "cards.yourTurn": "دورك",
+    "chars.about.aria": "تحوّل ضوء القمر إلى نصال تضرب من بعيد.",
+    "chars.about.brann": "يبيع بضائعه ليجمع ذهب عتاد الفريق.",
+    "chars.about.cultist": "يستدعي الآلهة القديمة ويدفع الثمن دمًا.",
+    "chars.about.kael": "سريع الحركة؛ كل ضربة ثالثة تكسر الدفاع.",
+    "chars.about.maren": "تصمد في المقدمة بالدرع والراية.",
+    "chars.about.mira": "تشفي الصف وتقيّد الأعداء بالكروم.",
+    "chars.about.torvin": "يبني الأبراج من الخردة وسط القتال.",
+    "chars.about.vell": "تضرب مرتين ثم تختفي.",
+    "chars.about.vesper": "يقايض صحته بعواصف من الظل.",
+    "chars.about.wren": "تَسِم الهدف ثم لا تخطئه أبدًا.",
+    "chars.lock": "تثبيت",
+    "chars.locked": "تم التثبيت",
+    "chars.random": "عشوائي",
+    "chars.role.duelist": "مبارز",
+    "chars.role.mage": "ساحر",
+    "chars.role.ranger": "جوّال",
+    "chars.role.support": "داعم",
+    "chars.role.vanguard": "طليعة",
+    "chars.taken": "محجوز",
+    "chars.title": "اختر مقاتلك",
+    "chars.unlock": "يُفتح عند المستوى {level}",
+    "chat.ch.all": "الكل",
+    "chat.ch.guild": "النقابة",
+    "chat.ch.party": "الفريق",
+    "chat.ch.system": "النظام",
+    "chat.ch.trade": "التجارة",
+    "chat.ch.whisper": "همس",
+    "chat.channel": "القناة",
+    "chat.link.amberhold": "أمبرهولد",
+    "chat.link.ashbringer": "حامل الرماد",
+    "chat.link.ember": "خاتم الجمر",
+    "chat.msg.1": "انضم Riven إلى الفريق.",
+    "chat.msg.2": "غارة الليلة في التاسعة، أحضروا الجرعات.",
+    "chat.msg.3": "أبيع {0}، راسلوني بعروضكم.",
+    "chat.msg.4": "نلتقي عند {0} قبل أن تُفتح البوابة.",
+    "chat.msg.5": "@Lumen هل تستطيع تحمّل أول هجوم؟",
+    "chat.msg.6": "شكرًا على المساعدة سابقًا!",
+    "chat.msg.7": "انظروا ماذا سقط: {0}",
+    "chat.msg.8": "@Juno فاتورة الإصلاح على حسابي.",
+    "chat.msg.9": "جاهز متى كنت جاهزًا.",
+    "chat.new": "{n} جديدة",
+    "chat.placeholder": "اكتب شيئًا…",
+    "chat.send": "إرسال",
+    "chat.title": "الدردشة",
+    "confirm.cancel": "إلغاء",
+    "confirm.delete": "حذف",
+    "confirm.message": "سيضيع تقدمك في الخانة [b]{slot}[/b]. [color=danger]لا يمكن التراجع عن ذلك.[/color]",
+    "confirm.title": "حذف هذا الحفظ؟",
+    "cutscene.skip": "تخطي",
+    "deck.all": "الكل",
+    "deck.card.anger": "غضب",
+    "deck.card.bash": "سحق",
+    "deck.card.bulwark": "فارس الحصن",
+    "deck.card.defend": "دفاع",
+    "deck.card.egg": "بيضة الجمر",
+    "deck.card.fireball": "كرة نارية",
+    "deck.card.golem": "الغولم القديم",
+    "deck.card.horn": "بوق الحرب",
+    "deck.card.ice": "شظية الصقيع",
+    "deck.card.inflame": "إشعال",
+    "deck.card.owl": "البومة المرافقة",
+    "deck.card.potion": "الجرعة الخضراء",
+    "deck.card.rogue": "لص الليل",
+    "deck.card.scroll": "الرونة المشتعلة",
+    "deck.card.serpent": "ثعبان الطحلب",
+    "deck.card.storm": "نصل العاصفة",
+    "deck.card.strike": "ضربة",
+    "deck.card.wound": "جرح",
+    "deck.cards": "البطاقات",
+    "deck.curve": "منحنى المانا",
+    "deck.done": "تم",
+    "deck.full": "المجموعة ممتلئة",
+    "deck.kind.relic": "أثر",
+    "deck.kind.spell": "تعويذة",
+    "deck.kind.unit": "وحدة",
+    "deck.kinds.relic": "الآثار",
+    "deck.kinds.spell": "التعاويذ",
+    "deck.kinds.unit": "الوحدات",
+    "deck.limit": "لا يُسمح بنسخ أخرى",
+    "deck.mine": "مجموعتي",
+    "deck.name": "فروستفاير",
+    "deck.none": "لا توجد بطاقات مطابقة",
+    "deck.rarity.common": "شائع",
+    "deck.rarity.epic": "ملحمي",
+    "deck.rarity.legendary": "أسطوري",
+    "deck.rarity.rare": "نادر",
+    "deck.rarity.uncommon": "غير شائع",
+    "deck.search": "ابحث عن البطاقات",
+    "deck.sort.cost": "التكلفة",
+    "deck.sort.name": "الاسم",
+    "deck.sort.owned": "المملوك",
+    "deck.sort.rarity": "الندرة",
+    "deck.sortBy": "الترتيب",
+    "deck.text.anger": "يُلحق 4 ضرر وينسخ هذه البطاقة إلى يدك.",
+    "deck.text.bash": "يُلحق 8 ضرر ويصعق الهدف.",
+    "deck.text.bulwark": "حارس. الحلفاء بجانبه يتلقون ضررًا أقل بـ1.",
+    "deck.text.defend": "اكسب 5 دروع.",
+    "deck.text.egg": "بعد ثلاثة أدوار، يفقس تنين 9/9.",
+    "deck.text.fireball": "يُلحق 10 ضرر بوحدة و2 بجيرانها.",
+    "deck.text.golem": "حارس. لا يتلقى ضرر التعاويذ.",
+    "deck.text.horn": "وحداتك تنال +1 هجوم هذا الدور.",
+    "deck.text.ice": "جمّد وحدة واسحب بطاقة.",
+    "deck.text.inflame": "اكسب 2 قوة.",
+    "deck.text.owl": "عند اللعب: انظر إلى أعلى 3 بطاقات.",
+    "deck.text.potion": "اشفِ 8 وأزل سمًّا.",
+    "deck.text.rogue": "تخفٍّ. عند الهجوم: اسحب بطاقة.",
+    "deck.text.scroll": "تعويذتك التالية تكلّف 2 أقل.",
+    "deck.text.serpent": "سم 3. يكبر حين يُسمَّم عدو.",
+    "deck.text.storm": "يُلحق 5 ضرر بكل الأعداء.",
+    "deck.text.strike": "يُلحق 6 ضرر.",
+    "deck.text.wound": "لا يمكن لعبها.",
+    "deck.title": "المجموعة",
+    "deck.types": "الأنواع",
+    "deck.unowned": "غير مملوكة",
+    "dlg.aria": "آريا",
+    "dlg.auto": "تلقائي",
+    "dlg.check": "{stat} · {chance}",
+    "dlg.continue": "متابعة",
+    "dlg.failed": "فشل",
+    "dlg.gate.need": "تحتاج {need} رصيدًا إضافيًا",
+    "dlg.gate.notyet": "ليس بعد.",
+    "dlg.gate.open": "تُفتح البوابة عند الفجر. هل أنت مستعد للعبور؟",
+    "dlg.gate.persuade": "أخبريني أولًا بما ينتظرنا وراءها.",
+    "dlg.gate.read": "لقد رأيتِ هذه النظرة من قبل.",
+    "dlg.gate.ready": "أنا مستعد. هيا بنا.",
+    "dlg.gate.toll": "ادفع رسوم الحارس.",
+    "dlg.gate.who": "من غيرنا يعرف بأمر البوابة؟",
+    "dlg.log": "السجل",
+    "dlg.mira": "ميرا",
+    "dlg.passed": "نجاح",
+    "dlg.ready": "إذن نرحل قبل أن ينقلب المد.",
+    "dlg.refuse": "سترى ذلك بنفسك، أو لن تراه أبدًا.",
+    "dlg.secret": "وراءها يقع المرصد القديم. وما رأته الخرائط ما زال هناك.",
+    "dlg.skip": "تخطٍّ",
+    "dlg.stat.charm": "الإقناع",
+    "dlg.stat.insight": "البصيرة",
+    "dlg.unavailable": "غير متاح",
+    "dlg.who": "أمينة الأرشيف فقط، وقد لزمت الصمت تسع سنين.",
+    "draft.ban": "حظر",
+    "draft.banned": "محظور",
+    "draft.bans": "المحظورات",
+    "draft.blue": "الفريق الأزرق",
+    "draft.phase.ban": "مرحلة الحظر · دورك",
+    "draft.phase.pick": "مرحلة الاختيار · دورك",
+    "draft.phase.theirs": "مرحلة الاختيار · دور الأحمر",
+    "draft.picked": "تم اختياره",
+    "draft.red": "الفريق الأحمر",
+    "draft.title": "الاختيار",
+    "draft.waiting": "في الانتظار",
+    "gacha.banner.event": "لافتة محدودة · شخصية",
+    "gacha.banner.std": "لافتة دائمة",
+    "gacha.banner.weapon": "لافتة محدودة · سلاح",
+    "gacha.continue": "متابعة",
+    "gacha.details": "التفاصيل",
+    "gacha.done": "تم",
+    "gacha.extra.shards": "+{n} شظايا نجمية",
+    "gacha.history": "السجل",
+    "gacha.kind.character": "شخصية",
+    "gacha.kind.weapon": "سلاح",
+    "gacha.new": "جديد",
+    "gacha.pity": "مضمون خلال {left}",
+    "gacha.rarity.common": "عادي",
+    "gacha.rarity.epic": "ملحمي",
+    "gacha.rarity.legendary": "أسطوري",
+    "gacha.rarity.mythic": "خرافي",
+    "gacha.rarity.rare": "نادر",
+    "gacha.rarity.uncommon": "غير شائع",
+    "gacha.rate.event": "فرصة [b]50%[/b] أن تكون شخصية الخمس نجوم التالية هي [color=highlight]أريا[/color]. إن خسرتها فالتالية لها.",
+    "gacha.rate.standard": "شخصية [b]5 نجوم[/b] مضمونة خلال [b]90[/b] استدعاء.",
+    "gacha.short": "غير كافٍ",
+    "gacha.skip": "تخطَّ",
+    "gacha.summon1": "استدعاء ×1",
+    "gacha.summonN": "استدعاء ×{n}",
+    "gacha.tap": "انقر للمتابعة",
+    "gacha.title.aria": "مستدعية مدّ القمر",
+    "gacha.title.kael": "الجمرة",
+    "gacha.title.mira": "حارسة البستان",
+    "gacha.unit.cudgel": "هراوة البلوط",
+    "gacha.unit.fang": "ناب الجمر",
+    "gacha.unit.sling": "مقلاع الصياد",
+    "gacha.unit.spear": "رمح الليل",
+    "gacha.unit.steel": "فولاذ عادي",
+    "gacha.unit.tome": "كتاب المد",
+    "gacha.unit.warden": "سيف الحارس",
+    "gallery.button": "المعرض",
+    "garage.addLayer": "إضافة طبقة",
+    "garage.buy": "شراء",
+    "garage.cat.aero": "الديناميكا الهوائية",
+    "garage.cat.brakes": "المكابح",
+    "garage.cat.engine": "المحرك",
+    "garage.cat.exhaust": "العادم",
+    "garage.cat.livery": "الطلاء",
+    "garage.cat.next": "الفئة التالية",
+    "garage.cat.suspension": "التعليق",
+    "garage.cat.wheels": "العجلات",
+    "garage.class": "الفئة",
+    "garage.color": "اللون",
+    "garage.current": "الحالي",
+    "garage.delete": "حذف",
+    "garage.desc.aero": "جناح أعلى يضغط السيارة نحو الأرض عند السرعة.",
+    "garage.desc.brakes": "أقراص وفكوك أكبر تتوقف متأخرة وتتلاشى أقل.",
+    "garage.desc.engine": "قوة أكبر في أعلى نطاق الدوران، مقابل دواسة أكثر حدة.",
+    "garage.desc.exhaust": "عادم أكثر انسيابًا لانطلاق أسرع وصوت أعلى.",
+    "garage.desc.suspension": "نوابض ومخمدات أصلب: ميل أقل وقيادة أكثر صلابة.",
+    "garage.desc.wheels": "جنوط أخف وإطارات أشد تماسكًا تحفظ المسار في المنعطفات السريعة.",
+    "garage.down": "تحريك لأسفل",
+    "garage.equip": "تركيب",
+    "garage.equipped": "مركّب",
+    "garage.free": "مجاني",
+    "garage.kind.decal": "ملصق",
+    "garage.kind.paint": "طلاء",
+    "garage.kind.vinyl": "فينيل",
+    "garage.layer.added": "ملصق {n}",
+    "garage.layer.base": "الطلاء الأساسي",
+    "garage.layer.number": "الرقم 7",
+    "garage.layer.sponsor": "الراعي",
+    "garage.layer.stripe": "الشريط",
+    "garage.layers": "الطبقات",
+    "garage.locked": "مقفل",
+    "garage.needsClass": "يتطلب الفئة {cls}",
+    "garage.part": "{part} {tier}",
+    "garage.performance": "الأداء",
+    "garage.preview": "المعاينة",
+    "garage.short": "غير كافٍ",
+    "garage.stat.braking": "الكبح",
+    "garage.stat.handling": "التحكم",
+    "garage.stat.launch": "الانطلاق",
+    "garage.stat.power": "القوة",
+    "garage.stat.speed": "السرعة القصوى",
+    "garage.tier.race": "سباق",
+    "garage.tier.sport": "رياضي",
+    "garage.tier.stock": "أصلي",
+    "garage.tier.street": "شارع",
+    "garage.tier.works": "مصنعي",
+    "garage.title": "المرأب",
+    "garage.up": "تحريك لأعلى",
+    "garage.visible": "مرئي",
+    "gear.attributes": "السمات",
+    "gear.backpack": "الحقيبة",
+    "gear.class": "فارس مقدس، المستوى {level}",
+    "gear.empty": "فارغ",
+    "gear.hint.menu": "قائمة الغرض",
+    "gear.hint.place": "التقاط / وضع",
+    "gear.hint.putBack": "إرجاع",
+    "gear.item.amulet": "تميمة الياقوت",
+    "gear.item.boots": "حذاء العجلة",
+    "gear.item.bow": "قوس عدّاء الريح",
+    "gear.item.dagger": "سيف حديدي",
+    "gear.item.gem": "شظية نجم",
+    "gear.item.gloves": "قفازات",
+    "gear.item.greatsword": "جالب الرماد",
+    "gear.item.helm": "تاج الأشواك",
+    "gear.item.mana": "جرعة مانا",
+    "gear.item.ore": "بلورة خام",
+    "gear.item.plate": "عصا سحرية",
+    "gear.item.potions": "جرعة شفاء",
+    "gear.item.ring": "خاتم الوادي",
+    "gear.item.robe": "رداء الساحر",
+    "gear.item.scroll": "مفتاح حديدي",
+    "gear.item.shield": "درع البلوط",
+    "gear.locked": "مقفل",
+    "gear.menu.drop": "إسقاط",
+    "gear.menu.split": "قسمة الكومة",
+    "gear.menu.use": "استخدام",
+    "gear.power": "قوة العتاد",
+    "gear.relicLocked": "يُفتح عند المستوى {level}",
+    "gear.rotate": "تدوير",
+    "gear.slot.chest": "الصدر",
+    "gear.slot.feet": "القدمان",
+    "gear.slot.hands": "اليدان",
+    "gear.slot.head": "الرأس",
+    "gear.slot.main": "اليد الرئيسية",
+    "gear.slot.neck": "العنق",
+    "gear.slot.off": "اليد الثانوية",
+    "gear.slot.relic": "أثر",
+    "gear.slot.ring": "خاتم",
+    "gear.stash": "المخبأ",
+    "gear.stat.armor": "الدرع",
+    "gear.stat.cooldowns": "فترات التهدئة",
+    "gear.stat.fire": "مقاومة النار",
+    "gear.stat.speed": "سرعة الحركة",
+    "gear.stat.strength": "القوة",
+    "gear.sub": "اسحب للنقل · Shift يقسم الكومة · R يدير",
+    "gear.sub.touch": "اسحب للنقل · اضغط مطولًا للخيارات",
+    "gear.title": "المخزون",
+    "gear.unusable": "لا يمكن استخدامه",
+    "hangar.alloy": "سبيكة",
+    "hangar.carriers": "حاملات الطائرات",
+    "hangar.carriers.class": "فئة الحاملة",
+    "hangar.carriers.flavour": "حظيرة متنقلة تطلق المقاتلات وتستعيدها، بطيئة الدوران لكنها لا تكون وحيدة أبدًا.",
+    "hangar.carriers.line": "تقود الميدان.",
+    "hangar.classes": "فئات السفن",
+    "hangar.commission": "تكليف",
+    "hangar.commissioned": "انضمّت {name} إلى الأسطول",
+    "hangar.compare": "مقارنة",
+    "hangar.cruisers": "الطرادات",
+    "hangar.cruisers.class": "فئة الطراد",
+    "hangar.cruisers.flavour": "سفينة مرافقة ثقيلة بدروع متعددة الطبقات تحمي قلب التشكيل بينما تتقدم الفرقاطات.",
+    "hangar.cruisers.line": "متوازنة وموثوقة.",
+    "hangar.firepower": "القوة النارية",
+    "hangar.frigates": "الفرقاطات",
+    "hangar.frigates.class": "فئة الفرقاطة",
+    "hangar.frigates.flavour": "فرقاطة خط أمامي متعددة المهام للاستطلاع والمرافقة والاستجابة السريعة. حيثما صمد الخط، كانت فانغارد هناك أولًا.",
+    "hangar.frigates.line": "سريعة ومرنة وأساسية.",
+    "hangar.hull": "الهيكل",
+    "hangar.modules": "الوحدات",
+    "hangar.modules.class": "وحدة محطة",
+    "hangar.modules.flavour": "هيكل معياري يرسو على أي حاملة: ورشة أو مصفوفة استشعار أو مستودع إمداد.",
+    "hangar.modules.line": "وسّع أسطولك.",
+    "hangar.shields": "الدروع",
+    "hangar.speed": "السرعة",
+    "hangar.stats": "مواصفات السفينة",
+    "hangar.title": "حظيرة الأسطول",
+    "hangar.upgrade": "مستوى التطوير",
+    "hint.back": "رجوع",
+    "hud.best": "الأفضل {best}",
+    "hud.boost": "تعزيز",
+    "hud.brake": "فرامل",
+    "hud.coins": "{n, plural, zero {لا عملات} one {عملة واحدة} two {عملتان} few {# عملات} many {# عملة} other {# عملة}}",
+    "hud.farm": "مزرعة",
+    "hud.fire": "إطلاق",
+    "hud.forge": "حدادة",
+    "hud.gems": "جواهر",
+    "hud.generatorLevel": "مستوى {level}",
+    "hud.gold": "ذهب",
+    "hud.jump": "قفز",
+    "hud.kills": "قتلى",
+    "hud.lap": "لفة",
+    "hud.left": "يسار",
+    "hud.level": "1-2 الطاحونة القديمة",
+    "hud.mill": "طاحونة",
+    "hud.moves": "حركات متبقية",
+    "hud.pause": "إيقاف مؤقت",
+    "hud.rate": "+{rate}/ث",
+    "hud.right": "يمين",
+    "hud.sector": "القطاع 4",
+    "hud.stage": "المستوى 7",
+    "hud.tap": "انقر",
+    "hud.target": "الهدف {target}",
+    "hud.unit": "كم/س",
+    "hud.weapon": "كاربين",
+    "idle.ascend": "ارتقِ",
+    "idle.ascendFor": "ارتقِ لتنال",
+    "idle.buy": "شراء ×{n}",
+    "idle.buyAmount": "كمية الشراء",
+    "idle.energy": "الطاقة",
+    "idle.gen.drill": "مثقاب كمّي",
+    "idle.gen.dyson": "حلقة دايسون",
+    "idle.gen.forge": "مصهر نجمي",
+    "idle.gen.fusion": "مفاعل اندماج",
+    "idle.gen.orbital": "مجمّع مداري",
+    "idle.gen.solar": "مصفوفة شمسية",
+    "idle.generators": "المولّدات",
+    "idle.hint.buy": "شراء",
+    "idle.level": "مستوى {level}",
+    "idle.owned": "المملوك: {owned}",
+    "idle.perSec": "+{rate} / ث",
+    "idle.point.keep": "تقدّم دائم",
+    "idle.point.reset": "يعيد ضبط المولّدات والطاقة",
+    "idle.point.stronger": "أقوى مع كل ارتقاء",
+    "idle.prestige": "الارتقاء",
+    "idle.rate": "+{rate} / ث",
+    "idle.shards": "+{n} شظية",
+    "idle.sub": "ابنِ المولّدات ثم ارتقِ لتنال الشظايا",
+    "idle.title": "نواة نكسس",
+    "idle.unlock": "اجمع {cost} طاقة",
+    "inventory.count": "العدد",
+    "inventory.hint": "اختر عنصرًا. اسحبه إلى خانة أخرى لنقله.",
+    "item.crystal": "بلورة ضوء النجوم",
+    "item.gold": "ذهب",
+    "item.potion": "جرعة شفاء",
+    "item.ring": "خاتم الجمر",
+    "leaderboard.error": "تعذّر تحميل النتائج.",
+    "leaderboard.retry": "إعادة المحاولة",
+    "ledger.breakdown": "التفصيل",
+    "ledger.col.amount": "المبلغ",
+    "ledger.col.budget": "الميزانية",
+    "ledger.col.change": "التغير",
+    "ledger.col.name": "الاسم",
+    "ledger.expenses": "النفقات",
+    "ledger.hint.period": "الفترة التالية",
+    "ledger.history": "السجل",
+    "ledger.income": "الإيرادات",
+    "ledger.line.commercial": "الضريبة التجارية",
+    "ledger.line.education": "التعليم",
+    "ledger.line.fire": "الإطفاء",
+    "ledger.line.health": "الرعاية الصحية",
+    "ledger.line.industrial": "الضريبة الصناعية",
+    "ledger.line.parks": "الحدائق",
+    "ledger.line.police": "الشرطة",
+    "ledger.line.power": "الكهرباء",
+    "ledger.line.residential": "ضريبة السكن",
+    "ledger.line.tourism": "السياحة",
+    "ledger.line.transit": "النقل العام",
+    "ledger.line.water": "المياه",
+    "ledger.locked": "مقفل",
+    "ledger.net": "الصافي",
+    "ledger.other": "أخرى",
+    "ledger.overlay.crime": "الجريمة",
+    "ledger.overlay.crime.high": "خطِر",
+    "ledger.overlay.crime.low": "آمن",
+    "ledger.overlay.landValue": "قيمة الأرض",
+    "ledger.overlay.landValue.high": "مرتفعة",
+    "ledger.overlay.landValue.low": "منخفضة",
+    "ledger.overlay.off": "بلا طبقة",
+    "ledger.overlay.pollution": "التلوث",
+    "ledger.overlay.pollution.high": "سام",
+    "ledger.overlay.pollution.low": "نظيف",
+    "ledger.overlay.power": "الكهرباء",
+    "ledger.overlay.power.high": "تغذية كاملة",
+    "ledger.overlay.power.low": "بلا كهرباء",
+    "ledger.overlay.traffic": "المرور",
+    "ledger.overlay.traffic.high": "اختناق",
+    "ledger.overlay.traffic.low": "انسيابي",
+    "ledger.overlay.water": "المياه",
+    "ledger.overlay.water.high": "ضغط كامل",
+    "ledger.overlay.water.low": "جاف",
+    "ledger.overlays": "الطبقات",
+    "ledger.period.month": "ش{n}",
+    "ledger.period.quarter": "ر{n}",
+    "ledger.period.year": "س{n}",
+    "ledger.population": "السكان",
+    "ledger.tab.month": "شهر",
+    "ledger.tab.quarter": "ربع سنة",
+    "ledger.tab.year": "سنة",
+    "ledger.title": "الميزانية",
+    "ledger.total": "الإجمالي",
+    "ledger.treasury": "الخزينة",
+    "ledger.warn.education": "تمويل ناقص: الفصول ممتلئة",
+    "ledger.warn.fire": "تمويل ناقص: الحرائق تنتشر",
+    "ledger.warn.health": "تمويل ناقص: الطوابير تطول",
+    "ledger.warn.parks": "تمويل ناقص: الحدائق مهملة",
+    "ledger.warn.police": "تمويل ناقص: الجريمة ترتفع",
+    "ledger.warn.power": "تمويل ناقص: انقطاع الكهرباء",
+    "ledger.warn.transit": "تمويل ناقص: تقليص الخطوط",
+    "ledger.warn.water": "تمويل ناقص: ضغط منخفض",
+    "list.separator": "، ",
+    "loadout.att.laser": "ليزر تكتيكي",
+    "loadout.att.magazine": "مخزن موسّع",
+    "loadout.att.muzzle": "كاتم فانغارد",
+    "loadout.att.optic": "منظار هولو MK.2",
+    "loadout.att.stock": "أخمص تكتيكي",
+    "loadout.att.underbarrel": "مقبض رينجر",
+    "loadout.attachments": "الملحقات",
+    "loadout.class.assault": "بندقية هجومية",
+    "loadout.class.blade": "نصل",
+    "loadout.class.drone": "طائرة مسيّرة",
+    "loadout.class.grenade": "قنبلة",
+    "loadout.class.pistol": "مسدس",
+    "loadout.desc.field": "يحدد كل عدو في مرماه.",
+    "loadout.desc.lethal": "تنفجر بعد ثلاث ثوانٍ وتطهّر غرفة.",
+    "loadout.desc.melee": "صامت ودائمًا جاهز.",
+    "loadout.desc.primary": "موثوقة في كل مدى، وأثبت مع كل ملحق.",
+    "loadout.desc.secondary": "سحب سريع حين تفرغ البندقية.",
+    "loadout.desc.tactical": "يشفي فورًا ويسرّع خطاك.",
+    "loadout.empty": "فارغ",
+    "loadout.item.field": "طائرة استطلاع",
+    "loadout.item.lethal": "قنبلة شظايا",
+    "loadout.item.melee": "سكين قتالي",
+    "loadout.item.primary": "AR-7 رافن",
+    "loadout.item.secondary": "VX-9 مسدس",
+    "loadout.item.tactical": "منشط",
+    "loadout.level": "مستوى {n}",
+    "loadout.locked": "مقفل",
+    "loadout.next": "العتاد التالي",
+    "loadout.point.laser": "الليزر",
+    "loadout.point.magazine": "المخزن",
+    "loadout.point.muzzle": "الفوهة",
+    "loadout.point.optic": "المنظار",
+    "loadout.point.stock": "الأخمص",
+    "loadout.point.underbarrel": "أسفل السبطانة",
+    "loadout.rarity.epic": "ملحمي",
+    "loadout.rarity.rare": "نادر",
+    "loadout.rarity.uncommon": "غير شائع",
+    "loadout.remove": "إزالة",
+    "loadout.slot.field": "ترقية ميدانية",
+    "loadout.slot.lethal": "قاتل",
+    "loadout.slot.melee": "قتال قريب",
+    "loadout.slot.primary": "الرئيسي",
+    "loadout.slot.secondary": "الثانوي",
+    "loadout.slot.tactical": "تكتيكي",
+    "loadout.stat.control": "التحكم",
+    "loadout.stat.damage": "الضرر",
+    "loadout.stat.fireRate": "معدل الإطلاق",
+    "loadout.stat.mobility": "الحركة",
+    "loadout.stat.range": "المدى",
+    "loadout.stats": "إحصاءات السلاح",
+    "loadout.tab": "العتاد {n}",
+    "loadout.title": "العتاد",
+    "loadout.unlocks": "يُفتح عند المستوى {n}",
+    "lobby.accept": "قبول",
+    "lobby.accepted": "تم القبول",
+    "lobby.cancel": "إلغاء",
+    "lobby.decline": "رفض",
+    "lobby.estimate": "المتوقع {time}",
+    "lobby.found": "تم العثور على مباراة",
+    "lobby.invite": "دعوة",
+    "lobby.leader": "قائد الفريق",
+    "lobby.level": "المستوى {level}",
+    "lobby.mode.detail": "5 ضد 5 · بوابة سكايريتش",
+    "lobby.mode.ranked": "مصنّفة",
+    "lobby.modeLabel": "الوضع",
+    "lobby.notReady": "غير جاهز",
+    "lobby.rank.diamond": "ماسي II",
+    "lobby.rank.gold": "ذهبي I",
+    "lobby.rank.immortal": "خالد I",
+    "lobby.rank.platinum": "بلاتيني III",
+    "lobby.ready": "جاهز",
+    "lobby.readyUp": "استعد",
+    "lobby.searching": "جارٍ البحث",
+    "lobby.start": "ابحث عن مباراة",
+    "lobby.title": "العب",
+    "log.close": "إغلاق",
+    "log.empty": "لم يُقل شيء بعد.",
+    "log.replay": "تشغيل الصوت",
+    "log.title": "السجل",
+    "map.about.amberhold": "مقرّ الملك القديم المطلّ على الحقول.",
+    "map.about.duskhold": "حصن مهدّم ابتلعته الغابة منذ زمن.",
+    "map.about.light": "أشعل المنارة للسفن التائهة.",
+    "map.about.market": "يلتقي التجار من كل طريق هنا عند الظهر.",
+    "map.about.mill": "اطرد الذئاب قبل المحاق.",
+    "map.about.sela": "تبحر عبّارات الميناء إلى جزر سكايريتش عند الفجر.",
+    "map.about.wyrm": "شيء ما يتحرك تحت أشجار الصنوبر القديمة.",
+    "map.close": "إغلاق",
+    "map.kind.boss": "الزعماء",
+    "map.kind.fastTravel": "الانتقال السريع",
+    "map.kind.objective": "الأهداف",
+    "map.kind.poi": "المعالم",
+    "map.kind.quest": "المهام",
+    "map.kind.shop": "المتاجر",
+    "map.place.amberhold": "قلعة العنبر",
+    "map.place.duskhold": "حصن الغسق",
+    "map.place.light": "منارة سولتريتش",
+    "map.place.market": "سوق مفترق الطرق",
+    "map.place.mill": "طاحونة الوادي",
+    "map.place.sela": "ميناء سيلا",
+    "map.place.wyrm": "تنين غابة الأشواك",
+    "map.region.amber": "حقول الكهرمان",
+    "map.region.delta": "دلتا سولتريتش",
+    "map.region.dusk": "غابة الغسق",
+    "map.region.frost": "قمم فروستسباير",
+    "map.region.redmesa": "الهضاب الحمراء",
+    "map.title": "المملكة الممزقة",
+    "map.track": "تعيين نقطة طريق",
+    "map.travel": "انتقال سريع",
+    "map.unknown": "؟؟؟",
+    "map.untrack": "إزالة نقطة الطريق",
+    "menu.continue": "متابعة",
+    "menu.event": "مد ضوء القمر",
+    "menu.event.cartoon": "مغامرة الثعلب",
+    "menu.event.kawaii": "مسرح ضوء النجوم",
+    "menu.event.storybook": "درب الفوانيس",
+    "menu.eventWhen": "لافتة محدودة - بقي 3 أيام",
+    "menu.footer": "الإصدار {version}",
+    "menu.greeting": "العودة إلى المغامرة",
+    "menu.mixed": "مغامرة صغيرة Origin 原点",
+    "menu.play": "العب",
+    "menu.quit": "خروج",
+    "menu.settings": "الإعدادات",
+    "menu.subtitle": "مغامرة صغيرة",
+    "menu.title": "مغامرة الأصل",
+    "npc.miller": "العجوز برام",
+    "pass.claim": "استلم",
+    "pass.claimAll": "استلم الكل ({n})",
+    "pass.claimed": "تم الاستلام",
+    "pass.free": "مجاني",
+    "pass.level": "المستوى {n}",
+    "pass.premium": "مميّز",
+    "pass.reach": "بلوغ المستوى {n}",
+    "pass.reward.arcane-staff": "عصا سحرية",
+    "pass.reward.aria": "آريا، مستدعية المد",
+    "pass.reward.boots": "حذاء العجلة",
+    "pass.reward.chest": "صندوق الموسم",
+    "pass.reward.crystal": "جواهر",
+    "pass.reward.ember-ring": "خاتم الجمر",
+    "pass.reward.gauntlets": "قفازات",
+    "pass.reward.gold": "عملات",
+    "pass.reward.healing-draught": "جرعة شفاء",
+    "pass.reward.kael": "كايل، الجمرة",
+    "pass.reward.mana-vial": "قارورة مانا",
+    "pass.reward.mira": "ميرا البستان",
+    "pass.reward.sapphire-amulet": "تميمة الياقوت",
+    "pass.season": "الموسم 4 · مدّ النيون",
+    "pass.title": "تذكرة المعركة",
+    "pass.unlock": "افتح المميّز",
+    "pass.xp": "{xp} / {need} نقطة خبرة",
+    "pause.quit": "العودة إلى القائمة",
+    "pause.resume": "استئناف",
+    "pause.settings": "الإعدادات",
+    "pause.title": "متوقف مؤقتًا",
+    "photo.capture": "التقاط",
+    "photo.ctl.aperture": "فتحة العدسة",
+    "photo.ctl.exposure": "التعريض",
+    "photo.ctl.focus": "مسافة التركيز",
+    "photo.ctl.fov": "مجال الرؤية",
+    "photo.ctl.height": "الارتفاع",
+    "photo.ctl.roll": "الميل",
+    "photo.ctl.vignette": "التظليل الطرفي",
+    "photo.exit": "خروج",
+    "photo.filter.cool": "بارد",
+    "photo.filter.noir": "نوار",
+    "photo.filter.none": "بلا",
+    "photo.filter.sepia": "بني داكن",
+    "photo.filter.vivid": "زاهٍ",
+    "photo.frame.cinema": "سينما",
+    "photo.frame.film": "فيلم",
+    "photo.frame.none": "بلا",
+    "photo.frame.polaroid": "فوري",
+    "photo.grid": "الشبكة",
+    "photo.hide": "إخفاء الواجهة",
+    "photo.hint": "اضغط أي مفتاح لإظهار عناصر التحكم",
+    "photo.reset": "إعادة ضبط",
+    "photo.strength": "الشدة",
+    "photo.tab.camera": "الكاميرا",
+    "photo.tab.filters": "المرشحات",
+    "photo.tab.frames": "الإطارات",
+    "photo.tab.lens": "العدسة",
+    "photo.title": "وضع التصوير",
+    "q.active": "نشطة",
+    "q.back": "رجوع",
+    "q.complete": "اكتملت",
+    "q.completed": "مكتملة",
+    "q.empty": "لا مهام بعد.",
+    "q.failed": "فاشلة",
+    "q.giver": "من {giver}",
+    "q.map": "اعرض على الخريطة",
+    "q.new": "جديدة",
+    "q.objectives": "الأهداف",
+    "q.optional": "اختياري",
+    "q.rewards": "المكافآت",
+    "q.tab.daily": "اليومية",
+    "q.tab.main": "الرئيسية",
+    "q.tab.side": "الجانبية",
+    "q.title": "المهام",
+    "q.track": "تتبّع",
+    "q.tracked": "متتبَّعة",
+    "quest.dawn": "بوابة الفجر",
+    "quest.dawn.archivist": "اسأل أمينة الأرشيف عن الختم",
+    "quest.dawn.charts": "استعد خرائط النجوم",
+    "quest.dawn.reach": "اصل إلى البوابة قبل الفجر",
+    "quest.dawn.sealer": "اعرف من ختم البوابة",
+    "quest.dawn.summary": "تؤمن ميرا بأن البوابة المختومة فوق سكايريتش تُفتح ساعة واحدة عند الفجر. اجمع ما تحتاجه الخرائط القديمة قبل أن تعبر.",
+    "quest.letters": "رسائل إلى لومارش",
+    "quest.letters.deliver": "سلّم الرسائل",
+    "quest.letters.summary": "احمل رسائل الطحّان إلى أخته عبر المستنقع.",
+    "quest.mill": "ذئاب عند الطاحونة",
+    "quest.mill.summary": "قطيع العجوز برام يتناقص. اطرد الذئاب من طاحونة الوادي قبل المحاق القادم.",
+    "quest.mill.wolves": "اطرد الذئاب",
+    "quest.supply": "رحلة الإمداد",
+    "quest.supply.petals": "اجمع بتلات القمر",
+    "quest.supply.summary": "يحتاج معالجو لومارش إلى بتلات القمر لجرعات الليلة.",
+    "quest.tide": "انقلاب المد",
+    "quest.tide.ferry": "اصل إلى العبّارة قبل المد",
+    "quest.tide.summary": "تغادر آخر عبّارة حين ينقلب المد. ولم تنتظر.",
+    "region.marsh": "لومارش",
+    "region.mill": "طاحونة الوادي",
+    "region.skyreach": "جزر سكايريتش",
+    "rewards.banish": "نفي",
+    "rewards.blade.kind": "سلاح",
+    "rewards.blade.tag": "المستوى 3 إلى 4",
+    "rewards.blade.text": "يترك اندفاعك نصلًا يُحدث [b]18[/b] ضرر.",
+    "rewards.blade.title": "نصل الغسق",
+    "rewards.choose": "اختر بركة",
+    "rewards.chooseTwo": "اختر بركتين ثم أكّد",
+    "rewards.confirm": "تأكيد",
+    "rewards.crown.kind": "أثر",
+    "rewards.crown.locked": "اهزم الزعيم الثاني لفتحه",
+    "rewards.crown.tag": "جديد",
+    "rewards.crown.text": "ابدأ كل قتال بـ [b]2[/b] [color=info]طاقة[/color] إضافية.",
+    "rewards.crown.title": "تاج العصور",
+    "rewards.frost.kind": "هبة ناسجة الصقيع",
+    "rewards.frost.text": "الضربات [color=info]تُجمّد[/color] الأعداء وتبطئهم [b]20%[/b].",
+    "rewards.frost.title": "قضمة الصقيع",
+    "rewards.gold.kind": "هبة قديس العملة",
+    "rewards.gold.text": "اكسب [b]40[/b] ذهبًا الآن و[b]5[/b] مع كل قتيل.",
+    "rewards.gold.title": "اللمسة المذهّبة",
+    "rewards.hint.take": "خذ",
+    "rewards.reroll": "إعادة",
+    "rewards.rerollCost": "50 ذهبًا",
+    "rewards.skip": "تخطَّ · خذ 25 ذهبًا",
+    "rewards.skipped": "25 ذهبًا",
+    "rewards.taken": "أُخذ: {list}",
+    "rewards.thunder.kind": "هبة حارس العاصفة",
+    "rewards.thunder.text": "تستدعي هجماتك [b]صواعق[/b] تُحدث [color=highlight]+30[/color] ضرر.",
+    "rewards.thunder.title": "ضربة الرعد",
+    "rewards.title": "تم تطهير الغرفة",
+    "rewards.vigor.kind": "هبة السيدة الحديدية",
+    "rewards.vigor.tag": "ترقية",
+    "rewards.vigor.text": "[b]+25%[/b] للصحة القصوى، وتشفى [color=success]10[/color] مع كل غرفة تُطهَّر.",
+    "rewards.vigor.title": "قلب الزهرة الحديدية",
+    "rts.back": "رجوع",
+    "rts.cancel": "إلغاء",
+    "rts.cmd.barracks": "الثكنة",
+    "rts.cmd.build": "بناء",
+    "rts.cmd.farm": "مزرعة",
+    "rts.cmd.forge": "الحدادة",
+    "rts.cmd.gather": "جمع",
+    "rts.cmd.keep": "القلعة",
+    "rts.cmd.patrol": "دورية",
+    "rts.cmd.rally": "نقطة التجمع",
+    "rts.cmd.repair": "إصلاح",
+    "rts.cmd.stop": "توقف",
+    "rts.cmd.tower": "برج الرماة",
+    "rts.cmd.wall": "سور حجري",
+    "rts.kind.archer": "بعيد المدى · خفيف",
+    "rts.kind.knight": "فرسان · ثقيل",
+    "rts.kind.worker": "عامل · خفيف",
+    "rts.queue": "إضافة للطابور",
+    "rts.stat.armour": "الدرع",
+    "rts.stat.attack": "الهجوم",
+    "rts.stat.speed": "السرعة",
+    "rts.target": "{command}: اختر هدفًا",
+    "rts.unit.archer": "رامٍ",
+    "rts.unit.knight": "فارس",
+    "rts.unit.worker": "قروي",
+    "saga.boss": "زعيم، المرحلة {label}",
+    "saga.here": "أنت هنا",
+    "saga.level": "المرحلة {label}",
+    "saga.play": "العب المرحلة {level}",
+    "saga.stars": "{n} من {max} نجوم",
+    "saga.sub": "{stars} من {max} نجمة",
+    "saga.title": "المراحل",
+    "saga.world": "جزر السماء",
+    "sc.action": "حركة ومنصات",
+    "sc.action.attack": "هجوم",
+    "sc.action.blurb": "العنوان والواجهة والإيقاف والتعليم والتحميل والنتائج",
+    "sc.action.clear": "اكتملت المرحلة",
+    "sc.action.door": "البوابة القديمة",
+    "sc.action.game": "سقوط الجمر",
+    "sc.action.jump": "قفز",
+    "sc.action.news": "حدث سلسلة الجمر متاح الآن",
+    "sc.action.objective": "اصل إلى بوابة الجرف",
+    "sc.action.open": "افتح",
+    "sc.action.place": "سلسلة الجمر",
+    "sc.action.save": "الفصل 3 · 4س 12د",
+    "sc.action.tip": "اضغط القفز مطولًا لتقفز أعلى، واضغطه مرة أخرى في الهواء لقفزة ثانية.",
+    "sc.combo": "سلسلة",
+    "sc.comboBreak": "انقطاع",
+    "sc.energy": "الطاقة",
+    "sc.fight.hits": "ضربات",
+    "sc.fight.kick": "ركلة",
+    "sc.fight.punch": "لكمة",
+    "sc.fight.special": "خاصة",
+    "sc.fight.super": "الخارقة",
+    "sc.fighting": "القتال والحفلات",
+    "sc.fighting.blurb": "واجهة الجولة واختيار الشخصية وشاشة المواجهة",
+    "sc.gacha": "السحب والجمع",
+    "sc.gacha.blurb": "لافتة وسحب العشرة، وتذكرة الموسم",
+    "sc.health": "الصحة",
+    "sc.horror": "الرعب",
+    "sc.horror.battery": "البطارية",
+    "sc.horror.blurb": "واجهة تُبقي كل شيء تقريبًا خارج الشاشة",
+    "sc.horror.find": "اعثر على مفتاح الكنيسة",
+    "sc.horror.hide": "اختبئ",
+    "sc.horror.objective": "الهدف",
+    "sc.horror.run": "اركض",
+    "sc.horror.wardrobe": "خزانة",
+    "sc.mana": "المانا",
+    "sc.manage.cost": "البناء {cost} · الصيانة {upkeep}/يوم",
+    "sc.manage.date": "الربيع، اليوم 12",
+    "sc.manage.fast": "سريع",
+    "sc.manage.food": "طعام",
+    "sc.manage.goal.grow": "بلدة تنمو",
+    "sc.manage.goal.market": "أكمل السوق",
+    "sc.manage.goal.park": "ابنِ حديقة",
+    "sc.manage.goal.people": "السكان",
+    "sc.manage.goal.trade": "افتح التجارة",
+    "sc.manage.gold": "ذهب",
+    "sc.manage.people": "السكان",
+    "sc.manage.play": "تشغيل",
+    "sc.manage.plot": "قطعة فارغة",
+    "sc.manage.wood": "خشب",
+    "sc.management": "الإدارة والانتظار والحياة",
+    "sc.management.blurb": "واجهة البلدة والمولدات والسجل وخريطة المدينة",
+    "sc.mmo": "الألعاب الجماعية والغارات",
+    "sc.mmo.adds": "الحراس المهزومون",
+    "sc.mmo.blink": "وميض",
+    "sc.mmo.blurb": "واجهة الغارة بإطاراتها وأشرطتها، والدردشة",
+    "sc.mmo.bomb": "عبوة ناسفة",
+    "sc.mmo.boss": "فورثول",
+    "sc.mmo.burn": "حرق الروح",
+    "sc.mmo.cast": "مطر الظلال",
+    "sc.mmo.food": "وليمة",
+    "sc.mmo.free": "تحرر",
+    "sc.mmo.heal": "مداواة",
+    "sc.mmo.key": "مفتاح القبو",
+    "sc.mmo.might": "القوة",
+    "sc.mmo.raid": "القبو الغارق",
+    "sc.mmo.strike": "ضربة",
+    "sc.mmo.title": "سيد القبو",
+    "sc.mmo.venom": "سم",
+    "sc.mmo.ward": "حماية",
+    "sc.mmo.zone": "القبو الغارق",
+    "sc.moba": "ساحات المعارك الجماعية",
+    "sc.moba.attack": "هجوم",
+    "sc.moba.blurb": "واجهة المسار والاختيار مع الحظر",
+    "sc.moba.dash": "اندفاع",
+    "sc.moba.frost": "صقيع",
+    "sc.moba.ult": "عاصفة نار",
+    "sc.moba.ward": "حماية",
+    "sc.narrative": "القصص والروايات المصورة",
+    "sc.narrative.blurb": "صندوق النص ومخطط المسارات ومعرض الصور",
+    "sc.open.glide": "انزلق",
+    "sc.open.quest": "الأجراس الصامتة",
+    "sc.open.shrine": "مزار فايل",
+    "sc.open.step": "اذهب إلى المزار",
+    "sc.open.talk": "تحدث",
+    "sc.open.tower": "تسلق برج المراقبة",
+    "sc.openworld": "العالم المفتوح",
+    "sc.openworld.blurb": "واجهة الاستكشاف وخريطة العالم ووضع التصوير",
+    "sc.page.abilityCards": "القدرات",
+    "sc.page.board": "اللوحة",
+    "sc.page.cards": "البطاقات",
+    "sc.page.cgGallery": "المعرض",
+    "sc.page.chat": "الدردشة",
+    "sc.page.cityMap": "خريطة المدينة",
+    "sc.page.deck": "الرزمة",
+    "sc.page.dialogue": "الحوار",
+    "sc.page.draft": "الاختيار",
+    "sc.page.gacha": "اللافتة",
+    "sc.page.garage": "المرآب",
+    "sc.page.gear": "العتاد",
+    "sc.page.generators": "المولدات",
+    "sc.page.hangar": "حظيرة السفن",
+    "sc.page.hud": "الواجهة",
+    "sc.page.leaderboard": "المتصدرون",
+    "sc.page.ledger": "السجل",
+    "sc.page.loading": "تحميل",
+    "sc.page.loadout": "العتاد",
+    "sc.page.lobby": "الردهة",
+    "sc.page.matchFacts": "نهاية المباراة",
+    "sc.page.pass": "التذكرة",
+    "sc.page.pause": "إيقاف",
+    "sc.page.photo": "التصوير",
+    "sc.page.quests": "المهام",
+    "sc.page.results": "النتائج",
+    "sc.page.rewards": "المكافآت",
+    "sc.page.routes": "المسارات",
+    "sc.page.rts": "اللوحة",
+    "sc.page.saga": "خريطة المراحل",
+    "sc.page.scoreboard": "لوحة النقاط",
+    "sc.page.sectorMap": "خريطة القطاع",
+    "sc.page.select": "الاختيار",
+    "sc.page.shipStatus": "السفينة",
+    "sc.page.songs": "الأغاني",
+    "sc.page.sportsHud": "المباراة",
+    "sc.page.store": "المتجر",
+    "sc.page.td": "الدفاع",
+    "sc.page.title": "العنوان",
+    "sc.page.turnOrder": "ترتيب الأدوار",
+    "sc.page.tutorial": "تعليم",
+    "sc.page.versus": "المواجهة",
+    "sc.page.vn": "صندوق النص",
+    "sc.page.worldMap": "خريطة العالم",
+    "sc.pause": "إيقاف",
+    "sc.puzzle": "الألغاز والألعاب الخفيفة",
+    "sc.puzzle.blurb": "لوحة المطابقة وخريطة المراحل والمتجر",
+    "sc.race.best": "الأفضل",
+    "sc.race.boost": "تعزيز",
+    "sc.race.brake": "فرامل",
+    "sc.race.checkpoint": "نقطة التفتيش {n}",
+    "sc.race.circuit": "حلقة ميريديان",
+    "sc.race.clean": "قطاعات نظيفة",
+    "sc.race.credits": "الرصيد",
+    "sc.race.current": "زمن اللفة",
+    "sc.race.drift": "انجراف!",
+    "sc.race.fastest": "أسرع لفة",
+    "sc.race.final": "اللفة الأخيرة",
+    "sc.race.finish": "خط النهاية",
+    "sc.race.go": "انطلق!",
+    "sc.race.kmh": "كم/س",
+    "sc.race.lap": "اللفة",
+    "sc.race.last": "السابقة",
+    "sc.race.leader": "المتصدر",
+    "sc.race.league": "الدوري الذهبي",
+    "sc.race.left": "يسار",
+    "sc.race.ord3": "الثالث",
+    "sc.race.out": "خارج",
+    "sc.race.overtakes": "التجاوزات",
+    "sc.race.pit": "الصيانة",
+    "sc.race.podium": "المركز الثالث",
+    "sc.race.pos": "المركز",
+    "sc.race.right": "يمين",
+    "sc.race.split": "الفارق",
+    "sc.race.topSpeed": "السرعة القصوى",
+    "sc.race.week": "هذا الأسبوع",
+    "sc.race.wrongWay": "اتجاه خاطئ",
+    "sc.racing": "السباقات والرياضة",
+    "sc.racing.blurb": "واجهة السباق والمرآب والتوقيت وبث كرة القدم",
+    "sc.reward.crystal": "بلورة",
+    "sc.reward.gold": "ذهب",
+    "sc.rhythm": "الإيقاع",
+    "sc.rhythm.accuracy": "الدقة {pct}%",
+    "sc.rhythm.blurb": "شاشة اللعب بأربعة مسارات واختيار الأغنية",
+    "sc.rhythm.early": "مبكر",
+    "sc.rhythm.good": "جيد",
+    "sc.rhythm.great": "رائع",
+    "sc.rhythm.late": "متأخر",
+    "sc.rhythm.life": "الحياة",
+    "sc.rhythm.perfect": "مثالي",
+    "sc.rhythm.progress": "تقدم الأغنية",
+    "sc.rogue.cast": "إلقاء",
+    "sc.rogue.curse": "السلسلة المكسورة",
+    "sc.rogue.dash": "اندفاع",
+    "sc.rogue.flame": "حد الجمر",
+    "sc.rogue.frost": "لمسة الجليد",
+    "sc.rogue.heart": "قلب العملاق",
+    "sc.rogue.room": "الحجرة {n}",
+    "sc.rogue.special": "خاص",
+    "sc.rogue.thunder": "خطوة العاصفة",
+    "sc.roguelike": "الروغلايك والبطاقات",
+    "sc.roguelike.blurb": "واجهة الجولة ويد البطاقات والمكافآت والرزمة",
+    "sc.rpg": "تقمص الأدوار",
+    "sc.rpg.blurb": "واجهة القتال والعتاد وسجل المهام وحوار",
+    "sc.rpg.boss": "اهزم الحارس",
+    "sc.rpg.elite": "نخبة",
+    "sc.rpg.level": "المستوى 24",
+    "sc.rpg.moss": "طحلب القبور",
+    "sc.rpg.nova": "انفجار الصقيع",
+    "sc.rpg.potion": "جرعة شفاء",
+    "sc.rpg.quest": "اختم السرداب",
+    "sc.rpg.seals": "الأختام المضاءة",
+    "sc.rpg.side": "أعشاب لإلسا",
+    "sc.rpg.storm": "عاصفة رعدية",
+    "sc.rpg.vial": "قارورة مانا",
+    "sc.rpg.ward": "درع الرون",
+    "sc.rpg.whirl": "زوبعة",
+    "sc.rpg.xp": "الخبرة",
+    "sc.rpg.zone": "سرداب الرماد",
+    "sc.shooter": "التصويب ومعركة البقاء",
+    "sc.shooter.auto": "آلي",
+    "sc.shooter.blurb": "واجهة المباراة ولوحة النقاط والعتاد والردهة",
+    "sc.shooter.drone": "طائرة استطلاع",
+    "sc.shooter.enemy": "عدو",
+    "sc.shooter.fire": "أطلق",
+    "sc.shooter.frag": "قنبلة شظايا",
+    "sc.shooter.reload": "لقّم",
+    "sc.shooter.reloading": "إعادة التلقيم",
+    "sc.shooter.ring": "تضيق الحلقة",
+    "sc.shooter.stim": "منشط",
+    "sc.shooter.supply": "إمدادات",
+    "sc.shooter.ultimate": "حاجز",
+    "sc.shooter.zone": "السبخة",
+    "sc.sports.corner": "ركلة ركنية",
+    "sc.sports.fouls": "الأخطاء",
+    "sc.sports.ft": "نهاية",
+    "sc.sports.half2": "الشوط الثاني",
+    "sc.sports.off": "خروج",
+    "sc.sports.on": "دخول",
+    "sc.sports.onTarget": "على المرمى",
+    "sc.sports.passes": "التمريرات",
+    "sc.sports.pen": "جزاء",
+    "sc.sports.possession": "الاستحواذ",
+    "sc.sports.shots": "التسديدات",
+    "sc.sports.sub": "تبديل",
+    "sc.stat.coins": "العملات",
+    "sc.stat.score": "النقاط",
+    "sc.stat.time": "الوقت",
+    "sc.strategy": "الاستراتيجية",
+    "sc.strategy.blurb": "لوحة الاستراتيجية الآنية والدفاع بالأبراج وتكتيك السفن",
+    "sc.survival": "النجاة",
+    "sc.survival.axe": "فأس",
+    "sc.survival.berries": "توت",
+    "sc.survival.birch": "جذع بتولا",
+    "sc.survival.blurb": "الحيويات والحالات والبوصلة وشريط الأدوات",
+    "sc.survival.bow": "قوس",
+    "sc.survival.camp": "المخيم",
+    "sc.survival.day": "اليوم {n}",
+    "sc.survival.food": "الطعام",
+    "sc.survival.gather": "اجمع",
+    "sc.survival.rested": "مرتاح",
+    "sc.survival.shield": "درع",
+    "sc.survival.stamina": "التحمل",
+    "sc.survival.swing": "تأرجح",
+    "sc.survival.torch": "شعلة",
+    "sc.survival.water": "الماء",
+    "sc.survival.wet": "مبتل",
+    "sc.td.archer": "برج الرماة",
+    "sc.td.barracks": "ثكنة",
+    "sc.td.forge": "مصهر",
+    "sc.td.gold": "ذهب",
+    "sc.td.lives": "الأرواح",
+    "sc.td.next": "الموجة التالية",
+    "sc.td.send": "استدعِها",
+    "sc.td.wall": "سور",
+    "sc.td.waves": "الموجات",
+    "sc.time": "الوقت",
+    "sc.tutorial.1.text": "تحرك بالأسهم أو العصا؛ تُحسب العملات التي تمر بها هنا.",
+    "sc.tutorial.1.title": "اركض",
+    "sc.tutorial.2.text": "كل قطعة ضربة واحدة، والجزء الباهت يتناقص بعد الضربة.",
+    "sc.tutorial.2.title": "صحتك",
+    "sc.tutorial.3.text": "اصل إلى البوابة قبل انتهاء المؤقت.",
+    "sc.tutorial.3.title": "سابق الوقت",
+    "sc.tutorial.4.text": "الضربات المتتالية تبني سلسلتك ومكافأتها.",
+    "sc.tutorial.4.title": "واصل الحركة",
+    "sc.tutorial.5.text": "أوقف في أي وقت من الزاوية؛ رحلتك تنتظرك.",
+    "sc.tutorial.5.title": "خذ استراحة",
+    "sc.you": "أنت",
+    "screen.common.back": "رجوع",
+    "screen.leaderboard.friends": "الأصدقاء",
+    "screen.leaderboard.global": "عالمي",
+    "screen.leaderboard.league": "الدوري",
+    "screen.leaderboard.title": "المتصدرون",
+    "screen.loading.continue": "متابعة",
+    "screen.loading.tip": "نصيحة",
+    "screen.main-menu.continue": "متابعة",
+    "screen.main-menu.credits": "الشكر",
+    "screen.main-menu.modes": "الأنماط",
+    "screen.main-menu.newGame": "لعبة جديدة",
+    "screen.main-menu.newsEyebrow": "الأخبار",
+    "screen.main-menu.quit": "خروج",
+    "screen.main-menu.settings": "الإعدادات",
+    "screen.pause.controls": "التحكم",
+    "screen.pause.load": "تحميل",
+    "screen.pause.quit": "إنهاء اللعبة",
+    "screen.pause.quitToMenu": "العودة للقائمة",
+    "screen.pause.resume": "استئناف",
+    "screen.pause.save": "حفظ",
+    "screen.pause.settings": "الإعدادات",
+    "screen.pause.title": "متوقف مؤقتًا",
+    "screen.results.again": "العب مجددًا",
+    "screen.results.best": "الأفضل",
+    "screen.results.board": "لوحة النقاط",
+    "screen.results.continue": "متابعة",
+    "screen.results.graphs": "الرسوم",
+    "screen.results.replay": "شاهد الإعادة",
+    "screen.results.summary": "الملخص",
+    "screen.tutorial.next": "التالي",
+    "screen.tutorial.skip": "تخطَّ",
+    "sector.allied": "حليف",
+    "sector.current": "القطاع الحالي",
+    "sector.hostile": "معادٍ",
+    "sector.title": "خريطة القطاع",
+    "set.apply": "تطبيق",
+    "set.aspect": "نسبة العرض",
+    "set.aspect.about": "تلتزم الواجهة بهذا الشكل على الشاشات الأعرض ولا تتمدد.",
+    "set.cap": "حد الإطارات",
+    "set.cap.about": "أقصى عدد إطارات في الثانية. الأقل يوفّر الطاقة.",
+    "set.cap.display": "الشاشة",
+    "set.cap.fps120": "120",
+    "set.cap.fps30": "30",
+    "set.cap.fps60": "60",
+    "set.changed": "تغيّر",
+    "set.colorblind": "مرشح الألوان",
+    "set.colorblind.about": "ألوان معدّلة لكل نوع من عمى الألوان.",
+    "set.colorblind.deutan": "عمى الأخضر",
+    "set.colorblind.off": "إيقاف",
+    "set.colorblind.protan": "عمى الأحمر",
+    "set.colorblind.tritan": "عمى الأزرق",
+    "set.confirm": "هل تحتفظ بإعدادات العرض هذه؟",
+    "set.contrast": "تباين عالٍ",
+    "set.contrast.about": "لوحات أغمق وكلمات وحواف أسطع.",
+    "set.defaults": "الافتراضي",
+    "set.editHud": "تحرير الواجهة",
+    "set.effects": "المؤثرات",
+    "set.effects.about": "الخطوات والضربات وأصوات الواجهة.",
+    "set.fullscreen": "ملء الشاشة",
+    "set.fullscreen.about": "تملأ اللعبة الشاشة.",
+    "set.hudNote": "حرّك عناصر الواجهة وغيّر حجمها وشفافيتها فوق اللعبة.",
+    "set.invert": "عكس المحور الرأسي",
+    "set.invert.about": "تحريك الفأرة لأعلى ينظر للأسفل.",
+    "set.jumpKey": "القفز",
+    "set.jumpKey.about": "",
+    "set.keep": "احتفاظ",
+    "set.language": "اللغة",
+    "set.language.about": "كلمات اللعبة وأصواتها.",
+    "set.layout": "تخطيط لوحة المفاتيح",
+    "set.layout.about": "تُربط المفاتيح بمكانها وتُسمّى بحروف تخطيطك.",
+    "set.layout.azerty": "AZERTY",
+    "set.layout.qwerty": "QWERTY",
+    "set.layout.qwertz": "QWERTZ",
+    "set.master": "مستوى الصوت الرئيسي",
+    "set.master.about": "كل أصوات اللعبة.",
+    "set.moveLeft": "التحرك يسارًا",
+    "set.moveLeft.about": "",
+    "set.moveUp": "التقدم",
+    "set.moveUp.about": "",
+    "set.music": "الموسيقى",
+    "set.music.about": "اضبط مستوى الموسيقى. لا يؤثر في الأصوات.",
+    "set.nextPage": "الصفحة التالية",
+    "set.page.access": "إمكانية الوصول",
+    "set.page.audio": "الصوت",
+    "set.page.controls": "التحكم",
+    "set.page.graphics": "الرسومات",
+    "set.page.hud": "تخطيط الواجهة",
+    "set.page.language": "اللغة",
+    "set.quality": "إعداد الجودة",
+    "set.quality.about": "مقدار التفاصيل في كل إطار. الأقل أسرع.",
+    "set.quality.high": "عالية",
+    "set.quality.low": "منخفضة",
+    "set.quality.medium": "متوسطة",
+    "set.raw": "الإدخال الخام",
+    "set.raw.about": "الفأرة كما تتحرك دون تسارع النظام.",
+    "set.reduceMotion": "تقليل الحركة",
+    "set.reduceMotion.about": "يُثبَّت الاهتزاز والتكبير والانزلاق.",
+    "set.resetBindings": "إعادة ضبط كل الأزرار",
+    "set.resetBindings.about": "إعادة كل إجراء إلى مفاتيحه الأولى.",
+    "set.revert": "تراجع",
+    "set.reverting": "التراجع خلال {n} ث",
+    "set.safe": "منطقة الواجهة الآمنة",
+    "set.safe.about": "مدى بُعد الواجهة عن الحواف.",
+    "set.saved": "حُفظت الإعدادات",
+    "set.scale": "مقياس العرض",
+    "set.scale.about": "دقة المشهد ثلاثي الأبعاد نسبةً إلى الشاشة. تبقى الواجهة حادة.",
+    "set.section.display": "العرض",
+    "set.section.keyboard": "لوحة المفاتيح",
+    "set.section.mouse": "الفأرة",
+    "set.section.screen": "الشاشة",
+    "set.sensitivity": "حساسية الفأرة",
+    "set.sensitivity.about": "مدى دوران المنظور مع حركة الفأرة.",
+    "set.subtitles": "الترجمة",
+    "set.subtitles.about": "الكلمات المنطوقة على الشاشة.",
+    "set.textSize": "حجم النص",
+    "set.textSize.about": "كل كلمات الواجهة بحجم أكبر.",
+    "set.title": "الإعدادات",
+    "set.voice": "الأصوات",
+    "set.voice.about": "أصوات الشخصيات.",
+    "set.vsync": "المزامنة العمودية",
+    "set.vsync.about": "ينتظر الشاشة بين الإطارات: بلا تمزق مع تأخير أكبر قليلًا.",
+    "settings.audio": "الصوت",
+    "settings.contrast": "تباين عالٍ",
+    "settings.controls": "التحكم",
+    "settings.done": "تم",
+    "settings.effects": "المؤثرات",
+    "settings.fps": "إظهار معدل الإطارات",
+    "settings.graphics": "الرسومات",
+    "settings.high": "عالية",
+    "settings.invert": "عكس النظر العمودي",
+    "settings.language": "اللغة",
+    "settings.low": "منخفضة",
+    "settings.master": "الرئيسي",
+    "settings.medium": "متوسطة",
+    "settings.motion": "تقليل الحركة",
+    "settings.music": "الموسيقى",
+    "settings.mute": "كتم كل الأصوات",
+    "settings.quality": "الجودة",
+    "settings.sensitivity": "الحساسية",
+    "settings.title": "الإعدادات",
+    "settings.vibration": "الاهتزاز",
+    "ship.class": "فرقاطة قيادة · أسطول الشفق",
+    "ship.hull": "الهيكل",
+    "ship.reactor": "المفاعل",
+    "ship.shields": "الدروع",
+    "shop.buy": "شراء",
+    "shop.empty": "لا شيء للبيع هنا",
+    "shop.owned": "مملوك",
+    "shop.price": "السعر",
+    "shop.short": "الرصيد غير كافٍ",
+    "shop.title": "المتجر",
+    "song.accuracy": "الدقة",
+    "song.best": "أفضل نتيجة",
+    "song.bpm": "BPM",
+    "song.chart.easy": "سهل",
+    "song.chart.expert": "خبير",
+    "song.chart.hard": "صعب",
+    "song.chart.master": "محترف",
+    "song.chart.normal": "عادي",
+    "song.fullCombo": "كومبو كامل",
+    "song.grade": "التقدير",
+    "song.length": "المدة",
+    "song.new": "جديد",
+    "song.play": "العب",
+    "song.preview": "معاينة",
+    "song.title": "اختيار الأغنية",
+    "store.badge.best": "الأوفر",
+    "store.badge.limited": "محدود",
+    "store.badge.new": "جديد",
+    "store.badge.popular": "رائج",
+    "store.buy": "شراء",
+    "store.cancel": "إلغاء",
+    "store.coins": "العملات",
+    "store.confirm": "شراء مقابل {price} {currency}؟",
+    "store.contents.aria": "آريا، مستدعية المد",
+    "store.contents.frame": "إطار الملف الشخصي",
+    "store.contents.glitter": "1,600 من شظايا النجوم",
+    "store.contents.lantern": "فانوس القمر",
+    "store.daily": "عروض اليوم",
+    "store.featured": "مميّز",
+    "store.free": "مجاني",
+    "store.gemPack": "{n} جوهرة",
+    "store.gems": "الجواهر",
+    "store.hint.buy": "شراء",
+    "store.item.amulet": "تميمة الياقوت",
+    "store.item.ashbringer": "حامل الرماد",
+    "store.item.crown": "تاج الأشواك",
+    "store.item.ember": "خاتم الجمر",
+    "store.item.key": "مفتاح حديدي",
+    "store.item.mana": "قارورة مانا ×5",
+    "store.item.potions": "جرعة شفاء ×5",
+    "store.item.tide": "حزمة مدّ القمر",
+    "store.kind.amulet": "تميمة",
+    "store.kind.ashbringer": "سيف عظيم",
+    "store.kind.crown": "خوذة",
+    "store.kind.ember": "خاتم",
+    "store.kind.gems1": "صرّة جواهر",
+    "store.kind.gems2": "صندوق جواهر",
+    "store.kind.gems3": "كنز من الجواهر",
+    "store.kind.key": "مفتاح",
+    "store.kind.mana": "مادة مستهلكة",
+    "store.kind.potions": "مادة مستهلكة",
+    "store.kind.tide": "حزمة · 4 عناصر",
+    "store.left": "بقي {left}",
+    "store.owned": "مملوك",
+    "store.packs": "حزم الجواهر",
+    "store.refresh": "يتجدد بعد",
+    "store.save": "−{pct}٪",
+    "store.soldOut": "نفد",
+    "store.sub": "عروض جديدة كل يوم",
+    "store.title": "المتجر",
+    "store.topUp": "احصل على المزيد من {name}",
+    "time.days": "{d} ي {h} س",
+    "time.hours": "{h} س {m} د",
+    "time.minutes": "{m} د",
+    "turn.acting": "يتحرك الآن",
+    "turn.hostile": "معادٍ",
+    "turn.title": "ترتيب الأدوار",
+    "tutorial.done": "تم",
+    "tutorial.next": "التالي",
+    "tutorial.skip": "تخطي",
+    "tutorial.step": "{step} من {count}",
+    "vn.a1": "هناك. ما زالت العبّارة تعمل، إن كان الحارس العجوز مستيقظًا.",
+    "vn.a2": "ابقَ قريبًا مني في السوق. لومارش لا تنسى الوجوه.",
+    "vn.all": "الكل",
+    "vn.cg.dawn": "بوابة الفجر",
+    "vn.cg.duel": "مبارزة السطح",
+    "vn.cg.lantern": "ليلة الفوانيس",
+    "vn.cg.library": "نائم في البرج",
+    "vn.cg.riverboat": "المركب النهري",
+    "vn.cg.storm": "عبّارة العاصفة",
+    "vn.chapter.four": "النهايات",
+    "vn.chapter.one": "الفصل 1",
+    "vn.chapter.three": "الفصل 3",
+    "vn.chapter.two": "الفصل 2",
+    "vn.choice.follow": "اتبع ميرا",
+    "vn.choice.storm": "أبحر نحو العاصفة",
+    "vn.choice.study": "ابقَ للدراسة",
+    "vn.choice.trust": "ثق بها",
+    "vn.close": "إغلاق",
+    "vn.ending.bad": "نهاية سيئة",
+    "vn.ending.good": "نهاية سعيدة",
+    "vn.gallery.title": "المعرض",
+    "vn.hint.dawn": "بلوغ النهاية السعيدة",
+    "vn.hint.storm": "اركب العبّارة في الفصل 2",
+    "vn.jump": "انتقل إلى هنا",
+    "vn.locked": "؟؟؟",
+    "vn.n1": "ظل المطر يلاحق القافلة ثلاثة أيام حتى لاحت أضواء لومارش أخيرًا بين القصب.",
+    "vn.new": "جديد",
+    "vn.next": "التالي",
+    "vn.nextChapter": "الفصل التالي",
+    "vn.now": "الآن",
+    "vn.prev": "السابق",
+    "vn.routes.chart": "المسارات",
+    "vn.routes.title": "مخطط المسارات",
+    "vn.scene.arrival": "الوصول",
+    "vn.scene.dawn": "الفجر",
+    "vn.scene.drowned": "ضاع في النهر",
+    "vn.scene.ferry": "العبّارة",
+    "vn.scene.lanterns": "المهرجان",
+    "vn.scene.oath": "القسم",
+    "vn.scene.rooftop": "السطح",
+    "vn.scene.tower": "البرج",
+    "vn.scenes": "{n} / {total} مشاهد",
+    "vn.seen": "شوهد {n} / {total}",
+    "vn.stay": "ابقَ إلى جانبها.",
+    "vn.stay.r": "حسنًا. أبقِ قلنسوتك مرفوعة.",
+    "vn.wander": "تسلل لتلقي نظرة حولك.",
+    "vn.wander.r": "حسنًا. قابلني عند العبّارة قبل الجرس الثاني.",
+    "vs.mark": "VS",
+    "vs.record": "{w} فوز · {l} خسارة",
+    "vs.skip": "تخطٍّ",
+    "vs.stage": "الجولة 1 · بوابة سكايريتش"
+  },
+  "fonts": [
+    {
+      "$ogRef": "base/fonts/NotoSansArabic-subset"
+    }
+  ],
+  "locale": "ar"
+});

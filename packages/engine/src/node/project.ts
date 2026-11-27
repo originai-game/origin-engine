@@ -15,6 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const reader = [join(here, "../../knowledge/scripts/project-output.ts"), join(here, "../../../knowledge/scripts/project-output.ts")].find((file) => existsSync(file));
 if (!reader) throw new Error("no knowledge/scripts/project-output.ts; reinstall the engine distribution");
 const { readProjectOutput }: typeof import("../../../knowledge/scripts/project-output.ts") = await import(pathToFileURL(reader).href);
+export const { readStringTables, readStringTableIndex }: typeof import("../../../knowledge/scripts/string-tables.ts") = await import(pathToFileURL(join(dirname(reader), "string-tables.ts")).href);
 
 export interface CheckedProject {
   readonly name: string;

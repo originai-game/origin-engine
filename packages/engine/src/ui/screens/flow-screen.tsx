@@ -3,7 +3,7 @@ import { Image, Show, Text, View, createMemo, packClass, t, useClock, useWorld, 
 import { Progress } from "../controls/progress";
 import { FlowChoices, type VideoBox } from "./flow-choices";
 import { Subtitles } from "./subtitles";
-import "./flow-screen.en.ogt";
+import "./flow-screen.en.strings.ts";
 
 export interface FlowPictureProps {
   /** The footage's picture: FlowView.texture, or a cutscene's og.VideoPlayer.texture (0 before its first frame). */

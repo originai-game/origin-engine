@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import {For, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Avatar } from "../base/avatar";
 import { Spinner } from "../base/spinner";
-import "./profile.en.ogt";
+import "./profile.en.strings.ts";
 
 export interface ProfileProps {
   /** Player display name; empty uses Player. */

@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./slot.en.ogt";
+import "./slot.en.strings.ts";
 
 export interface HudSlotProps {
   /** What a reader calls it (Ember slash). */

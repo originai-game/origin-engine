@@ -1,8 +1,13 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.common.back" "返回"
-string "screen.credits.faster" "加速"
-string "screen.credits.fasterKey" "Enter"
-string "screen.credits.icons" "图标"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.back": "返回",
+    "screen.credits.faster": "加速",
+    "screen.credits.fasterKey": "Enter",
+    "screen.credits.icons": "图标"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

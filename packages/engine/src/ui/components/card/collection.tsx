@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { CardFace } from "./face";
-import "./card.en.ogt";
+import "./card.en.strings.ts";
 
 export interface CardCollectionProps {
   /** The collection's heading (Collection, Library); empty hides the band. */

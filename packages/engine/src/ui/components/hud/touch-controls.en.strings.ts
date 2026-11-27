@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "component.touch-controls.look" "Look"
-string "component.touch-controls.move" "Move"
-string "component.touch-controls.name" "Touch controls"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.touch-controls.look": "Look",
+    "component.touch-controls.move": "Move",
+    "component.touch-controls.name": "Touch controls"
+  },
+  "fonts": [],
+  "locale": "en"
+});

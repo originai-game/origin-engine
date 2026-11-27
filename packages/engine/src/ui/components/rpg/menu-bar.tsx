@@ -1,5 +1,5 @@
 import { For, Icon, packClass, t, Text, View, type UiEvent, Show } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgMenuBarProps {
   /** The menu's screens, keyed rows of { id, label } (Character, Inventory, Skills, Quests, Map). */

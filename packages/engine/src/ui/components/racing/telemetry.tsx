@@ -1,5 +1,5 @@
 import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 /** The rev arc's start: the lower left, −135° from up, sweeping clockwise over the top. */
 const REV_START = -(3 * Math.PI) / 4;

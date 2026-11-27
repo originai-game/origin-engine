@@ -1,18 +1,10 @@
-//! Localization for Origin Engine (`og.i18n`): string tables, one `.ogt`
-//! per locale (`type strings`), messages in a subset of ICU MessageFormat,
+//! Localization for Origin Engine (`og.i18n`): native string tables, one
+//! per locale, messages in a subset of ICU MessageFormat,
 //! CLDR cardinal plural rules, locale negotiation, text direction and
 //! segmentation (UAX #29 words and grapheme clusters).
 //!
-//! ```text
-//! type strings
-//! version 1
-//! ---
-//! locale "ja"
-//! fonts "fonts/NotoSansJP-subset.ttf"     # this locale's font chain, first first
-//! string "menu.start" "スタート"
-//! string "shop.coins" "{count, plural, other {コイン#枚}}"
-//! string "hello" "こんにちは、{name}さん"
-//! ```
+//! Cook consumes typed `file.strings` declarations and writes checked binary
+//! locale fields, font references and ICU sources, not author configuration.
 //!
 //! Messages: `{name}` (an argument), `{n, number}`, `{n, plural, =0 {..}
 //! one {..} few {..} many {..} other {..}}` with `#` for the number,
@@ -44,7 +36,7 @@ pub use format::{
 pub use locale::{Direction, direction_of_locale, negotiate};
 pub use message::{Arg, Message, MessageError};
 pub use plural::{PluralCategory, format_ordinal, plural_category};
-pub use table::{Catalog, MissingKey, STRINGS_TYPE, StringTable, base_table, check_tables};
+pub use table::{Catalog, MissingKey, StringTable, base_table, check_tables};
 pub use text::{
     WordKind, WordSegment, graphemes, is_bidi_control, is_rtl_char, needs_shaping,
     paragraph_direction, takes_emphasis, word_per_character, word_segments,

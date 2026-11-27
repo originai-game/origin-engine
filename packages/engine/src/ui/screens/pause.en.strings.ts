@@ -1,14 +1,19 @@
-type strings
-version 1
----
-locale "en"
-string "screen.pause.Played" "Played {played}"
-string "screen.pause.controls" "Controls"
-string "screen.pause.load" "Load"
-string "screen.pause.objectiveLabel" "Objective"
-string "screen.pause.quit" "Quit game"
-string "screen.pause.quitToMenu" "Quit to menu"
-string "screen.pause.resume" "Resume"
-string "screen.pause.save" "Save"
-string "screen.pause.settings" "Settings"
-string "screen.pause.title" "Paused"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.pause.Played": "Played {played}",
+    "screen.pause.controls": "Controls",
+    "screen.pause.load": "Load",
+    "screen.pause.objectiveLabel": "Objective",
+    "screen.pause.quit": "Quit game",
+    "screen.pause.quitToMenu": "Quit to menu",
+    "screen.pause.resume": "Resume",
+    "screen.pause.save": "Save",
+    "screen.pause.settings": "Settings",
+    "screen.pause.title": "Paused"
+  },
+  "fonts": [],
+  "locale": "en"
+});

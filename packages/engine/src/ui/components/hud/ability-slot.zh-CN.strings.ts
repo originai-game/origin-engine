@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.ability-slot.ready" "就绪"
-string "component.ability-slot.locked" "未解锁"
-string "component.ability-slot.unavailable" "不可用"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.ability-slot.locked": "未解锁",
+    "component.ability-slot.ready": "就绪",
+    "component.ability-slot.unavailable": "不可用"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

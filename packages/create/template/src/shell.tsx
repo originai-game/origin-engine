@@ -1,4 +1,4 @@
-// Customize copy in assets/strings/; give the title and main menu key art and a logo with setShellArt.
+// Customize copy in content/strings/; give the title and main menu key art and a logo with setShellArt.
 // Keep the built-in screens: they supply responsive layout, focus and input semantics.
 import { og, type World, type Texture } from "@origingame/engine";
 import { View, Text, Show, mount, useStore, t, formatDuration } from "@origingame/engine/ui";

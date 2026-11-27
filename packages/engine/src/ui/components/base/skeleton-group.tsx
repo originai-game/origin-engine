@@ -1,5 +1,5 @@
 import { For, Show, View, t } from "@origingame/engine/ui";
-import "./skeleton-group.en.ogt";
+import "./skeleton-group.en.strings.ts";
 
 export interface SkeletonGroupProps {
   /** What it stands in for: lines (empty), avatar, block, row or card. */

@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, Line, Match, packClass, Show, Switch, t, Text, View, type UiEvent } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgWorldMapProps {
   /** The map's texture (og.load.texture); markers sit on it in fractions of its size. */

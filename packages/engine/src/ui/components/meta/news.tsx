@@ -3,7 +3,7 @@ import {For, Image, Scroll, Show, Text, packClass, type UiEvent, View, t} from "
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
-import "./meta.en.ogt";
+import "./meta.en.strings.ts";
 
 export interface NewsProps {
   /** Heading; empty uses News and updates. */

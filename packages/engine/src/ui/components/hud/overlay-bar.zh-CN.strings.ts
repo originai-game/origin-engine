@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.overlay-bar.name" "覆盖层"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.overlay-bar.name": "覆盖层"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

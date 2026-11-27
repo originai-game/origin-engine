@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, packClass, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgEnemyInfoProps {
   /** The enemy's name. */

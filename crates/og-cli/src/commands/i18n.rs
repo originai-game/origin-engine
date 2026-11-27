@@ -6,9 +6,76 @@ use og_cook::cook::strings_extract::{extract, write_base};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og i18n extract [project] [--json] [--write] [--check]";
+const USAGE: &str = "usage: og i18n extract [project] [--json] [--write] [--check] | og i18n tables [project] [--builtins | --index] --json";
 
 fn go(args: &[&str]) -> Result<bool, String> {
+    if let ["tables", rest @ ..] = args {
+        let (mut root, mut builtins, mut index_only, mut json) = (".", false, false, false);
+        for arg in rest {
+            match *arg {
+                "--builtins" => builtins = true,
+                "--index" => index_only = true,
+                "--json" => json = true,
+                p if !p.starts_with('-') => root = p,
+                p => return Err(format!("unknown option {p}. {USAGE}")),
+            }
+        }
+        if !json || (builtins && index_only) {
+            return Err(USAGE.into());
+        }
+        let root = Path::new(root);
+        if index_only {
+            let project =
+                og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+            let index = og_cook::cook::source_index::Index::open(root, &project)
+                .map_err(|e| e.to_string())?;
+            let tables: Vec<_> = index
+                .entries
+                .values()
+                .filter(|entry| entry.factory == "strings")
+                .map(|entry| serde_json::json!({"id":entry.id,"path":entry.file}))
+                .collect();
+            println!("{}", serde_json::json!({"tables":tables}));
+            return Ok(true);
+        }
+        let (tables, index) = if builtins {
+            let engine =
+                crate::project::engine_package(Some(root)).ok_or(crate::project::NO_ENGINE)?;
+            let ui = engine.join("src/ui");
+            let mut tables = Vec::new();
+            for path in og_cook::cook::source_project::files(&ui).map_err(|e| e.to_string())? {
+                if !path.to_string_lossy().ends_with(".strings.ts") {
+                    continue;
+                }
+                let file = path
+                    .strip_prefix(&ui)
+                    .map_err(|e| e.to_string())?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                tables.push((
+                    file.clone(),
+                    og_cook::cook::strings_extract::read_builtin(&ui, &file)?,
+                ));
+            }
+            (tables, None)
+        } else {
+            let project =
+                og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+            let index = og_cook::cook::source_index::Index::open(root, &project)
+                .map_err(|e| e.to_string())?;
+            (
+                og_cook::cook::strings_extract::read_tables(root, &project, &index)?,
+                Some(index),
+            )
+        };
+        let tables: Vec<_> = tables.into_iter().map(|(path,t)| {
+            let id = index.as_ref().map(|i| i.files[&path].clone()).unwrap_or_else(|| format!("@ui/{path}"));
+            let entries: std::collections::BTreeMap<_,_> = t.entries.into_iter().map(|(k,(text,_))| (k,text)).collect();
+            serde_json::json!({"id":id,"path":path,"locale":t.locale,"base":t.base,"direction":t.direction.as_str(),"fallback":t.fallback,"fonts":t.fonts,"entries":entries})
+        }).collect();
+        println!("{}", serde_json::json!({"tables":tables}));
+        return Ok(true);
+    }
     let ["extract", rest @ ..] = args else {
         return Err(USAGE.to_string());
     };
@@ -83,7 +150,7 @@ fn go(args: &[&str]) -> Result<bool, String> {
             println!("error: {p}: {e}");
         }
         if x.tables.is_empty() {
-            println!("no string table (`og i18n extract --write` starts assets/strings/en.ogt)");
+            println!("no string table (`og i18n extract --write` starts content/strings/en.ts)");
         }
         for t in &x.tables {
             let base = if t.base { " (base)" } else { "" };

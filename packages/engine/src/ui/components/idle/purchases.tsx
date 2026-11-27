@@ -1,6 +1,6 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./idle.en.ogt";
+import "./idle.en.strings.ts";
 
 export interface IdlePurchasesProps {
   /** The list's heading; empty takes the group's (Upgrades). */

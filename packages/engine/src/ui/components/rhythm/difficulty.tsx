@@ -1,5 +1,5 @@
 import { For, Icon, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmDifficultyProps {
   /** The heading (the song's title); empty takes the kit's (Difficulty). */

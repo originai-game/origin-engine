@@ -1,7 +1,7 @@
 import { For, Image, Show, Text, View, createEffect, createMemo, packClass, t, untrack, useClock, useWorld, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Button } from "../../controls/button";
-import "./conversation.en.ogt";
+import "./conversation.en.strings.ts";
 
 export interface RpgConversationProps {
   /** The speaker's name; empty is narration. */

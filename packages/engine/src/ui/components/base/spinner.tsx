@@ -1,5 +1,5 @@
 import { View, t } from "@origingame/engine/ui";
-import "./spinner.en.ogt";
+import "./spinner.en.strings.ts";
 
 export interface SpinnerProps {
   /** Its width and height, CSS px. Default 28. */

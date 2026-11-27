@@ -1,13 +1,18 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.loading.Percent" "{progress}"
-string "screen.loading.busy" "加载中"
-string "screen.loading.continue" "继续"
-string "screen.loading.continueKey" "Enter"
-string "screen.loading.entering" "即将进入"
-string "screen.loading.next" "下一条提示"
-string "screen.loading.nextKey" "Tab"
-string "screen.loading.tapContinue" "点击继续"
-string "screen.loading.tip" "提示"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.loading.Percent": "{progress}",
+    "screen.loading.busy": "加载中",
+    "screen.loading.continue": "继续",
+    "screen.loading.continueKey": "Enter",
+    "screen.loading.entering": "即将进入",
+    "screen.loading.next": "下一条提示",
+    "screen.loading.nextKey": "Tab",
+    "screen.loading.tapContinue": "点击继续",
+    "screen.loading.tip": "提示"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

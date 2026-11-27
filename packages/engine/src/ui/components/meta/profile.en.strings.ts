@@ -1,13 +1,18 @@
-type strings
-version 1
----
-locale "en"
-string "profile.title" "Player profile"
-string "profile.player" "Player"
-string "profile.loading" "Loading profile…"
-string "profile.empty" "No profile found"
-string "profile.private" "Stats are private"
-string "profile.noStats" "No stats yet"
-string "profile.stats" "Player statistics"
-string "profile.retry" "Retry"
-string "profile.sending" "Sending…"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "profile.empty": "No profile found",
+    "profile.loading": "Loading profile…",
+    "profile.noStats": "No stats yet",
+    "profile.player": "Player",
+    "profile.private": "Stats are private",
+    "profile.retry": "Retry",
+    "profile.sending": "Sending…",
+    "profile.stats": "Player statistics",
+    "profile.title": "Player profile"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -1,6 +1,6 @@
 import { For, Icon, Image, Show, Text, View, t, packClass } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface SquadMember {
   id: string;

@@ -14,6 +14,100 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Typed locale input reaches the native reader with ICU, metadata and ordered
+/// physical font IDs intact, including warm-helper invalidation and refusals.
+#[test]
+fn typed_locales_preserve_messages_and_resolve_font_chains() {
+    use og_i18n::{Arg, BundleStrings, Direction};
+    let root = crate::temp::TempDir::new("typed-locales");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    std::fs::create_dir_all(root.join("assets/fonts")).unwrap();
+    for name in ["first", "second"] {
+        std::fs::copy(
+            template_assets().join("fonts/NotoSansSC-Regular-subset.ttf"),
+            root.join(format!("assets/fonts/{name}.ttf")),
+        )
+        .unwrap();
+    }
+    write(
+        "lib/messages.ts",
+        "export const greeting = '北の{name} — مرحبًا';",
+    );
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nimport {greeting} from '../../lib/messages.ts';\nexport default file.strings({locale:'ar_eg',fallback:'en_us',base:true,direction:'rtl',fonts:[ref('base/fonts/second'),ref('base/fonts/first')],entries:{hello:greeting,coins:'{n, plural, =0 {None} other {# coins}}'}});";
+    write("content/strings/labels.ts", declaration);
+    let options = CookOptions::default();
+    let mut previous = None;
+    for _ in 0..2 {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("base/strings/labels").unwrap();
+        let table = bundle.strings("base/strings/labels", &bytes).unwrap();
+        assert_eq!(
+            (
+                table.locale.as_str(),
+                table.fallback.as_deref(),
+                table.base,
+                table.direction
+            ),
+            ("ar-EG", Some("en-US"), true, Direction::Rtl)
+        );
+        assert_eq!(table.fonts, ["fonts/second.ttf", "fonts/first.ttf"]);
+        assert_eq!(table.entries["hello"].0, "北の{name} — مرحبًا");
+        assert_eq!(
+            table.entries["coins"]
+                .1
+                .format("en", &BTreeMap::from([("n".into(), Arg::Num(3.0))])),
+            "3 coins"
+        );
+        if let Some(previous) = &previous {
+            assert_eq!(previous, &bytes.to_vec());
+        }
+        previous = Some(bytes.to_vec());
+    }
+    write("lib/messages.ts", "export const greeting = 'New {name}';");
+    let report = cook_project(&root, &options).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = bundle.read("base/strings/labels").unwrap();
+    assert_ne!(previous.unwrap(), bytes.to_vec());
+    assert_eq!(
+        bundle
+            .strings("base/strings/labels", &bytes)
+            .unwrap()
+            .entries["hello"]
+            .0,
+        "New {name}"
+    );
+    for (from, to, expected) in [
+        ("base/fonts/second", "base/missing", "base/missing"),
+        ("base/fonts/second", "base/strings/labels", "font"),
+        ("ar_eg", "bad tag", "locale"),
+        ("# coins", "{bad", "coins"),
+    ] {
+        write("content/strings/labels.ts", &declaration.replace(from, to));
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(r) => r.errors().join("\n"),
+        };
+        assert!(
+            error.contains(expected) && error.contains("content/strings/labels.ts:3"),
+            "{error}"
+        );
+    }
+    write("content/strings/labels.ts", declaration);
+    write(
+        "assets/old.ogt",
+        "type strings\nversion 1\n---\nlocale \"en\"\nstring \"hello\" \"Old\"\n",
+    );
+    assert!(!cook_project(&root, &options).unwrap().ok());
+}
+
 /// Public TS cook/load contract: canonical refs, native fields and rejection
 /// stay the same on a warm cook, including an imported source's physical ID.
 #[test]
@@ -463,8 +557,8 @@ fn sounds_fonts_and_scenes_load_as_authored() {
 
     // Locale data and compiled ICU arguments survive the native blob boundary.
     use og_i18n::BundleStrings;
-    let bytes = b.read("strings/en.ogt").unwrap();
-    let strings = b.strings("strings/en.ogt", &bytes).unwrap();
+    let bytes = b.read("base/strings/en").unwrap();
+    let strings = b.strings("base/strings/en", &bytes).unwrap();
     assert_eq!(strings.locale, "en");
     assert!(strings.base && strings.fallback.is_none());
     assert_eq!(strings.direction, og_i18n::Direction::Ltr);

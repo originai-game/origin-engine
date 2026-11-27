@@ -1,17 +1,27 @@
 use super::*;
 
-#[test]
-fn create_and_new_scaffold_from_an_installed_distribution() {
-    let dir = TempDir::new("og-create-installed");
+/// The creator and its actual checked built-in locale declarations ship next
+/// to the selected engine; the caller's working directory owns neither.
+fn installed_distribution(dir: &Path) -> PathBuf {
     let engine = dir.join("dist/engine");
-    std::fs::create_dir_all(&engine).unwrap();
-    // Use the real creator, but resolve it next to the installed engine,
-    // never relative to the caller's working directory.
+    let ui = repo().join("packages/engine/src/ui");
+    for file in og_cook::cook::source_project::files(&ui).unwrap() {
+        let target = engine.join("src/ui").join(file.strip_prefix(&ui).unwrap());
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::copy(file, target).unwrap();
+    }
     #[cfg(unix)]
     std::os::unix::fs::symlink(repo().join("packages/create"), dir.join("dist/create")).unwrap();
     #[cfg(windows)]
     std::os::windows::fs::symlink_dir(repo().join("packages/create"), dir.join("dist/create"))
         .unwrap();
+    engine
+}
+
+#[test]
+fn create_and_new_scaffold_from_an_installed_distribution() {
+    let dir = TempDir::new("og-create-installed");
+    let engine = installed_distribution(&dir);
     for command in ["create", "new"] {
         let out = og()
             .current_dir(&dir)
@@ -91,13 +101,7 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
 #[test]
 fn create_without_a_terminal_writes_the_chosen_look() {
     let dir = TempDir::new("og-create-look");
-    let engine = dir.join("dist/engine");
-    std::fs::create_dir_all(&engine).unwrap();
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(repo().join("packages/create"), dir.join("dist/create")).unwrap();
-    #[cfg(windows)]
-    std::os::windows::fs::symlink_dir(repo().join("packages/create"), dir.join("dist/create"))
-        .unwrap();
+    let engine = installed_distribution(&dir);
     let new = |args: &[&str]| {
         og().current_dir(&dir)
             .env("OG_ENGINE_PACKAGE", &engine)

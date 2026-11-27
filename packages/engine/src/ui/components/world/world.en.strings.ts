@@ -1,18 +1,23 @@
-type strings
-version 1
----
-locale "en"
-string "world.nameplate.health" "Health"
-string "world.nameplate.level" "Level {level}"
-string "world.nameplate.boss" "Boss"
-string "world.nameplate.lootable" "Lootable"
-string "world.nameplate.interrupted" "Interrupted"
-string "world.nameplate.uninterruptible" "{spell}, can't be interrupted"
-string "world.nameplate.casting" "Casting {spell}"
-string "world.bars.name" "Health bars"
-string "world.loot.count" "×{count, number}"
-string "world.loot.more" "+{n, number}"
-string "world.loot.moreName" "{n, number} more items"
-string "world.prompt.hold" "Hold"
-string "world.speech.name" "{speaker} says"
-string "world.waypoint.distance" "{distance}{units}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "world.bars.name": "Health bars",
+    "world.loot.count": "×{count, number}",
+    "world.loot.more": "+{n, number}",
+    "world.loot.moreName": "{n, number} more items",
+    "world.nameplate.boss": "Boss",
+    "world.nameplate.casting": "Casting {spell}",
+    "world.nameplate.health": "Health",
+    "world.nameplate.interrupted": "Interrupted",
+    "world.nameplate.level": "Level {level}",
+    "world.nameplate.lootable": "Lootable",
+    "world.nameplate.uninterruptible": "{spell}, can't be interrupted",
+    "world.prompt.hold": "Hold",
+    "world.speech.name": "{speaker} says",
+    "world.waypoint.distance": "{distance}{units}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

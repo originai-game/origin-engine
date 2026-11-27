@@ -1,5 +1,5 @@
 import { For, Icon, packClass, Scroll, Text, View } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgStatsProps {
   /** The panel's heading (Stats). */

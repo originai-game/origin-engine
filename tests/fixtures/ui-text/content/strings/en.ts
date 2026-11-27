@@ -1,1340 +1,1344 @@
-type strings
-version 1
----
-# The UI kit's en strings (og.i18n; templates/ui-kit/README.md §Locales).
-locale "en"
-base true
-string "gallery.button" "Gallery"
-string "menu.title" "Origin Quest"
-string "menu.subtitle" "A small adventure"
-string "menu.greeting" "Welcome back, traveller"
-string "menu.mixed" "Origin Quest 原点探险 مغامرة صغيرة"
-string "menu.play" "Play"
-string "menu.continue" "Continue"
-string "menu.settings" "Settings"
-string "menu.quit" "Quit"
-string "menu.footer" "v{version}"
-string "pause.title" "Paused"
-string "pause.resume" "Resume"
-string "pause.settings" "Settings"
-string "pause.quit" "Quit to menu"
-string "hud.level" "1-2 Old mill"
-string "hud.coins" "{n, plural, one {# coin} other {# coins}}"
-string "confirm.title" "Delete this save?"
-string "confirm.message" "Your progress in slot [b]{slot}[/b] will be lost. [color=danger]This cannot be undone.[/color]"
-string "confirm.delete" "Delete"
-string "confirm.cancel" "Cancel"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
-string "settings.title" "Settings"
-string "settings.audio" "Audio"
-string "settings.graphics" "Graphics"
-string "settings.controls" "Controls"
-string "settings.language" "Language"
-string "settings.master" "Master"
-string "settings.music" "Music"
-string "settings.effects" "Effects"
-string "settings.mute" "Mute everything"
-string "settings.quality" "Quality"
-string "settings.low" "Low"
-string "settings.medium" "Medium"
-string "settings.high" "High"
-string "settings.fps" "Show frame rate"
-string "settings.motion" "Reduce motion"
-string "settings.contrast" "High contrast"
-string "settings.sensitivity" "Sensitivity"
-string "settings.invert" "Invert vertical look"
-string "settings.vibration" "Vibration"
-string "settings.done" "Done"
-string "shop.title" "Shop"
-string "shop.price" "Price"
-string "shop.buy" "Buy"
-string "shop.short" "Not enough"
-string "shop.owned" "Owned"
-string "shop.empty" "Nothing for sale here"
-string "inventory.hint" "Select an item. Drag it to another slot to move it."
-string "inventory.count" "Count"
-string "leaderboard.error" "Could not load the scores."
-string "leaderboard.retry" "Retry"
-string "tutorial.skip" "Skip"
-string "tutorial.next" "Next"
-string "tutorial.done" "Done"
-string "tutorial.step" "{step} of {count}"
-string "cutscene.skip" "Skip"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
-string "hud.pause" "Pause"
-string "hud.jump" "Jump"
-string "hud.fire" "Fire"
-string "hud.kills" "kills"
-string "hud.weapon" "Carbine"
-string "hud.sector" "Sector 4"
-string "hud.stage" "Level 7"
-string "hud.moves" "moves left"
-string "hud.target" "Target {target}"
-string "hud.tap" "Tap"
-string "hud.generatorLevel" "Lv {level}"
-string "hud.rate" "+{rate}/s"
-string "hud.gold" "Gold"
-string "hud.gems" "Gems"
-string "hud.farm" "Farm"
-string "hud.mill" "Mill"
-string "hud.forge" "Forge"
-string "hud.lap" "lap"
-string "hud.best" "Best {best}"
-string "hud.boost" "Boost"
-string "hud.brake" "Brake"
-string "hud.left" "Left"
-string "hud.right" "Right"
-string "hud.unit" "km/h"
-string "gacha.rate.event" "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers."
-string "gacha.rate.standard" "A [b]5-star[/b] is guaranteed within [b]90[/b] summons."
-# The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
-string "list.separator" ", "
-string "hint.back" "Back"
-string "time.days" "{d}d {h}h"
-string "time.hours" "{h}h {m}m"
-string "time.minutes" "{m}m"
-string "cards.title" "Combat"
-string "cards.yourTurn" "Your turn"
-string "cards.enemyTurn" "Enemy turn"
-string "cards.energy" "Energy"
-string "cards.endTurn" "End turn"
-string "cards.waiting" "Waiting…"
-string "cards.hand" "Hand"
-string "cards.target" "Choose a target"
-string "cards.taunt" "Behind a taunt"
-string "cards.health" "{name} health"
-string "cards.foe.cultist" "Cultist"
-string "cards.foe.louse" "Red Louse"
-string "cards.strike.name" "Strike"
-string "cards.strike.text" "Deal [b]6[/b] damage."
-string "cards.type.strike" "Attack"
-string "cards.defend.name" "Defend"
-string "cards.defend.text" "Gain [b]5[/b] [color=info]Block[/color]."
-string "cards.type.defend" "Skill"
-string "cards.bash.name" "Bash"
-string "cards.bash.text" "Deal [b]8[/b] damage. Apply 2 [color=warn]Vulnerable[/color]."
-string "cards.type.bash" "Attack"
-string "cards.anger.name" "Anger"
-string "cards.anger.text" "Deal [b]6[/b] damage. Add a copy to your discard."
-string "cards.type.anger" "Attack"
-string "cards.inflame.name" "Inflame"
-string "cards.inflame.text" "Gain [b]2[/b] [color=danger]Strength[/color]."
-string "cards.type.inflame" "Power"
-string "cards.wound.name" "Wound"
-string "cards.wound.text" "Unplayable."
-string "cards.type.wound" "Status"
-string "rewards.title" "Room cleared"
-string "rewards.choose" "Choose a blessing"
-string "rewards.chooseTwo" "Choose two blessings, then confirm"
-string "rewards.taken" "Taken: {list}"
-string "rewards.rerollCost" "50 gold"
-string "rewards.skip" "Skip · take 25 gold"
-string "rewards.skipped" "25 gold"
-string "rewards.reroll" "Reroll"
-string "rewards.banish" "Banish"
-string "rewards.confirm" "Confirm"
-string "rewards.hint.take" "Take"
-string "rewards.thunder.title" "Thunder Strike"
-string "rewards.thunder.kind" "Gift of the Storm Warden"
-string "rewards.thunder.text" "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage."
-string "rewards.vigor.title" "Ironbloom Heart"
-string "rewards.vigor.kind" "Gift of the Iron Matron"
-string "rewards.vigor.text" "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared."
-string "rewards.vigor.tag" "Upgrade"
-string "rewards.crown.title" "Crown of Ages"
-string "rewards.crown.kind" "Relic"
-string "rewards.crown.text" "Start each fight with [b]2[/b] extra [color=info]Energy[/color]."
-string "rewards.crown.tag" "New"
-string "rewards.crown.locked" "Clear the second boss to unlock"
-string "rewards.frost.title" "Frostbite"
-string "rewards.frost.kind" "Gift of the Frost Weaver"
-string "rewards.frost.text" "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b]."
-string "rewards.gold.title" "Gilded Touch"
-string "rewards.gold.kind" "Gift of the Coin Saint"
-string "rewards.gold.text" "Gain [b]40[/b] gold now and [b]5[/b] per kill."
-string "rewards.blade.title" "Duskward Edge"
-string "rewards.blade.kind" "Weapon"
-string "rewards.blade.text" "Your dash leaves a blade that deals [b]18[/b] damage."
-string "rewards.blade.tag" "Lv 3 → 4"
-string "gacha.banner.event" "Limited banner · Character"
-string "gacha.banner.weapon" "Limited banner · Weapon"
-string "gacha.banner.std" "Standard banner"
-string "gacha.title.aria" "Tidecaller of the Moon"
-string "gacha.title.kael" "The Ember"
-string "gacha.title.mira" "Of the Grove"
-string "gacha.pity" "Guaranteed in {left}"
-string "gacha.summon1" "Summon ×1"
-string "gacha.summonN" "Summon ×{n}"
-string "gacha.short" "not enough"
-string "gacha.details" "Details"
-string "gacha.history" "History"
-string "gacha.done" "Done"
-string "gacha.skip" "Skip"
-string "gacha.tap" "Tap to continue"
-string "gacha.continue" "Continue"
-string "gacha.new" "NEW"
-string "gacha.kind.character" "Character"
-string "gacha.kind.weapon" "Weapon"
-string "gacha.rarity.common" "Common"
-string "gacha.rarity.uncommon" "Uncommon"
-string "gacha.rarity.rare" "Rare"
-string "gacha.rarity.epic" "Epic"
-string "gacha.rarity.legendary" "Legendary"
-string "gacha.rarity.mythic" "Mythic"
-string "gacha.extra.shards" "+{n} Star Shards"
-string "gacha.unit.warden" "Warden's Blade"
-string "gacha.unit.fang" "Ember Fang"
-string "gacha.unit.sling" "Hunter's Sling"
-string "gacha.unit.cudgel" "Oak Cudgel"
-string "gacha.unit.spear" "Night Spear"
-string "gacha.unit.tome" "Tome of Tides"
-string "gacha.unit.steel" "Plain Steel"
-string "gear.title" "Inventory"
-string "gear.sub" "Drag to move · Shift splits a stack · R turns"
-string "gear.sub.touch" "Drag to move · Hold for options"
-string "gear.class" "Level {level} Paladin"
-string "gear.power" "Item power"
-string "gear.attributes" "Attributes"
-string "gear.backpack" "Backpack"
-string "gear.stash" "Stash"
-string "gear.locked" "Locked"
-string "gear.unusable" "Cannot use"
-string "gear.empty" "Empty"
-string "gear.rotate" "Rotate"
-string "gear.relicLocked" "Unlocks at level {level}"
-string "gear.menu.use" "Use"
-string "gear.menu.split" "Split stack"
-string "gear.menu.drop" "Drop"
-string "gear.hint.place" "Pick up / place"
-string "gear.hint.menu" "Item menu"
-string "gear.hint.putBack" "Put back"
-string "gear.slot.relic" "Relic"
-string "gear.slot.hands" "Hands"
-string "gear.slot.chest" "Chest"
-string "gear.slot.main" "Main hand"
-string "gear.slot.ring" "Ring"
-string "gear.slot.head" "Head"
-string "gear.slot.neck" "Neck"
-string "gear.slot.off" "Off hand"
-string "gear.slot.feet" "Feet"
-string "gear.stat.armor" "Armor"
-string "gear.stat.strength" "Strength"
-string "gear.stat.fire" "Fire resistance"
-string "gear.stat.speed" "Move speed"
-string "gear.stat.cooldowns" "Cooldowns"
-string "gear.item.greatsword" "Ashbringer"
-string "gear.item.bow" "Windrunner Bow"
-string "gear.item.potions" "Healing Potion"
-string "gear.item.mana" "Mana Potion"
-string "gear.item.ring" "Signet of the Vale"
-string "gear.item.helm" "Crown of Thorns"
-string "gear.item.plate" "Arcane Staff"
-string "gear.item.gloves" "Gauntlets"
-string "gear.item.gem" "Star Shard"
-string "gear.item.boots" "Boots of Haste"
-string "gear.item.scroll" "Iron Key"
-string "gear.item.ore" "Raw Crystal"
-string "gear.item.amulet" "Sapphire Amulet"
-string "gear.item.shield" "Oak Shield"
-string "gear.item.robe" "Mage Robe"
-string "gear.item.dagger" "Iron Sword"
-# The saga map, match-3 board and idle previews (src/patterns.ts).
-string "saga.title" "Levels"
-string "saga.world" "Skyreach Isles"
-string "saga.sub" "{stars} of {max} stars"
-string "saga.level" "Level {label}"
-string "saga.boss" "Boss, level {label}"
-string "saga.stars" "{n} of {max} stars"
-string "saga.here" "You are here"
-string "saga.play" "Play level {level}"
-string "board.level" "Level"
-string "board.moves" "Moves left"
-string "board.score" "Score"
-string "board.goals" "Goals"
-string "board.goal.blue" "Collect blue gems"
-string "board.goal.ice" "Break ice tiles"
-string "board.progress" "{have} of {need}"
-string "board.done" "Done"
-string "idle.title" "Nexus Core"
-string "idle.sub" "Build generators, then ascend for shards"
-string "idle.energy" "Energy"
-string "idle.rate" "+{rate} / sec"
-string "idle.perSec" "+{rate} / sec"
-string "idle.generators" "Generators"
-string "idle.buyAmount" "Buy amount"
-string "idle.buy" "Buy ×{n}"
-string "idle.level" "Lv. {level}"
-string "idle.owned" "Owned: {owned}"
-string "idle.unlock" "Reach {cost} energy"
-string "idle.prestige" "Prestige"
-string "idle.ascendFor" "Ascend for"
-string "idle.shards" "+{n} Shards"
-string "idle.point.reset" "Resets generators and energy"
-string "idle.point.keep" "Permanent progression"
-string "idle.point.stronger" "Stronger with each ascension"
-string "idle.ascend" "Ascend"
-string "idle.hint.buy" "Buy"
-string "idle.gen.solar" "Solar Array"
-string "idle.gen.fusion" "Fusion Reactor"
-string "idle.gen.orbital" "Orbital Collector"
-string "idle.gen.drill" "Quantum Drill"
-string "idle.gen.dyson" "Dyson Ring"
-string "idle.gen.forge" "Stellar Forge"
-# The store and the battle pass (src/patterns.ts).
-string "store.title" "Store"
-string "store.sub" "New offers every day"
-string "store.gems" "Gems"
-string "store.coins" "Coins"
-string "store.featured" "Featured"
-string "store.daily" "Daily deals"
-string "store.packs" "Gem packs"
-string "store.item.tide" "Moonlit Tide Bundle"
-string "store.item.ashbringer" "Ashbringer"
-string "store.item.crown" "Crown of Thorns"
-string "store.item.potions" "Healing Draught ×5"
-string "store.item.mana" "Mana Vial ×5"
-string "store.item.ember" "Ember Ring"
-string "store.item.amulet" "Sapphire Amulet"
-string "store.item.key" "Iron Key"
-string "store.kind.tide" "Bundle · 4 items"
-string "store.kind.ashbringer" "Greatsword"
-string "store.kind.crown" "Helmet"
-string "store.kind.potions" "Consumable"
-string "store.kind.mana" "Consumable"
-string "store.kind.ember" "Ring"
-string "store.kind.amulet" "Amulet"
-string "store.kind.key" "Key"
-string "store.kind.gems1" "A pouch of gems"
-string "store.kind.gems2" "A chest of gems"
-string "store.kind.gems3" "A hoard of gems"
-string "store.gemPack" "{n} Gems"
-string "store.badge.limited" "Limited"
-string "store.badge.new" "New"
-string "store.badge.popular" "Popular"
-string "store.badge.best" "Best value"
-string "store.contents.aria" "Aria, Tidecaller"
-string "store.contents.lantern" "Moonlit Lantern"
-string "store.contents.glitter" "1,600 Star Shards"
-string "store.contents.frame" "Profile frame"
-string "store.free" "Free"
-string "store.owned" "Owned"
-string "store.soldOut" "Sold out"
-string "store.left" "{left} left"
-string "store.save" "−{pct} %"
-string "store.refresh" "Refreshes in"
-string "store.topUp" "Get more {name}"
-string "store.hint.buy" "Buy"
-string "store.confirm" "Buy it for {price} {currency}?"
-string "store.buy" "Buy"
-string "store.cancel" "Cancel"
-string "pass.title" "Battle Pass"
-string "pass.season" "Season 4 · Neon Tide"
-string "pass.free" "Free"
-string "pass.premium" "Premium"
-string "pass.level" "Level {n}"
-string "pass.xp" "{xp} / {need} XP"
-string "pass.claim" "Claim"
-string "pass.claimAll" "Claim all ({n})"
-string "pass.claimed" "Claimed"
-string "pass.unlock" "Unlock Premium"
-string "pass.reach" "Reach level {n}"
-string "pass.reward.chest" "Season Chest"
-string "pass.reward.gold" "Coins"
-string "pass.reward.crystal" "Gems"
-string "pass.reward.healing-draught" "Healing Draught"
-string "pass.reward.mana-vial" "Mana Vial"
-string "pass.reward.ember-ring" "Ember Ring"
-string "pass.reward.sapphire-amulet" "Sapphire Amulet"
-string "pass.reward.boots" "Boots of Haste"
-string "pass.reward.arcane-staff" "Arcane Staff"
-string "pass.reward.gauntlets" "Gauntlets"
-string "pass.reward.aria" "Aria, Tidecaller"
-string "pass.reward.kael" "Kael, the Ember"
-string "pass.reward.mira" "Mira of the Grove"
-string "menu.event" "Moonlit Tide"
-string "menu.eventWhen" "Limited banner · 3 days left"
-string "menu.event.kawaii" "Starlight Stage"
-string "menu.event.storybook" "The Lantern Path"
-string "menu.event.cartoon" "Fox Trail Rally"
-# The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
-string "dlg.mira" "Mira"
-string "dlg.aria" "Aria"
-string "dlg.gate.open" "The gate opens at dawn. Are you ready to cross?"
-string "dlg.gate.ready" "I'm ready. Let's go."
-string "dlg.gate.persuade" "Tell me what waits beyond first."
-string "dlg.gate.read" "You've seen this look before."
-string "dlg.gate.who" "Who else knows about the gate?"
-string "dlg.gate.toll" "Pay the warden's toll."
-string "dlg.gate.need" "Needs {need} more credits"
-string "dlg.gate.notyet" "Not yet."
-string "dlg.who" "Only the archivist, and she has kept quiet for nine years."
-string "dlg.secret" "Beyond it lies the old observatory. Whatever the charts saw is still up there."
-string "dlg.refuse" "You'll see it for yourself, or not at all."
-string "dlg.ready" "Then we leave before the tide turns."
-string "dlg.stat.charm" "Persuasion"
-string "dlg.stat.insight" "Insight"
-string "dlg.skip" "Skip"
-string "dlg.log" "Log"
-string "dlg.auto" "Auto"
-string "dlg.continue" "Continue"
-string "dlg.unavailable" "Unavailable"
-string "dlg.check" "{stat} · {chance}"
-string "dlg.passed" "Success"
-string "dlg.failed" "Failure"
-string "log.title" "Log"
-string "log.close" "Close"
-string "log.replay" "Play voice"
-string "log.empty" "Nothing has been said yet."
-string "vn.n1" "Rain had followed the caravan for three days when the lights of Lowmarsh finally showed through the reeds."
-string "vn.a1" "There. The ferry still runs, if the old keeper is awake."
-string "vn.a2" "Stay close to me in the market. Lowmarsh remembers faces."
-string "vn.stay" "Stay by her side."
-string "vn.wander" "Slip away to look around."
-string "vn.stay.r" "Good. Keep your hood up."
-string "vn.wander.r" "Fine. Meet me at the ferry by the second bell."
-string "q.title" "Quests"
-string "q.track" "Track"
-string "q.tracked" "Tracked"
-string "q.map" "Show on map"
-string "q.objectives" "Objectives"
-string "q.rewards" "Rewards"
-string "q.optional" "Optional"
-string "q.giver" "From {giver}"
-string "q.new" "New"
-string "q.active" "Active"
-string "q.completed" "Completed"
-string "q.failed" "Failed"
-string "q.empty" "No quests yet."
-string "q.back" "Back"
-string "q.complete" "Complete"
-string "q.tab.main" "Main"
-string "q.tab.side" "Side"
-string "q.tab.daily" "Daily"
-string "quest.dawn" "The Dawn Gate"
-string "quest.dawn.summary" "Mira believes the sealed gate above Skyreach opens for one hour at dawn. Gather what the old charts need before she makes the crossing."
-string "quest.dawn.reach" "Reach the gate before dawn"
-string "quest.dawn.charts" "Recover the star charts"
-string "quest.dawn.archivist" "Ask the archivist about the seal"
-string "quest.dawn.sealer" "Learn who sealed the gate"
-string "quest.mill" "Wolves at the Mill"
-string "quest.mill.summary" "Old Bram's flock is thinning. Drive the wolves away from Hollow Mill before the next new moon."
-string "quest.mill.wolves" "Drive off the wolves"
-string "quest.supply" "Supply Run"
-string "quest.supply.summary" "The healers of Lowmarsh need moonpetals for tonight's draughts."
-string "quest.supply.petals" "Gather moonpetals"
-string "quest.letters" "Letters for Lowmarsh"
-string "quest.letters.summary" "Carry the miller's letters to his sister across the marsh."
-string "quest.letters.deliver" "Deliver the letters"
-string "quest.tide" "The Turning Tide"
-string "quest.tide.summary" "The last ferry leaves when the tide turns. It did not wait."
-string "quest.tide.ferry" "Reach the ferry before the tide"
-string "npc.miller" "Old Bram"
-string "region.skyreach" "Skyreach Isles"
-string "region.mill" "Hollow Mill"
-string "region.marsh" "Lowmarsh"
-string "item.crystal" "Starlight Crystal"
-string "item.ring" "Ember Ring"
-string "item.gold" "Gold"
-string "item.potion" "Healing Draught"
-# The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
-string "ship.class" "Command frigate · Aurora Fleet"
-string "ship.hull" "Hull"
-string "ship.shields" "Shields"
-string "ship.reactor" "Reactor"
-string "turn.title" "Turn order"
-string "turn.hostile" "hostile"
-string "turn.acting" "acting now"
-string "ab.title" "Abilities"
-string "ab.kinetic" "Kinetic strike"
-string "ab.kinetic.text" "Deal high damage to a target."
-string "ab.deflector" "Deflector screen"
-string "ab.deflector.text" "Boost shields for one turn."
-string "ab.squadron" "Squadron launch"
-string "ab.squadron.text" "Deploy attack craft for three turns."
-string "ab.repair" "Repair drones"
-string "ab.repair.text" "Restore hull over time."
-string "ab.gravity" "Gravity well"
-string "ab.gravity.text" "Pull in and slow enemies."
-string "ab.overcharge" "Overcharge"
-string "ab.overcharge.text" "+50 % weapon damage for two turns."
-string "ab.endTurn" "End turn"
-string "sector.title" "Sector map"
-string "sector.allied" "Allied"
-string "sector.hostile" "Hostile"
-string "sector.current" "current sector"
-string "hangar.title" "Fleet hangar"
-string "hangar.classes" "Ship classes"
-string "hangar.stats" "Ship stats"
-string "hangar.hull" "Hull"
-string "hangar.shields" "Shields"
-string "hangar.speed" "Speed"
-string "hangar.firepower" "Firepower"
-string "hangar.upgrade" "Upgrade level"
-string "hangar.alloy" "alloy"
-string "hangar.commission" "Commission"
-string "hangar.commissioned" "{name} joins the fleet"
-string "hangar.compare" "Compare"
-string "hangar.frigates" "Frigates"
-string "hangar.frigates.line" "Fast, flexible, essential."
-string "hangar.frigates.class" "Frigate class"
-string "hangar.frigates.flavour" "A versatile frontline frigate built for reconnaissance, escort and rapid response. Wherever the line holds, a Vanguard was there first."
-string "hangar.cruisers" "Cruisers"
-string "hangar.cruisers.line" "Balanced and reliable."
-string "hangar.cruisers.class" "Cruiser class"
-string "hangar.cruisers.flavour" "A heavy escort with layered shields that holds the centre of a formation while the frigates range ahead."
-string "hangar.carriers" "Carriers"
-string "hangar.carriers.line" "Command the field."
-string "hangar.carriers.class" "Carrier class"
-string "hangar.carriers.flavour" "A mobile hangar that launches and recovers attack craft, slow to turn but never alone."
-string "hangar.modules" "Modules"
-string "hangar.modules.line" "Expand your fleet."
-string "hangar.modules.class" "Station module"
-string "hangar.modules.flavour" "A modular hull that docks to any carrier: a workshop, a sensor array or a supply depot."
-# The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
-string "lobby.title" "Play"
-string "lobby.ready" "Ready"
-string "lobby.notReady" "Not ready"
-string "lobby.readyUp" "Ready up"
-string "lobby.start" "Find match"
-string "lobby.cancel" "Cancel"
-string "lobby.searching" "Searching"
-string "lobby.estimate" "Est. {time}"
-string "lobby.invite" "Invite"
-string "lobby.level" "Lv {level}"
-string "lobby.leader" "Party leader"
-string "lobby.found" "Match found"
-string "lobby.accept" "Accept"
-string "lobby.accepted" "Accepted"
-string "lobby.decline" "Decline"
-string "lobby.modeLabel" "Mode"
-string "lobby.mode.ranked" "Ranked"
-string "lobby.mode.detail" "5v5 · Skyreach Gate"
-string "lobby.rank.diamond" "Diamond II"
-string "lobby.rank.immortal" "Immortal I"
-string "lobby.rank.platinum" "Platinum III"
-string "lobby.rank.gold" "Gold I"
-string "chars.title" "Choose your fighter"
-string "chars.lock" "Lock in"
-string "chars.locked" "Locked in"
-string "chars.taken" "Taken"
-string "chars.random" "Random"
-string "chars.unlock" "Unlocks at level {level}"
-string "chars.role.mage" "Mage"
-string "chars.role.duelist" "Duelist"
-string "chars.role.support" "Support"
-string "chars.role.ranger" "Ranger"
-string "chars.role.vanguard" "Vanguard"
-string "chars.about.aria" "Bends moonlight into blades that strike from afar."
-string "chars.about.kael" "Fast on his feet; every third strike breaks a guard."
-string "chars.about.mira" "Heals the line and binds foes in vines."
-string "chars.about.wren" "Marks a target, then never misses it."
-string "chars.about.vesper" "Trades his own health for storms of shadow."
-string "chars.about.maren" "Holds the front with shield and banner."
-string "chars.about.torvin" "Builds turrets from scrap in the middle of a fight."
-string "chars.about.brann" "Sells his wares for the gold that buys the team's gear."
-string "chars.about.vell" "Strikes twice, then vanishes."
-string "chars.about.cultist" "Calls on old gods, and pays for it in blood."
-string "vs.mark" "VS"
-string "vs.record" "{w}W {l}L"
-string "vs.stage" "Round 1 · Skyreach Gate"
-string "vs.skip" "Skip"
-string "draft.title" "Draft"
-string "draft.blue" "Blue side"
-string "draft.red" "Red side"
-string "draft.ban" "Ban"
-string "draft.waiting" "Waiting"
-string "draft.bans" "Bans"
-string "draft.banned" "Banned"
-string "draft.picked" "Picked"
-string "draft.phase.pick" "Pick phase · Your pick"
-string "draft.phase.theirs" "Pick phase · Red picks"
-string "draft.phase.ban" "Ban phase · Your ban"
-string "map.title" "The Sundered Realm"
-string "map.travel" "Fast travel"
-string "map.track" "Set waypoint"
-string "map.untrack" "Remove waypoint"
-string "map.unknown" "???"
-string "map.close" "Close"
-string "map.kind.quest" "Quests"
-string "map.kind.objective" "Objectives"
-string "map.kind.fastTravel" "Fast travel"
-string "map.kind.shop" "Shops"
-string "map.kind.poi" "Landmarks"
-string "map.kind.boss" "Bosses"
-string "map.region.frost" "Frostspire Peaks"
-string "map.region.dusk" "Duskwood"
-string "map.region.amber" "Amberfields"
-string "map.region.redmesa" "Red Mesas"
-string "map.region.delta" "Saltreach Delta"
-string "map.place.sela" "Port Sela"
-string "map.place.amberhold" "Amberhold"
-string "map.place.mill" "Hollow Mill"
-string "map.place.market" "Crossroads Market"
-string "map.place.duskhold" "Duskhold Keep"
-string "map.place.light" "Saltreach Light"
-string "map.place.wyrm" "The Thornwood Wyrm"
-string "map.about.sela" "The harbour's ferries sail for the Skyreach Isles at dawn."
-string "map.about.amberhold" "The old king's seat, watching over the fields."
-string "map.about.mill" "Drive off the wolves before the new moon."
-string "map.about.market" "Traders from every road meet here at noon."
-string "map.about.duskhold" "A ruined keep the forest swallowed long ago."
-string "map.about.light" "Light the beacon for the lost ships."
-string "map.about.wyrm" "Something stirs under the old pines."
-string "song.title" "Song select"
-string "song.bpm" "BPM"
-string "song.length" "Length"
-string "song.best" "Best score"
-string "song.grade" "Grade"
-string "song.fullCombo" "Full combo"
-string "song.accuracy" "Accuracy"
-string "song.play" "Play"
-string "song.preview" "Preview"
-string "song.new" "New"
-string "song.chart.easy" "Easy"
-string "song.chart.normal" "Normal"
-string "song.chart.hard" "Hard"
-string "song.chart.expert" "Expert"
-string "song.chart.master" "Master"
-# The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
-string "garage.title" "Garage"
-string "garage.cat.engine" "Engine"
-string "garage.cat.wheels" "Wheels"
-string "garage.cat.suspension" "Suspension"
-string "garage.cat.exhaust" "Exhaust"
-string "garage.cat.brakes" "Brakes"
-string "garage.cat.aero" "Aero"
-string "garage.cat.livery" "Livery"
-string "garage.cat.next" "Next category"
-string "garage.part" "{tier} {part}"
-string "garage.tier.stock" "Stock"
-string "garage.tier.street" "Street"
-string "garage.tier.sport" "Sport"
-string "garage.tier.race" "Race"
-string "garage.tier.works" "Works"
-string "garage.needsClass" "Needs class {cls}"
-string "garage.desc.engine" "More power at the top of the rev range, at the cost of a sharper throttle."
-string "garage.desc.wheels" "Lighter rims and stickier tyres that hold a line through fast corners."
-string "garage.desc.suspension" "Stiffer springs and dampers: less roll, a firmer ride."
-string "garage.desc.exhaust" "A freer-flowing exhaust for a quicker launch and a louder note."
-string "garage.desc.brakes" "Bigger discs and calipers that stop later and fade less."
-string "garage.desc.aero" "A taller wing that presses the car down at speed."
-string "garage.stat.power" "Power"
-string "garage.stat.handling" "Handling"
-string "garage.stat.braking" "Braking"
-string "garage.stat.launch" "Launch"
-string "garage.stat.speed" "Top speed"
-string "garage.layer.base" "Base coat"
-string "garage.layer.stripe" "Stripe"
-string "garage.layer.number" "Number 7"
-string "garage.layer.sponsor" "Sponsor"
-string "garage.layer.added" "Decal {n}"
-string "garage.kind.paint" "Paint"
-string "garage.kind.vinyl" "Vinyl"
-string "garage.kind.decal" "Decal"
-string "garage.performance" "Performance"
-string "garage.class" "Class"
-string "garage.current" "Current"
-string "garage.preview" "Preview"
-string "garage.equip" "Equip"
-string "garage.equipped" "Equipped"
-string "garage.buy" "Buy"
-string "garage.locked" "Locked"
-string "garage.free" "Free"
-string "garage.short" "not enough"
-string "garage.layers" "Layers"
-string "garage.color" "Colour"
-string "garage.addLayer" "Add layer"
-string "garage.delete" "Delete"
-string "garage.up" "Move up"
-string "garage.down" "Move down"
-string "garage.visible" "Visible"
-string "ledger.title" "Budget"
-string "ledger.income" "Income"
-string "ledger.expenses" "Expenses"
-string "ledger.treasury" "Treasury"
-string "ledger.population" "Population"
-string "ledger.tab.month" "Month"
-string "ledger.tab.quarter" "Quarter"
-string "ledger.tab.year" "Year"
-string "ledger.period.month" "M{n}"
-string "ledger.period.quarter" "Q{n}"
-string "ledger.period.year" "Y{n}"
-string "ledger.line.residential" "Residential tax"
-string "ledger.line.commercial" "Commercial tax"
-string "ledger.line.industrial" "Industrial tax"
-string "ledger.line.tourism" "Tourism"
-string "ledger.line.police" "Police"
-string "ledger.line.fire" "Fire service"
-string "ledger.line.health" "Health care"
-string "ledger.line.education" "Education"
-string "ledger.line.transit" "Public transport"
-string "ledger.line.parks" "Parks"
-string "ledger.line.power" "Power"
-string "ledger.line.water" "Water"
-string "ledger.warn.police" "Underfunded: crime rising"
-string "ledger.warn.fire" "Underfunded: fires spread"
-string "ledger.warn.health" "Underfunded: queues growing"
-string "ledger.warn.education" "Underfunded: classes full"
-string "ledger.warn.transit" "Underfunded: lines cut"
-string "ledger.warn.parks" "Underfunded: parks neglected"
-string "ledger.warn.power" "Underfunded: blackouts"
-string "ledger.warn.water" "Underfunded: low pressure"
-string "ledger.col.name" "Name"
-string "ledger.col.amount" "Amount"
-string "ledger.col.change" "Change"
-string "ledger.col.budget" "Budget"
-string "ledger.total" "Total"
-string "ledger.net" "Net"
-string "ledger.history" "History"
-string "ledger.breakdown" "Breakdown"
-string "ledger.other" "Other"
-string "ledger.locked" "Locked"
-string "ledger.hint.period" "Next period"
-string "ledger.overlays" "Overlays"
-string "ledger.overlay.off" "No overlay"
-string "ledger.overlay.traffic" "Traffic"
-string "ledger.overlay.traffic.low" "Free flowing"
-string "ledger.overlay.traffic.high" "Gridlock"
-string "ledger.overlay.power" "Power"
-string "ledger.overlay.power.low" "No power"
-string "ledger.overlay.power.high" "Fully powered"
-string "ledger.overlay.water" "Water"
-string "ledger.overlay.water.low" "Dry"
-string "ledger.overlay.water.high" "Full pressure"
-string "ledger.overlay.pollution" "Pollution"
-string "ledger.overlay.pollution.low" "Clean"
-string "ledger.overlay.pollution.high" "Toxic"
-string "ledger.overlay.landValue" "Land value"
-string "ledger.overlay.landValue.low" "Low"
-string "ledger.overlay.landValue.high" "High"
-string "ledger.overlay.crime" "Crime"
-string "ledger.overlay.crime.low" "Safe"
-string "ledger.overlay.crime.high" "Dangerous"
-string "chat.title" "Chat"
-string "chat.ch.all" "All"
-string "chat.ch.party" "Party"
-string "chat.ch.guild" "Guild"
-string "chat.ch.trade" "Trade"
-string "chat.ch.whisper" "Whisper"
-string "chat.ch.system" "System"
-string "chat.msg.1" "Riven joined the party."
-string "chat.msg.2" "Raid tonight at nine, bring potions."
-string "chat.msg.3" "Selling {0}, whisper me offers."
-string "chat.msg.4" "Meet at {0} before the gate opens."
-string "chat.msg.5" "@Lumen can you tank the first pull?"
-string "chat.msg.6" "Thanks for the help earlier!"
-string "chat.msg.7" "Look what dropped: {0}"
-string "chat.msg.8" "@Juno your repair bill is on me."
-string "chat.msg.9" "Ready when you are."
-string "chat.link.ember" "Ember Ring"
-string "chat.link.amberhold" "Amberhold"
-string "chat.link.ashbringer" "Ashbringer"
-string "chat.placeholder" "Say something…"
-string "chat.send" "Send"
-string "chat.new" "{n} new"
-string "chat.channel" "Channel"
-string "rts.target" "{command}: choose a target"
-string "rts.cancel" "Cancel"
-string "rts.queue" "Queue"
-string "rts.back" "Back"
-string "rts.stat.attack" "Attack"
-string "rts.stat.armour" "Armour"
-string "rts.stat.speed" "Speed"
-string "rts.cmd.stop" "Stop"
-string "rts.cmd.patrol" "Patrol"
-string "rts.cmd.gather" "Gather"
-string "rts.cmd.repair" "Repair"
-string "rts.cmd.rally" "Rally point"
-string "rts.cmd.build" "Build"
-string "rts.cmd.barracks" "Barracks"
-string "rts.cmd.tower" "Archer tower"
-string "rts.cmd.farm" "Farm"
-string "rts.cmd.wall" "Stone wall"
-string "rts.cmd.forge" "Forge"
-string "rts.cmd.keep" "Keep"
-string "rts.unit.worker" "Villager"
-string "rts.unit.knight" "Knight"
-string "rts.unit.archer" "Archer"
-string "rts.kind.worker" "Worker · Light"
-string "rts.kind.knight" "Cavalry · Heavy"
-string "rts.kind.archer" "Ranged · Light"
-# The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
-string "photo.title" "Photo mode"
-string "photo.tab.camera" "Camera"
-string "photo.tab.lens" "Lens"
-string "photo.tab.filters" "Filters"
-string "photo.tab.frames" "Frames"
-string "photo.ctl.fov" "Field of view"
-string "photo.ctl.roll" "Roll"
-string "photo.ctl.height" "Height"
-string "photo.ctl.focus" "Focus distance"
-string "photo.ctl.aperture" "Aperture"
-string "photo.ctl.exposure" "Exposure"
-string "photo.ctl.vignette" "Vignette"
-string "photo.filter.none" "None"
-string "photo.filter.vivid" "Vivid"
-string "photo.filter.noir" "Noir"
-string "photo.filter.sepia" "Sepia"
-string "photo.filter.cool" "Cool"
-string "photo.frame.none" "None"
-string "photo.frame.cinema" "Cinema"
-string "photo.frame.polaroid" "Instant"
-string "photo.frame.film" "Film"
-string "photo.capture" "Capture"
-string "photo.hide" "Hide UI"
-string "photo.grid" "Grid"
-string "photo.reset" "Reset"
-string "photo.exit" "Exit"
-string "photo.strength" "Strength"
-string "photo.hint" "Press any key to show the controls"
-string "loadout.title" "Loadout"
-string "loadout.tab" "Loadout {n}"
-string "loadout.next" "Next loadout"
-string "loadout.slot.primary" "Primary"
-string "loadout.slot.secondary" "Secondary"
-string "loadout.slot.melee" "Melee"
-string "loadout.slot.lethal" "Lethal"
-string "loadout.slot.tactical" "Tactical"
-string "loadout.slot.field" "Field upgrade"
-string "loadout.item.primary" "AR-7 Raven"
-string "loadout.item.secondary" "VX-9 Sidearm"
-string "loadout.item.melee" "Combat knife"
-string "loadout.item.lethal" "Frag grenade"
-string "loadout.item.tactical" "Stim"
-string "loadout.item.field" "Recon drone"
-string "loadout.level" "Lvl {n}"
-string "loadout.unlocks" "Unlocks at Lvl {n}"
-string "loadout.class.assault" "Assault rifle"
-string "loadout.class.pistol" "Pistol"
-string "loadout.class.blade" "Blade"
-string "loadout.class.grenade" "Grenade"
-string "loadout.class.drone" "Drone"
-string "loadout.rarity.uncommon" "Uncommon"
-string "loadout.rarity.rare" "Rare"
-string "loadout.rarity.epic" "Epic"
-string "loadout.desc.primary" "Reliable at every range, steadier with each attachment."
-string "loadout.desc.secondary" "A quick draw when the rifle runs dry."
-string "loadout.desc.melee" "Silent, and always ready."
-string "loadout.desc.lethal" "Cooks for three seconds, then clears a room."
-string "loadout.desc.tactical" "Heals at once and quickens your step."
-string "loadout.desc.field" "Marks every enemy in its sight."
-string "loadout.stat.damage" "Damage"
-string "loadout.stat.range" "Range"
-string "loadout.stat.fireRate" "Fire rate"
-string "loadout.stat.mobility" "Mobility"
-string "loadout.stat.control" "Control"
-string "loadout.point.stock" "Stock"
-string "loadout.point.optic" "Optic"
-string "loadout.point.laser" "Laser"
-string "loadout.point.magazine" "Magazine"
-string "loadout.point.underbarrel" "Underbarrel"
-string "loadout.point.muzzle" "Muzzle"
-string "loadout.att.stock" "Tactical stock"
-string "loadout.att.optic" "MK.2 holo sight"
-string "loadout.att.laser" "Tac laser"
-string "loadout.att.magazine" "Extended mag"
-string "loadout.att.underbarrel" "Ranger grip"
-string "loadout.att.muzzle" "Vanguard suppressor"
-string "loadout.stats" "Weapon stats"
-string "loadout.attachments" "Attachments"
-string "loadout.empty" "Empty"
-string "loadout.remove" "Remove"
-string "loadout.locked" "Locked"
-string "deck.title" "Collection"
-string "deck.name" "Frostfire"
-string "deck.all" "All"
-string "deck.search" "Search cards"
-string "deck.sortBy" "Sort"
-string "deck.sort.cost" "Cost"
-string "deck.sort.name" "Name"
-string "deck.sort.rarity" "Rarity"
-string "deck.sort.owned" "Owned"
-string "deck.cards" "Cards"
-string "deck.mine" "My deck"
-string "deck.curve" "Mana curve"
-string "deck.types" "Types"
-string "deck.done" "Done"
-string "deck.full" "The deck is full"
-string "deck.limit" "No more copies allowed"
-string "deck.unowned" "Not owned"
-string "deck.none" "No cards match"
-string "deck.kind.unit" "Unit"
-string "deck.kind.spell" "Spell"
-string "deck.kind.relic" "Relic"
-string "deck.kinds.unit" "Units"
-string "deck.kinds.spell" "Spells"
-string "deck.kinds.relic" "Relics"
-string "deck.rarity.common" "Common"
-string "deck.rarity.uncommon" "Uncommon"
-string "deck.rarity.rare" "Rare"
-string "deck.rarity.epic" "Epic"
-string "deck.rarity.legendary" "Legendary"
-string "deck.card.strike" "Strike"
-string "deck.card.defend" "Defend"
-string "deck.card.bash" "Bash"
-string "deck.card.anger" "Anger"
-string "deck.card.inflame" "Inflame"
-string "deck.card.wound" "Wound"
-string "deck.card.fireball" "Fireball"
-string "deck.card.bulwark" "Bulwark Knight"
-string "deck.card.rogue" "Night Rogue"
-string "deck.card.potion" "Green Draught"
-string "deck.card.storm" "Stormblade"
-string "deck.card.serpent" "Moss Serpent"
-string "deck.card.ice" "Frost Shard"
-string "deck.card.horn" "War Horn"
-string "deck.card.golem" "Old Golem"
-string "deck.card.owl" "Owl Familiar"
-string "deck.card.scroll" "Burning Rune"
-string "deck.card.egg" "Ember Egg"
-string "deck.text.strike" "Deal 6 damage."
-string "deck.text.defend" "Gain 5 armour."
-string "deck.text.bash" "Deal 8 damage. Stun the target."
-string "deck.text.anger" "Deal 4 damage. Copy this card into your hand."
-string "deck.text.inflame" "Gain 2 strength."
-string "deck.text.wound" "Cannot be played."
-string "deck.text.fireball" "Deal 10 damage to a unit and 2 to its neighbours."
-string "deck.text.bulwark" "Guard. Allies beside it take 1 less damage."
-string "deck.text.rogue" "Stealth. On attack: draw a card."
-string "deck.text.potion" "Heal 8. Remove a poison."
-string "deck.text.storm" "Deal 5 damage to every enemy."
-string "deck.text.serpent" "Poison 3. Grows when an enemy is poisoned."
-string "deck.text.ice" "Freeze a unit. Draw a card."
-string "deck.text.horn" "Your units have +1 attack this turn."
-string "deck.text.golem" "Guard. Takes no damage from spells."
-string "deck.text.owl" "On play: look at the top 3 cards."
-string "deck.text.scroll" "Your next spell costs 2 less."
-string "deck.text.egg" "In three turns, hatch a 9/9 dragon."
-string "vn.gallery.title" "Gallery"
-string "vn.all" "All"
-string "vn.chapter.one" "Chapter 1"
-string "vn.chapter.two" "Chapter 2"
-string "vn.chapter.three" "Chapter 3"
-string "vn.chapter.four" "Endings"
-string "vn.nextChapter" "Next chapter"
-string "vn.seen" "{n} / {total} seen"
-string "vn.locked" "???"
-string "vn.new" "New"
-string "vn.close" "Close"
-string "vn.prev" "Previous"
-string "vn.next" "Next"
-string "vn.cg.riverboat" "The riverboat"
-string "vn.cg.lantern" "Lantern night"
-string "vn.cg.library" "Asleep in the tower"
-string "vn.cg.storm" "The storm ferry"
-string "vn.cg.duel" "Rooftop duel"
-string "vn.cg.dawn" "The dawn gate"
-string "vn.hint.storm" "Board the ferry in Chapter 2"
-string "vn.hint.dawn" "Reach the good ending"
-string "vn.routes.title" "Flowchart"
-string "vn.routes.chart" "Routes"
-string "vn.scene.arrival" "Arrival"
-string "vn.scene.lanterns" "The festival"
-string "vn.scene.tower" "The tower"
-string "vn.scene.ferry" "The ferry"
-string "vn.scene.rooftop" "The rooftop"
-string "vn.scene.dawn" "Dawn"
-string "vn.scene.drowned" "Lost to the river"
-string "vn.scene.oath" "The oath"
-string "vn.ending.good" "Good end"
-string "vn.ending.bad" "Bad end"
-string "vn.choice.follow" "Follow Mira"
-string "vn.choice.study" "Stay to study"
-string "vn.choice.trust" "Trust her"
-string "vn.choice.storm" "Sail into the storm"
-string "vn.jump" "Jump here"
-string "vn.now" "Now"
-string "vn.scenes" "{n} / {total} scenes"
-string "set.title" "Settings"
-string "set.page.graphics" "Graphics"
-string "set.page.audio" "Audio"
-string "set.page.controls" "Controls"
-string "set.page.access" "Accessibility"
-string "set.page.language" "Language"
-string "set.page.hud" "HUD layout"
-string "set.nextPage" "Next page"
-string "set.section.display" "Display"
-string "set.section.screen" "Screen"
-string "set.section.keyboard" "Keyboard"
-string "set.section.mouse" "Mouse"
-string "set.quality" "Quality preset"
-string "set.quality.about" "How much detail each frame draws. Lower is faster."
-string "set.quality.low" "Low"
-string "set.quality.medium" "Medium"
-string "set.quality.high" "High"
-string "set.scale" "Render scale"
-string "set.scale.about" "The 3D view's resolution as a share of the screen's. The interface stays sharp."
-string "set.cap" "Frame cap"
-string "set.cap.about" "The most frames a second. Lower saves power."
-string "set.cap.display" "Display"
-string "set.cap.fps30" "30"
-string "set.cap.fps60" "60"
-string "set.cap.fps120" "120"
-string "set.vsync" "Vertical sync"
-string "set.vsync.about" "Waits for the display between frames: no tearing, a little more delay."
-string "set.fullscreen" "Fullscreen"
-string "set.fullscreen.about" "The game fills the screen."
-string "set.aspect" "Aspect ratio"
-string "set.aspect.about" "The HUD keeps to this shape on wider screens; the interface never stretches."
-string "set.safe" "HUD safe zone"
-string "set.safe.about" "How far in from the edges the HUD stands."
-string "set.master" "Master volume"
-string "set.master.about" "Every sound of the game."
-string "set.music" "Music"
-string "set.music.about" "Adjust the volume of the music. Does not affect voices."
-string "set.effects" "Effects"
-string "set.effects.about" "Footsteps, hits and the interface's sounds."
-string "set.voice" "Voice"
-string "set.voice.about" "The characters' voices."
-string "set.subtitles" "Subtitles"
-string "set.subtitles.about" "The words spoken, on screen."
-string "set.layout" "Keyboard layout"
-string "set.layout.about" "Keys are bound by their place on the keyboard and named by your layout's letters."
-string "set.layout.qwerty" "QWERTY"
-string "set.layout.azerty" "AZERTY"
-string "set.layout.qwertz" "QWERTZ"
-string "set.moveUp" "Move forward"
-string "set.moveUp.about" ""
-string "set.moveLeft" "Move left"
-string "set.moveLeft.about" ""
-string "set.jumpKey" "Jump"
-string "set.jumpKey.about" ""
-string "set.sensitivity" "Mouse sensitivity"
-string "set.sensitivity.about" "How far the view turns as the mouse moves."
-string "set.invert" "Invert Y"
-string "set.invert.about" "Moving the mouse up looks down."
-string "set.raw" "Raw input"
-string "set.raw.about" "The mouse as it moves, with the system's acceleration off."
-string "set.resetBindings" "Reset all bindings"
-string "set.resetBindings.about" "Every action back to its first keys."
-string "set.textSize" "Text size"
-string "set.textSize.about" "Every word of the interface, larger."
-string "set.contrast" "High contrast"
-string "set.contrast.about" "Panels darker, words and outlines brighter."
-string "set.reduceMotion" "Reduce motion"
-string "set.reduceMotion.about" "Shakes, zooms and slides are held still."
-string "set.colorblind" "Colour filter"
-string "set.colorblind.about" "Colours shifted for each kind of colour blindness."
-string "set.colorblind.off" "Off"
-string "set.colorblind.protan" "Protanopia"
-string "set.colorblind.deutan" "Deuteranopia"
-string "set.colorblind.tritan" "Tritanopia"
-string "set.language" "Language"
-string "set.language.about" "The game's words and voices."
-string "set.apply" "Apply"
-string "set.saved" "Settings saved"
-string "set.revert" "Revert"
-string "set.defaults" "Defaults"
-string "set.confirm" "Keep these display settings?"
-string "set.keep" "Keep"
-string "set.reverting" "Reverting in {n} s"
-string "set.hudNote" "Move, resize and fade the HUD's elements over the game."
-string "set.editHud" "Edit HUD"
-string "set.changed" "changed"
-# The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
-string "sc.action" "Action and platformer"
-string "sc.action.blurb" "Title, HUD, pause, tutorial, loading and results of a platformer"
-string "sc.shooter" "Shooter and battle royale"
-string "sc.shooter.blurb" "The match HUD, the scoreboard, the loadout and the lobby"
-string "sc.puzzle" "Puzzle and casual"
-string "sc.puzzle.blurb" "A match-3 board, the saga map and the store"
-string "sc.management" "Management, idle and life"
-string "sc.management.blurb" "The town HUD, generators, the ledger and the city's map overlays"
-string "sc.racing" "Racing and sports"
-string "sc.racing.blurb" "The race HUD, the garage, time trials and a football broadcast"
-string "sc.page.title" "Title"
-string "sc.page.hud" "HUD"
-string "sc.page.pause" "Pause"
-string "sc.page.tutorial" "Tutorial"
-string "sc.page.loading" "Loading"
-string "sc.page.results" "Results"
-string "sc.page.scoreboard" "Scoreboard"
-string "sc.page.loadout" "Loadout"
-string "sc.page.lobby" "Lobby"
-string "sc.page.board" "Board"
-string "sc.page.saga" "Saga map"
-string "sc.page.store" "Store"
-string "sc.page.generators" "Generators"
-string "sc.page.ledger" "Ledger"
-string "sc.page.cityMap" "City map"
-string "sc.page.garage" "Garage"
-string "sc.page.leaderboard" "Leaderboard"
-string "sc.page.sportsHud" "Match"
-string "sc.page.matchFacts" "Full time"
-string "sc.pause" "Pause"
-string "sc.you" "You"
-string "sc.health" "Health"
-string "sc.energy" "Energy"
-string "sc.time" "Time"
-string "sc.combo" "Combo"
-string "sc.comboBreak" "Break"
-string "sc.stat.score" "Score"
-string "sc.stat.coins" "Coins"
-string "sc.stat.time" "Time"
-string "sc.reward.gold" "Gold"
-string "sc.reward.crystal" "Crystal"
-string "sc.action.save" "Chapter 3 · 4h 12m"
-string "sc.action.news" "The Ember Ridge event is live"
-string "sc.action.objective" "Reach the cliff gate"
-string "sc.action.place" "Ember Ridge"
-string "sc.action.tip" "Hold Jump to jump higher; tap it twice to jump again in the air."
-string "sc.action.clear" "Stage clear"
-string "sc.action.game" "Emberfall"
-string "sc.action.open" "Open"
-string "sc.action.door" "Old gate"
-string "sc.action.jump" "Jump"
-string "sc.action.attack" "Attack"
-string "sc.tutorial.1.title" "Run"
-string "sc.tutorial.1.text" "Move with the d-pad or the stick; the coins you pass count here."
-string "sc.tutorial.2.title" "Your health"
-string "sc.tutorial.2.text" "Each segment is one hit. The pale part drains after a hit."
-string "sc.tutorial.3.title" "Beat the clock"
-string "sc.tutorial.3.text" "Reach the gate before the timer runs out."
-string "sc.tutorial.4.title" "Keep moving"
-string "sc.tutorial.4.text" "Hits in a row build your combo and its bonus."
-string "sc.tutorial.5.title" "Take a break"
-string "sc.tutorial.5.text" "Pause any time from the corner; your run waits."
-string "sc.shooter.enemy" "Enemy"
-string "sc.shooter.supply" "Supply drop"
-string "sc.shooter.zone" "Saltmarsh"
-string "sc.shooter.ring" "Ring closes"
-string "sc.shooter.drone" "Recon drone"
-string "sc.shooter.frag" "Frag grenade"
-string "sc.shooter.stim" "Stim"
-string "sc.shooter.ultimate" "Barrier"
-string "sc.shooter.auto" "Auto"
-string "sc.shooter.reloading" "Reloading"
-string "sc.shooter.reload" "Reload"
-string "sc.shooter.fire" "Fire"
-string "sc.manage.gold" "Gold"
-string "sc.manage.wood" "Wood"
-string "sc.manage.food" "Food"
-string "sc.manage.people" "People"
-string "sc.manage.date" "Spring, day 12"
-string "sc.manage.play" "Play"
-string "sc.manage.fast" "Fast"
-string "sc.manage.goal.grow" "A growing town"
-string "sc.manage.goal.people" "Residents"
-string "sc.manage.goal.park" "Build a park"
-string "sc.manage.goal.trade" "Open trade"
-string "sc.manage.goal.market" "Finish the market"
-string "sc.manage.plot" "Empty plot"
-string "sc.manage.cost" "Build for {cost} · upkeep {upkeep}/day"
-string "sc.race.pos" "Pos"
-string "sc.race.lap" "Lap"
-string "sc.race.final" "Final lap"
-string "sc.race.current" "Lap time"
-string "sc.race.best" "Best"
-string "sc.race.last" "Last"
-string "sc.race.split" "Split"
-string "sc.race.leader" "Leader"
-string "sc.race.pit" "Pit"
-string "sc.race.out" "Out"
-string "sc.race.fastest" "Fastest lap"
-string "sc.race.kmh" "km/h"
-string "sc.race.left" "Left"
-string "sc.race.right" "Right"
-string "sc.race.brake" "Brake"
-string "sc.race.boost" "Boost"
-string "sc.race.week" "This week"
-string "sc.race.league" "Gold league"
-string "sc.race.circuit" "Meridian Loop"
-string "sc.race.go" "GO!"
-string "sc.race.checkpoint" "Checkpoint {n}"
-string "sc.race.wrongWay" "Wrong way"
-string "sc.race.finish" "Finish"
-string "sc.race.ord3" "3rd"
-string "sc.race.drift" "Drift!"
-string "sc.race.podium" "3rd place"
-string "sc.race.overtakes" "Overtakes"
-string "sc.race.topSpeed" "Top speed"
-string "sc.race.clean" "Clean sectors"
-string "sc.race.credits" "Credits"
-string "sc.sports.half2" "2nd half"
-string "sc.sports.corner" "Corner kick"
-string "sc.sports.sub" "Substitution"
-string "sc.sports.off" "Off"
-string "sc.sports.on" "On"
-string "sc.sports.ft" "FT"
-string "sc.sports.pen" "pen."
-string "sc.sports.possession" "Possession"
-string "sc.sports.shots" "Shots"
-string "sc.sports.onTarget" "On target"
-string "sc.sports.passes" "Passes"
-string "sc.sports.fouls" "Fouls"
-string "sc.moba" "MOBA and arena"
-string "sc.moba.blurb" "The lane HUD and the draft with bans"
-string "sc.rpg" "RPG"
-string "sc.rpg.blurb" "The action HUD, gear, the quest log and a conversation"
-string "sc.mmo" "MMO and raid"
-string "sc.mmo.blurb" "The raid HUD with its frames and bars, and the chat"
-string "sc.roguelike" "Roguelike and cards"
-string "sc.roguelike.blurb" "The run HUD, a hand of cards, rewards and the deck"
-string "sc.strategy" "Strategy"
-string "sc.strategy.blurb" "An RTS console, tower defence and starship tactics"
-string "sc.gacha" "Gacha and collection"
-string "sc.gacha.blurb" "A banner with its ten-pull, and the season pass"
-string "sc.rhythm" "Rhythm"
-string "sc.rhythm.blurb" "The four-lane play screen and the song select"
-string "sc.fighting" "Fighting and party"
-string "sc.fighting.blurb" "The round HUD, the character select and the versus"
-string "sc.narrative" "Narrative and VN"
-string "sc.narrative.blurb" "The text box, the route chart and the CG gallery"
-string "sc.survival" "Survival"
-string "sc.survival.blurb" "Vitals, statuses, the compass and the hotbar"
-string "sc.horror" "Horror"
-string "sc.horror.blurb" "A HUD that keeps almost everything off the screen"
-string "sc.openworld" "Open world"
-string "sc.openworld.blurb" "The explore HUD, the world map and photo mode"
-string "sc.page.draft" "Draft"
-string "sc.page.gear" "Gear"
-string "sc.page.quests" "Quests"
-string "sc.page.dialogue" "Dialogue"
-string "sc.page.chat" "Chat"
-string "sc.page.cards" "Cards"
-string "sc.page.rewards" "Rewards"
-string "sc.page.deck" "Deck"
-string "sc.page.rts" "Console"
-string "sc.page.td" "Defence"
-string "sc.page.shipStatus" "Ship"
-string "sc.page.turnOrder" "Turn order"
-string "sc.page.abilityCards" "Abilities"
-string "sc.page.sectorMap" "Sector map"
-string "sc.page.hangar" "Hangar"
-string "sc.page.gacha" "Banner"
-string "sc.page.pass" "Pass"
-string "sc.page.songs" "Songs"
-string "sc.page.select" "Select"
-string "sc.page.versus" "Versus"
-string "sc.page.vn" "Text box"
-string "sc.page.routes" "Routes"
-string "sc.page.cgGallery" "Gallery"
-string "sc.page.worldMap" "World map"
-string "sc.page.photo" "Photo"
-string "sc.mana" "Mana"
-string "sc.moba.attack" "Attack"
-string "sc.moba.dash" "Dash"
-string "sc.moba.ward" "Ward"
-string "sc.moba.frost" "Frost"
-string "sc.moba.ult" "Firestorm"
-string "sc.rpg.elite" "Elite"
-string "sc.rpg.zone" "Ashen Crypt"
-string "sc.rpg.quest" "Seal the crypt"
-string "sc.rpg.seals" "Seals lit"
-string "sc.rpg.boss" "Defeat the warden"
-string "sc.rpg.side" "Herbs for Ilsa"
-string "sc.rpg.moss" "Grave moss"
-string "sc.rpg.potion" "Healing draught"
-string "sc.rpg.vial" "Mana vial"
-string "sc.rpg.whirl" "Whirlwind"
-string "sc.rpg.ward" "Rune ward"
-string "sc.rpg.nova" "Frost nova"
-string "sc.rpg.storm" "Thunderstorm"
-string "sc.rpg.level" "Level 24"
-string "sc.rpg.xp" "Experience"
-string "sc.mmo.might" "Might"
-string "sc.mmo.ward" "Ward"
-string "sc.mmo.burn" "Soulburn"
-string "sc.mmo.title" "Lord of the Vault"
-string "sc.mmo.cast" "Shadow Rain"
-string "sc.mmo.raid" "The Sunken Vault"
-string "sc.mmo.adds" "Wardens slain"
-string "sc.mmo.boss" "Vorthul"
-string "sc.mmo.zone" "Sunken Vault"
-string "sc.mmo.heal" "Mend"
-string "sc.mmo.strike" "Strike"
-string "sc.mmo.food" "Feast"
-string "sc.mmo.key" "Vault key"
-string "sc.mmo.bomb" "Blast charge"
-string "sc.mmo.venom" "Venom"
-string "sc.mmo.blink" "Blink"
-string "sc.mmo.free" "Break free"
-string "sc.rogue.flame" "Ember edge"
-string "sc.rogue.frost" "Rime touch"
-string "sc.rogue.thunder" "Storm step"
-string "sc.rogue.heart" "Titan heart"
-string "sc.rogue.curse" "Broken chain"
-string "sc.rogue.room" "Chamber {n}"
-string "sc.rogue.special" "Special"
-string "sc.rogue.cast" "Cast"
-string "sc.rogue.dash" "Dash"
-string "sc.td.gold" "Gold"
-string "sc.td.lives" "Lives"
-string "sc.td.waves" "Waves"
-string "sc.td.next" "Next wave"
-string "sc.td.send" "Call it"
-string "sc.td.archer" "Archer tower"
-string "sc.td.wall" "Wall"
-string "sc.td.barracks" "Barracks"
-string "sc.td.forge" "Forge"
-string "sc.rhythm.perfect" "Perfect"
-string "sc.rhythm.great" "Great"
-string "sc.rhythm.good" "Good"
-string "sc.rhythm.early" "Early"
-string "sc.rhythm.late" "Late"
-string "sc.rhythm.accuracy" "{pct}% accuracy"
-string "sc.rhythm.progress" "Song progress"
-string "sc.rhythm.life" "Life"
-string "sc.fight.hits" "Hits"
-string "sc.fight.super" "Super"
-string "sc.fight.kick" "Kick"
-string "sc.fight.punch" "Punch"
-string "sc.fight.special" "Special"
-string "sc.survival.gather" "Gather"
-string "sc.survival.birch" "Birch log"
-string "sc.survival.camp" "Camp"
-string "sc.survival.day" "Day {n}"
-string "sc.survival.wet" "Wet"
-string "sc.survival.rested" "Rested"
-string "sc.survival.food" "Food"
-string "sc.survival.water" "Water"
-string "sc.survival.stamina" "Stamina"
-string "sc.survival.swing" "Swing"
-string "sc.survival.axe" "Axe"
-string "sc.survival.bow" "Bow"
-string "sc.survival.torch" "Torch"
-string "sc.survival.berries" "Berries"
-string "sc.survival.shield" "Shield"
-string "sc.horror.hide" "Hide"
-string "sc.horror.wardrobe" "Wardrobe"
-string "sc.horror.objective" "Objective"
-string "sc.horror.find" "Find the chapel key"
-string "sc.horror.battery" "Battery"
-string "sc.horror.run" "Run"
-string "sc.open.shrine" "Shrine of Vael"
-string "sc.open.talk" "Talk"
-string "sc.open.quest" "The silent bells"
-string "sc.open.step" "Reach the shrine"
-string "sc.open.tower" "Climb the watchtower"
-string "sc.open.glide" "Glide"
-string "screen.common.back" "Back"
-string "screen.leaderboard.title" "Leaderboard"
-string "screen.leaderboard.global" "Global"
-string "screen.leaderboard.friends" "Friends"
-string "screen.leaderboard.league" "League"
-string "screen.loading.tip" "Tip"
-string "screen.loading.continue" "Continue"
-string "screen.main-menu.continue" "Continue"
-string "screen.main-menu.newGame" "New game"
-string "screen.main-menu.modes" "Modes"
-string "screen.main-menu.settings" "Settings"
-string "screen.main-menu.credits" "Credits"
-string "screen.main-menu.quit" "Quit"
-string "screen.main-menu.newsEyebrow" "News"
-string "screen.pause.title" "Paused"
-string "screen.pause.resume" "Resume"
-string "screen.pause.settings" "Settings"
-string "screen.pause.controls" "Controls"
-string "screen.pause.save" "Save"
-string "screen.pause.load" "Load"
-string "screen.pause.quitToMenu" "Quit to menu"
-string "screen.pause.quit" "Quit game"
-string "screen.results.summary" "Summary"
-string "screen.results.graphs" "Graphs"
-string "screen.results.board" "Scoreboard"
-string "screen.results.best" "Best"
-string "screen.results.replay" "Watch replay"
-string "screen.results.again" "Play again"
-string "screen.results.continue" "Continue"
-string "screen.tutorial.skip" "Skip"
-string "screen.tutorial.next" "Next"
+// The UI kit's en strings (og.i18n; templates/ui-kit/README.md §Locales).
+// og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
+// The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
+// The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
+// The saga map, match-3 board and idle previews (src/patterns.ts).
+// The store and the battle pass (src/patterns.ts).
+// The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
+// The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
+// The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
+// The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
+// The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
+// The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": true,
+  "direction": "ltr",
+  "entries": {
+    "ab.deflector": "Deflector screen",
+    "ab.deflector.text": "Boost shields for one turn.",
+    "ab.endTurn": "End turn",
+    "ab.gravity": "Gravity well",
+    "ab.gravity.text": "Pull in and slow enemies.",
+    "ab.kinetic": "Kinetic strike",
+    "ab.kinetic.text": "Deal high damage to a target.",
+    "ab.overcharge": "Overcharge",
+    "ab.overcharge.text": "+50 % weapon damage for two turns.",
+    "ab.repair": "Repair drones",
+    "ab.repair.text": "Restore hull over time.",
+    "ab.squadron": "Squadron launch",
+    "ab.squadron.text": "Deploy attack craft for three turns.",
+    "ab.title": "Abilities",
+    "board.done": "Done",
+    "board.goal.blue": "Collect blue gems",
+    "board.goal.ice": "Break ice tiles",
+    "board.goals": "Goals",
+    "board.level": "Level",
+    "board.moves": "Moves left",
+    "board.progress": "{have} of {need}",
+    "board.score": "Score",
+    "cards.anger.name": "Anger",
+    "cards.anger.text": "Deal [b]6[/b] damage. Add a copy to your discard.",
+    "cards.bash.name": "Bash",
+    "cards.bash.text": "Deal [b]8[/b] damage. Apply 2 [color=warn]Vulnerable[/color].",
+    "cards.defend.name": "Defend",
+    "cards.defend.text": "Gain [b]5[/b] [color=info]Block[/color].",
+    "cards.endTurn": "End turn",
+    "cards.enemyTurn": "Enemy turn",
+    "cards.energy": "Energy",
+    "cards.foe.cultist": "Cultist",
+    "cards.foe.louse": "Red Louse",
+    "cards.hand": "Hand",
+    "cards.health": "{name} health",
+    "cards.inflame.name": "Inflame",
+    "cards.inflame.text": "Gain [b]2[/b] [color=danger]Strength[/color].",
+    "cards.strike.name": "Strike",
+    "cards.strike.text": "Deal [b]6[/b] damage.",
+    "cards.target": "Choose a target",
+    "cards.taunt": "Behind a taunt",
+    "cards.title": "Combat",
+    "cards.type.anger": "Attack",
+    "cards.type.bash": "Attack",
+    "cards.type.defend": "Skill",
+    "cards.type.inflame": "Power",
+    "cards.type.strike": "Attack",
+    "cards.type.wound": "Status",
+    "cards.waiting": "Waiting…",
+    "cards.wound.name": "Wound",
+    "cards.wound.text": "Unplayable.",
+    "cards.yourTurn": "Your turn",
+    "chars.about.aria": "Bends moonlight into blades that strike from afar.",
+    "chars.about.brann": "Sells his wares for the gold that buys the team's gear.",
+    "chars.about.cultist": "Calls on old gods, and pays for it in blood.",
+    "chars.about.kael": "Fast on his feet; every third strike breaks a guard.",
+    "chars.about.maren": "Holds the front with shield and banner.",
+    "chars.about.mira": "Heals the line and binds foes in vines.",
+    "chars.about.torvin": "Builds turrets from scrap in the middle of a fight.",
+    "chars.about.vell": "Strikes twice, then vanishes.",
+    "chars.about.vesper": "Trades his own health for storms of shadow.",
+    "chars.about.wren": "Marks a target, then never misses it.",
+    "chars.lock": "Lock in",
+    "chars.locked": "Locked in",
+    "chars.random": "Random",
+    "chars.role.duelist": "Duelist",
+    "chars.role.mage": "Mage",
+    "chars.role.ranger": "Ranger",
+    "chars.role.support": "Support",
+    "chars.role.vanguard": "Vanguard",
+    "chars.taken": "Taken",
+    "chars.title": "Choose your fighter",
+    "chars.unlock": "Unlocks at level {level}",
+    "chat.ch.all": "All",
+    "chat.ch.guild": "Guild",
+    "chat.ch.party": "Party",
+    "chat.ch.system": "System",
+    "chat.ch.trade": "Trade",
+    "chat.ch.whisper": "Whisper",
+    "chat.channel": "Channel",
+    "chat.link.amberhold": "Amberhold",
+    "chat.link.ashbringer": "Ashbringer",
+    "chat.link.ember": "Ember Ring",
+    "chat.msg.1": "Riven joined the party.",
+    "chat.msg.2": "Raid tonight at nine, bring potions.",
+    "chat.msg.3": "Selling {0}, whisper me offers.",
+    "chat.msg.4": "Meet at {0} before the gate opens.",
+    "chat.msg.5": "@Lumen can you tank the first pull?",
+    "chat.msg.6": "Thanks for the help earlier!",
+    "chat.msg.7": "Look what dropped: {0}",
+    "chat.msg.8": "@Juno your repair bill is on me.",
+    "chat.msg.9": "Ready when you are.",
+    "chat.new": "{n} new",
+    "chat.placeholder": "Say something…",
+    "chat.send": "Send",
+    "chat.title": "Chat",
+    "confirm.cancel": "Cancel",
+    "confirm.delete": "Delete",
+    "confirm.message": "Your progress in slot [b]{slot}[/b] will be lost. [color=danger]This cannot be undone.[/color]",
+    "confirm.title": "Delete this save?",
+    "cutscene.skip": "Skip",
+    "deck.all": "All",
+    "deck.card.anger": "Anger",
+    "deck.card.bash": "Bash",
+    "deck.card.bulwark": "Bulwark Knight",
+    "deck.card.defend": "Defend",
+    "deck.card.egg": "Ember Egg",
+    "deck.card.fireball": "Fireball",
+    "deck.card.golem": "Old Golem",
+    "deck.card.horn": "War Horn",
+    "deck.card.ice": "Frost Shard",
+    "deck.card.inflame": "Inflame",
+    "deck.card.owl": "Owl Familiar",
+    "deck.card.potion": "Green Draught",
+    "deck.card.rogue": "Night Rogue",
+    "deck.card.scroll": "Burning Rune",
+    "deck.card.serpent": "Moss Serpent",
+    "deck.card.storm": "Stormblade",
+    "deck.card.strike": "Strike",
+    "deck.card.wound": "Wound",
+    "deck.cards": "Cards",
+    "deck.curve": "Mana curve",
+    "deck.done": "Done",
+    "deck.full": "The deck is full",
+    "deck.kind.relic": "Relic",
+    "deck.kind.spell": "Spell",
+    "deck.kind.unit": "Unit",
+    "deck.kinds.relic": "Relics",
+    "deck.kinds.spell": "Spells",
+    "deck.kinds.unit": "Units",
+    "deck.limit": "No more copies allowed",
+    "deck.mine": "My deck",
+    "deck.name": "Frostfire",
+    "deck.none": "No cards match",
+    "deck.rarity.common": "Common",
+    "deck.rarity.epic": "Epic",
+    "deck.rarity.legendary": "Legendary",
+    "deck.rarity.rare": "Rare",
+    "deck.rarity.uncommon": "Uncommon",
+    "deck.search": "Search cards",
+    "deck.sort.cost": "Cost",
+    "deck.sort.name": "Name",
+    "deck.sort.owned": "Owned",
+    "deck.sort.rarity": "Rarity",
+    "deck.sortBy": "Sort",
+    "deck.text.anger": "Deal 4 damage. Copy this card into your hand.",
+    "deck.text.bash": "Deal 8 damage. Stun the target.",
+    "deck.text.bulwark": "Guard. Allies beside it take 1 less damage.",
+    "deck.text.defend": "Gain 5 armour.",
+    "deck.text.egg": "In three turns, hatch a 9/9 dragon.",
+    "deck.text.fireball": "Deal 10 damage to a unit and 2 to its neighbours.",
+    "deck.text.golem": "Guard. Takes no damage from spells.",
+    "deck.text.horn": "Your units have +1 attack this turn.",
+    "deck.text.ice": "Freeze a unit. Draw a card.",
+    "deck.text.inflame": "Gain 2 strength.",
+    "deck.text.owl": "On play: look at the top 3 cards.",
+    "deck.text.potion": "Heal 8. Remove a poison.",
+    "deck.text.rogue": "Stealth. On attack: draw a card.",
+    "deck.text.scroll": "Your next spell costs 2 less.",
+    "deck.text.serpent": "Poison 3. Grows when an enemy is poisoned.",
+    "deck.text.storm": "Deal 5 damage to every enemy.",
+    "deck.text.strike": "Deal 6 damage.",
+    "deck.text.wound": "Cannot be played.",
+    "deck.title": "Collection",
+    "deck.types": "Types",
+    "deck.unowned": "Not owned",
+    "dlg.aria": "Aria",
+    "dlg.auto": "Auto",
+    "dlg.check": "{stat} · {chance}",
+    "dlg.continue": "Continue",
+    "dlg.failed": "Failure",
+    "dlg.gate.need": "Needs {need} more credits",
+    "dlg.gate.notyet": "Not yet.",
+    "dlg.gate.open": "The gate opens at dawn. Are you ready to cross?",
+    "dlg.gate.persuade": "Tell me what waits beyond first.",
+    "dlg.gate.read": "You've seen this look before.",
+    "dlg.gate.ready": "I'm ready. Let's go.",
+    "dlg.gate.toll": "Pay the warden's toll.",
+    "dlg.gate.who": "Who else knows about the gate?",
+    "dlg.log": "Log",
+    "dlg.mira": "Mira",
+    "dlg.passed": "Success",
+    "dlg.ready": "Then we leave before the tide turns.",
+    "dlg.refuse": "You'll see it for yourself, or not at all.",
+    "dlg.secret": "Beyond it lies the old observatory. Whatever the charts saw is still up there.",
+    "dlg.skip": "Skip",
+    "dlg.stat.charm": "Persuasion",
+    "dlg.stat.insight": "Insight",
+    "dlg.unavailable": "Unavailable",
+    "dlg.who": "Only the archivist, and she has kept quiet for nine years.",
+    "draft.ban": "Ban",
+    "draft.banned": "Banned",
+    "draft.bans": "Bans",
+    "draft.blue": "Blue side",
+    "draft.phase.ban": "Ban phase · Your ban",
+    "draft.phase.pick": "Pick phase · Your pick",
+    "draft.phase.theirs": "Pick phase · Red picks",
+    "draft.picked": "Picked",
+    "draft.red": "Red side",
+    "draft.title": "Draft",
+    "draft.waiting": "Waiting",
+    "gacha.banner.event": "Limited banner · Character",
+    "gacha.banner.std": "Standard banner",
+    "gacha.banner.weapon": "Limited banner · Weapon",
+    "gacha.continue": "Continue",
+    "gacha.details": "Details",
+    "gacha.done": "Done",
+    "gacha.extra.shards": "+{n} Star Shards",
+    "gacha.history": "History",
+    "gacha.kind.character": "Character",
+    "gacha.kind.weapon": "Weapon",
+    "gacha.new": "NEW",
+    "gacha.pity": "Guaranteed in {left}",
+    "gacha.rarity.common": "Common",
+    "gacha.rarity.epic": "Epic",
+    "gacha.rarity.legendary": "Legendary",
+    "gacha.rarity.mythic": "Mythic",
+    "gacha.rarity.rare": "Rare",
+    "gacha.rarity.uncommon": "Uncommon",
+    "gacha.rate.event": "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
+    "gacha.rate.standard": "A [b]5-star[/b] is guaranteed within [b]90[/b] summons.",
+    "gacha.short": "not enough",
+    "gacha.skip": "Skip",
+    "gacha.summon1": "Summon ×1",
+    "gacha.summonN": "Summon ×{n}",
+    "gacha.tap": "Tap to continue",
+    "gacha.title.aria": "Tidecaller of the Moon",
+    "gacha.title.kael": "The Ember",
+    "gacha.title.mira": "Of the Grove",
+    "gacha.unit.cudgel": "Oak Cudgel",
+    "gacha.unit.fang": "Ember Fang",
+    "gacha.unit.sling": "Hunter's Sling",
+    "gacha.unit.spear": "Night Spear",
+    "gacha.unit.steel": "Plain Steel",
+    "gacha.unit.tome": "Tome of Tides",
+    "gacha.unit.warden": "Warden's Blade",
+    "gallery.button": "Gallery",
+    "garage.addLayer": "Add layer",
+    "garage.buy": "Buy",
+    "garage.cat.aero": "Aero",
+    "garage.cat.brakes": "Brakes",
+    "garage.cat.engine": "Engine",
+    "garage.cat.exhaust": "Exhaust",
+    "garage.cat.livery": "Livery",
+    "garage.cat.next": "Next category",
+    "garage.cat.suspension": "Suspension",
+    "garage.cat.wheels": "Wheels",
+    "garage.class": "Class",
+    "garage.color": "Colour",
+    "garage.current": "Current",
+    "garage.delete": "Delete",
+    "garage.desc.aero": "A taller wing that presses the car down at speed.",
+    "garage.desc.brakes": "Bigger discs and calipers that stop later and fade less.",
+    "garage.desc.engine": "More power at the top of the rev range, at the cost of a sharper throttle.",
+    "garage.desc.exhaust": "A freer-flowing exhaust for a quicker launch and a louder note.",
+    "garage.desc.suspension": "Stiffer springs and dampers: less roll, a firmer ride.",
+    "garage.desc.wheels": "Lighter rims and stickier tyres that hold a line through fast corners.",
+    "garage.down": "Move down",
+    "garage.equip": "Equip",
+    "garage.equipped": "Equipped",
+    "garage.free": "Free",
+    "garage.kind.decal": "Decal",
+    "garage.kind.paint": "Paint",
+    "garage.kind.vinyl": "Vinyl",
+    "garage.layer.added": "Decal {n}",
+    "garage.layer.base": "Base coat",
+    "garage.layer.number": "Number 7",
+    "garage.layer.sponsor": "Sponsor",
+    "garage.layer.stripe": "Stripe",
+    "garage.layers": "Layers",
+    "garage.locked": "Locked",
+    "garage.needsClass": "Needs class {cls}",
+    "garage.part": "{tier} {part}",
+    "garage.performance": "Performance",
+    "garage.preview": "Preview",
+    "garage.short": "not enough",
+    "garage.stat.braking": "Braking",
+    "garage.stat.handling": "Handling",
+    "garage.stat.launch": "Launch",
+    "garage.stat.power": "Power",
+    "garage.stat.speed": "Top speed",
+    "garage.tier.race": "Race",
+    "garage.tier.sport": "Sport",
+    "garage.tier.stock": "Stock",
+    "garage.tier.street": "Street",
+    "garage.tier.works": "Works",
+    "garage.title": "Garage",
+    "garage.up": "Move up",
+    "garage.visible": "Visible",
+    "gear.attributes": "Attributes",
+    "gear.backpack": "Backpack",
+    "gear.class": "Level {level} Paladin",
+    "gear.empty": "Empty",
+    "gear.hint.menu": "Item menu",
+    "gear.hint.place": "Pick up / place",
+    "gear.hint.putBack": "Put back",
+    "gear.item.amulet": "Sapphire Amulet",
+    "gear.item.boots": "Boots of Haste",
+    "gear.item.bow": "Windrunner Bow",
+    "gear.item.dagger": "Iron Sword",
+    "gear.item.gem": "Star Shard",
+    "gear.item.gloves": "Gauntlets",
+    "gear.item.greatsword": "Ashbringer",
+    "gear.item.helm": "Crown of Thorns",
+    "gear.item.mana": "Mana Potion",
+    "gear.item.ore": "Raw Crystal",
+    "gear.item.plate": "Arcane Staff",
+    "gear.item.potions": "Healing Potion",
+    "gear.item.ring": "Signet of the Vale",
+    "gear.item.robe": "Mage Robe",
+    "gear.item.scroll": "Iron Key",
+    "gear.item.shield": "Oak Shield",
+    "gear.locked": "Locked",
+    "gear.menu.drop": "Drop",
+    "gear.menu.split": "Split stack",
+    "gear.menu.use": "Use",
+    "gear.power": "Item power",
+    "gear.relicLocked": "Unlocks at level {level}",
+    "gear.rotate": "Rotate",
+    "gear.slot.chest": "Chest",
+    "gear.slot.feet": "Feet",
+    "gear.slot.hands": "Hands",
+    "gear.slot.head": "Head",
+    "gear.slot.main": "Main hand",
+    "gear.slot.neck": "Neck",
+    "gear.slot.off": "Off hand",
+    "gear.slot.relic": "Relic",
+    "gear.slot.ring": "Ring",
+    "gear.stash": "Stash",
+    "gear.stat.armor": "Armor",
+    "gear.stat.cooldowns": "Cooldowns",
+    "gear.stat.fire": "Fire resistance",
+    "gear.stat.speed": "Move speed",
+    "gear.stat.strength": "Strength",
+    "gear.sub": "Drag to move · Shift splits a stack · R turns",
+    "gear.sub.touch": "Drag to move · Hold for options",
+    "gear.title": "Inventory",
+    "gear.unusable": "Cannot use",
+    "hangar.alloy": "alloy",
+    "hangar.carriers": "Carriers",
+    "hangar.carriers.class": "Carrier class",
+    "hangar.carriers.flavour": "A mobile hangar that launches and recovers attack craft, slow to turn but never alone.",
+    "hangar.carriers.line": "Command the field.",
+    "hangar.classes": "Ship classes",
+    "hangar.commission": "Commission",
+    "hangar.commissioned": "{name} joins the fleet",
+    "hangar.compare": "Compare",
+    "hangar.cruisers": "Cruisers",
+    "hangar.cruisers.class": "Cruiser class",
+    "hangar.cruisers.flavour": "A heavy escort with layered shields that holds the centre of a formation while the frigates range ahead.",
+    "hangar.cruisers.line": "Balanced and reliable.",
+    "hangar.firepower": "Firepower",
+    "hangar.frigates": "Frigates",
+    "hangar.frigates.class": "Frigate class",
+    "hangar.frigates.flavour": "A versatile frontline frigate built for reconnaissance, escort and rapid response. Wherever the line holds, a Vanguard was there first.",
+    "hangar.frigates.line": "Fast, flexible, essential.",
+    "hangar.hull": "Hull",
+    "hangar.modules": "Modules",
+    "hangar.modules.class": "Station module",
+    "hangar.modules.flavour": "A modular hull that docks to any carrier: a workshop, a sensor array or a supply depot.",
+    "hangar.modules.line": "Expand your fleet.",
+    "hangar.shields": "Shields",
+    "hangar.speed": "Speed",
+    "hangar.stats": "Ship stats",
+    "hangar.title": "Fleet hangar",
+    "hangar.upgrade": "Upgrade level",
+    "hint.back": "Back",
+    "hud.best": "Best {best}",
+    "hud.boost": "Boost",
+    "hud.brake": "Brake",
+    "hud.coins": "{n, plural, one {# coin} other {# coins}}",
+    "hud.farm": "Farm",
+    "hud.fire": "Fire",
+    "hud.forge": "Forge",
+    "hud.gems": "Gems",
+    "hud.generatorLevel": "Lv {level}",
+    "hud.gold": "Gold",
+    "hud.jump": "Jump",
+    "hud.kills": "kills",
+    "hud.lap": "lap",
+    "hud.left": "Left",
+    "hud.level": "1-2 Old mill",
+    "hud.mill": "Mill",
+    "hud.moves": "moves left",
+    "hud.pause": "Pause",
+    "hud.rate": "+{rate}/s",
+    "hud.right": "Right",
+    "hud.sector": "Sector 4",
+    "hud.stage": "Level 7",
+    "hud.tap": "Tap",
+    "hud.target": "Target {target}",
+    "hud.unit": "km/h",
+    "hud.weapon": "Carbine",
+    "idle.ascend": "Ascend",
+    "idle.ascendFor": "Ascend for",
+    "idle.buy": "Buy ×{n}",
+    "idle.buyAmount": "Buy amount",
+    "idle.energy": "Energy",
+    "idle.gen.drill": "Quantum Drill",
+    "idle.gen.dyson": "Dyson Ring",
+    "idle.gen.forge": "Stellar Forge",
+    "idle.gen.fusion": "Fusion Reactor",
+    "idle.gen.orbital": "Orbital Collector",
+    "idle.gen.solar": "Solar Array",
+    "idle.generators": "Generators",
+    "idle.hint.buy": "Buy",
+    "idle.level": "Lv. {level}",
+    "idle.owned": "Owned: {owned}",
+    "idle.perSec": "+{rate} / sec",
+    "idle.point.keep": "Permanent progression",
+    "idle.point.reset": "Resets generators and energy",
+    "idle.point.stronger": "Stronger with each ascension",
+    "idle.prestige": "Prestige",
+    "idle.rate": "+{rate} / sec",
+    "idle.shards": "+{n} Shards",
+    "idle.sub": "Build generators, then ascend for shards",
+    "idle.title": "Nexus Core",
+    "idle.unlock": "Reach {cost} energy",
+    "inventory.count": "Count",
+    "inventory.hint": "Select an item. Drag it to another slot to move it.",
+    "item.crystal": "Starlight Crystal",
+    "item.gold": "Gold",
+    "item.potion": "Healing Draught",
+    "item.ring": "Ember Ring",
+    "leaderboard.error": "Could not load the scores.",
+    "leaderboard.retry": "Retry",
+    "ledger.breakdown": "Breakdown",
+    "ledger.col.amount": "Amount",
+    "ledger.col.budget": "Budget",
+    "ledger.col.change": "Change",
+    "ledger.col.name": "Name",
+    "ledger.expenses": "Expenses",
+    "ledger.hint.period": "Next period",
+    "ledger.history": "History",
+    "ledger.income": "Income",
+    "ledger.line.commercial": "Commercial tax",
+    "ledger.line.education": "Education",
+    "ledger.line.fire": "Fire service",
+    "ledger.line.health": "Health care",
+    "ledger.line.industrial": "Industrial tax",
+    "ledger.line.parks": "Parks",
+    "ledger.line.police": "Police",
+    "ledger.line.power": "Power",
+    "ledger.line.residential": "Residential tax",
+    "ledger.line.tourism": "Tourism",
+    "ledger.line.transit": "Public transport",
+    "ledger.line.water": "Water",
+    "ledger.locked": "Locked",
+    "ledger.net": "Net",
+    "ledger.other": "Other",
+    "ledger.overlay.crime": "Crime",
+    "ledger.overlay.crime.high": "Dangerous",
+    "ledger.overlay.crime.low": "Safe",
+    "ledger.overlay.landValue": "Land value",
+    "ledger.overlay.landValue.high": "High",
+    "ledger.overlay.landValue.low": "Low",
+    "ledger.overlay.off": "No overlay",
+    "ledger.overlay.pollution": "Pollution",
+    "ledger.overlay.pollution.high": "Toxic",
+    "ledger.overlay.pollution.low": "Clean",
+    "ledger.overlay.power": "Power",
+    "ledger.overlay.power.high": "Fully powered",
+    "ledger.overlay.power.low": "No power",
+    "ledger.overlay.traffic": "Traffic",
+    "ledger.overlay.traffic.high": "Gridlock",
+    "ledger.overlay.traffic.low": "Free flowing",
+    "ledger.overlay.water": "Water",
+    "ledger.overlay.water.high": "Full pressure",
+    "ledger.overlay.water.low": "Dry",
+    "ledger.overlays": "Overlays",
+    "ledger.period.month": "M{n}",
+    "ledger.period.quarter": "Q{n}",
+    "ledger.period.year": "Y{n}",
+    "ledger.population": "Population",
+    "ledger.tab.month": "Month",
+    "ledger.tab.quarter": "Quarter",
+    "ledger.tab.year": "Year",
+    "ledger.title": "Budget",
+    "ledger.total": "Total",
+    "ledger.treasury": "Treasury",
+    "ledger.warn.education": "Underfunded: classes full",
+    "ledger.warn.fire": "Underfunded: fires spread",
+    "ledger.warn.health": "Underfunded: queues growing",
+    "ledger.warn.parks": "Underfunded: parks neglected",
+    "ledger.warn.police": "Underfunded: crime rising",
+    "ledger.warn.power": "Underfunded: blackouts",
+    "ledger.warn.transit": "Underfunded: lines cut",
+    "ledger.warn.water": "Underfunded: low pressure",
+    "list.separator": ", ",
+    "loadout.att.laser": "Tac laser",
+    "loadout.att.magazine": "Extended mag",
+    "loadout.att.muzzle": "Vanguard suppressor",
+    "loadout.att.optic": "MK.2 holo sight",
+    "loadout.att.stock": "Tactical stock",
+    "loadout.att.underbarrel": "Ranger grip",
+    "loadout.attachments": "Attachments",
+    "loadout.class.assault": "Assault rifle",
+    "loadout.class.blade": "Blade",
+    "loadout.class.drone": "Drone",
+    "loadout.class.grenade": "Grenade",
+    "loadout.class.pistol": "Pistol",
+    "loadout.desc.field": "Marks every enemy in its sight.",
+    "loadout.desc.lethal": "Cooks for three seconds, then clears a room.",
+    "loadout.desc.melee": "Silent, and always ready.",
+    "loadout.desc.primary": "Reliable at every range, steadier with each attachment.",
+    "loadout.desc.secondary": "A quick draw when the rifle runs dry.",
+    "loadout.desc.tactical": "Heals at once and quickens your step.",
+    "loadout.empty": "Empty",
+    "loadout.item.field": "Recon drone",
+    "loadout.item.lethal": "Frag grenade",
+    "loadout.item.melee": "Combat knife",
+    "loadout.item.primary": "AR-7 Raven",
+    "loadout.item.secondary": "VX-9 Sidearm",
+    "loadout.item.tactical": "Stim",
+    "loadout.level": "Lvl {n}",
+    "loadout.locked": "Locked",
+    "loadout.next": "Next loadout",
+    "loadout.point.laser": "Laser",
+    "loadout.point.magazine": "Magazine",
+    "loadout.point.muzzle": "Muzzle",
+    "loadout.point.optic": "Optic",
+    "loadout.point.stock": "Stock",
+    "loadout.point.underbarrel": "Underbarrel",
+    "loadout.rarity.epic": "Epic",
+    "loadout.rarity.rare": "Rare",
+    "loadout.rarity.uncommon": "Uncommon",
+    "loadout.remove": "Remove",
+    "loadout.slot.field": "Field upgrade",
+    "loadout.slot.lethal": "Lethal",
+    "loadout.slot.melee": "Melee",
+    "loadout.slot.primary": "Primary",
+    "loadout.slot.secondary": "Secondary",
+    "loadout.slot.tactical": "Tactical",
+    "loadout.stat.control": "Control",
+    "loadout.stat.damage": "Damage",
+    "loadout.stat.fireRate": "Fire rate",
+    "loadout.stat.mobility": "Mobility",
+    "loadout.stat.range": "Range",
+    "loadout.stats": "Weapon stats",
+    "loadout.tab": "Loadout {n}",
+    "loadout.title": "Loadout",
+    "loadout.unlocks": "Unlocks at Lvl {n}",
+    "lobby.accept": "Accept",
+    "lobby.accepted": "Accepted",
+    "lobby.cancel": "Cancel",
+    "lobby.decline": "Decline",
+    "lobby.estimate": "Est. {time}",
+    "lobby.found": "Match found",
+    "lobby.invite": "Invite",
+    "lobby.leader": "Party leader",
+    "lobby.level": "Lv {level}",
+    "lobby.mode.detail": "5v5 · Skyreach Gate",
+    "lobby.mode.ranked": "Ranked",
+    "lobby.modeLabel": "Mode",
+    "lobby.notReady": "Not ready",
+    "lobby.rank.diamond": "Diamond II",
+    "lobby.rank.gold": "Gold I",
+    "lobby.rank.immortal": "Immortal I",
+    "lobby.rank.platinum": "Platinum III",
+    "lobby.ready": "Ready",
+    "lobby.readyUp": "Ready up",
+    "lobby.searching": "Searching",
+    "lobby.start": "Find match",
+    "lobby.title": "Play",
+    "log.close": "Close",
+    "log.empty": "Nothing has been said yet.",
+    "log.replay": "Play voice",
+    "log.title": "Log",
+    "map.about.amberhold": "The old king's seat, watching over the fields.",
+    "map.about.duskhold": "A ruined keep the forest swallowed long ago.",
+    "map.about.light": "Light the beacon for the lost ships.",
+    "map.about.market": "Traders from every road meet here at noon.",
+    "map.about.mill": "Drive off the wolves before the new moon.",
+    "map.about.sela": "The harbour's ferries sail for the Skyreach Isles at dawn.",
+    "map.about.wyrm": "Something stirs under the old pines.",
+    "map.close": "Close",
+    "map.kind.boss": "Bosses",
+    "map.kind.fastTravel": "Fast travel",
+    "map.kind.objective": "Objectives",
+    "map.kind.poi": "Landmarks",
+    "map.kind.quest": "Quests",
+    "map.kind.shop": "Shops",
+    "map.place.amberhold": "Amberhold",
+    "map.place.duskhold": "Duskhold Keep",
+    "map.place.light": "Saltreach Light",
+    "map.place.market": "Crossroads Market",
+    "map.place.mill": "Hollow Mill",
+    "map.place.sela": "Port Sela",
+    "map.place.wyrm": "The Thornwood Wyrm",
+    "map.region.amber": "Amberfields",
+    "map.region.delta": "Saltreach Delta",
+    "map.region.dusk": "Duskwood",
+    "map.region.frost": "Frostspire Peaks",
+    "map.region.redmesa": "Red Mesas",
+    "map.title": "The Sundered Realm",
+    "map.track": "Set waypoint",
+    "map.travel": "Fast travel",
+    "map.unknown": "???",
+    "map.untrack": "Remove waypoint",
+    "menu.continue": "Continue",
+    "menu.event": "Moonlit Tide",
+    "menu.event.cartoon": "Fox Trail Rally",
+    "menu.event.kawaii": "Starlight Stage",
+    "menu.event.storybook": "The Lantern Path",
+    "menu.eventWhen": "Limited banner · 3 days left",
+    "menu.footer": "v{version}",
+    "menu.greeting": "Welcome back, traveller",
+    "menu.mixed": "Origin Quest 原点探险 مغامرة صغيرة",
+    "menu.play": "Play",
+    "menu.quit": "Quit",
+    "menu.settings": "Settings",
+    "menu.subtitle": "A small adventure",
+    "menu.title": "Origin Quest",
+    "npc.miller": "Old Bram",
+    "pass.claim": "Claim",
+    "pass.claimAll": "Claim all ({n})",
+    "pass.claimed": "Claimed",
+    "pass.free": "Free",
+    "pass.level": "Level {n}",
+    "pass.premium": "Premium",
+    "pass.reach": "Reach level {n}",
+    "pass.reward.arcane-staff": "Arcane Staff",
+    "pass.reward.aria": "Aria, Tidecaller",
+    "pass.reward.boots": "Boots of Haste",
+    "pass.reward.chest": "Season Chest",
+    "pass.reward.crystal": "Gems",
+    "pass.reward.ember-ring": "Ember Ring",
+    "pass.reward.gauntlets": "Gauntlets",
+    "pass.reward.gold": "Coins",
+    "pass.reward.healing-draught": "Healing Draught",
+    "pass.reward.kael": "Kael, the Ember",
+    "pass.reward.mana-vial": "Mana Vial",
+    "pass.reward.mira": "Mira of the Grove",
+    "pass.reward.sapphire-amulet": "Sapphire Amulet",
+    "pass.season": "Season 4 · Neon Tide",
+    "pass.title": "Battle Pass",
+    "pass.unlock": "Unlock Premium",
+    "pass.xp": "{xp} / {need} XP",
+    "pause.quit": "Quit to menu",
+    "pause.resume": "Resume",
+    "pause.settings": "Settings",
+    "pause.title": "Paused",
+    "photo.capture": "Capture",
+    "photo.ctl.aperture": "Aperture",
+    "photo.ctl.exposure": "Exposure",
+    "photo.ctl.focus": "Focus distance",
+    "photo.ctl.fov": "Field of view",
+    "photo.ctl.height": "Height",
+    "photo.ctl.roll": "Roll",
+    "photo.ctl.vignette": "Vignette",
+    "photo.exit": "Exit",
+    "photo.filter.cool": "Cool",
+    "photo.filter.noir": "Noir",
+    "photo.filter.none": "None",
+    "photo.filter.sepia": "Sepia",
+    "photo.filter.vivid": "Vivid",
+    "photo.frame.cinema": "Cinema",
+    "photo.frame.film": "Film",
+    "photo.frame.none": "None",
+    "photo.frame.polaroid": "Instant",
+    "photo.grid": "Grid",
+    "photo.hide": "Hide UI",
+    "photo.hint": "Press any key to show the controls",
+    "photo.reset": "Reset",
+    "photo.strength": "Strength",
+    "photo.tab.camera": "Camera",
+    "photo.tab.filters": "Filters",
+    "photo.tab.frames": "Frames",
+    "photo.tab.lens": "Lens",
+    "photo.title": "Photo mode",
+    "q.active": "Active",
+    "q.back": "Back",
+    "q.complete": "Complete",
+    "q.completed": "Completed",
+    "q.empty": "No quests yet.",
+    "q.failed": "Failed",
+    "q.giver": "From {giver}",
+    "q.map": "Show on map",
+    "q.new": "New",
+    "q.objectives": "Objectives",
+    "q.optional": "Optional",
+    "q.rewards": "Rewards",
+    "q.tab.daily": "Daily",
+    "q.tab.main": "Main",
+    "q.tab.side": "Side",
+    "q.title": "Quests",
+    "q.track": "Track",
+    "q.tracked": "Tracked",
+    "quest.dawn": "The Dawn Gate",
+    "quest.dawn.archivist": "Ask the archivist about the seal",
+    "quest.dawn.charts": "Recover the star charts",
+    "quest.dawn.reach": "Reach the gate before dawn",
+    "quest.dawn.sealer": "Learn who sealed the gate",
+    "quest.dawn.summary": "Mira believes the sealed gate above Skyreach opens for one hour at dawn. Gather what the old charts need before she makes the crossing.",
+    "quest.letters": "Letters for Lowmarsh",
+    "quest.letters.deliver": "Deliver the letters",
+    "quest.letters.summary": "Carry the miller's letters to his sister across the marsh.",
+    "quest.mill": "Wolves at the Mill",
+    "quest.mill.summary": "Old Bram's flock is thinning. Drive the wolves away from Hollow Mill before the next new moon.",
+    "quest.mill.wolves": "Drive off the wolves",
+    "quest.supply": "Supply Run",
+    "quest.supply.petals": "Gather moonpetals",
+    "quest.supply.summary": "The healers of Lowmarsh need moonpetals for tonight's draughts.",
+    "quest.tide": "The Turning Tide",
+    "quest.tide.ferry": "Reach the ferry before the tide",
+    "quest.tide.summary": "The last ferry leaves when the tide turns. It did not wait.",
+    "region.marsh": "Lowmarsh",
+    "region.mill": "Hollow Mill",
+    "region.skyreach": "Skyreach Isles",
+    "rewards.banish": "Banish",
+    "rewards.blade.kind": "Weapon",
+    "rewards.blade.tag": "Lv 3 → 4",
+    "rewards.blade.text": "Your dash leaves a blade that deals [b]18[/b] damage.",
+    "rewards.blade.title": "Duskward Edge",
+    "rewards.choose": "Choose a blessing",
+    "rewards.chooseTwo": "Choose two blessings, then confirm",
+    "rewards.confirm": "Confirm",
+    "rewards.crown.kind": "Relic",
+    "rewards.crown.locked": "Clear the second boss to unlock",
+    "rewards.crown.tag": "New",
+    "rewards.crown.text": "Start each fight with [b]2[/b] extra [color=info]Energy[/color].",
+    "rewards.crown.title": "Crown of Ages",
+    "rewards.frost.kind": "Gift of the Frost Weaver",
+    "rewards.frost.text": "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b].",
+    "rewards.frost.title": "Frostbite",
+    "rewards.gold.kind": "Gift of the Coin Saint",
+    "rewards.gold.text": "Gain [b]40[/b] gold now and [b]5[/b] per kill.",
+    "rewards.gold.title": "Gilded Touch",
+    "rewards.hint.take": "Take",
+    "rewards.reroll": "Reroll",
+    "rewards.rerollCost": "50 gold",
+    "rewards.skip": "Skip · take 25 gold",
+    "rewards.skipped": "25 gold",
+    "rewards.taken": "Taken: {list}",
+    "rewards.thunder.kind": "Gift of the Storm Warden",
+    "rewards.thunder.text": "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.",
+    "rewards.thunder.title": "Thunder Strike",
+    "rewards.title": "Room cleared",
+    "rewards.vigor.kind": "Gift of the Iron Matron",
+    "rewards.vigor.tag": "Upgrade",
+    "rewards.vigor.text": "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.",
+    "rewards.vigor.title": "Ironbloom Heart",
+    "rts.back": "Back",
+    "rts.cancel": "Cancel",
+    "rts.cmd.barracks": "Barracks",
+    "rts.cmd.build": "Build",
+    "rts.cmd.farm": "Farm",
+    "rts.cmd.forge": "Forge",
+    "rts.cmd.gather": "Gather",
+    "rts.cmd.keep": "Keep",
+    "rts.cmd.patrol": "Patrol",
+    "rts.cmd.rally": "Rally point",
+    "rts.cmd.repair": "Repair",
+    "rts.cmd.stop": "Stop",
+    "rts.cmd.tower": "Archer tower",
+    "rts.cmd.wall": "Stone wall",
+    "rts.kind.archer": "Ranged · Light",
+    "rts.kind.knight": "Cavalry · Heavy",
+    "rts.kind.worker": "Worker · Light",
+    "rts.queue": "Queue",
+    "rts.stat.armour": "Armour",
+    "rts.stat.attack": "Attack",
+    "rts.stat.speed": "Speed",
+    "rts.target": "{command}: choose a target",
+    "rts.unit.archer": "Archer",
+    "rts.unit.knight": "Knight",
+    "rts.unit.worker": "Villager",
+    "saga.boss": "Boss, level {label}",
+    "saga.here": "You are here",
+    "saga.level": "Level {label}",
+    "saga.play": "Play level {level}",
+    "saga.stars": "{n} of {max} stars",
+    "saga.sub": "{stars} of {max} stars",
+    "saga.title": "Levels",
+    "saga.world": "Skyreach Isles",
+    "sc.action": "Action and platformer",
+    "sc.action.attack": "Attack",
+    "sc.action.blurb": "Title, HUD, pause, tutorial, loading and results of a platformer",
+    "sc.action.clear": "Stage clear",
+    "sc.action.door": "Old gate",
+    "sc.action.game": "Emberfall",
+    "sc.action.jump": "Jump",
+    "sc.action.news": "The Ember Ridge event is live",
+    "sc.action.objective": "Reach the cliff gate",
+    "sc.action.open": "Open",
+    "sc.action.place": "Ember Ridge",
+    "sc.action.save": "Chapter 3 · 4h 12m",
+    "sc.action.tip": "Hold Jump to jump higher; tap it twice to jump again in the air.",
+    "sc.combo": "Combo",
+    "sc.comboBreak": "Break",
+    "sc.energy": "Energy",
+    "sc.fight.hits": "Hits",
+    "sc.fight.kick": "Kick",
+    "sc.fight.punch": "Punch",
+    "sc.fight.special": "Special",
+    "sc.fight.super": "Super",
+    "sc.fighting": "Fighting and party",
+    "sc.fighting.blurb": "The round HUD, the character select and the versus",
+    "sc.gacha": "Gacha and collection",
+    "sc.gacha.blurb": "A banner with its ten-pull, and the season pass",
+    "sc.health": "Health",
+    "sc.horror": "Horror",
+    "sc.horror.battery": "Battery",
+    "sc.horror.blurb": "A HUD that keeps almost everything off the screen",
+    "sc.horror.find": "Find the chapel key",
+    "sc.horror.hide": "Hide",
+    "sc.horror.objective": "Objective",
+    "sc.horror.run": "Run",
+    "sc.horror.wardrobe": "Wardrobe",
+    "sc.mana": "Mana",
+    "sc.manage.cost": "Build for {cost} · upkeep {upkeep}/day",
+    "sc.manage.date": "Spring, day 12",
+    "sc.manage.fast": "Fast",
+    "sc.manage.food": "Food",
+    "sc.manage.goal.grow": "A growing town",
+    "sc.manage.goal.market": "Finish the market",
+    "sc.manage.goal.park": "Build a park",
+    "sc.manage.goal.people": "Residents",
+    "sc.manage.goal.trade": "Open trade",
+    "sc.manage.gold": "Gold",
+    "sc.manage.people": "People",
+    "sc.manage.play": "Play",
+    "sc.manage.plot": "Empty plot",
+    "sc.manage.wood": "Wood",
+    "sc.management": "Management, idle and life",
+    "sc.management.blurb": "The town HUD, generators, the ledger and the city's map overlays",
+    "sc.mmo": "MMO and raid",
+    "sc.mmo.adds": "Wardens slain",
+    "sc.mmo.blink": "Blink",
+    "sc.mmo.blurb": "The raid HUD with its frames and bars, and the chat",
+    "sc.mmo.bomb": "Blast charge",
+    "sc.mmo.boss": "Vorthul",
+    "sc.mmo.burn": "Soulburn",
+    "sc.mmo.cast": "Shadow Rain",
+    "sc.mmo.food": "Feast",
+    "sc.mmo.free": "Break free",
+    "sc.mmo.heal": "Mend",
+    "sc.mmo.key": "Vault key",
+    "sc.mmo.might": "Might",
+    "sc.mmo.raid": "The Sunken Vault",
+    "sc.mmo.strike": "Strike",
+    "sc.mmo.title": "Lord of the Vault",
+    "sc.mmo.venom": "Venom",
+    "sc.mmo.ward": "Ward",
+    "sc.mmo.zone": "Sunken Vault",
+    "sc.moba": "MOBA and arena",
+    "sc.moba.attack": "Attack",
+    "sc.moba.blurb": "The lane HUD and the draft with bans",
+    "sc.moba.dash": "Dash",
+    "sc.moba.frost": "Frost",
+    "sc.moba.ult": "Firestorm",
+    "sc.moba.ward": "Ward",
+    "sc.narrative": "Narrative and VN",
+    "sc.narrative.blurb": "The text box, the route chart and the CG gallery",
+    "sc.open.glide": "Glide",
+    "sc.open.quest": "The silent bells",
+    "sc.open.shrine": "Shrine of Vael",
+    "sc.open.step": "Reach the shrine",
+    "sc.open.talk": "Talk",
+    "sc.open.tower": "Climb the watchtower",
+    "sc.openworld": "Open world",
+    "sc.openworld.blurb": "The explore HUD, the world map and photo mode",
+    "sc.page.abilityCards": "Abilities",
+    "sc.page.board": "Board",
+    "sc.page.cards": "Cards",
+    "sc.page.cgGallery": "Gallery",
+    "sc.page.chat": "Chat",
+    "sc.page.cityMap": "City map",
+    "sc.page.deck": "Deck",
+    "sc.page.dialogue": "Dialogue",
+    "sc.page.draft": "Draft",
+    "sc.page.gacha": "Banner",
+    "sc.page.garage": "Garage",
+    "sc.page.gear": "Gear",
+    "sc.page.generators": "Generators",
+    "sc.page.hangar": "Hangar",
+    "sc.page.hud": "HUD",
+    "sc.page.leaderboard": "Leaderboard",
+    "sc.page.ledger": "Ledger",
+    "sc.page.loading": "Loading",
+    "sc.page.loadout": "Loadout",
+    "sc.page.lobby": "Lobby",
+    "sc.page.matchFacts": "Full time",
+    "sc.page.pass": "Pass",
+    "sc.page.pause": "Pause",
+    "sc.page.photo": "Photo",
+    "sc.page.quests": "Quests",
+    "sc.page.results": "Results",
+    "sc.page.rewards": "Rewards",
+    "sc.page.routes": "Routes",
+    "sc.page.rts": "Console",
+    "sc.page.saga": "Saga map",
+    "sc.page.scoreboard": "Scoreboard",
+    "sc.page.sectorMap": "Sector map",
+    "sc.page.select": "Select",
+    "sc.page.shipStatus": "Ship",
+    "sc.page.songs": "Songs",
+    "sc.page.sportsHud": "Match",
+    "sc.page.store": "Store",
+    "sc.page.td": "Defence",
+    "sc.page.title": "Title",
+    "sc.page.turnOrder": "Turn order",
+    "sc.page.tutorial": "Tutorial",
+    "sc.page.versus": "Versus",
+    "sc.page.vn": "Text box",
+    "sc.page.worldMap": "World map",
+    "sc.pause": "Pause",
+    "sc.puzzle": "Puzzle and casual",
+    "sc.puzzle.blurb": "A match-3 board, the saga map and the store",
+    "sc.race.best": "Best",
+    "sc.race.boost": "Boost",
+    "sc.race.brake": "Brake",
+    "sc.race.checkpoint": "Checkpoint {n}",
+    "sc.race.circuit": "Meridian Loop",
+    "sc.race.clean": "Clean sectors",
+    "sc.race.credits": "Credits",
+    "sc.race.current": "Lap time",
+    "sc.race.drift": "Drift!",
+    "sc.race.fastest": "Fastest lap",
+    "sc.race.final": "Final lap",
+    "sc.race.finish": "Finish",
+    "sc.race.go": "GO!",
+    "sc.race.kmh": "km/h",
+    "sc.race.lap": "Lap",
+    "sc.race.last": "Last",
+    "sc.race.leader": "Leader",
+    "sc.race.league": "Gold league",
+    "sc.race.left": "Left",
+    "sc.race.ord3": "3rd",
+    "sc.race.out": "Out",
+    "sc.race.overtakes": "Overtakes",
+    "sc.race.pit": "Pit",
+    "sc.race.podium": "3rd place",
+    "sc.race.pos": "Pos",
+    "sc.race.right": "Right",
+    "sc.race.split": "Split",
+    "sc.race.topSpeed": "Top speed",
+    "sc.race.week": "This week",
+    "sc.race.wrongWay": "Wrong way",
+    "sc.racing": "Racing and sports",
+    "sc.racing.blurb": "The race HUD, the garage, time trials and a football broadcast",
+    "sc.reward.crystal": "Crystal",
+    "sc.reward.gold": "Gold",
+    "sc.rhythm": "Rhythm",
+    "sc.rhythm.accuracy": "{pct}% accuracy",
+    "sc.rhythm.blurb": "The four-lane play screen and the song select",
+    "sc.rhythm.early": "Early",
+    "sc.rhythm.good": "Good",
+    "sc.rhythm.great": "Great",
+    "sc.rhythm.late": "Late",
+    "sc.rhythm.life": "Life",
+    "sc.rhythm.perfect": "Perfect",
+    "sc.rhythm.progress": "Song progress",
+    "sc.rogue.cast": "Cast",
+    "sc.rogue.curse": "Broken chain",
+    "sc.rogue.dash": "Dash",
+    "sc.rogue.flame": "Ember edge",
+    "sc.rogue.frost": "Rime touch",
+    "sc.rogue.heart": "Titan heart",
+    "sc.rogue.room": "Chamber {n}",
+    "sc.rogue.special": "Special",
+    "sc.rogue.thunder": "Storm step",
+    "sc.roguelike": "Roguelike and cards",
+    "sc.roguelike.blurb": "The run HUD, a hand of cards, rewards and the deck",
+    "sc.rpg": "RPG",
+    "sc.rpg.blurb": "The action HUD, gear, the quest log and a conversation",
+    "sc.rpg.boss": "Defeat the warden",
+    "sc.rpg.elite": "Elite",
+    "sc.rpg.level": "Level 24",
+    "sc.rpg.moss": "Grave moss",
+    "sc.rpg.nova": "Frost nova",
+    "sc.rpg.potion": "Healing draught",
+    "sc.rpg.quest": "Seal the crypt",
+    "sc.rpg.seals": "Seals lit",
+    "sc.rpg.side": "Herbs for Ilsa",
+    "sc.rpg.storm": "Thunderstorm",
+    "sc.rpg.vial": "Mana vial",
+    "sc.rpg.ward": "Rune ward",
+    "sc.rpg.whirl": "Whirlwind",
+    "sc.rpg.xp": "Experience",
+    "sc.rpg.zone": "Ashen Crypt",
+    "sc.shooter": "Shooter and battle royale",
+    "sc.shooter.auto": "Auto",
+    "sc.shooter.blurb": "The match HUD, the scoreboard, the loadout and the lobby",
+    "sc.shooter.drone": "Recon drone",
+    "sc.shooter.enemy": "Enemy",
+    "sc.shooter.fire": "Fire",
+    "sc.shooter.frag": "Frag grenade",
+    "sc.shooter.reload": "Reload",
+    "sc.shooter.reloading": "Reloading",
+    "sc.shooter.ring": "Ring closes",
+    "sc.shooter.stim": "Stim",
+    "sc.shooter.supply": "Supply drop",
+    "sc.shooter.ultimate": "Barrier",
+    "sc.shooter.zone": "Saltmarsh",
+    "sc.sports.corner": "Corner kick",
+    "sc.sports.fouls": "Fouls",
+    "sc.sports.ft": "FT",
+    "sc.sports.half2": "2nd half",
+    "sc.sports.off": "Off",
+    "sc.sports.on": "On",
+    "sc.sports.onTarget": "On target",
+    "sc.sports.passes": "Passes",
+    "sc.sports.pen": "pen.",
+    "sc.sports.possession": "Possession",
+    "sc.sports.shots": "Shots",
+    "sc.sports.sub": "Substitution",
+    "sc.stat.coins": "Coins",
+    "sc.stat.score": "Score",
+    "sc.stat.time": "Time",
+    "sc.strategy": "Strategy",
+    "sc.strategy.blurb": "An RTS console, tower defence and starship tactics",
+    "sc.survival": "Survival",
+    "sc.survival.axe": "Axe",
+    "sc.survival.berries": "Berries",
+    "sc.survival.birch": "Birch log",
+    "sc.survival.blurb": "Vitals, statuses, the compass and the hotbar",
+    "sc.survival.bow": "Bow",
+    "sc.survival.camp": "Camp",
+    "sc.survival.day": "Day {n}",
+    "sc.survival.food": "Food",
+    "sc.survival.gather": "Gather",
+    "sc.survival.rested": "Rested",
+    "sc.survival.shield": "Shield",
+    "sc.survival.stamina": "Stamina",
+    "sc.survival.swing": "Swing",
+    "sc.survival.torch": "Torch",
+    "sc.survival.water": "Water",
+    "sc.survival.wet": "Wet",
+    "sc.td.archer": "Archer tower",
+    "sc.td.barracks": "Barracks",
+    "sc.td.forge": "Forge",
+    "sc.td.gold": "Gold",
+    "sc.td.lives": "Lives",
+    "sc.td.next": "Next wave",
+    "sc.td.send": "Call it",
+    "sc.td.wall": "Wall",
+    "sc.td.waves": "Waves",
+    "sc.time": "Time",
+    "sc.tutorial.1.text": "Move with the d-pad or the stick; the coins you pass count here.",
+    "sc.tutorial.1.title": "Run",
+    "sc.tutorial.2.text": "Each segment is one hit. The pale part drains after a hit.",
+    "sc.tutorial.2.title": "Your health",
+    "sc.tutorial.3.text": "Reach the gate before the timer runs out.",
+    "sc.tutorial.3.title": "Beat the clock",
+    "sc.tutorial.4.text": "Hits in a row build your combo and its bonus.",
+    "sc.tutorial.4.title": "Keep moving",
+    "sc.tutorial.5.text": "Pause any time from the corner; your run waits.",
+    "sc.tutorial.5.title": "Take a break",
+    "sc.you": "You",
+    "screen.common.back": "Back",
+    "screen.leaderboard.friends": "Friends",
+    "screen.leaderboard.global": "Global",
+    "screen.leaderboard.league": "League",
+    "screen.leaderboard.title": "Leaderboard",
+    "screen.loading.continue": "Continue",
+    "screen.loading.tip": "Tip",
+    "screen.main-menu.continue": "Continue",
+    "screen.main-menu.credits": "Credits",
+    "screen.main-menu.modes": "Modes",
+    "screen.main-menu.newGame": "New game",
+    "screen.main-menu.newsEyebrow": "News",
+    "screen.main-menu.quit": "Quit",
+    "screen.main-menu.settings": "Settings",
+    "screen.pause.controls": "Controls",
+    "screen.pause.load": "Load",
+    "screen.pause.quit": "Quit game",
+    "screen.pause.quitToMenu": "Quit to menu",
+    "screen.pause.resume": "Resume",
+    "screen.pause.save": "Save",
+    "screen.pause.settings": "Settings",
+    "screen.pause.title": "Paused",
+    "screen.results.again": "Play again",
+    "screen.results.best": "Best",
+    "screen.results.board": "Scoreboard",
+    "screen.results.continue": "Continue",
+    "screen.results.graphs": "Graphs",
+    "screen.results.replay": "Watch replay",
+    "screen.results.summary": "Summary",
+    "screen.tutorial.next": "Next",
+    "screen.tutorial.skip": "Skip",
+    "sector.allied": "Allied",
+    "sector.current": "current sector",
+    "sector.hostile": "Hostile",
+    "sector.title": "Sector map",
+    "set.apply": "Apply",
+    "set.aspect": "Aspect ratio",
+    "set.aspect.about": "The HUD keeps to this shape on wider screens; the interface never stretches.",
+    "set.cap": "Frame cap",
+    "set.cap.about": "The most frames a second. Lower saves power.",
+    "set.cap.display": "Display",
+    "set.cap.fps120": "120",
+    "set.cap.fps30": "30",
+    "set.cap.fps60": "60",
+    "set.changed": "changed",
+    "set.colorblind": "Colour filter",
+    "set.colorblind.about": "Colours shifted for each kind of colour blindness.",
+    "set.colorblind.deutan": "Deuteranopia",
+    "set.colorblind.off": "Off",
+    "set.colorblind.protan": "Protanopia",
+    "set.colorblind.tritan": "Tritanopia",
+    "set.confirm": "Keep these display settings?",
+    "set.contrast": "High contrast",
+    "set.contrast.about": "Panels darker, words and outlines brighter.",
+    "set.defaults": "Defaults",
+    "set.editHud": "Edit HUD",
+    "set.effects": "Effects",
+    "set.effects.about": "Footsteps, hits and the interface's sounds.",
+    "set.fullscreen": "Fullscreen",
+    "set.fullscreen.about": "The game fills the screen.",
+    "set.hudNote": "Move, resize and fade the HUD's elements over the game.",
+    "set.invert": "Invert Y",
+    "set.invert.about": "Moving the mouse up looks down.",
+    "set.jumpKey": "Jump",
+    "set.jumpKey.about": "",
+    "set.keep": "Keep",
+    "set.language": "Language",
+    "set.language.about": "The game's words and voices.",
+    "set.layout": "Keyboard layout",
+    "set.layout.about": "Keys are bound by their place on the keyboard and named by your layout's letters.",
+    "set.layout.azerty": "AZERTY",
+    "set.layout.qwerty": "QWERTY",
+    "set.layout.qwertz": "QWERTZ",
+    "set.master": "Master volume",
+    "set.master.about": "Every sound of the game.",
+    "set.moveLeft": "Move left",
+    "set.moveLeft.about": "",
+    "set.moveUp": "Move forward",
+    "set.moveUp.about": "",
+    "set.music": "Music",
+    "set.music.about": "Adjust the volume of the music. Does not affect voices.",
+    "set.nextPage": "Next page",
+    "set.page.access": "Accessibility",
+    "set.page.audio": "Audio",
+    "set.page.controls": "Controls",
+    "set.page.graphics": "Graphics",
+    "set.page.hud": "HUD layout",
+    "set.page.language": "Language",
+    "set.quality": "Quality preset",
+    "set.quality.about": "How much detail each frame draws. Lower is faster.",
+    "set.quality.high": "High",
+    "set.quality.low": "Low",
+    "set.quality.medium": "Medium",
+    "set.raw": "Raw input",
+    "set.raw.about": "The mouse as it moves, with the system's acceleration off.",
+    "set.reduceMotion": "Reduce motion",
+    "set.reduceMotion.about": "Shakes, zooms and slides are held still.",
+    "set.resetBindings": "Reset all bindings",
+    "set.resetBindings.about": "Every action back to its first keys.",
+    "set.revert": "Revert",
+    "set.reverting": "Reverting in {n} s",
+    "set.safe": "HUD safe zone",
+    "set.safe.about": "How far in from the edges the HUD stands.",
+    "set.saved": "Settings saved",
+    "set.scale": "Render scale",
+    "set.scale.about": "The 3D view's resolution as a share of the screen's. The interface stays sharp.",
+    "set.section.display": "Display",
+    "set.section.keyboard": "Keyboard",
+    "set.section.mouse": "Mouse",
+    "set.section.screen": "Screen",
+    "set.sensitivity": "Mouse sensitivity",
+    "set.sensitivity.about": "How far the view turns as the mouse moves.",
+    "set.subtitles": "Subtitles",
+    "set.subtitles.about": "The words spoken, on screen.",
+    "set.textSize": "Text size",
+    "set.textSize.about": "Every word of the interface, larger.",
+    "set.title": "Settings",
+    "set.voice": "Voice",
+    "set.voice.about": "The characters' voices.",
+    "set.vsync": "Vertical sync",
+    "set.vsync.about": "Waits for the display between frames: no tearing, a little more delay.",
+    "settings.audio": "Audio",
+    "settings.contrast": "High contrast",
+    "settings.controls": "Controls",
+    "settings.done": "Done",
+    "settings.effects": "Effects",
+    "settings.fps": "Show frame rate",
+    "settings.graphics": "Graphics",
+    "settings.high": "High",
+    "settings.invert": "Invert vertical look",
+    "settings.language": "Language",
+    "settings.low": "Low",
+    "settings.master": "Master",
+    "settings.medium": "Medium",
+    "settings.motion": "Reduce motion",
+    "settings.music": "Music",
+    "settings.mute": "Mute everything",
+    "settings.quality": "Quality",
+    "settings.sensitivity": "Sensitivity",
+    "settings.title": "Settings",
+    "settings.vibration": "Vibration",
+    "ship.class": "Command frigate · Aurora Fleet",
+    "ship.hull": "Hull",
+    "ship.reactor": "Reactor",
+    "ship.shields": "Shields",
+    "shop.buy": "Buy",
+    "shop.empty": "Nothing for sale here",
+    "shop.owned": "Owned",
+    "shop.price": "Price",
+    "shop.short": "Not enough",
+    "shop.title": "Shop",
+    "song.accuracy": "Accuracy",
+    "song.best": "Best score",
+    "song.bpm": "BPM",
+    "song.chart.easy": "Easy",
+    "song.chart.expert": "Expert",
+    "song.chart.hard": "Hard",
+    "song.chart.master": "Master",
+    "song.chart.normal": "Normal",
+    "song.fullCombo": "Full combo",
+    "song.grade": "Grade",
+    "song.length": "Length",
+    "song.new": "New",
+    "song.play": "Play",
+    "song.preview": "Preview",
+    "song.title": "Song select",
+    "store.badge.best": "Best value",
+    "store.badge.limited": "Limited",
+    "store.badge.new": "New",
+    "store.badge.popular": "Popular",
+    "store.buy": "Buy",
+    "store.cancel": "Cancel",
+    "store.coins": "Coins",
+    "store.confirm": "Buy it for {price} {currency}?",
+    "store.contents.aria": "Aria, Tidecaller",
+    "store.contents.frame": "Profile frame",
+    "store.contents.glitter": "1,600 Star Shards",
+    "store.contents.lantern": "Moonlit Lantern",
+    "store.daily": "Daily deals",
+    "store.featured": "Featured",
+    "store.free": "Free",
+    "store.gemPack": "{n} Gems",
+    "store.gems": "Gems",
+    "store.hint.buy": "Buy",
+    "store.item.amulet": "Sapphire Amulet",
+    "store.item.ashbringer": "Ashbringer",
+    "store.item.crown": "Crown of Thorns",
+    "store.item.ember": "Ember Ring",
+    "store.item.key": "Iron Key",
+    "store.item.mana": "Mana Vial ×5",
+    "store.item.potions": "Healing Draught ×5",
+    "store.item.tide": "Moonlit Tide Bundle",
+    "store.kind.amulet": "Amulet",
+    "store.kind.ashbringer": "Greatsword",
+    "store.kind.crown": "Helmet",
+    "store.kind.ember": "Ring",
+    "store.kind.gems1": "A pouch of gems",
+    "store.kind.gems2": "A chest of gems",
+    "store.kind.gems3": "A hoard of gems",
+    "store.kind.key": "Key",
+    "store.kind.mana": "Consumable",
+    "store.kind.potions": "Consumable",
+    "store.kind.tide": "Bundle · 4 items",
+    "store.left": "{left} left",
+    "store.owned": "Owned",
+    "store.packs": "Gem packs",
+    "store.refresh": "Refreshes in",
+    "store.save": "−{pct} %",
+    "store.soldOut": "Sold out",
+    "store.sub": "New offers every day",
+    "store.title": "Store",
+    "store.topUp": "Get more {name}",
+    "time.days": "{d}d {h}h",
+    "time.hours": "{h}h {m}m",
+    "time.minutes": "{m}m",
+    "turn.acting": "acting now",
+    "turn.hostile": "hostile",
+    "turn.title": "Turn order",
+    "tutorial.done": "Done",
+    "tutorial.next": "Next",
+    "tutorial.skip": "Skip",
+    "tutorial.step": "{step} of {count}",
+    "vn.a1": "There. The ferry still runs, if the old keeper is awake.",
+    "vn.a2": "Stay close to me in the market. Lowmarsh remembers faces.",
+    "vn.all": "All",
+    "vn.cg.dawn": "The dawn gate",
+    "vn.cg.duel": "Rooftop duel",
+    "vn.cg.lantern": "Lantern night",
+    "vn.cg.library": "Asleep in the tower",
+    "vn.cg.riverboat": "The riverboat",
+    "vn.cg.storm": "The storm ferry",
+    "vn.chapter.four": "Endings",
+    "vn.chapter.one": "Chapter 1",
+    "vn.chapter.three": "Chapter 3",
+    "vn.chapter.two": "Chapter 2",
+    "vn.choice.follow": "Follow Mira",
+    "vn.choice.storm": "Sail into the storm",
+    "vn.choice.study": "Stay to study",
+    "vn.choice.trust": "Trust her",
+    "vn.close": "Close",
+    "vn.ending.bad": "Bad end",
+    "vn.ending.good": "Good end",
+    "vn.gallery.title": "Gallery",
+    "vn.hint.dawn": "Reach the good ending",
+    "vn.hint.storm": "Board the ferry in Chapter 2",
+    "vn.jump": "Jump here",
+    "vn.locked": "???",
+    "vn.n1": "Rain had followed the caravan for three days when the lights of Lowmarsh finally showed through the reeds.",
+    "vn.new": "New",
+    "vn.next": "Next",
+    "vn.nextChapter": "Next chapter",
+    "vn.now": "Now",
+    "vn.prev": "Previous",
+    "vn.routes.chart": "Routes",
+    "vn.routes.title": "Flowchart",
+    "vn.scene.arrival": "Arrival",
+    "vn.scene.dawn": "Dawn",
+    "vn.scene.drowned": "Lost to the river",
+    "vn.scene.ferry": "The ferry",
+    "vn.scene.lanterns": "The festival",
+    "vn.scene.oath": "The oath",
+    "vn.scene.rooftop": "The rooftop",
+    "vn.scene.tower": "The tower",
+    "vn.scenes": "{n} / {total} scenes",
+    "vn.seen": "{n} / {total} seen",
+    "vn.stay": "Stay by her side.",
+    "vn.stay.r": "Good. Keep your hood up.",
+    "vn.wander": "Slip away to look around.",
+    "vn.wander.r": "Fine. Meet me at the ferry by the second bell.",
+    "vs.mark": "VS",
+    "vs.record": "{w}W {l}L",
+    "vs.skip": "Skip",
+    "vs.stage": "Round 1 · Skyreach Gate"
+  },
+  "fonts": [],
+  "locale": "en"
+});

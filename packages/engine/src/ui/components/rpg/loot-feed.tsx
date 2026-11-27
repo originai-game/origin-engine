@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, View, t } from "@origingame/engine/ui";
 import { HudLootEntry } from "../hud/loot-entry";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgLootFeedProps {
   /** What the player just looted, newest first, keyed rows of { id, name, icon, glyph, rarity, label, quantity, currency, fading }: icon a texture (0: the glyph, an icon name, in its place); rarity common, uncommon, rare, epic or legendary (the edge's colour, on data-rarity; an epic or legendary item's name is inked too); label the rarity as the game words it (Epic) on a tag, empty for none; quantity the count gained (0 hides it), written ×3, or +1,240 when currency is true (gold); fading an old row on its way out (dimmed). A new row slides in from the screen's edge; the game trims old rows. */

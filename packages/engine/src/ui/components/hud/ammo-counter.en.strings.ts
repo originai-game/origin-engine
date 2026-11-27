@@ -1,11 +1,16 @@
-type strings
-version 1
----
-locale "en"
-string "shooter.ammo.name" "Ammunition"
-string "shooter.ammo.value" "{magazine} of {capacity}, {reserve} in reserve"
-string "shooter.ammo.auto" "Auto"
-string "shooter.ammo.burst" "Burst"
-string "shooter.ammo.single" "Single"
-string "shooter.ammo.reloading" "Reloading"
-string "shooter.ammo.empty" "Reload"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "shooter.ammo.auto": "Auto",
+    "shooter.ammo.burst": "Burst",
+    "shooter.ammo.empty": "Reload",
+    "shooter.ammo.name": "Ammunition",
+    "shooter.ammo.reloading": "Reloading",
+    "shooter.ammo.single": "Single",
+    "shooter.ammo.value": "{magazine} of {capacity}, {reserve} in reserve"
+  },
+  "fonts": [],
+  "locale": "en"
+});

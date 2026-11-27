@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, packClass, View, t } from "@origingame/engine/ui";
 import { HudEffect } from "../hud/effect";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgEffectsProps {
   /** The buffs and debuffs on a character in the game's order, keyed rows of { id, name, icon, glyph, remaining, label, harmful }: name for a reader; icon a texture (0: the glyph, an icon name, in its place); remaining the share of its time still to run, 0 to 1 (a dark radial sweep over the art; negative: no timer); label its time or stacks as the game words it, on a tag (0:12, ×3), empty for none; harmful a debuff (on data-harmful, never colour alone: the edge and the tag's ink both change). */

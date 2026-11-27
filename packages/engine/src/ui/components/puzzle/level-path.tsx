@@ -1,5 +1,5 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
-import "./puzzle.en.ogt";
+import "./puzzle.en.strings.ts";
 
 export interface PuzzleLevelPathProps {
   /** The chapters in path order, keyed rows of { id, label, earned, total }: earned and total the chapter's stars as the game counts them. */

@@ -1,5 +1,5 @@
 import { Text, View, t, packClass } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingPedalsProps {
   /** The throttle's travel now, 0 to 1. */

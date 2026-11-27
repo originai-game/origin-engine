@@ -1,7 +1,7 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { ProgressBar } from "../hud/progress-bar";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface AchievementsProps {
   /** The list's heading; empty takes the group's (Achievements). */

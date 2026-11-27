@@ -3,7 +3,7 @@ import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { engineCredits } from "./engine-credits";
-import "./credits.en.ogt";
+import "./credits.en.strings.ts";
 import { InputGlyph } from "../controls/input-glyph";
 
 export interface CreditsScreenProps {

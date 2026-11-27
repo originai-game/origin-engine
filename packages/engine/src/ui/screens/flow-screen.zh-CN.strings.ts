@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.flow-screen.skip" "跳过"
-string "screen.flow-screen.buffering" "缓冲中…"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.flow-screen.buffering": "缓冲中…",
+    "screen.flow-screen.skip": "跳过"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

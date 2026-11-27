@@ -1,5 +1,5 @@
 import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingCarProps {
   /** The tyres in the game's order (front left, front right, rear left, rear right), keyed rows of { id, label, text, state }: label and text as the game words them (FL, 92); state good, worn or bad, a green, gold or red ink on the tag. Two to a line. Empty hides the tyres. */

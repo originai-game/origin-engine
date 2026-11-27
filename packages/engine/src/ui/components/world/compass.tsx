@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./compass.en.ogt";
+import "./compass.en.strings.ts";
 
 export interface CompassPoi {
   id: string;

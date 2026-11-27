@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
-import "./save-load.en.ogt";
+import "./save-load.en.strings.ts";
 
 export interface SaveLoadScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

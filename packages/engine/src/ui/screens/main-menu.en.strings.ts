@@ -1,11 +1,16 @@
-type strings
-version 1
----
-locale "en"
-string "screen.main-menu.continue" "Continue"
-string "screen.main-menu.credits" "Credits"
-string "screen.main-menu.modes" "Modes"
-string "screen.main-menu.newGame" "New game"
-string "screen.main-menu.newsEyebrow" "News"
-string "screen.main-menu.quit" "Quit"
-string "screen.main-menu.settings" "Settings"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.main-menu.continue": "Continue",
+    "screen.main-menu.credits": "Credits",
+    "screen.main-menu.modes": "Modes",
+    "screen.main-menu.newGame": "New game",
+    "screen.main-menu.newsEyebrow": "News",
+    "screen.main-menu.quit": "Quit",
+    "screen.main-menu.settings": "Settings"
+  },
+  "fonts": [],
+  "locale": "en"
+});

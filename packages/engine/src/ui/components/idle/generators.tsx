@@ -1,5 +1,5 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatCompact, formatNumber, t} from "@origingame/engine/ui";
-import "./idle.en.ogt";
+import "./idle.en.strings.ts";
 
 export interface IdleGeneratorsProps {
   /** The list's heading; empty takes the group's (Generators). */

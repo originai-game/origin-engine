@@ -1,5 +1,5 @@
 import { Show, Text, View, packClass } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 import { InputGlyph } from "../../controls/input-glyph";
 
 export interface RpgPromptProps {

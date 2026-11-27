@@ -1,5 +1,5 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
-import "./puzzle.en.ogt";
+import "./puzzle.en.strings.ts";
 
 export interface PuzzleBoostersProps {
   /** The boosters in tray order, keyed rows of { id, icon, name, count, available }: count how many the player holds, as the game counts them; available false when the game will not take it now (none left, not allowed on this level, a move in progress): the booster is disabled, sends nothing and says so. */

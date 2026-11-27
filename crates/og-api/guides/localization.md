@@ -6,17 +6,35 @@ The API: `og api show i18n`.
 
 ## 1. String tables
 
-One `.ogt` of `type strings` per locale, under `assets/strings/`:
+One typed declaration per locale, under a module's `content/strings/`:
 
-```text
-type strings
-version 1
----
-locale "ja"
-fonts "fonts/NotoSansJP.ttf"
-string "shop.title" "ショップ"
-string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
+```ts
+import { file, ref } from '@origingame/engine/author';
+export default file.strings({
+  locale: 'ja',
+  fonts: [ref('base/fonts/NotoSansJP')],
+  entries: {
+    'shop.title': 'ショップ',
+    coins: '{n, plural, =0 {コインなし} other {# コイン}}',
+  },
+});
 ```
+
+The output of `content/strings/ja.ts` in the base module is `base/strings/ja`.
+Font refs name actual font declarations or scanned binary fonts, never guessed
+runtime paths. Import the TS table for UI registration; the game bundle carries
+only its output ID, not author code. Helpers stay in `lib/`, outside `content/`.
+Use `og api show file:strings` for generated fields and `og api gen` for project
+types; `og check` checks those types without running the game.
+
+`og i18n tables --json` reads all module tables in the restricted cook evaluator;
+`--builtins` reads the installed engine's UI tables. Creation, pseudo-locales and
+preview tools use this output instead of parsing TS or importing it in Bun.
+`--index` returns project table IDs and paths without evaluating content; the
+bundler uses that index without transferring every locale's messages.
+`og i18n extract --write` adds missing story keys to direct `entries` literals
+with source-bound edits. A computed/shared expression is read-only: edit its
+source. With no table, it creates `content/strings/en.ts` without overwriting.
 
 - Messages are a subset of ICU MessageFormat: `{name}`, `{n, number}`,
   `{n, plural, =0 {..} one {..} other {..}}` with `#`, and
@@ -32,7 +50,7 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
 - The host asks for a locale: the browser's `navigator.language` on the
   web, `og run --locale` natively.
 - The active locale is the best loaded table for the request (ja-JP takes
-  ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`,
+  ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base: true`,
   else en, else the first).
 - A key the active table lacks is read from its `fallback` table, then
   the base.

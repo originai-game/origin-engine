@@ -24,8 +24,8 @@ const out = resolve(args.includes("--out") ? args[args.indexOf("--out") + 1]! : 
 const project = join(repo, "target/web-font-start-project");
 rmSync(project, { recursive: true, force: true });
 mkdirSync(join(project, "assets/fonts"), { recursive: true });
-mkdirSync(join(project, "assets/strings"), { recursive: true });
-for (const locale of ["en", "ja", "ar"]) writeFileSync(join(project, `assets/strings/${locale}.ogt`), `type strings\nversion 1\n---\nlocale "${locale}"\nstring "ready" "Ready"\n`);
+mkdirSync(join(project, "content/strings"), { recursive: true });
+for (const locale of ["en", "ja", "ar"]) writeFileSync(join(project, `content/strings/${locale}.ts`), `import {file} from '@origingame/engine/author'; export default file.strings({locale:${JSON.stringify(locale)},entries:{ready:'Ready'}});\n`);
 mkdirSync(out, { recursive: true });
 for (const pack of ["latin", "arabic"]) cpSync(join(repo, "templates/fonts", pack), join(project, "assets/fonts", pack), { recursive: true });
 writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"Font start","engine":"0.9.0"}\n');

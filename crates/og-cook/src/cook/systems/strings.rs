@@ -4,11 +4,26 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
+pub(crate) fn declaration(
+    input: crate::cook::source_schemas::world::localization::StringsInput,
+) -> Result<og_i18n::StringTable, String> {
+    use crate::cook::source_schemas::world::localization::Direction;
+    og_i18n::StringTable::new(
+        input.locale,
+        input.fallback,
+        input.base.unwrap_or(false),
+        input.direction.map(|d| match d {
+            Direction::Ltr => og_i18n::Direction::Ltr,
+            Direction::Rtl => og_i18n::Direction::Rtl,
+        }),
+        input.fonts.into_iter().map(|f| f.id).collect(),
+        input.entries,
+    )
+}
+
 /// Cooks native locale fields. ICU source text is retained for formatting.
 pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError("a string table is text (UTF-8)".into()))?;
-    let t = og_i18n::StringTable::parse(text).map_err(CookError)?;
+    let t = s.strings.as_ref().expect("prepared string table");
     let mut text = super::super::formats::model::Strings(Vec::new());
     let (locale_offset, locale_len) = text.add(&t.locale);
     let (fallback_offset, fallback_len) = text.add(t.fallback.as_deref().unwrap_or(""));
@@ -80,14 +95,11 @@ pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
 /// Only the project's own tables: an engine table the bundle holds
 /// (`@ui/…`) belongs to its component's catalogue, not the project's, and
 /// the engine's own test keeps its locales in step.
-pub(crate) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> {
+pub(crate) fn check_strings(sources: &[(&str, &og_i18n::StringTable)]) -> Vec<(String, String)> {
     let tables: Vec<(String, og_i18n::StringTable)> = sources
         .iter()
         .filter(|(rel, _)| !rel.starts_with('@'))
-        .filter_map(|(rel, bytes)| {
-            let t = og_i18n::StringTable::parse(std::str::from_utf8(bytes).ok()?).ok()?;
-            Some((rel.to_string(), t))
-        })
+        .map(|(rel, table)| (rel.to_string(), (*table).clone()))
         .collect();
     let only: Vec<og_i18n::StringTable> = tables.iter().map(|(_, t)| t.clone()).collect();
     og_i18n::check_tables(&only)
@@ -107,7 +119,7 @@ pub(crate) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> 
 pub(crate) static STRINGS: KindDef = KindDef {
     name: "strings",
     extensions: &[],
-    types: &[og_i18n::STRINGS_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_strings,
@@ -123,7 +135,13 @@ fn plan_strings<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[Area::Data], &[b"strings", &hash]);
+    let fonts = s
+        .strings
+        .as_ref()
+        .expect("prepared string table")
+        .fonts
+        .join("\0");
+    let st = stamp(&[Area::Data], &[b"strings", &hash, fonts.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Strings::NAME,
@@ -161,13 +179,14 @@ mod tests {
                     continue;
                 }
                 let name = path.file_name().unwrap().to_string_lossy().to_string();
-                let Some(stem) = name.strip_suffix(".en.ogt") else {
+                let Some(stem) = name.strip_suffix(".en.strings.ts") else {
                     continue;
                 };
-                let zh = path.with_file_name(format!("{stem}.zh-CN.ogt"));
+                let zh = path.with_file_name(format!("{stem}.zh-CN.strings.ts"));
                 let read = |p: &std::path::Path| {
-                    og_i18n::StringTable::parse(
-                        &std::fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()))?,
+                    super::super::strings_extract::read_builtin(
+                        p.parent().unwrap(),
+                        p.file_name().unwrap().to_str().unwrap(),
                     )
                     .map_err(|e| format!("{}: {e}", p.display()))
                 };

@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "component.spinner.name" "Loading"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.spinner.name": "Loading"
+  },
+  "fonts": [],
+  "locale": "en"
+});

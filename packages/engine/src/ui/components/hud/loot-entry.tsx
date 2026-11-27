@@ -1,6 +1,6 @@
 import { Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./loot-entry.en.ogt";
+import "./loot-entry.en.strings.ts";
 
 export interface HudLootEntryProps {
   /** The item's name (Ember Blade). */

@@ -1,6 +1,6 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface ShopConfirmProps {
   /** The panel's heading, a small line over the offer's name; empty takes the group's (Confirm purchase). */

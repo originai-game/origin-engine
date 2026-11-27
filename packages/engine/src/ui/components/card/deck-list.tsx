@@ -1,6 +1,6 @@
 import {For, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./card.en.ogt";
+import "./card.en.strings.ts";
 
 export interface CardDeckListProps {
   /** The deck's name as the player named it. */

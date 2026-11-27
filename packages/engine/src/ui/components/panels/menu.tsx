@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./menu.en.ogt";
+import "./menu.en.strings.ts";
 
 /** One entry row: dim type on the pack's row, lit by the hover ground and its leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
 const row =

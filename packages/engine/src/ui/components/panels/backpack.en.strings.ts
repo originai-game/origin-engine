@@ -1,14 +1,19 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.backpack.tabs" "Categories"
-string "rpg.backpack.empty" "Your pack is empty"
-string "rpg.backpack.equipped" "Equipped"
-string "rpg.backpack.new" "New"
-string "rpg.backpack.locked" "Cannot be dropped"
-string "rpg.backpack.weight" "Carry weight"
-string "rpg.backpack.gold" "{gold} gold"
-string "rpg.backpack.equippedMark" "E"
-string "rpg.backpack.broken" "Broken"
-string "rpg.backpack.over" "Overburdened: you move slowly"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.backpack.broken": "Broken",
+    "rpg.backpack.empty": "Your pack is empty",
+    "rpg.backpack.equipped": "Equipped",
+    "rpg.backpack.equippedMark": "E",
+    "rpg.backpack.gold": "{gold} gold",
+    "rpg.backpack.locked": "Cannot be dropped",
+    "rpg.backpack.new": "New",
+    "rpg.backpack.over": "Overburdened: you move slowly",
+    "rpg.backpack.tabs": "Categories",
+    "rpg.backpack.weight": "Carry weight"
+  },
+  "fonts": [],
+  "locale": "en"
+});

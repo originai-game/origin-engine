@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./ability-slot.en.ogt";
+import "./ability-slot.en.strings.ts";
 
 export interface AbilitySlotProps {
   /** An icon of the atlas, drawn large on a gradient. */

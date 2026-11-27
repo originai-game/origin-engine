@@ -1,5 +1,119 @@
 use super::*;
 
+/// Extraction and UI eject author typed literals through the public tools,
+/// preserving source bytes outside edits and refusing computed/colliding data.
+#[test]
+fn typed_locale_tools_extract_and_eject_without_overwriting_sources() {
+    let root = TempDir::new("og-locale-tools");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Locales","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'locales',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write(
+        "src/main.ts",
+        "import {Confirm} from '@origingame/engine/ui/screens/confirm';export {Confirm};",
+    );
+    let declaration = "import {file} from '@origingame/engine/author';\n// keep this comment and spacing\nexport default file.strings({locale:'en',base:true,entries:{keep:'Untouched'}});\n";
+    write("modules/north/content/labels.ts", declaration);
+    write(
+        "assets/story/hello.yarn",
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:hello\ntitle: Start\n---\nHello, 北! #line:hello\n===\n",
+    );
+    let run = |args: &[&str]| {
+        og().args(args)
+            .current_dir(&root)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    let out = run(&["i18n", "extract", "--write", "--json"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let extracted: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(extracted["errors"], serde_json::json!([]), "{}", text(&out));
+    let saved = std::fs::read_to_string(root.join("modules/north/content/labels.ts")).unwrap();
+    assert!(saved.contains("// keep this comment and spacing"));
+    assert!(saved.contains("keep:'Untouched'"));
+    let out = run(&["i18n", "tables", "--json"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let data: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(data["tables"][0]["id"], "north/labels");
+    assert_eq!(data["tables"][0]["entries"]["hello"], "Hello, 北!");
+    assert!(!root.join("content/strings/en.ts").exists());
+    write(
+        "assets/story/hello.yarn",
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:hello\ntitle: Start\n---\nMore #line:more\n===\n",
+    );
+    write(
+        "modules/north/lib/messages.ts",
+        "export const entries={keep:'Shared'};",
+    );
+    let computed = "import {file} from '@origingame/engine/author';import {entries} from '../lib/messages.ts';export default file.strings({locale:'en',base:true,entries});";
+    write("modules/north/content/labels.ts", computed);
+    let out = run(&["i18n", "extract", "--write", "--json"]);
+    assert!(
+        !out.status.success() && text(&out).contains("computed-source"),
+        "{}",
+        text(&out)
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("modules/north/content/labels.ts")).unwrap(),
+        computed
+    );
+    write(
+        "modules/north/lib/messages.ts",
+        "throw new Error('index must not execute content');export const entries={keep:'Shared'};",
+    );
+    let out = run(&["i18n", "tables", "--index", "--json"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let data: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        data["tables"],
+        serde_json::json!([{"id":"north/labels","path":"modules/north/content/labels.ts"}])
+    );
+    write("modules/north/content/labels.ts", declaration);
+    let out = run(&["ui", "eject", "screens/confirm"]);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(root.join("src/ui/screens/confirm.tsx").is_file());
+    assert!(
+        root.join("content/ui/screens/confirm.en.strings.ts")
+            .is_file()
+    );
+    assert!(
+        root.join("content/ui/screens/confirm.zh-CN.strings.ts")
+            .is_file()
+    );
+    let out = run(&["i18n", "tables", "--json"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let data: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let table = data["tables"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == "base/ui/screens/confirm.en.strings")
+        .unwrap();
+    assert_eq!(
+        table["entries"]["game.screen.confirm.undone"],
+        "Cannot be undone"
+    );
+    let before = std::fs::read(root.join("src/ui/screens/confirm.tsx")).unwrap();
+    let out = run(&["ui", "eject", "screens/confirm"]);
+    assert!(!out.status.success(), "{}", text(&out));
+    assert_eq!(
+        std::fs::read(root.join("src/ui/screens/confirm.tsx")).unwrap(),
+        before
+    );
+    assert!(!root.join("assets/ui").exists());
+}
+
 /// Typed terrain sources preserve raw-image ownership, ordered native edits,
 /// material bundle references and per-input cache invalidation.
 #[test]

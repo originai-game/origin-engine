@@ -25,7 +25,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
-import { readProject } from "./project.ts";
+import { readProject, readStringTables } from "./project.ts";
 import { nativePlatform } from "./platform.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
 import { collectPlaytests } from "./playtest-files.ts";
@@ -128,7 +128,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const bps = list("--breakpoints", "desktop,phonePortrait,phoneLandscape,tablet");
   for (const b of bps) if (!BREAKPOINTS[b]) fail(`--breakpoints: '${b}' is not one of ${Object.keys(BREAKPOINTS).join(", ")}`);
   // The locales: the game's own, pseudo, then a CJK and a right-to-left one the game has strings for.
-  const have = existsSync(join(inputRoot, "assets", "strings")) ? readdirSync(join(inputRoot, "assets", "strings")).map((f) => f.replace(/\.ogt$/, "")) : [];
+  const have = readProject(inputRoot) ? [...new Set(readStringTables(inputRoot).map(t => t.locale))] : [];
   const cjk = have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
   const rtl = have.find((l) => /^(ar|he|fa|ur)/.test(l)) ?? "ar";
   const locales = list("--locales", `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));

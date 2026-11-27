@@ -1,5 +1,5 @@
 import {For, Icon, Show, Text, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
-import "./card.en.ogt";
+import "./card.en.strings.ts";
 
 export interface CardPilesProps {
   /** The piles in the game's order, keyed rows of { id, kind, label, icon, count, enabled }: kind is draw, discard, exhaust or the game's own word (it reaches the pile as data-kind); count the game's number; enabled false when the game will not open it. */

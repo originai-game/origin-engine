@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./progress-bar.en.ogt";
+import "./progress-bar.en.strings.ts";
 
 export interface ProgressBarProps {
   /** Classes merged after its own: a bar inside another surface takes the next layer (`bg-layer-3`). */

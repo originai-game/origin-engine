@@ -15,7 +15,7 @@ A game imports one by name from `@origingame/engine/ui/components`
 (`index.tsx` exports them all) or by path
 (`@origingame/engine/ui/components/hud/stat-bar`), and mounts it or calls it
 inside its own component. To change one, `og ui eject hud/stat-bar` (or
-another component path) copies its TSX and locale tables into `assets/ui/`
+another component path) copies its TSX into `src/ui/` and locale tables into `content/ui/`
 and rewrites matching game imports. Engine-internal imports still use the
 original; new uses import the copy explicitly. An existing copy is refused
 without `--force`.
@@ -37,7 +37,7 @@ without `--force`.
 - `export const actions` (when it answers input actions): each action and
   the label a hint shows for it.
 - Visible words come from its string table, imported beside it
-  (`import "./stat-bar.en.ogt"`), through `t(key, params)` and the
+  (`import "./stat-bar.en.strings.ts"`), through `t(key, params)` and the
   `format*` helpers; text is never concatenated from translated pieces.
 
 It draws what the game hands it and reports intents through `on*` props

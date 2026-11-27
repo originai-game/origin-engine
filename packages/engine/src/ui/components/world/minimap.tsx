@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, Show, Text, View, packClass } from "@origingame/engine/ui";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 
 export interface MinimapMarker {
   id: string;

@@ -1,14 +1,19 @@
-type strings
-version 1
----
-locale "en"
-string "screen.game-over.Best" "Best {best, number}"
-string "screen.game-over.Left" "{value}"
-string "screen.game-over.Revive" "Revive · {price}"
-string "screen.game-over.Value" "{value, number}"
-string "screen.game-over.checkpoint" "Last checkpoint"
-string "screen.game-over.decline" "No thanks"
-string "screen.game-over.quit" "Quit to menu"
-string "screen.game-over.retry" "Retry"
-string "screen.game-over.revive" "Continue where you fell?"
-string "screen.game-over.score" "Score"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.game-over.Best": "Best {best, number}",
+    "screen.game-over.Left": "{value}",
+    "screen.game-over.Revive": "Revive · {price}",
+    "screen.game-over.Value": "{value, number}",
+    "screen.game-over.checkpoint": "Last checkpoint",
+    "screen.game-over.decline": "No thanks",
+    "screen.game-over.quit": "Quit to menu",
+    "screen.game-over.retry": "Retry",
+    "screen.game-over.revive": "Continue where you fell?",
+    "screen.game-over.score": "Score"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -1,5 +1,5 @@
 //! UI checks run by `og check`: Tailwind class resolution (OG9105),
-//! missing `.ogt` string tables (OG9106), pack grounds (OG9107), and
+//! missing companion declarations (OG9106), pack grounds (OG9107), and
 //! component ground/ink lints (OG9108–OG9110).
 
 use super::*;
@@ -282,9 +282,10 @@ const UNKNOWN_CLASS: u32 = 9105;
 /// The diagnostic code of a string table a source imports that is not there.
 const MISSING_TABLE: u32 = 9106;
 
-/// The `.ogt` files a source imports for their effect (`import "./x.en.ogt"`),
+/// Companion declarations a source imports for their effect (locale TS tables
+/// or the not-yet-migrated built-in particle documents),
 /// each with its 1-based line and column.
-fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
+fn table_imports(text: &str) -> Vec<(u32, u32, &str)> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
         // A statement, not an import a comment or a string quotes.
@@ -292,7 +293,7 @@ fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
             continue;
         };
         let mut rest = stmt.trim_start();
-        // A default import of the table (`import strings from "./x.en.ogt"`).
+        // A default import of the table (`import strings from "./x.en.strings.ts"`).
         if !rest.starts_with(['"', '\''])
             && let Some(at) = rest.find(" from ")
         {
@@ -306,7 +307,7 @@ fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
             continue;
         };
         let spec = &body[..end];
-        if spec.ends_with(".ogt") {
+        if spec.ends_with(".ogt") || spec.ends_with(".strings.ts") {
             let col = line.len() - rest.len() + 1;
             out.push((i as u32 + 1, col as u32 + 1, spec));
         }
@@ -314,7 +315,7 @@ fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
     out
 }
 
-/// Each `.ogt` a TS or TSX source under `dirs` imports beside itself that does
+/// Each companion a TS or TSX source under `dirs` imports relatively that does
 /// not exist: an error naming the importer. The cook fails the whole asset
 /// that bundles it (every component's table with it), so a bad import stops
 /// at its author's check instead.
@@ -330,13 +331,13 @@ pub(super) fn missing_tables(root: &Path, dirs: &[PathBuf], report: &mut Report)
             continue;
         };
         let dir = path.parent().unwrap_or(root);
-        for (line, col, spec) in ogt_imports(&text) {
+        for (line, col, spec) in table_imports(&text) {
             if !spec.starts_with('.') || dir.join(spec).is_file() {
                 continue;
             }
             let file = typescript_path(path.strip_prefix(root).unwrap_or(&path));
             let message = format!(
-                "`{spec}` is not beside this file: a component imports only a string table in its own directory"
+                "`{spec}` does not exist relative to this file: import a typed locale declaration under content/"
             );
             report.raw.push_str(&format!(
                 "{file}({line},{col}): error OG{MISSING_TABLE}: {message}\n"

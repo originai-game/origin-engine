@@ -4,7 +4,7 @@ import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
 import { Flourish } from "../hud/flourish";
-import "./meta.en.ogt";
+import "./meta.en.strings.ts";
 
 export interface RevealProps {
   /** Heading; empty uses Rewards. */

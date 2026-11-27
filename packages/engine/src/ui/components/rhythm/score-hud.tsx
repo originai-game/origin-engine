@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmScoreHudProps {
   /** The score as the game counts it, shown with grouping. */

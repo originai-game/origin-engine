@@ -1,8 +1,13 @@
-type strings
-version 1
----
-locale "en"
-string "screen.common.back" "Back"
-string "screen.credits.faster" "Faster"
-string "screen.credits.fasterKey" "Enter"
-string "screen.credits.icons" "Icons"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.back": "Back",
+    "screen.credits.faster": "Faster",
+    "screen.credits.fasterKey": "Enter",
+    "screen.credits.icons": "Icons"
+  },
+  "fonts": [],
+  "locale": "en"
+});

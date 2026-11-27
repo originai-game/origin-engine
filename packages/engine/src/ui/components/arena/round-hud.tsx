@@ -1,6 +1,6 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { HudTimer } from "../hud/hud-timer";
-import "./arena.en.ogt";
+import "./arena.en.strings.ts";
 
 export interface ArenaRoundHudProps {
   /** The round being played, as the game counts it. */

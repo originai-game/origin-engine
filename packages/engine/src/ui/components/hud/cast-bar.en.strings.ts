@@ -1,9 +1,14 @@
-type strings
-version 1
----
-locale "en"
-string "hud.cast-bar.casting" "Casting"
-string "hud.cast-bar.interrupted" "Interrupted"
-string "hud.cast-bar.locked" "Cannot be interrupted"
-string "hud.cast-bar.remaining" "{time} seconds left"
-string "hud.cast-bar.seconds" "{time}s"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.cast-bar.casting": "Casting",
+    "hud.cast-bar.interrupted": "Interrupted",
+    "hud.cast-bar.locked": "Cannot be interrupted",
+    "hud.cast-bar.remaining": "{time} seconds left",
+    "hud.cast-bar.seconds": "{time}s"
+  },
+  "fonts": [],
+  "locale": "en"
+});

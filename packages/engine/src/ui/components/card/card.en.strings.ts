@@ -1,32 +1,37 @@
-type strings
-version 1
----
-locale "en"
-string "card.face.cost" "Cost {cost}"
-string "card.hand.name" "Hand"
-string "card.hand.empty" "No cards in hand"
-string "card.hand.play" "Play"
-string "card.hand.unplayable" "Cannot be played"
-string "card.piles.name" "Piles"
-string "card.piles.count" "{label}: {count}"
-string "card.collection.filters" "Filters"
-string "card.collection.empty" "No cards match"
-string "card.collection.owned" "×{count}"
-string "card.collection.inDeck" "In deck ×{count}"
-string "card.collection.notInDeck" "Not in deck"
-string "card.collection.locked" "Not owned"
-string "card.collection.refused" "Cannot be added"
-string "card.collection.cards" "Cards"
-string "card.deck.empty" "Your deck is empty"
-string "card.deck.count" "{count} / {limit}"
-string "card.deck.size" "Deck size"
-string "card.deck.copies" "×{count}"
-string "card.deck.less" "−"
-string "card.deck.more" "+"
-string "card.deck.add" "Add one {name}"
-string "card.deck.remove" "Remove one {name}"
-string "card.reward.choices" "Choices"
-string "card.reward.relic" "Relic"
-string "card.reward.empty" "Nothing to choose"
-string "card.map.name" "Map"
-string "card.map.legend" "Legend"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "card.collection.cards": "Cards",
+    "card.collection.empty": "No cards match",
+    "card.collection.filters": "Filters",
+    "card.collection.inDeck": "In deck ×{count}",
+    "card.collection.locked": "Not owned",
+    "card.collection.notInDeck": "Not in deck",
+    "card.collection.owned": "×{count}",
+    "card.collection.refused": "Cannot be added",
+    "card.deck.add": "Add one {name}",
+    "card.deck.copies": "×{count}",
+    "card.deck.count": "{count} / {limit}",
+    "card.deck.empty": "Your deck is empty",
+    "card.deck.less": "−",
+    "card.deck.more": "+",
+    "card.deck.remove": "Remove one {name}",
+    "card.deck.size": "Deck size",
+    "card.face.cost": "Cost {cost}",
+    "card.hand.empty": "No cards in hand",
+    "card.hand.name": "Hand",
+    "card.hand.play": "Play",
+    "card.hand.unplayable": "Cannot be played",
+    "card.map.legend": "Legend",
+    "card.map.name": "Map",
+    "card.piles.count": "{label}: {count}",
+    "card.piles.name": "Piles",
+    "card.reward.choices": "Choices",
+    "card.reward.empty": "Nothing to choose",
+    "card.reward.relic": "Relic"
+  },
+  "fonts": [],
+  "locale": "en"
+});

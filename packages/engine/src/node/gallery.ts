@@ -19,6 +19,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, r
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { inflateSync } from "node:zlib";
+import { readStringTables } from "./project.ts";
 
 declare const Bun: {
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; env: Record<string, string | undefined> }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
@@ -77,16 +78,8 @@ export function packs(): string[] {
 }
 
 /** Every key the built-in components' string tables hold. */
-export function tableKeys(): Set<string> {
-  const keys = new Set<string>();
-  const walk = (dir: string): void => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (e.isDirectory()) walk(join(dir, e.name));
-      else if (e.name.endsWith(".ogt")) for (const m of readFileSync(join(dir, e.name), "utf8").matchAll(/^string\s+"([^"]+)"/gm)) keys.add(m[1]!);
-    }
-  };
-  walk(ui);
-  return keys;
+export function tableKeys(og?: string): Set<string> {
+  return new Set(readStringTables(repo, true, og).flatMap(t => Object.keys(t.entries)));
 }
 
 /** The string keys a UI dump's drawn text or names show as written: the table's key, not its words. */
@@ -434,7 +427,7 @@ async function main(): Promise<number> {
     const [o, e] = await Promise.all([keep(p.stdout, process.stdout), keep(p.stderr, process.stderr)]);
     return { ok: (await p.exited) === 0, log: o + e };
   };
-  const keys = tableKeys();
+  const keys = tableKeys(arg("--og"));
   const size = arg("--size") ?? "1280x720";
   const width = Number(size.split("x")[0]);
   /** The hard defects, by fixture: a mount that threw, a character no face draws, a frame that is the bare stage, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */

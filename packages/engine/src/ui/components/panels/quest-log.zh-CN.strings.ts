@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "rpg.quests.empty" "暂无任务"
-string "rpg.quests.fresh" "新"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.quests.empty": "暂无任务",
+    "rpg.quests.fresh": "新"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

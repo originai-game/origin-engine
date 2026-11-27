@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./killfeed.en.ogt";
+import "./killfeed.en.strings.ts";
 
 export interface KillfeedRow {
   id: string;

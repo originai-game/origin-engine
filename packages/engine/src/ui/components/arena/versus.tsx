@@ -1,6 +1,6 @@
 import { For, Icon, Image, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./arena.en.ogt";
+import "./arena.en.strings.ts";
 
 export interface VersusFighter {
   /** The fighter's key. */

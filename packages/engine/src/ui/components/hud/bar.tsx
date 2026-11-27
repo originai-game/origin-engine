@@ -1,5 +1,5 @@
 import { For, Show, Text, View, t, packClass } from "@origingame/engine/ui";
-import "./bar.en.ogt";
+import "./bar.en.strings.ts";
 
 export interface HudBarProps {
   /** The value now. */

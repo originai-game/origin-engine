@@ -1,7 +1,7 @@
 import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { HudTimer } from "../hud/hud-timer";
-import "./arena.en.ogt";
+import "./arena.en.strings.ts";
 
 export interface DraftSlot {
   /** The slot's key. */

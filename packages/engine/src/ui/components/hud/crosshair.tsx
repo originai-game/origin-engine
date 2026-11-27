@@ -1,5 +1,5 @@
 import { Show, View, t } from "@origingame/engine/ui";
-import "./crosshair.en.ogt";
+import "./crosshair.en.strings.ts";
 
 export interface CrosshairProps {
   /** The weapon's current spread, 0 (settled) to 1 (widest): the arms move out from the centre. */

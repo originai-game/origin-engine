@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "component.action-hints.name" "Actions"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.action-hints.name": "Actions"
+  },
+  "fonts": [],
+  "locale": "en"
+});

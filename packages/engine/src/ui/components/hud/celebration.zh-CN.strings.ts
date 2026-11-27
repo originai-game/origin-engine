@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.celebration.level-up" "升级"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.celebration.level-up": "升级"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

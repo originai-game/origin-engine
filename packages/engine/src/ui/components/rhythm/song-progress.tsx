@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmSongProgressProps {
   /** How far through the song, 0 to 1. */

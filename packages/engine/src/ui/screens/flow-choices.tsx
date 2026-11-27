@@ -2,7 +2,7 @@ import { For, Show, Text, View, createMemo, packClass, t, type UiEvent } from "@
 import type { CheckView, FlowView, QteView, TextSpan } from "@origingame/engine";
 import { InputGlyph } from "../controls/input-glyph";
 import { Progress } from "../controls/progress";
-import "./flow-choices.en.ogt";
+import "./flow-choices.en.strings.ts";
 
 /** Rendered video rectangle in normalized surface fractions (`0..1`), as returned by `computeVideoBox`. */
 export interface VideoBox {

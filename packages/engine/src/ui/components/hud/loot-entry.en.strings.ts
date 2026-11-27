@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "hud.loot-entry.row" "{name}, {quantity}"
-string "hud.loot-entry.gain" "+{quantity}"
-string "hud.loot-entry.count" "×{quantity}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.loot-entry.count": "×{quantity}",
+    "hud.loot-entry.gain": "+{quantity}",
+    "hud.loot-entry.row": "{name}, {quantity}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

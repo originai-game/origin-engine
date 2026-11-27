@@ -1,5 +1,5 @@
 import { For, Icon, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface LoadoutCategory {
   id: string;

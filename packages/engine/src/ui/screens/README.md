@@ -30,7 +30,7 @@ The contract and acceptance rules are in `docs/ui.md`.
   Use callback props (`onResume`, `onChoose`) rather than named actions in
   string attributes. Controlled values use value/change callbacks.
 - Visible words use `t(key, params)` and companion string tables imported
-  beside TSX (`import "./pause.en.ogt"`), not `<meta>` headers. Locale
+  beside TSX (`import "./pause.en.strings.ts"`), not `<meta>` headers. Locale
   formatters handle numbers and durations.
 - `fixtures` exports named prop sets, merged over `default`, for the
   gallery. Screens can also export `screen` metadata describing their
@@ -38,8 +38,8 @@ The contract and acceptance rules are in `docs/ui.md`.
 - Look is class strings and `packClass` slots. There are no HTML hosts,
   scoped CSS rules, `::part` selectors or `.svelte` loading paths.
 
-`og ui eject screens/pause` copies the TSX and its locale tables to
-`assets/ui/screens/`, prefixes copied message keys with `game.`, and
+`og ui eject screens/pause` copies TSX to `src/ui/screens/` and locale tables to
+`content/ui/screens/`, prefixes copied message keys with `game.`, and
 rewrites matching imports in the game's code. New imports must name the
 copy. It does not globally override engine-internal imports. Existing
 files are refused without `--force`.

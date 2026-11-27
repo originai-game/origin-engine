@@ -1,6 +1,6 @@
 import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 
 export interface NameplateProps {
   /** The unit it sits over, by its bits (0: use at). */

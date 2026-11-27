@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import { Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { InputGlyph } from "../controls/input-glyph";
-import "./title.en.ogt";
+import "./title.en.strings.ts";
 
 export interface TitleScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

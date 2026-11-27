@@ -23,6 +23,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("post", &shader_check::POST),
     ("ui-material", &shader_check::UI_MATERIAL),
     ("motion-action", &anim::MOTION_ACTION),
+    ("strings", &strings::STRINGS),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -59,6 +60,7 @@ fn catalogue(
             &model::MODEL,
             &texture::TEXTURE,
             &anim::RIG,
+            &font::FONT,
         ]
         .contains(&s.kind)
             && !s.rel.starts_with('@')
@@ -146,6 +148,7 @@ pub(crate) fn sources(
             video: None,
             timeline: None,
             motion_action: None,
+            strings: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
@@ -153,6 +156,10 @@ pub(crate) fn sources(
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "strings" => {
+                source.strings = Some(strings::declaration(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
             "motion-action" => {
                 source.motion_action = Some(anim::motion_action(source.input()?)?);
                 Ok(BTreeMap::new())
@@ -205,6 +212,11 @@ pub(crate) fn sources(
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     for source in sources.iter_mut() {
+        if let Some(table) = &mut source.strings {
+            for font in &mut table.fonts {
+                *font = graph.outputs[font.as_str()].asset.clone();
+            }
+        }
         if let Some(action) = &mut source.motion_action {
             for id in [&mut action.source, &mut action.rig] {
                 if let Some(output) = graph.outputs.get(id.as_str()) {

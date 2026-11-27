@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingBannerProps {
   /** What the banner calls: countdown (the count), go, finalLap, finish, call (the game's own words, in text), or none (nothing shown, as for any other word). Default "none". */

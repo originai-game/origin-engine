@@ -1,6 +1,6 @@
 import { Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./effect.en.ogt";
+import "./effect.en.strings.ts";
 
 export interface HudEffectProps {
   /** What a reader calls it (Haste). */

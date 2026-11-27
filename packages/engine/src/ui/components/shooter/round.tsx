@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface ShooterRoundProps {
   /** The round in play; 0 hides the word. */

@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "en"
-string "component.progress-ring.name" "Progress"
-string "component.progress-ring.loading" "Loading"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.progress-ring.loading": "Loading",
+    "component.progress-ring.name": "Progress"
+  },
+  "fonts": [],
+  "locale": "en"
+});

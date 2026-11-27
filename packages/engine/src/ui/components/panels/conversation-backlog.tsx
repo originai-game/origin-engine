@@ -1,6 +1,6 @@
 import { For, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
-import "./dialogue.en.ogt";
+import "./dialogue.en.strings.ts";
 
 export interface RpgConversationBacklogProps {
   /** The history title; empty uses Conversation history. */

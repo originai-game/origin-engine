@@ -1,5 +1,5 @@
 import { For, Line, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingTrackMapProps {
   /** The track's racing line as an SVG path (d) in the map's 260 by 220 box; empty draws no road. */

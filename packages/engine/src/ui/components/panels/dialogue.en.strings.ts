@@ -1,12 +1,17 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.talk.history" "Conversation history"
-string "rpg.talk.older" "Load earlier lines"
-string "rpg.talk.historyEmpty" "No conversation history yet."
-string "rpg.talk.historyLoading" "Loading conversation history…"
-string "rpg.talk.replay" "Replay {speaker}"
-string "rpg.talk.stop" "Stop replay"
-string "rpg.talk.close" "Close history"
-string "rpg.talk.narration" "Narration"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.talk.close": "Close history",
+    "rpg.talk.history": "Conversation history",
+    "rpg.talk.historyEmpty": "No conversation history yet.",
+    "rpg.talk.historyLoading": "Loading conversation history…",
+    "rpg.talk.narration": "Narration",
+    "rpg.talk.older": "Load earlier lines",
+    "rpg.talk.replay": "Replay {speaker}",
+    "rpg.talk.stop": "Stop replay"
+  },
+  "fonts": [],
+  "locale": "en"
+});

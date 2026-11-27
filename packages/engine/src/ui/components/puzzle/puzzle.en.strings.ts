@@ -1,43 +1,48 @@
-type strings
-version 1
----
-locale "en"
-string "puzzle.path.name" "Levels"
-string "puzzle.path.empty" "No levels yet"
-string "puzzle.path.play" "Play"
-string "puzzle.path.selected" "Selected"
-string "puzzle.path.open" "Open"
-string "puzzle.path.chapterStars" "{earned} / {total}"
-string "puzzle.path.chapterStarsName" "{earned} of {total} stars"
-string "puzzle.path.levelLocked" "Level {number}, locked"
-string "puzzle.path.levelOpen" "Level {number}, open"
-string "puzzle.path.levelCurrent" "Level {number}, next to play"
-string "puzzle.path.levelDone" "Level {number}, complete, {stars} of {max} stars"
-string "puzzle.goals.name" "Goals"
-string "puzzle.goals.none" "Reach the target score"
-string "puzzle.goals.left" "{label}: {left} left"
-string "puzzle.goals.done" "{label}: done"
-string "puzzle.goals.moves" "Moves"
-string "puzzle.goals.time" "Time"
-string "puzzle.goals.movesLeft" "{moves} moves left"
-string "puzzle.goals.timeLeft" "{time} left"
-string "puzzle.goals.low" "Running low"
-string "puzzle.goals.score" "Score"
-string "puzzle.goals.scoreName" "Score {score}"
-string "puzzle.summary.win" "Level complete"
-string "puzzle.summary.lose" "Level failed"
-string "puzzle.summary.stars" "{stars} of {max} stars"
-string "puzzle.summary.record" "New best"
-string "puzzle.summary.breakdown" "Score breakdown"
-string "puzzle.summary.total" "Total"
-string "puzzle.summary.next" "Next"
-string "puzzle.summary.retry" "Retry"
-string "puzzle.summary.menu" "Map"
-string "puzzle.boosters.name" "Boosters"
-string "puzzle.boosters.empty" "No boosters"
-string "puzzle.boosters.count" "{name}, {count} left"
-string "puzzle.boosters.unavailable" "{name}, unavailable"
-string "puzzle.boosters.armed" "Armed"
-string "puzzle.boosters.armedName" "{name}, {count} left, armed"
-string "puzzle.boosters.locked" "Unavailable"
-string "puzzle.boosters.times" "×{count}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "puzzle.boosters.armed": "Armed",
+    "puzzle.boosters.armedName": "{name}, {count} left, armed",
+    "puzzle.boosters.count": "{name}, {count} left",
+    "puzzle.boosters.empty": "No boosters",
+    "puzzle.boosters.locked": "Unavailable",
+    "puzzle.boosters.name": "Boosters",
+    "puzzle.boosters.times": "×{count}",
+    "puzzle.boosters.unavailable": "{name}, unavailable",
+    "puzzle.goals.done": "{label}: done",
+    "puzzle.goals.left": "{label}: {left} left",
+    "puzzle.goals.low": "Running low",
+    "puzzle.goals.moves": "Moves",
+    "puzzle.goals.movesLeft": "{moves} moves left",
+    "puzzle.goals.name": "Goals",
+    "puzzle.goals.none": "Reach the target score",
+    "puzzle.goals.score": "Score",
+    "puzzle.goals.scoreName": "Score {score}",
+    "puzzle.goals.time": "Time",
+    "puzzle.goals.timeLeft": "{time} left",
+    "puzzle.path.chapterStars": "{earned} / {total}",
+    "puzzle.path.chapterStarsName": "{earned} of {total} stars",
+    "puzzle.path.empty": "No levels yet",
+    "puzzle.path.levelCurrent": "Level {number}, next to play",
+    "puzzle.path.levelDone": "Level {number}, complete, {stars} of {max} stars",
+    "puzzle.path.levelLocked": "Level {number}, locked",
+    "puzzle.path.levelOpen": "Level {number}, open",
+    "puzzle.path.name": "Levels",
+    "puzzle.path.open": "Open",
+    "puzzle.path.play": "Play",
+    "puzzle.path.selected": "Selected",
+    "puzzle.summary.breakdown": "Score breakdown",
+    "puzzle.summary.lose": "Level failed",
+    "puzzle.summary.menu": "Map",
+    "puzzle.summary.next": "Next",
+    "puzzle.summary.record": "New best",
+    "puzzle.summary.retry": "Retry",
+    "puzzle.summary.stars": "{stars} of {max} stars",
+    "puzzle.summary.total": "Total",
+    "puzzle.summary.win": "Level complete"
+  },
+  "fonts": [],
+  "locale": "en"
+});

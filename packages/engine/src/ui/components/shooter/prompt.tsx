@@ -1,5 +1,5 @@
 import { Show, Text, View, packClass } from "@origingame/engine/ui";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 import { InputGlyph } from "../../controls/input-glyph";
 
 export interface ShooterPromptProps {

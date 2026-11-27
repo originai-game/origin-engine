@@ -1,5 +1,5 @@
 import { For, Line, View, packClass, t } from "@origingame/engine/ui";
-import "./damage-direction.en.ogt";
+import "./damage-direction.en.strings.ts";
 
 export interface DamageDirectionHit {
   id: string;

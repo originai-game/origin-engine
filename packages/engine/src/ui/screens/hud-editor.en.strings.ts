@@ -1,14 +1,19 @@
-type strings
-version 1
----
-locale "en"
-string "screen.hud-editor.hint" "Drag an element to move it."
-string "screen.hud-editor.stage" "HUD layout editor"
-string "screen.hud-editor.safeArea" "Safe area"
-string "screen.hud-editor.none" "Select a HUD element to adjust scale, opacity or visibility."
-string "screen.hud-editor.scale" "Scale"
-string "screen.hud-editor.opacity" "Opacity"
-string "screen.hud-editor.visible" "Visible"
-string "screen.hud-editor.hidden" "Hidden"
-string "screen.hud-editor.reset" "Reset"
-string "screen.hud-editor.done" "Done"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.hud-editor.done": "Done",
+    "screen.hud-editor.hidden": "Hidden",
+    "screen.hud-editor.hint": "Drag an element to move it.",
+    "screen.hud-editor.none": "Select a HUD element to adjust scale, opacity or visibility.",
+    "screen.hud-editor.opacity": "Opacity",
+    "screen.hud-editor.reset": "Reset",
+    "screen.hud-editor.safeArea": "Safe area",
+    "screen.hud-editor.scale": "Scale",
+    "screen.hud-editor.stage": "HUD layout editor",
+    "screen.hud-editor.visible": "Visible"
+  },
+  "fonts": [],
+  "locale": "en"
+});

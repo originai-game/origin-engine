@@ -1,4 +1,4 @@
-// The fixture story.test.ts cooks and loads (assets/story, assets/strings).
+// The fixture story.test.ts cooks and loads (assets/story, content/strings).
 import { defineProject } from "@origingame/engine/author";
 
 export default defineProject({

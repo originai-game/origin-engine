@@ -1,11 +1,16 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.talk.narration" "Narration"
-string "rpg.talk.replies" "Replies"
-string "rpg.talk.continue" "Continue"
-string "rpg.talk.number" "{number}"
-string "rpg.talk.backlog" "History"
-string "rpg.talk.skip" "Skip"
-string "rpg.talk.auto" "Auto"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.talk.auto": "Auto",
+    "rpg.talk.backlog": "History",
+    "rpg.talk.continue": "Continue",
+    "rpg.talk.narration": "Narration",
+    "rpg.talk.number": "{number}",
+    "rpg.talk.replies": "Replies",
+    "rpg.talk.skip": "Skip"
+  },
+  "fonts": [],
+  "locale": "en"
+});

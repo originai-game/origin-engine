@@ -1,7 +1,7 @@
 import { For, Icon, Show, Text, View, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { Spinner } from "../base/spinner";
-import "./economy.en.ogt";
+import "./economy.en.strings.ts";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
 const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;

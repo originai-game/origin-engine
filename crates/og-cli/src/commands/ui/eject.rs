@@ -5,13 +5,13 @@
 //!
 //! A name is the file's path under the engine package's `src/ui/components/`
 //! (`hud/stat-bar`, `card/hand`), or `screens/<name>` or `controls/<name>`.
-//! The copy is `assets/ui/<name>.tsx`:
+//! The copy is `src/ui/<name>.tsx`:
 //!
 //! - its relative imports become the engine's package paths
 //!   (`../controls/button` is `@origingame/engine/ui/controls/button`), so it
 //!   keeps using the built-in pieces it composes;
-//! - the strings it reads from its tables are copied into one table beside
-//!   it, `assets/ui/<name>.en.ogt`, each key under `game.` (`card.hand.play`
+//! - the strings it reads from its tables are copied into a typed declaration
+//!   under `content/ui/<name>.en.strings.ts`, each key under `game.` (`card.hand.play`
 //!   is `game.card.hand.play`, in the table and in the code), so the game's
 //!   text never competes with the engine's table for a key;
 //! - every import of it in the game's `.ts`/`.tsx` (by name from
@@ -257,34 +257,20 @@ fn barrel_aliases(ui: &Path, entry_rel: &str) -> std::collections::BTreeMap<Stri
     map
 }
 
-fn parse_table_lines(text: &str) -> Vec<(String, String)> {
-    text.lines()
-        .filter_map(|l| {
-            let rest = l.strip_prefix("string \"")?;
-            let key = &rest[..rest.find('"')?];
-            Some((key.to_string(), l.to_string()))
-        })
-        .collect()
-}
-
 fn build_locale_table(
     locale: &str,
     lines: &[(String, String)],
     used: &BTreeSet<String>,
 ) -> Option<String> {
-    let mut out = format!("type strings\nversion 1\n---\nlocale \"{locale}\"\n");
-    let mut seen = BTreeSet::new();
-    for (key, line) in lines {
-        if used.contains(key) && seen.insert(key.clone()) {
-            out.push_str(&line.replacen(
-                &format!("string \"{key}\""),
-                &format!("string \"{PREFIX}{key}\""),
-                1,
-            ));
-            out.push('\n');
-        }
-    }
-    (!seen.is_empty()).then_some(out)
+    let entries: std::collections::BTreeMap<_, _> = lines
+        .iter()
+        .filter(|(key, _)| used.contains(key))
+        .map(|(key, text)| (format!("{PREFIX}{key}"), text))
+        .collect();
+    (!entries.is_empty()).then(|| format!(
+        "import {{ file }} from '@origingame/engine/author';\nexport default file.strings({});\n",
+        serde_json::to_string_pretty(&serde_json::json!({"locale":locale,"entries":entries})).expect("string table JSON")
+    ))
 }
 
 /// Copies `name` from the package's `ui` directory into `project`.
@@ -319,29 +305,35 @@ pub(super) fn eject_from(
     let exports = exported_symbols(&text, &source)?;
     let aliases = barrel_aliases(ui, &entry.rel);
     let source_dir = source.parent().expect("a file's directory");
-    let copy = project.join("assets/ui").join(format!("{name}.tsx"));
-    let table_path = project.join("assets/ui").join(format!("{name}.en.ogt"));
-    let stem = name.rsplit('/').next().unwrap_or(name);
+    let copy = project.join("src/ui").join(format!("{name}.tsx"));
+    let table_path = project
+        .join("content/ui")
+        .join(format!("{name}.en.strings.ts"));
+    let table_import = relative(copy.parent().expect("copy directory"), &table_path);
 
-    // The tables it imports, their sibling locales (`<base>.<locale>.ogt`),
+    // The tables it imports, their sibling locales (`<base>.<locale>.strings.ts`),
     // their keys, and the code with its keys renamed.
     let mut code = String::new();
     let mut tables = Vec::new();
-    let mut sibling_locales: std::collections::BTreeMap<String, Vec<String>> =
+    let mut sibling_locales: std::collections::BTreeMap<String, Vec<og_i18n::StringTable>> =
         std::collections::BTreeMap::new();
     for line in text.split_inclusive('\n') {
         let t = line.trim();
         if let Some(rel) = t
             .strip_prefix("import \"")
             .and_then(|r| r.strip_suffix("\";"))
-            .filter(|r| r.ends_with(".ogt"))
+            .filter(|r| r.ends_with(".strings.ts"))
         {
-            let path = source_dir.join(rel);
-            tables.push(
-                std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?,
-            );
+            let path = normalize(&source_dir.join(rel));
+            let read = |path: &Path| {
+                og_cook::cook::strings_extract::read_builtin(
+                    ui,
+                    &slash(path.strip_prefix(ui).map_err(|e| e.to_string())?),
+                )
+            };
+            tables.push(read(&path)?);
             if let Some(file_name) = path.file_name().and_then(|n| n.to_str())
-                && let Some(base) = file_name.strip_suffix(".en.ogt")
+                && let Some(base) = file_name.strip_suffix(".en.strings.ts")
                 && let Some(parent) = path.parent()
                 && let Ok(entries) = std::fs::read_dir(parent)
             {
@@ -354,29 +346,30 @@ pub(super) fn eject_from(
                     };
                     let Some(loc) = peer_name
                         .strip_prefix(&prefix)
-                        .and_then(|s| s.strip_suffix(".ogt"))
+                        .and_then(|s| s.strip_suffix(".strings.ts"))
                     else {
                         continue;
                     };
                     if loc.is_empty() || loc == "en" {
                         continue;
                     }
-                    if let Ok(content) = std::fs::read_to_string(&peer) {
-                        sibling_locales
-                            .entry(loc.to_string())
-                            .or_default()
-                            .push(content);
-                    }
+                    sibling_locales
+                        .entry(loc.to_string())
+                        .or_default()
+                        .push(read(&peer)?);
                 }
             }
             if tables.len() == 1 {
-                code.push_str(&format!("import \"./{stem}.en.ogt\";\n"));
+                code.push_str(&format!("import \"{table_import}\";\n"));
             }
             continue;
         }
         code.push_str(line);
     }
-    let lines: Vec<(String, String)> = tables.iter().flat_map(|t| parse_table_lines(t)).collect();
+    let lines: Vec<(String, String)> = tables
+        .iter()
+        .flat_map(|t| t.entries.iter().map(|(k, (v, _))| (k.clone(), v.clone())))
+        .collect();
     let mut used = BTreeSet::new();
     for (key, _) in &lines {
         for q in ['"', '\'', '`'] {
@@ -412,24 +405,27 @@ pub(super) fn eject_from(
         .then(|| build_locale_table("en", &lines, &used))
         .flatten();
     if table.is_none() && !tables.is_empty() {
-        code = code.replace(&format!("import \"./{stem}.en.ogt\";\n"), "");
+        code = code.replace(&format!("import \"{table_import}\";\n"), "");
     }
     let mut extra_writes = Vec::new();
     let mut extra_imports = String::new();
     if table.is_some() {
         for (locale, texts) in &sibling_locales {
-            let loc_lines: Vec<(String, String)> =
-                texts.iter().flat_map(|t| parse_table_lines(t)).collect();
+            let loc_lines: Vec<(String, String)> = texts
+                .iter()
+                .flat_map(|t| t.entries.iter().map(|(k, (v, _))| (k.clone(), v.clone())))
+                .collect();
             if let Some(built) = build_locale_table(locale, &loc_lines, &used) {
                 let path = project
-                    .join("assets/ui")
-                    .join(format!("{name}.{locale}.ogt"));
+                    .join("content/ui")
+                    .join(format!("{name}.{locale}.strings.ts"));
+                let specifier = relative(copy.parent().expect("copy directory"), &path);
                 extra_writes.push((path, built));
-                extra_imports.push_str(&format!("import \"./{stem}.{locale}.ogt\";\n"));
+                extra_imports.push_str(&format!("import \"{specifier}\";\n"));
             }
         }
         if !extra_imports.is_empty() {
-            let en_import = format!("import \"./{stem}.en.ogt\";\n");
+            let en_import = format!("import \"{table_import}\";\n");
             code = code.replacen(&en_import, &format!("{en_import}{extra_imports}"), 1);
         }
     }

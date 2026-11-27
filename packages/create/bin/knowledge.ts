@@ -16,6 +16,9 @@ function knowledgeScript(name: string): string {
 
 const brief: typeof import("../../knowledge/scripts/brief.ts") = await import(knowledgeScript("brief.ts"));
 const creation: typeof import("../../knowledge/scripts/creation.ts") = await import(knowledgeScript("creation.ts"));
+const localization: typeof import("../../knowledge/scripts/string-tables.ts") = await import(knowledgeScript("string-tables.ts"));
+export const { readStringTables } = localization;
+export type { StringTable } from "../../knowledge/scripts/string-tables.ts";
 
 export const { ART_KINDS, ART_RESOURCES, artBrief, audioBrief, authoredArt, colourName, MOODS, MUSIC_STYLES, parseLook, parsePalette, presetLook, profileOf, readAudioChoices, readLook, RIG_TEMPLATES, rigParts, SFX_PRESETS, styleArtBriefs } = brief;
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AudioBrief, AudioBriefInput, AudioFormat, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, MusicCueBrief, MusicRole, MusicStyle, PaletteColour, ReadLookOptions, RigJoint, RigPart, RigTemplate, SfxBrief, SfxPreset, SfxPresetBrief, StyleArtBrief, StyleArtRequests } from "../../knowledge/scripts/brief.ts";

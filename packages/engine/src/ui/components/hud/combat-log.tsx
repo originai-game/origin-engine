@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./combat-log.en.ogt";
+import "./combat-log.en.strings.ts";
 
 export interface CombatLogLine {
   id: string;

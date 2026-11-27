@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import { For, Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Counter } from "../controls/counter";
-import "./splash.en.ogt";
+import "./splash.en.strings.ts";
 import { InputGlyph } from "../controls/input-glyph";
 
 export interface SplashScreenProps {

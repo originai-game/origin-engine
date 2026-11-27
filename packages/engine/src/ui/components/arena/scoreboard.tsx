@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./arena.en.ogt";
+import "./arena.en.strings.ts";
 
 export interface ScoreboardRow {
   /** The player's key. */

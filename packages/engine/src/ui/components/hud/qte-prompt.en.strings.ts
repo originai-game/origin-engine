@@ -1,16 +1,21 @@
-type strings
-version 1
----
-locale "en"
-string "hud.qte-prompt.respond" "Respond"
-string "hud.qte-prompt.press" "Press"
-string "hud.qte-prompt.hold" "Hold"
-string "hud.qte-prompt.mash" "Press repeatedly"
-string "hud.qte-prompt.success" "Success"
-string "hud.qte-prompt.failure" "Failed"
-string "hud.qte-prompt.expired" "Time up"
-string "hud.qte-prompt.waiting" "Waiting"
-string "hud.qte-prompt.disabled" "Unavailable"
-string "hud.qte-prompt.active" "Ready"
-string "hud.qte-prompt.time" "Time remaining"
-string "hud.qte-prompt.progress" "Response progress"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.qte-prompt.active": "Ready",
+    "hud.qte-prompt.disabled": "Unavailable",
+    "hud.qte-prompt.expired": "Time up",
+    "hud.qte-prompt.failure": "Failed",
+    "hud.qte-prompt.hold": "Hold",
+    "hud.qte-prompt.mash": "Press repeatedly",
+    "hud.qte-prompt.press": "Press",
+    "hud.qte-prompt.progress": "Response progress",
+    "hud.qte-prompt.respond": "Respond",
+    "hud.qte-prompt.success": "Success",
+    "hud.qte-prompt.time": "Time remaining",
+    "hud.qte-prompt.waiting": "Waiting"
+  },
+  "fonts": [],
+  "locale": "en"
+});

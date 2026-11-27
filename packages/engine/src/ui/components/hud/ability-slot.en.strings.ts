@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "component.ability-slot.ready" "Ready"
-string "component.ability-slot.locked" "Locked"
-string "component.ability-slot.unavailable" "Unavailable"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.ability-slot.locked": "Locked",
+    "component.ability-slot.ready": "Ready",
+    "component.ability-slot.unavailable": "Unavailable"
+  },
+  "fonts": [],
+  "locale": "en"
+});

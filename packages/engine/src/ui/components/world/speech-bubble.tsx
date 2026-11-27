@@ -1,6 +1,6 @@
 import { Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 
 export interface SpeechBubbleProps {
   /** Who speaks, by its bits (0: use at). */

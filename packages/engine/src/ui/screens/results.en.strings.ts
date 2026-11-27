@@ -1,17 +1,22 @@
-type strings
-version 1
----
-locale "en"
-string "screen.results.Amount" "×{r_amount}"
-string "screen.results.Gained" "+{gained, number} XP"
-string "screen.results.LevelValue" "Level {level}"
-string "screen.results.StatValue" "{format, select, percent {{value, number}%} other {{value, number}}}"
-string "screen.results.again" "Play again"
-string "screen.results.best" "Best"
-string "screen.results.continue" "Continue"
-string "screen.results.grade" "Grade"
-string "screen.results.replay" "Watch replay"
-string "screen.results.rewards" "Rewards"
-string "screen.results.tabBoard" "Scoreboard"
-string "screen.results.tabGraphs" "Graphs"
-string "screen.results.tabSummary" "Summary"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.results.Amount": "×{r_amount}",
+    "screen.results.Gained": "+{gained, number} XP",
+    "screen.results.LevelValue": "Level {level}",
+    "screen.results.StatValue": "{format, select, percent {{value, number}%} other {{value, number}}}",
+    "screen.results.again": "Play again",
+    "screen.results.best": "Best",
+    "screen.results.continue": "Continue",
+    "screen.results.grade": "Grade",
+    "screen.results.replay": "Watch replay",
+    "screen.results.rewards": "Rewards",
+    "screen.results.tabBoard": "Scoreboard",
+    "screen.results.tabGraphs": "Graphs",
+    "screen.results.tabSummary": "Summary"
+  },
+  "fonts": [],
+  "locale": "en"
+});

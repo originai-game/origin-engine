@@ -15,7 +15,7 @@ og.i18n.load(world: World, path: string): Result<LocaleInfo>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
-| `path` | `string` | no | The table, such as `strings/ja.ogt`. |
+| `path` | `string` | no | The table's canonical output ID, such as `base/strings/ja`. |
 
 **Returns** `Result<LocaleInfo>`: Refused for a path that is not a cooked string table, or a font of its chain that is not cooked.
 
@@ -25,7 +25,7 @@ Binding symbol `og_i18n_load` · publish builds: kept
 fn load {
   doc "Load a cooked string table; the active locale is negotiated again."
   param world World "The world."
-  param path String "The table, such as `strings/ja.ogt`."
+  param path String "The table's canonical output ID, such as `base/strings/ja`."
   returns Result.LocaleInfo "Refused for a path that is not a cooked string table, or a font of its chain that is not cooked."
 }
 ```

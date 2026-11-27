@@ -1,6 +1,6 @@
 import { og, type ParticleEmitter } from "@origingame/engine";
 import { For, Particles, Show, Text, View, t, useWorld, packClass } from "@origingame/engine/ui";
-import "./celebration.en.ogt";
+import "./celebration.en.strings.ts";
 import { Flourish } from "./flourish";
 import confetti from "./fx/confetti.ogt";
 import embers from "./fx/embers.ogt";

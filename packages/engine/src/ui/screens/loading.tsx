@@ -3,7 +3,7 @@ import {Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origi
 import { Spinner } from "../components/base/spinner";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
-import "./loading.en.ogt";
+import "./loading.en.strings.ts";
 import { InputGlyph } from "../controls/input-glyph";
 
 export interface LoadingScreenProps {

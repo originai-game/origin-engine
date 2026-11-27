@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./star-bar.en.ogt";
+import "./star-bar.en.strings.ts";
 
 export interface StarBarStar {
   id: string;

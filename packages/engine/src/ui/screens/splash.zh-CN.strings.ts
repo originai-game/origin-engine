@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.splash.skip" "跳过"
-string "screen.splash.skipKey" "空格"
-string "screen.splash.tap" "点击跳过"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.splash.skip": "跳过",
+    "screen.splash.skipKey": "空格",
+    "screen.splash.tap": "点击跳过"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

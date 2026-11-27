@@ -1,8 +1,13 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.carousel.name" "轮播"
-string "component.carousel.prev" "上一个"
-string "component.carousel.next" "下一个"
-string "component.carousel.empty" "暂无内容。"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.carousel.empty": "暂无内容。",
+    "component.carousel.name": "轮播",
+    "component.carousel.next": "下一个",
+    "component.carousel.prev": "上一个"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

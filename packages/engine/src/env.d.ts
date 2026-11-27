@@ -7,7 +7,7 @@ declare module "node:module" {
 }
 
 declare module "node:child_process" {
-  export function spawnSync(command: string, args: string[], options: { encoding: "utf8" }): {
+  export function spawnSync(command: string, args: string[], options: { encoding: "utf8"; maxBuffer?: number }): {
     status: number | null;
     error?: Error;
     stdout: string;

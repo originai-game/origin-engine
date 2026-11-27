@@ -1,6 +1,6 @@
 import { Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 import { InputGlyph } from "../../controls/input-glyph";
 
 export interface InteractionPromptProps {

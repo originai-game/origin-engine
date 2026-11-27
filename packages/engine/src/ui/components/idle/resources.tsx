@@ -1,6 +1,6 @@
 import {For, Icon, Show, Text, View, formatCompact, t, packClass} from "@origingame/engine/ui";
 import { Counter } from "../../controls/counter";
-import "./idle.en.ogt";
+import "./idle.en.strings.ts";
 
 export interface IdleResourcesProps {
   /** The currencies in the game's order, keyed rows of { id, icon, name, amount, value, rate, perSecond, full }: value the amount as the game formats it (it wins; empty shows amount, a number, compacted: 12.3K, counting to each new amount); rate the income as the game words it (+1.2K/s; it wins; empty shows perSecond, a number per second, compacted; 0 hides it); perSecond also sets data-trend (up, down, flat) whether or not rate is given, so pass it with a worded rate too; full the store is at its cap, named Full. */

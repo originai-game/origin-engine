@@ -4,7 +4,7 @@ import { Select } from "../controls/select";
 import { Slider } from "../controls/slider";
 import { Switch } from "../controls/switch";
 import { Tab, Tabs } from "../controls/tabs";
-import "./settings.en.ogt";
+import "./settings.en.strings.ts";
 
 export interface SettingsScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

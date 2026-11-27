@@ -1,11 +1,16 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.main-menu.continue" "继续"
-string "screen.main-menu.credits" "制作人员"
-string "screen.main-menu.modes" "模式"
-string "screen.main-menu.newGame" "新游戏"
-string "screen.main-menu.newsEyebrow" "新闻"
-string "screen.main-menu.quit" "退出"
-string "screen.main-menu.settings" "设置"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.main-menu.continue": "继续",
+    "screen.main-menu.credits": "制作人员",
+    "screen.main-menu.modes": "模式",
+    "screen.main-menu.newGame": "新游戏",
+    "screen.main-menu.newsEyebrow": "新闻",
+    "screen.main-menu.quit": "退出",
+    "screen.main-menu.settings": "设置"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

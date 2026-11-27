@@ -1,5 +1,5 @@
 import {For, Icon, Show, Text, View, formatDuration, formatNumber, t, packClass} from "@origingame/engine/ui";
-import "./puzzle.en.ogt";
+import "./puzzle.en.strings.ts";
 
 export interface PuzzleGoalsProps {
   /** The level's goals in order, keyed rows of { id, icon, label, left, done }: left how many are still to clear, as the game counts them; done the goal is met (a check replaces the count). */

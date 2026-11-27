@@ -1,5 +1,5 @@
 import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./quest-tracker.en.ogt";
+import "./quest-tracker.en.strings.ts";
 
 export interface RpgQuestTrackerProps {
   /** The tracker's heading as the game words it (Side quest); empty takes the component's Main quest. */

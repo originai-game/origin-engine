@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "screen.tutorial.Step" "教程 · {step} / {steps}"
-string "screen.tutorial.next" "下一步"
-string "screen.tutorial.skip" "跳过"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.tutorial.Step": "教程 · {step} / {steps}",
+    "screen.tutorial.next": "下一步",
+    "screen.tutorial.skip": "跳过"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

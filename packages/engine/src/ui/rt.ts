@@ -58,7 +58,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /**
- * The string tables the bundle's components import (`import "./x.en.ogt"`,
+ * The string tables the bundle's components import (`import "./x.en.strings.ts"`,
  * which the build turns into a call of this), by bundle id: each world's
  * renderer sends them once (op 12), and the host registers them.
  */

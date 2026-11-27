@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "en"
-string "component.node-graph.name" "Graph"
-string "component.node-graph.zoom" "Zoom {zoom}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.node-graph.name": "Graph",
+    "component.node-graph.zoom": "Zoom {zoom}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

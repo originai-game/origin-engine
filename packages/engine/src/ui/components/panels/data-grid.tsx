@@ -1,6 +1,6 @@
 import { For, Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./data-grid.en.ogt";
+import "./data-grid.en.strings.ts";
 
 export interface DataGridProps {
   /** The headings, a keyed collection of { id, label, numeric }: numeric columns align to the end in tabular figures. */

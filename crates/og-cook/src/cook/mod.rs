@@ -145,6 +145,8 @@ pub(crate) struct Source {
     timeline: Option<timeline::Prepared>,
     /// Checked reaction with references resolved to its producers' outputs.
     motion_action: Option<og_bundle::motion_action::MotionAction>,
+    /// Compiled ICU messages and resolved locale font chain.
+    strings: Option<og_i18n::StringTable>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.

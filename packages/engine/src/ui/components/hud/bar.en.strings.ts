@@ -1,10 +1,15 @@
-type strings
-version 1
----
-locale "en"
-string "hud.bar.health" "Health"
-string "hud.bar.mana" "Mana"
-string "hud.bar.stamina" "Stamina"
-string "hud.bar.shield" "Shield"
-string "hud.bar.xp" "Experience"
-string "hud.bar.figure" "{now} / {max}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.bar.figure": "{now} / {max}",
+    "hud.bar.health": "Health",
+    "hud.bar.mana": "Mana",
+    "hud.bar.shield": "Shield",
+    "hud.bar.stamina": "Stamina",
+    "hud.bar.xp": "Experience"
+  },
+  "fonts": [],
+  "locale": "en"
+});

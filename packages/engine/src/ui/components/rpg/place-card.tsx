@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { Icon, Image, packClass, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgPlaceCardProps {
   /** The place's name. */

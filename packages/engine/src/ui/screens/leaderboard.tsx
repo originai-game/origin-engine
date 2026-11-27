@@ -3,7 +3,7 @@ import {Scroll, For, Show, Text, packClass, type UiEvent, View, formatDuration, 
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { Tab, Tabs } from "../controls/tabs";
-import "./leaderboard.en.ogt";
+import "./leaderboard.en.strings.ts";
 
 /** Locale-safe rank badge (#1, #2, #1,284). */
 function ordinal(n: number): string {

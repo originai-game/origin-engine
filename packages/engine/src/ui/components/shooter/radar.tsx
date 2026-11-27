@@ -1,6 +1,6 @@
 import { For, Image, Line, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface RadarBlip {
   id: string;

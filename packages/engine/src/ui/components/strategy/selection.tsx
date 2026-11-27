@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, formatNumber, Icon, Image, packClass, Scroll, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
-import "./strategy.en.ogt";
+import "./strategy.en.strings.ts";
 
 export interface StrategySelectionProps {
   /** The selected unit's or building's name, or the focused subgroup's (Men-at-Arms); empty shows Nothing selected. */

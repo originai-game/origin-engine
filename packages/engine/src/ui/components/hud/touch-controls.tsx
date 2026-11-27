@@ -1,6 +1,6 @@
 import { For, Show, View, packClass, t } from "@origingame/engine/ui";
 import { ActionButton } from "./action-button";
-import "./touch-controls.en.ogt";
+import "./touch-controls.en.strings.ts";
 
 /** One action button at the end side, as ActionButton takes it. */
 export interface TouchAction {

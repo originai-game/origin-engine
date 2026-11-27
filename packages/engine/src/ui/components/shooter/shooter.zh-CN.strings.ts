@@ -1,40 +1,45 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "shooter.loadout.title" "配装"
-string "shooter.loadout.category.primary" "主武器"
-string "shooter.loadout.category.secondary" "副武器"
-string "shooter.loadout.category.melee" "近战"
-string "shooter.loadout.category.utility" "战术装备"
-string "shooter.loadout.equipped" "已装备"
-string "shooter.loadout.locked" "未解锁"
-string "shooter.loadout.equip" "装备"
-string "shooter.loadout.back" "返回"
-string "shooter.loadout.empty" "暂无物品"
-string "shooter.hud.health" "生命值"
-string "shooter.vitals.name" "状态"
-string "shooter.vitals.level" "Lv {level}"
-string "shooter.vitals.max" "/ {max}"
-string "shooter.vitals.health" "生命值"
-string "shooter.vitals.shield" "护盾"
-string "shooter.squad.name" "小队"
-string "shooter.squad.mate" "{name}，{status}"
-string "shooter.objective.label" "目标"
-string "shooter.radar.name" "雷达"
-string "shooter.radar.north" "北"
-string "shooter.round.name" "回合"
-string "shooter.round.label" "第 {round} 回合"
-string "shooter.round.score" "比分 {ours} 比 {theirs}"
-string "shooter.pickups.name" "拾取"
-string "shooter.pickups.row" "{name}，+{quantity}"
-string "shooter.pickups.count" "+{quantity}"
-string "shooter.dealt.name" "造成伤害"
-string "shooter.dealt.headshot" "爆头"
-string "shooter.dealt.kill" "击杀"
-string "shooter.effects.name" "状态效果"
-string "shooter.effects.effect" "{name}，{label}"
-string "shooter.abilities.name" "技能"
-string "shooter.abilities.charge" "大招充能"
-string "shooter.abilities.ready" "就绪"
-string "shooter.abilities.count" "×{count}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "shooter.abilities.charge": "大招充能",
+    "shooter.abilities.count": "×{count}",
+    "shooter.abilities.name": "技能",
+    "shooter.abilities.ready": "就绪",
+    "shooter.dealt.headshot": "爆头",
+    "shooter.dealt.kill": "击杀",
+    "shooter.dealt.name": "造成伤害",
+    "shooter.effects.effect": "{name}，{label}",
+    "shooter.effects.name": "状态效果",
+    "shooter.hud.health": "生命值",
+    "shooter.loadout.back": "返回",
+    "shooter.loadout.category.melee": "近战",
+    "shooter.loadout.category.primary": "主武器",
+    "shooter.loadout.category.secondary": "副武器",
+    "shooter.loadout.category.utility": "战术装备",
+    "shooter.loadout.empty": "暂无物品",
+    "shooter.loadout.equip": "装备",
+    "shooter.loadout.equipped": "已装备",
+    "shooter.loadout.locked": "未解锁",
+    "shooter.loadout.title": "配装",
+    "shooter.objective.label": "目标",
+    "shooter.pickups.count": "+{quantity}",
+    "shooter.pickups.name": "拾取",
+    "shooter.pickups.row": "{name}，+{quantity}",
+    "shooter.radar.name": "雷达",
+    "shooter.radar.north": "北",
+    "shooter.round.label": "第 {round} 回合",
+    "shooter.round.name": "回合",
+    "shooter.round.score": "比分 {ours} 比 {theirs}",
+    "shooter.squad.mate": "{name}，{status}",
+    "shooter.squad.name": "小队",
+    "shooter.vitals.health": "生命值",
+    "shooter.vitals.level": "Lv {level}",
+    "shooter.vitals.max": "/ {max}",
+    "shooter.vitals.name": "状态",
+    "shooter.vitals.shield": "护盾"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

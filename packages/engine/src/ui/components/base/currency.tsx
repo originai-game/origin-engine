@@ -1,6 +1,6 @@
 import { Icon, Show, Text, View, formatCompact, t, packClass } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
-import "./currency.en.ogt";
+import "./currency.en.strings.ts";
 
 export interface CurrencyProps {
   /** Resource name; empty uses Currency. */

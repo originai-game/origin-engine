@@ -1,6 +1,6 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Flourish } from "../hud/flourish";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface DailyRewardsProps {
   /** The calendar's heading; empty takes the group's (Daily rewards). */

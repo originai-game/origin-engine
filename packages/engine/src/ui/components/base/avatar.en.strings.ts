@@ -1,11 +1,16 @@
-type strings
-version 1
----
-locale "en"
-string "base.avatar.unnamed" "Player"
-string "base.avatar.level" "Level {level}"
-string "base.avatar.loading" "Loading"
-string "base.avatar.online" "Online"
-string "base.avatar.away" "Away"
-string "base.avatar.busy" "Busy"
-string "base.avatar.offline" "Offline"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "base.avatar.away": "Away",
+    "base.avatar.busy": "Busy",
+    "base.avatar.level": "Level {level}",
+    "base.avatar.loading": "Loading",
+    "base.avatar.offline": "Offline",
+    "base.avatar.online": "Online",
+    "base.avatar.unnamed": "Player"
+  },
+  "fonts": [],
+  "locale": "en"
+});

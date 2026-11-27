@@ -1,6 +1,6 @@
 import { Icon, Show, Text, View, packClass } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 
 export interface WaypointProps {
   /** What it marks, by its bits (0: use at). */

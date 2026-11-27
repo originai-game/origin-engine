@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import { For, packClass, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import { HudPortrait } from "../hud/portrait";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgCompanionsProps {
   /** The leader's companions in the game's order, keyed rows of { id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }: portrait a texture (0: the person glyph); ghost the health before the latest loss; manaMax 0 hides the mana bar; key the input that switches to them as the game names it (2), on a key cap at the plate's end, empty for none; fallen out of the fight (on data-fallen: the plate dims, the portrait greys and a Fallen tag stands beside the name). */

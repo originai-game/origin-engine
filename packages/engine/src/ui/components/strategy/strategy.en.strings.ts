@@ -1,69 +1,74 @@
-type strings
-version 1
----
-locale "en"
-string "strategy.resources.name" "Resources"
-string "strategy.resources.value" "{name}: {amount}"
-string "strategy.resources.cap" "/ {cap}"
-string "strategy.resources.empty" "No resources"
-string "strategy.clock.name" "Game time"
-string "strategy.clock.paused" "Paused"
-string "strategy.alerts.name" "Alerts"
-string "strategy.alerts.danger" "Alert: {text}"
-string "strategy.alerts.done" "Done: {text}"
-string "strategy.groups.name" "Control groups"
-string "strategy.groups.value" "{label}, {count, number}"
-string "strategy.minimap.name" "Minimap"
-string "strategy.commands.name" "Commands"
-string "strategy.selection.title" "Selection"
-string "strategy.selection.units" "Selected"
-string "strategy.selection.stats" "Stats"
-string "strategy.selection.stat" "{label} {value}"
-string "strategy.selection.empty" "Nothing selected"
-string "strategy.selection.count" "×{count, number}"
-string "strategy.selection.moreCount" "+{n, number}"
-string "strategy.selection.more" "{n, number} more selected"
-string "strategy.selection.unitValue" "{count, number} · Health {now, number} of {max, number}"
-string "strategy.selection.health" "Health"
-string "strategy.selection.healthMax" "/ {max, number}"
-string "strategy.queue.title" "Production"
-string "strategy.queue.items" "Queued"
-string "strategy.queue.empty" "Nothing in production"
-string "strategy.queue.capacity" "{count, number} / {limit, number}"
-string "strategy.queue.fullCount" "Queue full {count, number} / {limit, number}"
-string "strategy.queue.capacityName" "{count, number} of {limit, number} queued"
-string "strategy.queue.full" "Queue full"
-string "strategy.queue.stack" "×{count, number}"
-string "strategy.queue.cancel" "Cancel {name}"
-string "strategy.queue.paused" "Paused"
-string "strategy.queue.blocked" "Blocked"
-string "strategy.wave.name" "Waves"
-string "strategy.wave.title" "Wave {wave, number}"
-string "strategy.wave.titleNamed" "Wave {wave, number} · {name}"
-string "strategy.wave.titleOf" "Wave {wave, number} of {waves, number}"
-string "strategy.wave.titleOfNamed" "Wave {wave, number} of {waves, number} · {name}"
-string "strategy.wave.next" "Next wave"
-string "strategy.wave.incoming" "Incoming"
-string "strategy.wave.countdown" "Get ready"
-string "strategy.wave.active" "Under attack"
-string "strategy.wave.done" "All waves cleared"
-string "strategy.wave.final" "Final wave"
-string "strategy.wave.boss" "Boss"
-string "strategy.wave.enemyCount" "×{count, number}"
-string "strategy.wave.enemyName" "{count, number} {name}"
-string "strategy.wave.unknown" "Not yet scouted"
-string "strategy.wave.callEarly" "Call early"
-string "strategy.tower.name" "Tower"
-string "strategy.tower.level" "Level {level, number}"
-string "strategy.tower.stats" "Stats"
-string "strategy.tower.paths" "Upgrades"
-string "strategy.tower.empty" "No upgrades"
-string "strategy.tower.tier" "Tier {tier, number}/{tiers, number}"
-string "strategy.tower.tierName" "Tier {tier, number} of {tiers, number}"
-string "strategy.tower.next" "→ {next}"
-string "strategy.tower.nextName" "{next} after the upgrade"
-string "strategy.tower.upgrade" "Upgrade {name}"
-string "strategy.tower.short" "Too costly"
-string "strategy.tower.locked" "Locked"
-string "strategy.tower.maxed" "Maxed"
-string "strategy.tower.sell" "Sell"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "strategy.alerts.danger": "Alert: {text}",
+    "strategy.alerts.done": "Done: {text}",
+    "strategy.alerts.name": "Alerts",
+    "strategy.clock.name": "Game time",
+    "strategy.clock.paused": "Paused",
+    "strategy.commands.name": "Commands",
+    "strategy.groups.name": "Control groups",
+    "strategy.groups.value": "{label}, {count, number}",
+    "strategy.minimap.name": "Minimap",
+    "strategy.queue.blocked": "Blocked",
+    "strategy.queue.cancel": "Cancel {name}",
+    "strategy.queue.capacity": "{count, number} / {limit, number}",
+    "strategy.queue.capacityName": "{count, number} of {limit, number} queued",
+    "strategy.queue.empty": "Nothing in production",
+    "strategy.queue.full": "Queue full",
+    "strategy.queue.fullCount": "Queue full {count, number} / {limit, number}",
+    "strategy.queue.items": "Queued",
+    "strategy.queue.paused": "Paused",
+    "strategy.queue.stack": "×{count, number}",
+    "strategy.queue.title": "Production",
+    "strategy.resources.cap": "/ {cap}",
+    "strategy.resources.empty": "No resources",
+    "strategy.resources.name": "Resources",
+    "strategy.resources.value": "{name}: {amount}",
+    "strategy.selection.count": "×{count, number}",
+    "strategy.selection.empty": "Nothing selected",
+    "strategy.selection.health": "Health",
+    "strategy.selection.healthMax": "/ {max, number}",
+    "strategy.selection.more": "{n, number} more selected",
+    "strategy.selection.moreCount": "+{n, number}",
+    "strategy.selection.stat": "{label} {value}",
+    "strategy.selection.stats": "Stats",
+    "strategy.selection.title": "Selection",
+    "strategy.selection.unitValue": "{count, number} · Health {now, number} of {max, number}",
+    "strategy.selection.units": "Selected",
+    "strategy.tower.empty": "No upgrades",
+    "strategy.tower.level": "Level {level, number}",
+    "strategy.tower.locked": "Locked",
+    "strategy.tower.maxed": "Maxed",
+    "strategy.tower.name": "Tower",
+    "strategy.tower.next": "→ {next}",
+    "strategy.tower.nextName": "{next} after the upgrade",
+    "strategy.tower.paths": "Upgrades",
+    "strategy.tower.sell": "Sell",
+    "strategy.tower.short": "Too costly",
+    "strategy.tower.stats": "Stats",
+    "strategy.tower.tier": "Tier {tier, number}/{tiers, number}",
+    "strategy.tower.tierName": "Tier {tier, number} of {tiers, number}",
+    "strategy.tower.upgrade": "Upgrade {name}",
+    "strategy.wave.active": "Under attack",
+    "strategy.wave.boss": "Boss",
+    "strategy.wave.callEarly": "Call early",
+    "strategy.wave.countdown": "Get ready",
+    "strategy.wave.done": "All waves cleared",
+    "strategy.wave.enemyCount": "×{count, number}",
+    "strategy.wave.enemyName": "{count, number} {name}",
+    "strategy.wave.final": "Final wave",
+    "strategy.wave.incoming": "Incoming",
+    "strategy.wave.name": "Waves",
+    "strategy.wave.next": "Next wave",
+    "strategy.wave.title": "Wave {wave, number}",
+    "strategy.wave.titleNamed": "Wave {wave, number} · {name}",
+    "strategy.wave.titleOf": "Wave {wave, number} of {waves, number}",
+    "strategy.wave.titleOfNamed": "Wave {wave, number} of {waves, number} · {name}",
+    "strategy.wave.unknown": "Not yet scouted"
+  },
+  "fonts": [],
+  "locale": "en"
+});

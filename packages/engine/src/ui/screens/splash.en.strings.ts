@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "screen.splash.skip" "Skip"
-string "screen.splash.skipKey" "Space"
-string "screen.splash.tap" "Tap to skip"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.splash.skip": "Skip",
+    "screen.splash.skipKey": "Space",
+    "screen.splash.tap": "Tap to skip"
+  },
+  "fonts": [],
+  "locale": "en"
+});

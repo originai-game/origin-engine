@@ -1,5 +1,5 @@
 import { Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./ability-slot.en.ogt";
+import "./ability-slot.en.strings.ts";
 
 export interface CooldownProps {
   /** Seconds left; 0 is ready. */

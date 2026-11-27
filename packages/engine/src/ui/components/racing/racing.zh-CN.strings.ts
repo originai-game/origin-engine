@@ -1,94 +1,99 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "racing.telemetry.name" "遥测"
-string "racing.telemetry.speed" "{speed, number} {units}"
-string "racing.telemetry.gearValue" "{gear} 挡"
-string "racing.telemetry.rpm" "转速"
-string "racing.telemetry.rpmValue" "{rpm, number} rpm"
-string "racing.telemetry.lights" "换挡灯"
-string "racing.telemetry.shift" "换挡"
-string "racing.lap.name" "名次与圈速"
-string "racing.lap.lap" "圈数"
-string "racing.lap.position" "名次"
-string "racing.lap.of" "/{total, number}"
-string "racing.lap.ofSpaced" "/ {total, number}"
-string "racing.lap.lapValue" "第 {lap, number}/{laps, number} 圈"
-string "racing.lap.positionValue" "第 {position, number} 名，共 {racers, number} 名"
-string "racing.lap.pending" "–"
-string "racing.lap.up" "{n, plural, other {上升 # 名}}"
-string "racing.lap.down" "{n, plural, other {下降 # 名}}"
-string "racing.lap.times" "圈速"
-string "racing.lap.current" "本圈"
-string "racing.lap.best" "最佳"
-string "racing.lap.last" "上圈"
-string "racing.lap.split" "分段"
-string "racing.lap.none" "–:––.–––"
-string "racing.lap.ahead" "领先"
-string "racing.lap.behind" "落后"
-string "racing.lap.even" "持平"
-string "racing.lap.splitAhead" "{sector} 领先 {delta}"
-string "racing.lap.splitBehind" "{sector} 落后 {delta}"
-string "racing.lap.splitEven" "{sector} 持平 {delta}"
-string "racing.lap.newBest" "最快圈"
-string "racing.lap.finalLap" "最后一圈"
-string "racing.lap.timeLeft" "剩余时间"
-string "racing.standings.name" "排名"
-string "racing.standings.empty" "暂无车手"
-string "racing.standings.leader" "领跑"
-string "racing.standings.pitting" "进站"
-string "racing.standings.retired" "退赛"
-string "racing.standings.finished" "完赛"
-string "racing.standings.pittingName" "正在进站"
-string "racing.standings.retiredName" "未完赛"
-string "racing.standings.finishedName" "已完赛"
-string "racing.banner.name" "比赛"
-string "racing.banner.go" "出发！"
-string "racing.banner.finalLap" "最后一圈"
-string "racing.banner.finish" "冲线"
-string "racing.map.name" "赛道图"
-string "racing.map.length" "赛道长度"
-string "racing.boost.name" "氮气"
-string "racing.pedals.name" "踏板"
-string "racing.pedals.throttle" "油门"
-string "racing.pedals.brake" "刹车"
-string "racing.pedals.throttleName" "油门"
-string "racing.pedals.brakeName" "刹车"
-string "racing.car.name" "赛车"
-string "racing.car.tyres" "轮胎"
-string "racing.car.fuel" "燃油"
-string "racing.car.fuelLow" "燃油不足"
-string "racing.car.pit" "本圈进站"
-string "racing.bonus.name" "奖励"
-string "racing.garage.title" "车库"
-string "racing.garage.vehicles" "车辆"
-string "racing.garage.stats" "性能"
-string "racing.garage.empty" "暂无车辆"
-string "racing.garage.owned" "已拥有"
-string "racing.garage.locked" "未解锁"
-string "racing.garage.driving" "驾驶中"
-string "racing.garage.select" "驾驶"
-string "racing.garage.buy" "购买 {price}"
-string "racing.garage.short" "余额不足"
-string "racing.garage.back" "返回"
-string "racing.garage.prev" "上一辆"
-string "racing.garage.next" "下一辆"
-string "racing.garage.count" "{n, number}/{total, number}"
-string "racing.results.title" "比赛结果"
-string "racing.results.empty" "无人完赛"
-string "racing.results.position" "名次"
-string "racing.results.driver" "车手"
-string "racing.results.time" "用时"
-string "racing.results.points" "积分"
-string "racing.results.fastest" "最快圈"
-string "racing.results.bestLap" "最快圈 {time} · {name}"
-string "racing.results.bestLapTime" "最快圈 {time}"
-string "racing.results.unplaced" "–"
-string "racing.results.dnf" "DNF"
-string "racing.results.dsq" "DSQ"
-string "racing.results.dnfName" "未完赛"
-string "racing.results.dsqName" "取消资格"
-string "racing.results.you" "你"
-string "racing.results.continue" "继续"
-string "racing.results.retry" "重试"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "racing.banner.finalLap": "最后一圈",
+    "racing.banner.finish": "冲线",
+    "racing.banner.go": "出发！",
+    "racing.banner.name": "比赛",
+    "racing.bonus.name": "奖励",
+    "racing.boost.name": "氮气",
+    "racing.car.fuel": "燃油",
+    "racing.car.fuelLow": "燃油不足",
+    "racing.car.name": "赛车",
+    "racing.car.pit": "本圈进站",
+    "racing.car.tyres": "轮胎",
+    "racing.garage.back": "返回",
+    "racing.garage.buy": "购买 {price}",
+    "racing.garage.count": "{n, number}/{total, number}",
+    "racing.garage.driving": "驾驶中",
+    "racing.garage.empty": "暂无车辆",
+    "racing.garage.locked": "未解锁",
+    "racing.garage.next": "下一辆",
+    "racing.garage.owned": "已拥有",
+    "racing.garage.prev": "上一辆",
+    "racing.garage.select": "驾驶",
+    "racing.garage.short": "余额不足",
+    "racing.garage.stats": "性能",
+    "racing.garage.title": "车库",
+    "racing.garage.vehicles": "车辆",
+    "racing.lap.ahead": "领先",
+    "racing.lap.behind": "落后",
+    "racing.lap.best": "最佳",
+    "racing.lap.current": "本圈",
+    "racing.lap.down": "{n, plural, other {下降 # 名}}",
+    "racing.lap.even": "持平",
+    "racing.lap.finalLap": "最后一圈",
+    "racing.lap.lap": "圈数",
+    "racing.lap.lapValue": "第 {lap, number}/{laps, number} 圈",
+    "racing.lap.last": "上圈",
+    "racing.lap.name": "名次与圈速",
+    "racing.lap.newBest": "最快圈",
+    "racing.lap.none": "–:––.–––",
+    "racing.lap.of": "/{total, number}",
+    "racing.lap.ofSpaced": "/ {total, number}",
+    "racing.lap.pending": "–",
+    "racing.lap.position": "名次",
+    "racing.lap.positionValue": "第 {position, number} 名，共 {racers, number} 名",
+    "racing.lap.split": "分段",
+    "racing.lap.splitAhead": "{sector} 领先 {delta}",
+    "racing.lap.splitBehind": "{sector} 落后 {delta}",
+    "racing.lap.splitEven": "{sector} 持平 {delta}",
+    "racing.lap.timeLeft": "剩余时间",
+    "racing.lap.times": "圈速",
+    "racing.lap.up": "{n, plural, other {上升 # 名}}",
+    "racing.map.length": "赛道长度",
+    "racing.map.name": "赛道图",
+    "racing.pedals.brake": "刹车",
+    "racing.pedals.brakeName": "刹车",
+    "racing.pedals.name": "踏板",
+    "racing.pedals.throttle": "油门",
+    "racing.pedals.throttleName": "油门",
+    "racing.results.bestLap": "最快圈 {time} · {name}",
+    "racing.results.bestLapTime": "最快圈 {time}",
+    "racing.results.continue": "继续",
+    "racing.results.dnf": "DNF",
+    "racing.results.dnfName": "未完赛",
+    "racing.results.driver": "车手",
+    "racing.results.dsq": "DSQ",
+    "racing.results.dsqName": "取消资格",
+    "racing.results.empty": "无人完赛",
+    "racing.results.fastest": "最快圈",
+    "racing.results.points": "积分",
+    "racing.results.position": "名次",
+    "racing.results.retry": "重试",
+    "racing.results.time": "用时",
+    "racing.results.title": "比赛结果",
+    "racing.results.unplaced": "–",
+    "racing.results.you": "你",
+    "racing.standings.empty": "暂无车手",
+    "racing.standings.finished": "完赛",
+    "racing.standings.finishedName": "已完赛",
+    "racing.standings.leader": "领跑",
+    "racing.standings.name": "排名",
+    "racing.standings.pitting": "进站",
+    "racing.standings.pittingName": "正在进站",
+    "racing.standings.retired": "退赛",
+    "racing.standings.retiredName": "未完赛",
+    "racing.telemetry.gearValue": "{gear} 挡",
+    "racing.telemetry.lights": "换挡灯",
+    "racing.telemetry.name": "遥测",
+    "racing.telemetry.rpm": "转速",
+    "racing.telemetry.rpmValue": "{rpm, number} rpm",
+    "racing.telemetry.shift": "换挡",
+    "racing.telemetry.speed": "{speed, number} {units}"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
-import "./avatar.en.ogt";
+import "./avatar.en.strings.ts";
 
 export interface AvatarProps {
   /** The displayed and accessible name; empty uses the localized unnamed-player label. */

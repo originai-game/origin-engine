@@ -1,6 +1,6 @@
 import {Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
-import "./confirm.en.ogt";
+import "./confirm.en.strings.ts";
 
 export interface ConfirmProps {
   /** Shown; the game writes it false to close (onCancel does on a dismissal). */

@@ -1,8 +1,13 @@
-type strings
-version 1
----
-locale "en"
-string "shooter.killfeed.name" "Eliminations"
-string "shooter.killfeed.headshot" "Headshot"
-string "shooter.killfeed.row" "{killer} eliminated {victim} with {weapon}"
-string "shooter.killfeed.hs" "HS"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "shooter.killfeed.headshot": "Headshot",
+    "shooter.killfeed.hs": "HS",
+    "shooter.killfeed.name": "Eliminations",
+    "shooter.killfeed.row": "{killer} eliminated {victim} with {weapon}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

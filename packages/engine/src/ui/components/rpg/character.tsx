@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, packClass, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgCharacterProps {
   /** A heading band over the figure (Equipment); empty shows the name header instead. */

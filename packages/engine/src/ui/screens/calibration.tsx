@@ -1,6 +1,6 @@
 import {Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
-import "./calibration.en.ogt";
+import "./calibration.en.strings.ts";
 
 /** A slider stands in for the Svelte range input, which the TSX host has no surface for: a track, a fill and a thumb stepped by the arrow keys (a reader's increment and decrement arrive as ArrowUp and ArrowDown). Pointer dragging has no surface; the game owns the value and each step reports it back. */
 function Slider(props: {

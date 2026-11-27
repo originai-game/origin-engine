@@ -1,5 +1,5 @@
 import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmTimingProps {
   /** The judgement tally so far in the game's order, keyed rows of { id, judgement, label, count }: judgement the kind (perfect, great, good, bad, miss; its colour, on data-judgement), label its word as the game names it, count how many. */

@@ -1,40 +1,45 @@
-type strings
-version 1
----
-locale "en"
-string "shooter.loadout.title" "Loadout"
-string "shooter.loadout.category.primary" "Primary"
-string "shooter.loadout.category.secondary" "Secondary"
-string "shooter.loadout.category.melee" "Melee"
-string "shooter.loadout.category.utility" "Utility"
-string "shooter.loadout.equipped" "Equipped"
-string "shooter.loadout.locked" "Locked"
-string "shooter.loadout.equip" "Equip"
-string "shooter.loadout.back" "Back"
-string "shooter.loadout.empty" "No items"
-string "shooter.hud.health" "Health"
-string "shooter.vitals.name" "Vitals"
-string "shooter.vitals.level" "Lv {level}"
-string "shooter.vitals.max" "/ {max}"
-string "shooter.vitals.health" "Health"
-string "shooter.vitals.shield" "Shield"
-string "shooter.squad.name" "Squad"
-string "shooter.squad.mate" "{name}, {status}"
-string "shooter.objective.label" "Objective"
-string "shooter.radar.name" "Radar"
-string "shooter.radar.north" "N"
-string "shooter.round.name" "Round"
-string "shooter.round.label" "Round {round}"
-string "shooter.round.score" "Score {ours} to {theirs}"
-string "shooter.pickups.name" "Pickups"
-string "shooter.pickups.row" "{name}, +{quantity}"
-string "shooter.pickups.count" "+{quantity}"
-string "shooter.dealt.name" "Damage dealt"
-string "shooter.dealt.headshot" "Headshot"
-string "shooter.dealt.kill" "Eliminated"
-string "shooter.effects.name" "Effects"
-string "shooter.effects.effect" "{name}, {label}"
-string "shooter.abilities.name" "Abilities"
-string "shooter.abilities.charge" "Ultimate charge"
-string "shooter.abilities.ready" "Ready"
-string "shooter.abilities.count" "×{count}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "shooter.abilities.charge": "Ultimate charge",
+    "shooter.abilities.count": "×{count}",
+    "shooter.abilities.name": "Abilities",
+    "shooter.abilities.ready": "Ready",
+    "shooter.dealt.headshot": "Headshot",
+    "shooter.dealt.kill": "Eliminated",
+    "shooter.dealt.name": "Damage dealt",
+    "shooter.effects.effect": "{name}, {label}",
+    "shooter.effects.name": "Effects",
+    "shooter.hud.health": "Health",
+    "shooter.loadout.back": "Back",
+    "shooter.loadout.category.melee": "Melee",
+    "shooter.loadout.category.primary": "Primary",
+    "shooter.loadout.category.secondary": "Secondary",
+    "shooter.loadout.category.utility": "Utility",
+    "shooter.loadout.empty": "No items",
+    "shooter.loadout.equip": "Equip",
+    "shooter.loadout.equipped": "Equipped",
+    "shooter.loadout.locked": "Locked",
+    "shooter.loadout.title": "Loadout",
+    "shooter.objective.label": "Objective",
+    "shooter.pickups.count": "+{quantity}",
+    "shooter.pickups.name": "Pickups",
+    "shooter.pickups.row": "{name}, +{quantity}",
+    "shooter.radar.name": "Radar",
+    "shooter.radar.north": "N",
+    "shooter.round.label": "Round {round}",
+    "shooter.round.name": "Round",
+    "shooter.round.score": "Score {ours} to {theirs}",
+    "shooter.squad.mate": "{name}, {status}",
+    "shooter.squad.name": "Squad",
+    "shooter.vitals.health": "Health",
+    "shooter.vitals.level": "Lv {level}",
+    "shooter.vitals.max": "/ {max}",
+    "shooter.vitals.name": "Vitals",
+    "shooter.vitals.shield": "Shield"
+  },
+  "fonts": [],
+  "locale": "en"
+});

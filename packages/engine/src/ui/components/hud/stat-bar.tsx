@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, t, packClass } from "@origingame/engine/ui";
-import "./stat-bar.en.ogt";
+import "./stat-bar.en.strings.ts";
 
 export interface StatBarProps {
   /** The value. */

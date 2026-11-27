@@ -1,16 +1,21 @@
-type strings
-version 1
----
-locale "en"
-string "screen.common.back" "Back"
-string "screen.leaderboard.Ends" "{league_ends}"
-string "screen.leaderboard.Lines" "Top {league_promote} go up · below {league_demote} go down"
-string "screen.leaderboard.MeRank" "{value}"
-string "screen.leaderboard.MeScore" "{value, number}"
-string "screen.leaderboard.RowRank" "{value}"
-string "screen.leaderboard.RowScore" "{value, number}"
-string "screen.leaderboard.friends" "Friends"
-string "screen.leaderboard.global" "Global"
-string "screen.leaderboard.league" "League"
-string "screen.leaderboard.title" "Leaderboard"
-string "screen.leaderboard.you" "You"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.back": "Back",
+    "screen.leaderboard.Ends": "{league_ends}",
+    "screen.leaderboard.Lines": "Top {league_promote} go up · below {league_demote} go down",
+    "screen.leaderboard.MeRank": "{value}",
+    "screen.leaderboard.MeScore": "{value, number}",
+    "screen.leaderboard.RowRank": "{value}",
+    "screen.leaderboard.RowScore": "{value, number}",
+    "screen.leaderboard.friends": "Friends",
+    "screen.leaderboard.global": "Global",
+    "screen.leaderboard.league": "League",
+    "screen.leaderboard.title": "Leaderboard",
+    "screen.leaderboard.you": "You"
+  },
+  "fonts": [],
+  "locale": "en"
+});

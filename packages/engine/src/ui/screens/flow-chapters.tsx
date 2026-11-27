@@ -2,7 +2,7 @@ import {Scroll, For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@
 import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
-import "./flow-chapters.en.ogt";
+import "./flow-chapters.en.strings.ts";
 
 export interface FlowChaptersScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

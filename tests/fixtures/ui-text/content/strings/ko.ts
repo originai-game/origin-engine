@@ -1,1341 +1,1349 @@
-type strings
-version 1
----
-# The UI kit's ko strings (og.i18n; templates/ui-kit/README.md §Locales).
-locale "ko"
-fonts "fonts/NotoSansKR-subset.otf"
-string "gallery.button" "갤러리"
-string "menu.title" "오리진 퀘스트"
-string "menu.subtitle" "작은 모험"
-string "menu.greeting" "작은 모험가"
-string "menu.mixed" "퀘스트 Origin 原点 مغامرة صغيرة"
-string "menu.play" "플레이"
-string "menu.continue" "이어하기"
-string "menu.settings" "설정"
-string "menu.quit" "종료"
-string "menu.footer" "버전 {version}"
-string "pause.title" "일시정지"
-string "pause.resume" "계속하기"
-string "pause.settings" "설정"
-string "pause.quit" "메뉴로 나가기"
-string "hud.level" "1-2 오래된 방앗간"
-string "hud.coins" "{n, plural, other {코인 #개}}"
-string "confirm.title" "이 저장을 삭제할까요?"
-string "confirm.message" "슬롯 [b]{slot}[/b]의 진행 상황이 사라집니다. [color=danger]되돌릴 수 없습니다.[/color]"
-string "confirm.delete" "삭제"
-string "confirm.cancel" "취소"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
-string "settings.title" "설정"
-string "settings.audio" "오디오"
-string "settings.graphics" "그래픽"
-string "settings.controls" "조작"
-string "settings.language" "언어"
-string "settings.master" "마스터"
-string "settings.music" "음악"
-string "settings.effects" "효과음"
-string "settings.mute" "모두 음소거"
-string "settings.quality" "화질"
-string "settings.low" "낮음"
-string "settings.medium" "보통"
-string "settings.high" "높음"
-string "settings.fps" "프레임 속도 표시"
-string "settings.motion" "움직임 줄이기"
-string "settings.contrast" "고대비"
-string "settings.sensitivity" "감도"
-string "settings.invert" "상하 시점 반전"
-string "settings.vibration" "진동"
-string "settings.done" "완료"
-string "shop.title" "상점"
-string "shop.price" "가격"
-string "shop.buy" "구매"
-string "shop.short" "잔액 부족"
-string "shop.owned" "보유 중"
-string "shop.empty" "판매 중인 물건이 없습니다"
-string "inventory.hint" "아이템을 선택하세요. 다른 칸으로 끌어서 옮길 수 있습니다."
-string "inventory.count" "수량"
-string "leaderboard.error" "점수를 불러오지 못했습니다."
-string "leaderboard.retry" "다시 시도"
-string "tutorial.skip" "건너뛰기"
-string "tutorial.next" "다음"
-string "tutorial.done" "완료"
-string "tutorial.step" "{count}단계 중 {step}단계"
-string "cutscene.skip" "건너뛰기"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
-string "hud.pause" "일시정지"
-string "hud.jump" "점프"
-string "hud.fire" "발사"
-string "hud.kills" "처치"
-string "hud.weapon" "카빈"
-string "hud.sector" "섹터 4"
-string "hud.stage" "레벨 7"
-string "hud.moves" "남은 이동"
-string "hud.target" "목표 {target}"
-string "hud.tap" "탭"
-string "hud.generatorLevel" "레벨 {level}"
-string "hud.rate" "+{rate}/초"
-string "hud.gold" "골드"
-string "hud.gems" "보석"
-string "hud.farm" "농장"
-string "hud.mill" "방앗간"
-string "hud.forge" "대장간"
-string "hud.lap" "랩"
-string "hud.best" "최고 {best}"
-string "hud.boost" "부스트"
-string "hud.brake" "브레이크"
-string "hud.left" "왼쪽"
-string "hud.right" "오른쪽"
-string "hud.unit" "km/h"
-# The rate lines stay English here: the kit's Korean subset (tools/make-locale-fonts.py) does not hold their words yet.
-string "gacha.rate.event" "다음 5성이 [color=highlight]아리아[/color]일 확률은 [b]50%[/b]입니다. 놓치면 다음 5성은 반드시 아리아입니다."
-string "gacha.rate.standard" "[b]90[/b]회 소환 안에 [b]5성[/b]이 반드시 나옵니다."
-# The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
-string "list.separator" ", "
-string "hint.back" "뒤로"
-string "time.days" "{d}일 {h}시간"
-string "time.hours" "{h}시간 {m}분"
-string "time.minutes" "{m}분"
-string "cards.title" "전투"
-string "cards.yourTurn" "내 턴"
-string "cards.enemyTurn" "적의 턴"
-string "cards.energy" "에너지"
-string "cards.endTurn" "턴 종료"
-string "cards.waiting" "대기 중…"
-string "cards.hand" "손패"
-string "cards.target" "대상을 선택하세요"
-string "cards.taunt" "도발에 가려짐"
-string "cards.health" "{name} 체력"
-string "cards.foe.cultist" "광신도"
-string "cards.foe.louse" "붉은 이"
-string "cards.strike.name" "타격"
-string "cards.strike.text" "피해를 [b]6[/b] 줍니다."
-string "cards.type.strike" "공격"
-string "cards.defend.name" "수비"
-string "cards.defend.text" "[color=info]방어도[/color]를 [b]5[/b] 얻습니다."
-string "cards.type.defend" "스킬"
-string "cards.bash.name" "강타"
-string "cards.bash.text" "피해를 [b]8[/b] 주고 [color=warn]취약[/color] 2를 부여합니다."
-string "cards.type.bash" "공격"
-string "cards.anger.name" "분노"
-string "cards.anger.text" "피해를 [b]6[/b] 줍니다. 버린 카드 더미에 사본을 추가합니다."
-string "cards.type.anger" "공격"
-string "cards.inflame.name" "발화"
-string "cards.inflame.text" "[color=danger]힘[/color]을 [b]2[/b] 얻습니다."
-string "cards.type.inflame" "파워"
-string "cards.wound.name" "부상"
-string "cards.wound.text" "사용할 수 없습니다."
-string "cards.type.wound" "상태이상"
-string "rewards.title" "방 정리 완료"
-string "rewards.choose" "축복을 하나 고르세요"
-string "rewards.chooseTwo" "축복 두 개를 고른 뒤 확정하세요"
-string "rewards.taken" "획득: {list}"
-string "rewards.rerollCost" "50골드"
-string "rewards.skip" "건너뛰기 · 25골드 획득"
-string "rewards.skipped" "25골드"
-string "rewards.reroll" "다시 뽑기"
-string "rewards.banish" "추방"
-string "rewards.confirm" "확정"
-string "rewards.hint.take" "받기"
-string "rewards.thunder.title" "천둥 일격"
-string "rewards.thunder.kind" "폭풍 파수꾼의 선물"
-string "rewards.thunder.text" "공격이 [b]번개[/b]를 불러 [color=highlight]+30[/color] 피해를 줍니다."
-string "rewards.vigor.title" "철꽃의 심장"
-string "rewards.vigor.kind" "강철 모후의 선물"
-string "rewards.vigor.text" "최대 체력 [b]+25%[/b]. 방을 정리할 때마다 [color=success]10[/color] 회복."
-string "rewards.vigor.tag" "강화"
-string "rewards.crown.title" "세월의 왕관"
-string "rewards.crown.kind" "유물"
-string "rewards.crown.text" "전투를 시작할 때마다 [color=info]에너지[/color]를 [b]2[/b] 더 얻습니다."
-string "rewards.crown.tag" "NEW"
-string "rewards.crown.locked" "두 번째 보스를 처치하면 해제"
-string "rewards.frost.title" "동상"
-string "rewards.frost.kind" "서리 직조자의 선물"
-string "rewards.frost.text" "공격이 적을 [color=info]얼려[/color] [b]20%[/b] 느리게 합니다."
-string "rewards.gold.title" "황금의 손길"
-string "rewards.gold.kind" "금화 성자의 선물"
-string "rewards.gold.text" "지금 [b]40[/b]골드, 처치할 때마다 [b]5[/b]골드를 얻습니다."
-string "rewards.blade.title" "황혼의 칼날"
-string "rewards.blade.kind" "무기"
-string "rewards.blade.text" "대시가 [b]18[/b] 피해를 주는 칼날을 남깁니다."
-string "rewards.blade.tag" "Lv 3 → 4"
-string "gacha.banner.event" "한정 배너 · 캐릭터"
-string "gacha.banner.weapon" "한정 배너 · 무기"
-string "gacha.banner.std" "상시 배너"
-string "gacha.title.aria" "달의 조수를 부르는 자"
-string "gacha.title.kael" "잔불"
-string "gacha.title.mira" "숲의 수호자"
-string "gacha.pity" "{left}회 후 확정"
-string "gacha.summon1" "소환 ×1"
-string "gacha.summonN" "소환 ×{n}"
-string "gacha.short" "부족"
-string "gacha.details" "상세"
-string "gacha.history" "기록"
-string "gacha.done" "완료"
-string "gacha.skip" "건너뛰기"
-string "gacha.tap" "탭하여 계속"
-string "gacha.continue" "계속"
-string "gacha.new" "NEW"
-string "gacha.kind.character" "캐릭터"
-string "gacha.kind.weapon" "무기"
-string "gacha.rarity.common" "일반"
-string "gacha.rarity.uncommon" "고급"
-string "gacha.rarity.rare" "희귀"
-string "gacha.rarity.epic" "영웅"
-string "gacha.rarity.legendary" "전설"
-string "gacha.rarity.mythic" "신화"
-string "gacha.extra.shards" "별 조각 +{n}"
-string "gacha.unit.warden" "파수꾼의 검"
-string "gacha.unit.fang" "잔불의 송곳니"
-string "gacha.unit.sling" "사냥꾼의 투석구"
-string "gacha.unit.cudgel" "참나무 곤봉"
-string "gacha.unit.spear" "밤의 창"
-string "gacha.unit.tome" "조수의 서"
-string "gacha.unit.steel" "평범한 강철"
-string "gear.title" "인벤토리"
-string "gear.sub" "드래그로 이동 · Shift로 나누기 · R로 회전"
-string "gear.sub.touch" "드래그로 이동 · 길게 눌러 옵션"
-string "gear.class" "레벨 {level} 성기사"
-string "gear.power" "아이템 위력"
-string "gear.attributes" "능력치"
-string "gear.backpack" "배낭"
-string "gear.stash" "보관함"
-string "gear.locked" "잠김"
-string "gear.unusable" "사용 불가"
-string "gear.empty" "비어 있음"
-string "gear.rotate" "회전"
-string "gear.relicLocked" "레벨 {level}에 해제"
-string "gear.menu.use" "사용"
-string "gear.menu.split" "나누기"
-string "gear.menu.drop" "버리기"
-string "gear.hint.place" "집기 / 놓기"
-string "gear.hint.menu" "아이템 메뉴"
-string "gear.hint.putBack" "되돌리기"
-string "gear.slot.relic" "유물"
-string "gear.slot.hands" "손"
-string "gear.slot.chest" "몸통"
-string "gear.slot.main" "주 무기"
-string "gear.slot.ring" "반지"
-string "gear.slot.head" "머리"
-string "gear.slot.neck" "목"
-string "gear.slot.off" "보조 무기"
-string "gear.slot.feet" "발"
-string "gear.stat.armor" "방어력"
-string "gear.stat.strength" "힘"
-string "gear.stat.fire" "화염 저항"
-string "gear.stat.speed" "이동 속도"
-string "gear.stat.cooldowns" "재사용 대기시간"
-string "gear.item.greatsword" "재의 인도자"
-string "gear.item.bow" "바람의 활"
-string "gear.item.potions" "치유 물약"
-string "gear.item.mana" "마나 물약"
-string "gear.item.ring" "골짜기의 인장"
-string "gear.item.helm" "가시 왕관"
-string "gear.item.plate" "비전 지팡이"
-string "gear.item.gloves" "건틀릿"
-string "gear.item.gem" "별 조각"
-string "gear.item.boots" "신속의 장화"
-string "gear.item.scroll" "강철 열쇠"
-string "gear.item.ore" "원석"
-string "gear.item.amulet" "사파이어 목걸이"
-string "gear.item.shield" "참나무 방패"
-string "gear.item.robe" "마법사 로브"
-string "gear.item.dagger" "강철 검"
-# The saga map, match-3 board and idle previews (src/patterns.ts).
-string "saga.title" "스테이지"
-string "saga.world" "하늘섬 군도"
-string "saga.sub" "별 {stars} / {max}"
-string "saga.level" "스테이지 {label}"
-string "saga.boss" "보스, 스테이지 {label}"
-string "saga.stars" "별 {n} / {max}"
-string "saga.here" "현재 위치"
-string "saga.play" "스테이지 {level} 플레이"
-string "board.level" "스테이지"
-string "board.moves" "남은 이동"
-string "board.score" "점수"
-string "board.goals" "목표"
-string "board.goal.blue" "파란 보석 모으기"
-string "board.goal.ice" "얼음 타일 깨기"
-string "board.progress" "{have} / {need}"
-string "board.done" "완료"
-string "idle.title" "넥서스 코어"
-string "idle.sub" "발전기를 늘리고 승천해 파편을 얻으세요"
-string "idle.energy" "에너지"
-string "idle.rate" "+{rate} / 초"
-string "idle.perSec" "+{rate} / 초"
-string "idle.generators" "발전기"
-string "idle.buyAmount" "구매 수량"
-string "idle.buy" "구매 ×{n}"
-string "idle.level" "Lv. {level}"
-string "idle.owned" "보유: {owned}"
-string "idle.unlock" "에너지 {cost} 달성 시 해제"
-string "idle.prestige" "승천"
-string "idle.ascendFor" "승천 보상"
-string "idle.shards" "파편 +{n}"
-string "idle.point.reset" "발전기와 에너지 초기화"
-string "idle.point.keep" "영구적인 성장"
-string "idle.point.stronger" "승천할수록 강해짐"
-string "idle.ascend" "승천"
-string "idle.hint.buy" "구매"
-string "idle.gen.solar" "태양광 배열"
-string "idle.gen.fusion" "핵융합로"
-string "idle.gen.orbital" "궤도 수집기"
-string "idle.gen.drill" "양자 드릴"
-string "idle.gen.dyson" "다이슨 고리"
-string "idle.gen.forge" "항성 용광로"
-# The store and the battle pass (src/patterns.ts).
-string "store.title" "상점"
-string "store.sub" "매일 새로운 상품"
-string "store.gems" "보석"
-string "store.coins" "코인"
-string "store.featured" "추천"
-string "store.daily" "일일 특가"
-string "store.packs" "보석 팩"
-string "store.item.tide" "달빛 물결 번들"
-string "store.item.ashbringer" "애쉬브링어"
-string "store.item.crown" "가시 왕관"
-string "store.item.potions" "회복 물약 ×5"
-string "store.item.mana" "마나 병 ×5"
-string "store.item.ember" "잉걸불 반지"
-string "store.item.amulet" "사파이어 부적"
-string "store.item.key" "철 열쇠"
-string "store.kind.tide" "번들 · 4개"
-string "store.kind.ashbringer" "대검"
-string "store.kind.crown" "투구"
-string "store.kind.potions" "소모품"
-string "store.kind.mana" "소모품"
-string "store.kind.ember" "반지"
-string "store.kind.amulet" "부적"
-string "store.kind.key" "열쇠"
-string "store.kind.gems1" "보석 주머니"
-string "store.kind.gems2" "보석 상자"
-string "store.kind.gems3" "보석 더미"
-string "store.gemPack" "보석 {n}개"
-string "store.badge.limited" "한정"
-string "store.badge.new" "신규"
-string "store.badge.popular" "인기"
-string "store.badge.best" "최고 가치"
-string "store.contents.aria" "아리아, 물결의 부름"
-string "store.contents.lantern" "달빛 등불"
-string "store.contents.glitter" "별 조각 1,600"
-string "store.contents.frame" "프로필 테두리"
-string "store.free" "무료"
-string "store.owned" "보유 중"
-string "store.soldOut" "품절"
-string "store.left" "{left}개 남음"
-string "store.save" "−{pct}%"
-string "store.refresh" "갱신까지"
-string "store.topUp" "{name} 더 받기"
-string "store.hint.buy" "구매"
-string "store.confirm" "{price} {currency}에 구매하시겠습니까?"
-string "store.buy" "구매"
-string "store.cancel" "취소"
-string "pass.title" "배틀 패스"
-string "pass.season" "시즌 4 · 네온 물결"
-string "pass.free" "무료"
-string "pass.premium" "프리미엄"
-string "pass.level" "레벨 {n}"
-string "pass.xp" "{xp} / {need} XP"
-string "pass.claim" "받기"
-string "pass.claimAll" "모두 받기 ({n})"
-string "pass.claimed" "받음"
-string "pass.unlock" "프리미엄 잠금 해제"
-string "pass.reach" "레벨 {n} 달성"
-string "pass.reward.chest" "시즌 상자"
-string "pass.reward.gold" "코인"
-string "pass.reward.crystal" "보석"
-string "pass.reward.healing-draught" "회복 물약"
-string "pass.reward.mana-vial" "마나 병"
-string "pass.reward.ember-ring" "잉걸불 반지"
-string "pass.reward.sapphire-amulet" "사파이어 부적"
-string "pass.reward.boots" "신속의 장화"
-string "pass.reward.arcane-staff" "비전 지팡이"
-string "pass.reward.gauntlets" "건틀릿"
-string "pass.reward.aria" "아리아, 물결의 부름"
-string "pass.reward.kael" "카엘, 잉걸불"
-string "pass.reward.mira" "숲의 미라"
-string "menu.event" "조수의 기도"
-string "menu.eventWhen" "3일 남음"
-string "menu.event.kawaii" "별의 무대"
-string "menu.event.storybook" "작은 불의 길"
-string "menu.event.cartoon" "여우 대모험"
-# The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
-string "dlg.mira" "미라"
-string "dlg.aria" "아리아"
-string "dlg.gate.open" "문은 새벽에 열려. 건널 준비는 됐어?"
-string "dlg.gate.ready" "준비됐어. 가자."
-string "dlg.gate.persuade" "먼저 저 너머에 뭐가 있는지 말해 줘."
-string "dlg.gate.read" "그 표정, 전에도 본 적 있지."
-string "dlg.gate.who" "문에 대해 아는 사람이 또 누가 있지?"
-string "dlg.gate.toll" "문지기에게 통행료를 낸다."
-string "dlg.gate.need" "크레딧 {need} 부족"
-string "dlg.gate.notyet" "아직은 아니야."
-string "dlg.who" "기록관뿐이야. 그녀는 구 년 동안 입을 다물어 왔어."
-string "dlg.secret" "그 너머엔 오래된 천문대가 있어. 성도가 본 것은 아직 거기 있지."
-string "dlg.refuse" "직접 보든가, 아예 못 보든가야."
-string "dlg.ready" "그럼 물때가 바뀌기 전에 떠나자."
-string "dlg.stat.charm" "설득"
-string "dlg.stat.insight" "통찰"
-string "dlg.skip" "건너뛰기"
-string "dlg.log" "기록"
-string "dlg.auto" "자동"
-string "dlg.continue" "계속"
-string "dlg.unavailable" "선택 불가"
-string "dlg.check" "{stat} · {chance}"
-string "dlg.passed" "성공"
-string "dlg.failed" "실패"
-string "log.title" "대화 기록"
-string "log.close" "닫기"
-string "log.replay" "음성 재생"
-string "log.empty" "아직 아무 말도 없었어."
-string "vn.n1" "사흘 내내 대상을 따라온 비 너머로, 마침내 갈대 사이로 로마시의 불빛이 보였다."
-string "vn.a1" "저기야. 늙은 관리인이 깨어 있다면 나룻배는 아직 다녀."
-string "vn.a2" "시장에선 내 곁에 붙어 있어. 로마시는 얼굴을 기억하거든."
-string "vn.stay" "그녀 곁에 머문다."
-string "vn.wander" "몰래 빠져나가 주변을 둘러본다."
-string "vn.stay.r" "좋아. 후드는 쓰고 있어."
-string "vn.wander.r" "좋아. 두 번째 종이 울릴 때까지 나루터에서 만나."
-string "q.title" "퀘스트"
-string "q.track" "추적"
-string "q.tracked" "추적 중"
-string "q.map" "지도에 표시"
-string "q.objectives" "목표"
-string "q.rewards" "보상"
-string "q.optional" "선택"
-string "q.giver" "의뢰인: {giver}"
-string "q.new" "새 퀘스트"
-string "q.active" "진행 중"
-string "q.completed" "완료"
-string "q.failed" "실패"
-string "q.empty" "아직 퀘스트가 없어."
-string "q.back" "뒤로"
-string "q.complete" "완료"
-string "q.tab.main" "메인"
-string "q.tab.side" "서브"
-string "q.tab.daily" "일일"
-string "quest.dawn" "새벽의 문"
-string "quest.dawn.summary" "미라는 스카이리치 위의 봉인된 문이 새벽에 한 시간 동안 열린다고 믿는다. 그녀가 건너기 전에 오래된 성도에 필요한 것을 모으자."
-string "quest.dawn.reach" "새벽 전에 문에 도착하기"
-string "quest.dawn.charts" "성도 되찾기"
-string "quest.dawn.archivist" "봉인에 대해 기록관에게 묻기"
-string "quest.dawn.sealer" "문을 봉인한 자 알아내기"
-string "quest.mill" "방앗간의 늑대"
-string "quest.mill.summary" "브람 영감의 양 떼가 줄고 있다. 다음 그믐 전에 할로 방앗간에서 늑대를 쫓아내자."
-string "quest.mill.wolves" "늑대 쫓아내기"
-string "quest.supply" "보급 임무"
-string "quest.supply.summary" "로마시의 치유사들은 오늘 밤 물약에 쓸 달꽃잎이 필요하다."
-string "quest.supply.petals" "달꽃잎 모으기"
-string "quest.letters" "로마시로 가는 편지"
-string "quest.letters.summary" "방앗간 주인의 편지를 늪 건너 누이에게 전하자."
-string "quest.letters.deliver" "편지 전달하기"
-string "quest.tide" "바뀌는 물때"
-string "quest.tide.summary" "마지막 나룻배는 물때가 바뀌면 떠난다. 기다려 주지 않았다."
-string "quest.tide.ferry" "물때 전에 나루터에 도착하기"
-string "npc.miller" "브람 영감"
-string "region.skyreach" "스카이리치 제도"
-string "region.mill" "할로 방앗간"
-string "region.marsh" "로마시"
-string "item.crystal" "별빛 수정"
-string "item.ring" "잉걸불 반지"
-string "item.gold" "골드"
-string "item.potion" "치유 물약"
-# The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
-string "ship.class" "지휘 프리깃 · 오로라 함대"
-string "ship.hull" "선체"
-string "ship.shields" "실드"
-string "ship.reactor" "반응로"
-string "turn.title" "행동 순서"
-string "turn.hostile" "적군"
-string "turn.acting" "행동 중"
-string "ab.title" "어빌리티"
-string "ab.kinetic" "키네틱 타격"
-string "ab.kinetic.text" "대상에게 큰 피해를 준다."
-string "ab.deflector" "편향 방어막"
-string "ab.deflector.text" "1턴 동안 실드를 강화한다."
-string "ab.squadron" "편대 출격"
-string "ab.squadron.text" "공격기를 3턴 동안 배치한다."
-string "ab.repair" "수리 드론"
-string "ab.repair.text" "선체를 서서히 회복한다."
-string "ab.gravity" "중력 우물"
-string "ab.gravity.text" "적을 끌어당겨 느리게 한다."
-string "ab.overcharge" "과충전"
-string "ab.overcharge.text" "2턴 동안 무기 피해 +50 %."
-string "ab.endTurn" "턴 종료"
-string "sector.title" "성역 지도"
-string "sector.allied" "아군"
-string "sector.hostile" "적군"
-string "sector.current" "현재 성역"
-string "hangar.title" "함대 격납고"
-string "hangar.classes" "함급"
-string "hangar.stats" "함선 능력치"
-string "hangar.hull" "선체"
-string "hangar.shields" "실드"
-string "hangar.speed" "속도"
-string "hangar.firepower" "화력"
-string "hangar.upgrade" "강화 레벨"
-string "hangar.alloy" "합금"
-string "hangar.commission" "취역"
-string "hangar.commissioned" "{name} 함대 합류"
-string "hangar.compare" "비교"
-string "hangar.frigates" "프리깃"
-string "hangar.frigates.line" "빠르고 유연하며 필수적이다."
-string "hangar.frigates.class" "프리깃급"
-string "hangar.frigates.flavour" "정찰, 호위, 신속 대응을 위한 다재다능한 전선 프리깃. 전선이 지켜진 곳에는 언제나 뱅가드가 먼저 있었다."
-string "hangar.cruisers" "순양함"
-string "hangar.cruisers.line" "균형 잡히고 믿음직하다."
-string "hangar.cruisers.class" "순양함급"
-string "hangar.cruisers.flavour" "다층 실드를 갖춘 중호위함. 프리깃이 앞서 나가는 동안 진형의 중심을 지킨다."
-string "hangar.carriers" "항공모함"
-string "hangar.carriers.line" "전장을 지휘한다."
-string "hangar.carriers.class" "항공모함급"
-string "hangar.carriers.flavour" "공격기를 발진하고 회수하는 이동식 격납고. 선회는 느리지만 결코 혼자가 아니다."
-string "hangar.modules" "모듈"
-string "hangar.modules.line" "함대를 확장한다."
-string "hangar.modules.class" "정거장 모듈"
-string "hangar.modules.flavour" "어느 항공모함에나 도킹하는 모듈식 선체. 작업장, 센서 배열, 보급 기지가 된다."
-# The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
-string "lobby.title" "플레이"
-string "lobby.ready" "준비 완료"
-string "lobby.notReady" "준비 안 됨"
-string "lobby.readyUp" "준비하기"
-string "lobby.start" "매치 찾기"
-string "lobby.cancel" "취소"
-string "lobby.searching" "검색 중"
-string "lobby.estimate" "예상 {time}"
-string "lobby.invite" "초대"
-string "lobby.level" "Lv {level}"
-string "lobby.leader" "파티장"
-string "lobby.found" "매치 발견"
-string "lobby.accept" "수락"
-string "lobby.accepted" "수락함"
-string "lobby.decline" "거절"
-string "lobby.modeLabel" "모드"
-string "lobby.mode.ranked" "경쟁전"
-string "lobby.mode.detail" "5대5 · 스카이리치 관문"
-string "lobby.rank.diamond" "다이아몬드 II"
-string "lobby.rank.immortal" "불멸 I"
-string "lobby.rank.platinum" "플래티넘 III"
-string "lobby.rank.gold" "골드 I"
-string "chars.title" "파이터를 선택하세요"
-string "chars.lock" "확정"
-string "chars.locked" "확정됨"
-string "chars.taken" "선택됨"
-string "chars.random" "무작위"
-string "chars.unlock" "레벨 {level}에 해금"
-string "chars.role.mage" "마법사"
-string "chars.role.duelist" "결투가"
-string "chars.role.support" "지원가"
-string "chars.role.ranger" "레인저"
-string "chars.role.vanguard" "선봉"
-string "chars.about.aria" "달빛을 칼날로 바꿔 멀리서 벤다."
-string "chars.about.kael" "발이 빠르다. 세 번째 공격마다 방어를 부순다."
-string "chars.about.mira" "아군을 치유하고 적을 덩굴로 묶는다."
-string "chars.about.wren" "표적을 표시하고 절대 놓치지 않는다."
-string "chars.about.vesper" "자신의 체력을 그림자 폭풍으로 바꾼다."
-string "chars.about.maren" "방패와 깃발로 전선을 지킨다."
-string "chars.about.torvin" "전투 중 고철로 포탑을 세운다."
-string "chars.about.brann" "물건을 팔아 팀의 장비 값을 번다."
-string "chars.about.vell" "두 번 베고 사라진다."
-string "chars.about.cultist" "옛 신을 부르고 피로 대가를 치른다."
-string "vs.mark" "VS"
-string "vs.record" "{w}승 {l}패"
-string "vs.stage" "라운드 1 · 스카이리치 관문"
-string "vs.skip" "건너뛰기"
-string "draft.title" "드래프트"
-string "draft.blue" "블루 진영"
-string "draft.red" "레드 진영"
-string "draft.ban" "금지"
-string "draft.waiting" "대기 중"
-string "draft.bans" "금지"
-string "draft.banned" "금지됨"
-string "draft.picked" "선택됨"
-string "draft.phase.pick" "선택 단계 · 내 차례"
-string "draft.phase.theirs" "선택 단계 · 레드 차례"
-string "draft.phase.ban" "금지 단계 · 내 차례"
-string "map.title" "갈라진 왕국"
-string "map.travel" "빠른 이동"
-string "map.track" "경유지 설정"
-string "map.untrack" "경유지 해제"
-string "map.unknown" "???"
-string "map.close" "닫기"
-string "map.kind.quest" "퀘스트"
-string "map.kind.objective" "목표"
-string "map.kind.fastTravel" "빠른 이동"
-string "map.kind.shop" "상점"
-string "map.kind.poi" "명소"
-string "map.kind.boss" "보스"
-string "map.region.frost" "서리첨봉 산맥"
-string "map.region.dusk" "황혼숲"
-string "map.region.amber" "호박 평원"
-string "map.region.redmesa" "붉은 고원"
-string "map.region.delta" "솔트리치 삼각주"
-string "map.place.sela" "셀라 항구"
-string "map.place.amberhold" "앰버홀드 성"
-string "map.place.mill" "할로 방앗간"
-string "map.place.market" "교차로 시장"
-string "map.place.duskhold" "황혼 성채"
-string "map.place.light" "솔트리치 등대"
-string "map.place.wyrm" "가시숲의 와이번"
-string "map.about.sela" "항구의 배는 새벽에 스카이리치 제도로 떠난다."
-string "map.about.amberhold" "평원을 굽어보는 옛 왕의 성."
-string "map.about.mill" "초승달이 뜨기 전에 늑대를 쫓아내라."
-string "map.about.market" "모든 길의 상인이 정오에 모인다."
-string "map.about.duskhold" "오래전 숲에 삼켜진 폐허 성채."
-string "map.about.light" "길 잃은 배를 위해 등불을 밝혀라."
-string "map.about.wyrm" "오래된 소나무 아래 무언가 꿈틀댄다."
-string "song.title" "곡 선택"
-string "song.bpm" "BPM"
-string "song.length" "길이"
-string "song.best" "최고 점수"
-string "song.grade" "등급"
-string "song.fullCombo" "풀 콤보"
-string "song.accuracy" "정확도"
-string "song.play" "플레이"
-string "song.preview" "미리 듣기"
-string "song.new" "NEW"
-string "song.chart.easy" "이지"
-string "song.chart.normal" "노멀"
-string "song.chart.hard" "하드"
-string "song.chart.expert" "익스퍼트"
-string "song.chart.master" "마스터"
-# The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
-string "garage.title" "차고"
-string "garage.cat.engine" "엔진"
-string "garage.cat.wheels" "휠"
-string "garage.cat.suspension" "서스펜션"
-string "garage.cat.exhaust" "배기"
-string "garage.cat.brakes" "브레이크"
-string "garage.cat.aero" "에어로"
-string "garage.cat.livery" "도색"
-string "garage.cat.next" "다음 분류"
-string "garage.part" "{tier} {part}"
-string "garage.tier.stock" "순정"
-string "garage.tier.street" "스트리트"
-string "garage.tier.sport" "스포츠"
-string "garage.tier.race" "레이스"
-string "garage.tier.works" "웍스"
-string "garage.needsClass" "{cls} 클래스 필요"
-string "garage.desc.engine" "고회전 영역의 출력이 오르지만 스로틀이 예민해진다."
-string "garage.desc.wheels" "가벼운 휠과 접지력 좋은 타이어로 고속 코너를 버틴다."
-string "garage.desc.suspension" "단단한 스프링과 댐퍼. 롤이 줄고 승차감은 단단해진다."
-string "garage.desc.exhaust" "배기 흐름이 좋아져 출발이 빠르고 소리가 커진다."
-string "garage.desc.brakes" "큰 디스크와 캘리퍼로 더 늦게 제동하고 페이드가 적다."
-string "garage.desc.aero" "높은 윙이 고속에서 차를 눌러 준다."
-string "garage.stat.power" "출력"
-string "garage.stat.handling" "핸들링"
-string "garage.stat.braking" "제동"
-string "garage.stat.launch" "발진"
-string "garage.stat.speed" "최고 속도"
-string "garage.layer.base" "바탕색"
-string "garage.layer.stripe" "스트라이프"
-string "garage.layer.number" "번호 7"
-string "garage.layer.sponsor" "스폰서"
-string "garage.layer.added" "데칼 {n}"
-string "garage.kind.paint" "도장"
-string "garage.kind.vinyl" "비닐"
-string "garage.kind.decal" "데칼"
-string "garage.performance" "성능"
-string "garage.class" "클래스"
-string "garage.current" "현재"
-string "garage.preview" "미리 보기"
-string "garage.equip" "장착"
-string "garage.equipped" "장착됨"
-string "garage.buy" "구매"
-string "garage.locked" "잠김"
-string "garage.free" "무료"
-string "garage.short" "부족"
-string "garage.layers" "레이어"
-string "garage.color" "색상"
-string "garage.addLayer" "레이어 추가"
-string "garage.delete" "삭제"
-string "garage.up" "위로"
-string "garage.down" "아래로"
-string "garage.visible" "표시"
-string "ledger.title" "예산"
-string "ledger.income" "수입"
-string "ledger.expenses" "지출"
-string "ledger.treasury" "국고"
-string "ledger.population" "인구"
-string "ledger.tab.month" "월"
-string "ledger.tab.quarter" "분기"
-string "ledger.tab.year" "연"
-string "ledger.period.month" "{n}월"
-string "ledger.period.quarter" "{n}분기"
-string "ledger.period.year" "{n}년차"
-string "ledger.line.residential" "주거세"
-string "ledger.line.commercial" "상업세"
-string "ledger.line.industrial" "산업세"
-string "ledger.line.tourism" "관광"
-string "ledger.line.police" "경찰"
-string "ledger.line.fire" "소방"
-string "ledger.line.health" "의료"
-string "ledger.line.education" "교육"
-string "ledger.line.transit" "대중교통"
-string "ledger.line.parks" "공원"
-string "ledger.line.power" "전력"
-string "ledger.line.water" "수도"
-string "ledger.warn.police" "예산 부족: 범죄 증가"
-string "ledger.warn.fire" "예산 부족: 화재 확산"
-string "ledger.warn.health" "예산 부족: 대기 증가"
-string "ledger.warn.education" "예산 부족: 교실 포화"
-string "ledger.warn.transit" "예산 부족: 노선 감축"
-string "ledger.warn.parks" "예산 부족: 공원 방치"
-string "ledger.warn.power" "예산 부족: 정전"
-string "ledger.warn.water" "예산 부족: 수압 저하"
-string "ledger.col.name" "이름"
-string "ledger.col.amount" "금액"
-string "ledger.col.change" "변동"
-string "ledger.col.budget" "예산"
-string "ledger.total" "합계"
-string "ledger.net" "순수익"
-string "ledger.history" "추이"
-string "ledger.breakdown" "내역"
-string "ledger.other" "기타"
-string "ledger.locked" "잠김"
-string "ledger.hint.period" "다음 기간"
-string "ledger.overlays" "오버레이"
-string "ledger.overlay.off" "오버레이 없음"
-string "ledger.overlay.traffic" "교통"
-string "ledger.overlay.traffic.low" "원활"
-string "ledger.overlay.traffic.high" "극심한 정체"
-string "ledger.overlay.power" "전력"
-string "ledger.overlay.power.low" "전력 없음"
-string "ledger.overlay.power.high" "충분"
-string "ledger.overlay.water" "수도"
-string "ledger.overlay.water.low" "단수"
-string "ledger.overlay.water.high" "충분한 수압"
-string "ledger.overlay.pollution" "오염"
-string "ledger.overlay.pollution.low" "깨끗함"
-string "ledger.overlay.pollution.high" "유독"
-string "ledger.overlay.landValue" "땅값"
-string "ledger.overlay.landValue.low" "낮음"
-string "ledger.overlay.landValue.high" "높음"
-string "ledger.overlay.crime" "범죄"
-string "ledger.overlay.crime.low" "안전"
-string "ledger.overlay.crime.high" "위험"
-string "chat.title" "채팅"
-string "chat.ch.all" "전체"
-string "chat.ch.party" "파티"
-string "chat.ch.guild" "길드"
-string "chat.ch.trade" "거래"
-string "chat.ch.whisper" "귓속말"
-string "chat.ch.system" "시스템"
-string "chat.msg.1" "Riven 님이 파티에 참가했습니다."
-string "chat.msg.2" "오늘 밤 9시 레이드, 물약 챙기세요."
-string "chat.msg.3" "{0} 팝니다, 귓속말로 제안 주세요."
-string "chat.msg.4" "문이 열리기 전에 {0} 에서 만나요."
-string "chat.msg.5" "@Lumen 첫 풀 탱킹 가능해요?"
-string "chat.msg.6" "아까 도와줘서 고마워요!"
-string "chat.msg.7" "이거 떴어요: {0}"
-string "chat.msg.8" "@Juno 수리비는 제가 낼게요."
-string "chat.msg.9" "준비되면 말해요."
-string "chat.link.ember" "잔불의 반지"
-string "chat.link.amberhold" "앰버홀드"
-string "chat.link.ashbringer" "애쉬브링어"
-string "chat.placeholder" "메시지 입력…"
-string "chat.send" "보내기"
-string "chat.new" "새 메시지 {n}"
-string "chat.channel" "채널"
-string "rts.target" "{command}: 대상 선택"
-string "rts.cancel" "취소"
-string "rts.queue" "대기열"
-string "rts.back" "뒤로"
-string "rts.stat.attack" "공격"
-string "rts.stat.armour" "방어구"
-string "rts.stat.speed" "속도"
-string "rts.cmd.stop" "정지"
-string "rts.cmd.patrol" "순찰"
-string "rts.cmd.gather" "채집"
-string "rts.cmd.repair" "수리"
-string "rts.cmd.rally" "집결지"
-string "rts.cmd.build" "건설"
-string "rts.cmd.barracks" "병영"
-string "rts.cmd.tower" "궁수탑"
-string "rts.cmd.farm" "농장"
-string "rts.cmd.wall" "돌벽"
-string "rts.cmd.forge" "대장간"
-string "rts.cmd.keep" "요새"
-string "rts.unit.worker" "주민"
-string "rts.unit.knight" "기사"
-string "rts.unit.archer" "궁수"
-string "rts.kind.worker" "일꾼 · 경장"
-string "rts.kind.knight" "기병 · 중장"
-string "rts.kind.archer" "원거리 · 경장"
-# The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
-string "photo.title" "포토 모드"
-string "photo.tab.camera" "카메라"
-string "photo.tab.lens" "렌즈"
-string "photo.tab.filters" "필터"
-string "photo.tab.frames" "프레임"
-string "photo.ctl.fov" "시야각"
-string "photo.ctl.roll" "롤"
-string "photo.ctl.height" "높이"
-string "photo.ctl.focus" "초점 거리"
-string "photo.ctl.aperture" "조리개"
-string "photo.ctl.exposure" "노출"
-string "photo.ctl.vignette" "비네트"
-string "photo.filter.none" "없음"
-string "photo.filter.vivid" "선명"
-string "photo.filter.noir" "누아르"
-string "photo.filter.sepia" "세피아"
-string "photo.filter.cool" "차가운 톤"
-string "photo.frame.none" "없음"
-string "photo.frame.cinema" "시네마"
-string "photo.frame.polaroid" "인스턴트"
-string "photo.frame.film" "필름"
-string "photo.capture" "촬영"
-string "photo.hide" "UI 숨기기"
-string "photo.grid" "격자"
-string "photo.reset" "초기화"
-string "photo.exit" "나가기"
-string "photo.strength" "강도"
-string "photo.hint" "아무 키나 눌러 조작 표시"
-string "loadout.title" "로드아웃"
-string "loadout.tab" "로드아웃 {n}"
-string "loadout.next" "다음 로드아웃"
-string "loadout.slot.primary" "주무기"
-string "loadout.slot.secondary" "보조무기"
-string "loadout.slot.melee" "근접"
-string "loadout.slot.lethal" "살상"
-string "loadout.slot.tactical" "전술"
-string "loadout.slot.field" "필드 업그레이드"
-string "loadout.item.primary" "AR-7 레이븐"
-string "loadout.item.secondary" "VX-9 권총"
-string "loadout.item.melee" "전투용 나이프"
-string "loadout.item.lethal" "파편 수류탄"
-string "loadout.item.tactical" "자극제"
-string "loadout.item.field" "정찰 드론"
-string "loadout.level" "Lv.{n}"
-string "loadout.unlocks" "Lv.{n}에 해금"
-string "loadout.class.assault" "돌격소총"
-string "loadout.class.pistol" "권총"
-string "loadout.class.blade" "칼날"
-string "loadout.class.grenade" "수류탄"
-string "loadout.class.drone" "드론"
-string "loadout.rarity.uncommon" "고급"
-string "loadout.rarity.rare" "희귀"
-string "loadout.rarity.epic" "영웅"
-string "loadout.desc.primary" "모든 거리에서 믿음직하고, 부착물마다 더 안정된다."
-string "loadout.desc.secondary" "소총 탄이 떨어졌을 때 빠르게 꺼내 쓴다."
-string "loadout.desc.melee" "조용하고 언제든 준비되어 있다."
-string "loadout.desc.lethal" "3초 뒤 터져 방 하나를 정리한다."
-string "loadout.desc.tactical" "즉시 회복하고 걸음이 빨라진다."
-string "loadout.desc.field" "시야 안의 모든 적을 표시한다."
-string "loadout.stat.damage" "피해"
-string "loadout.stat.range" "사거리"
-string "loadout.stat.fireRate" "연사 속도"
-string "loadout.stat.mobility" "기동성"
-string "loadout.stat.control" "제어"
-string "loadout.point.stock" "개머리판"
-string "loadout.point.optic" "조준경"
-string "loadout.point.laser" "레이저"
-string "loadout.point.magazine" "탄창"
-string "loadout.point.underbarrel" "하부"
-string "loadout.point.muzzle" "총구"
-string "loadout.att.stock" "전술 개머리판"
-string "loadout.att.optic" "MK.2 홀로 조준경"
-string "loadout.att.laser" "전술 레이저"
-string "loadout.att.magazine" "확장 탄창"
-string "loadout.att.underbarrel" "레인저 손잡이"
-string "loadout.att.muzzle" "뱅가드 소음기"
-string "loadout.stats" "무기 성능"
-string "loadout.attachments" "부착물"
-string "loadout.empty" "비어 있음"
-string "loadout.remove" "제거"
-string "loadout.locked" "잠김"
-string "deck.title" "컬렉션"
-string "deck.name" "프로스트파이어"
-string "deck.all" "전체"
-string "deck.search" "카드 검색"
-string "deck.sortBy" "정렬"
-string "deck.sort.cost" "비용"
-string "deck.sort.name" "이름"
-string "deck.sort.rarity" "등급"
-string "deck.sort.owned" "보유"
-string "deck.cards" "카드"
-string "deck.mine" "내 덱"
-string "deck.curve" "마나 곡선"
-string "deck.types" "유형"
-string "deck.done" "완료"
-string "deck.full" "덱이 가득 찼습니다"
-string "deck.limit" "더 넣을 수 없습니다"
-string "deck.unowned" "미보유"
-string "deck.none" "일치하는 카드가 없습니다"
-string "deck.kind.unit" "유닛"
-string "deck.kind.spell" "주문"
-string "deck.kind.relic" "유물"
-string "deck.kinds.unit" "유닛"
-string "deck.kinds.spell" "주문"
-string "deck.kinds.relic" "유물"
-string "deck.rarity.common" "일반"
-string "deck.rarity.uncommon" "고급"
-string "deck.rarity.rare" "희귀"
-string "deck.rarity.epic" "영웅"
-string "deck.rarity.legendary" "전설"
-string "deck.card.strike" "일격"
-string "deck.card.defend" "방어"
-string "deck.card.bash" "강타"
-string "deck.card.anger" "분노"
-string "deck.card.inflame" "발화"
-string "deck.card.wound" "상처"
-string "deck.card.fireball" "화염구"
-string "deck.card.bulwark" "성벽 기사"
-string "deck.card.rogue" "밤의 도적"
-string "deck.card.potion" "녹색 물약"
-string "deck.card.storm" "폭풍검"
-string "deck.card.serpent" "이끼 뱀"
-string "deck.card.ice" "서리 조각"
-string "deck.card.horn" "전쟁 뿔피리"
-string "deck.card.golem" "고대 골렘"
-string "deck.card.owl" "올빼미 사역마"
-string "deck.card.scroll" "불타는 룬"
-string "deck.card.egg" "잿불 알"
-string "deck.text.strike" "피해를 6 줍니다."
-string "deck.text.defend" "방어도를 5 얻습니다."
-string "deck.text.bash" "피해를 8 주고 대상을 기절시킵니다."
-string "deck.text.anger" "피해를 4 주고 이 카드를 손으로 복사합니다."
-string "deck.text.inflame" "힘을 2 얻습니다."
-string "deck.text.wound" "사용할 수 없습니다."
-string "deck.text.fireball" "유닛에게 피해 10, 이웃에게 2를 줍니다."
-string "deck.text.bulwark" "수호. 옆 아군이 받는 피해 -1."
-string "deck.text.rogue" "은신. 공격 시: 카드를 1장 뽑습니다."
-string "deck.text.potion" "8 회복하고 독을 하나 제거합니다."
-string "deck.text.storm" "모든 적에게 피해 5."
-string "deck.text.serpent" "중독 3. 적이 중독되면 성장합니다."
-string "deck.text.ice" "유닛을 빙결시키고 카드를 1장 뽑습니다."
-string "deck.text.horn" "이번 턴 아군 유닛 공격력 +1."
-string "deck.text.golem" "수호. 주문 피해를 받지 않습니다."
-string "deck.text.owl" "등장 시: 덱 위 3장을 봅니다."
-string "deck.text.scroll" "다음 주문의 비용 -2."
-string "deck.text.egg" "3턴 뒤 9/9 용이 부화합니다."
-string "vn.gallery.title" "갤러리"
-string "vn.all" "전체"
-string "vn.chapter.one" "1장"
-string "vn.chapter.two" "2장"
-string "vn.chapter.three" "3장"
-string "vn.chapter.four" "엔딩"
-string "vn.nextChapter" "다음 장"
-string "vn.seen" "{n} / {total} 감상"
-string "vn.locked" "???"
-string "vn.new" "NEW"
-string "vn.close" "닫기"
-string "vn.prev" "이전"
-string "vn.next" "다음"
-string "vn.cg.riverboat" "강배"
-string "vn.cg.lantern" "등불의 밤"
-string "vn.cg.library" "탑에서 잠들다"
-string "vn.cg.storm" "폭풍 속 나룻배"
-string "vn.cg.duel" "옥상 결투"
-string "vn.cg.dawn" "새벽의 문"
-string "vn.hint.storm" "2장에서 나룻배에 오르기"
-string "vn.hint.dawn" "굿 엔딩에 도달하기"
-string "vn.routes.title" "플로차트"
-string "vn.routes.chart" "루트"
-string "vn.scene.arrival" "도착"
-string "vn.scene.lanterns" "축제"
-string "vn.scene.tower" "탑"
-string "vn.scene.ferry" "나룻배"
-string "vn.scene.rooftop" "옥상"
-string "vn.scene.dawn" "새벽"
-string "vn.scene.drowned" "강에 잃다"
-string "vn.scene.oath" "맹세"
-string "vn.ending.good" "굿 엔딩"
-string "vn.ending.bad" "배드 엔딩"
-string "vn.choice.follow" "미라를 따라간다"
-string "vn.choice.study" "남아서 조사한다"
-string "vn.choice.trust" "그녀를 믿는다"
-string "vn.choice.storm" "폭풍 속으로 간다"
-string "vn.jump" "여기로 이동"
-string "vn.now" "현재"
-string "vn.scenes" "{n} / {total} 장면"
-string "set.title" "설정"
-string "set.page.graphics" "그래픽"
-string "set.page.audio" "오디오"
-string "set.page.controls" "조작"
-string "set.page.access" "접근성"
-string "set.page.language" "언어"
-string "set.page.hud" "HUD 배치"
-string "set.nextPage" "다음 페이지"
-string "set.section.display" "디스플레이"
-string "set.section.screen" "화면"
-string "set.section.keyboard" "키보드"
-string "set.section.mouse" "마우스"
-string "set.quality" "품질 프리셋"
-string "set.quality.about" "프레임마다 그리는 디테일. 낮을수록 빠릅니다."
-string "set.quality.low" "낮음"
-string "set.quality.medium" "중간"
-string "set.quality.high" "높음"
-string "set.scale" "렌더 배율"
-string "set.scale.about" "화면 대비 3D 화면의 해상도. 인터페이스는 선명하게 유지됩니다."
-string "set.cap" "프레임 제한"
-string "set.cap.about" "초당 최대 프레임. 낮을수록 전력을 아낍니다."
-string "set.cap.display" "디스플레이"
-string "set.cap.fps30" "30"
-string "set.cap.fps60" "60"
-string "set.cap.fps120" "120"
-string "set.vsync" "수직 동기화"
-string "set.vsync.about" "프레임 사이 디스플레이를 기다립니다. 찢김이 없고 지연이 약간 늘어납니다."
-string "set.fullscreen" "전체 화면"
-string "set.fullscreen.about" "게임이 화면을 가득 채웁니다."
-string "set.aspect" "화면 비율"
-string "set.aspect.about" "넓은 화면에서도 HUD는 이 비율을 지키고 인터페이스는 늘어나지 않습니다."
-string "set.safe" "HUD 안전 영역"
-string "set.safe.about" "HUD가 가장자리에서 얼마나 안쪽에 놓일지."
-string "set.master" "전체 음량"
-string "set.master.about" "게임의 모든 소리."
-string "set.music" "음악"
-string "set.music.about" "음악 음량. 음성에는 영향이 없습니다."
-string "set.effects" "효과음"
-string "set.effects.about" "발소리, 타격음, 인터페이스 소리."
-string "set.voice" "음성"
-string "set.voice.about" "캐릭터의 목소리."
-string "set.subtitles" "자막"
-string "set.subtitles.about" "말한 내용을 화면에 표시."
-string "set.layout" "키보드 배열"
-string "set.layout.about" "키는 자리로 지정되고 배열의 글자로 표시됩니다."
-string "set.layout.qwerty" "QWERTY"
-string "set.layout.azerty" "AZERTY"
-string "set.layout.qwertz" "QWERTZ"
-string "set.moveUp" "앞으로 이동"
-string "set.moveUp.about" ""
-string "set.moveLeft" "왼쪽으로 이동"
-string "set.moveLeft.about" ""
-string "set.jumpKey" "점프"
-string "set.jumpKey.about" ""
-string "set.sensitivity" "마우스 감도"
-string "set.sensitivity.about" "마우스 이동에 따른 시점 회전량."
-string "set.invert" "상하 반전"
-string "set.invert.about" "마우스를 위로 움직이면 아래를 봅니다."
-string "set.raw" "원시 입력"
-string "set.raw.about" "시스템 가속 없이 마우스 움직임 그대로."
-string "set.resetBindings" "모든 키 지정 초기화"
-string "set.resetBindings.about" "모든 동작을 처음 키로 되돌립니다."
-string "set.textSize" "글자 크기"
-string "set.textSize.about" "인터페이스의 모든 글자를 크게."
-string "set.contrast" "고대비"
-string "set.contrast.about" "패널은 어둡게, 글자와 윤곽은 밝게."
-string "set.reduceMotion" "움직임 줄이기"
-string "set.reduceMotion.about" "흔들림, 확대, 미끄러짐을 멈춥니다."
-string "set.colorblind" "색각 필터"
-string "set.colorblind.about" "색각 유형별로 색을 조정합니다."
-string "set.colorblind.off" "끄기"
-string "set.colorblind.protan" "적색맹"
-string "set.colorblind.deutan" "녹색맹"
-string "set.colorblind.tritan" "청색맹"
-string "set.language" "언어"
-string "set.language.about" "게임의 글자와 음성."
-string "set.apply" "적용"
-string "set.saved" "설정을 저장했습니다"
-string "set.revert" "되돌리기"
-string "set.defaults" "기본값"
-string "set.confirm" "이 디스플레이 설정을 유지할까요?"
-string "set.keep" "유지"
-string "set.reverting" "{n}초 후 되돌립니다"
-string "set.hudNote" "게임 위에서 HUD 요소를 옮기고 크기와 투명도를 바꿉니다."
-string "set.editHud" "HUD 편집"
-string "set.changed" "변경됨"
-# The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
-string "sc.action" "액션·플랫포머"
-string "sc.action.blurb" "플랫포머의 타이틀, HUD, 일시정지, 튜토리얼, 로딩, 결과"
-string "sc.shooter" "슈터·배틀로열"
-string "sc.shooter.blurb" "경기 HUD, 점수판, 로드아웃, 로비"
-string "sc.puzzle" "퍼즐·캐주얼"
-string "sc.puzzle.blurb" "매치3 보드, 사가 맵, 상점"
-string "sc.management" "경영·방치·생활"
-string "sc.management.blurb" "마을 HUD, 생산기, 장부, 도시 지도"
-string "sc.racing" "레이싱·스포츠"
-string "sc.racing.blurb" "레이스 HUD, 차고, 타임 트라이얼, 축구 중계"
-string "sc.page.title" "타이틀"
-string "sc.page.hud" "HUD"
-string "sc.page.pause" "일시정지"
-string "sc.page.tutorial" "튜토리얼"
-string "sc.page.loading" "로딩"
-string "sc.page.results" "결과"
-string "sc.page.scoreboard" "점수판"
-string "sc.page.loadout" "로드아웃"
-string "sc.page.lobby" "로비"
-string "sc.page.board" "보드"
-string "sc.page.saga" "사가 맵"
-string "sc.page.store" "상점"
-string "sc.page.generators" "생산기"
-string "sc.page.ledger" "장부"
-string "sc.page.cityMap" "도시 지도"
-string "sc.page.garage" "차고"
-string "sc.page.leaderboard" "순위표"
-string "sc.page.sportsHud" "경기"
-string "sc.page.matchFacts" "경기 종료"
-string "sc.pause" "일시정지"
-string "sc.you" "나"
-string "sc.health" "체력"
-string "sc.energy" "에너지"
-string "sc.time" "시간"
-string "sc.combo" "콤보"
-string "sc.comboBreak" "끊김"
-string "sc.stat.score" "점수"
-string "sc.stat.coins" "코인"
-string "sc.stat.time" "시간"
-string "sc.reward.gold" "골드"
-string "sc.reward.crystal" "크리스탈"
-string "sc.action.save" "3장 · 4시간 12분"
-string "sc.action.news" "엠버 리지 이벤트 진행 중"
-string "sc.action.objective" "절벽 문에 도달하기"
-string "sc.action.place" "엠버 리지"
-string "sc.action.tip" "점프를 길게 누르면 더 높이 뜁니다. 공중에서 한 번 더 누르면 이단 점프."
-string "sc.action.clear" "스테이지 클리어"
-string "sc.action.game" "엠버폴"
-string "sc.action.open" "열기"
-string "sc.action.door" "낡은 문"
-string "sc.action.jump" "점프"
-string "sc.action.attack" "공격"
-string "sc.tutorial.1.title" "달리기"
-string "sc.tutorial.1.text" "방향키나 스틱으로 이동하세요. 지나간 코인이 여기에 집계됩니다."
-string "sc.tutorial.2.title" "체력"
-string "sc.tutorial.2.text" "한 칸이 한 번의 피격입니다. 옅은 부분은 피격 후 줄어듭니다."
-string "sc.tutorial.3.title" "시간 안에"
-string "sc.tutorial.3.text" "타이머가 끝나기 전에 문에 도달하세요."
-string "sc.tutorial.4.title" "계속 움직이기"
-string "sc.tutorial.4.text" "연속 타격으로 콤보와 보너스가 쌓입니다."
-string "sc.tutorial.5.title" "잠깐 쉬기"
-string "sc.tutorial.5.text" "언제든 모서리 버튼으로 일시정지하세요. 진행은 유지됩니다."
-string "sc.shooter.enemy" "적"
-string "sc.shooter.supply" "보급품"
-string "sc.shooter.zone" "솔트마시"
-string "sc.shooter.ring" "링 축소"
-string "sc.shooter.drone" "정찰 드론"
-string "sc.shooter.frag" "파편 수류탄"
-string "sc.shooter.stim" "자극제"
-string "sc.shooter.ultimate" "방벽"
-string "sc.shooter.auto" "자동"
-string "sc.shooter.reloading" "재장전 중"
-string "sc.shooter.reload" "재장전"
-string "sc.shooter.fire" "사격"
-string "sc.manage.gold" "골드"
-string "sc.manage.wood" "목재"
-string "sc.manage.food" "식량"
-string "sc.manage.people" "주민"
-string "sc.manage.date" "봄 12일째"
-string "sc.manage.play" "재생"
-string "sc.manage.fast" "빠르게"
-string "sc.manage.goal.grow" "성장하는 마을"
-string "sc.manage.goal.people" "주민"
-string "sc.manage.goal.park" "공원 짓기"
-string "sc.manage.goal.trade" "무역 개시"
-string "sc.manage.goal.market" "시장 완성하기"
-string "sc.manage.plot" "빈 부지"
-string "sc.manage.cost" "건설 {cost} · 유지비 {upkeep}/일"
-string "sc.race.pos" "순위"
-string "sc.race.lap" "랩"
-string "sc.race.final" "마지막 랩"
-string "sc.race.current" "랩 타임"
-string "sc.race.best" "최고"
-string "sc.race.last" "이전"
-string "sc.race.split" "구간"
-string "sc.race.leader" "선두"
-string "sc.race.pit" "피트"
-string "sc.race.out" "리타이어"
-string "sc.race.fastest" "최고 랩"
-string "sc.race.kmh" "km/h"
-string "sc.race.left" "왼쪽"
-string "sc.race.right" "오른쪽"
-string "sc.race.brake" "브레이크"
-string "sc.race.boost" "부스트"
-string "sc.race.week" "이번 주"
-string "sc.race.league" "골드 리그"
-string "sc.race.circuit" "메리디안 루프"
-string "sc.race.go" "출발!"
-string "sc.race.checkpoint" "체크포인트 {n}"
-string "sc.race.wrongWay" "역주행"
-string "sc.race.finish" "피니시"
-string "sc.race.ord3" "3위"
-string "sc.race.drift" "드리프트!"
-string "sc.race.podium" "3위로 완주"
-string "sc.race.overtakes" "추월"
-string "sc.race.topSpeed" "최고 속도"
-string "sc.race.clean" "클린 섹터"
-string "sc.race.credits" "크레딧"
-string "sc.sports.half2" "후반"
-string "sc.sports.corner" "코너킥"
-string "sc.sports.sub" "선수 교체"
-string "sc.sports.off" "아웃"
-string "sc.sports.on" "인"
-string "sc.sports.ft" "종료"
-string "sc.sports.pen" "PK"
-string "sc.sports.possession" "점유율"
-string "sc.sports.shots" "슈팅"
-string "sc.sports.onTarget" "유효 슈팅"
-string "sc.sports.passes" "패스"
-string "sc.sports.fouls" "파울"
-string "sc.moba" "MOBA·아레나"
-string "sc.moba.blurb" "라인 HUD와 밴 드래프트"
-string "sc.rpg" "RPG"
-string "sc.rpg.blurb" "액션 HUD, 장비, 퀘스트 일지, 대화"
-string "sc.mmo" "MMO·레이드"
-string "sc.mmo.blurb" "프레임과 바가 있는 레이드 HUD, 채팅"
-string "sc.roguelike" "로그라이크·카드"
-string "sc.roguelike.blurb" "런 HUD, 손패, 보상, 덱"
-string "sc.strategy" "전략"
-string "sc.strategy.blurb" "RTS 콘솔, 타워 디펜스, 우주선 전술"
-string "sc.gacha" "가챠·수집"
-string "sc.gacha.blurb" "배너와 10연차, 시즌 패스"
-string "sc.rhythm" "리듬"
-string "sc.rhythm.blurb" "4레인 플레이 화면과 곡 선택"
-string "sc.fighting" "격투·파티"
-string "sc.fighting.blurb" "라운드 HUD, 캐릭터 선택, 대전 화면"
-string "sc.narrative" "내러티브·비주얼 노벨"
-string "sc.narrative.blurb" "텍스트 상자, 루트 차트, CG 갤러리"
-string "sc.survival" "생존"
-string "sc.survival.blurb" "생명 수치, 상태, 나침반, 단축 바"
-string "sc.horror" "호러"
-string "sc.horror.blurb" "화면에 거의 아무것도 띄우지 않는 HUD"
-string "sc.openworld" "오픈 월드"
-string "sc.openworld.blurb" "탐험 HUD, 월드 맵, 사진 모드"
-string "sc.page.draft" "드래프트"
-string "sc.page.gear" "장비"
-string "sc.page.quests" "퀘스트"
-string "sc.page.dialogue" "대화"
-string "sc.page.chat" "채팅"
-string "sc.page.cards" "카드"
-string "sc.page.rewards" "보상"
-string "sc.page.deck" "덱"
-string "sc.page.rts" "콘솔"
-string "sc.page.td" "방어"
-string "sc.page.shipStatus" "함선"
-string "sc.page.turnOrder" "턴 순서"
-string "sc.page.abilityCards" "능력"
-string "sc.page.sectorMap" "성역 지도"
-string "sc.page.hangar" "격납고"
-string "sc.page.gacha" "배너"
-string "sc.page.pass" "패스"
-string "sc.page.songs" "곡 선택"
-string "sc.page.select" "캐릭터 선택"
-string "sc.page.versus" "대전"
-string "sc.page.vn" "텍스트 상자"
-string "sc.page.routes" "루트"
-string "sc.page.cgGallery" "갤러리"
-string "sc.page.worldMap" "월드 맵"
-string "sc.page.photo" "사진"
-string "sc.mana" "마나"
-string "sc.moba.attack" "공격"
-string "sc.moba.dash" "돌진"
-string "sc.moba.ward" "수호"
-string "sc.moba.frost" "빙결"
-string "sc.moba.ult" "화염 폭풍"
-string "sc.rpg.elite" "정예"
-string "sc.rpg.zone" "잿빛 지하묘지"
-string "sc.rpg.quest" "지하묘지 봉인"
-string "sc.rpg.seals" "밝힌 봉인"
-string "sc.rpg.boss" "수문장 처치"
-string "sc.rpg.side" "일사의 약초"
-string "sc.rpg.moss" "무덤 이끼"
-string "sc.rpg.potion" "치유 물약"
-string "sc.rpg.vial" "마나 약병"
-string "sc.rpg.whirl" "회오리"
-string "sc.rpg.ward" "룬 보호막"
-string "sc.rpg.nova" "서리 폭발"
-string "sc.rpg.storm" "뇌우"
-string "sc.rpg.level" "레벨 24"
-string "sc.rpg.xp" "경험치"
-string "sc.mmo.might" "괴력"
-string "sc.mmo.ward" "수호"
-string "sc.mmo.burn" "영혼 화상"
-string "sc.mmo.title" "금고의 군주"
-string "sc.mmo.cast" "그림자 비"
-string "sc.mmo.raid" "가라앉은 금고"
-string "sc.mmo.adds" "처치한 수문장"
-string "sc.mmo.boss" "보르술"
-string "sc.mmo.zone" "가라앉은 금고"
-string "sc.mmo.heal" "치유"
-string "sc.mmo.strike" "일격"
-string "sc.mmo.food" "만찬"
-string "sc.mmo.key" "금고 열쇠"
-string "sc.mmo.bomb" "폭약"
-string "sc.mmo.venom" "맹독"
-string "sc.mmo.blink" "점멸"
-string "sc.mmo.free" "속박 해제"
-string "sc.rogue.flame" "잉걸불 칼날"
-string "sc.rogue.frost" "서리 손길"
-string "sc.rogue.thunder" "폭풍 걸음"
-string "sc.rogue.heart" "거인의 심장"
-string "sc.rogue.curse" "끊어진 사슬"
-string "sc.rogue.room" "방 {n}"
-string "sc.rogue.special" "특수"
-string "sc.rogue.cast" "투사"
-string "sc.rogue.dash" "돌진"
-string "sc.td.gold" "골드"
-string "sc.td.lives" "생명"
-string "sc.td.waves" "웨이브"
-string "sc.td.next" "다음 웨이브"
-string "sc.td.send" "부르기"
-string "sc.td.archer" "궁수 탑"
-string "sc.td.wall" "성벽"
-string "sc.td.barracks" "병영"
-string "sc.td.forge" "대장간"
-string "sc.rhythm.perfect" "퍼펙트"
-string "sc.rhythm.great" "그레이트"
-string "sc.rhythm.good" "굿"
-string "sc.rhythm.early" "빠름"
-string "sc.rhythm.late" "느림"
-string "sc.rhythm.accuracy" "정확도 {pct}%"
-string "sc.rhythm.progress" "곡 진행"
-string "sc.rhythm.life" "라이프"
-string "sc.fight.hits" "히트"
-string "sc.fight.super" "슈퍼"
-string "sc.fight.kick" "킥"
-string "sc.fight.punch" "펀치"
-string "sc.fight.special" "필살기"
-string "sc.survival.gather" "채집"
-string "sc.survival.birch" "자작나무 통나무"
-string "sc.survival.camp" "야영지"
-string "sc.survival.day" "{n}일째"
-string "sc.survival.wet" "젖음"
-string "sc.survival.rested" "휴식함"
-string "sc.survival.food" "음식"
-string "sc.survival.water" "수분"
-string "sc.survival.stamina" "기력"
-string "sc.survival.swing" "휘두르기"
-string "sc.survival.axe" "도끼"
-string "sc.survival.bow" "활"
-string "sc.survival.torch" "횃불"
-string "sc.survival.berries" "산딸기"
-string "sc.survival.shield" "방패"
-string "sc.horror.hide" "숨기"
-string "sc.horror.wardrobe" "옷장"
-string "sc.horror.objective" "목표"
-string "sc.horror.find" "예배당 열쇠 찾기"
-string "sc.horror.battery" "배터리"
-string "sc.horror.run" "달리기"
-string "sc.open.shrine" "바엘의 사당"
-string "sc.open.talk" "대화"
-string "sc.open.quest" "울리지 않는 종"
-string "sc.open.step" "사당에 도착하기"
-string "sc.open.tower" "망루 오르기"
-string "sc.open.glide" "활공"
-string "screen.common.back" "뒤로"
-string "screen.leaderboard.title" "순위표"
-string "screen.leaderboard.global" "전체"
-string "screen.leaderboard.friends" "친구"
-string "screen.leaderboard.league" "리그"
-string "screen.loading.tip" "팁"
-string "screen.loading.continue" "계속"
-string "screen.main-menu.continue" "이어하기"
-string "screen.main-menu.newGame" "새 게임"
-string "screen.main-menu.modes" "모드"
-string "screen.main-menu.settings" "설정"
-string "screen.main-menu.credits" "제작진"
-string "screen.main-menu.quit" "종료"
-string "screen.main-menu.newsEyebrow" "소식"
-string "screen.pause.title" "일시정지됨"
-string "screen.pause.resume" "계속하기"
-string "screen.pause.settings" "설정"
-string "screen.pause.controls" "조작"
-string "screen.pause.save" "저장"
-string "screen.pause.load" "불러오기"
-string "screen.pause.quitToMenu" "메뉴로 나가기"
-string "screen.pause.quit" "게임 종료"
-string "screen.results.summary" "요약"
-string "screen.results.graphs" "그래프"
-string "screen.results.board" "점수판"
-string "screen.results.best" "최고"
-string "screen.results.replay" "리플레이 보기"
-string "screen.results.again" "다시 하기"
-string "screen.results.continue" "계속"
-string "screen.tutorial.skip" "건너뛰기"
-string "screen.tutorial.next" "다음"
+// The UI kit's ko strings (og.i18n; templates/ui-kit/README.md §Locales).
+// og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
+// The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
+// The rate lines stay English here: the kit's Korean subset (tools/make-locale-fonts.py) does not hold their words yet.
+// The genre patterns' previews (src/patterns.ts): every word a pattern screen shows. Banner and character names stay proper nouns.
+// The saga map, match-3 board and idle previews (src/patterns.ts).
+// The store and the battle pass (src/patterns.ts).
+// The story patterns' previews (src/story.ts): a conversation, a visual novel, quests.
+// The starship screens (src/starship.ts): ship and place names (AFS Valiant, Helios Reach, Vanguard) stay proper nouns.
+// The roster and wider-game previews (src/genres.ts): lobby, character select, versus, draft, world map, song select.
+// The systems games' previews (src/genres2.ts): garage and livery, ledger and city overlays, chat, RTS console.
+// The last pattern previews (src/genres3.ts, r42): photo mode, loadout, deck builder, VN gallery, settings.
+// The genre showcases (src/showcases.ts, src/huds.ts) and the screen documents the kit ejected (assets/ui).
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "ab.deflector": "편향 방어막",
+    "ab.deflector.text": "1턴 동안 실드를 강화한다.",
+    "ab.endTurn": "턴 종료",
+    "ab.gravity": "중력 우물",
+    "ab.gravity.text": "적을 끌어당겨 느리게 한다.",
+    "ab.kinetic": "키네틱 타격",
+    "ab.kinetic.text": "대상에게 큰 피해를 준다.",
+    "ab.overcharge": "과충전",
+    "ab.overcharge.text": "2턴 동안 무기 피해 +50 %.",
+    "ab.repair": "수리 드론",
+    "ab.repair.text": "선체를 서서히 회복한다.",
+    "ab.squadron": "편대 출격",
+    "ab.squadron.text": "공격기를 3턴 동안 배치한다.",
+    "ab.title": "어빌리티",
+    "board.done": "완료",
+    "board.goal.blue": "파란 보석 모으기",
+    "board.goal.ice": "얼음 타일 깨기",
+    "board.goals": "목표",
+    "board.level": "스테이지",
+    "board.moves": "남은 이동",
+    "board.progress": "{have} / {need}",
+    "board.score": "점수",
+    "cards.anger.name": "분노",
+    "cards.anger.text": "피해를 [b]6[/b] 줍니다. 버린 카드 더미에 사본을 추가합니다.",
+    "cards.bash.name": "강타",
+    "cards.bash.text": "피해를 [b]8[/b] 주고 [color=warn]취약[/color] 2를 부여합니다.",
+    "cards.defend.name": "수비",
+    "cards.defend.text": "[color=info]방어도[/color]를 [b]5[/b] 얻습니다.",
+    "cards.endTurn": "턴 종료",
+    "cards.enemyTurn": "적의 턴",
+    "cards.energy": "에너지",
+    "cards.foe.cultist": "광신도",
+    "cards.foe.louse": "붉은 이",
+    "cards.hand": "손패",
+    "cards.health": "{name} 체력",
+    "cards.inflame.name": "발화",
+    "cards.inflame.text": "[color=danger]힘[/color]을 [b]2[/b] 얻습니다.",
+    "cards.strike.name": "타격",
+    "cards.strike.text": "피해를 [b]6[/b] 줍니다.",
+    "cards.target": "대상을 선택하세요",
+    "cards.taunt": "도발에 가려짐",
+    "cards.title": "전투",
+    "cards.type.anger": "공격",
+    "cards.type.bash": "공격",
+    "cards.type.defend": "스킬",
+    "cards.type.inflame": "파워",
+    "cards.type.strike": "공격",
+    "cards.type.wound": "상태이상",
+    "cards.waiting": "대기 중…",
+    "cards.wound.name": "부상",
+    "cards.wound.text": "사용할 수 없습니다.",
+    "cards.yourTurn": "내 턴",
+    "chars.about.aria": "달빛을 칼날로 바꿔 멀리서 벤다.",
+    "chars.about.brann": "물건을 팔아 팀의 장비 값을 번다.",
+    "chars.about.cultist": "옛 신을 부르고 피로 대가를 치른다.",
+    "chars.about.kael": "발이 빠르다. 세 번째 공격마다 방어를 부순다.",
+    "chars.about.maren": "방패와 깃발로 전선을 지킨다.",
+    "chars.about.mira": "아군을 치유하고 적을 덩굴로 묶는다.",
+    "chars.about.torvin": "전투 중 고철로 포탑을 세운다.",
+    "chars.about.vell": "두 번 베고 사라진다.",
+    "chars.about.vesper": "자신의 체력을 그림자 폭풍으로 바꾼다.",
+    "chars.about.wren": "표적을 표시하고 절대 놓치지 않는다.",
+    "chars.lock": "확정",
+    "chars.locked": "확정됨",
+    "chars.random": "무작위",
+    "chars.role.duelist": "결투가",
+    "chars.role.mage": "마법사",
+    "chars.role.ranger": "레인저",
+    "chars.role.support": "지원가",
+    "chars.role.vanguard": "선봉",
+    "chars.taken": "선택됨",
+    "chars.title": "파이터를 선택하세요",
+    "chars.unlock": "레벨 {level}에 해금",
+    "chat.ch.all": "전체",
+    "chat.ch.guild": "길드",
+    "chat.ch.party": "파티",
+    "chat.ch.system": "시스템",
+    "chat.ch.trade": "거래",
+    "chat.ch.whisper": "귓속말",
+    "chat.channel": "채널",
+    "chat.link.amberhold": "앰버홀드",
+    "chat.link.ashbringer": "애쉬브링어",
+    "chat.link.ember": "잔불의 반지",
+    "chat.msg.1": "Riven 님이 파티에 참가했습니다.",
+    "chat.msg.2": "오늘 밤 9시 레이드, 물약 챙기세요.",
+    "chat.msg.3": "{0} 팝니다, 귓속말로 제안 주세요.",
+    "chat.msg.4": "문이 열리기 전에 {0} 에서 만나요.",
+    "chat.msg.5": "@Lumen 첫 풀 탱킹 가능해요?",
+    "chat.msg.6": "아까 도와줘서 고마워요!",
+    "chat.msg.7": "이거 떴어요: {0}",
+    "chat.msg.8": "@Juno 수리비는 제가 낼게요.",
+    "chat.msg.9": "준비되면 말해요.",
+    "chat.new": "새 메시지 {n}",
+    "chat.placeholder": "메시지 입력…",
+    "chat.send": "보내기",
+    "chat.title": "채팅",
+    "confirm.cancel": "취소",
+    "confirm.delete": "삭제",
+    "confirm.message": "슬롯 [b]{slot}[/b]의 진행 상황이 사라집니다. [color=danger]되돌릴 수 없습니다.[/color]",
+    "confirm.title": "이 저장을 삭제할까요?",
+    "cutscene.skip": "건너뛰기",
+    "deck.all": "전체",
+    "deck.card.anger": "분노",
+    "deck.card.bash": "강타",
+    "deck.card.bulwark": "성벽 기사",
+    "deck.card.defend": "방어",
+    "deck.card.egg": "잿불 알",
+    "deck.card.fireball": "화염구",
+    "deck.card.golem": "고대 골렘",
+    "deck.card.horn": "전쟁 뿔피리",
+    "deck.card.ice": "서리 조각",
+    "deck.card.inflame": "발화",
+    "deck.card.owl": "올빼미 사역마",
+    "deck.card.potion": "녹색 물약",
+    "deck.card.rogue": "밤의 도적",
+    "deck.card.scroll": "불타는 룬",
+    "deck.card.serpent": "이끼 뱀",
+    "deck.card.storm": "폭풍검",
+    "deck.card.strike": "일격",
+    "deck.card.wound": "상처",
+    "deck.cards": "카드",
+    "deck.curve": "마나 곡선",
+    "deck.done": "완료",
+    "deck.full": "덱이 가득 찼습니다",
+    "deck.kind.relic": "유물",
+    "deck.kind.spell": "주문",
+    "deck.kind.unit": "유닛",
+    "deck.kinds.relic": "유물",
+    "deck.kinds.spell": "주문",
+    "deck.kinds.unit": "유닛",
+    "deck.limit": "더 넣을 수 없습니다",
+    "deck.mine": "내 덱",
+    "deck.name": "프로스트파이어",
+    "deck.none": "일치하는 카드가 없습니다",
+    "deck.rarity.common": "일반",
+    "deck.rarity.epic": "영웅",
+    "deck.rarity.legendary": "전설",
+    "deck.rarity.rare": "희귀",
+    "deck.rarity.uncommon": "고급",
+    "deck.search": "카드 검색",
+    "deck.sort.cost": "비용",
+    "deck.sort.name": "이름",
+    "deck.sort.owned": "보유",
+    "deck.sort.rarity": "등급",
+    "deck.sortBy": "정렬",
+    "deck.text.anger": "피해를 4 주고 이 카드를 손으로 복사합니다.",
+    "deck.text.bash": "피해를 8 주고 대상을 기절시킵니다.",
+    "deck.text.bulwark": "수호. 옆 아군이 받는 피해 -1.",
+    "deck.text.defend": "방어도를 5 얻습니다.",
+    "deck.text.egg": "3턴 뒤 9/9 용이 부화합니다.",
+    "deck.text.fireball": "유닛에게 피해 10, 이웃에게 2를 줍니다.",
+    "deck.text.golem": "수호. 주문 피해를 받지 않습니다.",
+    "deck.text.horn": "이번 턴 아군 유닛 공격력 +1.",
+    "deck.text.ice": "유닛을 빙결시키고 카드를 1장 뽑습니다.",
+    "deck.text.inflame": "힘을 2 얻습니다.",
+    "deck.text.owl": "등장 시: 덱 위 3장을 봅니다.",
+    "deck.text.potion": "8 회복하고 독을 하나 제거합니다.",
+    "deck.text.rogue": "은신. 공격 시: 카드를 1장 뽑습니다.",
+    "deck.text.scroll": "다음 주문의 비용 -2.",
+    "deck.text.serpent": "중독 3. 적이 중독되면 성장합니다.",
+    "deck.text.storm": "모든 적에게 피해 5.",
+    "deck.text.strike": "피해를 6 줍니다.",
+    "deck.text.wound": "사용할 수 없습니다.",
+    "deck.title": "컬렉션",
+    "deck.types": "유형",
+    "deck.unowned": "미보유",
+    "dlg.aria": "아리아",
+    "dlg.auto": "자동",
+    "dlg.check": "{stat} · {chance}",
+    "dlg.continue": "계속",
+    "dlg.failed": "실패",
+    "dlg.gate.need": "크레딧 {need} 부족",
+    "dlg.gate.notyet": "아직은 아니야.",
+    "dlg.gate.open": "문은 새벽에 열려. 건널 준비는 됐어?",
+    "dlg.gate.persuade": "먼저 저 너머에 뭐가 있는지 말해 줘.",
+    "dlg.gate.read": "그 표정, 전에도 본 적 있지.",
+    "dlg.gate.ready": "준비됐어. 가자.",
+    "dlg.gate.toll": "문지기에게 통행료를 낸다.",
+    "dlg.gate.who": "문에 대해 아는 사람이 또 누가 있지?",
+    "dlg.log": "기록",
+    "dlg.mira": "미라",
+    "dlg.passed": "성공",
+    "dlg.ready": "그럼 물때가 바뀌기 전에 떠나자.",
+    "dlg.refuse": "직접 보든가, 아예 못 보든가야.",
+    "dlg.secret": "그 너머엔 오래된 천문대가 있어. 성도가 본 것은 아직 거기 있지.",
+    "dlg.skip": "건너뛰기",
+    "dlg.stat.charm": "설득",
+    "dlg.stat.insight": "통찰",
+    "dlg.unavailable": "선택 불가",
+    "dlg.who": "기록관뿐이야. 그녀는 구 년 동안 입을 다물어 왔어.",
+    "draft.ban": "금지",
+    "draft.banned": "금지됨",
+    "draft.bans": "금지",
+    "draft.blue": "블루 진영",
+    "draft.phase.ban": "금지 단계 · 내 차례",
+    "draft.phase.pick": "선택 단계 · 내 차례",
+    "draft.phase.theirs": "선택 단계 · 레드 차례",
+    "draft.picked": "선택됨",
+    "draft.red": "레드 진영",
+    "draft.title": "드래프트",
+    "draft.waiting": "대기 중",
+    "gacha.banner.event": "한정 배너 · 캐릭터",
+    "gacha.banner.std": "상시 배너",
+    "gacha.banner.weapon": "한정 배너 · 무기",
+    "gacha.continue": "계속",
+    "gacha.details": "상세",
+    "gacha.done": "완료",
+    "gacha.extra.shards": "별 조각 +{n}",
+    "gacha.history": "기록",
+    "gacha.kind.character": "캐릭터",
+    "gacha.kind.weapon": "무기",
+    "gacha.new": "NEW",
+    "gacha.pity": "{left}회 후 확정",
+    "gacha.rarity.common": "일반",
+    "gacha.rarity.epic": "영웅",
+    "gacha.rarity.legendary": "전설",
+    "gacha.rarity.mythic": "신화",
+    "gacha.rarity.rare": "희귀",
+    "gacha.rarity.uncommon": "고급",
+    "gacha.rate.event": "다음 5성이 [color=highlight]아리아[/color]일 확률은 [b]50%[/b]입니다. 놓치면 다음 5성은 반드시 아리아입니다.",
+    "gacha.rate.standard": "[b]90[/b]회 소환 안에 [b]5성[/b]이 반드시 나옵니다.",
+    "gacha.short": "부족",
+    "gacha.skip": "건너뛰기",
+    "gacha.summon1": "소환 ×1",
+    "gacha.summonN": "소환 ×{n}",
+    "gacha.tap": "탭하여 계속",
+    "gacha.title.aria": "달의 조수를 부르는 자",
+    "gacha.title.kael": "잔불",
+    "gacha.title.mira": "숲의 수호자",
+    "gacha.unit.cudgel": "참나무 곤봉",
+    "gacha.unit.fang": "잔불의 송곳니",
+    "gacha.unit.sling": "사냥꾼의 투석구",
+    "gacha.unit.spear": "밤의 창",
+    "gacha.unit.steel": "평범한 강철",
+    "gacha.unit.tome": "조수의 서",
+    "gacha.unit.warden": "파수꾼의 검",
+    "gallery.button": "갤러리",
+    "garage.addLayer": "레이어 추가",
+    "garage.buy": "구매",
+    "garage.cat.aero": "에어로",
+    "garage.cat.brakes": "브레이크",
+    "garage.cat.engine": "엔진",
+    "garage.cat.exhaust": "배기",
+    "garage.cat.livery": "도색",
+    "garage.cat.next": "다음 분류",
+    "garage.cat.suspension": "서스펜션",
+    "garage.cat.wheels": "휠",
+    "garage.class": "클래스",
+    "garage.color": "색상",
+    "garage.current": "현재",
+    "garage.delete": "삭제",
+    "garage.desc.aero": "높은 윙이 고속에서 차를 눌러 준다.",
+    "garage.desc.brakes": "큰 디스크와 캘리퍼로 더 늦게 제동하고 페이드가 적다.",
+    "garage.desc.engine": "고회전 영역의 출력이 오르지만 스로틀이 예민해진다.",
+    "garage.desc.exhaust": "배기 흐름이 좋아져 출발이 빠르고 소리가 커진다.",
+    "garage.desc.suspension": "단단한 스프링과 댐퍼. 롤이 줄고 승차감은 단단해진다.",
+    "garage.desc.wheels": "가벼운 휠과 접지력 좋은 타이어로 고속 코너를 버틴다.",
+    "garage.down": "아래로",
+    "garage.equip": "장착",
+    "garage.equipped": "장착됨",
+    "garage.free": "무료",
+    "garage.kind.decal": "데칼",
+    "garage.kind.paint": "도장",
+    "garage.kind.vinyl": "비닐",
+    "garage.layer.added": "데칼 {n}",
+    "garage.layer.base": "바탕색",
+    "garage.layer.number": "번호 7",
+    "garage.layer.sponsor": "스폰서",
+    "garage.layer.stripe": "스트라이프",
+    "garage.layers": "레이어",
+    "garage.locked": "잠김",
+    "garage.needsClass": "{cls} 클래스 필요",
+    "garage.part": "{tier} {part}",
+    "garage.performance": "성능",
+    "garage.preview": "미리 보기",
+    "garage.short": "부족",
+    "garage.stat.braking": "제동",
+    "garage.stat.handling": "핸들링",
+    "garage.stat.launch": "발진",
+    "garage.stat.power": "출력",
+    "garage.stat.speed": "최고 속도",
+    "garage.tier.race": "레이스",
+    "garage.tier.sport": "스포츠",
+    "garage.tier.stock": "순정",
+    "garage.tier.street": "스트리트",
+    "garage.tier.works": "웍스",
+    "garage.title": "차고",
+    "garage.up": "위로",
+    "garage.visible": "표시",
+    "gear.attributes": "능력치",
+    "gear.backpack": "배낭",
+    "gear.class": "레벨 {level} 성기사",
+    "gear.empty": "비어 있음",
+    "gear.hint.menu": "아이템 메뉴",
+    "gear.hint.place": "집기 / 놓기",
+    "gear.hint.putBack": "되돌리기",
+    "gear.item.amulet": "사파이어 목걸이",
+    "gear.item.boots": "신속의 장화",
+    "gear.item.bow": "바람의 활",
+    "gear.item.dagger": "강철 검",
+    "gear.item.gem": "별 조각",
+    "gear.item.gloves": "건틀릿",
+    "gear.item.greatsword": "재의 인도자",
+    "gear.item.helm": "가시 왕관",
+    "gear.item.mana": "마나 물약",
+    "gear.item.ore": "원석",
+    "gear.item.plate": "비전 지팡이",
+    "gear.item.potions": "치유 물약",
+    "gear.item.ring": "골짜기의 인장",
+    "gear.item.robe": "마법사 로브",
+    "gear.item.scroll": "강철 열쇠",
+    "gear.item.shield": "참나무 방패",
+    "gear.locked": "잠김",
+    "gear.menu.drop": "버리기",
+    "gear.menu.split": "나누기",
+    "gear.menu.use": "사용",
+    "gear.power": "아이템 위력",
+    "gear.relicLocked": "레벨 {level}에 해제",
+    "gear.rotate": "회전",
+    "gear.slot.chest": "몸통",
+    "gear.slot.feet": "발",
+    "gear.slot.hands": "손",
+    "gear.slot.head": "머리",
+    "gear.slot.main": "주 무기",
+    "gear.slot.neck": "목",
+    "gear.slot.off": "보조 무기",
+    "gear.slot.relic": "유물",
+    "gear.slot.ring": "반지",
+    "gear.stash": "보관함",
+    "gear.stat.armor": "방어력",
+    "gear.stat.cooldowns": "재사용 대기시간",
+    "gear.stat.fire": "화염 저항",
+    "gear.stat.speed": "이동 속도",
+    "gear.stat.strength": "힘",
+    "gear.sub": "드래그로 이동 · Shift로 나누기 · R로 회전",
+    "gear.sub.touch": "드래그로 이동 · 길게 눌러 옵션",
+    "gear.title": "인벤토리",
+    "gear.unusable": "사용 불가",
+    "hangar.alloy": "합금",
+    "hangar.carriers": "항공모함",
+    "hangar.carriers.class": "항공모함급",
+    "hangar.carriers.flavour": "공격기를 발진하고 회수하는 이동식 격납고. 선회는 느리지만 결코 혼자가 아니다.",
+    "hangar.carriers.line": "전장을 지휘한다.",
+    "hangar.classes": "함급",
+    "hangar.commission": "취역",
+    "hangar.commissioned": "{name} 함대 합류",
+    "hangar.compare": "비교",
+    "hangar.cruisers": "순양함",
+    "hangar.cruisers.class": "순양함급",
+    "hangar.cruisers.flavour": "다층 실드를 갖춘 중호위함. 프리깃이 앞서 나가는 동안 진형의 중심을 지킨다.",
+    "hangar.cruisers.line": "균형 잡히고 믿음직하다.",
+    "hangar.firepower": "화력",
+    "hangar.frigates": "프리깃",
+    "hangar.frigates.class": "프리깃급",
+    "hangar.frigates.flavour": "정찰, 호위, 신속 대응을 위한 다재다능한 전선 프리깃. 전선이 지켜진 곳에는 언제나 뱅가드가 먼저 있었다.",
+    "hangar.frigates.line": "빠르고 유연하며 필수적이다.",
+    "hangar.hull": "선체",
+    "hangar.modules": "모듈",
+    "hangar.modules.class": "정거장 모듈",
+    "hangar.modules.flavour": "어느 항공모함에나 도킹하는 모듈식 선체. 작업장, 센서 배열, 보급 기지가 된다.",
+    "hangar.modules.line": "함대를 확장한다.",
+    "hangar.shields": "실드",
+    "hangar.speed": "속도",
+    "hangar.stats": "함선 능력치",
+    "hangar.title": "함대 격납고",
+    "hangar.upgrade": "강화 레벨",
+    "hint.back": "뒤로",
+    "hud.best": "최고 {best}",
+    "hud.boost": "부스트",
+    "hud.brake": "브레이크",
+    "hud.coins": "{n, plural, other {코인 #개}}",
+    "hud.farm": "농장",
+    "hud.fire": "발사",
+    "hud.forge": "대장간",
+    "hud.gems": "보석",
+    "hud.generatorLevel": "레벨 {level}",
+    "hud.gold": "골드",
+    "hud.jump": "점프",
+    "hud.kills": "처치",
+    "hud.lap": "랩",
+    "hud.left": "왼쪽",
+    "hud.level": "1-2 오래된 방앗간",
+    "hud.mill": "방앗간",
+    "hud.moves": "남은 이동",
+    "hud.pause": "일시정지",
+    "hud.rate": "+{rate}/초",
+    "hud.right": "오른쪽",
+    "hud.sector": "섹터 4",
+    "hud.stage": "레벨 7",
+    "hud.tap": "탭",
+    "hud.target": "목표 {target}",
+    "hud.unit": "km/h",
+    "hud.weapon": "카빈",
+    "idle.ascend": "승천",
+    "idle.ascendFor": "승천 보상",
+    "idle.buy": "구매 ×{n}",
+    "idle.buyAmount": "구매 수량",
+    "idle.energy": "에너지",
+    "idle.gen.drill": "양자 드릴",
+    "idle.gen.dyson": "다이슨 고리",
+    "idle.gen.forge": "항성 용광로",
+    "idle.gen.fusion": "핵융합로",
+    "idle.gen.orbital": "궤도 수집기",
+    "idle.gen.solar": "태양광 배열",
+    "idle.generators": "발전기",
+    "idle.hint.buy": "구매",
+    "idle.level": "Lv. {level}",
+    "idle.owned": "보유: {owned}",
+    "idle.perSec": "+{rate} / 초",
+    "idle.point.keep": "영구적인 성장",
+    "idle.point.reset": "발전기와 에너지 초기화",
+    "idle.point.stronger": "승천할수록 강해짐",
+    "idle.prestige": "승천",
+    "idle.rate": "+{rate} / 초",
+    "idle.shards": "파편 +{n}",
+    "idle.sub": "발전기를 늘리고 승천해 파편을 얻으세요",
+    "idle.title": "넥서스 코어",
+    "idle.unlock": "에너지 {cost} 달성 시 해제",
+    "inventory.count": "수량",
+    "inventory.hint": "아이템을 선택하세요. 다른 칸으로 끌어서 옮길 수 있습니다.",
+    "item.crystal": "별빛 수정",
+    "item.gold": "골드",
+    "item.potion": "치유 물약",
+    "item.ring": "잉걸불 반지",
+    "leaderboard.error": "점수를 불러오지 못했습니다.",
+    "leaderboard.retry": "다시 시도",
+    "ledger.breakdown": "내역",
+    "ledger.col.amount": "금액",
+    "ledger.col.budget": "예산",
+    "ledger.col.change": "변동",
+    "ledger.col.name": "이름",
+    "ledger.expenses": "지출",
+    "ledger.hint.period": "다음 기간",
+    "ledger.history": "추이",
+    "ledger.income": "수입",
+    "ledger.line.commercial": "상업세",
+    "ledger.line.education": "교육",
+    "ledger.line.fire": "소방",
+    "ledger.line.health": "의료",
+    "ledger.line.industrial": "산업세",
+    "ledger.line.parks": "공원",
+    "ledger.line.police": "경찰",
+    "ledger.line.power": "전력",
+    "ledger.line.residential": "주거세",
+    "ledger.line.tourism": "관광",
+    "ledger.line.transit": "대중교통",
+    "ledger.line.water": "수도",
+    "ledger.locked": "잠김",
+    "ledger.net": "순수익",
+    "ledger.other": "기타",
+    "ledger.overlay.crime": "범죄",
+    "ledger.overlay.crime.high": "위험",
+    "ledger.overlay.crime.low": "안전",
+    "ledger.overlay.landValue": "땅값",
+    "ledger.overlay.landValue.high": "높음",
+    "ledger.overlay.landValue.low": "낮음",
+    "ledger.overlay.off": "오버레이 없음",
+    "ledger.overlay.pollution": "오염",
+    "ledger.overlay.pollution.high": "유독",
+    "ledger.overlay.pollution.low": "깨끗함",
+    "ledger.overlay.power": "전력",
+    "ledger.overlay.power.high": "충분",
+    "ledger.overlay.power.low": "전력 없음",
+    "ledger.overlay.traffic": "교통",
+    "ledger.overlay.traffic.high": "극심한 정체",
+    "ledger.overlay.traffic.low": "원활",
+    "ledger.overlay.water": "수도",
+    "ledger.overlay.water.high": "충분한 수압",
+    "ledger.overlay.water.low": "단수",
+    "ledger.overlays": "오버레이",
+    "ledger.period.month": "{n}월",
+    "ledger.period.quarter": "{n}분기",
+    "ledger.period.year": "{n}년차",
+    "ledger.population": "인구",
+    "ledger.tab.month": "월",
+    "ledger.tab.quarter": "분기",
+    "ledger.tab.year": "연",
+    "ledger.title": "예산",
+    "ledger.total": "합계",
+    "ledger.treasury": "국고",
+    "ledger.warn.education": "예산 부족: 교실 포화",
+    "ledger.warn.fire": "예산 부족: 화재 확산",
+    "ledger.warn.health": "예산 부족: 대기 증가",
+    "ledger.warn.parks": "예산 부족: 공원 방치",
+    "ledger.warn.police": "예산 부족: 범죄 증가",
+    "ledger.warn.power": "예산 부족: 정전",
+    "ledger.warn.transit": "예산 부족: 노선 감축",
+    "ledger.warn.water": "예산 부족: 수압 저하",
+    "list.separator": ", ",
+    "loadout.att.laser": "전술 레이저",
+    "loadout.att.magazine": "확장 탄창",
+    "loadout.att.muzzle": "뱅가드 소음기",
+    "loadout.att.optic": "MK.2 홀로 조준경",
+    "loadout.att.stock": "전술 개머리판",
+    "loadout.att.underbarrel": "레인저 손잡이",
+    "loadout.attachments": "부착물",
+    "loadout.class.assault": "돌격소총",
+    "loadout.class.blade": "칼날",
+    "loadout.class.drone": "드론",
+    "loadout.class.grenade": "수류탄",
+    "loadout.class.pistol": "권총",
+    "loadout.desc.field": "시야 안의 모든 적을 표시한다.",
+    "loadout.desc.lethal": "3초 뒤 터져 방 하나를 정리한다.",
+    "loadout.desc.melee": "조용하고 언제든 준비되어 있다.",
+    "loadout.desc.primary": "모든 거리에서 믿음직하고, 부착물마다 더 안정된다.",
+    "loadout.desc.secondary": "소총 탄이 떨어졌을 때 빠르게 꺼내 쓴다.",
+    "loadout.desc.tactical": "즉시 회복하고 걸음이 빨라진다.",
+    "loadout.empty": "비어 있음",
+    "loadout.item.field": "정찰 드론",
+    "loadout.item.lethal": "파편 수류탄",
+    "loadout.item.melee": "전투용 나이프",
+    "loadout.item.primary": "AR-7 레이븐",
+    "loadout.item.secondary": "VX-9 권총",
+    "loadout.item.tactical": "자극제",
+    "loadout.level": "Lv.{n}",
+    "loadout.locked": "잠김",
+    "loadout.next": "다음 로드아웃",
+    "loadout.point.laser": "레이저",
+    "loadout.point.magazine": "탄창",
+    "loadout.point.muzzle": "총구",
+    "loadout.point.optic": "조준경",
+    "loadout.point.stock": "개머리판",
+    "loadout.point.underbarrel": "하부",
+    "loadout.rarity.epic": "영웅",
+    "loadout.rarity.rare": "희귀",
+    "loadout.rarity.uncommon": "고급",
+    "loadout.remove": "제거",
+    "loadout.slot.field": "필드 업그레이드",
+    "loadout.slot.lethal": "살상",
+    "loadout.slot.melee": "근접",
+    "loadout.slot.primary": "주무기",
+    "loadout.slot.secondary": "보조무기",
+    "loadout.slot.tactical": "전술",
+    "loadout.stat.control": "제어",
+    "loadout.stat.damage": "피해",
+    "loadout.stat.fireRate": "연사 속도",
+    "loadout.stat.mobility": "기동성",
+    "loadout.stat.range": "사거리",
+    "loadout.stats": "무기 성능",
+    "loadout.tab": "로드아웃 {n}",
+    "loadout.title": "로드아웃",
+    "loadout.unlocks": "Lv.{n}에 해금",
+    "lobby.accept": "수락",
+    "lobby.accepted": "수락함",
+    "lobby.cancel": "취소",
+    "lobby.decline": "거절",
+    "lobby.estimate": "예상 {time}",
+    "lobby.found": "매치 발견",
+    "lobby.invite": "초대",
+    "lobby.leader": "파티장",
+    "lobby.level": "Lv {level}",
+    "lobby.mode.detail": "5대5 · 스카이리치 관문",
+    "lobby.mode.ranked": "경쟁전",
+    "lobby.modeLabel": "모드",
+    "lobby.notReady": "준비 안 됨",
+    "lobby.rank.diamond": "다이아몬드 II",
+    "lobby.rank.gold": "골드 I",
+    "lobby.rank.immortal": "불멸 I",
+    "lobby.rank.platinum": "플래티넘 III",
+    "lobby.ready": "준비 완료",
+    "lobby.readyUp": "준비하기",
+    "lobby.searching": "검색 중",
+    "lobby.start": "매치 찾기",
+    "lobby.title": "플레이",
+    "log.close": "닫기",
+    "log.empty": "아직 아무 말도 없었어.",
+    "log.replay": "음성 재생",
+    "log.title": "대화 기록",
+    "map.about.amberhold": "평원을 굽어보는 옛 왕의 성.",
+    "map.about.duskhold": "오래전 숲에 삼켜진 폐허 성채.",
+    "map.about.light": "길 잃은 배를 위해 등불을 밝혀라.",
+    "map.about.market": "모든 길의 상인이 정오에 모인다.",
+    "map.about.mill": "초승달이 뜨기 전에 늑대를 쫓아내라.",
+    "map.about.sela": "항구의 배는 새벽에 스카이리치 제도로 떠난다.",
+    "map.about.wyrm": "오래된 소나무 아래 무언가 꿈틀댄다.",
+    "map.close": "닫기",
+    "map.kind.boss": "보스",
+    "map.kind.fastTravel": "빠른 이동",
+    "map.kind.objective": "목표",
+    "map.kind.poi": "명소",
+    "map.kind.quest": "퀘스트",
+    "map.kind.shop": "상점",
+    "map.place.amberhold": "앰버홀드 성",
+    "map.place.duskhold": "황혼 성채",
+    "map.place.light": "솔트리치 등대",
+    "map.place.market": "교차로 시장",
+    "map.place.mill": "할로 방앗간",
+    "map.place.sela": "셀라 항구",
+    "map.place.wyrm": "가시숲의 와이번",
+    "map.region.amber": "호박 평원",
+    "map.region.delta": "솔트리치 삼각주",
+    "map.region.dusk": "황혼숲",
+    "map.region.frost": "서리첨봉 산맥",
+    "map.region.redmesa": "붉은 고원",
+    "map.title": "갈라진 왕국",
+    "map.track": "경유지 설정",
+    "map.travel": "빠른 이동",
+    "map.unknown": "???",
+    "map.untrack": "경유지 해제",
+    "menu.continue": "이어하기",
+    "menu.event": "조수의 기도",
+    "menu.event.cartoon": "여우 대모험",
+    "menu.event.kawaii": "별의 무대",
+    "menu.event.storybook": "작은 불의 길",
+    "menu.eventWhen": "3일 남음",
+    "menu.footer": "버전 {version}",
+    "menu.greeting": "작은 모험가",
+    "menu.mixed": "퀘스트 Origin 原点 مغامرة صغيرة",
+    "menu.play": "플레이",
+    "menu.quit": "종료",
+    "menu.settings": "설정",
+    "menu.subtitle": "작은 모험",
+    "menu.title": "오리진 퀘스트",
+    "npc.miller": "브람 영감",
+    "pass.claim": "받기",
+    "pass.claimAll": "모두 받기 ({n})",
+    "pass.claimed": "받음",
+    "pass.free": "무료",
+    "pass.level": "레벨 {n}",
+    "pass.premium": "프리미엄",
+    "pass.reach": "레벨 {n} 달성",
+    "pass.reward.arcane-staff": "비전 지팡이",
+    "pass.reward.aria": "아리아, 물결의 부름",
+    "pass.reward.boots": "신속의 장화",
+    "pass.reward.chest": "시즌 상자",
+    "pass.reward.crystal": "보석",
+    "pass.reward.ember-ring": "잉걸불 반지",
+    "pass.reward.gauntlets": "건틀릿",
+    "pass.reward.gold": "코인",
+    "pass.reward.healing-draught": "회복 물약",
+    "pass.reward.kael": "카엘, 잉걸불",
+    "pass.reward.mana-vial": "마나 병",
+    "pass.reward.mira": "숲의 미라",
+    "pass.reward.sapphire-amulet": "사파이어 부적",
+    "pass.season": "시즌 4 · 네온 물결",
+    "pass.title": "배틀 패스",
+    "pass.unlock": "프리미엄 잠금 해제",
+    "pass.xp": "{xp} / {need} XP",
+    "pause.quit": "메뉴로 나가기",
+    "pause.resume": "계속하기",
+    "pause.settings": "설정",
+    "pause.title": "일시정지",
+    "photo.capture": "촬영",
+    "photo.ctl.aperture": "조리개",
+    "photo.ctl.exposure": "노출",
+    "photo.ctl.focus": "초점 거리",
+    "photo.ctl.fov": "시야각",
+    "photo.ctl.height": "높이",
+    "photo.ctl.roll": "롤",
+    "photo.ctl.vignette": "비네트",
+    "photo.exit": "나가기",
+    "photo.filter.cool": "차가운 톤",
+    "photo.filter.noir": "누아르",
+    "photo.filter.none": "없음",
+    "photo.filter.sepia": "세피아",
+    "photo.filter.vivid": "선명",
+    "photo.frame.cinema": "시네마",
+    "photo.frame.film": "필름",
+    "photo.frame.none": "없음",
+    "photo.frame.polaroid": "인스턴트",
+    "photo.grid": "격자",
+    "photo.hide": "UI 숨기기",
+    "photo.hint": "아무 키나 눌러 조작 표시",
+    "photo.reset": "초기화",
+    "photo.strength": "강도",
+    "photo.tab.camera": "카메라",
+    "photo.tab.filters": "필터",
+    "photo.tab.frames": "프레임",
+    "photo.tab.lens": "렌즈",
+    "photo.title": "포토 모드",
+    "q.active": "진행 중",
+    "q.back": "뒤로",
+    "q.complete": "완료",
+    "q.completed": "완료",
+    "q.empty": "아직 퀘스트가 없어.",
+    "q.failed": "실패",
+    "q.giver": "의뢰인: {giver}",
+    "q.map": "지도에 표시",
+    "q.new": "새 퀘스트",
+    "q.objectives": "목표",
+    "q.optional": "선택",
+    "q.rewards": "보상",
+    "q.tab.daily": "일일",
+    "q.tab.main": "메인",
+    "q.tab.side": "서브",
+    "q.title": "퀘스트",
+    "q.track": "추적",
+    "q.tracked": "추적 중",
+    "quest.dawn": "새벽의 문",
+    "quest.dawn.archivist": "봉인에 대해 기록관에게 묻기",
+    "quest.dawn.charts": "성도 되찾기",
+    "quest.dawn.reach": "새벽 전에 문에 도착하기",
+    "quest.dawn.sealer": "문을 봉인한 자 알아내기",
+    "quest.dawn.summary": "미라는 스카이리치 위의 봉인된 문이 새벽에 한 시간 동안 열린다고 믿는다. 그녀가 건너기 전에 오래된 성도에 필요한 것을 모으자.",
+    "quest.letters": "로마시로 가는 편지",
+    "quest.letters.deliver": "편지 전달하기",
+    "quest.letters.summary": "방앗간 주인의 편지를 늪 건너 누이에게 전하자.",
+    "quest.mill": "방앗간의 늑대",
+    "quest.mill.summary": "브람 영감의 양 떼가 줄고 있다. 다음 그믐 전에 할로 방앗간에서 늑대를 쫓아내자.",
+    "quest.mill.wolves": "늑대 쫓아내기",
+    "quest.supply": "보급 임무",
+    "quest.supply.petals": "달꽃잎 모으기",
+    "quest.supply.summary": "로마시의 치유사들은 오늘 밤 물약에 쓸 달꽃잎이 필요하다.",
+    "quest.tide": "바뀌는 물때",
+    "quest.tide.ferry": "물때 전에 나루터에 도착하기",
+    "quest.tide.summary": "마지막 나룻배는 물때가 바뀌면 떠난다. 기다려 주지 않았다.",
+    "region.marsh": "로마시",
+    "region.mill": "할로 방앗간",
+    "region.skyreach": "스카이리치 제도",
+    "rewards.banish": "추방",
+    "rewards.blade.kind": "무기",
+    "rewards.blade.tag": "Lv 3 → 4",
+    "rewards.blade.text": "대시가 [b]18[/b] 피해를 주는 칼날을 남깁니다.",
+    "rewards.blade.title": "황혼의 칼날",
+    "rewards.choose": "축복을 하나 고르세요",
+    "rewards.chooseTwo": "축복 두 개를 고른 뒤 확정하세요",
+    "rewards.confirm": "확정",
+    "rewards.crown.kind": "유물",
+    "rewards.crown.locked": "두 번째 보스를 처치하면 해제",
+    "rewards.crown.tag": "NEW",
+    "rewards.crown.text": "전투를 시작할 때마다 [color=info]에너지[/color]를 [b]2[/b] 더 얻습니다.",
+    "rewards.crown.title": "세월의 왕관",
+    "rewards.frost.kind": "서리 직조자의 선물",
+    "rewards.frost.text": "공격이 적을 [color=info]얼려[/color] [b]20%[/b] 느리게 합니다.",
+    "rewards.frost.title": "동상",
+    "rewards.gold.kind": "금화 성자의 선물",
+    "rewards.gold.text": "지금 [b]40[/b]골드, 처치할 때마다 [b]5[/b]골드를 얻습니다.",
+    "rewards.gold.title": "황금의 손길",
+    "rewards.hint.take": "받기",
+    "rewards.reroll": "다시 뽑기",
+    "rewards.rerollCost": "50골드",
+    "rewards.skip": "건너뛰기 · 25골드 획득",
+    "rewards.skipped": "25골드",
+    "rewards.taken": "획득: {list}",
+    "rewards.thunder.kind": "폭풍 파수꾼의 선물",
+    "rewards.thunder.text": "공격이 [b]번개[/b]를 불러 [color=highlight]+30[/color] 피해를 줍니다.",
+    "rewards.thunder.title": "천둥 일격",
+    "rewards.title": "방 정리 완료",
+    "rewards.vigor.kind": "강철 모후의 선물",
+    "rewards.vigor.tag": "강화",
+    "rewards.vigor.text": "최대 체력 [b]+25%[/b]. 방을 정리할 때마다 [color=success]10[/color] 회복.",
+    "rewards.vigor.title": "철꽃의 심장",
+    "rts.back": "뒤로",
+    "rts.cancel": "취소",
+    "rts.cmd.barracks": "병영",
+    "rts.cmd.build": "건설",
+    "rts.cmd.farm": "농장",
+    "rts.cmd.forge": "대장간",
+    "rts.cmd.gather": "채집",
+    "rts.cmd.keep": "요새",
+    "rts.cmd.patrol": "순찰",
+    "rts.cmd.rally": "집결지",
+    "rts.cmd.repair": "수리",
+    "rts.cmd.stop": "정지",
+    "rts.cmd.tower": "궁수탑",
+    "rts.cmd.wall": "돌벽",
+    "rts.kind.archer": "원거리 · 경장",
+    "rts.kind.knight": "기병 · 중장",
+    "rts.kind.worker": "일꾼 · 경장",
+    "rts.queue": "대기열",
+    "rts.stat.armour": "방어구",
+    "rts.stat.attack": "공격",
+    "rts.stat.speed": "속도",
+    "rts.target": "{command}: 대상 선택",
+    "rts.unit.archer": "궁수",
+    "rts.unit.knight": "기사",
+    "rts.unit.worker": "주민",
+    "saga.boss": "보스, 스테이지 {label}",
+    "saga.here": "현재 위치",
+    "saga.level": "스테이지 {label}",
+    "saga.play": "스테이지 {level} 플레이",
+    "saga.stars": "별 {n} / {max}",
+    "saga.sub": "별 {stars} / {max}",
+    "saga.title": "스테이지",
+    "saga.world": "하늘섬 군도",
+    "sc.action": "액션·플랫포머",
+    "sc.action.attack": "공격",
+    "sc.action.blurb": "플랫포머의 타이틀, HUD, 일시정지, 튜토리얼, 로딩, 결과",
+    "sc.action.clear": "스테이지 클리어",
+    "sc.action.door": "낡은 문",
+    "sc.action.game": "엠버폴",
+    "sc.action.jump": "점프",
+    "sc.action.news": "엠버 리지 이벤트 진행 중",
+    "sc.action.objective": "절벽 문에 도달하기",
+    "sc.action.open": "열기",
+    "sc.action.place": "엠버 리지",
+    "sc.action.save": "3장 · 4시간 12분",
+    "sc.action.tip": "점프를 길게 누르면 더 높이 뜁니다. 공중에서 한 번 더 누르면 이단 점프.",
+    "sc.combo": "콤보",
+    "sc.comboBreak": "끊김",
+    "sc.energy": "에너지",
+    "sc.fight.hits": "히트",
+    "sc.fight.kick": "킥",
+    "sc.fight.punch": "펀치",
+    "sc.fight.special": "필살기",
+    "sc.fight.super": "슈퍼",
+    "sc.fighting": "격투·파티",
+    "sc.fighting.blurb": "라운드 HUD, 캐릭터 선택, 대전 화면",
+    "sc.gacha": "가챠·수집",
+    "sc.gacha.blurb": "배너와 10연차, 시즌 패스",
+    "sc.health": "체력",
+    "sc.horror": "호러",
+    "sc.horror.battery": "배터리",
+    "sc.horror.blurb": "화면에 거의 아무것도 띄우지 않는 HUD",
+    "sc.horror.find": "예배당 열쇠 찾기",
+    "sc.horror.hide": "숨기",
+    "sc.horror.objective": "목표",
+    "sc.horror.run": "달리기",
+    "sc.horror.wardrobe": "옷장",
+    "sc.mana": "마나",
+    "sc.manage.cost": "건설 {cost} · 유지비 {upkeep}/일",
+    "sc.manage.date": "봄 12일째",
+    "sc.manage.fast": "빠르게",
+    "sc.manage.food": "식량",
+    "sc.manage.goal.grow": "성장하는 마을",
+    "sc.manage.goal.market": "시장 완성하기",
+    "sc.manage.goal.park": "공원 짓기",
+    "sc.manage.goal.people": "주민",
+    "sc.manage.goal.trade": "무역 개시",
+    "sc.manage.gold": "골드",
+    "sc.manage.people": "주민",
+    "sc.manage.play": "재생",
+    "sc.manage.plot": "빈 부지",
+    "sc.manage.wood": "목재",
+    "sc.management": "경영·방치·생활",
+    "sc.management.blurb": "마을 HUD, 생산기, 장부, 도시 지도",
+    "sc.mmo": "MMO·레이드",
+    "sc.mmo.adds": "처치한 수문장",
+    "sc.mmo.blink": "점멸",
+    "sc.mmo.blurb": "프레임과 바가 있는 레이드 HUD, 채팅",
+    "sc.mmo.bomb": "폭약",
+    "sc.mmo.boss": "보르술",
+    "sc.mmo.burn": "영혼 화상",
+    "sc.mmo.cast": "그림자 비",
+    "sc.mmo.food": "만찬",
+    "sc.mmo.free": "속박 해제",
+    "sc.mmo.heal": "치유",
+    "sc.mmo.key": "금고 열쇠",
+    "sc.mmo.might": "괴력",
+    "sc.mmo.raid": "가라앉은 금고",
+    "sc.mmo.strike": "일격",
+    "sc.mmo.title": "금고의 군주",
+    "sc.mmo.venom": "맹독",
+    "sc.mmo.ward": "수호",
+    "sc.mmo.zone": "가라앉은 금고",
+    "sc.moba": "MOBA·아레나",
+    "sc.moba.attack": "공격",
+    "sc.moba.blurb": "라인 HUD와 밴 드래프트",
+    "sc.moba.dash": "돌진",
+    "sc.moba.frost": "빙결",
+    "sc.moba.ult": "화염 폭풍",
+    "sc.moba.ward": "수호",
+    "sc.narrative": "내러티브·비주얼 노벨",
+    "sc.narrative.blurb": "텍스트 상자, 루트 차트, CG 갤러리",
+    "sc.open.glide": "활공",
+    "sc.open.quest": "울리지 않는 종",
+    "sc.open.shrine": "바엘의 사당",
+    "sc.open.step": "사당에 도착하기",
+    "sc.open.talk": "대화",
+    "sc.open.tower": "망루 오르기",
+    "sc.openworld": "오픈 월드",
+    "sc.openworld.blurb": "탐험 HUD, 월드 맵, 사진 모드",
+    "sc.page.abilityCards": "능력",
+    "sc.page.board": "보드",
+    "sc.page.cards": "카드",
+    "sc.page.cgGallery": "갤러리",
+    "sc.page.chat": "채팅",
+    "sc.page.cityMap": "도시 지도",
+    "sc.page.deck": "덱",
+    "sc.page.dialogue": "대화",
+    "sc.page.draft": "드래프트",
+    "sc.page.gacha": "배너",
+    "sc.page.garage": "차고",
+    "sc.page.gear": "장비",
+    "sc.page.generators": "생산기",
+    "sc.page.hangar": "격납고",
+    "sc.page.hud": "HUD",
+    "sc.page.leaderboard": "순위표",
+    "sc.page.ledger": "장부",
+    "sc.page.loading": "로딩",
+    "sc.page.loadout": "로드아웃",
+    "sc.page.lobby": "로비",
+    "sc.page.matchFacts": "경기 종료",
+    "sc.page.pass": "패스",
+    "sc.page.pause": "일시정지",
+    "sc.page.photo": "사진",
+    "sc.page.quests": "퀘스트",
+    "sc.page.results": "결과",
+    "sc.page.rewards": "보상",
+    "sc.page.routes": "루트",
+    "sc.page.rts": "콘솔",
+    "sc.page.saga": "사가 맵",
+    "sc.page.scoreboard": "점수판",
+    "sc.page.sectorMap": "성역 지도",
+    "sc.page.select": "캐릭터 선택",
+    "sc.page.shipStatus": "함선",
+    "sc.page.songs": "곡 선택",
+    "sc.page.sportsHud": "경기",
+    "sc.page.store": "상점",
+    "sc.page.td": "방어",
+    "sc.page.title": "타이틀",
+    "sc.page.turnOrder": "턴 순서",
+    "sc.page.tutorial": "튜토리얼",
+    "sc.page.versus": "대전",
+    "sc.page.vn": "텍스트 상자",
+    "sc.page.worldMap": "월드 맵",
+    "sc.pause": "일시정지",
+    "sc.puzzle": "퍼즐·캐주얼",
+    "sc.puzzle.blurb": "매치3 보드, 사가 맵, 상점",
+    "sc.race.best": "최고",
+    "sc.race.boost": "부스트",
+    "sc.race.brake": "브레이크",
+    "sc.race.checkpoint": "체크포인트 {n}",
+    "sc.race.circuit": "메리디안 루프",
+    "sc.race.clean": "클린 섹터",
+    "sc.race.credits": "크레딧",
+    "sc.race.current": "랩 타임",
+    "sc.race.drift": "드리프트!",
+    "sc.race.fastest": "최고 랩",
+    "sc.race.final": "마지막 랩",
+    "sc.race.finish": "피니시",
+    "sc.race.go": "출발!",
+    "sc.race.kmh": "km/h",
+    "sc.race.lap": "랩",
+    "sc.race.last": "이전",
+    "sc.race.leader": "선두",
+    "sc.race.league": "골드 리그",
+    "sc.race.left": "왼쪽",
+    "sc.race.ord3": "3위",
+    "sc.race.out": "리타이어",
+    "sc.race.overtakes": "추월",
+    "sc.race.pit": "피트",
+    "sc.race.podium": "3위로 완주",
+    "sc.race.pos": "순위",
+    "sc.race.right": "오른쪽",
+    "sc.race.split": "구간",
+    "sc.race.topSpeed": "최고 속도",
+    "sc.race.week": "이번 주",
+    "sc.race.wrongWay": "역주행",
+    "sc.racing": "레이싱·스포츠",
+    "sc.racing.blurb": "레이스 HUD, 차고, 타임 트라이얼, 축구 중계",
+    "sc.reward.crystal": "크리스탈",
+    "sc.reward.gold": "골드",
+    "sc.rhythm": "리듬",
+    "sc.rhythm.accuracy": "정확도 {pct}%",
+    "sc.rhythm.blurb": "4레인 플레이 화면과 곡 선택",
+    "sc.rhythm.early": "빠름",
+    "sc.rhythm.good": "굿",
+    "sc.rhythm.great": "그레이트",
+    "sc.rhythm.late": "느림",
+    "sc.rhythm.life": "라이프",
+    "sc.rhythm.perfect": "퍼펙트",
+    "sc.rhythm.progress": "곡 진행",
+    "sc.rogue.cast": "투사",
+    "sc.rogue.curse": "끊어진 사슬",
+    "sc.rogue.dash": "돌진",
+    "sc.rogue.flame": "잉걸불 칼날",
+    "sc.rogue.frost": "서리 손길",
+    "sc.rogue.heart": "거인의 심장",
+    "sc.rogue.room": "방 {n}",
+    "sc.rogue.special": "특수",
+    "sc.rogue.thunder": "폭풍 걸음",
+    "sc.roguelike": "로그라이크·카드",
+    "sc.roguelike.blurb": "런 HUD, 손패, 보상, 덱",
+    "sc.rpg": "RPG",
+    "sc.rpg.blurb": "액션 HUD, 장비, 퀘스트 일지, 대화",
+    "sc.rpg.boss": "수문장 처치",
+    "sc.rpg.elite": "정예",
+    "sc.rpg.level": "레벨 24",
+    "sc.rpg.moss": "무덤 이끼",
+    "sc.rpg.nova": "서리 폭발",
+    "sc.rpg.potion": "치유 물약",
+    "sc.rpg.quest": "지하묘지 봉인",
+    "sc.rpg.seals": "밝힌 봉인",
+    "sc.rpg.side": "일사의 약초",
+    "sc.rpg.storm": "뇌우",
+    "sc.rpg.vial": "마나 약병",
+    "sc.rpg.ward": "룬 보호막",
+    "sc.rpg.whirl": "회오리",
+    "sc.rpg.xp": "경험치",
+    "sc.rpg.zone": "잿빛 지하묘지",
+    "sc.shooter": "슈터·배틀로열",
+    "sc.shooter.auto": "자동",
+    "sc.shooter.blurb": "경기 HUD, 점수판, 로드아웃, 로비",
+    "sc.shooter.drone": "정찰 드론",
+    "sc.shooter.enemy": "적",
+    "sc.shooter.fire": "사격",
+    "sc.shooter.frag": "파편 수류탄",
+    "sc.shooter.reload": "재장전",
+    "sc.shooter.reloading": "재장전 중",
+    "sc.shooter.ring": "링 축소",
+    "sc.shooter.stim": "자극제",
+    "sc.shooter.supply": "보급품",
+    "sc.shooter.ultimate": "방벽",
+    "sc.shooter.zone": "솔트마시",
+    "sc.sports.corner": "코너킥",
+    "sc.sports.fouls": "파울",
+    "sc.sports.ft": "종료",
+    "sc.sports.half2": "후반",
+    "sc.sports.off": "아웃",
+    "sc.sports.on": "인",
+    "sc.sports.onTarget": "유효 슈팅",
+    "sc.sports.passes": "패스",
+    "sc.sports.pen": "PK",
+    "sc.sports.possession": "점유율",
+    "sc.sports.shots": "슈팅",
+    "sc.sports.sub": "선수 교체",
+    "sc.stat.coins": "코인",
+    "sc.stat.score": "점수",
+    "sc.stat.time": "시간",
+    "sc.strategy": "전략",
+    "sc.strategy.blurb": "RTS 콘솔, 타워 디펜스, 우주선 전술",
+    "sc.survival": "생존",
+    "sc.survival.axe": "도끼",
+    "sc.survival.berries": "산딸기",
+    "sc.survival.birch": "자작나무 통나무",
+    "sc.survival.blurb": "생명 수치, 상태, 나침반, 단축 바",
+    "sc.survival.bow": "활",
+    "sc.survival.camp": "야영지",
+    "sc.survival.day": "{n}일째",
+    "sc.survival.food": "음식",
+    "sc.survival.gather": "채집",
+    "sc.survival.rested": "휴식함",
+    "sc.survival.shield": "방패",
+    "sc.survival.stamina": "기력",
+    "sc.survival.swing": "휘두르기",
+    "sc.survival.torch": "횃불",
+    "sc.survival.water": "수분",
+    "sc.survival.wet": "젖음",
+    "sc.td.archer": "궁수 탑",
+    "sc.td.barracks": "병영",
+    "sc.td.forge": "대장간",
+    "sc.td.gold": "골드",
+    "sc.td.lives": "생명",
+    "sc.td.next": "다음 웨이브",
+    "sc.td.send": "부르기",
+    "sc.td.wall": "성벽",
+    "sc.td.waves": "웨이브",
+    "sc.time": "시간",
+    "sc.tutorial.1.text": "방향키나 스틱으로 이동하세요. 지나간 코인이 여기에 집계됩니다.",
+    "sc.tutorial.1.title": "달리기",
+    "sc.tutorial.2.text": "한 칸이 한 번의 피격입니다. 옅은 부분은 피격 후 줄어듭니다.",
+    "sc.tutorial.2.title": "체력",
+    "sc.tutorial.3.text": "타이머가 끝나기 전에 문에 도달하세요.",
+    "sc.tutorial.3.title": "시간 안에",
+    "sc.tutorial.4.text": "연속 타격으로 콤보와 보너스가 쌓입니다.",
+    "sc.tutorial.4.title": "계속 움직이기",
+    "sc.tutorial.5.text": "언제든 모서리 버튼으로 일시정지하세요. 진행은 유지됩니다.",
+    "sc.tutorial.5.title": "잠깐 쉬기",
+    "sc.you": "나",
+    "screen.common.back": "뒤로",
+    "screen.leaderboard.friends": "친구",
+    "screen.leaderboard.global": "전체",
+    "screen.leaderboard.league": "리그",
+    "screen.leaderboard.title": "순위표",
+    "screen.loading.continue": "계속",
+    "screen.loading.tip": "팁",
+    "screen.main-menu.continue": "이어하기",
+    "screen.main-menu.credits": "제작진",
+    "screen.main-menu.modes": "모드",
+    "screen.main-menu.newGame": "새 게임",
+    "screen.main-menu.newsEyebrow": "소식",
+    "screen.main-menu.quit": "종료",
+    "screen.main-menu.settings": "설정",
+    "screen.pause.controls": "조작",
+    "screen.pause.load": "불러오기",
+    "screen.pause.quit": "게임 종료",
+    "screen.pause.quitToMenu": "메뉴로 나가기",
+    "screen.pause.resume": "계속하기",
+    "screen.pause.save": "저장",
+    "screen.pause.settings": "설정",
+    "screen.pause.title": "일시정지됨",
+    "screen.results.again": "다시 하기",
+    "screen.results.best": "최고",
+    "screen.results.board": "점수판",
+    "screen.results.continue": "계속",
+    "screen.results.graphs": "그래프",
+    "screen.results.replay": "리플레이 보기",
+    "screen.results.summary": "요약",
+    "screen.tutorial.next": "다음",
+    "screen.tutorial.skip": "건너뛰기",
+    "sector.allied": "아군",
+    "sector.current": "현재 성역",
+    "sector.hostile": "적군",
+    "sector.title": "성역 지도",
+    "set.apply": "적용",
+    "set.aspect": "화면 비율",
+    "set.aspect.about": "넓은 화면에서도 HUD는 이 비율을 지키고 인터페이스는 늘어나지 않습니다.",
+    "set.cap": "프레임 제한",
+    "set.cap.about": "초당 최대 프레임. 낮을수록 전력을 아낍니다.",
+    "set.cap.display": "디스플레이",
+    "set.cap.fps120": "120",
+    "set.cap.fps30": "30",
+    "set.cap.fps60": "60",
+    "set.changed": "변경됨",
+    "set.colorblind": "색각 필터",
+    "set.colorblind.about": "색각 유형별로 색을 조정합니다.",
+    "set.colorblind.deutan": "녹색맹",
+    "set.colorblind.off": "끄기",
+    "set.colorblind.protan": "적색맹",
+    "set.colorblind.tritan": "청색맹",
+    "set.confirm": "이 디스플레이 설정을 유지할까요?",
+    "set.contrast": "고대비",
+    "set.contrast.about": "패널은 어둡게, 글자와 윤곽은 밝게.",
+    "set.defaults": "기본값",
+    "set.editHud": "HUD 편집",
+    "set.effects": "효과음",
+    "set.effects.about": "발소리, 타격음, 인터페이스 소리.",
+    "set.fullscreen": "전체 화면",
+    "set.fullscreen.about": "게임이 화면을 가득 채웁니다.",
+    "set.hudNote": "게임 위에서 HUD 요소를 옮기고 크기와 투명도를 바꿉니다.",
+    "set.invert": "상하 반전",
+    "set.invert.about": "마우스를 위로 움직이면 아래를 봅니다.",
+    "set.jumpKey": "점프",
+    "set.jumpKey.about": "",
+    "set.keep": "유지",
+    "set.language": "언어",
+    "set.language.about": "게임의 글자와 음성.",
+    "set.layout": "키보드 배열",
+    "set.layout.about": "키는 자리로 지정되고 배열의 글자로 표시됩니다.",
+    "set.layout.azerty": "AZERTY",
+    "set.layout.qwerty": "QWERTY",
+    "set.layout.qwertz": "QWERTZ",
+    "set.master": "전체 음량",
+    "set.master.about": "게임의 모든 소리.",
+    "set.moveLeft": "왼쪽으로 이동",
+    "set.moveLeft.about": "",
+    "set.moveUp": "앞으로 이동",
+    "set.moveUp.about": "",
+    "set.music": "음악",
+    "set.music.about": "음악 음량. 음성에는 영향이 없습니다.",
+    "set.nextPage": "다음 페이지",
+    "set.page.access": "접근성",
+    "set.page.audio": "오디오",
+    "set.page.controls": "조작",
+    "set.page.graphics": "그래픽",
+    "set.page.hud": "HUD 배치",
+    "set.page.language": "언어",
+    "set.quality": "품질 프리셋",
+    "set.quality.about": "프레임마다 그리는 디테일. 낮을수록 빠릅니다.",
+    "set.quality.high": "높음",
+    "set.quality.low": "낮음",
+    "set.quality.medium": "중간",
+    "set.raw": "원시 입력",
+    "set.raw.about": "시스템 가속 없이 마우스 움직임 그대로.",
+    "set.reduceMotion": "움직임 줄이기",
+    "set.reduceMotion.about": "흔들림, 확대, 미끄러짐을 멈춥니다.",
+    "set.resetBindings": "모든 키 지정 초기화",
+    "set.resetBindings.about": "모든 동작을 처음 키로 되돌립니다.",
+    "set.revert": "되돌리기",
+    "set.reverting": "{n}초 후 되돌립니다",
+    "set.safe": "HUD 안전 영역",
+    "set.safe.about": "HUD가 가장자리에서 얼마나 안쪽에 놓일지.",
+    "set.saved": "설정을 저장했습니다",
+    "set.scale": "렌더 배율",
+    "set.scale.about": "화면 대비 3D 화면의 해상도. 인터페이스는 선명하게 유지됩니다.",
+    "set.section.display": "디스플레이",
+    "set.section.keyboard": "키보드",
+    "set.section.mouse": "마우스",
+    "set.section.screen": "화면",
+    "set.sensitivity": "마우스 감도",
+    "set.sensitivity.about": "마우스 이동에 따른 시점 회전량.",
+    "set.subtitles": "자막",
+    "set.subtitles.about": "말한 내용을 화면에 표시.",
+    "set.textSize": "글자 크기",
+    "set.textSize.about": "인터페이스의 모든 글자를 크게.",
+    "set.title": "설정",
+    "set.voice": "음성",
+    "set.voice.about": "캐릭터의 목소리.",
+    "set.vsync": "수직 동기화",
+    "set.vsync.about": "프레임 사이 디스플레이를 기다립니다. 찢김이 없고 지연이 약간 늘어납니다.",
+    "settings.audio": "오디오",
+    "settings.contrast": "고대비",
+    "settings.controls": "조작",
+    "settings.done": "완료",
+    "settings.effects": "효과음",
+    "settings.fps": "프레임 속도 표시",
+    "settings.graphics": "그래픽",
+    "settings.high": "높음",
+    "settings.invert": "상하 시점 반전",
+    "settings.language": "언어",
+    "settings.low": "낮음",
+    "settings.master": "마스터",
+    "settings.medium": "보통",
+    "settings.motion": "움직임 줄이기",
+    "settings.music": "음악",
+    "settings.mute": "모두 음소거",
+    "settings.quality": "화질",
+    "settings.sensitivity": "감도",
+    "settings.title": "설정",
+    "settings.vibration": "진동",
+    "ship.class": "지휘 프리깃 · 오로라 함대",
+    "ship.hull": "선체",
+    "ship.reactor": "반응로",
+    "ship.shields": "실드",
+    "shop.buy": "구매",
+    "shop.empty": "판매 중인 물건이 없습니다",
+    "shop.owned": "보유 중",
+    "shop.price": "가격",
+    "shop.short": "잔액 부족",
+    "shop.title": "상점",
+    "song.accuracy": "정확도",
+    "song.best": "최고 점수",
+    "song.bpm": "BPM",
+    "song.chart.easy": "이지",
+    "song.chart.expert": "익스퍼트",
+    "song.chart.hard": "하드",
+    "song.chart.master": "마스터",
+    "song.chart.normal": "노멀",
+    "song.fullCombo": "풀 콤보",
+    "song.grade": "등급",
+    "song.length": "길이",
+    "song.new": "NEW",
+    "song.play": "플레이",
+    "song.preview": "미리 듣기",
+    "song.title": "곡 선택",
+    "store.badge.best": "최고 가치",
+    "store.badge.limited": "한정",
+    "store.badge.new": "신규",
+    "store.badge.popular": "인기",
+    "store.buy": "구매",
+    "store.cancel": "취소",
+    "store.coins": "코인",
+    "store.confirm": "{price} {currency}에 구매하시겠습니까?",
+    "store.contents.aria": "아리아, 물결의 부름",
+    "store.contents.frame": "프로필 테두리",
+    "store.contents.glitter": "별 조각 1,600",
+    "store.contents.lantern": "달빛 등불",
+    "store.daily": "일일 특가",
+    "store.featured": "추천",
+    "store.free": "무료",
+    "store.gemPack": "보석 {n}개",
+    "store.gems": "보석",
+    "store.hint.buy": "구매",
+    "store.item.amulet": "사파이어 부적",
+    "store.item.ashbringer": "애쉬브링어",
+    "store.item.crown": "가시 왕관",
+    "store.item.ember": "잉걸불 반지",
+    "store.item.key": "철 열쇠",
+    "store.item.mana": "마나 병 ×5",
+    "store.item.potions": "회복 물약 ×5",
+    "store.item.tide": "달빛 물결 번들",
+    "store.kind.amulet": "부적",
+    "store.kind.ashbringer": "대검",
+    "store.kind.crown": "투구",
+    "store.kind.ember": "반지",
+    "store.kind.gems1": "보석 주머니",
+    "store.kind.gems2": "보석 상자",
+    "store.kind.gems3": "보석 더미",
+    "store.kind.key": "열쇠",
+    "store.kind.mana": "소모품",
+    "store.kind.potions": "소모품",
+    "store.kind.tide": "번들 · 4개",
+    "store.left": "{left}개 남음",
+    "store.owned": "보유 중",
+    "store.packs": "보석 팩",
+    "store.refresh": "갱신까지",
+    "store.save": "−{pct}%",
+    "store.soldOut": "품절",
+    "store.sub": "매일 새로운 상품",
+    "store.title": "상점",
+    "store.topUp": "{name} 더 받기",
+    "time.days": "{d}일 {h}시간",
+    "time.hours": "{h}시간 {m}분",
+    "time.minutes": "{m}분",
+    "turn.acting": "행동 중",
+    "turn.hostile": "적군",
+    "turn.title": "행동 순서",
+    "tutorial.done": "완료",
+    "tutorial.next": "다음",
+    "tutorial.skip": "건너뛰기",
+    "tutorial.step": "{count}단계 중 {step}단계",
+    "vn.a1": "저기야. 늙은 관리인이 깨어 있다면 나룻배는 아직 다녀.",
+    "vn.a2": "시장에선 내 곁에 붙어 있어. 로마시는 얼굴을 기억하거든.",
+    "vn.all": "전체",
+    "vn.cg.dawn": "새벽의 문",
+    "vn.cg.duel": "옥상 결투",
+    "vn.cg.lantern": "등불의 밤",
+    "vn.cg.library": "탑에서 잠들다",
+    "vn.cg.riverboat": "강배",
+    "vn.cg.storm": "폭풍 속 나룻배",
+    "vn.chapter.four": "엔딩",
+    "vn.chapter.one": "1장",
+    "vn.chapter.three": "3장",
+    "vn.chapter.two": "2장",
+    "vn.choice.follow": "미라를 따라간다",
+    "vn.choice.storm": "폭풍 속으로 간다",
+    "vn.choice.study": "남아서 조사한다",
+    "vn.choice.trust": "그녀를 믿는다",
+    "vn.close": "닫기",
+    "vn.ending.bad": "배드 엔딩",
+    "vn.ending.good": "굿 엔딩",
+    "vn.gallery.title": "갤러리",
+    "vn.hint.dawn": "굿 엔딩에 도달하기",
+    "vn.hint.storm": "2장에서 나룻배에 오르기",
+    "vn.jump": "여기로 이동",
+    "vn.locked": "???",
+    "vn.n1": "사흘 내내 대상을 따라온 비 너머로, 마침내 갈대 사이로 로마시의 불빛이 보였다.",
+    "vn.new": "NEW",
+    "vn.next": "다음",
+    "vn.nextChapter": "다음 장",
+    "vn.now": "현재",
+    "vn.prev": "이전",
+    "vn.routes.chart": "루트",
+    "vn.routes.title": "플로차트",
+    "vn.scene.arrival": "도착",
+    "vn.scene.dawn": "새벽",
+    "vn.scene.drowned": "강에 잃다",
+    "vn.scene.ferry": "나룻배",
+    "vn.scene.lanterns": "축제",
+    "vn.scene.oath": "맹세",
+    "vn.scene.rooftop": "옥상",
+    "vn.scene.tower": "탑",
+    "vn.scenes": "{n} / {total} 장면",
+    "vn.seen": "{n} / {total} 감상",
+    "vn.stay": "그녀 곁에 머문다.",
+    "vn.stay.r": "좋아. 후드는 쓰고 있어.",
+    "vn.wander": "몰래 빠져나가 주변을 둘러본다.",
+    "vn.wander.r": "좋아. 두 번째 종이 울릴 때까지 나루터에서 만나.",
+    "vs.mark": "VS",
+    "vs.record": "{w}승 {l}패",
+    "vs.skip": "건너뛰기",
+    "vs.stage": "라운드 1 · 스카이리치 관문"
+  },
+  "fonts": [
+    {
+      "$ogRef": "base/fonts/NotoSansKR-subset"
+    }
+  ],
+  "locale": "ko"
+});

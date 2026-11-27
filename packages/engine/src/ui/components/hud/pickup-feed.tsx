@@ -1,6 +1,6 @@
 import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
-import "./pickup-feed.en.ogt";
+import "./pickup-feed.en.strings.ts";
 
 export interface PickupFeedItem {
   id: string;

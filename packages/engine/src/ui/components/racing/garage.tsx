@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { StatBar } from "../hud/stat-bar";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingGarageProps {
   /** The page's heading; empty takes the kit's (Garage). */

@@ -1,54 +1,59 @@
-type strings
-version 1
----
-locale "en"
-string "idle.resources.name" "Resources"
-string "idle.resources.empty" "No resources yet"
-string "idle.resources.loading" "{name}: loading"
-string "idle.resources.full" "Full"
-string "idle.resources.perSecond" "+{rate}/s"
-string "idle.resources.perSecondDown" "{rate}/s"
-string "idle.resources.row" "{name}: {amount}"
-string "idle.generators.name" "Generators"
-string "idle.generators.empty" "Nothing to build yet"
-string "idle.generators.owned" "×{owned}"
-string "idle.generators.kicker" "Producers"
-string "idle.generators.levelName" "{name}, Lv {level}"
-string "idle.generators.lockedName" "{name}, locked: {what}"
-string "idle.generators.auto" "Auto"
-string "idle.generators.locked" "Locked"
-string "idle.generators.cycle" "Cycle"
-string "idle.purchases.name" "Upgrades"
-string "idle.purchases.amount" "Buy amount"
-string "idle.purchases.times" "×{count}"
-string "idle.purchases.max" "Max"
-string "idle.purchases.empty" "No upgrades available"
-string "idle.purchases.level" "Lv {level}"
-string "idle.purchases.buy" "Buy"
-string "idle.purchases.short" "Not enough"
-string "idle.purchases.maxed" "Maxed"
-string "idle.purchases.locked" "Locked"
-string "idle.purchases.buyNamed" "Buy {name}"
-string "idle.purchases.buyFor" "Buy {name}, {cost}"
-string "idle.prestige.name" "Prestige"
-string "idle.prestige.kicker" "Reset"
-string "idle.prestige.held" "{currency} held"
-string "idle.prestige.rowName" "{label}: {now} to {after}"
-string "idle.prestige.gain" "On reset"
-string "idle.prestige.bonus" "Bonus"
-string "idle.prestige.met" "Ready"
-string "idle.prestige.notMet" "Not yet"
-string "idle.prestige.request" "Prestige"
-string "idle.prestige.ask" "Reset for {gain} {currency}?"
-string "idle.prestige.confirm" "Reset"
-string "idle.prestige.cancel" "Cancel"
-string "idle.prestige.progress" "Requirement"
-string "idle.offline.name" "Welcome back"
-string "idle.offline.kicker" "Offline earnings"
-string "idle.offline.away" "You were away for {time}"
-string "idle.offline.awayLabel" "away"
-string "idle.offline.row" "{name}: {amount}"
-string "idle.offline.earned" "While you were away"
-string "idle.offline.empty" "Nothing was gathered while you were away"
-string "idle.offline.collect" "Collect"
-string "idle.offline.double" "Double"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "idle.generators.auto": "Auto",
+    "idle.generators.cycle": "Cycle",
+    "idle.generators.empty": "Nothing to build yet",
+    "idle.generators.kicker": "Producers",
+    "idle.generators.levelName": "{name}, Lv {level}",
+    "idle.generators.locked": "Locked",
+    "idle.generators.lockedName": "{name}, locked: {what}",
+    "idle.generators.name": "Generators",
+    "idle.generators.owned": "×{owned}",
+    "idle.offline.away": "You were away for {time}",
+    "idle.offline.awayLabel": "away",
+    "idle.offline.collect": "Collect",
+    "idle.offline.double": "Double",
+    "idle.offline.earned": "While you were away",
+    "idle.offline.empty": "Nothing was gathered while you were away",
+    "idle.offline.kicker": "Offline earnings",
+    "idle.offline.name": "Welcome back",
+    "idle.offline.row": "{name}: {amount}",
+    "idle.prestige.ask": "Reset for {gain} {currency}?",
+    "idle.prestige.bonus": "Bonus",
+    "idle.prestige.cancel": "Cancel",
+    "idle.prestige.confirm": "Reset",
+    "idle.prestige.gain": "On reset",
+    "idle.prestige.held": "{currency} held",
+    "idle.prestige.kicker": "Reset",
+    "idle.prestige.met": "Ready",
+    "idle.prestige.name": "Prestige",
+    "idle.prestige.notMet": "Not yet",
+    "idle.prestige.progress": "Requirement",
+    "idle.prestige.request": "Prestige",
+    "idle.prestige.rowName": "{label}: {now} to {after}",
+    "idle.purchases.amount": "Buy amount",
+    "idle.purchases.buy": "Buy",
+    "idle.purchases.buyFor": "Buy {name}, {cost}",
+    "idle.purchases.buyNamed": "Buy {name}",
+    "idle.purchases.empty": "No upgrades available",
+    "idle.purchases.level": "Lv {level}",
+    "idle.purchases.locked": "Locked",
+    "idle.purchases.max": "Max",
+    "idle.purchases.maxed": "Maxed",
+    "idle.purchases.name": "Upgrades",
+    "idle.purchases.short": "Not enough",
+    "idle.purchases.times": "×{count}",
+    "idle.resources.empty": "No resources yet",
+    "idle.resources.full": "Full",
+    "idle.resources.loading": "{name}: loading",
+    "idle.resources.name": "Resources",
+    "idle.resources.perSecond": "+{rate}/s",
+    "idle.resources.perSecondDown": "{rate}/s",
+    "idle.resources.row": "{name}: {amount}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

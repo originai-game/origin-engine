@@ -1,5 +1,5 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./orb-meter.en.ogt";
+import "./orb-meter.en.strings.ts";
 
 export interface OrbMeterProps {
   /** The value. */

@@ -1,6 +1,6 @@
 import { View, t } from "@origingame/engine/ui";
 import { ActionHints, RpgQuestTracker } from "@origingame/engine/ui/components";
-import "./hud.en.ogt";
+import "../../content/ui/hud.en.ts";
 
 export interface HudProps {
   /** How far the lighthouse is, as the game words it (64 m). */

@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "component.star-bar.name" "Score"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.star-bar.name": "Score"
+  },
+  "fonts": [],
+  "locale": "en"
+});

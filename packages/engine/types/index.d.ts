@@ -28421,7 +28421,7 @@ export interface RoomMessage {
 
 
 // ── i18n ────────────────────────────────────────────────────────
-// Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.
+// Localization: one file.strings declaration per locale under content/, messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its fallback table, then the base. It also sets the UI's font chain and direction.
 // Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
 // See `localization`.
 
@@ -41929,7 +41929,7 @@ export declare namespace og {
     function roomMessage(world: World, message: number): RoomMessageData | null;
   }
   /**
-   * Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.
+   * Localization: one file.strings declaration per locale under content/, messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its fallback table, then the base. It also sets the UI's font chain and direction.
    * Formatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.
    * See `localization`.
    */
@@ -41938,7 +41938,7 @@ export declare namespace og {
      * Load a cooked string table; the active locale is negotiated again.
      *
      * @param world The world.
-     * @param path The table, such as `strings/ja.ogt`.
+     * @param path The table's canonical output ID, such as `base/strings/ja`.
      * @returns Refused for a path that is not a cooked string table, or a font of its chain that is not cooked.
      */
     function load(world: World, path: string): Result<LocaleInfo>;

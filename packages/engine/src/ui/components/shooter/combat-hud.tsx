@@ -4,7 +4,7 @@ import { DamageDirection, type DamageDirectionHit } from "../hud/damage-directio
 import { Killfeed, type KillfeedRow } from "../hud/killfeed";
 import { StatBar } from "../hud/stat-bar";
 import { AmmoCounter } from "../hud/ammo-counter";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface CombatHudProps {
   /** Health now. */

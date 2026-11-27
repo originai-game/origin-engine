@@ -1,7 +1,7 @@
 import { For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { StarBar } from "../hud/star-bar";
-import "./puzzle.en.ogt";
+import "./puzzle.en.strings.ts";
 
 export interface PuzzleSummaryProps {
   /** How the level ended: win or lose. */

@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./quest-log.en.ogt";
+import "./quest-log.en.strings.ts";
 
 export interface RpgQuestLogProps {
   /** The log's heading (Quest Journal). */

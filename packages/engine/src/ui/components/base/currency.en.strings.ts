@@ -1,9 +1,14 @@
-type strings
-version 1
----
-locale "en"
-string "currency.name" "Currency"
-string "currency.loading" "Loading"
-string "currency.unavailable" "Unavailable"
-string "currency.full" "Full"
-string "currency.capacity" "/ {limit}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "currency.capacity": "/ {limit}",
+    "currency.full": "Full",
+    "currency.loading": "Loading",
+    "currency.name": "Currency",
+    "currency.unavailable": "Unavailable"
+  },
+  "fonts": [],
+  "locale": "en"
+});

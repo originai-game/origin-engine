@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, packClass, View, t } from "@origingame/engine/ui";
-import "./card.en.ogt";
+import "./card.en.strings.ts";
 
 export interface CardFaceProps {
   /** The card's name as the game words it (an upgraded card's name included). */

@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.split-view.name" "调整大小"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.split-view.name": "调整大小"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

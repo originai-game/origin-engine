@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "en"
-string "screen.title.press" "Press any button"
-string "screen.title.tap" "Tap to start"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.title.press": "Press any button",
+    "screen.title.tap": "Tap to start"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -1,7 +1,7 @@
 import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Spinner } from "../base/spinner";
-import "./boss-bar.en.ogt";
+import "./boss-bar.en.strings.ts";
 
 export interface BossBarPhase {
   id: string;

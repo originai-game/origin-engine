@@ -1,6 +1,6 @@
 import { For, View, t, type UiEvent } from "@origingame/engine/ui";
 import { AbilitySlot } from "./ability-slot";
-import "./ability-bar.en.ogt";
+import "./ability-bar.en.strings.ts";
 
 export interface AbilityBarProps {
   /** The slots, in order: each { id, icon, name, action, hotkey, cooldown, cooldownMax, cost, unaffordable, locked, active, count }, cooldown in seconds (0: ready); count above 0 shows how many are left (a quick item: potions, scrolls). A slot's full set of states is the AbilitySlot component. */

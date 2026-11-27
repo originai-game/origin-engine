@@ -2,7 +2,7 @@ import { For, Icon, Scroll, Show, Text, View, packClass, t, type UiEvent } from 
 import { Button } from "../controls/button";
 import { TextField } from "../controls/field";
 import { InputGlyph } from "../controls/input-glyph";
-import "./controls.en.ogt";
+import "./controls.en.strings.ts";
 
 export interface ControlsBinding {
   /** The action's stable id (jump, interact). */

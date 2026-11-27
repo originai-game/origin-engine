@@ -30,7 +30,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
 import { addonPath } from "./addon.ts";
-import { projectRoot, readProject } from "./project.ts";
+import { projectRoot, readProject, readStringTableIndex } from "./project.ts";
 
 type Compiled = { ok: true; code: string; map: string; warnings: string[] } | { ok: false; reason: string };
 let jsxAddon: { og_node_jsx(path: string, source: string): string } | undefined;
@@ -202,7 +202,10 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     } catch { cacheable = false; }
   }
   const gameRoot = projectRoot(absEntry) ?? dirname(absEntry);
-  const flowScreen = readProject(gameRoot)?.startup.flow ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
+  const checkedProject = readProject(gameRoot);
+  const flowScreen = checkedProject?.startup.flow ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
+  const localeTables = checkedProject ? readStringTableIndex(gameRoot) : [];
+  const localeIds = new Map(localeTables.map(t => [resolve(gameRoot, t.path), t.id]));
   const engine = {
     name: "origin-engine",
     setup(build: {
@@ -245,8 +248,9 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // A component's string table resolves here, ahead of the cache's
       // catch-all: an import that catch-all resolves (returning nothing) is
       // dropped from the bundle as unused, and its strings() call with it.
-      build.onResolve({ filter: /\.ogt$/ }, (a) => {
+      build.onResolve({ filter: /\.(?:ogt|ts)$/ }, (a) => {
         const file = resolve(a.resolveDir || process.cwd(), a.path);
+        if (!a.path.endsWith(".ogt") && !a.path.endsWith(".strings.ts") && !localeIds.has(file)) return undefined;
         if (cacheInputs && !(existsSync(file) && cacheInputs.has(realpathSync(file)))) cacheable = false;
         return { path: file };
       });
@@ -266,26 +270,31 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       }
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry) ?? dirname(absEntry);
-      // A component's strings (`import "./x.en.ogt"`) are the cook's: the
+      // A component's strings (`import "./x.en.strings.ts"`) are the cook's: the
       // bundle records only the table's id, which the UI renderer sends the
       // host to register. An engine table's id is `@ui/<path under src/ui>`
       // (the cook bundles them for a game using the built-in components), a
-      // game's its path under assets/. An emitter (`type particles`, an
+      // game's its canonical content ID. An emitter (`type particles`, an
       // engine component's built-in effect) has nothing to register: its
       // import's default is its id, which og.load.emitter loads.
       const engineUi = join(ENGINE_ROOT, "src", "ui") + sep;
       const assets = join(project, "assets") + sep;
-      build.onLoad({ filter: /\.ogt$/, namespace: "file" }, (a) => {
+      build.onLoad({ filter: /\.(?:ogt|ts)$/, namespace: "file" }, (a) => {
+        const engineTable = a.path.startsWith(engineUi) && a.path.endsWith(".strings.ts");
+        if (!a.path.endsWith(".ogt") && !engineTable && !localeIds.has(a.path)) return undefined;
         const id = a.path.startsWith(engineUi)
           ? `@ui/${a.path.slice(engineUi.length)}`
-          : relative(a.path.startsWith(assets) ? assets : project, a.path);
+          : localeIds.get(a.path) ?? relative(a.path.startsWith(assets) ? assets : project, a.path);
         const name = JSON.stringify(id.split(sep).join("/"));
-        if (/^type particles\s*$/m.test(readFileSync(a.path, "utf8").split("---", 1)[0]!)) return { contents: `export default ${name};\n`, loader: "js" };
-        // An engine table's translations (`x.zh-CN.ogt` beside `x.en.ogt`)
+        if (a.path.endsWith(".ogt")) {
+          if (/^type particles\s*$/m.test(readFileSync(a.path, "utf8").split("---", 1)[0]!)) return { contents: `export default ${name};\n`, loader: "js" };
+          throw new Error(`${a.path}: OGT string imports are removed; import a file.strings declaration under content/`);
+        }
+        // An engine table's translations (`x.zh-CN.strings.ts` beside `x.en.strings.ts`)
         // come with it: bundled with it, and registered as translations of it.
-        const translations = a.path.startsWith(engineUi) && a.path.endsWith(".en.ogt")
+        const translations = engineTable && a.path.endsWith(".en.strings.ts")
           ? readdirSync(dirname(a.path))
-              .filter((f) => f.startsWith(basename(a.path, ".en.ogt") + ".") && f.endsWith(".ogt") && f !== basename(a.path) && /^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(f.slice(basename(a.path, ".en.ogt").length + 1, -4)))
+              .filter((f) => f.startsWith(basename(a.path, ".en.strings.ts") + ".") && f.endsWith(".strings.ts") && f !== basename(a.path) && /^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(f.slice(basename(a.path, ".en.strings.ts").length + 1, -11)))
               .sort()
               .map((f) => `import ${JSON.stringify(join(dirname(a.path), f))};\n`)
               .join("")

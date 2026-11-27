@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import {Scroll, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { MenuEntry, MenuList } from "../controls/menu-list";
-import "./main-menu.en.ogt";
+import "./main-menu.en.strings.ts";
 
 export interface MainMenuScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

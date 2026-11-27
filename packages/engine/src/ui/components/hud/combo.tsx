@@ -1,6 +1,6 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Progress } from "../../controls/progress";
-import "./combo.en.ogt";
+import "./combo.en.strings.ts";
 
 export interface ComboProps {
   /** The game's combo count, shown at zero too. Default 0. */

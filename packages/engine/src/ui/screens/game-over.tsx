@@ -1,6 +1,6 @@
 import {Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
-import "./game-over.en.ogt";
+import "./game-over.en.strings.ts";
 
 export interface GameOverScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

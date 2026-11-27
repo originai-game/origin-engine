@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "screen.tutorial.Step" "Tutorial · {step} / {steps}"
-string "screen.tutorial.next" "Next"
-string "screen.tutorial.skip" "Skip"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.tutorial.Step": "Tutorial · {step} / {steps}",
+    "screen.tutorial.next": "Next",
+    "screen.tutorial.skip": "Skip"
+  },
+  "fonts": [],
+  "locale": "en"
+});

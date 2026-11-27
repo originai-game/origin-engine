@@ -1,5 +1,5 @@
 import { For, Line, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./chart.en.ogt";
+import "./chart.en.strings.ts";
 
 export interface ChartProps {
   /** A title over it; empty is none. */

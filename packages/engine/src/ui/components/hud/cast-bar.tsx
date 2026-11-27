@@ -1,6 +1,6 @@
 import { Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./cast-bar.en.ogt";
+import "./cast-bar.en.strings.ts";
 
 export interface CastBarProps {
   /** What is being cast (Fireball, Reviving); empty uses Casting. */

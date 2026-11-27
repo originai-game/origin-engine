@@ -1,10 +1,15 @@
-type strings
-version 1
----
-locale "en"
-string "screen.common.back" "Back"
-string "screen.settings.title" "Settings"
-string "screen.settings.defaults" "Defaults"
-string "screen.settings.revert" "Revert"
-string "screen.settings.apply" "Apply"
-string "screen.settings.pressAKey" "Press a key"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.back": "Back",
+    "screen.settings.apply": "Apply",
+    "screen.settings.defaults": "Defaults",
+    "screen.settings.pressAKey": "Press a key",
+    "screen.settings.revert": "Revert",
+    "screen.settings.title": "Settings"
+  },
+  "fonts": [],
+  "locale": "en"
+});

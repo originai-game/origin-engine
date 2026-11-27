@@ -1,6 +1,6 @@
 import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { MenuEntry, MenuList } from "../controls/menu-list";
-import "./pause.en.ogt";
+import "./pause.en.strings.ts";
 
 export interface PauseScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */

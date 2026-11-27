@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./states.en.ogt";
+import "./states.en.strings.ts";
 
 export interface StepsProps {
   /** Optional visible heading; the accessible fallback is Progress steps. */

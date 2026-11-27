@@ -1,6 +1,6 @@
 import { For, Image, Line, Show, Text, View, packClass, type UiEvent, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./minimap-view.en.ogt";
+import "./minimap-view.en.strings.ts";
 
 export interface MinimapViewMarker {
   id: string;

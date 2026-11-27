@@ -1,61 +1,66 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "arena.team.a" "蓝队"
-string "arena.team.b" "红队"
-string "arena.you" "你"
-string "arena.roster.title" "选择你的英雄"
-string "arena.roster.characters" "角色"
-string "arena.roster.empty" "暂无可用角色"
-string "arena.roster.locked" "未解锁"
-string "arena.roster.taken" "已被{name}选择"
-string "arena.roster.slot" "P{slot, number}"
-string "arena.roster.slotName" "玩家 {slot, number}"
-string "arena.roster.slotReady" "玩家 {slot, number}，已就绪"
-string "arena.roster.chosen" "已选择"
-string "arena.draft.title" "选人"
-string "arena.draft.ban" "禁用阶段"
-string "arena.draft.pick" "选择阶段"
-string "arena.draft.done" "选人完成"
-string "arena.draft.turn" "轮到{team}选择"
-string "arena.draft.bans" "禁用"
-string "arena.draft.picks" "选择"
-string "arena.draft.banned" "已禁用"
-string "arena.draft.banning" "禁用中"
-string "arena.draft.picking" "选择中"
-string "arena.draft.open" "待定"
-string "arena.draft.empty" "尚未开始选人"
-string "arena.draft.confirm" "锁定"
-string "arena.draft.timeLeft" "剩余时间"
-string "arena.versus.name" "对战"
-string "arena.versus.vs" "VS"
-string "arena.versus.waiting" "等待对手"
-string "arena.score.title" "计分板"
-string "arena.score.kills" "K"
-string "arena.score.deaths" "D"
-string "arena.score.assists" "A"
-string "arena.score.score" "得分"
-string "arena.score.killsName" "击杀"
-string "arena.score.deathsName" "死亡"
-string "arena.score.assistsName" "助攻"
-string "arena.score.teamScore" "队伍得分"
-string "arena.score.disconnected" "已断开"
-string "arena.score.empty" "暂无玩家"
-string "arena.round.name" "回合"
-string "arena.round.round" "第 {round, number} 回合"
-string "arena.round.roundOf" "第 {round, number}/{rounds, number} 回合"
-string "arena.round.won" "本回合胜利"
-string "arena.round.lost" "本回合失败"
-string "arena.round.draw" "本回合平局"
-string "arena.lobby.title" "房间"
-string "arena.lobby.players" "玩家"
-string "arena.lobby.open" "空位"
-string "arena.lobby.invite" "邀请"
-string "arena.lobby.host" "房主"
-string "arena.lobby.ready" "就绪"
-string "arena.lobby.notReady" "未就绪"
-string "arena.lobby.readyUp" "准备"
-string "arena.lobby.unready" "取消准备"
-string "arena.lobby.start" "开始比赛"
-string "arena.lobby.empty" "暂无位置"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "arena.draft.ban": "禁用阶段",
+    "arena.draft.banned": "已禁用",
+    "arena.draft.banning": "禁用中",
+    "arena.draft.bans": "禁用",
+    "arena.draft.confirm": "锁定",
+    "arena.draft.done": "选人完成",
+    "arena.draft.empty": "尚未开始选人",
+    "arena.draft.open": "待定",
+    "arena.draft.pick": "选择阶段",
+    "arena.draft.picking": "选择中",
+    "arena.draft.picks": "选择",
+    "arena.draft.timeLeft": "剩余时间",
+    "arena.draft.title": "选人",
+    "arena.draft.turn": "轮到{team}选择",
+    "arena.lobby.empty": "暂无位置",
+    "arena.lobby.host": "房主",
+    "arena.lobby.invite": "邀请",
+    "arena.lobby.notReady": "未就绪",
+    "arena.lobby.open": "空位",
+    "arena.lobby.players": "玩家",
+    "arena.lobby.ready": "就绪",
+    "arena.lobby.readyUp": "准备",
+    "arena.lobby.start": "开始比赛",
+    "arena.lobby.title": "房间",
+    "arena.lobby.unready": "取消准备",
+    "arena.roster.characters": "角色",
+    "arena.roster.chosen": "已选择",
+    "arena.roster.empty": "暂无可用角色",
+    "arena.roster.locked": "未解锁",
+    "arena.roster.slot": "P{slot, number}",
+    "arena.roster.slotName": "玩家 {slot, number}",
+    "arena.roster.slotReady": "玩家 {slot, number}，已就绪",
+    "arena.roster.taken": "已被{name}选择",
+    "arena.roster.title": "选择你的英雄",
+    "arena.round.draw": "本回合平局",
+    "arena.round.lost": "本回合失败",
+    "arena.round.name": "回合",
+    "arena.round.round": "第 {round, number} 回合",
+    "arena.round.roundOf": "第 {round, number}/{rounds, number} 回合",
+    "arena.round.won": "本回合胜利",
+    "arena.score.assists": "A",
+    "arena.score.assistsName": "助攻",
+    "arena.score.deaths": "D",
+    "arena.score.deathsName": "死亡",
+    "arena.score.disconnected": "已断开",
+    "arena.score.empty": "暂无玩家",
+    "arena.score.kills": "K",
+    "arena.score.killsName": "击杀",
+    "arena.score.score": "得分",
+    "arena.score.teamScore": "队伍得分",
+    "arena.score.title": "计分板",
+    "arena.team.a": "蓝队",
+    "arena.team.b": "红队",
+    "arena.versus.name": "对战",
+    "arena.versus.vs": "VS",
+    "arena.versus.waiting": "等待对手",
+    "arena.you": "你"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

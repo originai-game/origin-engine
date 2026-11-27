@@ -1,6 +1,6 @@
 import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { HudTimer } from "../hud/hud-timer";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingLapHudProps {
   /** The lap the player is on, from 1; 0 before the start shows a dash. */

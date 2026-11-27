@@ -1,5 +1,5 @@
 import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmChainProps {
   /** The score multiplier as the game words it (×4); empty hides the chain. */

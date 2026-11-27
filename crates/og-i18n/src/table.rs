@@ -1,60 +1,10 @@
-//! String tables (`type strings` .ogt, one per locale) and the catalog a
+//! Native string tables (one per locale) and the catalog a
 //! game's tables make: the active locale, its fallback chain, `t`, and the
 //! cook's check that every locale has every key with the same arguments.
 
 use crate::locale::{Direction, canonical, direction_of_locale, language, negotiate};
 use crate::message::{Arg, Message};
-use og_core::ogt::{Document, Value};
 use std::collections::{BTreeMap, BTreeSet};
-
-/// The `.ogt` type of a string table.
-pub const STRINGS_TYPE: &str = "strings";
-
-/// The shared string-table parser's file fields.
-pub const LINES: &[og_core::ogt::line::Line] = &[
-    og_core::ogt::line::Line::new(
-        "locale",
-        "\"<language tag>\"",
-        "required",
-        "Locale, canonicalized on read.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "fallback",
-        "\"<language tag>\"",
-        "base table",
-        "Fallback locale, canonicalized on read.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "base",
-        "true | false",
-        "false",
-        "Marks the reference table for key and argument checks.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "direction",
-        "ltr | rtl",
-        "locale direction",
-        "Explicit text direction override.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "fonts",
-        "\"<font asset>\" ...",
-        "",
-        "Ordered font fallback chain for this locale.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "string",
-        "\"<key>\" \"<message>\"",
-        "",
-        "Repeat unique keys with ICU-subset messages; see localization for argument and plural syntax.",
-        "",
-    ),
-];
 
 /// One locale's strings.
 #[derive(Clone, Debug, PartialEq)]
@@ -70,10 +20,6 @@ pub struct StringTable {
     pub fonts: Vec<String>,
     /// Key → (source text, parsed message), sorted by key.
     pub entries: BTreeMap<String, (String, Message)>,
-}
-
-fn string_of(v: &Value) -> Option<&str> {
-    v.as_str().or(v.as_word())
 }
 
 impl StringTable {
@@ -115,81 +61,6 @@ impl StringTable {
                 })
                 .collect::<Result<_, String>>()?,
         })
-    }
-
-    /// Parses a table, refusing a malformed entry or message with its line.
-    pub fn parse(text: &str) -> Result<StringTable, String> {
-        let doc = Document::parse(text).map_err(|e| e.to_string())?;
-        if doc.ty != STRINGS_TYPE {
-            return Err(format!(
-                "a string table is `type {STRINGS_TYPE}`, not `{}`",
-                doc.ty
-            ));
-        }
-        let mut locale = None;
-        let mut t = StringTable {
-            locale: String::new(),
-            fallback: None,
-            base: false,
-            direction: Direction::Ltr,
-            fonts: Vec::new(),
-            entries: BTreeMap::new(),
-        };
-        let mut direction = None;
-        for e in &doc.body.entries {
-            if !LINES.iter().any(|f| f.key == e.key) {
-                return Err(format!(
-                    "line {}: '{}' is not a string table entry: locale, fallback, base, direction, fonts or string",
-                    e.line, e.key
-                ));
-            }
-            let first = e.values.first().and_then(string_of);
-            match e.key.as_str() {
-                "locale" => locale = first.map(canonical),
-                "fallback" => t.fallback = first.map(canonical),
-                "base" => t.base = first != Some("false"),
-                "direction" => {
-                    direction = Some(match first {
-                        Some("rtl") => Direction::Rtl,
-                        Some("ltr") => Direction::Ltr,
-                        _ => return Err(format!("line {}: direction is ltr or rtl", e.line)),
-                    })
-                }
-                "fonts" => {
-                    t.fonts = e
-                        .values
-                        .iter()
-                        .filter_map(string_of)
-                        .map(str::to_string)
-                        .collect()
-                }
-                "string" => {
-                    let (Some(key), Some(msg)) = (
-                        e.values.first().and_then(string_of),
-                        e.values.get(1).and_then(Value::as_str),
-                    ) else {
-                        return Err(format!("line {}: write string \"key\" \"message\"", e.line));
-                    };
-                    let m = Message::parse(msg)
-                        .map_err(|err| format!("line {}: '{key}': {err}", e.line))?;
-                    if t.entries
-                        .insert(key.to_string(), (msg.to_string(), m))
-                        .is_some()
-                    {
-                        return Err(format!("line {}: '{key}' is defined twice", e.line));
-                    }
-                }
-                k => {
-                    return Err(format!(
-                        "line {}: '{k}' is not a string table entry: locale, fallback, base, direction, fonts or string",
-                        e.line
-                    ));
-                }
-            }
-        }
-        t.locale = locale.ok_or("a string table needs `locale \"<tag>\"` (en, zh-CN, ja, ar)")?;
-        t.direction = direction.unwrap_or_else(|| direction_of_locale(&t.locale));
-        Ok(t)
     }
 }
 

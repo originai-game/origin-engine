@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
-import "./states.en.ogt";
+import "./states.en.strings.ts";
 
 export interface ListItemProps {
   /** The row's primary text. */

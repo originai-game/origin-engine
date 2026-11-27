@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import {Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
-import "./tutorial.en.ogt";
+import "./tutorial.en.strings.ts";
 
 export interface TutorialScreenProps {
   /** The step's title. */

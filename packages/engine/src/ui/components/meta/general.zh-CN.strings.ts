@@ -1,84 +1,89 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "general.shop.name" "商店"
-string "general.shop.tabs" "分类"
-string "general.shop.wallet" "当前余额"
-string "general.shop.empty" "暂无出售商品"
-string "general.shop.loading" "商店加载中"
-string "general.shop.retry" "重试"
-string "general.shop.featured" "精选"
-string "general.shop.soldOut" "已售罄"
-string "general.shop.owned" "已拥有"
-string "general.shop.short" "余额不足"
-string "general.shop.refused" "{name}，{status}"
-string "general.shop.amountWas" "{amount} {currency}，原价 {was}"
-string "general.shop.price" "价格"
-string "general.shop.amount" "{amount} {currency}"
-string "general.confirm.name" "确认购买"
-string "general.confirm.buy" "购买"
-string "general.confirm.cancel" "取消"
-string "general.confirm.cost" "花费"
-string "general.confirm.balance" "余额"
-string "general.confirm.afterSaid" "{currency}余额：{after}"
-string "general.confirm.shortOf" "{currency}不足"
-string "general.confirm.missing" "还差 {amount}"
-string "general.confirm.missingSaid" "还需 {amount} {currency}"
-string "general.confirm.busy" "购买中"
-string "general.achievements.name" "成就"
-string "general.achievements.empty" "暂无成就"
-string "general.achievements.hidden" "隐藏成就"
-string "general.achievements.hiddenAbout" "继续游戏即可揭晓。"
-string "general.achievements.locked" "未解锁"
-string "general.achievements.progress" "进行中"
-string "general.achievements.unlocked" "已解锁"
-string "general.achievements.unlockedOn" "解锁于 {date}"
-string "general.achievements.tierCommon" "普通"
-string "general.achievements.tierRare" "稀有"
-string "general.achievements.tierEpic" "史诗"
-string "general.achievements.tierLegendary" "传说"
-string "general.achievements.rarity" "{percent} 的玩家"
-string "general.achievements.players" "的玩家"
-string "general.achievements.claim" "领取"
-string "general.achievements.claimed" "已领取"
-string "general.quests.name" "每日任务"
-string "general.quests.empty" "今日暂无任务"
-string "general.quests.loading" "任务加载中"
-string "general.quests.claim" "领取"
-string "general.quests.claimed" "已领取"
-string "general.quests.reward" "奖励：{reward}"
-string "general.rewards.name" "每日奖励"
-string "general.rewards.day" "{day}，{reward}，{state}"
-string "general.rewards.claim" "领取"
-string "general.rewards.claimed" "已领取"
-string "general.rewards.today" "今天"
-string "general.rewards.upcoming" "即将到来"
-string "general.rewards.missed" "已错过"
-string "general.rewards.milestone" "大奖"
-string "general.chat.name" "聊天"
-string "general.chat.channels" "频道"
-string "general.chat.messages" "消息"
-string "general.chat.empty" "还没有消息，来打个招呼吧！"
-string "general.chat.placeholder" "输入消息"
-string "general.chat.send" "发送"
-string "general.chat.system" "系统"
-string "general.chat.you" "你"
-string "general.chat.unread" "{channel}，{count} 条未读"
-string "general.friends.name" "好友"
-string "general.friends.requests" "好友申请"
-string "general.friends.list" "好友"
-string "general.friends.empty" "暂无好友"
-string "general.friends.add" "添加好友"
-string "general.friends.invite" "邀请"
-string "general.friends.invited" "已邀请"
-string "general.friends.accept" "接受"
-string "general.friends.decline" "拒绝"
-string "general.friends.acceptName" "接受 {name}"
-string "general.friends.declineName" "拒绝 {name}"
-string "general.friends.inviteName" "邀请 {name}"
-string "general.friends.invitedName" "已邀请 {name}"
-string "general.friends.online" "在线"
-string "general.friends.ingame" "游戏中"
-string "general.friends.away" "离开"
-string "general.friends.offline" "离线"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "general.achievements.claim": "领取",
+    "general.achievements.claimed": "已领取",
+    "general.achievements.empty": "暂无成就",
+    "general.achievements.hidden": "隐藏成就",
+    "general.achievements.hiddenAbout": "继续游戏即可揭晓。",
+    "general.achievements.locked": "未解锁",
+    "general.achievements.name": "成就",
+    "general.achievements.players": "的玩家",
+    "general.achievements.progress": "进行中",
+    "general.achievements.rarity": "{percent} 的玩家",
+    "general.achievements.tierCommon": "普通",
+    "general.achievements.tierEpic": "史诗",
+    "general.achievements.tierLegendary": "传说",
+    "general.achievements.tierRare": "稀有",
+    "general.achievements.unlocked": "已解锁",
+    "general.achievements.unlockedOn": "解锁于 {date}",
+    "general.chat.channels": "频道",
+    "general.chat.empty": "还没有消息，来打个招呼吧！",
+    "general.chat.messages": "消息",
+    "general.chat.name": "聊天",
+    "general.chat.placeholder": "输入消息",
+    "general.chat.send": "发送",
+    "general.chat.system": "系统",
+    "general.chat.unread": "{channel}，{count} 条未读",
+    "general.chat.you": "你",
+    "general.confirm.afterSaid": "{currency}余额：{after}",
+    "general.confirm.balance": "余额",
+    "general.confirm.busy": "购买中",
+    "general.confirm.buy": "购买",
+    "general.confirm.cancel": "取消",
+    "general.confirm.cost": "花费",
+    "general.confirm.missing": "还差 {amount}",
+    "general.confirm.missingSaid": "还需 {amount} {currency}",
+    "general.confirm.name": "确认购买",
+    "general.confirm.shortOf": "{currency}不足",
+    "general.friends.accept": "接受",
+    "general.friends.acceptName": "接受 {name}",
+    "general.friends.add": "添加好友",
+    "general.friends.away": "离开",
+    "general.friends.decline": "拒绝",
+    "general.friends.declineName": "拒绝 {name}",
+    "general.friends.empty": "暂无好友",
+    "general.friends.ingame": "游戏中",
+    "general.friends.invite": "邀请",
+    "general.friends.inviteName": "邀请 {name}",
+    "general.friends.invited": "已邀请",
+    "general.friends.invitedName": "已邀请 {name}",
+    "general.friends.list": "好友",
+    "general.friends.name": "好友",
+    "general.friends.offline": "离线",
+    "general.friends.online": "在线",
+    "general.friends.requests": "好友申请",
+    "general.quests.claim": "领取",
+    "general.quests.claimed": "已领取",
+    "general.quests.empty": "今日暂无任务",
+    "general.quests.loading": "任务加载中",
+    "general.quests.name": "每日任务",
+    "general.quests.reward": "奖励：{reward}",
+    "general.rewards.claim": "领取",
+    "general.rewards.claimed": "已领取",
+    "general.rewards.day": "{day}，{reward}，{state}",
+    "general.rewards.milestone": "大奖",
+    "general.rewards.missed": "已错过",
+    "general.rewards.name": "每日奖励",
+    "general.rewards.today": "今天",
+    "general.rewards.upcoming": "即将到来",
+    "general.shop.amount": "{amount} {currency}",
+    "general.shop.amountWas": "{amount} {currency}，原价 {was}",
+    "general.shop.empty": "暂无出售商品",
+    "general.shop.featured": "精选",
+    "general.shop.loading": "商店加载中",
+    "general.shop.name": "商店",
+    "general.shop.owned": "已拥有",
+    "general.shop.price": "价格",
+    "general.shop.refused": "{name}，{status}",
+    "general.shop.retry": "重试",
+    "general.shop.short": "余额不足",
+    "general.shop.soldOut": "已售罄",
+    "general.shop.tabs": "分类",
+    "general.shop.wallet": "当前余额"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

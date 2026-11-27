@@ -1,69 +1,74 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "strategy.resources.name" "资源"
-string "strategy.resources.value" "{name}：{amount}"
-string "strategy.resources.cap" "/ {cap}"
-string "strategy.resources.empty" "暂无资源"
-string "strategy.clock.name" "游戏时间"
-string "strategy.clock.paused" "已暂停"
-string "strategy.alerts.name" "警报"
-string "strategy.alerts.danger" "警报：{text}"
-string "strategy.alerts.done" "完成：{text}"
-string "strategy.groups.name" "编队"
-string "strategy.groups.value" "{label}，{count, number}"
-string "strategy.minimap.name" "小地图"
-string "strategy.commands.name" "指令"
-string "strategy.selection.title" "选中"
-string "strategy.selection.units" "已选中"
-string "strategy.selection.stats" "属性"
-string "strategy.selection.stat" "{label} {value}"
-string "strategy.selection.empty" "未选中任何单位"
-string "strategy.selection.count" "×{count, number}"
-string "strategy.selection.moreCount" "+{n, number}"
-string "strategy.selection.more" "另有 {n, number} 个已选中"
-string "strategy.selection.unitValue" "{count, number} · 生命值 {now, number}/{max, number}"
-string "strategy.selection.health" "生命值"
-string "strategy.selection.healthMax" "/ {max, number}"
-string "strategy.queue.title" "生产"
-string "strategy.queue.items" "队列中"
-string "strategy.queue.empty" "无生产项目"
-string "strategy.queue.capacity" "{count, number} / {limit, number}"
-string "strategy.queue.fullCount" "队列已满 {count, number} / {limit, number}"
-string "strategy.queue.capacityName" "队列 {count, number}/{limit, number}"
-string "strategy.queue.full" "队列已满"
-string "strategy.queue.stack" "×{count, number}"
-string "strategy.queue.cancel" "取消 {name}"
-string "strategy.queue.paused" "已暂停"
-string "strategy.queue.blocked" "受阻"
-string "strategy.wave.name" "波次"
-string "strategy.wave.title" "第 {wave, number} 波"
-string "strategy.wave.titleNamed" "第 {wave, number} 波 · {name}"
-string "strategy.wave.titleOf" "第 {wave, number}/{waves, number} 波"
-string "strategy.wave.titleOfNamed" "第 {wave, number}/{waves, number} 波 · {name}"
-string "strategy.wave.next" "下一波"
-string "strategy.wave.incoming" "来袭"
-string "strategy.wave.countdown" "准备迎敌"
-string "strategy.wave.active" "遭受攻击"
-string "strategy.wave.done" "所有波次已清除"
-string "strategy.wave.final" "最终波"
-string "strategy.wave.boss" "首领"
-string "strategy.wave.enemyCount" "×{count, number}"
-string "strategy.wave.enemyName" "{count, number} 个{name}"
-string "strategy.wave.unknown" "尚未侦察"
-string "strategy.wave.callEarly" "提前召唤"
-string "strategy.tower.name" "防御塔"
-string "strategy.tower.level" "等级 {level, number}"
-string "strategy.tower.stats" "属性"
-string "strategy.tower.paths" "升级"
-string "strategy.tower.empty" "无可用升级"
-string "strategy.tower.tier" "阶段 {tier, number}/{tiers, number}"
-string "strategy.tower.tierName" "第 {tier, number} 阶，共 {tiers, number} 阶"
-string "strategy.tower.next" "→ {next}"
-string "strategy.tower.nextName" "升级后为 {next}"
-string "strategy.tower.upgrade" "升级 {name}"
-string "strategy.tower.short" "资源不足"
-string "strategy.tower.locked" "未解锁"
-string "strategy.tower.maxed" "已满级"
-string "strategy.tower.sell" "出售"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "strategy.alerts.danger": "警报：{text}",
+    "strategy.alerts.done": "完成：{text}",
+    "strategy.alerts.name": "警报",
+    "strategy.clock.name": "游戏时间",
+    "strategy.clock.paused": "已暂停",
+    "strategy.commands.name": "指令",
+    "strategy.groups.name": "编队",
+    "strategy.groups.value": "{label}，{count, number}",
+    "strategy.minimap.name": "小地图",
+    "strategy.queue.blocked": "受阻",
+    "strategy.queue.cancel": "取消 {name}",
+    "strategy.queue.capacity": "{count, number} / {limit, number}",
+    "strategy.queue.capacityName": "队列 {count, number}/{limit, number}",
+    "strategy.queue.empty": "无生产项目",
+    "strategy.queue.full": "队列已满",
+    "strategy.queue.fullCount": "队列已满 {count, number} / {limit, number}",
+    "strategy.queue.items": "队列中",
+    "strategy.queue.paused": "已暂停",
+    "strategy.queue.stack": "×{count, number}",
+    "strategy.queue.title": "生产",
+    "strategy.resources.cap": "/ {cap}",
+    "strategy.resources.empty": "暂无资源",
+    "strategy.resources.name": "资源",
+    "strategy.resources.value": "{name}：{amount}",
+    "strategy.selection.count": "×{count, number}",
+    "strategy.selection.empty": "未选中任何单位",
+    "strategy.selection.health": "生命值",
+    "strategy.selection.healthMax": "/ {max, number}",
+    "strategy.selection.more": "另有 {n, number} 个已选中",
+    "strategy.selection.moreCount": "+{n, number}",
+    "strategy.selection.stat": "{label} {value}",
+    "strategy.selection.stats": "属性",
+    "strategy.selection.title": "选中",
+    "strategy.selection.unitValue": "{count, number} · 生命值 {now, number}/{max, number}",
+    "strategy.selection.units": "已选中",
+    "strategy.tower.empty": "无可用升级",
+    "strategy.tower.level": "等级 {level, number}",
+    "strategy.tower.locked": "未解锁",
+    "strategy.tower.maxed": "已满级",
+    "strategy.tower.name": "防御塔",
+    "strategy.tower.next": "→ {next}",
+    "strategy.tower.nextName": "升级后为 {next}",
+    "strategy.tower.paths": "升级",
+    "strategy.tower.sell": "出售",
+    "strategy.tower.short": "资源不足",
+    "strategy.tower.stats": "属性",
+    "strategy.tower.tier": "阶段 {tier, number}/{tiers, number}",
+    "strategy.tower.tierName": "第 {tier, number} 阶，共 {tiers, number} 阶",
+    "strategy.tower.upgrade": "升级 {name}",
+    "strategy.wave.active": "遭受攻击",
+    "strategy.wave.boss": "首领",
+    "strategy.wave.callEarly": "提前召唤",
+    "strategy.wave.countdown": "准备迎敌",
+    "strategy.wave.done": "所有波次已清除",
+    "strategy.wave.enemyCount": "×{count, number}",
+    "strategy.wave.enemyName": "{count, number} 个{name}",
+    "strategy.wave.final": "最终波",
+    "strategy.wave.incoming": "来袭",
+    "strategy.wave.name": "波次",
+    "strategy.wave.next": "下一波",
+    "strategy.wave.title": "第 {wave, number} 波",
+    "strategy.wave.titleNamed": "第 {wave, number} 波 · {name}",
+    "strategy.wave.titleOf": "第 {wave, number}/{waves, number} 波",
+    "strategy.wave.titleOfNamed": "第 {wave, number}/{waves, number} 波 · {name}",
+    "strategy.wave.unknown": "尚未侦察"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

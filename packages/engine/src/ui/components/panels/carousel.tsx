@@ -1,6 +1,6 @@
 import { For, Icon, Image, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./carousel.en.ogt";
+import "./carousel.en.strings.ts";
 
 export interface CarouselProps {
   /** The pages: each { id, title, body, image }, image a texture handle (0: none). */

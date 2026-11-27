@@ -1,37 +1,42 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "rpg.economy.loading" "加载中…"
-string "rpg.economy.busy" "处理中…"
-string "rpg.economy.close" "关闭"
-string "rpg.economy.quantity" "数量：{quantity}"
-string "rpg.economy.more" "增加数量"
-string "rpg.economy.less" "减少数量"
-string "rpg.economy.minus" "−"
-string "rpg.economy.plus" "+"
-string "rpg.economy.unavailable" "不可用"
-string "rpg.craft.title" "制作"
-string "rpg.craft.empty" "暂无可用配方。"
-string "rpg.craft.choose" "选择配方以查看所需材料。"
-string "rpg.craft.ingredients" "材料"
-string "rpg.craft.make" "制作"
-string "rpg.craft.missing" "材料不足"
-string "rpg.trade.title" "交易"
-string "rpg.trade.buy" "购买"
-string "rpg.trade.sell" "出售"
-string "rpg.trade.toBuy" "浏览可购买的商品"
-string "rpg.trade.toSell" "浏览可出售的物品"
-string "rpg.trade.empty" "没有可交易的物品。"
-string "rpg.trade.choose" "选择物品以查看价格。"
-string "rpg.trade.price" "总价：{price}"
-string "rpg.loot.title" "战利品"
-string "rpg.loot.take" "拾取"
-string "rpg.loot.takeItem" "拾取 {name}"
-string "rpg.loot.all" "全部拾取"
-string "rpg.loot.empty" "已无可拾取的物品。"
-string "rpg.loot.count" "×{count}"
-string "rpg.loot.kicker" "战利品 · {count} 件"
-string "rpg.trade.kicker" "商人"
-string "rpg.trade.total" "总计"
-string "rpg.trade.was" "原价 {price}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.craft.choose": "选择配方以查看所需材料。",
+    "rpg.craft.empty": "暂无可用配方。",
+    "rpg.craft.ingredients": "材料",
+    "rpg.craft.make": "制作",
+    "rpg.craft.missing": "材料不足",
+    "rpg.craft.title": "制作",
+    "rpg.economy.busy": "处理中…",
+    "rpg.economy.close": "关闭",
+    "rpg.economy.less": "减少数量",
+    "rpg.economy.loading": "加载中…",
+    "rpg.economy.minus": "−",
+    "rpg.economy.more": "增加数量",
+    "rpg.economy.plus": "+",
+    "rpg.economy.quantity": "数量：{quantity}",
+    "rpg.economy.unavailable": "不可用",
+    "rpg.loot.all": "全部拾取",
+    "rpg.loot.count": "×{count}",
+    "rpg.loot.empty": "已无可拾取的物品。",
+    "rpg.loot.kicker": "战利品 · {count} 件",
+    "rpg.loot.take": "拾取",
+    "rpg.loot.takeItem": "拾取 {name}",
+    "rpg.loot.title": "战利品",
+    "rpg.trade.buy": "购买",
+    "rpg.trade.choose": "选择物品以查看价格。",
+    "rpg.trade.empty": "没有可交易的物品。",
+    "rpg.trade.kicker": "商人",
+    "rpg.trade.price": "总价：{price}",
+    "rpg.trade.sell": "出售",
+    "rpg.trade.title": "交易",
+    "rpg.trade.toBuy": "浏览可购买的商品",
+    "rpg.trade.toSell": "浏览可出售的物品",
+    "rpg.trade.total": "总计",
+    "rpg.trade.was": "原价 {price}"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

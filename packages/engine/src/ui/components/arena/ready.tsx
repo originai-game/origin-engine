@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./ready.en.ogt";
+import "./ready.en.strings.ts";
 
 export interface ReadyPlayer {
   id: string;

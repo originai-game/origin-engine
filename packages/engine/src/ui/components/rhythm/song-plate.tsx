@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmSongPlateProps {
   /** The song's title. */

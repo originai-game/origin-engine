@@ -1,54 +1,59 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "idle.resources.name" "资源"
-string "idle.resources.empty" "暂无资源"
-string "idle.resources.loading" "{name}：加载中"
-string "idle.resources.full" "已满"
-string "idle.resources.perSecond" "+{rate}/s"
-string "idle.resources.perSecondDown" "{rate}/s"
-string "idle.resources.row" "{name}：{amount}"
-string "idle.generators.name" "生产设施"
-string "idle.generators.empty" "暂无可建造的设施"
-string "idle.generators.owned" "×{owned}"
-string "idle.generators.kicker" "生产"
-string "idle.generators.levelName" "{name}，Lv {level}"
-string "idle.generators.lockedName" "{name}，未解锁：{what}"
-string "idle.generators.auto" "自动"
-string "idle.generators.locked" "未解锁"
-string "idle.generators.cycle" "周期"
-string "idle.purchases.name" "升级"
-string "idle.purchases.amount" "购买数量"
-string "idle.purchases.times" "×{count}"
-string "idle.purchases.max" "最大"
-string "idle.purchases.empty" "暂无可用升级"
-string "idle.purchases.level" "Lv {level}"
-string "idle.purchases.buy" "购买"
-string "idle.purchases.short" "不足"
-string "idle.purchases.maxed" "已满级"
-string "idle.purchases.locked" "未解锁"
-string "idle.purchases.buyNamed" "购买{name}"
-string "idle.purchases.buyFor" "购买{name}，{cost}"
-string "idle.prestige.name" "转生"
-string "idle.prestige.kicker" "重置"
-string "idle.prestige.held" "已持有{currency}"
-string "idle.prestige.rowName" "{label}：{now} → {after}"
-string "idle.prestige.gain" "重置后获得"
-string "idle.prestige.bonus" "加成"
-string "idle.prestige.met" "就绪"
-string "idle.prestige.notMet" "未达成"
-string "idle.prestige.request" "转生"
-string "idle.prestige.ask" "重置并获得 {gain} {currency}？"
-string "idle.prestige.confirm" "重置"
-string "idle.prestige.cancel" "取消"
-string "idle.prestige.progress" "条件"
-string "idle.offline.name" "欢迎回来"
-string "idle.offline.kicker" "离线收益"
-string "idle.offline.away" "你离开了 {time}"
-string "idle.offline.awayLabel" "离开时长"
-string "idle.offline.row" "{name}：{amount}"
-string "idle.offline.earned" "离开期间获得"
-string "idle.offline.empty" "离开期间没有获得任何收益"
-string "idle.offline.collect" "领取"
-string "idle.offline.double" "双倍领取"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "idle.generators.auto": "自动",
+    "idle.generators.cycle": "周期",
+    "idle.generators.empty": "暂无可建造的设施",
+    "idle.generators.kicker": "生产",
+    "idle.generators.levelName": "{name}，Lv {level}",
+    "idle.generators.locked": "未解锁",
+    "idle.generators.lockedName": "{name}，未解锁：{what}",
+    "idle.generators.name": "生产设施",
+    "idle.generators.owned": "×{owned}",
+    "idle.offline.away": "你离开了 {time}",
+    "idle.offline.awayLabel": "离开时长",
+    "idle.offline.collect": "领取",
+    "idle.offline.double": "双倍领取",
+    "idle.offline.earned": "离开期间获得",
+    "idle.offline.empty": "离开期间没有获得任何收益",
+    "idle.offline.kicker": "离线收益",
+    "idle.offline.name": "欢迎回来",
+    "idle.offline.row": "{name}：{amount}",
+    "idle.prestige.ask": "重置并获得 {gain} {currency}？",
+    "idle.prestige.bonus": "加成",
+    "idle.prestige.cancel": "取消",
+    "idle.prestige.confirm": "重置",
+    "idle.prestige.gain": "重置后获得",
+    "idle.prestige.held": "已持有{currency}",
+    "idle.prestige.kicker": "重置",
+    "idle.prestige.met": "就绪",
+    "idle.prestige.name": "转生",
+    "idle.prestige.notMet": "未达成",
+    "idle.prestige.progress": "条件",
+    "idle.prestige.request": "转生",
+    "idle.prestige.rowName": "{label}：{now} → {after}",
+    "idle.purchases.amount": "购买数量",
+    "idle.purchases.buy": "购买",
+    "idle.purchases.buyFor": "购买{name}，{cost}",
+    "idle.purchases.buyNamed": "购买{name}",
+    "idle.purchases.empty": "暂无可用升级",
+    "idle.purchases.level": "Lv {level}",
+    "idle.purchases.locked": "未解锁",
+    "idle.purchases.max": "最大",
+    "idle.purchases.maxed": "已满级",
+    "idle.purchases.name": "升级",
+    "idle.purchases.short": "不足",
+    "idle.purchases.times": "×{count}",
+    "idle.resources.empty": "暂无资源",
+    "idle.resources.full": "已满",
+    "idle.resources.loading": "{name}：加载中",
+    "idle.resources.name": "资源",
+    "idle.resources.perSecond": "+{rate}/s",
+    "idle.resources.perSecondDown": "{rate}/s",
+    "idle.resources.row": "{name}：{amount}"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

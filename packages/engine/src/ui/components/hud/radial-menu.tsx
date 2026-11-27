@@ -1,5 +1,5 @@
 import { For, Icon, Line, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
-import "./radial-menu.en.ogt";
+import "./radial-menu.en.strings.ts";
 
 export interface RadialMenuItem {
   id: string;

@@ -1,6 +1,6 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface FriendsProps {
   /** The panel's heading; empty takes the group's (Friends). */

@@ -749,10 +749,9 @@ pub(crate) fn diagnose(
         ..
     } = *cx;
     // Across the string tables: every locale has every key, with its arguments.
-    let tables: Vec<(&str, &[u8])> = sources
+    let tables: Vec<(&str, &og_i18n::StringTable)> = sources
         .iter()
-        .filter(|s| s.kind == &strings::STRINGS)
-        .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
+        .filter_map(|s| s.strings.as_ref().map(|t| (s.rel.as_str(), t)))
         .collect();
     // Hyphenation in a locale its pack has no dictionary for, and a
     // locale written without spaces that no pack carries a dictionary for.

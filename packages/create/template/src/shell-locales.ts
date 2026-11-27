@@ -1,1 +1,1 @@
-import "../assets/strings/shell.en.ogt";
+import "../content/strings/shell.en.ts";

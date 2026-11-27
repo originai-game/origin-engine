@@ -203,8 +203,12 @@ commands:
                       every og.i18n key the dialogues, quests and tables show (.yarn,
                       type quest, type table), with the arguments they pass and where,
                       against each string table: per locale, the keys it lacks and the arguments nothing passes;
-                      --write adds the keys the base table lacks to it (assets/strings/en.ogt
+                      --write adds the keys the base table lacks to it (content/strings/en.ts
                       when there is none); --check exits 1 while any table is incomplete
+  i18n tables [project] [--builtins | --index] --json
+                      checked locale metadata, canonical IDs and ICU sources from all modules,
+                      or the installed engine's UI tables; --index lists only project IDs/paths
+                      without evaluating content; never executes game code
   sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ts|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
@@ -316,8 +320,8 @@ commands:
                       project's assets/ui); `style-literal-ok` on a line skips it
   ui eject <name> [project] [--force] | ui eject --list [project]
                       copy a built-in TSX component (hud/stat-bar), screen (screens/title) or
-                      control (controls/button) into assets/ui/<name>.tsx as the game's own: its
-                      strings into a table beside it under game. keys, its imports of other
+                      control (controls/button) into src/ui/<name>.tsx as the game's own: its
+                      strings into content/ui/<name>.<locale>.strings.ts under game. keys, its imports of other
                       built-ins kept, and the game's imports of it pointed at the copy; refuses to
                       overwrite without --force; --list prints each with its doc comment's line
   frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]

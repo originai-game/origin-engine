@@ -1,6 +1,6 @@
 import { For, Icon, Image, Scroll, Show, Text, View, packClass, type UiEvent, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./overlay-bar.en.ogt";
+import "./overlay-bar.en.strings.ts";
 
 export interface OverlayBarOverlay {
   id: string;

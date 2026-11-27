@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "hud.pickup-feed.name" "Pickups"
-string "hud.pickup-feed.loading" "Loading"
-string "hud.pickup-feed.empty" "No pickups"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.pickup-feed.empty": "No pickups",
+    "hud.pickup-feed.loading": "Loading",
+    "hud.pickup-feed.name": "Pickups"
+  },
+  "fonts": [],
+  "locale": "en"
+});

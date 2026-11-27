@@ -170,8 +170,8 @@ the states a class variant reads: one is on unless its value is empty or
 `group/<name>`. Only the boolean form: `data-[state=open]:` is not read.
 
 A component's string table is a side-effect import beside it, `import
-"./x.en.ogt"`: the build turns it into `strings("<id>")` (`@ui/<path under
-src/ui>` for the engine's, the asset id for a game's), the renderer sends
+"./x.en.strings.ts"`: the build turns it into `strings("<id>")` (`@ui/<path under
+src/ui>` for the engine's, the canonical content ID for a game's), the renderer sends
 each recorded table once as op 12 ahead of its first batch, and `mount()`
 sends them before it builds, so a component's first `t()` finds its text.
 The cook bundles the engine components' tables when code imports

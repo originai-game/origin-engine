@@ -1,13 +1,18 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.compass.name" "指南针"
-string "component.compass.n" "北"
-string "component.compass.ne" "东北"
-string "component.compass.e" "东"
-string "component.compass.se" "东南"
-string "component.compass.s" "南"
-string "component.compass.sw" "西南"
-string "component.compass.w" "西"
-string "component.compass.nw" "西北"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.compass.e": "东",
+    "component.compass.n": "北",
+    "component.compass.name": "指南针",
+    "component.compass.ne": "东北",
+    "component.compass.nw": "西北",
+    "component.compass.s": "南",
+    "component.compass.se": "东南",
+    "component.compass.sw": "西南",
+    "component.compass.w": "西"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

@@ -4,7 +4,7 @@ import { Button } from "../../controls/button";
 import { Spinner } from "../base/spinner";
 import { Tab, Tabs } from "../../controls/tabs";
 import { Flourish } from "../hud/flourish";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;

@@ -29,7 +29,7 @@
     "template/src/shell-state.ts",
     "template/src/shell-config.ts",
     "template/src/shell-locales.ts",
-    "template/assets/strings/shell.en.ogt",
+    "template/content/strings/shell.en.ts",
     "template/tests/smoke.og.ts",
     "template/assets/.gitkeep",
     "template/package.json",

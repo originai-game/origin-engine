@@ -1,61 +1,66 @@
-type strings
-version 1
----
-locale "en"
-string "arena.team.a" "Blue team"
-string "arena.team.b" "Red team"
-string "arena.you" "You"
-string "arena.roster.title" "Choose your champion"
-string "arena.roster.characters" "Characters"
-string "arena.roster.empty" "No characters available"
-string "arena.roster.locked" "Locked"
-string "arena.roster.taken" "Taken by {name}"
-string "arena.roster.slot" "P{slot, number}"
-string "arena.roster.slotName" "Player {slot, number}"
-string "arena.roster.slotReady" "Player {slot, number}, ready"
-string "arena.roster.chosen" "Selected"
-string "arena.draft.title" "Draft"
-string "arena.draft.ban" "Ban phase"
-string "arena.draft.pick" "Pick phase"
-string "arena.draft.done" "Draft complete"
-string "arena.draft.turn" "{team} to choose"
-string "arena.draft.bans" "Bans"
-string "arena.draft.picks" "Picks"
-string "arena.draft.banned" "Banned"
-string "arena.draft.banning" "Banning"
-string "arena.draft.picking" "Picking"
-string "arena.draft.open" "Open"
-string "arena.draft.empty" "No draft yet"
-string "arena.draft.confirm" "Lock in"
-string "arena.draft.timeLeft" "Time left"
-string "arena.versus.name" "Versus"
-string "arena.versus.vs" "VS"
-string "arena.versus.waiting" "Waiting for opponents"
-string "arena.score.title" "Scoreboard"
-string "arena.score.kills" "K"
-string "arena.score.deaths" "D"
-string "arena.score.assists" "A"
-string "arena.score.score" "Score"
-string "arena.score.killsName" "Kills"
-string "arena.score.deathsName" "Deaths"
-string "arena.score.assistsName" "Assists"
-string "arena.score.teamScore" "Team score"
-string "arena.score.disconnected" "Disconnected"
-string "arena.score.empty" "No players"
-string "arena.round.name" "Round"
-string "arena.round.round" "Round {round, number}"
-string "arena.round.roundOf" "Round {round, number} of {rounds, number}"
-string "arena.round.won" "Round won"
-string "arena.round.lost" "Round lost"
-string "arena.round.draw" "Round drawn"
-string "arena.lobby.title" "Lobby"
-string "arena.lobby.players" "Players"
-string "arena.lobby.open" "Open slot"
-string "arena.lobby.invite" "Invite"
-string "arena.lobby.host" "Host"
-string "arena.lobby.ready" "Ready"
-string "arena.lobby.notReady" "Not ready"
-string "arena.lobby.readyUp" "Ready up"
-string "arena.lobby.unready" "Cancel ready"
-string "arena.lobby.start" "Start match"
-string "arena.lobby.empty" "No slots"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "arena.draft.ban": "Ban phase",
+    "arena.draft.banned": "Banned",
+    "arena.draft.banning": "Banning",
+    "arena.draft.bans": "Bans",
+    "arena.draft.confirm": "Lock in",
+    "arena.draft.done": "Draft complete",
+    "arena.draft.empty": "No draft yet",
+    "arena.draft.open": "Open",
+    "arena.draft.pick": "Pick phase",
+    "arena.draft.picking": "Picking",
+    "arena.draft.picks": "Picks",
+    "arena.draft.timeLeft": "Time left",
+    "arena.draft.title": "Draft",
+    "arena.draft.turn": "{team} to choose",
+    "arena.lobby.empty": "No slots",
+    "arena.lobby.host": "Host",
+    "arena.lobby.invite": "Invite",
+    "arena.lobby.notReady": "Not ready",
+    "arena.lobby.open": "Open slot",
+    "arena.lobby.players": "Players",
+    "arena.lobby.ready": "Ready",
+    "arena.lobby.readyUp": "Ready up",
+    "arena.lobby.start": "Start match",
+    "arena.lobby.title": "Lobby",
+    "arena.lobby.unready": "Cancel ready",
+    "arena.roster.characters": "Characters",
+    "arena.roster.chosen": "Selected",
+    "arena.roster.empty": "No characters available",
+    "arena.roster.locked": "Locked",
+    "arena.roster.slot": "P{slot, number}",
+    "arena.roster.slotName": "Player {slot, number}",
+    "arena.roster.slotReady": "Player {slot, number}, ready",
+    "arena.roster.taken": "Taken by {name}",
+    "arena.roster.title": "Choose your champion",
+    "arena.round.draw": "Round drawn",
+    "arena.round.lost": "Round lost",
+    "arena.round.name": "Round",
+    "arena.round.round": "Round {round, number}",
+    "arena.round.roundOf": "Round {round, number} of {rounds, number}",
+    "arena.round.won": "Round won",
+    "arena.score.assists": "A",
+    "arena.score.assistsName": "Assists",
+    "arena.score.deaths": "D",
+    "arena.score.deathsName": "Deaths",
+    "arena.score.disconnected": "Disconnected",
+    "arena.score.empty": "No players",
+    "arena.score.kills": "K",
+    "arena.score.killsName": "Kills",
+    "arena.score.score": "Score",
+    "arena.score.teamScore": "Team score",
+    "arena.score.title": "Scoreboard",
+    "arena.team.a": "Blue team",
+    "arena.team.b": "Red team",
+    "arena.versus.name": "Versus",
+    "arena.versus.vs": "VS",
+    "arena.versus.waiting": "Waiting for opponents",
+    "arena.you": "You"
+  },
+  "fonts": [],
+  "locale": "en"
+});

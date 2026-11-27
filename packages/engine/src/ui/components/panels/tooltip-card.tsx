@@ -1,6 +1,6 @@
 import { For, Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./tooltip-card.en.ogt";
+import "./tooltip-card.en.strings.ts";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
 const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;

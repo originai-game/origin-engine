@@ -1,5 +1,5 @@
 import { For, Icon, Show, Text, View, formatDuration, formatNumber, t } from "@origingame/engine/ui";
-import "./status-grid.en.ogt";
+import "./status-grid.en.strings.ts";
 
 export interface StatusGridEffect {
   id: string;

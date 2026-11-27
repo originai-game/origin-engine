@@ -306,7 +306,7 @@ resource presets and the current attachment boundary are in ui-materials.
   Camera views are loaded render targets in `Image`; orbit/picking is
   game code, not `<viewport>` attributes. UI world panels and custom
   shader attachment are not exposed by the TSX host props.
-- Visible words use `t` with imported `.ogt` string tables, and locale
+- Visible words use `t` with imported TS `file.strings` declarations, and locale
   formatters for numbers/durations/currency. Use named actions through
   `onAction` and `glyph` for device-adaptive input hints, not baked key
   letters. `sound`, `exitSound` and `haptic` request pack feedback.

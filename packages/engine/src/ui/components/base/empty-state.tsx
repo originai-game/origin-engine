@@ -1,6 +1,6 @@
 import { Icon, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./states.en.ogt";
+import "./states.en.strings.ts";
 
 export interface EmptyStateProps {
   /** Heading; empty uses Nothing here yet. */

@@ -1,5 +1,5 @@
 import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./ammo-counter.en.ogt";
+import "./ammo-counter.en.strings.ts";
 import { InputGlyph } from "../../controls/input-glyph";
 
 export interface AmmoCounterProps {

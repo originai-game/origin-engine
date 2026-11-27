@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.spinner.name" "加载中"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.spinner.name": "加载中"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

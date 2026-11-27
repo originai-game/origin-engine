@@ -1,84 +1,89 @@
-type strings
-version 1
----
-locale "en"
-string "general.shop.name" "Shop"
-string "general.shop.tabs" "Categories"
-string "general.shop.wallet" "Your balance"
-string "general.shop.empty" "Nothing for sale here right now"
-string "general.shop.loading" "Loading the shop"
-string "general.shop.retry" "Try again"
-string "general.shop.featured" "Featured"
-string "general.shop.soldOut" "Sold out"
-string "general.shop.owned" "Owned"
-string "general.shop.short" "Not enough"
-string "general.shop.refused" "{name}, {status}"
-string "general.shop.amountWas" "{amount} {currency}, was {was}"
-string "general.shop.price" "Price"
-string "general.shop.amount" "{amount} {currency}"
-string "general.confirm.name" "Confirm purchase"
-string "general.confirm.buy" "Buy"
-string "general.confirm.cancel" "Cancel"
-string "general.confirm.cost" "Cost"
-string "general.confirm.balance" "Balance"
-string "general.confirm.afterSaid" "{currency} balance: {after}"
-string "general.confirm.shortOf" "Not enough {currency}"
-string "general.confirm.missing" "{amount} more"
-string "general.confirm.missingSaid" "{amount} more {currency} needed"
-string "general.confirm.busy" "Purchasing"
-string "general.achievements.name" "Achievements"
-string "general.achievements.empty" "No achievements yet"
-string "general.achievements.hidden" "Hidden achievement"
-string "general.achievements.hiddenAbout" "Keep playing to reveal it."
-string "general.achievements.locked" "Locked"
-string "general.achievements.progress" "In progress"
-string "general.achievements.unlocked" "Unlocked"
-string "general.achievements.unlockedOn" "Unlocked {date}"
-string "general.achievements.tierCommon" "Common"
-string "general.achievements.tierRare" "Rare"
-string "general.achievements.tierEpic" "Epic"
-string "general.achievements.tierLegendary" "Legendary"
-string "general.achievements.rarity" "{percent} of players"
-string "general.achievements.players" "of players"
-string "general.achievements.claim" "Claim"
-string "general.achievements.claimed" "Claimed"
-string "general.quests.name" "Daily quests"
-string "general.quests.empty" "No quests today"
-string "general.quests.loading" "Loading quests"
-string "general.quests.claim" "Claim"
-string "general.quests.claimed" "Claimed"
-string "general.quests.reward" "Reward: {reward}"
-string "general.rewards.name" "Daily rewards"
-string "general.rewards.day" "{day}, {reward}, {state}"
-string "general.rewards.claim" "Claim"
-string "general.rewards.claimed" "Claimed"
-string "general.rewards.today" "Today"
-string "general.rewards.upcoming" "Upcoming"
-string "general.rewards.missed" "Missed"
-string "general.rewards.milestone" "Big"
-string "general.chat.name" "Chat"
-string "general.chat.channels" "Channels"
-string "general.chat.messages" "Messages"
-string "general.chat.empty" "No messages yet. Say hello!"
-string "general.chat.placeholder" "Write a message"
-string "general.chat.send" "Send"
-string "general.chat.system" "System"
-string "general.chat.you" "You"
-string "general.chat.unread" "{channel}, {count} unread"
-string "general.friends.name" "Friends"
-string "general.friends.requests" "Friend requests"
-string "general.friends.list" "Friends"
-string "general.friends.empty" "No friends yet"
-string "general.friends.add" "Add friend"
-string "general.friends.invite" "Invite"
-string "general.friends.invited" "Invited"
-string "general.friends.accept" "Accept"
-string "general.friends.decline" "Decline"
-string "general.friends.acceptName" "Accept {name}"
-string "general.friends.declineName" "Decline {name}"
-string "general.friends.inviteName" "Invite {name}"
-string "general.friends.invitedName" "{name} invited"
-string "general.friends.online" "Online"
-string "general.friends.ingame" "In game"
-string "general.friends.away" "Away"
-string "general.friends.offline" "Offline"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "general.achievements.claim": "Claim",
+    "general.achievements.claimed": "Claimed",
+    "general.achievements.empty": "No achievements yet",
+    "general.achievements.hidden": "Hidden achievement",
+    "general.achievements.hiddenAbout": "Keep playing to reveal it.",
+    "general.achievements.locked": "Locked",
+    "general.achievements.name": "Achievements",
+    "general.achievements.players": "of players",
+    "general.achievements.progress": "In progress",
+    "general.achievements.rarity": "{percent} of players",
+    "general.achievements.tierCommon": "Common",
+    "general.achievements.tierEpic": "Epic",
+    "general.achievements.tierLegendary": "Legendary",
+    "general.achievements.tierRare": "Rare",
+    "general.achievements.unlocked": "Unlocked",
+    "general.achievements.unlockedOn": "Unlocked {date}",
+    "general.chat.channels": "Channels",
+    "general.chat.empty": "No messages yet. Say hello!",
+    "general.chat.messages": "Messages",
+    "general.chat.name": "Chat",
+    "general.chat.placeholder": "Write a message",
+    "general.chat.send": "Send",
+    "general.chat.system": "System",
+    "general.chat.unread": "{channel}, {count} unread",
+    "general.chat.you": "You",
+    "general.confirm.afterSaid": "{currency} balance: {after}",
+    "general.confirm.balance": "Balance",
+    "general.confirm.busy": "Purchasing",
+    "general.confirm.buy": "Buy",
+    "general.confirm.cancel": "Cancel",
+    "general.confirm.cost": "Cost",
+    "general.confirm.missing": "{amount} more",
+    "general.confirm.missingSaid": "{amount} more {currency} needed",
+    "general.confirm.name": "Confirm purchase",
+    "general.confirm.shortOf": "Not enough {currency}",
+    "general.friends.accept": "Accept",
+    "general.friends.acceptName": "Accept {name}",
+    "general.friends.add": "Add friend",
+    "general.friends.away": "Away",
+    "general.friends.decline": "Decline",
+    "general.friends.declineName": "Decline {name}",
+    "general.friends.empty": "No friends yet",
+    "general.friends.ingame": "In game",
+    "general.friends.invite": "Invite",
+    "general.friends.inviteName": "Invite {name}",
+    "general.friends.invited": "Invited",
+    "general.friends.invitedName": "{name} invited",
+    "general.friends.list": "Friends",
+    "general.friends.name": "Friends",
+    "general.friends.offline": "Offline",
+    "general.friends.online": "Online",
+    "general.friends.requests": "Friend requests",
+    "general.quests.claim": "Claim",
+    "general.quests.claimed": "Claimed",
+    "general.quests.empty": "No quests today",
+    "general.quests.loading": "Loading quests",
+    "general.quests.name": "Daily quests",
+    "general.quests.reward": "Reward: {reward}",
+    "general.rewards.claim": "Claim",
+    "general.rewards.claimed": "Claimed",
+    "general.rewards.day": "{day}, {reward}, {state}",
+    "general.rewards.milestone": "Big",
+    "general.rewards.missed": "Missed",
+    "general.rewards.name": "Daily rewards",
+    "general.rewards.today": "Today",
+    "general.rewards.upcoming": "Upcoming",
+    "general.shop.amount": "{amount} {currency}",
+    "general.shop.amountWas": "{amount} {currency}, was {was}",
+    "general.shop.empty": "Nothing for sale here right now",
+    "general.shop.featured": "Featured",
+    "general.shop.loading": "Loading the shop",
+    "general.shop.name": "Shop",
+    "general.shop.owned": "Owned",
+    "general.shop.price": "Price",
+    "general.shop.refused": "{name}, {status}",
+    "general.shop.retry": "Try again",
+    "general.shop.short": "Not enough",
+    "general.shop.soldOut": "Sold out",
+    "general.shop.tabs": "Categories",
+    "general.shop.wallet": "Your balance"
+  },
+  "fonts": [],
+  "locale": "en"
+});

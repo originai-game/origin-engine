@@ -2,7 +2,7 @@ import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@
 import { Button } from "../../controls/button";
 import { ProgressBar } from "../hud/progress-bar";
 import { Spinner } from "../base/spinner";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface DailyQuestsProps {
   /** The list's heading; empty takes the group's (Daily quests). */

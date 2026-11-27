@@ -1,59 +1,64 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "rpg.card.equip" "装备"
-string "rpg.card.use" "使用"
-string "rpg.card.drop" "丢弃"
-string "rpg.character.attributes" "属性"
-string "rpg.character.unequip" "卸下"
-string "rpg.quests.updated" "已更新"
-string "rpg.quest.objectives" "目标"
-string "rpg.quest.rewards" "奖励"
-string "rpg.quest.optional" "可选"
-string "rpg.quest.track" "追踪"
-string "rpg.quest.untrack" "取消追踪"
-string "rpg.quest.locate" "在地图上显示"
-string "rpg.map.name" "地图"
-string "rpg.map.places" "地点"
-string "rpg.map.legend" "图例"
-string "rpg.place.mark" "标记"
-string "rpg.place.unmark" "取消标记"
-string "rpg.place.travel" "快速传送"
-string "rpg.party.name" "队伍"
-string "rpg.party.empty" "暂无同伴"
-string "rpg.party.level" "等级 {level}"
-string "rpg.party.health" "生命值"
-string "rpg.party.mana" "法力值"
-string "rpg.party.down" "倒地"
-string "rpg.turns.name" "行动顺序"
-string "rpg.turns.round" "第 {round} 回合"
-string "rpg.turns.ally" "友方"
-string "rpg.turns.enemy" "敌方"
-string "rpg.turns.neutral" "中立"
-string "rpg.party.lv" "Lv"
-string "rpg.party.figure" "{now} / {max}"
-string "rpg.enemy.name" "敌人"
-string "rpg.commands.name" "行动"
-string "rpg.menu.name" "菜单"
-string "rpg.menu.close" "关闭"
-string "rpg.objective.name" "目标"
-string "rpg.leader.level" "Lv {level}"
-string "rpg.leader.max" "/ {max}"
-string "rpg.effects.name" "状态效果"
-string "rpg.companions.member" "{name}，{state}"
-string "rpg.companions.fallen" "阵亡"
-string "rpg.minimap.north" "北"
-string "rpg.lock.target" "已锁定 {name}"
-string "rpg.lock.none" "无目标"
-string "rpg.skills.name" "技能"
-string "rpg.combo.hits" "{count} 连击"
-string "rpg.combo.word" "连击"
-string "rpg.combo.bonus" "伤害 ×{value}"
-string "rpg.hits.name" "伤害"
-string "rpg.hits.heal" "+{amount}"
-string "rpg.lootfeed.name" "战利品"
-string "rpg.hints.name" "操作"
-string "rpg.xp.name" "经验值"
-string "rpg.xp.caption" "Lv {level} · 距升级 {share}"
-string "rpg.xp.share" "距升级 {share}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.card.drop": "丢弃",
+    "rpg.card.equip": "装备",
+    "rpg.card.use": "使用",
+    "rpg.character.attributes": "属性",
+    "rpg.character.unequip": "卸下",
+    "rpg.combo.bonus": "伤害 ×{value}",
+    "rpg.combo.hits": "{count} 连击",
+    "rpg.combo.word": "连击",
+    "rpg.commands.name": "行动",
+    "rpg.companions.fallen": "阵亡",
+    "rpg.companions.member": "{name}，{state}",
+    "rpg.effects.name": "状态效果",
+    "rpg.enemy.name": "敌人",
+    "rpg.hints.name": "操作",
+    "rpg.hits.heal": "+{amount}",
+    "rpg.hits.name": "伤害",
+    "rpg.leader.level": "Lv {level}",
+    "rpg.leader.max": "/ {max}",
+    "rpg.lock.none": "无目标",
+    "rpg.lock.target": "已锁定 {name}",
+    "rpg.lootfeed.name": "战利品",
+    "rpg.map.legend": "图例",
+    "rpg.map.name": "地图",
+    "rpg.map.places": "地点",
+    "rpg.menu.close": "关闭",
+    "rpg.menu.name": "菜单",
+    "rpg.minimap.north": "北",
+    "rpg.objective.name": "目标",
+    "rpg.party.down": "倒地",
+    "rpg.party.empty": "暂无同伴",
+    "rpg.party.figure": "{now} / {max}",
+    "rpg.party.health": "生命值",
+    "rpg.party.level": "等级 {level}",
+    "rpg.party.lv": "Lv",
+    "rpg.party.mana": "法力值",
+    "rpg.party.name": "队伍",
+    "rpg.place.mark": "标记",
+    "rpg.place.travel": "快速传送",
+    "rpg.place.unmark": "取消标记",
+    "rpg.quest.locate": "在地图上显示",
+    "rpg.quest.objectives": "目标",
+    "rpg.quest.optional": "可选",
+    "rpg.quest.rewards": "奖励",
+    "rpg.quest.track": "追踪",
+    "rpg.quest.untrack": "取消追踪",
+    "rpg.quests.updated": "已更新",
+    "rpg.skills.name": "技能",
+    "rpg.turns.ally": "友方",
+    "rpg.turns.enemy": "敌方",
+    "rpg.turns.name": "行动顺序",
+    "rpg.turns.neutral": "中立",
+    "rpg.turns.round": "第 {round} 回合",
+    "rpg.xp.caption": "Lv {level} · 距升级 {share}",
+    "rpg.xp.name": "经验值",
+    "rpg.xp.share": "距升级 {share}"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

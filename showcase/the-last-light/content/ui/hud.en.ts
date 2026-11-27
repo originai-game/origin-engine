@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "hud.controls" "Controls"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.controls": "Controls"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -1,5 +1,5 @@
 import { For, Text, View, t } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmLaneKeysProps {
   /** The lanes left to right, keyed rows of { id, key, held }: key the input that plays the lane as the game names it (S, LB); held the player holds it now (the cap lights). */

@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./spectator.en.ogt";
+import "./spectator.en.strings.ts";
 
 export interface SpectatorTarget {
   id: string;

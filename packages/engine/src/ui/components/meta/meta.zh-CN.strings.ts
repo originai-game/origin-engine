@@ -1,51 +1,56 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "meta.loading" "加载中"
-string "meta.available" "可领取"
-string "meta.claimed" "已领取"
-string "meta.locked" "未解锁"
-string "meta.claim" "领取"
-string "meta.new" "新"
-string "meta.continue" "继续"
-string "meta.pass.title" "赛季通行证"
-string "meta.pass.progress" "下一阶"
-string "meta.pass.kicker" "{season} · {refresh}"
-string "meta.pass.level" "等级 {level}"
-string "meta.pass.rewards" "赛季奖励"
-string "meta.pass.empty" "当前没有进行中的赛季"
-string "meta.pass.tier" "第 {tier} 阶"
-string "meta.pass.premium" "高级"
-string "meta.pass.free" "免费"
-string "meta.pass.premiumRewards" "高级奖励"
-string "meta.pass.freeRewards" "免费奖励"
-string "meta.pass.reward" "第 {tier} 阶，{name}，{state}"
-string "meta.reveal.title" "奖励"
-string "meta.reveal.revealing" "正在揭晓奖励…"
-string "meta.reveal.empty" "本次没有奖励"
-string "meta.reveal.open" "打开奖励"
-string "meta.reveal.skip" "跳过揭晓"
-string "meta.reveal.reward" "{name}，{rarity}"
-string "meta.rarity.common" "普通"
-string "meta.rarity.uncommon" "优秀"
-string "meta.rarity.rare" "稀有"
-string "meta.rarity.epic" "史诗"
-string "meta.rarity.legendary" "传说"
-string "meta.rarity.mythic" "神话"
-string "meta.inbox.title" "邮箱"
-string "meta.inbox.empty" "邮箱是空的"
-string "meta.inbox.select" "选择一封邮件阅读"
-string "meta.inbox.messages" "邮件"
-string "meta.inbox.unread" "未读"
-string "meta.inbox.read" "已读"
-string "meta.inbox.attachments" "附件"
-string "meta.inbox.expired" "附件已过期"
-string "meta.inbox.delete" "删除邮件"
-string "meta.inbox.claim" "领取附件"
-string "meta.news.title" "新闻与更新"
-string "meta.news.empty" "暂无更新"
-string "meta.news.unread" "未读"
-string "meta.news.pinned" "置顶"
-string "meta.news.expand" "展开全文"
-string "meta.news.collapse" "收起"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "meta.available": "可领取",
+    "meta.claim": "领取",
+    "meta.claimed": "已领取",
+    "meta.continue": "继续",
+    "meta.inbox.attachments": "附件",
+    "meta.inbox.claim": "领取附件",
+    "meta.inbox.delete": "删除邮件",
+    "meta.inbox.empty": "邮箱是空的",
+    "meta.inbox.expired": "附件已过期",
+    "meta.inbox.messages": "邮件",
+    "meta.inbox.read": "已读",
+    "meta.inbox.select": "选择一封邮件阅读",
+    "meta.inbox.title": "邮箱",
+    "meta.inbox.unread": "未读",
+    "meta.loading": "加载中",
+    "meta.locked": "未解锁",
+    "meta.new": "新",
+    "meta.news.collapse": "收起",
+    "meta.news.empty": "暂无更新",
+    "meta.news.expand": "展开全文",
+    "meta.news.pinned": "置顶",
+    "meta.news.title": "新闻与更新",
+    "meta.news.unread": "未读",
+    "meta.pass.empty": "当前没有进行中的赛季",
+    "meta.pass.free": "免费",
+    "meta.pass.freeRewards": "免费奖励",
+    "meta.pass.kicker": "{season} · {refresh}",
+    "meta.pass.level": "等级 {level}",
+    "meta.pass.premium": "高级",
+    "meta.pass.premiumRewards": "高级奖励",
+    "meta.pass.progress": "下一阶",
+    "meta.pass.reward": "第 {tier} 阶，{name}，{state}",
+    "meta.pass.rewards": "赛季奖励",
+    "meta.pass.tier": "第 {tier} 阶",
+    "meta.pass.title": "赛季通行证",
+    "meta.rarity.common": "普通",
+    "meta.rarity.epic": "史诗",
+    "meta.rarity.legendary": "传说",
+    "meta.rarity.mythic": "神话",
+    "meta.rarity.rare": "稀有",
+    "meta.rarity.uncommon": "优秀",
+    "meta.reveal.empty": "本次没有奖励",
+    "meta.reveal.open": "打开奖励",
+    "meta.reveal.revealing": "正在揭晓奖励…",
+    "meta.reveal.reward": "{name}，{rarity}",
+    "meta.reveal.skip": "跳过揭晓",
+    "meta.reveal.title": "奖励"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

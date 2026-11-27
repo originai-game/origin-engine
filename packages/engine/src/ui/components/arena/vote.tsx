@@ -1,5 +1,5 @@
 import { For, Icon, Scroll, Show, Text, View, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./vote.en.ogt";
+import "./vote.en.strings.ts";
 
 export interface VoteOption {
   id: string;

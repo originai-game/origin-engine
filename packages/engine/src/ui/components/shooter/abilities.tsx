@@ -1,6 +1,6 @@
 import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface AbilitySlotData {
   id: string;

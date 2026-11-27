@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, packClass, Show, t, Text, View } from "@origingame/engine/ui";
-import "./rpg.en.ogt";
+import "./rpg.en.strings.ts";
 
 export interface RpgTurnOrderProps {
   /** The round, on the plate under the portraits. */

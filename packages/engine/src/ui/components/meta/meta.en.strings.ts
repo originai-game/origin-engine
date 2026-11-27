@@ -1,51 +1,56 @@
-type strings
-version 1
----
-locale "en"
-string "meta.loading" "Loading"
-string "meta.available" "Ready to claim"
-string "meta.claimed" "Claimed"
-string "meta.locked" "Locked"
-string "meta.claim" "Claim"
-string "meta.new" "New"
-string "meta.continue" "Continue"
-string "meta.pass.title" "Season pass"
-string "meta.pass.progress" "Next tier"
-string "meta.pass.kicker" "{season} · {refresh}"
-string "meta.pass.level" "Level {level}"
-string "meta.pass.rewards" "Season rewards"
-string "meta.pass.empty" "No active season"
-string "meta.pass.tier" "Tier {tier}"
-string "meta.pass.premium" "Premium"
-string "meta.pass.free" "Free"
-string "meta.pass.premiumRewards" "Premium rewards"
-string "meta.pass.freeRewards" "Free rewards"
-string "meta.pass.reward" "Tier {tier}, {name}, {state}"
-string "meta.reveal.title" "Rewards"
-string "meta.reveal.revealing" "Revealing rewards…"
-string "meta.reveal.empty" "No rewards this time"
-string "meta.reveal.open" "Open rewards"
-string "meta.reveal.skip" "Skip reveal"
-string "meta.reveal.reward" "{name}, {rarity}"
-string "meta.rarity.common" "Common"
-string "meta.rarity.uncommon" "Uncommon"
-string "meta.rarity.rare" "Rare"
-string "meta.rarity.epic" "Epic"
-string "meta.rarity.legendary" "Legendary"
-string "meta.rarity.mythic" "Mythic"
-string "meta.inbox.title" "Inbox"
-string "meta.inbox.empty" "Your inbox is empty"
-string "meta.inbox.select" "Choose a message to read"
-string "meta.inbox.messages" "Messages"
-string "meta.inbox.unread" "Unread"
-string "meta.inbox.read" "Read"
-string "meta.inbox.attachments" "Attachments"
-string "meta.inbox.expired" "Attachments expired"
-string "meta.inbox.delete" "Delete message"
-string "meta.inbox.claim" "Claim attachments"
-string "meta.news.title" "News and updates"
-string "meta.news.empty" "No updates yet"
-string "meta.news.unread" "Unread"
-string "meta.news.pinned" "Pinned"
-string "meta.news.expand" "Read more"
-string "meta.news.collapse" "Show less"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "meta.available": "Ready to claim",
+    "meta.claim": "Claim",
+    "meta.claimed": "Claimed",
+    "meta.continue": "Continue",
+    "meta.inbox.attachments": "Attachments",
+    "meta.inbox.claim": "Claim attachments",
+    "meta.inbox.delete": "Delete message",
+    "meta.inbox.empty": "Your inbox is empty",
+    "meta.inbox.expired": "Attachments expired",
+    "meta.inbox.messages": "Messages",
+    "meta.inbox.read": "Read",
+    "meta.inbox.select": "Choose a message to read",
+    "meta.inbox.title": "Inbox",
+    "meta.inbox.unread": "Unread",
+    "meta.loading": "Loading",
+    "meta.locked": "Locked",
+    "meta.new": "New",
+    "meta.news.collapse": "Show less",
+    "meta.news.empty": "No updates yet",
+    "meta.news.expand": "Read more",
+    "meta.news.pinned": "Pinned",
+    "meta.news.title": "News and updates",
+    "meta.news.unread": "Unread",
+    "meta.pass.empty": "No active season",
+    "meta.pass.free": "Free",
+    "meta.pass.freeRewards": "Free rewards",
+    "meta.pass.kicker": "{season} · {refresh}",
+    "meta.pass.level": "Level {level}",
+    "meta.pass.premium": "Premium",
+    "meta.pass.premiumRewards": "Premium rewards",
+    "meta.pass.progress": "Next tier",
+    "meta.pass.reward": "Tier {tier}, {name}, {state}",
+    "meta.pass.rewards": "Season rewards",
+    "meta.pass.tier": "Tier {tier}",
+    "meta.pass.title": "Season pass",
+    "meta.rarity.common": "Common",
+    "meta.rarity.epic": "Epic",
+    "meta.rarity.legendary": "Legendary",
+    "meta.rarity.mythic": "Mythic",
+    "meta.rarity.rare": "Rare",
+    "meta.rarity.uncommon": "Uncommon",
+    "meta.reveal.empty": "No rewards this time",
+    "meta.reveal.open": "Open rewards",
+    "meta.reveal.revealing": "Revealing rewards…",
+    "meta.reveal.reward": "{name}, {rarity}",
+    "meta.reveal.skip": "Skip reveal",
+    "meta.reveal.title": "Rewards"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -1,6 +1,6 @@
 import {For, Icon, Input, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import "./general.en.ogt";
+import "./general.en.strings.ts";
 
 export interface ChatProps {
   /** The channels, keyed rows of { id, label, unread }: unread the count the game keeps, 0 hides its badge. Empty shows no tab row. */

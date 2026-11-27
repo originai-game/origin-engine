@@ -7,7 +7,7 @@ pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
     let Ok(project) = og_cook::cook::source_project::Project::open(&p.root) else {
         return;
     };
-    let Some(lang) = project.input.create.and_then(|c| c.lang) else {
+    let Some(lang) = project.input.create.as_ref().and_then(|c| c.lang.as_ref()) else {
         return;
     };
     let mut missing: Vec<_> = lang
@@ -75,25 +75,28 @@ pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
                             .filter_map(|l| l.as_str().map(og_i18n::locale::canonical)),
                     );
                 }
-            } else if ty.is_file()
-                && path.extension().is_some_and(|e| e == "ogt")
-                && let Some(table) = std::fs::read_to_string(path)
-                    .ok()
-                    .and_then(|text| og_i18n::StringTable::parse(&text).ok())
-                    .filter(|t| {
-                        !t.fonts.is_empty() && t.fonts.iter().all(|f| assets.join(f).is_file())
-                    })
-            {
-                available.push(table.locale);
             }
         }
+    }
+    if let Ok(index) = og_cook::cook::source_index::Index::open(&p.root, &project)
+        && let Ok(tables) = og_cook::cook::strings_extract::read_tables(&p.root, &project, &index)
+        && let Ok(bindings) = og_cook::cook::project_assets(&p.root, &project)
+    {
+        available.extend(tables.into_iter().filter_map(|(_, table)| {
+            (!table.fonts.is_empty()
+                && table
+                    .fonts
+                    .iter()
+                    .all(|font| bindings.get(font).is_some_and(|o| o.kind == "font")))
+            .then_some(table.locale)
+        }));
     }
     missing.retain(|tag| og_i18n::negotiate(&[tag], &available).is_none());
     if missing.is_empty() {
         return;
     }
     let message = format!(
-        "{}: no font pack and no locale table with a font chain is installed for it. Install the pack with `og font add <pack>` (`og font list` names them; og.i18n chains an installed pack with no code), or declare a table's own fonts in its fonts line. Verify rendered glyphs.",
+        "{}: no font pack and no locale table with a font chain is installed for it. Install the pack with `og font add <pack>` (`og font list` names them; og.i18n chains an installed pack with no code), or declare a table's canonical font refs in its fonts array. Verify rendered glyphs.",
         missing.join(", ")
     );
     let text = if json {

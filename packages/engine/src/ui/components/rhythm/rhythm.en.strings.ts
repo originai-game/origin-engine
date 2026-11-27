@@ -1,81 +1,86 @@
-type strings
-version 1
----
-locale "en"
-string "rhythm.songs.title" "Songs"
-string "rhythm.songs.list" "Song list"
-string "rhythm.songs.empty" "No songs yet"
-string "rhythm.songs.loading" "Loading songs"
-string "rhythm.songs.error" "The songs could not be loaded"
-string "rhythm.songs.retry" "Retry"
-string "rhythm.songs.none" "Choose a song"
-string "rhythm.songs.bpm" "{bpm} BPM"
-string "rhythm.songs.bpmLabel" "BPM"
-string "rhythm.songs.lengthLabel" "Length"
-string "rhythm.songs.fresh" "New"
-string "rhythm.songs.cleared" "Cleared"
-string "rhythm.songs.locked" "Locked"
-string "rhythm.songs.selected" "Selected"
-string "rhythm.songs.preview" "Preview"
-string "rhythm.songs.previewing" "Previewing"
-string "rhythm.difficulty.title" "Difficulty"
-string "rhythm.difficulty.list" "Charts"
-string "rhythm.difficulty.empty" "No charts for this song"
-string "rhythm.difficulty.rating" "Lv {rating, number}"
-string "rhythm.difficulty.ratingName" "{label}, level {rating, number}"
-string "rhythm.difficulty.unplayed" "Not played"
-string "rhythm.difficulty.locked" "Locked"
-string "rhythm.difficulty.selected" "Selected"
-string "rhythm.judge.name" "Judgement"
-string "rhythm.judge.perfect" "Perfect"
-string "rhythm.judge.great" "Great"
-string "rhythm.judge.good" "Good"
-string "rhythm.judge.bad" "Bad"
-string "rhythm.judge.miss" "Miss"
-string "rhythm.judge.early" "Early"
-string "rhythm.judge.late" "Late"
-string "rhythm.judge.combo" "Combo"
-string "rhythm.judge.broken" "Combo broken"
-string "rhythm.judge.fullCombo" "Full combo"
-string "rhythm.judge.allPerfect" "All perfect"
-string "rhythm.hud.name" "Run status"
-string "rhythm.hud.score" "Score"
-string "rhythm.hud.accuracy" "Accuracy"
-string "rhythm.hud.progress" "Song"
-string "rhythm.hud.best" "Best"
-string "rhythm.hud.ahead" "+{gap, number}"
-string "rhythm.hud.behind" "−{gap, number}"
-string "rhythm.hud.accuracyName" "Accuracy {accuracy}"
-string "rhythm.hud.gradeName" "On course for {grade}"
-string "rhythm.gauge.life" "Life"
-string "rhythm.gauge.fever" "Fever"
-string "rhythm.gauge.danger" "Danger"
-string "rhythm.gauge.failed" "Failed"
-string "rhythm.gauge.ready" "Ready"
-string "rhythm.plate.name" "Now playing: {title}"
-string "rhythm.plate.byline" "{artist} · {bpm} BPM"
-string "rhythm.plate.chart" "{chart} {rating, number}"
-string "rhythm.chain.name" "Chain {multiplier}"
-string "rhythm.chain.label" "Chain"
-string "rhythm.chain.steps" "Steps to the next multiplier"
-string "rhythm.progress.time" "{elapsed} of {length}"
-string "rhythm.progress.length" "/ {length}"
-string "rhythm.timing.name" "Timing"
-string "rhythm.timing.label" "Timing"
-string "rhythm.lanes.name" "Lane keys"
-string "rhythm.lanes.held" "{key}, held"
-string "rhythm.results.title" "Results"
-string "rhythm.results.gradeName" "Grade {grade}"
-string "rhythm.results.cleared" "Cleared"
-string "rhythm.results.failed" "Failed"
-string "rhythm.results.score" "Score"
-string "rhythm.results.previous" "Best {score, number}"
-string "rhythm.results.newBest" "New best"
-string "rhythm.results.maxCombo" "Max combo"
-string "rhythm.results.accuracy" "Accuracy"
-string "rhythm.results.fullCombo" "Full combo"
-string "rhythm.results.allPerfect" "All perfect"
-string "rhythm.results.counts" "Judgements"
-string "rhythm.results.empty" "No notes judged"
-string "rhythm.results.retry" "Retry"
-string "rhythm.results.next" "Next"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rhythm.chain.label": "Chain",
+    "rhythm.chain.name": "Chain {multiplier}",
+    "rhythm.chain.steps": "Steps to the next multiplier",
+    "rhythm.difficulty.empty": "No charts for this song",
+    "rhythm.difficulty.list": "Charts",
+    "rhythm.difficulty.locked": "Locked",
+    "rhythm.difficulty.rating": "Lv {rating, number}",
+    "rhythm.difficulty.ratingName": "{label}, level {rating, number}",
+    "rhythm.difficulty.selected": "Selected",
+    "rhythm.difficulty.title": "Difficulty",
+    "rhythm.difficulty.unplayed": "Not played",
+    "rhythm.gauge.danger": "Danger",
+    "rhythm.gauge.failed": "Failed",
+    "rhythm.gauge.fever": "Fever",
+    "rhythm.gauge.life": "Life",
+    "rhythm.gauge.ready": "Ready",
+    "rhythm.hud.accuracy": "Accuracy",
+    "rhythm.hud.accuracyName": "Accuracy {accuracy}",
+    "rhythm.hud.ahead": "+{gap, number}",
+    "rhythm.hud.behind": "−{gap, number}",
+    "rhythm.hud.best": "Best",
+    "rhythm.hud.gradeName": "On course for {grade}",
+    "rhythm.hud.name": "Run status",
+    "rhythm.hud.progress": "Song",
+    "rhythm.hud.score": "Score",
+    "rhythm.judge.allPerfect": "All perfect",
+    "rhythm.judge.bad": "Bad",
+    "rhythm.judge.broken": "Combo broken",
+    "rhythm.judge.combo": "Combo",
+    "rhythm.judge.early": "Early",
+    "rhythm.judge.fullCombo": "Full combo",
+    "rhythm.judge.good": "Good",
+    "rhythm.judge.great": "Great",
+    "rhythm.judge.late": "Late",
+    "rhythm.judge.miss": "Miss",
+    "rhythm.judge.name": "Judgement",
+    "rhythm.judge.perfect": "Perfect",
+    "rhythm.lanes.held": "{key}, held",
+    "rhythm.lanes.name": "Lane keys",
+    "rhythm.plate.byline": "{artist} · {bpm} BPM",
+    "rhythm.plate.chart": "{chart} {rating, number}",
+    "rhythm.plate.name": "Now playing: {title}",
+    "rhythm.progress.length": "/ {length}",
+    "rhythm.progress.time": "{elapsed} of {length}",
+    "rhythm.results.accuracy": "Accuracy",
+    "rhythm.results.allPerfect": "All perfect",
+    "rhythm.results.cleared": "Cleared",
+    "rhythm.results.counts": "Judgements",
+    "rhythm.results.empty": "No notes judged",
+    "rhythm.results.failed": "Failed",
+    "rhythm.results.fullCombo": "Full combo",
+    "rhythm.results.gradeName": "Grade {grade}",
+    "rhythm.results.maxCombo": "Max combo",
+    "rhythm.results.newBest": "New best",
+    "rhythm.results.next": "Next",
+    "rhythm.results.previous": "Best {score, number}",
+    "rhythm.results.retry": "Retry",
+    "rhythm.results.score": "Score",
+    "rhythm.results.title": "Results",
+    "rhythm.songs.bpm": "{bpm} BPM",
+    "rhythm.songs.bpmLabel": "BPM",
+    "rhythm.songs.cleared": "Cleared",
+    "rhythm.songs.empty": "No songs yet",
+    "rhythm.songs.error": "The songs could not be loaded",
+    "rhythm.songs.fresh": "New",
+    "rhythm.songs.lengthLabel": "Length",
+    "rhythm.songs.list": "Song list",
+    "rhythm.songs.loading": "Loading songs",
+    "rhythm.songs.locked": "Locked",
+    "rhythm.songs.none": "Choose a song",
+    "rhythm.songs.preview": "Preview",
+    "rhythm.songs.previewing": "Previewing",
+    "rhythm.songs.retry": "Retry",
+    "rhythm.songs.selected": "Selected",
+    "rhythm.songs.title": "Songs",
+    "rhythm.timing.label": "Timing",
+    "rhythm.timing.name": "Timing"
+  },
+  "fonts": [],
+  "locale": "en"
+});

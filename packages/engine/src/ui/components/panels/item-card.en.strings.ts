@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.card.current" "Equipped"
-string "rpg.card.stat" "Stat"
-string "rpg.card.this" "This"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.card.current": "Equipped",
+    "rpg.card.stat": "Stat",
+    "rpg.card.this": "This"
+  },
+  "fonts": [],
+  "locale": "en"
+});

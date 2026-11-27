@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "component.data-grid.empty" "Nothing here yet"
-string "component.data-grid.loading" "Loading"
-string "component.data-grid.retry" "Retry"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.data-grid.empty": "Nothing here yet",
+    "component.data-grid.loading": "Loading",
+    "component.data-grid.retry": "Retry"
+  },
+  "fonts": [],
+  "locale": "en"
+});

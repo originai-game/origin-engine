@@ -1,15 +1,20 @@
-type strings
-version 1
----
-locale "en"
-string "screen.common.save" "Save"
-string "screen.creator-tools.catalogue" "Catalogue"
-string "screen.creator-tools.hierarchy" "Hierarchy"
-string "screen.creator-tools.inspector" "Inspector"
-string "screen.creator-tools.move" "Move"
-string "screen.creator-tools.play" "Play"
-string "screen.creator-tools.redo" "Redo"
-string "screen.creator-tools.rotate" "Rotate"
-string "screen.creator-tools.scale" "Scale"
-string "screen.creator-tools.select" "Select"
-string "screen.creator-tools.undo" "Undo"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.save": "Save",
+    "screen.creator-tools.catalogue": "Catalogue",
+    "screen.creator-tools.hierarchy": "Hierarchy",
+    "screen.creator-tools.inspector": "Inspector",
+    "screen.creator-tools.move": "Move",
+    "screen.creator-tools.play": "Play",
+    "screen.creator-tools.redo": "Redo",
+    "screen.creator-tools.rotate": "Rotate",
+    "screen.creator-tools.scale": "Scale",
+    "screen.creator-tools.select": "Select",
+    "screen.creator-tools.undo": "Undo"
+  },
+  "fonts": [],
+  "locale": "en"
+});

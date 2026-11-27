@@ -1,5 +1,5 @@
 import { Show, Text, View, formatDuration, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./hud-timer.en.ogt";
+import "./hud-timer.en.strings.ts";
 
 export interface HudTimerProps {
   /** Seconds on the clock. */

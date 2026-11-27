@@ -12834,7 +12834,7 @@
     },
     {
       "name": "i18n",
-      "doc": "Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.\nFormatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.\nSee `localization`.",
+      "doc": "Localization: one file.strings declaration per locale under content/, messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its fallback table, then the base. It also sets the UI's font chain and direction.\nFormatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.\nSee `localization`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -12862,7 +12862,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The table, such as `strings/ja.ogt`."
+              "doc": "The table's canonical output ID, such as `base/strings/ja`."
             }
           ],
           "returns": "Result<LocaleInfo>",

@@ -1,15 +1,20 @@
-type strings
-version 1
----
-locale "en"
-string "ready.title" "Ready check"
-string "ready.players" "Players"
-string "ready.accepted" "Ready"
-string "ready.declined" "Declined"
-string "ready.offline" "Disconnected"
-string "ready.pending" "Waiting"
-string "ready.closed" "Ready check ended"
-string "ready.loading" "Loading players…"
-string "ready.empty" "No players yet"
-string "ready.accept" "Ready"
-string "ready.decline" "Decline"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "ready.accept": "Ready",
+    "ready.accepted": "Ready",
+    "ready.closed": "Ready check ended",
+    "ready.decline": "Decline",
+    "ready.declined": "Declined",
+    "ready.empty": "No players yet",
+    "ready.loading": "Loading players…",
+    "ready.offline": "Disconnected",
+    "ready.pending": "Waiting",
+    "ready.players": "Players",
+    "ready.title": "Ready check"
+  },
+  "fonts": [],
+  "locale": "en"
+});

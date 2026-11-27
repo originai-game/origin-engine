@@ -1,6 +1,6 @@
 import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
-import "./pips.en.ogt";
+import "./pips.en.strings.ts";
 
 export interface PipsProps {
   /** The resource's name; empty uses Resource. */

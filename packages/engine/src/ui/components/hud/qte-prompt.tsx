@@ -1,5 +1,5 @@
 import { Show, Text, View, createSignal, packClass, type UiEvent, t } from "@origingame/engine/ui";
-import "./qte-prompt.en.ogt";
+import "./qte-prompt.en.strings.ts";
 
 export interface QtePromptProps {
   /** The action to attempt; empty uses Respond. */

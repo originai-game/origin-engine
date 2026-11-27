@@ -28,7 +28,8 @@ The block's `form` is also the game's profile:
 cook's 2D conformance); `2.5d` and `3d` are 3D (`profileOf(form)`). Each requested language installs its
 script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
 §3.4), which og.i18n chains with no generated code. Creation writes and
-imports each requested language's shell table, seeded from available engine
+imports each requested language's typed `content/strings/shell.<locale>.ts`
+declaration, seeded from available engine
 translations (otherwise English for the author to translate), and selects
 the first requested language. Settings apply immediately and persist through
 og.platform; progress uses the `progress` slot. Start initializes gameplay

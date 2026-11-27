@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingResultsProps {
   /** The page's heading (the event's name); empty takes the kit's (Results). */

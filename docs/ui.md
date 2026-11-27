@@ -68,7 +68,7 @@ selector cascade.
   `{ world, type, x, y, key, value }`. `onAction={{ confirm, back }}`
   handles named input actions where focus is. Payload meanings are in
   `HostProps`, not browser DOM events.
-- **Strings:** import companion `.ogt` tables (`import "./screen.en.ogt"`)
+- **Strings:** import typed locale declarations (`import "../../content/ui/screen.en.ts"`)
   and use `t(key, params)`, `formatNumber`, `formatCompact`,
   `formatDuration`, `formatCurrency` inside the mount. Never concatenate
   translated fragments.

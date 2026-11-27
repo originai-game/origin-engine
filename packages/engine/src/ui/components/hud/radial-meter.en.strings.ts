@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "en"
-string "component.radial-meter.stamina" "Stamina"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.radial-meter.stamina": "Stamina"
+  },
+  "fonts": [],
+  "locale": "en"
+});

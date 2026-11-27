@@ -1,6 +1,6 @@
 import { For, Icon, Scroll, Show, Text, View, formatCompact, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Tab, Tabs } from "../../controls/tabs";
-import "./backpack.en.ogt";
+import "./backpack.en.strings.ts";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;

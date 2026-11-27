@@ -1,37 +1,42 @@
-type strings
-version 1
----
-locale "en"
-string "rpg.economy.loading" "Loading…"
-string "rpg.economy.busy" "Working…"
-string "rpg.economy.close" "Close"
-string "rpg.economy.quantity" "Quantity: {quantity}"
-string "rpg.economy.more" "Increase quantity"
-string "rpg.economy.less" "Decrease quantity"
-string "rpg.economy.minus" "−"
-string "rpg.economy.plus" "+"
-string "rpg.economy.unavailable" "Unavailable"
-string "rpg.craft.title" "Crafting"
-string "rpg.craft.empty" "No recipes available."
-string "rpg.craft.choose" "Select a recipe to see its requirements."
-string "rpg.craft.ingredients" "Ingredients"
-string "rpg.craft.make" "Craft"
-string "rpg.craft.missing" "Missing ingredients"
-string "rpg.trade.title" "Trade"
-string "rpg.trade.buy" "Buy"
-string "rpg.trade.sell" "Sell"
-string "rpg.trade.toBuy" "Browse goods to buy"
-string "rpg.trade.toSell" "Browse items to sell"
-string "rpg.trade.empty" "No items to trade."
-string "rpg.trade.choose" "Select an item to review its price."
-string "rpg.trade.price" "Total: {price}"
-string "rpg.loot.title" "Loot"
-string "rpg.loot.take" "Take"
-string "rpg.loot.takeItem" "Take {name}"
-string "rpg.loot.all" "Take all"
-string "rpg.loot.empty" "Nothing left to collect."
-string "rpg.loot.count" "×{count}"
-string "rpg.loot.kicker" "Loot · {count} items"
-string "rpg.trade.kicker" "Merchant"
-string "rpg.trade.total" "Total"
-string "rpg.trade.was" "Was {price}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "rpg.craft.choose": "Select a recipe to see its requirements.",
+    "rpg.craft.empty": "No recipes available.",
+    "rpg.craft.ingredients": "Ingredients",
+    "rpg.craft.make": "Craft",
+    "rpg.craft.missing": "Missing ingredients",
+    "rpg.craft.title": "Crafting",
+    "rpg.economy.busy": "Working…",
+    "rpg.economy.close": "Close",
+    "rpg.economy.less": "Decrease quantity",
+    "rpg.economy.loading": "Loading…",
+    "rpg.economy.minus": "−",
+    "rpg.economy.more": "Increase quantity",
+    "rpg.economy.plus": "+",
+    "rpg.economy.quantity": "Quantity: {quantity}",
+    "rpg.economy.unavailable": "Unavailable",
+    "rpg.loot.all": "Take all",
+    "rpg.loot.count": "×{count}",
+    "rpg.loot.empty": "Nothing left to collect.",
+    "rpg.loot.kicker": "Loot · {count} items",
+    "rpg.loot.take": "Take",
+    "rpg.loot.takeItem": "Take {name}",
+    "rpg.loot.title": "Loot",
+    "rpg.trade.buy": "Buy",
+    "rpg.trade.choose": "Select an item to review its price.",
+    "rpg.trade.empty": "No items to trade.",
+    "rpg.trade.kicker": "Merchant",
+    "rpg.trade.price": "Total: {price}",
+    "rpg.trade.sell": "Sell",
+    "rpg.trade.title": "Trade",
+    "rpg.trade.toBuy": "Browse goods to buy",
+    "rpg.trade.toSell": "Browse items to sell",
+    "rpg.trade.total": "Total",
+    "rpg.trade.was": "Was {price}"
+  },
+  "fonts": [],
+  "locale": "en"
+});

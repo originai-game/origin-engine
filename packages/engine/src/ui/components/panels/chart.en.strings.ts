@@ -1,6 +1,11 @@
-type strings
-version 1
----
-locale "en"
-string "component.chart.name" "Chart"
-string "component.chart.empty" "No data yet."
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.chart.empty": "No data yet.",
+    "component.chart.name": "Chart"
+  },
+  "fonts": [],
+  "locale": "en"
+});

@@ -19,8 +19,8 @@ pub struct CodeGraph {
     /// `src/ui/`), which draws with the default face and the default pack's
     /// images.
     pub tsx: bool,
-    /// The engine `.ogt` files the bundle holds, by the id the bundle names
-    /// them by (`@ui/components/hud/bar.en.ogt`), with the file each is
+    /// The engine declarations the bundle holds, by the id the bundle names
+    /// them by (`@ui/components/hud/bar.en.strings.ts`), with the file each is
     /// read from: its components' string tables, and the emitters they
     /// draw (`@ui/components/hud/fx/sparks.ogt`, a `type particles`).
     pub tables: BTreeMap<String, PathBuf>,
@@ -80,7 +80,9 @@ impl CodeGraph {
         for file in reached.files {
             if let Ok(rel) = file.strip_prefix(&ui) {
                 graph.tsx = true;
-                if rel.extension().is_some_and(|e| e == "ogt") {
+                if rel.extension().is_some_and(|e| e == "ogt")
+                    || rel.to_string_lossy().ends_with(".strings.ts")
+                {
                     let id = format!("{TABLE_PREFIX}{}", rel.to_string_lossy().replace('\\', "/"));
                     graph.tables.insert(id, file);
                 } else if rel.extension().is_some_and(|e| e == "tsx" || e == "ts")

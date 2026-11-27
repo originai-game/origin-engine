@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingStandingsProps {
   /** The tower's name for a reader; empty takes the kit's (Standings). Not drawn. */

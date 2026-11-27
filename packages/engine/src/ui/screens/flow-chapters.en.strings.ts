@@ -1,7 +1,12 @@
-type strings
-version 1
----
-locale "en"
-string "screen.common.back" "Back"
-string "screen.flow-chapters.title" "Chapters"
-string "screen.flow-chapters.locked" "Not reached yet"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "screen.common.back": "Back",
+    "screen.flow-chapters.locked": "Not reached yet",
+    "screen.flow-chapters.title": "Chapters"
+  },
+  "fonts": [],
+  "locale": "en"
+});

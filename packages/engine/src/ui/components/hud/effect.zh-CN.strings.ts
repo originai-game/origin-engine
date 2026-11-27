@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "hud.effect.label" "{name}，{label}"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "hud.effect.label": "{name}，{label}"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

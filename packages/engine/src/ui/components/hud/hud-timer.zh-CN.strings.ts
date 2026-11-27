@@ -1,5 +1,10 @@
-type strings
-version 1
----
-locale "zh-CN"
-string "component.hud-timer.name" "计时器"
+import { file } from '@origingame/engine/author';
+export default file.strings({
+  "base": false,
+  "direction": "ltr",
+  "entries": {
+    "component.hud-timer.name": "计时器"
+  },
+  "fonts": [],
+  "locale": "zh-CN"
+});

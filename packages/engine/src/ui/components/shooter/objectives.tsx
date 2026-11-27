@@ -1,5 +1,5 @@
 import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
-import "./shooter.en.ogt";
+import "./shooter.en.strings.ts";
 
 export interface ShooterGoal {
   id: string;

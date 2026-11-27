@@ -1,6 +1,6 @@
 import { For, Show, View, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "./world.en.strings.ts";
 
 export interface OverheadBar {
   id: string;

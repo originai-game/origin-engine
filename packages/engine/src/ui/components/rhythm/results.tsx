@@ -1,5 +1,5 @@
 import { For, Scroll, Show, Text, View, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
-import "./rhythm.en.ogt";
+import "./rhythm.en.strings.ts";
 
 export interface RhythmResultsProps {
   /** The song's title as the heading; empty takes the kit's (Results). */

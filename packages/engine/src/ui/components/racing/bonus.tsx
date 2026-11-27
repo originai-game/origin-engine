@@ -1,5 +1,5 @@
 import { Show, Text, View, t, packClass } from "@origingame/engine/ui";
-import "./racing.en.ogt";
+import "./racing.en.strings.ts";
 
 export interface RacingBonusProps {
   /** A meter's name as the game words it (Slipstream, Drafting), over a bar in the HUD's accent; empty hides the meter. */
