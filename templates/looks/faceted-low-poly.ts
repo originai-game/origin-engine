@@ -4,7 +4,7 @@ export default file.look({
   // Visible facets, broad colour fields, a soft vignette and AgX.
   name: "Faceted low-poly",
   mood: "soft",
-  ui: "minimal",
+  ui: "@themes/minimal",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: a soft teal over warm stone.
   uiSeeds: {

@@ -65,16 +65,16 @@ export function pages(): Page[] {
   return out;
 }
 
-/** The engine's themes: each templates/themes directory with a theme.json (a look's `ui` finds one before a style). */
+/** The engine's checked theme declarations. */
 export function themes(): string[] {
   const dir = join(repo, "templates", "themes");
-  return readdirSync(dir).filter((d) => existsSync(join(dir, d, "theme.json"))).sort();
+  return readdirSync(dir).filter((d) => existsSync(join(dir, d, "theme.ts"))).sort();
 }
 
-/** The packs a checkout holds: `default`, each engine theme and each templates/styles directory with a pack.json. */
+/** The default layer and explicit built-in packs. */
 export function packs(): string[] {
   const dir = join(repo, "templates", "styles");
-  return ["default", ...new Set([...themes(), ...readdirSync(dir).filter((d) => existsSync(join(dir, d, "pack.json"))).sort()])];
+  return ["default", ...new Set([...themes(), ...readdirSync(dir).filter((d) => existsSync(join(dir, d, "pack.ts"))).sort()])];
 }
 
 /** Every key the built-in components' string tables hold. */
@@ -102,7 +102,7 @@ export default defineProject({id:'ui-gallery',entry:'src/main.tsx',create:{form:
 
 const LOOK = (pack: string) => `import { file } from '@origingame/engine/author';
 // Names the pack or theme so the cook bundles it; the gallery switches packs itself.
-export default file.look(${JSON.stringify({name: `gallery ${pack}`, ui: pack})});
+export default file.look(${JSON.stringify({name: `gallery ${pack}`, ...(pack === "default" ? {} : {ui: `${themes().includes(pack) ? '@themes' : '@styles'}/${pack}`})})});
 `;
 
 /**

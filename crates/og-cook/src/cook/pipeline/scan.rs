@@ -56,6 +56,7 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         1,
         &CodeGraph::default(),
         &BTreeMap::new(),
+        &[],
     )
 }
 
@@ -94,6 +95,7 @@ pub(crate) fn scan_with(
     threads: usize,
     code: &CodeGraph,
     looks: &BTreeMap<String, crate::look::LookFile>,
+    packs: &[Source],
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     if assets_dir.exists() {
@@ -133,69 +135,15 @@ pub(crate) fn scan_with(
     // `@styles/pixel/`), once each, read from the cook itself.
     let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
     for look in looks.values() {
-        for (id, bytes) in look::builtin_files(look, assets_dir) {
+        for (id, bytes) in look::builtin_files(look) {
             builtins.insert(id.to_string(), bytes);
         }
     }
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
-    // A game's theme recipe (`styles/<name>/theme.json`) cooks as the
-    // pack.json it compiles to, with its drawn art, in its place.
-    let recipes: Vec<(String, PathBuf)> = files
-        .iter()
-        .filter(|(rel, _)| crate::cook::ui_themes::is_recipe(rel))
-        .cloned()
-        .collect();
-    files.retain(|(rel, _)| !crate::cook::ui_themes::is_recipe(rel));
-    for (rel, path) in recipes {
-        let dir = rel.trim_end_matches(crate::cook::ui_themes::RECIPE);
-        let pack = format!("{dir}pack.json");
-        if files.iter().any(|(r, _)| *r == pack) {
-            early_errors.push((
-                rel.clone(),
-                "theme",
-                format!("{dir} has a theme.json and a pack.json: a style is one or the other (a theme's own pack entries go in its `pack` key)"),
-            ));
-            continue;
-        }
-        let made = read_file(&path)
-            .map_err(|e| e.to_string())
-            .and_then(|b| String::from_utf8(b).map_err(|_| "not UTF-8".to_owned()))
-            .and_then(|text| {
-                crate::cook::ui_themes::files(
-                    &text,
-                    &rel,
-                    &crate::cook::ui_themes::cache_dir(assets_dir),
-                )
-            });
-        match made {
-            Ok(made) => {
-                for (file, bytes) in made {
-                    builtins.insert(format!("{dir}{file}"), intern(bytes));
-                }
-            }
-            Err(e) => early_errors.push((rel.clone(), "theme", e)),
-        }
-    }
-    // The packs the recipes made name built-in assets as a game's pack does.
-    let made: Vec<(String, &'static [u8])> = builtins
-        .iter()
-        .filter(|(id, _)| crate::cook::ui_packs::is_pack(id))
-        .map(|(id, b)| (id.clone(), *b))
-        .collect();
-    for (id, bytes) in made {
-        for (f, b) in look::pack_files(&id, &String::from_utf8_lossy(bytes)) {
-            builtins.insert(f.to_string(), b);
-        }
-    }
-    for (rel, path) in &files {
-        // A game's own pack.json can name them.
-        if crate::cook::ui_packs::is_pack(rel)
-            && let Ok(text) =
-                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-        {
-            for (id, bytes) in look::pack_files(rel, &text) {
-                builtins.insert(id.to_string(), bytes);
-            }
+    for source in packs.iter().filter(|s| s.kind == &ui_packs::PACK) {
+        let layer = ui_packs::pack_layer(source)?;
+        for (id, bytes) in look::pack_files(&layer) {
+            builtins.insert(id.to_string(), bytes);
         }
     }
     let mut warnings: Vec<String> = Vec::new();
@@ -242,18 +190,11 @@ pub(crate) fn scan_with(
             .collect();
         // The packs the bundle holds (the game's own, a look's built-in
         // one): the classes their variants write, and the images they have.
-        let layers: Vec<og_ui_next::pack::Layer> = files
+        let layers: Vec<og_ui_next::pack::Layer> = packs
             .iter()
-            .filter(|(rel, _)| crate::cook::ui_packs::is_pack(rel))
-            .filter_map(|(_, path)| read_file(path).ok())
-            .chain(
-                builtins
-                    .iter()
-                    .filter(|(id, _)| crate::cook::ui_packs::is_pack(id))
-                    .map(|(_, b)| b.to_vec()),
-            )
-            .filter_map(|b| og_ui_next::pack::Layer::parse(&String::from_utf8(b).ok()?).ok())
-            .collect();
+            .filter(|s| s.kind == &ui_packs::PACK)
+            .map(ui_packs::pack_layer)
+            .collect::<Result<_, _>>()?;
         // The default pack's own slots too: a component that names a slot
         // (`packClass("Ring", "fill")`) draws the shapes its default
         // dressing names, which its code never writes.
@@ -475,7 +416,6 @@ pub(crate) fn scan_with(
                     kind
                 }
             }
-            (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
             (None, "svelte") => {
                 early_errors.push((rel.clone(), "document", ".svelte documents are removed: write the screen as a TSX component and mount it with mount(world, Screen, props, { layer }) from @origingame/engine/ui".into()));
                 continue;
@@ -497,7 +437,7 @@ pub(crate) fn scan_with(
                         continue;
                     }
                     Ok(doc) if doc.ty == "style" => {
-                        early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory with a pack.json and load its directory with og.load.style".into()));
+                        early_errors.push((rel.clone(), "style", "style.ogt is removed; export file.pack or file.theme from content/**/*.ts and load its canonical ID with og.load.style".into()));
                         continue;
                     }
                     Ok(doc) if super::author::KINDS.iter().any(|(name, _)| *name == doc.ty) => {

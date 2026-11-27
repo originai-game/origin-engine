@@ -49,6 +49,8 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("quest", &story::QUEST),
     ("materials", &district::MATERIALS),
     ("look", &look::LOOK),
+    ("pack", &ui_packs::PACK),
+    ("theme", &ui_packs::PACK),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -90,7 +92,7 @@ fn catalogue(
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let mut bindings = BTreeMap::new();
     for source in sources {
-        if look::builtin(&source.rel).is_some() {
+        if source.rel.starts_with('@') {
             graph.insert_engine_asset(&source.rel, source.kind.name);
         }
     }
@@ -480,10 +482,10 @@ pub(crate) fn sources(
         let bytes = content.data().as_bytes().to_vec();
         if matches!(
             entry.factory.as_str(),
-            "model" | "model-program" | "materials" | "look"
+            "model" | "model-program" | "materials" | "look" | "pack" | "theme"
         ) {
             let prefix = format!("{}#", entry.id);
-            let outputs = if entry.factory == "materials" {
+            let outputs = if matches!(entry.factory.as_str(), "materials" | "theme") {
                 sources
                     .iter()
                     .filter_map(|s| {
@@ -730,6 +732,12 @@ pub(crate) fn sources(
     table::prepare(sources, &graph, &packed, &table_sources)?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if source.kind == &ui_packs::PACK {
+            let mut layer = ui_packs::pack_layer(source)?;
+            layer.bind_assets(|id| graph.outputs.get(id).map(|o| o.asset.clone()));
+            source.bytes = layer.to_bytes().map_err(CookError)?;
+            source.hash = hash_bytes(&source.bytes);
+        }
         if let Some(asset) = &mut source.story {
             asset
                 .map_resources(|kind, id| {

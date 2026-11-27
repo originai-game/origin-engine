@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "High fantasy: planed wood with a bevel, round corners, a classic serif, standard motion, runes on panels (CRPG inventories, tavern boards).",
   "color": { "source": "#c8902e", "accent": "#e3b65a", "neutral": "#7a5233", "variant": "tonal", "scheme": "dark" },
   "material": "wood",
@@ -18,4 +19,4 @@
       "stroke": {"arc": 12}
     }
   }
-}
+});

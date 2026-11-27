@@ -1,4 +1,4 @@
-//! A style pack: one `pack.json` (CONVENTIONS.md §Theme and packs). A
+//! A native style pack (CONVENTIONS.md §Theme and packs). A
 //! pack is a Tailwind theme, the class strings its components' slots
 //! append, and the fonts, icons and sounds it ships. Packs lay over one
 //! another as layers: the engine's default pack (generated from the design
@@ -10,7 +10,7 @@
 //! switching tables, never a cascade.
 
 pub mod design;
-pub mod grammar;
+pub mod input;
 
 /// The default UI face, bundled for games with UI documents and drawn
 /// first wherever no game font or style names a role.
@@ -35,38 +35,7 @@ impl Scheme {
             Scheme::Dark => "dark",
         }
     }
-
-    fn of(name: &str) -> Option<Scheme> {
-        Scheme::ALL.into_iter().find(|s| s.name() == name)
-    }
 }
-
-/// The theme sections a pack may set: NSH's `Theme::from_json` keys.
-pub const THEME_KEYS: [&str; 23] = [
-    "colors",
-    "spacing",
-    "rem",
-    "breakpoints",
-    "container",
-    "fontSize",
-    "fontWeight",
-    "fontFamily",
-    "tracking",
-    "leading",
-    "radius",
-    "shadow",
-    "insetShadow",
-    "dropShadow",
-    "textShadow",
-    "blur",
-    "perspective",
-    "aspect",
-    "ease",
-    "duration",
-    "opacity",
-    "stroke",
-    "scale",
-];
 
 /// The seeds the design palette is derived from (`packages/design/tokens/seed.css`).
 pub const SEEDS: [&str; 9] = [
@@ -375,133 +344,31 @@ pub fn grounds_without_ink(base: &[Layer], layer: &Layer) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::layer::variant_key;
     use super::*;
 
-    /// The slots the engine's TSX components declare (`packClass("C",
-    /// "slot"[, variant])` with literal names; a variant written as an
-    /// expression declares each string literal in it). A declaration that
-    /// is no `Component.slot[.variant]` key (a lowercase component) goes
-    /// to `bad` with its file: no pack could key it.
-    fn declared_slots(
-        dir: &std::path::Path,
-        out: &mut std::collections::BTreeSet<String>,
-        bad: &mut Vec<String>,
-    ) {
-        for entry in std::fs::read_dir(dir).unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            let kind = entry.file_type().unwrap();
-            if kind.is_dir() {
-                declared_slots(&path, out, bad);
-                continue;
-            }
-            if !kind.is_file() || !path.extension().is_some_and(|e| e == "tsx" || e == "ts") {
-                continue;
-            }
-            let text = std::fs::read_to_string(&path).unwrap();
-            for (at, _) in text.match_indices("packClass(") {
-                let args = &text[at + "packClass(".len()..];
-                let mut depth = 0;
-                let end = args
-                    .char_indices()
-                    .find(|&(_, c)| {
-                        depth += match c {
-                            '(' => 1,
-                            ')' => -1,
-                            _ => 0,
-                        };
-                        depth < 0
-                    })
-                    .map_or(args.len(), |(i, _)| i);
-                let args = &args[..end];
-                let mut parts = args.splitn(3, ',').map(str::trim);
-                let literal = |a: Option<&str>| {
-                    a.and_then(|a| a.strip_prefix('"')?.strip_suffix('"'))
-                        .map(str::to_owned)
-                };
-                let (Some(component), Some(slot)) = (literal(parts.next()), literal(parts.next()))
-                else {
-                    continue;
-                };
-                let base = format!("{component}.{slot}");
-                let variants = parts.next().unwrap_or("").split('"').skip(1).step_by(2);
-                for key in
-                    std::iter::once(base.clone()).chain(variants.map(|v| format!("{base}.{v}")))
-                {
-                    if !variant_key(&key) {
-                        bad.push(format!("{}: packClass {key}", path.display()));
-                    }
-                    out.insert(key);
-                }
-            }
-        }
-    }
-
-    /// Every slot an engine component declares is a valid pack key, and
-    /// every slot a shipped pack gives sounds or classes names a slot an
-    /// engine component declares: a key for another name (an og-ui part
-    /// such as `Button.base`) never matches and its sounds never play.
     #[test]
-    fn shipped_packs_key_only_the_slots_components_declare() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let (mut declared, mut bad) = (std::collections::BTreeSet::new(), Vec::new());
-        declared_slots(&root.join("packages/engine/src"), &mut declared, &mut bad);
-        assert!(
-            bad.is_empty(),
-            "slots that are no Component.slot[.variant] key (a PascalCase component, lowercase slot and variant):\n{}",
-            bad.join("\n")
-        );
-        assert!(declared.contains("Button.plate.primary"), "{declared:?}");
-        let mut stray = Vec::new();
-        for entry in std::fs::read_dir(root.join("templates/styles")).unwrap() {
-            let file = entry.unwrap().path().join("pack.json");
-            let Ok(text) = std::fs::read_to_string(&file) else {
-                continue;
-            };
-            let layer = Layer::parse(&text).unwrap();
-            let keys = layer.variants.keys().map(|k| ("variants", k));
-            let keys = keys.chain(
-                layer
-                    .sounds
-                    .keys()
-                    .filter(|k| !k.is_empty())
-                    .map(|k| ("sounds", k)),
-            );
-            let keys = keys.chain(
-                layer
-                    .haptics
-                    .keys()
-                    .filter(|k| !k.is_empty())
-                    .map(|k| ("haptics", k)),
-            );
-            for (what, key) in keys {
-                if !declared.contains(key) {
-                    stray.push(format!("{}: {what}.{key}", file.display()));
-                }
-            }
-        }
-        assert!(
-            stray.is_empty(),
-            "pack keys no component declares (declared: {declared:?}):\n{}",
-            stray.join("\n")
-        );
-    }
-
-    #[test]
-    fn haptics_parse_roundtrip_and_merge() {
-        let a = Layer::parse(
+    fn native_layers_roundtrip_and_merge() {
+        let layer = |s| -> Result<Layer, String> {
+            Layer::from_input(
+                serde_json::from_str::<input::PackInput>(s).map_err(|e| e.to_string())?,
+                Clone::clone,
+            )
+        };
+        let a = layer(
             r#"{ "haptics": { "press": "tick", "Button.plate.danger": { "confirm": "thud", "hover": "none" } } }"#,
         )
         .unwrap();
-        let again = Layer::parse(&a.to_json()).unwrap();
+        let bytes = a.to_bytes().unwrap();
+        let again = Layer::from_bytes(&bytes).unwrap();
         assert_eq!(again.haptics, a.haptics);
-        let b = Layer::parse(r#"{ "haptics": { "press": "tap" } }"#).unwrap();
+        assert!(Layer::from_bytes(&bytes[..bytes.len() - 1]).is_err());
+        assert!(Layer::from_bytes(&[bytes, vec![0]].concat()).is_err());
+        let b = layer(r#"{ "haptics": { "press": "tap" } }"#).unwrap();
         let p = Pack::new(&[Layer::default_pack(), a, b]);
         assert_eq!(p.haptics[""]["press"], "tap");
         assert_eq!(p.haptics["Button.plate.danger"]["confirm"], "thud");
         assert_eq!(p.haptics["Button.plate.danger"]["hover"], "none");
-        assert!(Layer::parse(r#"{ "haptics": { "press": "bogus" } }"#).is_err());
-        assert!(Layer::parse(r#"{ "haptics": { "not_a_slot": { "press": "tap" } } }"#).is_err());
+        assert!(layer(r#"{ "haptics": { "press": "bogus" } }"#).is_err());
+        assert!(layer(r#"{ "haptics": { "not_a_slot": { "press": "tap" } } }"#).is_err());
     }
 }

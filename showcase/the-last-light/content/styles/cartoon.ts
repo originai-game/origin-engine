@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Cartoon: a light panel under a coloured header, a thick clean outline, a gloss band and a 3D lip, round corners, chunky display type, bouncy motion (Brawl Stars, Clash Royale).",
   "color": { "source": "#ff8a3d", "accent": "#2ec4a6", "neutral": "#8a7560", "variant": "vibrant", "scheme": "light" },
   "material": "flat",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 15}
     }
   }
-}
+});

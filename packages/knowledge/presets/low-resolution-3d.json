@@ -96,7 +96,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -226,7 +226,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -331,7 +331,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -457,7 +457,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -580,7 +580,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -704,7 +704,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -831,7 +831,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -952,7 +952,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1073,7 +1073,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1194,7 +1194,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1315,7 +1315,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1436,7 +1436,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1557,7 +1557,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"
@@ -1678,7 +1678,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "neutral": "#262a33",
           "primary": "#c08a3e"

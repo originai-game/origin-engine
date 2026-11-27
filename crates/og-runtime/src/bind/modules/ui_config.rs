@@ -227,9 +227,7 @@ pub fn og_load_style(world: u32, path: String) -> Result<serde_json::Value, Stri
 /// `og.load.style`: the style's load index, its atlas, fonts, icons and
 /// sounds loaded with it (once per path).
 pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_bundle::runtime::asset_id(path)
-        .trim_end_matches('/')
-        .to_string();
+    let id = path.to_string();
     if let Some(i) = eng.assets.borrow().styles.iter().position(|s| s.id == id) {
         return Ok(i);
     }
@@ -240,22 +238,14 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
 }
 
 pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> {
-    if id.ends_with(".ogt") {
-        return Err("style.ogt is removed; og.load.style takes the directory containing the pack's pack.json".into());
-    }
-    // A pack's pack.json names its faces (`fonts`); the families its
-    // text roles take (`theme.fontFamily`) went with the TSX font state.
-    let blob = format!("{id}/pack.json");
-    let text = {
+    let data = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets
-            .blob(&blob)
-            .map_err(|e| format!("{id}: a style pack is a directory with a pack.json: {e}"))?;
+        let (bytes, bundle) = assets.blob(id)?;
         bundle
-            .pack_text(&blob, bytes.bytes())
+            .pack_data(id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
+    let layer = og_ui_next::pack::Layer::from_bytes(&data).map_err(|e| format!("{id}: {e}"))?;
     Ok(LoadedStyle {
         id: id.to_owned(),
         files: layer.fonts,

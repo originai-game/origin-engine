@@ -648,15 +648,15 @@ a compositing effect on a TSX node.
 
 Owner: the looks thread. The theme is NSH's Tailwind theme: Tailwind
 v4.1's defaults extended by `Theme::from_json` once per scheme. What
-extends it is a stack of **packs**, each one `pack.json`, laid in order:
+extends it is a stack of native **pack layers**, laid in order:
 
 1. the engine's default pack, `crates/og-ui-next/default/pack.json`,
    generated from `packages/design/tokens/*.css` by
    `scripts/gen-pack.sh` (never edited by hand; a test
    holds it equal to the generator);
-2. the pack the game's look names (`ui "<name>"`: `assets/styles/<name>/`
-   over `@styles/<name>/`);
-3. the game's own pack, `assets/styles/game/pack.json`, when it has one.
+2. the exact canonical pack ID the game's look names in `ui` (a checked
+   `file.pack` or `file.theme` under content/, or an explicit built-in
+   `@styles/<slug>` / `@themes/<slug>`). No sibling or game directory is guessed.
 
 A later layer replaces an earlier one's entry of the same name: a theme
 entry, a variant, an icon, an event's sound. Fonts add faces.
@@ -812,7 +812,7 @@ There are no document `@keyframes` or Svelte transition directives.
 
 ### Theme recipes
 
-A theme is a recipe (`theme.json`), not a hand-written pack: it picks one
+A theme is a checked `file.theme` recipe, not a hand-written pack: it picks one
 value per dimension (`material`, `shape`, `type`, `motion`, `ornament`,
 `effects`, `sound`, `icons`, `density`, each a file in
 `templates/themes/dimensions/<dimension>/<value>.json`) and a `color`
@@ -857,16 +857,14 @@ is in those files; `og_ui_next::theme` only merges and maps.
   ratio on that art by `og check` (OG9107); a state that paints its own
   fill sets its own shape with it (`data-on:nine-chip-cut`, or
   `data-on:nine-none`), and its `-fg` ink then pairs with that fill.
-- og cook compiles `assets/styles/<name>/theme.json` into that style's
-  `pack.json` and art (drawn by `cook/ui_art.rs`, cached by spec under
-  `.og/ui-art/`); a style has a theme.json or a pack.json, not both. A
-  look's `ui "<name>"` finds the game's style, then an engine theme
-  (`templates/themes/<name>/theme.json`, bundled as `@themes/<name>/`
-  only when named), then a built-in style.
-- `pack`, written as a pack.json, lies over the compiled layer and the
+- og cook compiles checked TS recipes to native Layer fields and actual
+  `<id>#art/<name>` texture outputs (drawn by `cook/ui_art.rs`, cached by spec
+  under `.og/ui-art/`). Both file.theme and file.pack output kind=pack.
+  `look.ui` and `og.load.style` use that final canonical ID without appending
+  a filename. No JSON author parser, runtime text decoder or directory fallback remains.
+- `pack`, written as structured PackInput, lies over the compiled layer and the
   generated art: a hand-drawn image replaces its generated one by name.
-  The layer order is unchanged: the default pack, the look's theme, the
-  game's own.
+  The runtime layers are the default pack and the explicitly selected pack.
 
 ### The default pack's names
 

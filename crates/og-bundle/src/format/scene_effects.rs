@@ -323,16 +323,14 @@ row!(
 );
 
 row!(
-    /// The root of a style pack blob (a pack's `pack.json`,
-    /// og-ui-next's CONVENTIONS.md §Theme and packs).
-    PackMeta, "og.UiPack", 1 {
-        /// Bytes of the pack's JSON in `text`.
-        text_bytes: u32,
+    /// The root of a checked style layer.
+    PackMeta, "og.UiPack", 2 {
+        /// Bytes of the native layer in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The style pack blob: `text` is the pack as og_ui_next::pack writes it
-/// (`Layer::to_json`): checked, its asset paths resolved to asset ids.
+/// Native layer fields; asset references are canonical cooked identities.
 pub struct Pack;
 impl BlobKind for Pack {
     const NAME: &'static str = "og.UiPack";

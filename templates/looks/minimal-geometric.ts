@@ -10,7 +10,7 @@ export default file.look({
   // hue.
   name: "Minimal geometric color",
   mood: "soft",
-  ui: "minimal",
+  ui: "@themes/minimal",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: one clean coral over plain grey.
   uiSeeds: {

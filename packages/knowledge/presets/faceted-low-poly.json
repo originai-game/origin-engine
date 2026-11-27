@@ -51,7 +51,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -132,7 +132,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -212,7 +212,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -289,7 +289,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -363,7 +363,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -423,7 +423,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"
@@ -495,7 +495,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "minimal",
+        "ui": "@themes/minimal",
         "uiSeeds": {
           "neutral": "#8a8577",
           "primary": "#2f9c8a"

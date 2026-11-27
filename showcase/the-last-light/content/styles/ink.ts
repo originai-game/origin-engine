@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Ink on rice paper: a faint wash, a brushed edge, Song type, calm motion, cinnabar accents (wuxia and xianxia games).",
   "color": { "source": "#b8322a", "accent": "#b8322a", "neutral": "#5a5248", "variant": "muted", "scheme": "light" },
   "material": "ink",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 9}
     }
   }
-}
+});

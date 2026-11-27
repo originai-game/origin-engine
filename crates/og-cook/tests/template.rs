@@ -14,6 +14,123 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// One checked theme/pack cook→load path, including canonical cross-module
+/// resources, transitive recipe inputs and native scheme-specific values.
+#[test]
+fn typed_styles_load_native_layers_and_refresh_inherited_inputs() {
+    use og_ui_next::pack::Layer;
+    let root = crate::temp::TempDir::new("typed-styles");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Styles","engine":"0.9.0","look":{"$ogRef":"base/look"}}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'styles',entry:'src/main.ts',dependsOn:['north'],modules:[{id:'north',root:'modules/north'}]});",
+    );
+    write(
+        "content/look.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.look({ui:ref('base/styles/child')});",
+    );
+    write(
+        "modules/north/content/parent.ts",
+        "import {file} from '@origingame/engine/author';import {gap} from '../lib/options.ts';export default file.theme({extends:'@themes/minimal',pack:{theme:{radius:{asym:gap}}}});",
+    );
+    write("modules/north/lib/options.ts", "export const gap=7;");
+    let child = "import {file,ref} from '@origingame/engine/author';export default file.theme({extends:ref('north/parent'),pack:{images:{panel:{src:ref('north/paint'),slice:[1,0,2,0],width:[3,4,5,6]}},theme:{colors:{choice:{light:'#123456',dark:'#abcdef'}}}}});";
+    write("content/styles/child.ts", child);
+    write(
+        "content/styles/plain.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.pack({icons:{coin:ref('north/paint')},haptics:{press:'tap','Button.plate':{hover:'none'}},sounds:{press:{volume:0}},variants:{'Panel.frame':'bg-glass text-fg'}});",
+    );
+    write(
+        "modules/north/content/paint.ts",
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'texture',source:'assets/paint.png'});",
+    );
+    std::fs::create_dir_all(root.join("modules/north/assets")).unwrap();
+    image::RgbaImage::from_pixel(3, 7, image::Rgba([31, 57, 109, 255]))
+        .save(root.join("modules/north/assets/paint.png"))
+        .unwrap();
+    let load = || {
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let look = bundle
+            .manifest()
+            .assets
+            .iter()
+            .find(|a| a.outputs.iter().any(|o| o.id == "base/look"))
+            .unwrap();
+        assert_eq!(look.dependencies, ["base/styles/child"]);
+        let bytes = bundle.read("base/styles/child").unwrap();
+        let data = bundle.pack_data("base/styles/child", &bytes).unwrap();
+        let layer = Layer::from_bytes(&data).unwrap();
+        assert_eq!(layer.images[0]["panel"].src, "north/paint");
+        assert_eq!(layer.images[1]["panel"].slice, [1., 0., 2., 0.]);
+        assert_eq!(layer.images[0]["panel"].width, Some([3., 4., 5., 6.]));
+        assert_eq!(layer.theme[0]["colors"]["choice"], "#123456");
+        assert_eq!(layer.theme[1]["colors"]["choice"], "#abcdef");
+        assert!(!layer.fonts.is_empty());
+        assert!(
+            layer.images[0]
+                .values()
+                .any(|i| i.src.starts_with("base/styles/child#art/"))
+        );
+        for image in layer.images[0].values() {
+            assert!(bundle.read(&image.src).is_ok(), "{}", image.src);
+        }
+        assert!(bundle.read("base/styles/child/pack.json").is_err());
+        let plain = bundle.read("base/styles/plain").unwrap();
+        let plain =
+            Layer::from_bytes(&bundle.pack_data("base/styles/plain", &plain).unwrap()).unwrap();
+        assert_eq!(plain.icons["coin"], "north/paint");
+        assert_eq!(plain.haptics["Button.plate"]["hover"], "none");
+        assert_eq!(plain.sounds[""]["press"].volume, [0., 0.]);
+        (
+            bytes.to_vec(),
+            layer.theme[0]["radius"]["asym"].as_f64().unwrap(),
+        )
+    };
+    let mut first = None;
+    for threads in [1, 3] {
+        let report = cook_project(
+            &root,
+            &CookOptions {
+                threads,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let (bytes, gap) = load();
+        assert_eq!(gap, 7.);
+        if let Some(first) = &first {
+            assert_eq!(&bytes, first);
+        } else {
+            first = Some(bytes);
+        }
+    }
+    write("modules/north/lib/options.ts", "export const gap=13;");
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(load().1, 13.);
+    write(
+        "content/styles/child.ts",
+        &child.replace("north/paint", "north/missing"),
+    );
+    let error = cook_project(&root, &CookOptions::default())
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("content/styles/child.ts") && error.contains("north/missing"),
+        "{error}"
+    );
+}
+
 /// The public behaviour cook/load contract: canonical transitive subtrees,
 /// native machine indices, route relocation and captured helper invalidation.
 #[test]

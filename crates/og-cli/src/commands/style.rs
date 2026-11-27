@@ -1,21 +1,21 @@
-//! A style is a directory under `assets/styles/` with a theme recipe
-//! (`theme.json`), a pack (`pack.json`) laid over it, or both (og-ui-next's
-//! CONVENTIONS.md §Theme and packs).
-use std::path::{Path, PathBuf};
+//! Checked theme/pack declarations, addressed by canonical content IDs.
+use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style init <name> [project] [--from <theme>]\n       og style validate <directory>\n       og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
+const USAGE: &str = "usage: og style init <name> [project] [--from <theme>]\n       og style validate <content-id> [project]\n       og style inspect <builtin-id|default> --json\n       og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let result = match args {
-        ["new", ..] => Err::<(), String>("CSS packs are removed, so `og style new` is too; start a style with `og style init <name>` or add one with `og style add <directory>`".into()),
         ["init", rest @ ..] => init(rest),
         ["validate", rest @ ..] => validate(rest),
+        ["inspect", id, "--json"] => inspect(id),
         ["check-project", rest @ ..] => return crate::style_check::run(rest),
         ["add", rest @ ..] => return crate::ui::extensions::add(rest, "style"),
         ["list", rest @ ..] => return crate::ui::extensions::list(rest, Some("style")),
-        ["--help"] | ["help"] => { println!("{USAGE}"); Ok(()) },
-        ["upgrade" | "art" | "pack", ..] => Err("legacy style.ogt conversion and atlas packing are removed; name the art in the pack's pack.json (og api show screens, §3)".into()),
+        ["--help"] | ["help"] => {
+            println!("{USAGE}");
+            Ok(())
+        }
         _ => Err(USAGE.into()),
     };
     match result {
@@ -27,9 +27,6 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
 }
 
-/// `og style init <name> [project] [--from <theme>]`: a new style at
-/// `assets/styles/<name>/theme.json`, a copy of one of the engine's theme
-/// recipes (`minimal` by default) to edit. It never overwrites.
 fn init(args: &[&str]) -> Result<(), String> {
     let mut words = Vec::new();
     let mut from = "minimal";
@@ -48,86 +45,75 @@ fn init(args: &[&str]) -> Result<(), String> {
         || !name
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        || rest.len() > 1
     {
-        return Err(format!(
-            "`{name}`: a style name is letters, digits, `-` and `_`"
-        ));
+        return Err("a style name is letters, digits, `-` and `_`".into());
     }
-    let project = PathBuf::from(rest.first().copied().unwrap_or("."));
-    if !project.join("og-project.json").is_file() {
-        return Err(format!(
-            "{}: no og-project.json; run it in a game's directory or pass the project",
-            project.display()
-        ));
+    let root = Path::new(rest.first().copied().unwrap_or("."));
+    if !root.join("og-project.json").is_file() {
+        return Err("no og-project.json".into());
     }
-    let source = og_cook::cook::ui_themes::builtin_recipe(from)
-        .ok_or_else(|| format!("no engine theme `{from}`; `og style list` names them"))?;
-    let dir = project.join("assets/styles").join(name);
-    let target = dir.join(og_cook::cook::ui_themes::RECIPE);
-    if target.exists() || dir.join("pack.json").exists() {
-        return Err(format!("{}: a style is already there", dir.display()));
-    }
-    let text =
-        std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
-    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    std::fs::write(&target, text).map_err(|e| format!("{}: {e}", target.display()))?;
+    og_cook::cook::ui_themes::builtin_recipe(from)
+        .ok_or_else(|| format!("no engine theme `{from}`"))?;
+    let target = root.join("content/styles").join(format!("{name}.ts"));
+    std::fs::create_dir_all(target.parent().unwrap()).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&target)
+        .map_err(|e| format!("{}: {e}", target.display()))?;
+    let parent = serde_json::to_string(&format!("@themes/{from}")).unwrap();
+    write!(file, "import {{ file }} from '@origingame/engine/author';\nexport default file.theme({{extends: {parent}}});\n").map_err(|e| e.to_string())?;
     println!(
-        "og style: wrote {} (from the {from} theme); point the look's `ui` at styles/{name} and check it with `og style validate {}`",
-        target.display(),
-        dir.display()
+        "og style: wrote {}; set look.ui to base/styles/{name}",
+        target.display()
     );
     Ok(())
 }
 
-/// `og style validate <directory>`: the style's recipe compiles, its pack
-/// parses, and none of the pack's variants paints a ground without its ink. Each problem is
-/// a line; it exits 1 when there is one.
 fn validate(args: &[&str]) -> Result<(), String> {
     use og_ui_next::pack::{Layer, grounds_without_ink};
-    let [dir] = args else {
+    let [id, rest @ ..] = args else {
         return Err(USAGE.into());
     };
-    let dir = Path::new(dir);
-    let recipe = dir.join(og_cook::cook::ui_themes::RECIPE);
-    let pack = dir.join("pack.json");
-    if !recipe.is_file() && !pack.is_file() {
-        return Err(format!("{}: no theme.json or pack.json", dir.display()));
+    if rest.len() > 1 {
+        return Err(USAGE.into());
     }
-    let mut problems = Vec::new();
+    let root = Path::new(rest.first().copied().unwrap_or("."));
+    let styles = og_cook::cook::ui_packs::project_styles(root)?;
+    let style = styles
+        .get(*id)
+        .ok_or_else(|| format!("{id}: no checked theme/pack declaration"))?;
+    // The theme compiler solves its own inks. Standalone packs can instead
+    // paint a new ground without the text ink that belongs on it.
+    if style.theme.is_none() {
+        let problems = grounds_without_ink(&[Layer::default_pack()], &style.layer);
+        if !problems.is_empty() {
+            return Err(problems.join("\n"));
+        }
+    }
+    println!("og style: {id} is valid");
+    Ok(())
+}
+
+/// Built-in native tables for release tooling; never evaluate author TS in Bun.
+fn inspect(id: &str) -> Result<(), String> {
+    use og_ui_next::pack::{Layer, Pack, Scheme};
     let mut layers = vec![Layer::default_pack()];
-    if let Ok(text) = std::fs::read_to_string(&recipe) {
-        let label = recipe.to_string_lossy();
-        match og_cook::cook::ui_themes::compile(&text, &label)
-            .and_then(|t| t.layer(Default::default()).map_err(|e| e.to_string()))
-        {
-            Ok(layer) => layers.push(layer),
-            Err(e) => problems.push(format!("{}: {e}", recipe.display())),
-        }
+    if id != "default" {
+        layers.push(
+            og_cook::cook::ui_packs::builtin(id, &std::env::temp_dir().join("og-ui-art"))?.layer,
+        );
     }
-    if let Ok(text) = std::fs::read_to_string(&pack) {
-        match Layer::parse(&text) {
-            Ok(layer) => layers.push(layer),
-            Err(e) => problems.push(format!("{}: {e}", pack.display())),
-        }
-    }
-    // The theme compiler solves its own inks; the pack laid over it is
-    // what can paint a ground without one.
-    if problems.is_empty() && pack.is_file() {
-        let top = layers.pop().expect("the pack's layer");
-        for message in grounds_without_ink(&layers, &top) {
-            problems.push(format!("{}: {message}", pack.display()));
-        }
-    }
-    if problems.is_empty() {
-        println!("og style: {} is valid", dir.display());
-        return Ok(());
-    }
-    for p in &problems {
-        println!("{p}");
-    }
-    Err(format!(
-        "{} problem(s) in {}",
-        problems.len(),
-        dir.display()
-    ))
+    let pack = Pack::new(&layers);
+    let light: serde_json::Value =
+        serde_json::from_str(&pack.theme_json(Scheme::Light)).map_err(|e| e.to_string())?;
+    let dark: serde_json::Value =
+        serde_json::from_str(&pack.theme_json(Scheme::Dark)).map_err(|e| e.to_string())?;
+    println!(
+        "{}",
+        serde_json::json!({"light":light,"dark":dark,"fonts":pack.fonts})
+    );
+    Ok(())
 }

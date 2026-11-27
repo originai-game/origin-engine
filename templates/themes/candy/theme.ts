@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Casual mobile: glossy plastic with a deep lip, round shapes, rounded display type, bouncy motion (Royal Match, Candy Crush).",
   "color": { "source": "#ffb02e", "accent": "#4cc3ff", "neutral": "#5b3fb0", "variant": "vibrant", "scheme": "dark" },
   "material": "plastic",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 16}
     }
   }
-}
+});

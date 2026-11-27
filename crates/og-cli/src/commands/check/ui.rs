@@ -8,30 +8,19 @@ use super::*;
 /// (`ui_grounds`), against the default pack under the game's own: printed
 /// as warnings (`<file>(<line>,<col>): warning OG9108:`) or, with `json`,
 /// as one `ui-grounds` event. Never fails a check.
-pub(super) fn ui_grounds_lint(root: &Path, dirs: &[&Path], game: Option<&Path>, json: bool) {
+pub(super) fn ui_grounds_lint(root: &Path, dirs: &[&Path], project: bool, json: bool) {
     use og_ui_next::pack::{Layer, Pack, Scheme};
     let mut layers = vec![Layer::default_pack()];
-    if let Some(layer) = game
-        .and_then(|g| std::fs::read_to_string(g).ok())
-        .and_then(|t| Layer::parse(&t).ok())
-    {
-        layers.push(layer);
+    let styles = project
+        .then(|| og_cook::cook::ui_packs::project_styles(root).ok())
+        .flatten();
+    let active = og_cook::cook::look::project_ui_style(root).ok().flatten();
+    let style = active.as_ref().and_then(|id| styles.as_ref()?.get(id));
+    if let Some(style) = style {
+        layers.push(style.layer.clone());
     }
-    // The game's theme recipe (`styles/game/theme.json`): its layer, and its
-    // art slots as the grounds a child's ink is checked on (OG9107). One
-    // that does not compile is the cook's error.
-    let theme = game
-        .map(|g| g.with_file_name(og_cook::cook::ui_themes::RECIPE))
-        .and_then(|r| std::fs::read_to_string(&r).ok())
-        .and_then(|t| og_cook::cook::ui_themes::compile(&t, "styles/game/theme.json").ok());
-    if let Some(layer) = theme
-        .as_ref()
-        .and_then(|t| t.layer(Default::default()).ok())
-    {
-        layers.push(layer);
-    }
-    let art = theme
-        .as_ref()
+    let art = style
+        .and_then(|s| s.theme.as_ref())
         .and_then(|t| crate::ui_grounds::ArtGrounds::of(t).ok());
     let pack = Pack::new(&layers);
     let colors = crate::ui_grounds::colors(&Scheme::ALL.map(|s| pack.theme_json(s)));
@@ -107,69 +96,14 @@ fn class_resolver(pack: &og_ui_next::pack::Pack) -> Result<og_ui_next::classes::
     Ok(classes)
 }
 
-/// Loads a style directory's layers: its compiled `theme.json`, then its
-/// `pack.json` over it, as the cook lays them (either may be absent).
-/// Returns `Err(())` when an existing file is malformed (deferring diagnostics to `og cook`).
-fn push_style_dir(
-    layers: &mut Vec<og_ui_next::pack::Layer>,
-    dir: &Path,
-    label: &str,
-) -> Result<(), ()> {
-    use og_ui_next::pack::Layer;
-    let recipe_path = dir.join(og_cook::cook::ui_themes::RECIPE);
-    if let Ok(text) = std::fs::read_to_string(&recipe_path) {
-        let theme = og_cook::cook::ui_themes::compile(&text, label).map_err(|_| ())?;
-        let layer = theme.layer(Default::default()).map_err(|_| ())?;
-        layers.push(layer);
-    }
-    let pack_path = dir.join("pack.json");
-    if let Ok(text) = std::fs::read_to_string(&pack_path) {
-        let layer = Layer::parse(&text).map_err(|_| ())?;
-        layers.push(layer);
-    }
-    Ok(())
-}
-
-/// Resolves the UI pack layers active for `project_root`: default pack, the
-/// look's `ui` style or theme (from `project.ogt`'s `look`), and `styles/game`.
+/// The default layer and the exact pack ID declared by the active look.
 fn project_style_layers(project_root: &Path) -> Result<Vec<og_ui_next::pack::Layer>, ()> {
     use og_ui_next::pack::Layer;
     let mut layers = vec![Layer::default_pack()];
-    let assets = project_root.join("assets");
     let look_style = og_cook::cook::look::project_ui_style(project_root).map_err(|_| ())?;
     if let Some(style_id) = look_style.as_deref() {
-        if let Some(theme_name) = style_id.strip_prefix("@themes/") {
-            if let Some(recipe_path) = og_cook::cook::ui_themes::builtin_recipe(theme_name)
-                && let Ok(text) = std::fs::read_to_string(&recipe_path)
-            {
-                let label = format!("@themes/{theme_name}/{}", og_cook::cook::ui_themes::RECIPE);
-                let theme = og_cook::cook::ui_themes::compile(&text, &label).map_err(|_| ())?;
-                let layer = theme.layer(Default::default()).map_err(|_| ())?;
-                layers.push(layer);
-            }
-        } else if style_id.starts_with("@styles/") {
-            if let Some((_, bytes)) = og_cook::cook::look::style_files(style_id)
-                .into_iter()
-                .find(|(id, _)| id.ends_with("/pack.json"))
-                && let Ok(text) = std::str::from_utf8(bytes)
-            {
-                let layer = Layer::parse(text).map_err(|_| ())?;
-                layers.push(layer);
-            }
-        } else {
-            push_style_dir(
-                &mut layers,
-                &assets.join(style_id),
-                &format!("{style_id}/{}", og_cook::cook::ui_themes::RECIPE),
-            )?;
-        }
-    }
-    if look_style.as_deref() != Some("styles/game") {
-        push_style_dir(
-            &mut layers,
-            &assets.join("styles/game"),
-            "styles/game/theme.json",
-        )?;
+        let mut styles = og_cook::cook::ui_packs::project_styles(project_root).map_err(|_| ())?;
+        layers.push(styles.remove(style_id).ok_or(())?.layer);
     }
     Ok(layers)
 }
@@ -221,41 +155,18 @@ pub(super) fn unknown_classes(p: &Project, report: &mut Report) {
     }
 }
 
-/// Each of the game's style packs (`assets/styles/<name>/pack.json`) whose
-/// variants paint the ground under the text without its ink
-/// (`og_ui_next::pack::grounds_without_ink`), laid over the default pack and
-/// the style's own compiled `theme.json`.
+/// Checked project packs whose variants paint the ground under text
+/// without its ink, laid over the default pack.
 pub(super) fn pack_grounds(p: &Project, report: &mut Report) {
     use og_ui_next::pack::{Layer, grounds_without_ink};
-    let Ok(dirs) = std::fs::read_dir(p.root.join("assets/styles")) else {
+    let Ok(styles) = og_cook::cook::ui_packs::project_styles(&p.root) else {
         return;
     };
-    let mut styles: Vec<_> = dirs
-        .flatten()
-        // A directory symlink is never followed.
-        .filter(|d| d.file_type().is_ok_and(|t| t.is_dir()))
-        .map(|d| d.path())
-        .collect();
-    styles.sort();
-    for dir in styles {
-        // The theme compiler solves its own inks; the pack over it is what
-        // can paint a ground without one.
-        let path = dir.join("pack.json");
-        if !path.is_file() {
+    for (file, style) in styles {
+        if file.starts_with('@') || style.theme.is_some() {
             continue;
         }
-        let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
-        let mut layers = Vec::new();
-        // One that does not parse is the cook's error.
-        if push_style_dir(&mut layers, &dir, &file).is_err() {
-            continue;
-        }
-        let mut under = vec![Layer::default_pack()];
-        let Some(layer) = layers.pop() else {
-            continue;
-        };
-        under.extend(layers);
-        for message in grounds_without_ink(&under, &layer) {
+        for message in grounds_without_ink(&[Layer::default_pack()], &style.layer) {
             report
                 .raw
                 .push_str(&format!("{file}: error OG{PACK_GROUND_INK}: {message}\n"));
@@ -748,7 +659,19 @@ mod tests {
                 let recipe = format!(
                     r##"{{ "material": "{m}", "shape": "soft", "color": {{ "source": "{source}", "neutral": "#4c5643" }} }}"##
                 );
-                let theme = og_cook::cook::ui_themes::compile(&recipe, "test").unwrap();
+                let mut read = |src: &og_ui_next::theme::Source| {
+                    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../templates")
+                        .join(src.path());
+                    serde_json::from_slice(&std::fs::read(path).unwrap()).map_err(|e| e.to_string())
+                };
+                let theme = og_ui_next::theme::resolve(
+                    serde_json::from_str(&recipe).unwrap(),
+                    "test",
+                    &mut read,
+                )
+                .unwrap();
+                let theme = og_ui_next::theme::compile(&theme, &mut read).unwrap();
                 let art = crate::ui_grounds::ArtGrounds::of(&theme).unwrap();
                 let colors = crate::ui_grounds::colors(
                     &art.colors

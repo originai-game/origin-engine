@@ -60,7 +60,7 @@ pub(super) const KINDS: &[Kind] = &[
     },
     Kind {
         name: "pack",
-        schema: || pack::PackInput::schema(),
+        schema: || pack::schema(),
     },
     Kind {
         name: "field",

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "breaking": [{
+    "member": "file.theme / file.pack / look.ui / og.load.style",
+    "change": "Theme and pack authoring is checked TypeScript only. Cook writes native pack fields, including compiled theme art. JSON author parsers, field tables, sibling discovery and runtime JSON decoding are removed. look.ui and og.load.style use the final canonical pack ID without appending a filename.",
+    "fix": "Export file.theme or file.pack from content/**/*.ts. Use canonical ref tokens for pack resources and project theme bases, and explicit @themes/<slug> or @styles/<slug> for built-ins. Set look.ui to the exact resulting pack ID. og style init writes content/styles/<name>.ts; validate takes its canonical ID and optional project. Re-cook with matching native and web hosts; old cooked packs are not supported.",
+    "find": ["pack.json", "theme.json", "style directory", "og.load.style"]
+  }]
+}

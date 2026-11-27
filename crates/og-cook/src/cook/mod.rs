@@ -63,7 +63,7 @@ pub use schemas::engine_schemas;
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
 pub mod ui_art;
-mod ui_packs;
+pub mod ui_packs;
 pub mod ui_themes;
 pub mod vector;
 

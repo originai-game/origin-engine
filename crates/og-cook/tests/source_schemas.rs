@@ -1088,7 +1088,7 @@ fn schema_bound_references_ignore_json_and_preserve_container_constraints() {
     for kind in source_schemas::all() {
         ReferenceSchema::new((kind.schema)()).unwrap_or_else(|e| panic!("{}: {e}", kind.name));
     }
-    let schema = source_schemas::world::pack::PackInput::schema();
+    let schema = source_schemas::world::pack::schema();
     let references = ReferenceSchema::new(schema).unwrap();
     let value = json!({
         "about":{"$ogRef":"this is author JSON", "nested":[{"$ogRef":"also JSON"}]},

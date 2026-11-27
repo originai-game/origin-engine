@@ -39,7 +39,7 @@ impl ThemeInput {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(untagged)]
 pub enum ThemeBase {
-    Builtin(String),
+    Builtin(#[schemars(regex(pattern = "^@themes/[a-z0-9]+(-[a-z0-9]+)*$"))] String),
     Asset(#[schemars(extend("x-og-ref-factories" = ["theme"]))] ContentRef),
 }
 input! {

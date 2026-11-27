@@ -8,7 +8,7 @@ export default file.look({
   // as a storybook or ink it as a rubber-hose cartoon.
   name: "Cartoon 2D",
   mood: "bright",
-  ui: "cartoon",
+  ui: "@themes/cartoon",
   Stylise: {
     posterize: 10,
     posterizeMode: "tone",

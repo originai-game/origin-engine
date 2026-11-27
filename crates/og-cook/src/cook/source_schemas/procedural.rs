@@ -843,7 +843,10 @@ pub enum LookBase {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(untagged)]
 pub enum UiStyle {
-    Builtin(String),
+    /// `default` explicitly clears an inherited style; project packs use refs.
+    Builtin(
+        #[schemars(regex(pattern = "^(default|@(themes|styles)/[a-z0-9]+(-[a-z0-9]+)*)$"))] String,
+    ),
     Asset(#[schemars(extend("x-og-ref-kinds" = ["pack"]))] ContentRef),
 }
 #[derive(Debug, Deserialize, JsonSchema)]

@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Anime RPG: dark translucent glass with a lit top edge, soft corners, a clean sans, standard motion (Honkai: Star Rail, Genshin Impact).",
   "color": { "source": "#e8c37a", "accent": "#7fd4ff", "neutral": "#3a4a6b", "variant": "tonal", "scheme": "dark" },
   "material": "glass",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 10}
     }
   }
-}
+});

@@ -86,7 +86,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -181,7 +181,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -304,7 +304,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -418,7 +418,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -529,7 +529,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -641,7 +641,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"
@@ -756,7 +756,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "anime",
+        "ui": "@themes/anime",
         "uiSeeds": {
           "neutral": "#2a3060",
           "primary": "#4f5bd5"

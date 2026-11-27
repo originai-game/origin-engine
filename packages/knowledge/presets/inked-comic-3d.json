@@ -87,7 +87,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -209,7 +209,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -336,7 +336,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -454,7 +454,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -569,7 +569,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -685,7 +685,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -782,7 +782,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -907,7 +907,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1057,7 +1057,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1201,7 +1201,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1347,7 +1347,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1490,7 +1490,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1634,7 +1634,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1759,7 +1759,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -1919,7 +1919,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2096,7 +2096,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2256,7 +2256,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2432,7 +2432,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2605,7 +2605,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2776,7 +2776,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -2944,7 +2944,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "ink",
+        "ui": "@themes/ink",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",

@@ -4,7 +4,7 @@ export default file.look({
   // AgX, a little bloom, grain, aberration, a vignette and eye-like exposure adaptation.
   name: "Cinematic realism",
   mood: "cold",
-  ui: "minimal",
+  ui: "@themes/minimal",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: a graded steel blue over cold greys.
   uiSeeds: {

@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Military instrument: brushed metal, cut corners, stencil display type, snappy motion.",
   "color": { "source": "#d9a531", "accent": "#e8c25a", "neutral": "#4c5643", "variant": "tonal", "scheme": "dark" },
   "material": "metal",
@@ -18,4 +19,4 @@
       "stroke": {"arc": 10}
     }
   }
-}
+});

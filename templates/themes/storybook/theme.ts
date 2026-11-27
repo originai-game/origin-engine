@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Illustrated paper: quiet ornament, serif type, calm motion (Pentiment, Strange Horticulture).",
   "color": { "source": "#2f6b4f", "accent": "#a5552a", "neutral": "#8a6a44", "variant": "muted", "scheme": "light" },
   "material": "paper",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 10}
     }
   }
-}
+});

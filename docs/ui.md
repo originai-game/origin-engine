@@ -11,7 +11,7 @@ describes layout and paint semantics, not a stylesheet authoring API.
 | --- | --- | --- |
 | Core (`og-ui-next`) | Elements, layout, paint, layers, focus, navigation, gestures, scrolling, text editing, motion, accessibility and typed class records | One implementation contract on native and web; controls are composed in TSX |
 | Built-in library | `packages/engine/src/ui/controls/`, `components/` and `screens/`: primitives composed into controls, presentation patterns and screens | No gameplay rules, literal visual values or private engine imports |
-| Style pack | Palette, typography, spacing, shape, art, icons, motion, sound and haptics in `pack.json`, optionally compiled from a `theme.json` recipe | No gameplay code or domain state; style and scheme may change at runtime |
+| Style pack | Palette, typography, spacing, shape, art, icons, motion, sound and haptics in checked `file.pack`, optionally compiled from `file.theme` | No gameplay code or domain state; style and scheme may change at runtime |
 | Game | Content, rules, domain validation and applying UI intents | Owns its screens and chosen style assets |
 | Platform | Accounts, money, publishing, threads, agent orchestration and engine version selection | Consumes released archives and the public host ABI, never engine internals |
 
@@ -286,10 +286,10 @@ not game stylesheets. Add missing design roles there.
 
 ### 3.2 Packs, slots and schemes
 
-A style is a `pack.json` or a `theme.json` recipe plus its assets, not a
-directory of CSS. Layers are default pack, the look's style, then the
-game's `assets/styles/game/pack.json`. Later named entries replace earlier
-ones; fonts add faces. A theme recipe resolves `extends`, ordered `with`
+A style is a checked `file.pack` or `file.theme` declaration under content/,
+not a directory of CSS. Runtime layers are the generated default pack and
+the look's exact canonical pack ID. No game directory is implicitly layered.
+Later named entries replace earlier ones; fonts add faces. A theme resolves `extends`, ordered `with`
 mixins and its own values, then compiles dimensions and colours into a
 pack and generated art. Its `pack` override can replace generated art.
 

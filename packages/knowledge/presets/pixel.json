@@ -73,7 +73,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -156,7 +156,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -267,7 +267,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -369,7 +369,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -468,7 +468,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -568,7 +568,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -671,7 +671,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -754,7 +754,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -837,7 +837,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -948,7 +948,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1050,7 +1050,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1149,7 +1149,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1249,7 +1249,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1352,7 +1352,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1435,7 +1435,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1541,7 +1541,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1624,7 +1624,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1726,7 +1726,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1825,7 +1825,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -1925,7 +1925,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2028,7 +2028,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2111,7 +2111,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2217,7 +2217,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2328,7 +2328,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2411,7 +2411,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2510,7 +2510,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2610,7 +2610,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2713,7 +2713,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2805,7 +2805,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -2920,7 +2920,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3012,7 +3012,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3123,7 +3123,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3231,7 +3231,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3340,7 +3340,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3452,7 +3452,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3547,7 +3547,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3642,7 +3642,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3737,7 +3737,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3832,7 +3832,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -3927,7 +3927,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4022,7 +4022,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4117,7 +4117,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4200,7 +4200,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4283,7 +4283,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4394,7 +4394,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4496,7 +4496,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4595,7 +4595,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4695,7 +4695,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",
@@ -4798,7 +4798,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "pixel",
+        "ui": "@themes/pixel",
         "uiSeeds": {
           "accent": "#ffcd75",
           "neutral": "#333c57",

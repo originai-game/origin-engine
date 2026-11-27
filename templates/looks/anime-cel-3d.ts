@@ -4,7 +4,7 @@ export default file.look({
   // Hard shadow bands, cool-tinted shadows, outlines that thin with distance.
   name: "Anime cel-shaded 3D",
   mood: "bright",
-  ui: "anime",
+  ui: "@themes/anime",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: the cool indigo of its shadow tint.
   uiSeeds: {

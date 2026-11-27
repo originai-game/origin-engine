@@ -120,7 +120,7 @@ pub(crate) fn scan_sources(
     let assets_dir = &project.assets_dir;
     let (
         look::Prepared {
-            content: prepared,
+            content: mut prepared,
             looks,
         },
         look_sources,
@@ -128,20 +128,31 @@ pub(crate) fn scan_sources(
         assets_dir.parent().expect("project assets directory"),
         &project.source,
     )?;
+    let root = assets_dir.parent().expect("project assets directory");
+    let styles = ui_packs::project(root, &project.source, &looks, &mut prepared)?;
+    let ui_packs::Sources {
+        sources: pack_sources,
+        inputs: pack_inputs,
+        notes: pack_notes,
+    } = ui_packs::sources(root, &prepared, styles)?;
     let Scan {
         mut sources,
         ignored,
         early_errors,
-        external,
-        warnings,
+        mut external,
+        mut warnings,
     } = scan::scan_with(
         assets_dir,
         &|path| cook_index.read(path),
         threads,
         code,
         &looks,
+        &pack_sources,
     )?;
     sources.extend(look_sources);
+    sources.extend(pack_sources);
+    external.extend(pack_inputs);
+    warnings.extend(pack_notes);
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Effekseer projects become composed effects and what they need (`efk/`).
@@ -995,17 +1006,10 @@ pub(crate) fn group(
         .filter(|s| s.kind == &font_pack::FONT_PACK)
         .flat_map(font_pack::faces)
         .collect();
-    for s in sources
-        .iter()
-        .filter(|s| crate::cook::ui_packs::is_pack(&s.rel))
-    {
-        let Ok(text) = std::str::from_utf8(&s.bytes) else {
+    for s in sources.iter().filter(|s| s.kind == &ui_packs::PACK) {
+        let Ok(layer) = ui_packs::pack_layer(s) else {
             continue;
         };
-        let Ok(mut layer) = og_ui_next::pack::Layer::parse(text) else {
-            continue;
-        };
-        layer.resolve(s.rel.rsplit_once('/').map_or("", |(dir, _)| dir));
         pack_faces.extend(
             layer
                 .fonts

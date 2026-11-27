@@ -297,7 +297,7 @@ export function create(options: CreateOptions): Created {
   writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../content/strings/shell.${l}.ts";`).join("\n") + "\n");
   const look = `content/looks/${id}.ts`;
   mkdirSync(join(dir, "content/looks"), { recursive: true });
-  writeFileSync(join(dir, look), `import { file } from "@origingame/engine/author";\nexport default file.look(${JSON.stringify({ extends: [choices.look], ...(choices.variant === undefined ? {} : {variant: choices.variant}), ui: choices.ui }, null, 2)});\n`);
+  writeFileSync(join(dir, look), `import { file } from "@origingame/engine/author";\nexport default file.look(${JSON.stringify({ extends: [choices.look], ...(choices.variant === undefined ? {} : {variant: choices.variant}), ui: choices.ui === "default" ? "default" : `@themes/${choices.ui}` }, null, 2)});\n`);
   written.push(look);
   const manifest = join(dir, "og-project.json");
   const metadata = JSON.parse(readFileSync(manifest, "utf8"));

@@ -1075,16 +1075,18 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the Rive artboard is cut short"))
     }
 
-    /// A style pack blob's `pack.json` (read it with og-ui-next's
-    /// `pack::Layer::parse`; its asset paths are ids of this bundle).
-    pub fn pack_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// A style pack's native payload, decoded by og-ui-next's Layer::from_bytes.
+    pub fn pack_data(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
         let blob = self.blob::<format::Pack>(id, bytes)?;
         let meta = one::<format::PackMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        let text = text
-            .get(..meta.text_bytes as usize)
-            .ok_or_else(|| invalid(&blob, "the pack is cut short"))?;
-        String::from_utf8(text.to_vec()).map_err(|_| invalid(&blob, "the pack is not UTF-8"))
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(
+                &blob,
+                "native pack payload length differs from metadata",
+            ));
+        }
+        Ok(data.to_vec())
     }
 
     /// Decodes a sound blob (the QOA or Opus stays encoded until

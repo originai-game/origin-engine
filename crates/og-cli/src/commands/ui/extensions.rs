@@ -190,30 +190,17 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     })
 }
 
-/// Whether `directory` is a UI style pack (`pack.json`) or a theme recipe
-/// (`theme.json`).
+/// Whether `directory` carries a checked pack or theme declaration.
 pub fn style_pack(directory: &Path) -> bool {
-    directory.join("pack.json").is_file()
+    directory.join("pack.ts").is_file()
         || directory.join(og_cook::cook::ui_themes::RECIPE).is_file()
 }
 
 fn style_description(directory: &Path) -> String {
-    let about_in = |file: &str| {
-        std::fs::read_to_string(directory.join(file))
-            .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-            .and_then(|v| {
-                v.get("about")
-                    .and_then(serde_json::Value::as_str)
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(str::to_owned)
-            })
-    };
     if directory.join(og_cook::cook::ui_themes::RECIPE).is_file() {
-        about_in(og_cook::cook::ui_themes::RECIPE).unwrap_or_else(|| "UI theme recipe".into())
+        "UI theme recipe".into()
     } else {
-        about_in("pack.json").unwrap_or_else(|| "UI style pack".into())
+        "UI style pack".into()
     }
 }
 
@@ -302,6 +289,16 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
                     .join(&extension.manifest.name),
             ),
         ]
+    } else if extension.manifest.kind == "style" {
+        vec![
+            ("metadata", target.clone()),
+            (
+                "content",
+                project
+                    .join("content/styles")
+                    .join(&extension.manifest.name),
+            ),
+        ]
     } else if extension.manifest.kind == "font" {
         vec![
             ("metadata", target.clone()),
@@ -352,6 +349,12 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
                     ("content", local)
                 } else if let Ok(local) = file.strip_prefix("sources") {
                     ("sources", local)
+                } else {
+                    ("metadata", file.as_path())
+                }
+            } else if extension.manifest.kind == "style" {
+                if file.extension().is_some_and(|e| e == "ts") {
+                    ("content", file.as_path())
                 } else {
                     ("metadata", file.as_path())
                 }

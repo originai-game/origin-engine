@@ -36,7 +36,7 @@ og-draw = { path = "../og-draw" }
 og-anim = { path = "../og-anim" }
 og-audio = { path = "../og-audio", default-features = false, optional = true }
 # Style packs (pack.json) checked against the UI core's class resolver.
-og-ui-next = { path = "../og-ui-next", optional = true }
+og-ui-next = { path = "../og-ui-next", optional = true, features = ["source"] }
 # Font files and their glyphs, and Rive files.
 og-text = { path = "../og-text", default-features = false, optional = true }
 og-rive = { path = "../og-rive", optional = true }

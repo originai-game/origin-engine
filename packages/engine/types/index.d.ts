@@ -39466,11 +39466,11 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.
+     * Load the exact canonical pack content ID for UiDesc.style. Export file.pack or file.theme from content/**\/*.ts; both cook to native packs. Built-ins use explicit @themes/<name> or @styles/<name>, bundled when a look names them. No filename suffix or directory is inferred. Loaded once per ID.
      *
      * @param world The world whose UI uses it.
-     * @param path The style directory, such as `styles/main` or `@themes/tactical`.
-     * @returns Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse.
+     * @param path The exact canonical pack ID, such as base/styles/main or @themes/tactical.
+     * @returns Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Run og cook with matching engine hosts.
      */
     function style(world: World, path: string): Result<Style>;
     /**

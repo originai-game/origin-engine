@@ -6,7 +6,7 @@ export default file.look({
   // (64 colours in 6-step ramps, ArtPalette) keeps its own colours.
   name: "Pixel art",
   mood: "bright",
-  ui: "pixel",
+  ui: "@themes/pixel",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: a sixteen-colour blue and gold over navy.
   uiSeeds: {

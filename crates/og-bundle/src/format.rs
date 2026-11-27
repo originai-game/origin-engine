@@ -31,7 +31,7 @@
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | effect material (`og.EffectMaterial`, an `.ogt` of `type effect`) | [`EffectMeta`] | `text` (the validated effect file) |
 //! | composed effect (`og.Vfx`, an `.ogt` of `type vfx`) | [`VfxMeta`] | `text` (the validated vfx file) |
-//! | UI style pack (`og.UiPack`, a pack's `pack.json`) | [`PackMeta`] | `text` (the checked pack, its asset paths resolved to ids) |
+//! | UI style pack (`og.UiPack`, checked TS pack/theme) | [`PackMeta`] | `data` (native fields with canonical resource IDs) |
 //! | material shader (`og.MaterialShader`, TS `file.shader`) | [`ShaderMeta`] | `code` (WGSL), `names` (UTF-8), `params` ([`ShaderParamRow`]) |
 //! | custom post pass (`og.PostPass`, TS `file.post`) | [`PostMeta`] | `code`, `names`, `params` ([`ShaderParamRow`]) |
 //! | UI material (`og.UiMaterialShader`, TS `file['ui-material']`) | [`UiMaterialMeta`] | `code`, `names`, `params` ([`ShaderParamRow`]) |

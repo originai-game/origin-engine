@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Minimal: a matte face with a hairline and a soft drop, soft corners, a neutral sans, calm motion (Monument Valley, Mini Metro).",
   "color": { "source": "#3b6ef5", "accent": "#16a39a", "neutral": "#6b7280", "variant": "muted", "scheme": "light" },
   "material": "matte",
@@ -19,4 +20,4 @@
       "stroke": {"arc": 8}
     }
   }
-}
+});

@@ -2,7 +2,7 @@
 use super::temp;
 use og_cook::cook::source_schemas::{
     self,
-    world::{geometry::Geometry, pack::PackInput},
+    world::{geometry::Geometry, pack},
 };
 use og_core::reflect::source::typescript;
 use serde_json::json;
@@ -821,7 +821,7 @@ table.rows[0].values.power = 2;
 #[test]
 fn geometry_and_pack_author_contracts() {
     let geometry = Geometry::schema();
-    let pack = PackInput::schema();
+    let pack = pack::schema();
     assert_eq!(source_schemas::schema("pack"), Some(pack.document()));
     let mut geometries = Vec::new();
     for kind in [

@@ -1,7 +1,7 @@
 //! Built-in style packs and shared assets under `templates/styles/`, read
 //! from disk rather than compiled into `og`. Published engines carry them
-//! in `styles/`. A look names a pack directory by slug; the game's own
-//! `assets/styles/<slug>/` wins over `@styles/<slug>/`.
+//! in `styles/`. Looks name explicit `@styles/<slug>` IDs; project packs
+//! have canonical content IDs and never override a built-in by basename.
 //!
 //! The directory is the first of: `OG_STYLES_DIR`; `styles/` of the engine
 //! package `OG_ENGINE_PACKAGE` names (bin/og.mjs sets it); an installed
@@ -127,7 +127,7 @@ fn find_dir() -> Option<PathBuf> {
         std::fs::read_dir(&p)
             .ok()?
             .flatten()
-            .any(|e| e.file_name() == "shared" || e.path().join("pack.json").is_file())
+            .any(|e| e.file_name() == "shared" || e.path().join("pack.ts").is_file())
             .then_some(p)
     };
     // A checkout's packages/engine has the checkout's packs two levels up.
@@ -192,7 +192,7 @@ pub fn styles_dir() -> Option<&'static Path> {
     table().dir.as_deref()
 }
 
-/// Where the built-in style file `id` (`@styles/fantasy/pack.json`) is
+/// Where the built-in style file `id` (`@styles/fantasy/pack.ts`) is
 /// read from.
 pub fn style_path(id: &str) -> Option<&'static Path> {
     let t = table();

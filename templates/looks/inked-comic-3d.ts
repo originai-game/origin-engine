@@ -4,7 +4,7 @@ export default file.look({
   // Cel shading, heavy outlines, ink marks hatched on the surfaces (strokes that follow the form, darken the shadows and gather along the contours) and ink on every edge.
   name: "Inked comic-book 3D",
   mood: "high-contrast",
-  ui: "ink",
+  ui: "@themes/ink",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: print red and yellow over its ink.
   uiSeeds: {

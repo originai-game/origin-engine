@@ -201,15 +201,13 @@ pub(crate) fn pack_images(engine: u32) {
     }
 }
 
-/// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
-/// has one.
+/// The native pack at the exact canonical style ID.
 pub(crate) fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
     let eng = crate::engine::engine(engine).ok()?;
     let assets = eng.assets.borrow();
-    let blob = format!("{}/pack.json", id.trim_end_matches('/'));
-    let (bytes, bundle) = assets.blob(&blob).ok()?;
-    let text = bundle.pack_text(&blob, bytes.bytes()).ok()?;
-    og_ui_next::pack::Layer::parse(&text).ok()
+    let (bytes, bundle) = assets.blob(id).ok()?;
+    let data = bundle.pack_data(id, bytes.bytes()).ok()?;
+    og_ui_next::pack::Layer::from_bytes(&data).ok()
 }
 
 /// The style pack's theme (the default pack with the game's over it) in
@@ -247,7 +245,8 @@ fn layers(engine: u32, id: Option<&str>) -> Vec<og_ui_next::pack::Layer> {
     layers.extend(id.and_then(|id| pack_layer(engine, id)));
     let seeds = configured_seeds(engine);
     if !seeds.is_empty()
-        && let Ok(layer) = og_ui_next::pack::Layer::parse(&seeds)
+        && let Ok(input) = serde_json::from_str::<og_ui_next::pack::input::PackInput>(&seeds)
+        && let Ok(layer) = og_ui_next::pack::Layer::from_input(input, Clone::clone)
     {
         layers.push(layer);
     }

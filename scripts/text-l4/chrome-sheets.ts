@@ -4,9 +4,10 @@
 // height the UI root passes down.
 // usage: bun chrome-sheets.ts <chrome> <out-dir> [packs, default default]
 // Writes <out-dir>/chrome-<pack>.html and chrome-<pack>.png (1200x620, DPR 1).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const [chrome, outArg, packArg] = process.argv.slice(2);
 if (!chrome || !outArg) {
@@ -31,50 +32,31 @@ const FACES: Record<string, Array<[string, string]>> = {
   "Noto Serif SC": [["cjk/NotoSerifSC[wght].ttf", "200 900"]],
 };
 
-/** The line height the UI root passes down with the theme's body text (`text-body`): a
- * unitless ratio, which every text inherits as a multiple of its own size, as from a
- * page's body. The pack's `fontSize.body` over the default pack's. */
-function bodyLine(pack: string): number {
-  const of = (file: string) => JSON.parse(readFileSync(file, "utf8")).theme?.fontSize?.body as [number, number] | undefined;
-  const own = pack === "default" ? undefined : of(join(styles, pack, "pack.json"));
-  return (own ?? of(resolve(import.meta.dir, "../../crates/og-ui-next/default/pack.json"))!)[1];
-}
-
-function sans(pack: string): string {
-  if (pack === "default") return `"Instrument Sans"`;
-  const theme = JSON.parse(readFileSync(join(styles, pack, "pack.json"), "utf8")).theme;
-  return theme.fontFamily.sans as string;
-}
-
 let failed = 0;
 for (const pack of packs) {
+  const id = pack === "default" || pack.startsWith("@") ? pack : `@themes/${pack}`;
+  const result = spawnSync(process.env.OG_BIN ?? resolve(import.meta.dir, "../../target/debug/og"), ["style", "inspect", id, "--json"], {encoding: "utf8"});
+  if (result.status !== 0) throw new Error(result.stderr);
+  const theme = JSON.parse(result.stdout).dark;
   // og's chain after the pack's own families: the default body face, then Chinese.
-  const list = `${sans(pack)}, "Instrument Sans", "Noto Sans SC"`;
-  // A pack.json whose `fonts` declare families gives its @font-face rules itself;
-  // one that lists files names its families by the files' own names (FACES).
-  const declared = pack === "default" ? [] : ((JSON.parse(readFileSync(join(styles, pack, "pack.json"), "utf8")).fonts ?? []) as Array<string | { family: string; src: string; weight?: number | [number, number]; unicodeRange?: string }>).filter((f) => typeof f === "object") as Array<{ family: string; src: string; weight?: number | [number, number]; unicodeRange?: string }>;
+  const list = `${theme.fontFamily.sans}, "Instrument Sans", "Noto Sans SC"`;
   // A file the checkout lacks (templates not fetched: bun scripts/assets.ts ensure templates)
   // would leave Chrome drawing a system font, measured as og's error.
   const need = (path: string) => {
     if (!existsSync(path)) throw new Error(`${pack}: ${path} is missing (bun scripts/assets.ts ensure templates)`);
     return pathToFileURL(path).href;
   };
-  const src = (f: string) => need(f.startsWith("@styles/") ? join(styles, f.slice(8)) : join(styles, pack, f));
-  const own = new Set(declared.map((f) => f.family));
-  const names = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]!).filter((n) => !own.has(n));
-  const faces = [
-    ...declared.map((f) => `@font-face{font-family:"${f.family}";src:url("${src(f.src)}")${f.weight === undefined ? "" : `;font-weight:${[f.weight].flat().join(" ")}`}${f.unicodeRange ? `;unicode-range:${f.unicodeRange}` : ""}}`),
-    ...names.flatMap((n) => {
+  const names = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+  const faces = names.flatMap((n) => {
       if (!FACES[n]) throw new Error(`${pack}: no file for family "${n}" in chrome-sheets.ts FACES`);
       return FACES[n]!.map(([file, w]) => `@font-face{font-family:"${n}";src:url("${need(join(styles, file))}");font-weight:${w}}`);
-    }),
-  ]
+    })
     .join("\n");
   const rows = LINES.flatMap((l) => SIZES.map((s) => `<div class="r" style="height:${Math.round(s * 1.3)}px"><span class="l">${s}</span><span class="t" style="font-size:${s}px">${l}</span></div>`)).join("\n");
   const html = `<!doctype html><meta charset="utf-8"><style>
 ${faces}
 html,body{margin:0;background:#141a22;width:1200px;height:620px;overflow:hidden}
-body{padding:8px 12px;box-sizing:border-box;font-family:${list};font-weight:400;line-height:${bodyLine(pack)};color:#e8ecf2}
+body{padding:8px 12px;box-sizing:border-box;font-family:${list};font-weight:400;line-height:${theme.fontSize.body[1]};color:#e8ecf2}
 .r{display:flex;align-items:center}.l{font-size:10px;color:rgba(255,255,255,.5);width:28px;flex:none}.t{white-space:nowrap}
 </style>${rows}`;
   const page = join(out, `chrome-${pack}.html`);

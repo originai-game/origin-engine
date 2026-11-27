@@ -47,13 +47,13 @@ use std::path::Path;
 mod author;
 pub(crate) use author::{Prepared, project as prepare};
 
-/// The built-in styles' slugs: the directories with a pack.json.
+/// The explicit built-in file.pack declarations.
 pub fn style_slugs() -> Vec<&'static str> {
     let mut out: Vec<&'static str> = styles()
         .iter()
         .filter_map(|f| {
             let (dir, file) = f.id().strip_prefix("@styles/")?.rsplit_once('/')?;
-            (!dir.contains('/') && file == "pack.json").then_some(dir)
+            (!dir.contains('/') && file == "pack.ts").then_some(dir)
         })
         .collect();
     out.sort();
@@ -61,44 +61,22 @@ pub fn style_slugs() -> Vec<&'static str> {
     out
 }
 
-/// A look's UI pack directory, either an explicit asset ID or a slug.
-/// A game's `styles/<slug>` takes precedence over `@styles/<slug>`.
+/// A final canonical pack ID. Engine namespaces are explicit; project
+/// identities must be declared, never inferred from style directories.
 pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, String> {
-    if name.ends_with(".ogt") {
-        return Err("style.ogt is removed; a UI style is a directory with a pack.json".into());
+    let builtin = name
+        .strip_prefix("@themes/")
+        .is_some_and(|n| crate::cook::ui_themes::builtin_recipe(n).is_some())
+        || name
+            .strip_prefix("@styles/")
+            .is_some_and(|n| style_slugs().contains(&n));
+    if builtin || !name.starts_with('@') && own(name) {
+        Ok(name.into())
+    } else {
+        Err(format!(
+            "ui '{name}': expected a declared canonical pack ID or explicit @themes/<slug> / @styles/<slug>"
+        ))
     }
-    if name.contains('/') {
-        let id = crate::runtime::asset_id(name);
-        return Ok(id.trim_end_matches('/').to_string());
-    }
-    let mine = format!("styles/{name}");
-    if own(&mine) {
-        return Ok(mine);
-    }
-    // An engine theme (`templates/themes/<name>/theme.json`) before a
-    // built-in style of the same name.
-    if crate::cook::ui_themes::builtin_recipe(name).is_some() {
-        return Ok(format!("@themes/{name}"));
-    }
-    let builtin = format!("@styles/{name}");
-    if style_slugs().contains(&name) {
-        return Ok(builtin);
-    }
-    if crate::cook::ui_themes::themes_dir().is_none() && styles_dir().is_none() {
-        return Err(format!(
-            "ui \"{name}\": neither assets/{mine} nor a built-in theme or style: the engine's built-in themes and styles were not found (no themes/ or styles/ in the @origingame/engine package; OG_THEMES_DIR / OG_STYLES_DIR names another directory)"
-        ));
-    }
-    let mut available: Vec<String> = crate::cook::ui_themes::builtin_slugs();
-    for slug in style_slugs() {
-        available.push(slug.to_string());
-    }
-    available.sort();
-    available.dedup();
-    Err(format!(
-        "ui \"{name}\": neither assets/{mine} nor a built-in theme or style ({})",
-        available.join(", ")
-    ))
 }
 
 /// UI checks consume the same checked TS composition as the cook, not a
@@ -122,7 +100,12 @@ pub fn project_ui_style(root: &Path) -> Result<Option<String>, String> {
     if ui == "default" {
         return Ok(None);
     }
-    resolve_style(ui, &|id| root.join("assets").join(id).is_dir()).map(Some)
+    let index =
+        crate::cook::source_index::Index::open(root, &project).map_err(|e| e.to_string())?;
+    resolve_style(ui, &|id| {
+        index.entries.get(id).is_some_and(|e| e.kind == "pack")
+    })
+    .map(Some)
 }
 
 /// The files of a built-in pack directory, by bundle ID.
@@ -138,14 +121,8 @@ pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
         .collect()
 }
 
-/// Built-in assets a `pack.json` (at `source`) names, its fonts, images,
-/// icons and sounds under `@styles/…`, together with their import settings.
-/// A pack that does not parse names none (its own cook reports why).
-pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])> {
-    let Ok(mut layer) = og_ui_next::pack::Layer::parse(text) else {
-        return Vec::new();
-    };
-    layer.resolve(source.rsplit_once('/').map_or("", |(dir, _)| dir));
+/// Shared built-in assets explicitly named by a native layer.
+pub fn pack_files(layer: &og_ui_next::pack::Layer) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for r in layer.assets() {
         for f in styles()
@@ -166,13 +143,10 @@ pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
     BUILTINS.iter().find(|(id, _)| *id == name).copied()
 }
 
-/// The built-in assets the checked look names through its chain
-/// of bases, by bundle id with their bytes: the canvases and palettes its
-/// fields name, and every file of the built-in style its `ui` names (unless
-/// the game has its own of that slug). The cook adds each to the bundle
-/// once. A look that does not resolve names none here; its own cook reports
-/// why.
-pub(crate) fn builtin_files(look: &LookFile, root: &Path) -> Vec<(&'static str, &'static [u8])> {
+/// The built-in canvases and palettes the checked look's resource fields
+/// name, by bundle ID with their bytes. Prepared native packs supply their
+/// own resource dependencies separately.
+pub(crate) fn builtin_files(look: &LookFile) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for b in &look.blocks {
         for (_, v, _) in &b.fields {
@@ -183,31 +157,6 @@ pub(crate) fn builtin_files(look: &LookFile, root: &Path) -> Vec<(&'static str, 
                 out.push(f);
             }
         }
-    }
-    if let Some(ui) = &look.ui
-        && ui != "default"
-        && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_dir())
-    {
-        let files = match id.strip_prefix("@themes/") {
-            Some(theme) => crate::cook::ui_themes::builtin_files(
-                theme,
-                &crate::cook::ui_themes::cache_dir(root),
-            )
-            .unwrap_or_default(),
-            None => style_files(&id),
-        };
-        for (source, bytes) in &files {
-            if !crate::cook::ui_packs::is_pack(source) {
-                continue;
-            }
-            for f in pack_files(source, &String::from_utf8_lossy(bytes)) {
-                if !out.contains(&f) {
-                    out.push(f);
-                }
-            }
-        }
-        // A pack is its pack.json and the assets it names; CSS has no reader.
-        out.extend(files.into_iter().filter(|(id, _)| !id.ends_with(".css")));
     }
     out
 }
@@ -799,11 +748,8 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
         look.ui = None;
     }
     if let Some(name) = &look.ui {
-        // The blob names the style by its bundle id, resolved here: its
-        // directory, which the bundle holds as that directory's pack.json.
-        let has = |dir: &str| known(&format!("{dir}/pack.json"));
-        let id = resolve_style(name, &has)?;
-        if !has(&id) {
+        let id = resolve_style(name, known)?;
+        if !known(&id) {
             missing.push(id.clone());
         }
         look.ui = Some(id);

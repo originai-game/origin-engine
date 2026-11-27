@@ -969,7 +969,7 @@ fn tools() -> Value {
             "`og style <subcommand>`: list, check-project, init, validate, or add UI styles and art-contract checks.",
             json!({
                 "subcommand": s("`list`, `check-project`, `init`, `validate`, or `add`."),
-                "target": s("Style name (for `init`) or directory (for `validate`/`add`)."),
+                "target": s("Style name for `init`, canonical pack content ID for `validate`, or package directory for `add`."),
                 "from": s("Base built-in theme recipe for `init` (default: `minimal`)."),
                 "project": project, "noFrames": b("Skip frame captures on `check-project`."),
                 "args": args,

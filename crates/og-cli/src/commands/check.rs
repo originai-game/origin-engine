@@ -424,18 +424,17 @@ pub fn run(args: &[&str]) -> ExitCode {
         locale_fonts_lint(p, json, false);
         font_packs_lint(p, json, false);
         shader_capabilities_lint(p, json, false);
-        let game = p.root.join("assets/styles/game/pack.json");
         let dirs = [
             p.entry.parent().unwrap_or(&p.root),
             &p.root.join("assets/ui"),
         ];
-        ui_grounds_lint(&p.root, &dirs, Some(&game), json);
+        ui_grounds_lint(&p.root, &dirs, true, json);
         crate::ui_data::lint(&p.root, &dirs, json);
         crate::ui_styles::lint(&p.root, &dirs, json);
         screens::lint(p, json);
     } else {
         let target = &targets[0];
-        ui_grounds_lint(&target.root, &[&target.root], None, json);
+        ui_grounds_lint(&target.root, &[&target.root], false, json);
         crate::ui_data::lint(&target.root, &[&target.root], json);
         crate::ui_styles::lint(&target.root, &[&target.root], json);
     }

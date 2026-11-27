@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Scifi: dark glass, four cut corners, a technical condensed face, snappy motion, cyan accent bars (Zenless Zone Zero, Destiny 2).",
   "color": { "source": "#3fd6ff", "accent": "#3fd6ff", "neutral": "#1f3448", "variant": "vibrant", "scheme": "dark" },
   "material": "glass",
@@ -18,4 +19,4 @@
       "stroke": {"arc": 8}
     }
   }
-}
+});

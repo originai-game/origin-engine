@@ -7,7 +7,7 @@ export default file.look({
   // soft tone steps, all on a woven canvas (the engine's @canvas/linen).
   name: "Painterly 3D",
   mood: "warm",
-  ui: "fantasy",
+  ui: "@themes/fantasy",
   Stylise: {
     paintRadius: 8,
     paintAnisotropy: 0.9,

@@ -1,4 +1,5 @@
-{
+import { file } from '@origingame/engine/author';
+export default file.theme({
   "about": "Retro pixel: a whole-point staircase, a 1-point bevel, a pixel face, stepped motion (Celeste, Stardew Valley).",
   "color": { "source": "#f0a43a", "accent": "#7bd36a", "neutral": "#3d3366", "variant": "fidelity", "scheme": "dark" },
   "material": "pixel",
@@ -18,4 +19,4 @@
       "stroke": {"arc": 12}
     }
   }
-}
+});

@@ -362,7 +362,7 @@ fn terrain_and_theme_compose_shared_inputs_and_typescript_contracts() {
         );
     }
     declarations.push_str(r#"
-const builtinTheme: ThemeInput = { extends: "tactical", ornament: "studs" };
+const builtinTheme: ThemeInput = { extends: "@themes/tactical", ornament: "studs" };
 // @ts-expect-error A heightfield is structured data, not an embedded script path.
 const badTerrainSource: TerrainInput = { source: { kind: "heightfield", field: "generate.ts" } };
 // @ts-expect-error Geometry comes from the shared model schema, not arbitrary mesh JSON.

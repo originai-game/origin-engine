@@ -4,7 +4,7 @@ export default file.look({
   // Early-console 3D: a low grid, vertices snapped to it, affine textures, a coarse depth buffer, sixteen tones.
   name: "Low-resolution retro 3D",
   mood: "dark",
-  ui: "pixel",
+  ui: "@themes/pixel",
   // The UI's seed colours (UiSeeds), so the default style matches the
   // scene: amber over the fog's slate.
   uiSeeds: {

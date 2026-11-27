@@ -10,7 +10,7 @@ export default file.look({
   // voxels, clay, card or a tabletop diorama.
   name: "Toy 3D",
   mood: "bright",
-  ui: "candy",
+  ui: "@themes/candy",
   MaterialStyle: {
     surface: "plastic",
   },

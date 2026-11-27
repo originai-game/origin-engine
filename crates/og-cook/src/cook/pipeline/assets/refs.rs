@@ -149,14 +149,7 @@ pub(super) fn retained(
                 }
             }
             if let Some(ui) = look.ui {
-                let directory = super::super::super::look::resolve_style(&ui, &|p| {
-                    exists(&format!("{p}/pack.json"))
-                })
-                .map_err(|reason| LoadError::Invalid {
-                    path: id.into(),
-                    reason,
-                })?;
-                out.insert(format!("{directory}/pack.json"));
+                out.insert(ui);
             }
         }
         "og.Terrain" => {
@@ -241,12 +234,13 @@ pub(super) fn retained(
                 .map_err(|e| invalid(&blob, e))?;
         }
         "og.UiPack" => {
-            let text = bundle.pack_text(id, &bytes)?;
-            let layer =
-                og_ui_next::pack::Layer::parse(&text).map_err(|reason| LoadError::Invalid {
+            let data = bundle.pack_data(id, &bytes)?;
+            let layer = og_ui_next::pack::Layer::from_bytes(&data).map_err(|reason| {
+                LoadError::Invalid {
                     path: id.into(),
                     reason,
-                })?;
+                }
+            })?;
             out.extend(layer.assets().into_iter().map(str::to_owned));
         }
         "og.Sound" => {

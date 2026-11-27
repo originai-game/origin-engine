@@ -106,6 +106,14 @@ fn typed_material_libraries_generate_maps_and_drive_author_tools() {
         "modules/north/lib/tile.ts",
         "export const tile=[4,1] as const;",
     );
+    // Briefs consume the last successful checked look report. Cook it before
+    // make writes author images that deliberately collide with derived maps.
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Materials","engine":"0.9.0","look":"pixel"}"#,
+    );
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
     let run = || {
         og().args([
             "materials",
@@ -128,30 +136,6 @@ fn typed_material_libraries_generate_maps_and_drive_author_tools() {
     assert!(out.status.success(), "{}", text(&out));
     let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(report["made"][0]["cached"], true);
-    #[cfg(unix)]
-    {
-        let assets = root.join("modules/north/assets");
-        let saved = root.join("modules/north/saved-assets");
-        std::fs::rename(&assets, &saved).unwrap();
-        std::os::unix::fs::symlink(root.join("assets"), &assets).unwrap();
-        let out = run();
-        assert_eq!(
-            out.status.code(),
-            Some(2),
-            "asset-root symlink followed: {}",
-            text(&out)
-        );
-        assert!(text(&out).contains("symlink"), "{}", text(&out));
-        let out = cook();
-        assert!(!out.status.success(), "cook followed an asset-root symlink");
-        assert!(text(&out).contains("symlink"), "{}", text(&out));
-        std::fs::remove_file(&assets).unwrap();
-        std::fs::rename(saved, assets).unwrap();
-    }
-    write(
-        "og-project.json",
-        r#"{"version":1,"name":"Materials","engine":"0.9.0","look":"pixel"}"#,
-    );
     let out = og()
         .args([
             "materials",
@@ -174,6 +158,26 @@ fn typed_material_libraries_generate_maps_and_drive_author_tools() {
             .unwrap()
             .contains("stone")
     );
+    #[cfg(unix)]
+    {
+        let assets = root.join("modules/north/assets");
+        let saved = root.join("modules/north/saved-assets");
+        std::fs::rename(&assets, &saved).unwrap();
+        std::os::unix::fs::symlink(root.join("assets"), &assets).unwrap();
+        let out = run();
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "asset-root symlink followed: {}",
+            text(&out)
+        );
+        assert!(text(&out).contains("symlink"), "{}", text(&out));
+        let out = cook();
+        assert!(!out.status.success(), "cook followed an asset-root symlink");
+        assert!(text(&out).contains("symlink"), "{}", text(&out));
+        std::fs::remove_file(&assets).unwrap();
+        std::fs::rename(saved, assets).unwrap();
+    }
     let out = cook();
     assert!(
         !out.status.success(),
@@ -1369,8 +1373,8 @@ fn typed_icons_load_module_svg_aliases_and_builtin_styles() {
     // A style pack pulls in a typed built-in declaration and its imported names,
     // using the same VM and native baker as the game's own content.
     write(
-        "assets/styles/test/pack.json",
-        r#"{"iconSet":"@styles/shared/icons/game.ts"}"#,
+        "content/styles/test.ts",
+        "import {file,ref} from '@origingame/engine/author'; export default file.pack({iconSet:ref('@styles/shared/icons/game.ts')});",
     );
     for _ in 0..2 {
         let out = cook();

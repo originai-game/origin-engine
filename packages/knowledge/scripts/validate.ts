@@ -317,7 +317,7 @@ function looks(roots: Roots, problems: string[]): void {
   for (const p of packs) {
     if (!choiceUi.includes(p)) problems.push(`${at}: ui names ${p}, which scripts/creation.ts CREATION_CHOICES.ui / CHOICE_LABELS.ui lacks`);
     const templates = join(roots.pkg, "..", "..", "templates");
-    if (p !== "default" && existsSync(templates) && !existsSync(join(templates, "themes", p, "theme.json")) && !existsSync(join(templates, "styles", p, "pack.json"))) problems.push(`${at}: ui names ${p}, which is no engine theme (templates/themes/${p}/theme.json) or built-in style (templates/styles/${p}/)`);
+    if (p !== "default" && existsSync(templates) && !existsSync(join(templates, "themes", p, "theme.ts")) && !existsSync(join(templates, "styles", p, "pack.ts"))) problems.push(`${at}: ui names ${p}, which is no checked engine theme or built-in style`);
   }
   for (const p of choiceUi) {
     if (!packs.includes(p)) problems.push(`scripts/creation.ts: CREATION_CHOICES.ui names ${p}, which ${at} ui does not list`);
@@ -325,8 +325,8 @@ function looks(roots: Roots, problems: string[]): void {
   const themesDir = join(roots.pkg, "..", "..", "templates", "themes");
   if (existsSync(themesDir)) {
     for (const e of readdirSync(themesDir, { withFileTypes: true })) {
-      if (e.isDirectory() && existsSync(join(themesDir, e.name, "theme.json")) && !packs.includes(e.name)) {
-        problems.push(`${at}: templates/themes/${e.name}/theme.json is missing from ui`);
+      if (e.isDirectory() && existsSync(join(themesDir, e.name, "theme.ts")) && !packs.includes(e.name)) {
+        problems.push(`${at}: templates/themes/${e.name}/theme.ts is missing from ui`);
       }
     }
   }
@@ -403,7 +403,7 @@ function looks(roots: Roots, problems: string[]): void {
       const base = checked?.looks.find(l => l.variant === null && l.mood === null)?.look;
       if (!base) problems.push(`${id}: missing checked preset; run og api gen`);
       else {
-        if (base.ui !== s.ui) problems.push(`${id}: checked ui ${base.ui}; catalogue says ${s.ui}`);
+        if (base.ui !== (s.ui === "default" ? null : `@themes/${s.ui}`)) problems.push(`${id}: checked ui ${base.ui}; catalogue says ${s.ui}`);
         if (base.mood !== look.mood) problems.push(`${id}: checked mood ${base.mood}; catalogue says ${look.mood}`);
       }
     }

@@ -4,7 +4,7 @@ export default file.look({
   // A pixel grid over a 3D set with sprites snapped to it, and a tilt-shift band (the top and bottom of the frame blurred, the middle sharp) (give the sprites SpriteDesc.dropShadow or Sprite.dropShadow for shadows along the sun).
   name: "Pixel sprites in 3D worlds",
   mood: "warm",
-  ui: "pixel",
+  ui: "@themes/pixel",
   antialias: "off",
   Stylise: {
     pixelHeight: 240,
