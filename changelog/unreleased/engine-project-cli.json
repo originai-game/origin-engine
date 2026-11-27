@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build",
+      "summary": "Project and string-table readers use the same engine-local CLI as cooking, including install.sh archives and npm platform packages, rather than a different og from PATH."
+    }
+  ]
+}

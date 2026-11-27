@@ -100,7 +100,7 @@ class Step {
 const launcherEnv: Record<string, string> = {};
 function env(): NodeJS.ProcessEnv {
   const e = { ...process.env };
-  for (const k of ["OG_ENGINE_PACKAGE", "OG_NATIVE_ADDON", "ORIGIN_OG_BIN", "OG_TSRS", "CARGO_TARGET_DIR", "OG_ENGINE_VERSION", "ORIGIN_ENGINE_PUBKEY"]) delete e[k];
+  for (const k of ["OG_BIN", "OG_ENGINE_PACKAGE", "OG_NATIVE_ADDON", "ORIGIN_OG_BIN", "OG_TSRS", "CARGO_TARGET_DIR", "OG_ENGINE_VERSION", "ORIGIN_ENGINE_PUBKEY"]) delete e[k];
   Object.assign(e, launcherEnv);
   e.CI = "1";
   return e;
@@ -209,6 +209,12 @@ function host(): void {
     step = new Step("3 og --version, og doctor");
     const v = og(step, demo, "--version");
     if (!v.stdout.includes(`og ${VERSION}`)) step.fail(`og --version printed ${JSON.stringify(v.stdout.trim())}`);
+    run(step, ["bun", "--eval", `
+      import {realpathSync} from 'node:fs';
+      import {ogBin, readProject} from ${JSON.stringify(join(enginePkg, "src/node/project.ts"))};
+      if (realpathSync(ogBin()) !== realpathSync(${JSON.stringify(join(dist, "bin", process.platform === "win32" ? "og.exe" : "og"))})) throw new Error('project readers selected a different engine CLI');
+      if (readProject(process.cwd())?.engine !== ${JSON.stringify(VERSION)}) throw new Error('installed project metadata reader failed');
+    `], demo);
     const doctor = og(step, demo, "doctor");
     for (const want of ["ok       engine", "ok       addon", "ok       wasm-publish", "ok       pin"]) {
       if (!doctor.stdout.includes(want)) step.fail(`og doctor has no "${want}" line:\n${doctor.stdout}`);
