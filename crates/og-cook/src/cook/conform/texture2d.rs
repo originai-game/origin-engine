@@ -504,6 +504,7 @@ pub(in crate::cook) fn conform(
                 timeline: None,
                 motion_action: None,
                 strings: None,
+                font_pack: None,
                 fields: Default::default(),
                 terrains: Default::default(),
                 navmesh: None,

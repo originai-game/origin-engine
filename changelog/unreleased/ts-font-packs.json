@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "font-extension author input and font pack installation",
+    "change": "Font-pack membership and hyphenation inputs are checked TypeScript declarations. The cook no longer reads faces or dictionaries from extension.json. Distributed packs install content and binary asset roots together.",
+    "fix": "Export file['font-extension']({kind:'font',name,languages,scripts,faces:[ref('base/fonts/body')],hyphenation:['assets/fonts/en.hyph']}) under content/. Keep extension.json for discovery tags only, with no faces or hyphenation fields. Reinstall shipped packs and re-cook with matching hosts."
+  }]
+}

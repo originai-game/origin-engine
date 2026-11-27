@@ -20,17 +20,5 @@
     "mn",
     "tg",
     "el"
-  ],
-  "faces": [
-    "NotoSans-CyrillicGreek.ttf"
-  ],
-  "hyphenation": [
-    "ru.hyph",
-    "uk.hyph",
-    "be.hyph",
-    "bg.hyph",
-    "sr.hyph",
-    "mn.hyph",
-    "el.hyph"
   ]
 }

@@ -1,6 +1,6 @@
 //! Directory extensions; discovery never evaluates an extension's code.
 use std::collections::BTreeMap;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -20,20 +20,12 @@ pub struct Manifest {
     pub tags: Option<VfxTags>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
-    /// A font pack's ISO 15924 scripts (`Arab`, `Hans`), the language tags
-    /// it is the face of, and its faces' files, first first (docs/ui.md
-    /// §3.4). Only a font pack has them, and it has all three; only its
-    /// languages may be empty, for a pack of no language (`emoji`: `Zsye`).
+    /// Font catalogue selection tags, not runtime membership. The checked
+    /// content/fonts/<name>/index.ts declaration owns faces and dictionaries.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scripts: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub faces: Option<Vec<String>>,
-    /// A font pack's hyphenation dictionaries (`<language>.hyph`), which
-    /// the cook ships for a game's locales when a class string in its code uses `hyphens-auto`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hyphenation: Option<Vec<String>>,
 }
 
 /// A vfx pack's tags: its style and dimension, and the union of its
@@ -88,14 +80,6 @@ pub struct Extension {
     pub manifest: Manifest,
     pub directory: PathBuf,
     pub installed: bool,
-}
-
-fn relative(path: &str) -> bool {
-    !path.is_empty()
-        && !path.contains(['\\', ':'])
-        && Path::new(path)
-            .components()
-            .all(|c| matches!(c, Component::Normal(_)))
 }
 
 pub(super) fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
@@ -182,13 +166,9 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         || m.keywords
             .as_ref()
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
-        || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
-        || (m.kind != "font" && m.hyphenation.is_some())
+        || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some())
         || (m.kind == "font"
-            && (m.languages.is_none()
-                || [&m.scripts, &m.faces]
-                    .iter()
-                    .any(|v| v.as_ref().is_none_or(|v| v.is_empty()))))
+            && (m.languages.is_none() || m.scripts.as_ref().is_none_or(|v| v.is_empty())))
         || m.scripts.as_ref().is_some_and(|s| {
             !s.iter().all(|s| {
                 s.len() == 4
@@ -202,21 +182,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             path.display()
         ));
     }
-    let all = files(directory)?;
-    for file in m
-        .faces
-        .iter()
-        .flatten()
-        .map(String::as_str)
-        .chain(m.hyphenation.iter().flatten().map(String::as_str))
-    {
-        if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
-            return Err(format!(
-                "{}: missing or unsafe extension file `{file}`",
-                path.display()
-            ));
-        }
-    }
+    files(directory)?;
     Ok(Extension {
         manifest,
         directory: directory.into(),
@@ -336,6 +302,14 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
                     .join(&extension.manifest.name),
             ),
         ]
+    } else if extension.manifest.kind == "font" {
+        vec![
+            ("metadata", target.clone()),
+            (
+                "content",
+                project.join("content/fonts").join(&extension.manifest.name),
+            ),
+        ]
     } else {
         vec![("metadata", target.clone())]
     };
@@ -362,12 +336,27 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         for (name, _) in &destinations {
             std::fs::create_dir(staging.join(name)).map_err(|e| e.to_string())?;
         }
+        let font_content = PathBuf::from("content/fonts").join(&extension.manifest.name);
+        let font_assets = PathBuf::from("assets/fonts").join(&extension.manifest.name);
         for file in all {
             let (part, local) = if extension.manifest.kind == "materials" {
                 if let Ok(local) = file.strip_prefix("content") {
                     ("content", local)
                 } else if let Ok(local) = file.strip_prefix("sources") {
                     ("sources", local)
+                } else {
+                    ("metadata", file.as_path())
+                }
+            } else if extension.manifest.kind == "font" {
+                if let Ok(local) = file.strip_prefix(&font_content) {
+                    ("content", local)
+                } else if let Ok(local) = file.strip_prefix(&font_assets) {
+                    ("metadata", local)
+                } else if file.starts_with("content") || file.starts_with("assets") {
+                    return Err(format!(
+                        "{}: font source outside content/fonts/<name> or assets/fonts/<name>",
+                        file.display()
+                    ));
                 } else {
                     ("metadata", file.as_path())
                 }

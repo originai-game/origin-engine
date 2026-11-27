@@ -14,6 +14,110 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Font-pack TS refs, cmaps and conditional dictionary bytes reach the native
+/// reader without changing another font, including warm-cache invalidation.
+#[test]
+fn typed_font_packs_preserve_membership_and_dictionary_dependencies() {
+    use og_i18n::BundleFontPacks;
+    let root = crate::temp::TempDir::new("typed-font-pack");
+    crate::init_project(&root);
+    std::fs::create_dir_all(root.join("assets/fonts")).unwrap();
+    std::fs::create_dir_all(root.join("content/fonts")).unwrap();
+    for name in ["first", "second", "unrelated"] {
+        std::fs::copy(
+            template_assets().join("fonts/NotoSansSC-Regular-subset.ttf"),
+            root.join(format!("assets/fonts/{name}.ttf")),
+        )
+        .unwrap();
+    }
+    let mut options = CookOptions::default();
+    assert!(cook_project(&root, &options).unwrap().ok());
+    let unrelated = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .read("fonts/unrelated.ttf")
+        .unwrap()
+        .to_vec();
+    std::fs::write(
+        root.join("assets/fonts/en.hyph"),
+        b"English dictionary snapshot",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/fonts/fr.hyph"),
+        b"French dictionary snapshot",
+    )
+    .unwrap();
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nexport default file['font-extension']({kind:'font',name:'Body',languages:['en_us'],scripts:['Latn'],faces:[ref('base/fonts/second'),ref('base/fonts/first')],hyphenation:['assets/fonts/en.hyph','assets/fonts/fr.hyph']});";
+    std::fs::write(root.join("content/fonts/body.ts"), declaration).unwrap();
+    options.code.hyphens = true;
+    let mut previous = None;
+    for _ in 0..2 {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("base/fonts/body").unwrap();
+        let pack = bundle.font_pack("base/fonts/body", &bytes).unwrap();
+        assert_eq!(pack.name, "Body");
+        assert_eq!(pack.languages, ["en-US"]);
+        assert_eq!(pack.faces, ["fonts/second.ttf", "fonts/first.ttf"]);
+        assert!(pack.covers('A') && !pack.covers('😀'));
+        let blob = bundle
+            .blob::<og_cook::format::FontPack>("base/fonts/body", &bytes)
+            .unwrap();
+        assert_eq!(
+            blob.raw("hyphenation:en").unwrap(),
+            b"English dictionary snapshot"
+        );
+        assert!(blob.raw("hyphenation:fr").is_err());
+        assert_eq!(
+            bundle.read("fonts/unrelated.ttf").unwrap().as_ref(),
+            unrelated
+        );
+        if let Some(previous) = &previous {
+            assert_eq!(previous, &bytes.to_vec());
+        }
+        previous = Some(bytes.to_vec());
+    }
+    std::fs::write(
+        root.join("assets/fonts/en.hyph"),
+        b"Changed English dictionary",
+    )
+    .unwrap();
+    assert!(cook_project(&root, &options).unwrap().ok());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = bundle.read("base/fonts/body").unwrap();
+    assert_ne!(bytes.to_vec(), previous.unwrap());
+    assert_eq!(
+        bundle
+            .blob::<og_cook::format::FontPack>("base/fonts/body", &bytes)
+            .unwrap()
+            .raw("hyphenation:en")
+            .unwrap(),
+        b"Changed English dictionary"
+    );
+    options.code.hyphens = false;
+    assert!(cook_project(&root, &options).unwrap().ok());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = bundle.read("base/fonts/body").unwrap();
+    assert!(
+        bundle
+            .blob::<og_cook::format::FontPack>("base/fonts/body", &bytes)
+            .unwrap()
+            .raw("hyphenation:en")
+            .is_err()
+    );
+    std::fs::write(
+        root.join("content/fonts/body.ts"),
+        declaration.replace("base/fonts/second", "base/missing"),
+    )
+    .unwrap();
+    let error = cook_project(&root, &options).err().unwrap().to_string();
+    assert!(
+        error.contains("base/missing") && error.contains("content/fonts/body.ts:2"),
+        "{error}"
+    );
+}
+
 /// Typed locale input reaches the native reader with ICU, metadata and ordered
 /// physical font IDs intact, including warm-helper invalidation and refusals.
 #[test]

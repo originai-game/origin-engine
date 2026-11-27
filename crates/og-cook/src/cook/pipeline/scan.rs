@@ -350,18 +350,22 @@ pub(crate) fn scan_with(
             .iter()
             .any(|(r, _)| r.ends_with(&format!("/{DEFAULT_CJK_PACK}/extension.json")))
         && let Some(dir) = look::fonts_dir().map(|d| d.join(DEFAULT_CJK_PACK))
-        && let Ok(entries) = std::fs::read_dir(&dir)
     {
-        for e in entries.flatten() {
-            let (Some(name), Ok(bytes)) = (
-                e.file_name().to_str().map(str::to_owned),
-                std::fs::read(e.path()),
-            ) else {
-                continue;
-            };
+        let mut entries = Vec::new();
+        walk(&dir, "", &mut entries).map_err(|e| CookError(format!("{}: {e}", dir.display())))?;
+        for (file, path) in entries {
+            let name = file
+                .strip_prefix(&format!("assets/fonts/{DEFAULT_CJK_PACK}/"))
+                .unwrap_or(&file);
             let id = format!("@fonts/{DEFAULT_CJK_PACK}/{name}");
-            builtins.insert(id.clone(), intern(bytes));
-            at.insert(id, e.path());
+            builtins.insert(
+                id.clone(),
+                intern(
+                    std::fs::read(&path)
+                        .map_err(|e| CookError(format!("{}: {e}", path.display())))?,
+                ),
+            );
+            at.insert(id, path);
         }
     }
     for id in builtins.keys() {
@@ -415,12 +419,17 @@ pub(crate) fn scan_with(
             // reserved @styles/ prefix names the engine's styles root.
             (None, "ts")
                 if (rel.starts_with("@styles/")
+                    || rel.starts_with("@fonts/")
                     || rel.starts_with("@ui/") && rel.ends_with(".strings.ts"))
                     && builtins.contains_key(rel) =>
             {
                 let file = rel
                     .strip_prefix("@styles/")
                     .or_else(|| rel.strip_prefix("@ui/"))
+                    .or_else(|| {
+                        rel.strip_prefix("@fonts/")
+                            .and_then(|s| s.split_once('/').map(|(_, file)| file))
+                    })
                     .expect("built-in declaration id");
                 let mut root = path.clone();
                 for _ in file.split('/') {
@@ -450,7 +459,6 @@ pub(crate) fn scan_with(
                 kind
             }
             (None, "json") if model_program::is_program(rel) => &crate::cook::model::MODEL,
-            (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
             (None, "svelte") => {
                 early_errors.push((rel.clone(), "document", ".svelte documents are removed: write the screen as a TSX component and mount it with mount(world, Screen, props, { layer }) from @origingame/engine/ui".into()));
@@ -544,6 +552,7 @@ pub(crate) fn scan_with(
             timeline: None,
             motion_action: None,
             strings: None,
+            font_pack: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
@@ -553,6 +562,12 @@ pub(crate) fn scan_with(
         if source.kind == &strings::STRINGS {
             source.strings =
                 Some(strings::declaration(source.input().map_err(CookError)?).map_err(CookError)?);
+        }
+        if source.kind == &font_pack::FONT_PACK {
+            source.font_pack = Some(
+                font_pack::declaration(source.input().map_err(CookError)?, &assets_root(&source))
+                    .map_err(CookError)?,
+            );
         }
         sources.push(source);
     }

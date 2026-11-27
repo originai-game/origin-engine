@@ -1,6 +1,6 @@
 //! Font packs (docs/ui.md §3.4): fonts shipped like the UI packs, one per
-//! script, each a directory with an `extension.json` of kind `font`. The
-//! cook turns an installed pack into this index (`og.FontPack`): its name,
+//! script. A checked TS font-extension declaration cooks directly into
+//! this native index (`og.FontPack`): its name,
 //! the languages it is the face of, the asset ids of its faces and the code
 //! points they cover, read from their cmaps. og.i18n builds the font chain
 //! from the indexes in the bundle: the pack of the active locale first,
@@ -12,7 +12,7 @@ use std::ops::RangeInclusive;
 /// One installed pack, as its cooked index holds it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FontPack {
-    /// Its directory and manifest name (`arabic`).
+    /// Its declared name (`arabic`).
     pub name: String,
     /// The language tags it is the face of (`ar`, `zh-Hant`), canonical.
     pub languages: Vec<String>,

@@ -337,9 +337,14 @@ finished art; core font coverage cannot depend on a commercial pack.
 
 ### 3.4 Font packs
 
-Script packs under `templates/fonts/` carry `extension.json`, faces,
-import settings, languages and licences. `og font list`, `og font add`
-and `og create --lang` install them. The cook writes a FontPack index and
+Script packs under `templates/fonts/` carry checked declarations in
+`content/fonts/<name>/index.ts`, binary faces and dictionaries with their
+import settings in `assets/fonts/<name>/`, and licences. `extension.json`
+holds discovery metadata and language/script catalogue tags only; it is
+not a cook input. `og font add` and `og create --lang` install the content
+and asset roots together, refusing conflicting roots without overwrites.
+The declaration uses `file['font-extension']` with ordered `ref(...)`
+faces and module-relative dictionary paths. The cook writes a native FontPack index and
 whole `<id>.face.ogb` faces; adding one must not change another font's
 cooked output, charset or mode.
 

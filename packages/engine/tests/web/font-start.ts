@@ -27,9 +27,13 @@ mkdirSync(join(project, "assets/fonts"), { recursive: true });
 mkdirSync(join(project, "content/strings"), { recursive: true });
 for (const locale of ["en", "ja", "ar"]) writeFileSync(join(project, `content/strings/${locale}.ts`), `import {file} from '@origingame/engine/author'; export default file.strings({locale:${JSON.stringify(locale)},entries:{ready:'Ready'}});\n`);
 mkdirSync(out, { recursive: true });
-for (const pack of ["latin", "arabic"]) cpSync(join(repo, "templates/fonts", pack), join(project, "assets/fonts", pack), { recursive: true });
+for (const pack of ["latin", "arabic"]) {
+  const source = join(repo, "templates/fonts", pack);
+  cpSync(join(source, "assets"), join(project, "assets"), { recursive: true });
+  cpSync(join(source, "content"), join(project, "content"), { recursive: true });
+}
 writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"Font start","engine":"0.9.0"}\n');
-writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"font-start",entry:"main.ts",publish:{keep:["fonts/arabic/extension.json"]}});\n');
+writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"font-start",entry:"main.ts",publish:{keep:["base/fonts/arabic/index"]}});\n');
 writeFileSync(join(project, "main.ts"), `import { og, defineSystem } from "@origingame/engine";
 let font = 0, startTick = -1, same = false, draws = 0;
 let hiddenResult = null;
@@ -104,7 +108,7 @@ try {
   if (publish) {
     const sw = JSON.parse(/^const OG_SW=(.*);$/m.exec(readFileSync(join(dist, "sw.js"), "utf8"))![1]!) as { files: string[]; lazy: string[] };
     check(sw.files.includes(latin.slice("/game/".length)) && sw.lazy.includes(arabic.slice("/game/".length)), "the service worker precaches the explicit face, not the optional one");
-    check(manifest.pruning?.omitted.some((o) => o.id === "fonts/latin/extension.json") === true, "the start font works even when publish prunes its pack index");
+    check(manifest.pruning?.omitted.some((o) => o.id === "base/fonts/latin/index") === true, "the start font works even when publish prunes its pack index");
   }
   // Capture the Worker's rendered target, as reference.ts does, rather
   // than the headless compositor's OffscreenCanvas surface. No tick passes.

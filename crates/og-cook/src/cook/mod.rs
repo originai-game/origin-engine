@@ -147,6 +147,8 @@ pub(crate) struct Source {
     motion_action: Option<og_bundle::motion_action::MotionAction>,
     /// Compiled ICU messages and resolved locale font chain.
     strings: Option<og_i18n::StringTable>,
+    /// Checked membership, cmaps and captured dictionary inputs.
+    font_pack: Option<font_pack::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.
@@ -291,11 +293,20 @@ fn normalise_rel(path: &str) -> String {
     out.join("/")
 }
 
-/// A source's owning root. `@styles/` names the shipped styles root, not a
-/// physical directory within it; other ids are relative to their module root.
+/// A source's owning root. Reserved styles and font-pack prefixes anchor their
+/// shipped roots; project content IDs are relative to their module root.
 pub(crate) fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
-    for _ in s.rel.strip_prefix("@styles/").unwrap_or(&s.rel).split('/') {
+    let file = s
+        .rel
+        .strip_prefix("@styles/")
+        .or_else(|| {
+            s.rel
+                .strip_prefix("@fonts/")
+                .and_then(|s| s.split_once('/').map(|(_, file)| file))
+        })
+        .unwrap_or(&s.rel);
+    for _ in file.split('/') {
         root.pop();
     }
     root

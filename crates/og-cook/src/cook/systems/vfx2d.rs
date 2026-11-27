@@ -442,6 +442,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             timeline: None,
             motion_action: None,
             strings: None,
+            font_pack: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,

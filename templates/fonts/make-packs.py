@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The font packs (docs/ui.md §3.4): one directory per script under
-templates/fonts/, each with its faces, their import settings, an
-`extension.json` of kind `font`, its licence and LICENSES.md.
+templates/fonts/, with checked declarations in content/fonts/<name>/,
+binary faces and dictionaries in assets/fonts/<name>/, discovery metadata
+in extension.json, and licences.
 
 Each face is a Noto face from google/fonts instanced at Regular (wght
 400, wdth 100) and subset with fontTools, keeping every layout feature
@@ -22,6 +23,7 @@ LICENSES.md rows).
 """
 import argparse
 import json
+import shutil
 import tarfile
 import urllib.parse
 import urllib.request
@@ -247,7 +249,14 @@ def main() -> None:
         out = HERE / name
         out.mkdir(exist_ok=True)
         for old in out.iterdir():
-            old.unlink()
+            if old.is_dir():
+                shutil.rmtree(old)
+            else:
+                old.unlink()
+        assets = out / "assets" / "fonts" / name
+        content = out / "content" / "fonts" / name
+        assets.mkdir(parents=True)
+        content.mkdir(parents=True)
         files = []
         for file, source, wanted in faces:
             font = regular(TTFont(fetch(args.cache, source)))
@@ -262,18 +271,28 @@ def main() -> None:
             sub = subset.Subsetter(opts)
             sub.populate(unicodes=sorted(c for c in (wanted if wanted is not None else set(cmap)) if c in cmap))
             sub.subset(font)
-            font.save(out / file)
+            font.save(assets / file)
             colour = "COLR" in font
-            (out / f"{file}.ogt").write_text((COLOR_SIDECAR if colour else SIDECAR).format())
+            (assets / f"{file}.ogt").write_text((COLOR_SIDECAR if colour else SIDECAR).format())
             ofl = f"OFL-{family(source)}.txt"
             (out / ofl).write_text(licence(args.cache, source))
             count = len(font.getBestCmap())
-            size = (out / file).stat().st_size
+            size = (assets / file).stat().st_size
             files.append(file)
             origin = f"googlefonts/noto-emoji `{source.split(':', 1)[1]}`" if source.startswith("noto-emoji:") else f"google/fonts `ofl/{source}`"
             rows.append(f"| `{name}/{file}` | {', '.join(languages) or 'any (emoji)'} | {count:,} characters, {size:,} bytes | SIL OFL 1.1 (`{ofl}`) | {origin} |")
             print(f"{name}/{file}: {size} bytes, {count} characters")
-        hyphenation = dictionaries(args.cache, out, languages)
+        hyphenation = dictionaries(args.cache, assets, languages)
+        if hyphenation:
+            (assets / "LICENSE-hypher.txt").replace(out / "LICENSE-hypher.txt")
+        declaration = {
+            "kind": "font", "name": name, "languages": languages, "scripts": scripts,
+            "faces": [],
+            "hyphenation": [f"assets/fonts/{name}/{f}" for f in hyphenation],
+        }
+        refs = ", ".join(f'ref({json.dumps(f"base/fonts/{name}/{Path(f).stem}")})' for f in files)
+        text = json.dumps(declaration, indent=2, ensure_ascii=False).replace('"faces": []', f'"faces": [{refs}]')
+        (content / "index.ts").write_text("import {file, ref} from '@origingame/engine/author';\n\n" + f"export default file['font-extension']({text});\n")
         manifest = {
             "format": 1,
             "kind": "font",
@@ -282,10 +301,7 @@ def main() -> None:
             "description": description,
             "scripts": scripts,
             "languages": languages,
-            "faces": files,
         }
-        if hyphenation:
-            manifest["hyphenation"] = hyphenation
         (out / "extension.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     table = "\n".join(rows)
     (HERE / "LICENSES.md").write_text(f"""# Font packs: licences

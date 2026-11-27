@@ -40,48 +40,42 @@ pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
     if missing.is_empty() {
         return;
     }
-    let assets = p.root.join("assets");
     let mut available = Vec::new();
-    let mut dirs = vec![assets.clone()];
-    while let Some(dir) = dirs.pop() {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let Ok(ty) = entry.file_type() else { continue };
-            let path = entry.path();
-            if ty.is_dir() {
-                dirs.push(path);
-            } else if ty.is_file()
-                && path.file_name().is_some_and(|n| n == "extension.json")
-                && let Some(m) = std::fs::read(&path)
-                    .ok()
-                    .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
-                    .filter(|m| m["kind"] == "font")
-            {
-                // An installed font pack (docs/ui.md §3.4): og.i18n chains it.
-                let dir = path.parent().unwrap_or(&assets);
-                let faces = m["faces"].as_array().cloned().unwrap_or_default();
-                if !faces.is_empty()
-                    && faces
-                        .iter()
-                        .all(|f| f.as_str().is_some_and(|f| dir.join(f).is_file()))
-                {
-                    available.extend(
-                        m["languages"]
-                            .as_array()
-                            .into_iter()
-                            .flatten()
-                            .filter_map(|l| l.as_str().map(og_i18n::locale::canonical)),
-                    );
-                }
-            }
-        }
-    }
     if let Ok(index) = og_cook::cook::source_index::Index::open(&p.root, &project)
         && let Ok(tables) = og_cook::cook::strings_extract::read_tables(&p.root, &project, &index)
         && let Ok(bindings) = og_cook::cook::project_assets(&p.root, &project)
     {
+        use og_cook::cook::{source_content, source_schemas};
+        let mut evaluator = source_content::Evaluator::default();
+        for entry in index
+            .entries
+            .values()
+            .filter(|e| e.factory == "font-extension")
+        {
+            let Ok(content) =
+                evaluator.evaluate(&p.root, &project, entry, &Default::default(), None)
+            else {
+                continue;
+            };
+            let Ok(file) =
+                serde_json::from_value::<source_schemas::File>(content.data().root().into_json())
+            else {
+                continue;
+            };
+            let Ok(pack) = serde_json::from_value::<
+                source_schemas::world::localization::FontExtensionInput,
+            >(file.value) else {
+                continue;
+            };
+            if !pack.faces.is_empty()
+                && pack
+                    .faces
+                    .iter()
+                    .all(|f| bindings.get(&f.id).is_some_and(|o| o.kind == "font"))
+            {
+                available.extend(pack.languages.iter().map(|l| og_i18n::locale::canonical(l)));
+            }
+        }
         available.extend(tables.into_iter().filter_map(|(_, table)| {
             (!table.fonts.is_empty()
                 && table
@@ -126,14 +120,18 @@ pub(super) fn font_packs_lint(p: &Project, json: bool, to_stderr: bool) {
         .flatten()
         .filter_map(|e| {
             let name = e.file_name().to_str()?.to_owned();
-            let ours = bundled.join(&name);
-            let manifest: serde_json::Value =
-                serde_json::from_slice(&std::fs::read(ours.join("extension.json")).ok()?).ok()?;
-            let faces = manifest["faces"].as_array()?;
-            faces
+            let ours = bundled.join(&name).join("assets/fonts").join(&name);
+            let files = og_cook::cook::source_project::files(&ours).ok()?;
+            files
                 .iter()
-                .filter_map(|f| f.as_str())
-                .any(|f| std::fs::read(e.path().join(f)).ok() != std::fs::read(ours.join(f)).ok())
+                .filter(|f| {
+                    f.extension()
+                        .is_some_and(|ext| ext == "ttf" || ext == "otf")
+                })
+                .any(|f| {
+                    std::fs::read(e.path().join(f.strip_prefix(&ours).unwrap())).ok()
+                        != std::fs::read(f).ok()
+                })
                 .then_some(name)
         })
         .collect();
@@ -142,7 +140,7 @@ pub(super) fn font_packs_lint(p: &Project, json: bool, to_stderr: bool) {
     }
     differ.sort();
     let message = format!(
-        "{}: the installed font pack's faces differ from this engine's pack of that name (an older engine's copy shadows it and may lack characters it draws). Remove assets/fonts/<pack> and run `og font add <pack>` to install this engine's.",
+        "{}: the installed font pack's faces differ from this engine's pack of that name (an older engine's copy shadows it and may lack characters it draws). Remove assets/fonts/<pack> and content/fonts/<pack>, then run `og font add <pack>` to install this engine's.",
         differ.join(", ")
     );
     let text = if json {

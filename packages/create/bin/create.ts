@@ -246,7 +246,15 @@ export function create(options: CreateOptions): Created {
   // them (assets/fonts/<pack>/); og.i18n puts them in the fallback chain.
   const available = readPacks(packs);
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
-    copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
+    const pack = available.find((p) => p.name === name)!.dir;
+    copy(join(pack, "content"), join(dir, "content"));
+    copy(join(pack, "assets"), join(dir, "assets"));
+    for (const item of readdirSync(pack, { withFileTypes: true })) {
+      if (!item.isFile() || item.isSymbolicLink()) continue;
+      const target = join(dir, "assets", "fonts", name, item.name);
+      cpSync(join(pack, item.name), target);
+      written.push(relative(dir, target));
+    }
   }
   // An interactive film adds its story, segments and placeholder clip, run by project.ts's `flow` (og api show flow).
   if (film) copy(filmDir(), dir);

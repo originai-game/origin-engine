@@ -1,5 +1,54 @@
 use super::*;
 
+/// Font installation owns two roots atomically, with declarations outside
+/// binary assets and no rewrite of the distributed source or its references.
+#[test]
+fn font_pack_installs_typed_content_and_cooks() {
+    use og_i18n::BundleFontPacks;
+    let dir = TempDir::new("og-font-pack");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("og-project.json"),
+        r#"{"version":1,"name":"Fonts","engine":"0.9.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(dir.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'fonts',entry:'src/main.ts'});").unwrap();
+    let source = repo().join("templates/fonts/latin");
+    let add = || {
+        og().args(["font", "add"])
+            .arg(&source)
+            .arg(&dir)
+            .output()
+            .unwrap()
+    };
+    std::fs::create_dir_all(dir.join("content/fonts/latin")).unwrap();
+    std::fs::write(dir.join("content/fonts/latin/keep.ts"), "owned").unwrap();
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(!dir.join("assets/fonts/latin").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("content/fonts/latin/keep.ts")).unwrap(),
+        "owned"
+    );
+    std::fs::remove_dir_all(dir.join("content/fonts/latin")).unwrap();
+    let out = add();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(
+        std::fs::read(dir.join("content/fonts/latin/index.ts")).unwrap(),
+        std::fs::read(source.join("content/fonts/latin/index.ts")).unwrap()
+    );
+    assert!(dir.join("assets/fonts/latin/NotoSans-Latin.ttf").is_file());
+    assert!(!dir.join("assets/fonts/latin/content").exists());
+    let out = og().arg("cook").arg(&dir).output().unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    let bytes = bundle.read("base/fonts/latin/index").unwrap();
+    let pack = bundle.font_pack("base/fonts/latin/index", &bytes).unwrap();
+    assert_eq!(pack.faces, ["fonts/latin/NotoSans-Latin.ttf"]);
+    assert!(pack.covers('é'));
+}
+
 /// Installed material declarations and captured WGSL form one usable pack;
 /// conflicts in any source root refuse the whole install without overwrites.
 #[test]

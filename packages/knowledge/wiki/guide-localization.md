@@ -62,6 +62,14 @@ source. With no table, it creates `content/strings/en.ts` without overwriting.
 <a id="guide-localization-3"></a>
 ### `localization §3` Fonts and direction
 
+Author a pack in `content/fonts/<name>/index.ts` with `file['font-extension']`.
+Its ordered faces are canonical font refs; its `.hyph` inputs are paths relative
+to the module root. Binary fonts and dictionaries live under `assets/fonts/`.
+Use `og api show file:font-extension` for generated types. `og font add` and
+`og create --lang` install both roots; `extension.json` holds only discovery
+metadata and language/script search tags, never runtime membership. Editing
+the TS declaration changes the cooked index, not another font's own settings.
+
 - The active locale sets the UI's font chain: its own `fonts` first, then
   the locale's installed font pack, then packs a frame needed for
   characters only they cover, then the other tables' fonts.

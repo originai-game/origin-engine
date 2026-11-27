@@ -1,5 +1,5 @@
-//! A font pack's index (docs/ui.md §3.4): an installed pack's
-//! `extension.json` of kind `font` cooked into og-i18n's `FontPack` — its
+//! A checked TS font-pack declaration (docs/ui.md §3.4) cooked into
+//! og-i18n's native `FontPack`: its
 //! languages, its faces' asset ids and the code points their cmaps map.
 //! The faces themselves cook as fonts by their own import settings; the
 //! index adds nothing to them, so a pack never changes another font's
@@ -16,22 +16,134 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::BlobKind;
 use og_blob::BlobWriter;
 
-macro_rules! manifest {
-    ($($(#[$attr:meta])* $name:ident: $ty:ty => $args:literal, $default:literal, $doc:literal);* $(;)?) => {
-        #[derive(serde::Deserialize)]
-        struct Manifest { $($(#[$attr])* $name: $ty),* }
-        pub(crate) const LINES: &[crate::grammar::Line] = &[$(
-            crate::grammar::Line::new(stringify!($name), $args, $default, $doc, "")
-        ),*];
-    };
+/// One snapshot shared by diagnostics, planning and execution. Ref IDs are
+/// canonical until `bind` resolves actual scanned font outputs and cmaps.
+pub(crate) struct Prepared {
+    pack: og_i18n::FontPack,
+    hyphenation: BTreeMap<String, Vec<u8>>,
+    inputs: BTreeMap<String, u64>,
+    face_hashes: String,
 }
-manifest! {
-    kind: String => "font", "required", "Extension kind discriminator.";
-    name: String => "string", "required", "Pack name.";
-    #[serde(default)] languages: Vec<String> => "[language, ...]", "[]", "Language tags the pack covers.";
-    #[serde(default)] scripts: Vec<String> => "[ISO 15924 code, ...]", "[]", "Scripts, including language-independent packs such as emoji Zsye.";
-    #[serde(default)] faces: Vec<String> => "[path, ...]", "[]", "TTF/OTF paths relative to the pack; each face retains its own import settings.";
-    #[serde(default)] hyphenation: Vec<String> => "[language.hyph, ...]", "[]", "Dictionaries shipped only for reached hyphens:auto and project locales.";
+
+pub(crate) fn declaration(
+    input: crate::cook::source_schemas::world::localization::FontExtensionInput,
+    root: &Path,
+) -> Result<Prepared, String> {
+    if input.name.trim().is_empty()
+        || input.faces.is_empty()
+        || input.languages.is_empty() && input.scripts.is_empty()
+    {
+        return Err("a font pack needs a name, at least one face and languages or scripts".into());
+    }
+    for script in &input.scripts {
+        if script.len() != 4
+            || !script.as_bytes()[0].is_ascii_uppercase()
+            || !script.as_bytes()[1..].iter().all(u8::is_ascii_lowercase)
+        {
+            return Err(format!("'{script}' is not an ISO 15924 script code"));
+        }
+    }
+    let mut hyphenation = BTreeMap::new();
+    let mut inputs = BTreeMap::new();
+    for file in input.hyphenation {
+        let language = Path::new(&file)
+            .file_name()
+            .and_then(|f| f.to_str())
+            .and_then(|f| f.strip_suffix(".hyph"))
+            .filter(|f| !f.is_empty())
+            .ok_or_else(|| format!("'{file}' must name a <language>.hyph dictionary"))?;
+        let path = crate::cook::source_path::checked(root, &file)
+            .map_err(|e| format!("dictionary '{file}': {e}"))?;
+        let bytes = std::fs::read(path).map_err(|e| format!("dictionary '{file}': {e}"))?;
+        inputs.insert(file.clone(), super::hash_bytes(&bytes));
+        if hyphenation.insert(language.into(), bytes).is_some() {
+            return Err(format!("duplicate hyphenation dictionary for '{language}'"));
+        }
+    }
+    Ok(Prepared {
+        pack: og_i18n::FontPack {
+            name: input.name,
+            languages: input
+                .languages
+                .iter()
+                .map(|l| og_i18n::locale::canonical(l))
+                .collect(),
+            faces: input.faces.into_iter().map(|f| f.id).collect(),
+            coverage: Vec::new(),
+        },
+        hyphenation,
+        inputs,
+        face_hashes: String::new(),
+    })
+}
+
+pub(crate) fn bind(
+    sources: &mut [Source],
+    graph: &crate::cook::source_content::Graph,
+) -> Result<(), CookError> {
+    let fonts: BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| s.kind == &font::FONT)
+        .map(|s| (s.rel.as_str(), s))
+        .collect();
+    let mut bound = Vec::new();
+    for (index, source) in sources.iter().enumerate() {
+        let Some(decl) = &source.font_pack else {
+            continue;
+        };
+        let mut faces = Vec::new();
+        let mut points = Vec::new();
+        let mut hashes = String::new();
+        for id in &decl.pack.faces {
+            let asset = if let Some(output) = graph.outputs.get(id) {
+                output.asset.clone()
+            } else if let Some((pack, _)) = source
+                .rel
+                .strip_prefix("@fonts/")
+                .and_then(|s| s.split_once('/'))
+            {
+                fonts
+                    .keys()
+                    .find(|asset| {
+                        asset
+                            .strip_prefix(&format!("@fonts/{pack}/"))
+                            .and_then(|f| f.rsplit_once('.'))
+                            .is_some_and(|(stem, _)| id == &format!("base/fonts/{pack}/{stem}"))
+                    })
+                    .map(|asset| (*asset).to_owned())
+                    .ok_or_else(|| {
+                        CookError(format!("{}: unknown shipped font ref '{id}'", source.rel))
+                    })?
+            } else {
+                return Err(CookError(format!(
+                    "{}: unknown font ref '{id}'",
+                    source.rel
+                )));
+            };
+            let font = fonts.get(asset.as_str()).ok_or_else(|| {
+                CookError(format!("{}: '{id}' is not a scanned font", source.rel))
+            })?;
+            let face = ttf_parser::Face::parse(&font.bytes, 0)
+                .map_err(|e| CookError(format!("{}: font '{id}': {e}", source.rel)))?;
+            if let Some(cmap) = face.tables().cmap {
+                for sub in cmap.subtables {
+                    if sub.is_unicode() {
+                        sub.codepoints(|c| points.push(c));
+                    }
+                }
+            }
+            hashes.push_str(&format!("{asset}={:016x}\n", font.hash));
+            faces.push(asset);
+        }
+        bound.push((index, faces, og_i18n::font_pack::ranges(points), hashes));
+    }
+    for (index, faces, coverage, hashes) in bound {
+        let decl = sources[index].font_pack.as_mut().expect("font declaration");
+        decl.pack.faces = faces;
+        decl.pack.coverage = coverage;
+        decl.face_hashes = hashes;
+    }
+    Ok(())
 }
 
 /// Whether a game hyphenates (CSS Text 4 §6.1): its code writes a
@@ -56,20 +168,16 @@ pub(crate) fn shipped_languages(sources: &[Source]) -> std::collections::BTreeSe
     out
 }
 
-/// The dictionaries of pack `m` a game of `sources` ships: (language, file).
-fn shipped(m: &Manifest, sources: &[Source], code: &CodeGraph) -> Vec<(String, String)> {
+/// The dictionary languages of pack `m` a game of `sources` ships.
+fn shipped(m: &Prepared, sources: &[Source], code: &CodeGraph) -> Vec<String> {
     if m.hyphenation.is_empty() || !uses_auto_hyphens(sources, code) {
         return Vec::new();
     }
     let languages = shipped_languages(sources);
     m.hyphenation
-        .iter()
-        .filter_map(|f| {
-            let language = f.strip_suffix(".hyph")?;
-            languages
-                .contains(language)
-                .then(|| (language.to_string(), f.clone()))
-        })
+        .keys()
+        .filter(|language| languages.contains(*language))
+        .cloned()
         .collect()
 }
 
@@ -83,19 +191,20 @@ pub(crate) fn check_hyphenation(sources: &[Source], code: &CodeGraph) -> Vec<(St
     let languages = shipped_languages(sources);
     let mut out = Vec::new();
     for s in sources.iter().filter(|s| s.kind == &FONT_PACK) {
-        let Ok(m) = manifest(s) else { continue };
+        let Some(m) = &s.font_pack else { continue };
         if m.hyphenation.is_empty() {
             continue;
         }
         for l in &languages {
             let named = m
+                .pack
                 .languages
                 .iter()
                 .any(|p| &og_i18n::hyphenation::dictionary_language(p) == l);
-            if named && !m.hyphenation.iter().any(|f| f == &format!("{l}.hyph")) {
+            if named && !m.hyphenation.contains_key(l) {
                 out.push((
                     s.rel.clone(),
-                    format!("warning: hyphens: auto: font pack '{}' has no hyphenation dictionary for '{l}', so its text is hyphenated only at soft hyphens", m.name),
+                    format!("warning: hyphens: auto: font pack '{}' has no hyphenation dictionary for '{l}', so its text is hyphenated only at soft hyphens", m.pack.name),
                 ));
             }
         }
@@ -103,9 +212,10 @@ pub(crate) fn check_hyphenation(sources: &[Source], code: &CodeGraph) -> Vec<(St
     out
 }
 
-/// Whether pack manifest `m` names a language of dictionary `attr`.
-fn names_dictionary(m: &Manifest, attr: &str) -> bool {
-    m.languages
+/// Whether checked pack `m` names a language of dictionary `attr`.
+fn names_dictionary(m: &Prepared, attr: &str) -> bool {
+    m.pack
+        .languages
         .iter()
         .any(|l| og_i18n::segmenter::dictionary_for(l) == Some(attr))
 }
@@ -114,7 +224,7 @@ fn names_dictionary(m: &Manifest, attr: &str) -> bool {
 /// each one a shipped locale needs whose language the pack names, unless
 /// a pack before it (by path) carries it already.
 fn segmentation(s: &Source, sources: &[Source]) -> Vec<&'static str> {
-    let Ok(m) = manifest(s) else {
+    let Some(m) = &s.font_pack else {
         return Vec::new();
     };
     let wanted: std::collections::BTreeSet<&'static str> = shipped_languages(sources)
@@ -123,12 +233,14 @@ fn segmentation(s: &Source, sources: &[Source]) -> Vec<&'static str> {
         .collect();
     wanted
         .into_iter()
-        .filter(|attr| names_dictionary(&m, attr))
+        .filter(|attr| names_dictionary(m, attr))
         .filter(|attr| {
             !sources.iter().any(|o| {
                 o.kind == &FONT_PACK
                     && o.rel < s.rel
-                    && manifest(o).is_ok_and(|om| names_dictionary(&om, attr))
+                    && o.font_pack
+                        .as_ref()
+                        .is_some_and(|om| names_dictionary(om, attr))
             })
         })
         .collect()
@@ -139,10 +251,10 @@ fn segmentation(s: &Source, sources: &[Source]) -> Vec<&'static str> {
 /// Burmese) and that no font pack names, so no pack carries ICU's
 /// dictionary for it and its words and lines break by the rules alone.
 pub(crate) fn check_segmentation(sources: &[Source]) -> Vec<(String, String)> {
-    let packs: Vec<Manifest> = sources
+    let packs: Vec<&Prepared> = sources
         .iter()
         .filter(|s| s.kind == &FONT_PACK)
-        .filter_map(|s| manifest(s).ok())
+        .filter_map(|s| s.font_pack.as_ref())
         .collect();
     sources
         .iter()
@@ -163,89 +275,22 @@ pub(crate) fn check_segmentation(sources: &[Source]) -> Vec<(String, String)> {
         .collect()
 }
 
-/// Whether a file is a font pack's manifest: an `extension.json` of kind `font`.
-pub(crate) fn is_pack(rel: &str, bytes: &[u8]) -> bool {
-    rel.rsplit('/').next() == Some("extension.json")
-        && serde_json::from_slice::<Manifest>(bytes).is_ok_and(|m| m.kind == "font")
-}
-
-fn manifest(s: &Source) -> Result<Manifest, CookError> {
-    serde_json::from_slice(&s.bytes).map_err(|e| CookError(format!("font pack manifest: {e}")))
-}
-
-/// The directory of the pack, as an asset id prefix (`fonts/arabic/`).
-fn prefix(rel: &str) -> &str {
-    rel.strip_suffix("extension.json").unwrap_or(rel)
-}
-
 /// The asset ids of a pack's faces (`fonts/arabic/NotoSansArabic-Regular.ttf`).
 pub(crate) fn faces(s: &Source) -> Vec<String> {
-    manifest(s)
-        .map(|m| {
-            m.faces
-                .iter()
-                .map(|f| format!("{}{f}", prefix(&s.rel)))
-                .collect()
-        })
+    s.font_pack
+        .as_ref()
+        .map(|m| m.pack.faces.clone())
         .unwrap_or_default()
-}
-
-/// What the stamp covers besides the manifest: each face's bytes.
-pub(crate) fn dependencies(s: &Source) -> String {
-    let Ok(m) = manifest(s) else {
-        return String::new();
-    };
-    let dir = s.path.parent().map(Path::to_path_buf).unwrap_or_default();
-    m.faces
-        .iter()
-        .map(|f| {
-            let h = std::fs::read(dir.join(f))
-                .map(|b| super::hash_bytes(&b))
-                .unwrap_or(0);
-            format!("{f}={h:016x}")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 pub(crate) fn cook(
     s: &Source,
-    dictionaries: &[(String, String)],
+    dictionaries: &[String],
     segmentation: &[&str],
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let m = manifest(s)?;
-    if m.faces.is_empty() || (m.languages.is_empty() && m.scripts.is_empty()) {
-        return Err(CookError(format!(
-            "font pack '{}': a pack names its languages (or, of no language, its scripts) and at least one face",
-            m.name
-        )));
-    }
-    let dir = s.path.parent().map(Path::to_path_buf).unwrap_or_default();
-    let mut points = Vec::new();
-    for f in &m.faces {
-        let bytes = std::fs::read(dir.join(f))
-            .map_err(|e| CookError(format!("font pack '{}': face {f}: {e}", m.name)))?;
-        let face = ttf_parser::Face::parse(&bytes, 0)
-            .map_err(|e| CookError(format!("font pack '{}': face {f}: {e}", m.name)))?;
-        if let Some(cmap) = face.tables().cmap {
-            for sub in cmap.subtables {
-                if sub.is_unicode() {
-                    sub.codepoints(|c| points.push(c));
-                }
-            }
-        }
-    }
-    let pack = og_i18n::FontPack {
-        name: m.name.clone(),
-        languages: m
-            .languages
-            .iter()
-            .map(|l| og_i18n::locale::canonical(l))
-            .collect(),
-        faces: faces(s),
-        coverage: og_i18n::font_pack::ranges(points),
-    };
+    let m = s.font_pack.as_ref().expect("prepared font pack");
+    let pack = &m.pack;
     let chars: u32 = pack.coverage.iter().map(|r| r.end() - r.start() + 1).sum();
     let mut strings = super::model::Strings(Vec::new());
     let (name_offset, name_len) = strings.add(&pack.name);
@@ -297,24 +342,25 @@ pub(crate) fn cook(
         format::row_hash::<format::FontPackRangeRow>(),
     )
     .raw("strings", strings.0, 16);
-    for (language, file) in dictionaries {
-        let bytes = std::fs::read(dir.join(file))
-            .map_err(|e| CookError(format!("font pack '{}': {file}: {e}", m.name)))?;
-        w.raw(&format!("hyphenation:{language}"), bytes, 16);
+    for language in dictionaries {
+        w.raw(
+            &format!("hyphenation:{language}"),
+            m.hyphenation[language].clone(),
+            16,
+        );
     }
     for attr in segmentation {
         let bytes = og_i18n::segmenter::compiled(attr).ok_or_else(|| {
             CookError(format!(
                 "font pack '{}': no ICU dictionary '{attr}'",
-                m.name
+                pack.name
             ))
         })?;
         w.raw(&format!("segmentation:{attr}"), bytes, 16);
     }
     let mut extra = String::new();
     if !dictionaries.is_empty() {
-        let names: Vec<&str> = dictionaries.iter().map(|(l, _)| l.as_str()).collect();
-        extra += &format!(", hyphenation {}", names.join(" "));
+        extra += &format!(", hyphenation {}", dictionaries.join(" "));
     }
     if !segmentation.is_empty() {
         extra += &format!(", segmentation {}", segmentation.join(" "));
@@ -344,7 +390,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&FONT_PACK];
 
 fn plan_font_pack<'a>(
     cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -352,17 +398,19 @@ fn plan_font_pack<'a>(
     // The stamp covers its faces' bytes (their cmaps are the coverage) and
     // the dictionaries it ships, by their bytes (ICU's, as this engine
     // links them).
-    let deps = dependencies(s);
-    let dictionaries = manifest(s)
-        .map(|m| shipped(&m, cx.sources, &cx.options.code))
-        .unwrap_or_default();
-    let dir = s.path.parent().map(Path::to_path_buf).unwrap_or_default();
+    let m = s.font_pack.as_ref().expect("prepared font pack");
+    let deps = m
+        .inputs
+        .iter()
+        .map(|(f, h)| format!("{f}={h:016x}\n"))
+        .collect::<String>();
+    assets::record_dependencies(&mut state.parsed_refs, &s.rel, &deps);
+    assets::record_dependencies(&mut state.parsed_refs, &s.rel, &m.face_hashes);
+    let dictionaries = shipped(m, cx.sources, &cx.options.code);
     let shipped: String = dictionaries
         .iter()
-        .map(|(l, f)| {
-            let h = std::fs::read(dir.join(f))
-                .map(|b| super::hash_bytes(&b))
-                .unwrap_or(0);
+        .map(|l| {
+            let h = super::hash_bytes(&m.hyphenation[l]);
             format!("{l}={h:016x}\n")
         })
         .collect();
@@ -381,7 +429,7 @@ fn plan_font_pack<'a>(
         &[
             b"font-pack 3",
             &hash,
-            deps.as_bytes(),
+            m.face_hashes.as_bytes(),
             shipped.as_bytes(),
             words.as_bytes(),
         ],
@@ -396,7 +444,7 @@ fn plan_font_pack<'a>(
 
 /// A font pack's one output, with the hyphenation and word dictionaries
 /// it ships.
-struct FontPackJob<'a>(&'a Source, Vec<(String, String)>, Vec<&'static str>);
+struct FontPackJob<'a>(&'a Source, Vec<String>, Vec<&'static str>);
 
 impl Job for FontPackJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {

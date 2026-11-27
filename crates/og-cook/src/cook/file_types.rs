@@ -464,10 +464,6 @@ pub fn markdown() -> Result<String, String> {
         ),
         ("pack", "pack.json: UI style pack. See themes."),
         (
-            "font-extension",
-            "extension.json of kind font, with TTF/OTF sources. See localization.",
-        ),
-        (
             "tsx",
             "TSX is the UI source; TS/TSX bundling is not a cook generator. See ui-tsx.",
         ),
@@ -487,9 +483,6 @@ pub fn markdown() -> Result<String, String> {
         }
         if ty == "probe-record" {
             table(&mut out, super::probes::LINES);
-        }
-        if ty == "font-extension" {
-            table(&mut out, super::font_pack::LINES);
         }
         if ty == "pack" {
             table(&mut out, og_ui_next::pack::grammar::LINES);

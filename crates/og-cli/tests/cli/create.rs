@@ -35,6 +35,8 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
                 "side-2d",
                 "--look",
                 "pixel",
+                "--lang",
+                "en,zh",
                 "--no-prompt",
             ])
             .output()
@@ -50,6 +52,17 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
         assert_eq!(manifest["input"]["create"]["view"], "side-2d");
         assert!(!dir.join(command).join("project.ogt").exists());
         assert!(dir.join(command).join("src/main.ts").is_file());
+        assert!(
+            dir.join(command)
+                .join("content/fonts/chinese-simplified/index.ts")
+                .is_file()
+        );
+        let checked = og().arg("check").arg(dir.join(command)).output().unwrap();
+        assert!(
+            checked.status.success() && !text(&checked).contains("no font pack"),
+            "{}",
+            text(&checked)
+        );
         // One public creation path exercises the connected shell, including
         // repeated New game restores and the first pause after the rewind.
         if command == "new" {

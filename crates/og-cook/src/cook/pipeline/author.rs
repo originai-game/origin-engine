@@ -24,6 +24,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("ui-material", &shader_check::UI_MATERIAL),
     ("motion-action", &anim::MOTION_ACTION),
     ("strings", &strings::STRINGS),
+    ("font-extension", &font_pack::FONT_PACK),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -149,6 +150,7 @@ pub(crate) fn sources(
             timeline: None,
             motion_action: None,
             strings: None,
+            font_pack: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
@@ -156,6 +158,13 @@ pub(crate) fn sources(
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "font-extension" => {
+                source.font_pack = Some(font_pack::declaration(
+                    source.input()?,
+                    &assets_root(&source),
+                )?);
+                Ok(BTreeMap::new())
+            }
             "strings" => {
                 source.strings = Some(strings::declaration(source.input()?)?);
                 Ok(BTreeMap::new())
@@ -226,6 +235,7 @@ pub(crate) fn sources(
         }
     }
     timeline::bind(sources, &graph)?;
+    font_pack::bind(sources, &graph)?;
     field::bind(sources, fields);
     // Street carves address actual canonical terrain IDs, discovered above.
     district::expand(sources, consumed);
