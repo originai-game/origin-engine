@@ -226,7 +226,7 @@ const Round = defineSystem("Round", { reads: [Rig], writes: [Count, Piece, og.Tr
 export default og.game({
   systems: [Clear, Round],
   start(world) {
-    const a = og.load.animation(world, "models/walker.glb");
+    const a = og.load.animation(world, "base/models/walker");
     if (!a.ok) throw new Error(a.reason);
     const r = world.resource(Rig);
     if (!r.ok) throw new Error(r.reason);
@@ -335,6 +335,9 @@ test("restarts", async () => {
     // pairing; a crate left moving names its entity and field.
     mkdirSync(join(game, "assets/models"), { recursive: true });
     copyFileSync(join(repo, "tests/fixtures/cook-assets/assets/models/walker.glb"), join(game, "assets/models/walker.glb"));
+    mkdirSync(join(game, "content/models"), { recursive: true });
+    writeFileSync(join(game, "content/models/walker.ts"), `import { file } from "@origingame/engine/author";
+export default file.import({ kind: "model", source: "assets/models/walker.glb" });`);
     for (const moving of [false, true]) {
       writeFileSync(original, physicsGame(moving));
       const ran = og("test", game, "--json");
@@ -354,6 +357,7 @@ test("restarts", async () => {
       }
     }
     rmSync(join(game, "assets/models/walker.glb"));
+    rmSync(join(game, "content/models/walker.ts"));
   } finally {
     writeFileSync(original, `import { og } from "@origingame/engine"; export default og.game({});`);
     rmSync(join(game, "tests/budget.og.ts"), { force: true });

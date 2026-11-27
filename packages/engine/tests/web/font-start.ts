@@ -45,8 +45,8 @@ const Draw = defineSystem("Draw", {}, (_q, _time, world) => {
 export default og.game({
   systems: [Draw],
   start(world) {
-    font = must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf"));
-    same = font === must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf"));
+    font = must(og.load.font(world, "base/fonts/latin/NotoSans-Latin"));
+    same = font === must(og.load.font(world, "base/fonts/latin/NotoSans-Latin"));
     startTick = world.tick;
   },
   commands: { arabic: (world) => { og.i18n.setLocale(world, "ar"); }, hidden: (world, [code, path]) => { hiddenResult = new Function("og", "world", "path", code)(og, world, path); } },
@@ -100,8 +100,8 @@ try {
   const state = await tab.eval<{ facts: { startTick: number; same: boolean; family: string; completions: unknown[] } }>("__shell.probe('state')");
   check(state.facts.startTick === 0 && state.facts.same && state.facts.family.length > 0, "start loaded a ready, stable font at tick 0 outside the locale chain");
   check(state.facts.completions.length === 0, "boot font loading introduced no host-timed completion");
-  const latin = "/game/cooked/fonts/latin/NotoSans-Latin.ttf.face.ogb";
-  const arabic = "/game/cooked/fonts/arabic/NotoSansArabic-Regular.ttf.face.ogb";
+  const latin = "/game/cooked/base/fonts/latin/NotoSans-Latin.face.ogb";
+  const arabic = "/game/cooked/base/fonts/arabic/NotoSansArabic-Regular.face.ogb";
   check(requests.filter((p) => p === latin).length === 1 && !requests.includes(arabic), "the explicit face fetched once; the unrelated pack stayed lazy");
   const latinFile = latin.slice("/game/".length);
   check(manifest.fontPreloads?.length === 1 && manifest.fontPreloads[0]!.path === latinFile && manifest.fontPreloads[0]!.bytes === readFileSync(join(dist, latinFile)).length, "the build manifest lists the explicit face and its actual raw bytes");
@@ -129,7 +129,7 @@ try {
   check(ink > 500, "the rendered frame contains the start font's text ink");
   writeFileSync(join(out, "ready.png"), png);
   // Both loader code and path arrive as input, outside the bundler's graph.
-  await tab.eval("__shell.call('command', 'hidden', ['return og.load.font(world, path)', 'fonts/arabic/NotoSansArabic-Regular.ttf']).then(r => { if (!r.ok) throw new Error(r.reason); })");
+  await tab.eval("__shell.call('command', 'hidden', ['return og.load.font(world, path)', 'base/fonts/arabic/NotoSansArabic-Regular']).then(r => { if (!r.ok) throw new Error(r.reason); })");
   const refused = await tab.eval<{ ok: boolean; reason: string }>("__shell.probe('state').then(s => s.facts.hiddenResult)");
   check(!refused.ok && refused.reason.includes("the web cannot prefetch") && refused.reason.includes("publish.keep"), "a runtime-provided loader refuses an undeclared font with a declaration remedy");
   await tab.eval("__shell.call('command', 'arabic', [])");

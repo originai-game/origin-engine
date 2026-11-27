@@ -116,13 +116,16 @@ const texturesDist = join(work, "textures");
   const project = join(work, "textures-project");
   rmSync(project, { recursive: true, force: true });
   mkdirSync(join(project, "assets", "textures"), { recursive: true });
+  mkdirSync(join(project, "content", "textures"), { recursive: true });
   mkdirSync(join(project, "src"), { recursive: true });
   const stone = join(repo, "tests", "fixtures", "cook-assets", "assets", "textures");
-  const ids = ["textures/stone_n.png"];
-  for (const f of ["stone_n.png", "stone_n.png.ogt"]) cpSync(join(stone, f), join(project, "assets", "textures", f));
+  const ids = ["base/textures/stone_n"];
+  cpSync(join(stone, "stone_n.png"), join(project, "assets", "textures", "stone_n.png"));
+  cpSync(join(repo, "tests/fixtures/cook-assets/content/textures/stone_n.ts"), join(project, "content/textures/stone_n.ts"));
   for (let i = 0; i < TEXTURES - 1; i++) {
     cpSync(join(stone, "stone.png"), join(project, "assets", "textures", `stone${i}.png`));
-    ids.push(`textures/stone${i}.png`);
+    writeFileSync(join(project, "content", "textures", `stone${i}.ts`), `import {file} from '@origingame/engine/author'; export default file.import({kind:'texture',source:'assets/textures/stone${i}.png'});\n`);
+    ids.push(`base/textures/stone${i}`);
   }
   writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"Basis textures","engine":"0.9.0"}\n');
   writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"basis-textures",entry:"src/main.ts"});\n');
