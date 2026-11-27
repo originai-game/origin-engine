@@ -533,6 +533,7 @@ pub(crate) fn scan_with(
             whole: Default::default(),
             model: Default::default(),
             video: None,
+            timeline: None,
             conformed: None,
             fracture: None,
         });

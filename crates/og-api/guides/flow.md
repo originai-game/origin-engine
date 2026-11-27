@@ -13,10 +13,10 @@ transitions and sound are the timeline's, saves are the world's.
 ```text
 project.ts                    # flow: { source: { $ogRef: "base/story/film" } }
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
-assets/segments/kitchen.ogt   # a segment: type timeline with one video track
+content/segments/kitchen.ts  # file.timeline with one video track
 content/clips/kitchen.ts     # file.video({source:'assets/clips/kitchen.mp4',stream:true})
 assets/clips/kitchen.mp4     # binary footage; timeline video ID: base/clips/kitchen
-assets/segments/live.ogt      # a live segment: a scene track and a camera track
+content/segments/live.ts     # file.timeline with scene and camera tracks
 assets/scenes/ending.ogt      # the scene it places
 ```
 
@@ -54,7 +54,7 @@ const flow = og.flow.start(world, { dialogue: "side", paused: true });
 
 ```yarn
 title: kitchen
-og-flow: segments/kitchen.ogt
+og-flow: base/segments/kitchen
 og-flow-chapter: chapter.kitchen
 ---
 -> Take the knife #line:kitchen.knife #hotspot:knife
@@ -86,52 +86,26 @@ option's, translated as any line is.
 
 ## 3. Write a segment
 
-```text
-type timeline
-version 1
----
-duration 18
-track video {
-  key 0 {
-    video "base/clips/kitchen"
-  }
-}
-track caption {
-  captions "kitchen.vtt"
-}
-track marker {
-  key 12 {
-    name "flow.open"
-  }
-  key 13 {
-    name "flow.loopStart"
-  }
-  key 16 {
-    name "flow.loopEnd"
-  }
-  key 17 {
-    name "flow.lock"
-  }
-}
-track hotspot {
-  key 12 {
-    id "knife"
-    shape rect
-    rect 0.61 0.42 0.12 0.2
-    ease power2.inOut
-  }
-  key 16 {
-    id "knife"
-    rect 0.58 0.45 0.12 0.2
-  }
-  key 4 {
-    id "note"
-    kind inspect
-    shape circle
-    label "Inspect note"
-    rect 0.24 0.48 0.08 0.08
-  }
-}
+```ts
+import { file, ref } from "@origingame/engine/author";
+export default file.timeline({
+  duration: 18,
+  tracks: [
+    { kind: "video", keys: [{ time: 0, value: { video: ref("base/clips/kitchen") } }] },
+    { kind: "caption", imports: [{ source: "sources/kitchen.vtt" }] },
+    { kind: "marker", keys: [
+      { time: 12, value: { name: "flow.open" } },
+      { time: 13, value: { name: "flow.loopStart" } },
+      { time: 16, value: { name: "flow.loopEnd" } },
+      { time: 17, value: { name: "flow.lock" } },
+    ] },
+    { kind: "hotspot", keys: [
+      { time: 12, ease: "power2.inOut", value: { id: "knife", shape: "rect", rect: [0.61, 0.42, 0.12, 0.2] } },
+      { time: 16, value: { id: "knife", rect: [0.58, 0.45, 0.12, 0.2] } },
+      { time: 4, value: { id: "note", kind: "inspect", shape: "circle", label: "Inspect note", rect: [0.24, 0.48, 0.08, 0.08] } },
+    ] },
+  ],
+});
 ```
 
 - The video track names no entity: it plays on the og.Timeline's own
@@ -142,7 +116,7 @@ track hotspot {
   deck so the cut never waits. Give it a `camera` or `shot` track to frame
   it. With a video track too, the footage plays over the scene. A segment
   has footage, a scene, or both.
-- `layer under` in the video track plays the footage behind the scene
+- `layer: "under"` in the video track plays the footage behind the scene
   instead: a plate the live scene is drawn over, shown as
   og.Camera.backgroundTexture while the segment plays (and 0 again after),
   and og.flow.view's `texture` is 0 for it. A plate is drawn as given:
@@ -200,7 +174,7 @@ player never sees:
 
 ```yarn
 title: level1
-og-flow: segments/level1.ogt
+og-flow: base/segments/level1
 ---
 -> Retry #line:retry
     <<jump level1>>

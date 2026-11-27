@@ -369,6 +369,7 @@ impl<'a> GraphBuilder<'a> {
             .index
             .entries
             .keys()
+            .chain(self.existing.keys())
             .map(|id| (id.clone(), BTreeSet::new()))
             .collect();
         for (id, (node, references)) in &mut self.nodes {

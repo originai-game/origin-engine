@@ -1,4 +1,4 @@
-//! Track keys and caption imports read from timeline text.
+//! Track keys decoded from internal cooked timeline text.
 
 use super::*;
 
@@ -8,7 +8,7 @@ fn sorted<K>(mut keys: Vec<K>, time: impl Fn(&K) -> f32) -> Vec<K> {
     keys
 }
 
-pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
+pub(super) fn track(e: &Entry) -> Result<Track, String> {
     let kind = e
         .values
         .first()
@@ -56,7 +56,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "animation" => Track::Animation(animation(block, target)?),
         "audio" => Track::Audio(sounds(block)?),
         "music" => Track::Music(music(block)?),
-        "caption" => Track::Caption(caption(block, read)?),
+        "caption" => Track::Caption(caption(block)?),
         "event" => Track::Event(events(block)?),
         "transition" => Track::Transition(transitions(block)?),
         "marker" => Track::Marker(markers(block)?),
@@ -458,9 +458,9 @@ struct RawCaption {
 /// What `style` and `anchor`, which a caption had, are answered with.
 const CAPTION_LOOK: &str = "a caption is text only: the screen that shows `$captions` (the built-in `subtitles`) and the style pack decide where and how it is drawn";
 
-fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
+fn caption(block: &Block) -> Result<CaptionTrack, String> {
     let mut locales = Vec::new();
-    let keys = caption_keys(block, read, Some(&mut locales))?;
+    let keys = caption_keys(block, Some(&mut locales))?;
     Ok(CaptionTrack { keys, locales })
 }
 
@@ -468,7 +468,6 @@ fn caption(block: &Block, read: &mut Read<'_>) -> Result<CaptionTrack, String> {
 /// own keys; its translations into `locales` (`None` inside one).
 fn caption_keys(
     block: &Block,
-    read: &mut Read<'_>,
     mut locales: Option<&mut Vec<(String, Vec<CaptionKey>)>>,
 ) -> Result<Vec<CaptionKey>, String> {
     let mut out = Vec::new();
@@ -498,43 +497,8 @@ fn caption_keys(
                         format!("the locale '{tag}' twice in one caption track"),
                     ));
                 }
-                let keys = caption_keys(b, read, None)?;
+                let keys = caption_keys(b, None)?;
                 found.push((tag, keys));
-            }
-            "captions" => {
-                no_block(e)?;
-                let (file, offset) = match e.values.as_slice() {
-                    [Value::String(f)] => (f.clone(), 0.0),
-                    [Value::String(f), Value::Number(n)] => (f.clone(), n.as_f32()),
-                    _ => {
-                        return Err(at(
-                            e,
-                            "`captions \"<file>.srt\" [offset seconds]` (or .vtt / word-timestamp .json)",
-                        ));
-                    }
-                };
-                let text = read(&file).map_err(|m| at(e, format!("captions '{file}': {m}")))?;
-                let cues =
-                    import(&file, &text).map_err(|m| at(e, format!("captions '{file}': {m}")))?;
-                for q in cues {
-                    let start = q.start + offset;
-                    if start < 0.0 {
-                        return Err(at(
-                            e,
-                            format!(
-                                "captions '{file}': a cue starts before 0 with offset {offset}"
-                            ),
-                        ));
-                    }
-                    raw.push(RawCaption {
-                        time: start,
-                        end: Some(q.end + offset),
-                        text: q.text,
-                        speaker: q.speaker,
-                        spans: q.spans,
-                        position: q.position,
-                    });
-                }
             }
             "key" => {
                 let time = key_time(e)?;
@@ -614,7 +578,7 @@ fn caption_keys(
                 });
             }
             _ => {
-                return Err(unknown(e, "caption track entry", "captions, key or locale"));
+                return Err(unknown(e, "caption track entry", "key or locale"));
             }
         }
     }
@@ -635,24 +599,6 @@ fn caption_keys(
         });
     }
     Ok(out)
-}
-
-/// A caption file by its extension: SubRip, WebVTT, or word timestamps in JSON.
-fn import(file: &str, text: &str) -> Result<Vec<Cue>, String> {
-    let lower = file.to_ascii_lowercase();
-    if lower.ends_with(".srt") {
-        return captions::parse_srt(text);
-    }
-    if lower.ends_with(".vtt") {
-        return captions::parse_vtt(text);
-    }
-    if lower.ends_with(".json") {
-        #[cfg(feature = "import")]
-        return captions::parse_word_json(text, CAPTION_CHARS, CAPTION_GAP);
-        #[cfg(not(feature = "import"))]
-        return Err("word-timestamp JSON is imported by the cook (og cook)".into());
-    }
-    Err("a caption file is .srt (SubRip), .vtt (WebVTT) or .json (word timestamps)".into())
 }
 
 fn events(block: &Block) -> Result<Vec<EventKey>, String> {

@@ -9,7 +9,7 @@
 
 use super::systems::story_functions;
 use og_story::graph::{FLOW_HEADER, GraphNode, flow_reach};
-use og_timeline::{Timeline, Track};
+use og_timeline::Track;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -101,20 +101,6 @@ fn rel_of(assets: &Path, file: &Path) -> String {
         .replace('\\', "/")
 }
 
-/// A segment's timeline, read from assets/ (its caption files beside it or
-/// under assets/).
-fn timeline(assets: &Path, id: &str) -> Result<Timeline, String> {
-    let text = std::fs::read_to_string(assets.join(id))
-        .map_err(|_| format!("its segment {id} is no file under assets/"))?;
-    let dir = id.rsplit_once('/').map_or("", |(d, _)| d);
-    let mut read = |f: &str| -> Result<String, String> {
-        std::fs::read_to_string(assets.join(dir).join(f))
-            .or_else(|_| std::fs::read_to_string(assets.join(f)))
-            .map_err(|e| format!("{f}: {e}"))
-    };
-    Timeline::parse(&text, &mut read).map_err(|e| format!("segment {id}: {e}"))
-}
-
 /// A video asset's facts: whether it exists, its source file, and whether
 /// it is still placeholder footage (`placeholder true`).
 fn footage(root: &Path, id: &str, problems: &mut Vec<String>) -> Value {
@@ -144,6 +130,7 @@ fn footage(root: &Path, id: &str, problems: &mut Vec<String>) -> Value {
 /// `og flow list`: every flow dialogue and its nodes, as JSON.
 pub fn list(root: &Path) -> Result<Value, String> {
     let (declared, flows) = flows(root)?;
+    let timelines = super::timeline::read(root)?;
     let assets = root.join("assets");
     let mut out = Vec::new();
     for f in &flows {
@@ -162,7 +149,11 @@ pub fn list(root: &Path) -> Result<Value, String> {
                 ));
             }
             let mut seg = json!({ "id": id });
-            match timeline(&assets, id).and_then(|t| t.segment().map(|s| (t, s))) {
+            match timelines
+                .get(id)
+                .ok_or_else(|| format!("{id}: not an indexed timeline declaration"))
+                .and_then(|t| t.segment().map(|s| (t, s)))
+            {
                 Ok((t, s)) => {
                     let scenes: Vec<Value> = t
                         .tracks
@@ -409,7 +400,7 @@ fn sample_frame_rgb(media: &Path, at_seconds: Option<f64>) -> Result<Vec<u8>, St
 /// edge in the project's flows. Reports facts only; the caller decides.
 pub fn check_cuts(root: &Path) -> Result<Value, String> {
     let (_, flows) = flows(root)?;
-    let assets = root.join("assets");
+    let timelines = super::timeline::read(root)?;
     let mut out = Vec::new();
     for f in &flows {
         // Resolve each flow node's (media_path, from, cut) when it has footage.
@@ -420,7 +411,7 @@ pub fn check_cuts(root: &Path) -> Result<Value, String> {
             .filter(|n| n.headers.contains_key(FLOW_HEADER))
         {
             let seg_id = &n.headers[FLOW_HEADER];
-            let Ok(t) = timeline(&assets, seg_id) else {
+            let Some(t) = timelines.get(seg_id) else {
                 continue;
             };
             let Ok(s) = t.segment() else { continue };

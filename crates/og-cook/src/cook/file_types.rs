@@ -76,6 +76,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "video" {
                 out.push_str("Output: video metadata plus its actual frames/stream/poster/audio subresources. Source and audioLocale files use canonical paths under the owning module's assets/ or sources/, without sibling fallback. The closed TS evaluator and schema are shared with og video edges and flow tools. Planning, hashing, ffprobe and ffmpeg share one immutable, disk-backed media snapshot. Clip encoding, AV1 streams, alpha, localized sound and browser renditions are unchanged. Stream-only controls require stream: true; renditions: [] disables browser renditions. Requires ffmpeg/ffprobe.\n\n");
             }
+            if ty == "timeline" {
+                out.push_str("Output: one native timeline. Keys are {time, ease?, value}; tracks are discriminated by kind. Reference assets with ref('module/content-id'), never physical file paths. Caption imports use canonical module assets/ or sources/ paths and are captured before cache lookup. Adjacent locale translations remain discoverable; explicit locales override them. Nested timelines reject cycles and excessive depth. Internal blob text is not an author format. See animation and flow.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -161,35 +164,6 @@ pub fn markdown() -> Result<String, String> {
             }
             "dialogue" => {
                 out.push_str("Source: `.yarn`, not an authored `type dialogue` OGT. This registered kind is the cooked dialogue IR. The cook rejects removed OGT dialogue syntax; write Yarn with explicit #line: ids. See story for Yarn declarations, node headers, commands, expressions and validation.\n\n");
-            }
-            "timeline" => {
-                table(&mut out, og_timeline::TIMELINE_LINES);
-                block(&mut out, "timeline.path", og_timeline::PATH_LINES);
-                let kinds: BTreeSet<_> = og_timeline::TRACK_LINES
-                    .iter()
-                    .chain(og_timeline::KEY_LINES)
-                    .flat_map(|f| f.within.iter().copied())
-                    .collect();
-                for kind in kinds {
-                    let fields: Vec<_> = og_timeline::TRACK_LINES
-                        .iter()
-                        .filter(|f| f.within.is_empty() || f.within.contains(&kind))
-                        .copied()
-                        .collect();
-                    block(&mut out, &format!("timeline.track.{kind}"), &fields);
-                    let fields: Vec<_> = og_timeline::KEY_LINES
-                        .iter()
-                        .filter(|f| f.within.contains(&kind))
-                        .copied()
-                        .collect();
-                    block(&mut out, &format!("timeline.track.{kind}.key"), &fields);
-                }
-                out.push_str("\nLight/post/material key names are writable reflected fields of their targets, with 1..4 numeric lanes or an enum word; query their record with og api show. Blendshape accepts w0..w7. Values not set by a key retain their track state.\n");
-                let _ = writeln!(
-                    out,
-                    "\nTransition kinds: {}.\n",
-                    og_timeline::TransitionKind::NAMES.join(", ")
-                );
             }
             "prefab" => {
                 table(&mut out, super::prefab::LINES);

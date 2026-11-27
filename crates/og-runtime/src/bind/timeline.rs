@@ -776,23 +776,10 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
         "timeline",
         og_probe::CommandDesc {
             usage: "timeline:play:<name> | timeline:seek:<seconds>[:<name>] | timeline:pause[:<name>] | timeline:resume[:<name>] | timeline:stop[:<name>]".into(),
-            doc: "play a timeline (`timelines/<name>.ogt`, or an asset id) on an entity named `timeline-<name>` (made when missing), or seek, pause, resume or stop it (every og.Timeline without a name); it takes effect at this tick's og.timeline".into(),
+            doc: "play a timeline by canonical content ID (e.g. base/timelines/intro) on an entity named `timeline-<id>` (made when missing), or seek, pause, resume or stop it (every og.Timeline without an ID); it takes effect at this tick's og.timeline".into(),
         },
         move |world, args| command(engine_id, world, args),
     );
-}
-
-fn asset_path(name: &str) -> String {
-    if name.contains('/') || name.ends_with(".ogt") {
-        name.to_string()
-    } else {
-        format!("timelines/{name}.ogt")
-    }
-}
-
-fn short(name: &str) -> String {
-    let base = name.rsplit('/').next().unwrap_or(name);
-    base.trim_end_matches(".ogt").to_string()
 }
 
 fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), String> {
@@ -815,7 +802,7 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
             Some(n) => Some(
                 *lock(&registry(engine_id))
                     .by_id
-                    .get(og_bundle::runtime::asset_id(&asset_path(n)))
+                    .get(og_bundle::runtime::asset_id(n))
                     .ok_or_else(|| {
                         format!("timeline '{n}' is not loaded (timeline:play:{n} loads it)")
                     })?,
@@ -846,9 +833,9 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
     match verb {
         "play" => {
             let name = args.get(1).filter(|a| !a.is_empty()).ok_or(USAGE)?;
-            let h = load(&eng, &asset_path(name))?;
+            let h = load(&eng, name)?;
             grant(&eng, h, Some(&mut *world))?;
-            let entity_name = format!("timeline-{}", short(name));
+            let entity_name = format!("timeline-{name}");
             let e = match world.find(&entity_name) {
                 Some(e) => e,
                 None => {

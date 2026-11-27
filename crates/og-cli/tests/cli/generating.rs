@@ -1,5 +1,218 @@
 use super::*;
 
+/// Typed timeline tracks survive the public cook/load boundary; captured
+/// captions and namespace bindings invalidate the same cache on later cooks.
+#[test]
+fn typed_timelines_load_tracks_captions_and_module_references() {
+    use og_timeline::{FieldValue, Track};
+    let root = TempDir::new("og-typed-timeline");
+    let write = |file: &str, contents: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Timeline","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'timeline',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "export default {};");
+    write(
+        "assets/scenes/room.ogt",
+        "type scene\nversion 1\n---\nname \"Room\"\n",
+    );
+    write(
+        "content/audio/tone.ts",
+        "import {file} from '@origingame/engine/author';export default file.sound({rate:8000,channels:1,samples:[0,0.25,-0.5]});",
+    );
+    write(
+        "content/timelines/child.ts",
+        "import {file} from '@origingame/engine/author';export default file.timeline({duration:2,tracks:[{kind:'marker',keys:[{time:1,value:{name:'child'}}]}]});",
+    );
+    let declaration = r#"import {file,ref} from '@origingame/engine/author'; export default file.timeline({
+        name:'Crossing', duration:8, paths:{rail:{kind:'linear',points:[[1,2,3],[5,3,-1]]}}, tracks:[
+          {kind:'caption',imports:[{source:'sources/speech.vtt',offset:0.25}],locales:{ja:{keys:[{time:1,value:{text:'明示',end:2}}]}}},
+          {kind:'camera',rail:'rail',blendIn:0.3,keys:[{time:3,ease:'power2.inOut',value:{at:1,target:[-2,1,4]}},{time:0,value:{at:0,fov:53}}]},
+          {kind:'transform',entity:'crate',keys:[{time:0,value:{position:[2,-1,4],rotation:[0,90,0],scale:[1,2,3]}}]},
+          {kind:'animation',entity:'actor',keys:[{time:0,value:{clip:'walk',blendIn:0.35,loop:false,speed:1.5}}]},
+          {kind:'audio',keys:[{time:0,value:{sound:ref('base/audio/tone'),playbackRate:1.25,bus:'ui'}}]},
+          {kind:'music',keys:[{time:0,value:{sound:ref('base/audio/tone'),end:7,fadeIn:0.2,fadeOut:0.7,loop:false}}]},
+          {kind:'event',keys:[{time:4,value:{action:'spawn_wave:2',retroactive:true}}]},
+          {kind:'transition',keys:[{time:0,value:{kind:'wipe',mode:'in',duration:0.7,from:'right',color:[0.1,0.2,0.4]}}]},
+          {kind:'marker',keys:[{time:2,value:{name:'first'}},{time:2,value:{name:'second'}}]},
+          {kind:'property',entity:'light',field:'og.PointLight.intensity',keys:[{time:0,value:3.5}]},
+          {kind:'light',entity:'light',keys:[{time:0,value:{intensity:2.5,color:'#804020'}}]},
+          {kind:'post',keys:[{time:0,value:{contrast:0.4}}]},
+          {kind:'visibility',entity:'crate',keys:[{time:0,value:false}]},
+          {kind:'blendshape',entity:'actor',keys:[{time:0,value:{w1:0.7}}]},
+          {kind:'material',entity:'crate',index:2,keys:[{time:0,value:{standard:{roughness:0.3},mapOffset:[0.2,0.7],params:{pulse:[1,2,3,4]}}}]},
+          {kind:'timeline',keys:[{time:1,value:{play:ref('base/timelines/child'),speed:1.5,loop:true}}]},
+          {kind:'shot',keys:[{time:1,ease:'steps(3,end)',value:{camera:'closeup',blend:0.2}}]},
+          {kind:'hotspot',keys:[{time:1,value:{id:'door',rect:[0.2,0.3,0.4,0.1],shape:'circle',kind:'inspect',label:'Door'}},{time:4,value:{id:'door',off:true}}]},
+          {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}},{time:5,value:{scene:null}}]}
+        ]});"#;
+    write("content/timelines/intro.ts", declaration);
+    write(
+        "modules/north/content/timelines/intro.ts",
+        "import {file} from '@origingame/engine/author';export default file.timeline({tracks:[{kind:'caption',imports:[{source:'sources/speech.vtt'}]}]});",
+    );
+    write(
+        "modules/north/sources/speech.vtt",
+        "WEBVTT\n\n00:00.100 --> 00:01.200\nNorth\n",
+    );
+    write(
+        "sources/speech.ja.vtt",
+        "WEBVTT\n\n00:00.100 --> 00:01.200\nIgnored\n",
+    );
+    let cook = || {
+        og().args(["cook", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    for run in 0..3 {
+        write(
+            "sources/speech.vtt",
+            if run == 2 {
+                "WEBVTT\n\n00:00.500 --> 00:02.000\n<v Ada><b>Changed</b>\n"
+            } else {
+                "WEBVTT\n\n00:00.500 --> 00:02.000\n<v Ada><b>Base</b>\n"
+            },
+        );
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        if run == 2 {
+            write(
+                "sources/speech.fr.vtt",
+                "WEBVTT\n\n00:00.200 --> 00:01.500\nFrançais\n",
+            );
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let b = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let t = b
+            .timeline(
+                "base/timelines/intro",
+                &b.read("base/timelines/intro").unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            (t.name.as_str(), t.duration, t.tracks.len()),
+            ("Crossing", 8.0, 19)
+        );
+        assert_eq!(t.paths[0].1.points[1].to_array(), [5.0, 3.0, -1.0]);
+        let Track::Caption(c) = &t.tracks[0] else {
+            panic!("caption")
+        };
+        assert_eq!(
+            (c.keys[0].time, c.keys[0].end, c.keys[0].speaker.as_str()),
+            (0.75, 2.25, "Ada")
+        );
+        assert_eq!(c.keys[0].text, if run == 2 { "Changed" } else { "Base" });
+        assert_eq!(
+            (c.keys[0].spans[0].position, c.keys[0].spans[0].length),
+            (0, c.keys[0].text.chars().count() as u32)
+        );
+        assert_eq!(c.keys_in("ja")[0].text, "明示");
+        if run == 2 {
+            assert_eq!(c.keys_in("fr")[0].text, "Français");
+        }
+        let Track::Camera(c) = &t.tracks[1] else {
+            panic!("camera")
+        };
+        assert_eq!(
+            (c.keys[0].time, c.keys[1].time, c.blend_in),
+            (0.0, 3.0, 0.3)
+        );
+        assert_eq!(c.keys[1].ease, og_core::ease::Ease::CubicInOut);
+        let Track::Transform(tr) = &t.tracks[2] else {
+            panic!("transform")
+        };
+        let turned = tr.keys[0].quaternion.unwrap() * og_core::glam::Vec3::Z;
+        assert!((turned - og_core::glam::Vec3::X).length() < 0.0001);
+        let Track::Audio(a) = &t.tracks[4] else {
+            panic!("audio")
+        };
+        assert_eq!(
+            (a[0].sound.as_str(), a[0].pitch, a[0].bus),
+            ("base/audio/tone", 1.25, 3)
+        );
+        let Track::Marker(m) = &t.tracks[8] else {
+            panic!("marker")
+        };
+        assert_eq!(
+            (m[0].name.as_str(), m[1].name.as_str()),
+            ("first", "second")
+        );
+        let Track::Fields(light) = &t.tracks[10] else {
+            panic!("light")
+        };
+        let (_, FieldValue::Numbers(color)) = light.keys[0]
+            .values
+            .iter()
+            .find(|(name, _)| name == "color")
+            .unwrap()
+        else {
+            panic!("linear light color")
+        };
+        assert!((color[0] - 0.2158605).abs() < 0.000001);
+        assert!((color[1] - 0.05126946).abs() < 0.000001);
+        let Track::Fields(m) = &t.tracks[14] else {
+            panic!("material")
+        };
+        assert_eq!(m.index, 2);
+        assert!(m.keys[0].values.contains(&(
+            "pulse".into(),
+            FieldValue::Numbers(vec![1.0, 2.0, 3.0, 4.0])
+        )));
+        let Track::Scene(s) = &t.tracks[18] else {
+            panic!("scene")
+        };
+        assert_eq!(
+            (s[0].scene.as_str(), s[1].scene.as_str()),
+            ("scenes/room.ogt", "")
+        );
+        let n = b
+            .timeline(
+                "north/timelines/intro",
+                &b.read("north/timelines/intro").unwrap(),
+            )
+            .unwrap();
+        let Track::Caption(nc) = &n.tracks[0] else {
+            panic!("north caption")
+        };
+        assert_eq!((n.duration, nc.keys[0].text.as_str()), (1.2, "North"));
+    }
+    for invalid in [
+        "{duration:1,tracks:[{kind:'transform',entity:'x',keys:[{time:0,value:{rotation:[0,0,0],quaternion:[0,0,0,1]}}]}]}",
+        "{duration:1,tracks:[{kind:'camera',rail:'p',follow:'x',keys:[]}]}",
+        "{duration:1,tracks:[{kind:'hotspot',keys:[{time:0,value:{id:'x',rect:[0.9,0,0.2,1]}}]}]}",
+        "{duration:1,tracks:[{kind:'caption',imports:[{source:'sources/../speech.vtt'}]}]}",
+        "{duration:1,tracks:[{kind:'marker',keys:[{time:2,value:{name:'late'}}]}]}",
+        "{duration:1,tracks:[{kind:'timeline',keys:[{time:0,value:{play:ref('base/timelines/intro')}}]}]}",
+    ] {
+        write(
+            "content/timelines/intro.ts",
+            &format!(
+                "import {{file,ref}} from '@origingame/engine/author';export default file.timeline({invalid});"
+            ),
+        );
+        let out = cook();
+        assert!(!out.status.success(), "accepted {invalid}");
+    }
+    write("content/timelines/intro.ts", declaration);
+    write(
+        "assets/removed.ogt",
+        "type timeline\nversion 1\n---\nduration 1\n",
+    );
+    let out = cook();
+    assert!(!out.status.success(), "accepted author OGT");
+}
+
 /// Video declarations, source tools and incremental cook use the same typed
 /// input and module ownership; actual frame outputs bound references.
 #[test]
@@ -153,12 +366,12 @@ fn typed_videos_cook_module_media_and_localized_audio() {
     assert!(root.join("edges/intro.first.png").is_file());
     assert!(root.join("edges/intro.last.png").is_file());
     write(
-        "assets/segments/intro.ogt",
-        "type timeline\nversion 1\n---\nduration 0.5\ntrack video {\n key 0 {\n  video \"base/clips/intro\"\n }\n}\n",
+        "content/segments/intro.ts",
+        "import {file,ref} from '@origingame/engine/author'; export default file.timeline({duration:0.5,tracks:[{kind:'video',keys:[{time:0,value:{video:ref('base/clips/intro')}}]}]});",
     );
     write(
         "assets/story/intro.yarn",
-        "#og-profile:yarn-spinner-3.2.2\n#og-name:intro\ntitle: intro\nog-flow: segments/intro.ogt\n---\n===\n",
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:intro\ntitle: intro\nog-flow: base/segments/intro\n---\n===\n",
     );
     let out = og()
         .args(["flow", "list", ".", "--json"])

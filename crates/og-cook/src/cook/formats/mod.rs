@@ -23,6 +23,6 @@ pub mod sfx;
 pub(super) mod sway2d;
 pub(super) mod texture;
 pub mod texture_array;
-pub(super) mod timeline;
+pub mod timeline;
 pub mod video;
 pub mod vox;

@@ -421,7 +421,7 @@ fn prepare(
     p.roots = reach(&[start]);
     if p.nodes.is_empty() {
         return Err(format!(
-            "{name} has no flow node: give a node an `og-flow: segments/<segment>.ogt` header"
+            "{name} has no flow node: give a node an `og-flow: base/segments/<segment>` header"
         ));
     }
     Ok((p, info))

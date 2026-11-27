@@ -41,8 +41,7 @@
 //!
 //! `--timeline <name>` is `--commands "0:timeline:play:<name>"` (before any
 //! `--commands` given too) with the range `--to` defaulting to the
-//! timeline's `duration`: it works once timelines exist (stream S2,
-//! branch depth/timeline); until then the action is reported unknown.
+//! checked TS timeline's `duration`. The name is its canonical content ID.
 
 use crate::contact_sheet;
 use crate::keyframes::{self, KeyframeArgs, Picker};
@@ -285,46 +284,12 @@ pub fn ffmpeg() -> Option<(PathBuf, String)> {
     Some((bin, version))
 }
 
-/// The `duration` of timeline `name` (`assets/timelines/<name>.ogt`, or any
-/// `.ogt` of `type timeline` named so under assets/).
+/// The duration from the same checked TS snapshot and binding as cook.
 fn timeline_duration(root: &Path, name: &str) -> Result<f64, String> {
-    let direct = root.join("assets/timelines").join(format!("{name}.ogt"));
-    let mut candidates = vec![direct];
-    let mut stack = vec![root.join("assets")];
-    while let Some(d) = stack.pop() {
-        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.file_stem().is_some_and(|s| s == name)
-                && p.extension().is_some_and(|x| x == "ogt")
-            {
-                candidates.push(p);
-            }
-        }
-    }
-    for p in candidates {
-        let Ok(text) = std::fs::read_to_string(&p) else {
-            continue;
-        };
-        let Ok(doc) = og_core::ogt::parse(&text) else {
-            continue;
-        };
-        if doc.ty != "timeline" {
-            continue;
-        }
-        return doc
-            .body
-            .get("duration")
-            .and_then(|d| d.number(0).ok())
-            .map(|n| n.as_f64())
-            .filter(|d| *d > 0.0)
-            .ok_or_else(|| format!("{}: no `duration <seconds>` line", p.display()));
-    }
-    Err(format!(
-        "no timeline `{name}` under {}/assets (an .ogt of `type timeline`; timelines are stream S2's, docs/design.md §10.2)",
-        root.display()
-    ))
+    og_cook::cook::timeline::read(root)?
+        .get(name)
+        .map(|t| f64::from(t.duration))
+        .ok_or_else(|| format!("{name}: not an indexed TS timeline; use its canonical content ID"))
 }
 
 /// One frame's line of frames.json.

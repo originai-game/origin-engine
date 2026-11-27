@@ -667,12 +667,12 @@ pub(crate) fn resolve(
         {
             consumed.insert(p);
         }
-        if s.kind == &timeline::TIMELINE {
-            consumed.extend(timeline::caption_files(
-                &s.rel,
-                assets_dir,
-                &String::from_utf8_lossy(&s.bytes),
-            ));
+        if let Some(timeline) = &s.timeline {
+            consumed.extend(timeline.files.values().filter_map(|(path, _)| {
+                path.strip_prefix(assets_dir)
+                    .ok()
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+            }));
         }
         if s.kind == &environment::ENVIRONMENT {
             consumed.extend(environment::environment_files(s, assets_dir));

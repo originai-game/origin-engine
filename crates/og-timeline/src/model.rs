@@ -1,6 +1,5 @@
-//! The `type timeline` asset: its text, parsed and written back
-//! canonically (the cook writes the canonical text into the blob, with its
-//! caption files imported as keys, and the runtime parses that again).
+//! Internal timeline blob text, written canonically from native tracks by
+//! the cook and decoded by the runtime. Authors declare `file.timeline` in TS.
 //!
 //! ```text
 //! type timeline
@@ -25,9 +24,6 @@
 //!     ease power2.inOut
 //!   }
 //! }
-//! track caption {
-//!   captions "narration.srt"
-//! }
 //! ```
 //!
 //! Every track holds `key <seconds> { ... }` blocks; a value between two
@@ -42,7 +38,7 @@ pub use grammar::{KEY_LINES, PATH_LINES, TIMELINE_LINES, TRACK_LINES};
 pub use text::{PATHS_TYPE, parse_paths, path_entry, paths_to_text};
 use tracks::track;
 
-use crate::captions::{self, Cue};
+use crate::captions;
 use crate::path::{PathDesc, PathKind};
 use og_core::ease::Ease;
 use og_core::glam::{Quat, Vec3};
@@ -801,6 +797,3 @@ fn key_block(e: &Entry) -> Result<&[Entry], String> {
         .map(|b| b.entries.as_slice())
         .ok_or_else(|| at(e, "a key opens a block: `key 1.5 {`"))
 }
-
-/// Reads a caption file a track names. `read` is given the path as written.
-pub type Read<'a> = dyn FnMut(&str) -> Result<String, String> + 'a;

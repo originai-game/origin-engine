@@ -3,9 +3,8 @@
 use super::*;
 
 impl Timeline {
-    /// Parses timeline text. `read` loads a caption file a track names
-    /// (`captions "narration.srt"`); the cooked text has none.
-    pub fn parse(text: &str, read: &mut Read<'_>) -> Result<Timeline, String> {
+    /// Decodes internal cooked timeline text; no author imports or filesystem.
+    pub fn parse(text: &str) -> Result<Timeline, String> {
         let doc = Document::parse(text).map_err(|e| e.to_string())?;
         if doc.ty != TIMELINE_TYPE {
             return Err(format!("a timeline is `type timeline`, not `{}`", doc.ty));
@@ -41,7 +40,7 @@ impl Timeline {
                     }
                     t.paths.push((name, desc));
                 }
-                "track" => t.tracks.push(track(e, read)?),
+                "track" => t.tracks.push(track(e)?),
                 _ => {
                     return Err(unknown(
                         e,

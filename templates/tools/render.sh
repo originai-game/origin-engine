@@ -9,8 +9,8 @@
 # Iterate at 640x360 (about 0.1 s a frame on a CPU-only sandbox), render
 # 1280x720 once; --jobs splits the range over processes and gives the same
 # frames. Without ffmpeg (og doctor) the frames are written instead.
-# Once timelines exist (stream S2), `--timeline intro` renders
-# assets/timelines/intro.ogt over its duration instead of --commands.
+# `--timeline base/timelines/intro` renders content/timelines/intro.ts
+# over its duration instead of --commands.
 set -eu
 project="${1:-templates/game}"
 out="${2:-$project/og-out/intro.mp4}"

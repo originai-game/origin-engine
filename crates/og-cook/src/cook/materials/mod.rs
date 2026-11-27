@@ -324,6 +324,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         whole: Default::default(),
                         model: Default::default(),
                         video: None,
+                        timeline: None,
                         conformed: None,
                         fracture: None,
                     });

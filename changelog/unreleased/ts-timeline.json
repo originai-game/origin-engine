@@ -1,0 +1,8 @@
+{
+  "breaking": [{
+    "member": "file.timeline / og cook / og flow / og render --timeline / timeline commands",
+    "change": "Timeline declarations consume checked TypeScript author IR directly as native tracks; the author OGT entry, text dependency reader and sibling/assets fallback are removed. Captions are captured from canonical module paths. Logical references bind the actual domain output before caching, and nested timelines are checked against the evaluated project graph.",
+    "fix": "Export file.timeline({duration:4,tracks:[{kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/ending')}}]}]}) from content/segments/live.ts. Keys use {time,ease?,value}; imports name assets/ or sources/ subtitle paths. Flow headers, runtime loads, og render --timeline and timeline:play use base/segments/live, not segments/live.ogt or a short filename. Command-created entity names include the whole content ID to isolate module namespaces. Explicit caption locales override adjacent translations. See og api show file:timeline.",
+    "find": ["type timeline", "segments/live.ogt", "segments/opening.ogt"]
+  }]
+}

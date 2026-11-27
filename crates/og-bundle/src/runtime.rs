@@ -1617,10 +1617,7 @@ impl Bundle {
             .get(..meta.text_bytes as usize)
             .and_then(|t| std::str::from_utf8(t).ok())
             .ok_or_else(|| invalid(&blob, "the timeline text is cut short or not UTF-8"))?;
-        og_timeline::Timeline::parse(text, &mut |f| {
-            Err(format!("the cooked text names caption file '{f}'"))
-        })
-        .map_err(|e| invalid(&blob, e))
+        og_timeline::Timeline::parse(text).map_err(|e| invalid(&blob, e))
     }
 
     /// A navmesh blob's agent profiles (G2-4: the `profiles` section, the

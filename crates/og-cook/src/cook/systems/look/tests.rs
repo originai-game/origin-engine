@@ -16,6 +16,7 @@ fn source(root: &Path, rel: &str) -> Source {
         whole: Default::default(),
         model: Default::default(),
         video: None,
+        timeline: None,
         conformed: None,
         fracture: None,
     }

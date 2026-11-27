@@ -1096,7 +1096,7 @@ fn markers(
                     };
                     let cl = lock(&child);
                     let d = cl.timeline.duration;
-                    let p = format!("{prefix}{}/", short(&k.play));
+                    let p = format!("{prefix}{}/", k.play.rsplit('/').next().unwrap_or(&k.play));
                     for (ca, cb) in og_timeline::eval::child_spans(k, until, d, a, b) {
                         markers(ctx, entity, asset, &cl, ca, cb, &p, depth + 1)?;
                     }

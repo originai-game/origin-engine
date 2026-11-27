@@ -2,7 +2,7 @@
 
 # The `timeline` module
 
-Timelines: cutscenes and sequences as data, as an `.ogt` the agent reads and diffs (Unity's Timeline, Godot's AnimationPlayer): a `type timeline` file of keyed tracks (camera, transform, animation, audio, captions, events, shots, ...), cooked by `og cook` and loaded with og.load.timeline.
+Timelines: cutscenes and sequences as typed file.timeline declarations under content/. Keyed tracks cover camera, transform, animation, audio, captions, events, shots and scenes. og cook builds native tracks; og.load.timeline loads the canonical content ID. See animation and file:timeline.
 
 An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused.
 
@@ -14,7 +14,7 @@ See `animation §13`.
 
 ```ogt
 module timeline {
-  doc "Timelines: cutscenes and sequences as data, as an `.ogt` the agent reads and diffs (Unity's Timeline, Godot's AnimationPlayer): a `type timeline` file of keyed tracks (camera, transform, animation, audio, captions, events, shots, ...), cooked by `og cook` and loaded with og.load.timeline."
+  doc "Timelines: cutscenes and sequences as typed file.timeline declarations under content/. Keyed tracks cover camera, transform, animation, audio, captions, events, shots and scenes. og cook builds native tracks; og.load.timeline loads the canonical content ID. See animation and file:timeline."
   doc "An og.Timeline component plays one on its entity, after the game's systems and tweens, before og.anim and physics. Every value is evaluated at the timeline's time, so seeking to a time and playing to it give the same world. A timeline with a camera track owns og.Camera while it plays or is paused."
   # declarations follow, each on its own page
 ```

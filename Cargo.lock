@@ -3432,6 +3432,7 @@ dependencies = [
  "og-shape",
  "og-shape-formats",
  "og-shared",
+ "og-timeline",
  "og-ui-next",
  "oxc_allocator",
  "oxc_ast",

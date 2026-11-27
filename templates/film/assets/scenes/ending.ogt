@@ -1,7 +1,7 @@
 type scene
 version 1
 ---
-# The live ending: segments/live.ogt places it with its scene track and
+# The live ending: base/segments/live places it with its scene track and
 # moves the camera over it. A night stage: its own sky, drawn behind it and
 # the only ambient light and reflection it has, a dim cool moon from
 # behind and the lamp's warm light. Without its sky the set would be lit

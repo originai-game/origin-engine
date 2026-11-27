@@ -15,6 +15,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("environment", &environment::ENVIRONMENT),
     ("icons", &icons::ICONS),
     ("video", &video::VIDEO),
+    ("timeline", &timeline::TIMELINE),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -122,6 +123,7 @@ pub(crate) fn sources(
             whole: Default::default(),
             model: Default::default(),
             video: None,
+            timeline: None,
             conformed: None,
             fracture: None,
         };
@@ -136,6 +138,13 @@ pub(crate) fn sources(
                 source.video = Some(prepared);
                 Ok(outputs)
             }
+            "timeline" => {
+                source.timeline = Some(timeline::Prepared::new(
+                    &assets_root(&source),
+                    source.input()?,
+                )?);
+                Ok(BTreeMap::new())
+            }
             _ => Ok(BTreeMap::new()),
         })()
         .map_err(|e| {
@@ -146,5 +155,7 @@ pub(crate) fn sources(
             .map_err(|e| CookError(e.to_string()))?;
         sources.push(source);
     }
-    graph.finish().map_err(|e| CookError(e.to_string()))
+    let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
+    timeline::bind(sources, &graph)?;
+    Ok(graph)
 }

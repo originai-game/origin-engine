@@ -36,9 +36,9 @@ pub use formats::texture::{
 };
 pub use formats::{
     anim, audio, bc6h, cube_source, fbx, icons, ktx2_source, model_program, model_text, prefab,
-    sfx, texture_array, video, vox,
+    sfx, texture_array, timeline, video, vox,
 };
-use formats::{font, font_pack, model, motion, psd, scene, texture, timeline};
+use formats::{font, font_pack, model, motion, psd, scene, texture};
 pub mod conform;
 pub mod file_types;
 pub mod flow;
@@ -140,6 +140,8 @@ pub(crate) struct Source {
     model: std::sync::OnceLock<Result<model::ModelOutput, CookError>>,
     /// One media snapshot and plan, from content discovery through execution.
     video: Option<video::Prepared>,
+    /// Native tracks and captured captions, shared by planning and execution.
+    timeline: Option<timeline::Prepared>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

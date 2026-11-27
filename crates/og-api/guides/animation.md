@@ -530,34 +530,28 @@ handTarget 0.1 -0.05 0.25
 
 ## 13. Cutscene timelines
 
-A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }`
-blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }`
-blocks; `og cook` cooks it (importing caption files) and og.load.timeline
-loads it. An og.Timeline component plays it on its entity.
+Export `file.timeline(...)` from `content/timelines/intro.ts`; `og cook` consumes its checked TS data and imported captions, and og.load.timeline loads `base/timelines/intro`. An og.Timeline component plays it on its entity. Use `og api show file:timeline` for the generated track/key types, not an OGT file.
 
-| Track | Keys |
-|---|---|
-| `camera` | position and target, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; `roll` (degrees about the view direction); `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera; eased. `blendIn` and `blendOut` (seconds, on the track) ease from the camera it took at the timeline's start and back to it before the end |
-| `transform "<entity>"` | position, rotation in degrees or a quaternion, scale; eased |
-| `animation "<entity>"` | clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model |
-| `audio` | sound, volume, playbackRate, bus |
-| `music` | sound, volume, fadeIn, fadeOut, end, loop, bus |
-| `caption` | text from `key` to `end`; `captions "narration.srt" [offset]` (or `.vtt` WebVTT with `<v Speaker>`, `<i>`, `<b>`, `<font color>`, and top/bottom positioning, or word timestamps `.json`), and its translations beside it (`narration.zh.srt`, `narration.zh.vtt`, `narration.pt-BR.srt`, each with its own times) cook with it: the track says the one of the locale the player asked for (og.i18n.setLocale), its language's for a regional tag, else its own; `locale "zh" { captions "…" }` names one elsewhere. A caption track draws nothing: og.timeline.captions(world) returns the keys showing, each `{ id, text, speaker, spans, position }`, which the built-in `Subtitles` screen shows after the game's own lines (mount it from `@origingame/engine/ui/screens/subtitles.tsx` and pass that list as its `captions` each tick) and any screen can iterate; where and how they are drawn is that screen's and the style pack's |
-| `event` | `do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it |
-| `transition` | kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from; over og.ui's screen cover |
-| `marker` | `name`, sending og.TimelineMarker when played past |
-| `property ["<entity>"]` | `field "og.PointLight.distance"` and keys of `value`: any reflected field of a component on the entity, or of a resource without one |
-| `light "<entity>"` | its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ... |
-| `visibility "<entity>"` | `visible true` or `false` of whatever it draws, stepped |
-| `post` | og.PostEffects' fields |
-| `blendshape "<entity>"` | og.Blendshapes w0 to w7; its source becomes component |
-| `material "<entity>"` | its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters |
-| `timeline` | `play "<timeline>"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep |
-| `shot` | `camera "<entity>"` (a virtual camera's name) or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found |
-| `vfx` | `effect "<vfx>"` (a composed effect, `type vfx`), `at "<entity>"` (played as its child; none: in the world), `position` (offset), `scale`, `seed`: from its key the effect plays its length (a looping one until the timeline stops) at the world's tick; a seek into it joins it there without the events, shakes and sounds already passed; a seek out of it, a stop and the end take it |
-| `video ["<entity>"]` | `video` (a canonical ID such as `base/clips/intro`, authored with `file.video`), `from` (seconds into it, 0) and `speed` (0 to 4, 1): from its key until the next, the og.VideoPlayer of the entity (without a name: the og.Timeline's own) plays that video at `from + (t − key) · speed`, paused while the timeline is; loading the timeline loads its videos |
-| `hotspot` | `id` (1 to 63 bytes), optional `kind` (`choice` or `inspect`), `shape` (`rect` or `circle`), `label`, `ease`, and `rect x y width height` (fractions of the video frame from its top left), or `off true`: from its key the hotspot covers the rect, easing to the same id's next key and held after its last until a key `off`. Nothing draws it: og.flow offers choices tagged `#hotspot:<id>` and non-cutting `inspect` hotspots (`flow §3`) |
-| `scene` | `scene "<scene>"` (a `type scene` asset) or `scene none`: from its key until the next, that scene is in the world, its entities under a root that is a child of the og.Timeline's entity |
+```ts
+import { file } from "@origingame/engine/author";
+export default file.timeline({
+  duration: 6,
+  paths: { flyby: { kind: "linear", points: [[-6, 3, 9], [5, 2, 5]] } },
+  tracks: [
+    { kind: "camera", rail: "flyby", blendIn: 0.3, keys: [
+      { time: 0, value: { at: 0, target: [0, 1, 0] } },
+      { time: 6, ease: "power2.inOut", value: { at: 1, target: [0, 1, 0] } },
+    ] },
+    { kind: "caption", imports: [{ source: "sources/narration.vtt" }] },
+  ],
+});
+```
+
+Camera tracks can ride a path, follow an entity, or place the camera directly. Transform, property, light, post and blendshape tracks drive values; animation, audio and music tracks drive playback. A material track separates reflected `standard` fields, UV controls and explicit shader `params`. Shot tracks borrow virtual cameras and hand the camera brain back when they end. Event keys run command-channel actions, markers signal beats, and transitions cover the screen.
+
+Caption imports name canonical module-relative `assets/` or `sources/` paths: SubRip `.srt`, WebVTT `.vtt` (voice, markup, positioning) or word-timestamp `.json`. Adjacent translations (`narration.zh.vtt`, `narration.pt-BR.vtt`) are discovered; explicit `locales: { zh: { imports: [...] } }` overrides that locale. The requested locale falls back to its language, then the track's base cues. A caption track draws nothing: pass og.timeline.captions(world) to the built-in `Subtitles` screen or iterate it in the game's screen; layout and styling belong there.
+
+Nested timeline, scene, sound, video and VFX references use `ref("<module>/<content-path>")`, not filenames. Nested playback seeks to (parent time − key time) × speed. A VFX seek joins the effect at that point without replaying past events, shakes or sounds; seeking out, stopping or ending takes it away. Video playback stays synchronized with the timeline; an omitted entity uses its own player. Hotspots only expose data for og.flow (`flow` §3), never draw an overlay themselves.
 
 - The cook checks every field against the engine's records (a field the
   record lacks, one a timeline cannot drive, a value of the wrong shape),
@@ -587,7 +581,7 @@ loads it. An og.Timeline component plays it on its entity.
   choice may lead to this way (`flow` §6).
 - A `scene` track is how a cutscene, a level or a minigame brings its
   own world: the scene is placed when the timeline's time enters its key
-  and goes when it leaves it (the next key, `scene none`, a seek out) or
+  and goes when it leaves it (the next key, `scene: null`, a seek out) or
   the timeline stops. A seek inside a key keeps the scene that is there,
   with whatever the game did to it; og.timeline.stop then play places it
   anew. A timeline that ends keeps its last scene, as footage holds its
@@ -612,8 +606,8 @@ loads it. An og.Timeline component plays it on its entity.
   stops; the camera, its depth of field and the materials go back. A
   material track is presentation, applied every frame from the timeline's
   time, so a restored save draws the right material on its next frame.
-- The command channel plays them: `timeline:play:<name>`
-  (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`,
+- The command channel plays them: `timeline:play:<asset-id>`
+  (for example `base/timelines/intro`), `timeline:seek:<seconds>[:<name>]`,
   `timeline:pause[:<name>]`, `timeline:resume[:<name>]`,
   `timeline:stop[:<name>]`.
 

@@ -1,4 +1,5 @@
-//! File fields used by the shared parser and generated file reference.
+//! Internal blob codec fields. Only PATH_LINES remains in the transitional
+//! scene author reference until the scene domain cutover.
 use og_core::ogt::{Block, line::Line};
 
 macro_rules! rows {
@@ -25,8 +26,7 @@ pub const TRACK_LINES: &[Line] = rows![
     &["camera"], "blendIn", "<seconds >= 0>", "0", "Entry blend duration.";
     &["camera"], "blendOut", "<seconds >= 0>", "0", "Exit blend duration.";
     &["animation"], "model", "\"<asset>\"", "", "Explicit clip source, checked at cook.";
-    &["caption"], "captions", "\"<file.srt|vtt|json>\" [<offset seconds>]", "", "Import cues; files enter cook dependencies.";
-    &["caption"], "locale", "\"<tag>\" { captions ...; key ... }", "", "Localized cues, no nested locale.";
+    &["caption"], "locale", "\"<tag>\" { key ... }", "", "Localized cooked cues, no nested locale.";
     &["property"], "field", "\"<record.field>\"", "required", "Reflected target field, declared before keys.";
     &["material"], "index", "<integer >= 0>", "0", "Target material index.";
     &["video"], "layer", "over | under", "over", "Only for the timeline's own player, not entity players."
