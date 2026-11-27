@@ -10,6 +10,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ART_KINDS, artBrief, presetLook, readAudioChoices, readLook } from "../scripts/brief.ts";
+import { readProjectOutput } from "../scripts/project-output.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -34,6 +35,22 @@ test("every kind for every preset makes a complete brief", () => {
   }
   expect(() => artBrief(presetLook("pixel"), "mesh" as never, "x")).toThrow(/asset kind/);
   expect(() => artBrief(presetLook("pixel"), "sprite", "  ")).toThrow(/subject/);
+});
+
+test("project stdout contains exactly one envelope beside launcher progress and propagates install errors", () => {
+  const project = { startup: { look: "looks/t7.ogt", profile: "2d" }, input: { create: { music: "ambient" } } };
+  const read = (stdout: string, status = 0, stderr = "") => readProjectOutput({ stdout, status, stderr });
+  const native = JSON.stringify(project);
+  expect(read(native)).toEqual(project);
+  expect(read(`{"event":"resolve","version":"dev.20261127.1"}\r\n{"event":"installed","cached":false}\r\n${native}\r\n`)).toEqual(project);
+  expect(read(`{"event":"installed","cached":true}\n${native}\n`)).toEqual(project);
+  expect(() => read('{"event":"error","code":"signature","message":"bad signature","retryable":false}\n', 1, "generic exit")).toThrow("signature: bad signature");
+  expect(() => read(`{"event":"error","code":"checksum","message":"mismatch"}\n${native}`)).toThrow("checksum: mismatch");
+  expect(() => read(`{"event":"installed"}\n`)).toThrow("no project object");
+  expect(() => read(`${native}\n${native}`)).toThrow("received multiple");
+  expect(() => read("", 2, "invalid project")).toThrow("invalid project");
+  expect(() => read("not JSON")).toThrow();
+  expect(() => read("null")).toThrow("expected a JSON object");
 });
 
 test.skipIf(!process.env.OG_BIN)("project briefs use the restricted JSON/TS bootstrap and refresh imported choices", () => {

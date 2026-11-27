@@ -3,10 +3,18 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ProjectInput } from "../../types/author-inputs.d.ts";
 import type { ProjectStartup } from "../../types/index.d.ts";
 import { METADATA } from "./project-metadata.ts";
 import type { PublishSettings } from "./web-build.ts";
+
+// Knowledge is inside the engine when packed, beside it in a checkout, as
+// create/bin/knowledge.ts also resolves it. Never duplicate its stream reader.
+const here = dirname(fileURLToPath(import.meta.url));
+const reader = [join(here, "../../knowledge/scripts/project-output.ts"), join(here, "../../../knowledge/scripts/project-output.ts")].find((file) => existsSync(file));
+if (!reader) throw new Error("no knowledge/scripts/project-output.ts; reinstall the engine distribution");
+const { readProjectOutput }: typeof import("../../../knowledge/scripts/project-output.ts") = await import(pathToFileURL(reader).href);
 
 export interface CheckedProject {
   readonly name: string;
@@ -34,7 +42,5 @@ export function readProject(from: string | undefined): CheckedProject | undefine
   const root = projectRoot(from);
   if (!root) return undefined;
   const result = spawnSync(process.env.OG_BIN || "og", ["project", root, "--json"], {encoding: "utf8"});
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(result.stderr.trim() || `og project exited ${result.status}`);
-  return JSON.parse(result.stdout) as CheckedProject;
+  return readProjectOutput<CheckedProject>(result);
 }

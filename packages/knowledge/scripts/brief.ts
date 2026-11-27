@@ -31,6 +31,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readProjectOutput } from "./project-output.ts";
 
 /**
  * The kinds of asset a brief is written for: the game's own (sprite to icon),
@@ -916,9 +917,7 @@ function checkedProject(dir: string): {
   input: { create?: { music?: string; genre?: string } };
 } {
   const result = spawnSync(process.env.OG_BIN || "og", ["project", resolve(dir), "--json"], { encoding: "utf8" });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(result.stderr.trim() || `og project exited ${result.status}`);
-  return JSON.parse(result.stdout);
+  return readProjectOutput(result);
 }
 
 /** The first of `candidates` that exists. */

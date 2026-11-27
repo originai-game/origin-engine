@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og project --json consumers",
+      "summary": "The art brief and engine host tools read the launcher's JSON Lines install events beside the single checked project object. Install errors retain their code and message; missing or duplicate project objects refuse the command. Native og's direct JSON output follows the same reader."
+    }
+  ]
+}
