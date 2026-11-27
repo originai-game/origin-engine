@@ -54,56 +54,66 @@ fn project() -> &'static Path {
 
         // Intro: idle choice loop 0.3..0.6, circle inspect hotspot, choice hotspot.
         write(
-            "assets/timelines/intro.ogt",
-            "type timeline\nversion 1\n---\nname \"Intro\"\nduration 2\n\
-             track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n\
-             track caption {\n  captions \"subs/intro.vtt\"\n}\n\
-             track marker {\n\
-               key 0.1 {\n    name \"flow.open\"\n  }\n\
-               key 0.25 {\n    name \"flow.loopStart\"\n  }\n\
-               key 0.5 {\n    name \"flow.loopEnd\"\n  }\n\
-               key 1.4 {\n    name \"flow.lock\"\n  }\n\
-               key 1.8 {\n    name \"flow.cut\"\n  }\n\
-             }\n\
-             track hotspot {\n\
-               key 0 {\n    id \"clue_letter\"\n    kind inspect\n    shape circle\n    label \"Letter\"\n    rect 0.2 0.3 0.1 0.1\n  }\n\
-               key 0.1 {\n    id \"door\"\n    kind choice\n    shape rect\n    rect 0.6 0.2 0.2 0.4\n  }\n\
-             }\n",
+            "content/timelines/intro.ts",
+            r#"import {file, ref} from '@origingame/engine/author';
+export default file.timeline({name:'Intro',duration:2,tracks:[
+    {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}}]},
+    {kind:'caption',imports:[{source:'assets/subs/intro.vtt'}]},
+    {kind:'marker',keys:[
+        {time:0.1,value:{name:'flow.open'}},
+        {time:0.25,value:{name:'flow.loopStart'}},
+        {time:0.5,value:{name:'flow.loopEnd'}},
+        {time:1.4,value:{name:'flow.lock'}},
+        {time:1.8,value:{name:'flow.cut'}}
+    ]},
+    {kind:'hotspot',keys:[
+        {time:0,value:{id:'clue_letter',kind:'inspect',shape:'circle',label:'Letter',rect:[0.2,0.3,0.1,0.1]}},
+        {time:0.1,value:{id:'door',kind:'choice',shape:'rect',rect:[0.6,0.2,0.2,0.4]}}
+    ]}
+]});"#,
         );
 
         // QTE scene: swipe + drag + default.
         write(
-            "assets/timelines/qte.ogt",
-            "type timeline\nversion 1\n---\nname \"Qte\"\nduration 1.5\n\
-             track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n\
-             track marker {\n\
-               key 0.05 {\n    name \"flow.open\"\n  }\n\
-               key 1.1 {\n    name \"flow.lock\"\n  }\n\
-               key 1.3 {\n    name \"flow.cut\"\n  }\n\
-             }\n",
+            "content/timelines/qte.ts",
+            r#"import {file, ref} from '@origingame/engine/author';
+export default file.timeline({name:'Qte',duration:1.5,tracks:[
+    {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}}]},
+    {kind:'marker',keys:[
+        {time:0.05,value:{name:'flow.open'}},
+        {time:1.1,value:{name:'flow.lock'}},
+        {time:1.3,value:{name:'flow.cut'}}
+    ]}
+]});"#,
         );
 
         // Dissolve scene: 0.3s dissolve, caption, chapter.
         write(
-            "assets/timelines/dissolve.ogt",
-            "type timeline\nversion 1\n---\nname \"Dissolve\"\nduration 1.2\n\
-             track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n\
-             track caption {\n  key 0 {\n    end 1\n    text \"Fresh scene line\"\n  }\n}\n",
+            "content/timelines/dissolve.ts",
+            r#"import {file, ref} from '@origingame/engine/author';
+export default file.timeline({name:'Dissolve',duration:1.2,tracks:[
+    {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}}]},
+    {kind:'caption',keys:[{time:0,value:{end:1,text:'Fresh scene line'}}]}
+]});"#,
         );
 
         // Ending scene.
         write(
-            "assets/timelines/ending.ogt",
-            "type timeline\nversion 1\n---\nname \"Ending\"\nduration 0.5\n\
-             track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n",
+            "content/timelines/ending.ts",
+            r#"import {file, ref} from '@origingame/engine/author';
+export default file.timeline({name:'Ending',duration:0.5,tracks:[
+    {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}}]}
+]});"#,
         );
 
         // Short segment for decks:1 self-loop check.
         write(
-            "assets/timelines/loop_one.ogt",
-            "type timeline\nversion 1\n---\nname \"LoopOne\"\nduration 0.4\n\
-             track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n\
-             track marker {\n  key 0.3 {\n    name \"flow.cut\"\n  }\n}\n",
+            "content/timelines/loop_one.ts",
+            r#"import {file, ref} from '@origingame/engine/author';
+export default file.timeline({name:'LoopOne',duration:0.4,tracks:[
+    {kind:'scene',keys:[{time:0,value:{scene:ref('base/scenes/room')}}]},
+    {kind:'marker',keys:[{time:0.3,value:{name:'flow.cut'}}]}
+]});"#,
         );
 
         write(
@@ -111,7 +121,7 @@ fn project() -> &'static Path {
             "#og-profile:yarn-spinner-3.2.2\n\
              #og-name:film\n\
              title: Intro\n\
-             og-flow: timelines/intro.ogt\n\
+             og-flow: base/timelines/intro\n\
              og-flow-title: Prologue\n\
              og-flow-music: bgm/theme.wav volume=0.8 fade=0.1 duck=0.35\n\
              ---\n\
@@ -123,7 +133,7 @@ fn project() -> &'static Path {
                  <<jump QteScene>>\n\
              ===\n\
              title: QteScene\n\
-             og-flow: timelines/qte.ogt\n\
+             og-flow: base/timelines/qte\n\
              og-flow-title: Rooftop\n\
              ---\n\
              -> Leap up #line:leap #qte:swipe:up #immediate\n\
@@ -134,7 +144,7 @@ fn project() -> &'static Path {
                  <<jump Ending>>\n\
              ===\n\
              title: DissolveNext\n\
-             og-flow: timelines/dissolve.ogt\n\
+             og-flow: base/timelines/dissolve\n\
              og-flow-title: Chapter Two\n\
              og-flow-chapter: ch2\n\
              og-flow-dissolve: 0.3\n\
@@ -143,13 +153,13 @@ fn project() -> &'static Path {
              <<jump Ending>>\n\
              ===\n\
              title: Ending\n\
-             og-flow: timelines/ending.ogt\n\
+             og-flow: base/timelines/ending\n\
              og-flow-ending: true_end\n\
              og-flow-music: none fade=0.1\n\
              ---\n\
              ===\n\
              title: LoopOne\n\
-             og-flow: timelines/loop_one.ogt\n\
+             og-flow: base/timelines/loop_one\n\
              ---\n\
              <<jump LoopOne>>\n\
              ===\n",

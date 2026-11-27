@@ -50,6 +50,7 @@ fn value(text: String) -> Value {
 fn cooked_rigid_node_keys_move_the_drawn_model() {
     let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("rigid-node-animation-{}", std::process::id()));
+    crate::init_project(&root);
     std::fs::create_dir_all(root.join("assets")).unwrap();
     std::fs::write(
         root.join("assets/panel.ogt"),

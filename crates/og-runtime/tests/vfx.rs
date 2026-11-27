@@ -23,6 +23,7 @@ fn project() -> &'static Path {
         let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
             .join(format!("og-runtime-vfx-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
+        crate::init_project(&root);
         let write = |path: &str, bytes: &str| {
             let p = root.join("assets").join(path);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -88,12 +89,6 @@ fn project() -> &'static Path {
         write(
             "fx/hum.ogt",
             "type vfx\nversion 1\n---\nduration 1\nloop true\nemitter \"fx/ember.ogt\" {\n  at 0\n}\n",
-        );
-        // fx/hit.ogt from 1 s, on the entity named "target", 1 m up.
-        write(
-            "timelines/fx.ogt",
-            "type timeline\nversion 1\n---\nname \"F\"\nduration 3\n\
-             track vfx {\n  key 1 {\n    effect \"fx/hit.ogt\"\n    at \"target\"\n    position 0 1 0\n  }\n}\n",
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
