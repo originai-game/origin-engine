@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og vfx import",
+      "change": "Effekseer conversion returns native FX and checked TypeScript declarations instead of OGT effects, particles and timelines. CLI output belongs under content/, --root names the project root, and raw textures/models go under the corresponding assets/ path. Model import settings retain their sidecars.",
+      "fix": "Import into <project>/content/<folder> (optionally --root <project>) and load the printed base/<folder>/<effect> ID. Edit the emitted file.vfx, file.particles and file.effect declarations; recook raw .efkproj/.efkefc assets with the new engine."
+    }
+  ]
+}

@@ -1,8 +1,8 @@
-//! `og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>] [--hit]`:
-//! an Effekseer effect converted to the engine's own effect as text to edit
-//! (og-cook's `efk`): `<out-dir>/<name>.ogt` (`type vfx`) and `<name>/`
-//! beside it (emitters, effect materials, meshes), the textures it names in
-//! `<out-dir>/textures/`, shared by every effect imported there, with what
+//! `og vfx import <file.efkproj|file.efkefc> <content-dir> [--root <project>] [--hit]`:
+//! an Effekseer effect converted to checked TypeScript declarations
+//! (og-cook's `efk`): `<content-dir>/<name>.ts` (`file.vfx`) and `<name>/`
+//! beside it (emitters, effect materials), with raw meshes and shared textures
+//! under the matching project `assets/` path, with what
 //! did not convert listed. A one-shot effect gets an `impact` where the
 //! most starts at once; `--hit` adds a light and a shake there.
 
@@ -10,7 +10,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str =
-    "usage: og vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>] [--hit]";
+    "usage: og vfx import <file.efkproj|file.efkefc> <content-dir> [--root <project>] [--hit]";
 
 fn go(args: &[&str]) -> Result<(), String> {
     let hit = args.contains(&"--hit");

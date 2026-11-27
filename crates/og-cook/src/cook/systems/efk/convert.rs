@@ -1,6 +1,6 @@
 //! An Effekseer node tree as the engine's own effect: each drawn node
-//! becomes an element of a `type vfx` (an emitter of `type particles`, a
-//! mesh, a trail) with the `type effect` materials and meshes it needs.
+//! becomes a native timeline element with checked TypeScript declarations
+//! for its emitters, materials and meshes.
 //!
 //! Effekseer spawns a child's instances per instance of its parent. The
 //! importer walks each drawn node's chain of ancestors: ancestors with one
@@ -14,8 +14,9 @@ use super::curve;
 use super::glb;
 use super::project::{AlphaCutoff, Draw, LocalForce, Node, Project, Rotation, Spawn, Uv};
 use super::value::{Anim, Color, Rng, at3};
+use crate::cook::source_schemas::procedural::{EffectInput, ParticlesInput, VfxInput};
 use glam::{Mat3, Quat, Vec3};
-use std::fmt::Write as _;
+use serde_json::{Value, json};
 
 /// Effekseer's frames per second.
 pub const FPS: f32 = 60.0;
@@ -57,13 +58,15 @@ pub struct Out {
     pub id: String,
     pub kind: OutKind,
     pub bytes: Vec<u8>,
+    /// Checked author input for FX; models carry only their GLB bytes.
+    pub declaration: Option<Value>,
 }
 
 /// A converted effect.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Conversion {
-    /// The `type vfx` text.
-    pub vfx: String,
+    pub vfx: og_bundle::vfx::Vfx,
+    pub declaration: Value,
     pub files: Vec<Out>,
     /// The project's textures it uses: (path as the project names it, asset id).
     pub textures: Vec<(String, String)>,
@@ -72,7 +75,7 @@ pub struct Conversion {
 
 /// How the conversion names and reads what it refers to.
 pub struct Links<'a> {
-    /// The asset id of a generated file by its leaf name (`n0-2.ogt`).
+    /// The asset id of a generated declaration by its leaf name.
     pub own: &'a dyn Fn(&str) -> String,
     /// The asset id of a file the project names (relative to it).
     pub asset: &'a dyn Fn(&str) -> String,
@@ -80,16 +83,25 @@ pub struct Links<'a> {
     pub read: &'a dyn Fn(&str) -> Option<Vec<u8>>,
 }
 
-/// A number as the text formats write it: at most 4 decimals, no trailing zeros.
-fn n(x: f32) -> String {
+// Preserve the importer's four-decimal quantization: the shipped native-field
+// and seeded-timeline baseline was captured with it. Do not change precision
+// as part of changing the author representation. JSON uses f64 so authored
+// decimals do not acquire the binary f32 representation's trailing digits.
+fn q(x: f32) -> f64 {
     let x = if x.abs() < 5e-5 { 0.0 } else { x };
-    let s = format!("{x:.4}");
-    let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" { "0".into() } else { s.to_string() }
+    format!("{x:.4}").parse().expect("an imported number")
 }
 
-fn ns(xs: &[f32]) -> String {
-    xs.iter().map(|&x| n(x)).collect::<Vec<_>>().join(" ")
+fn qs<const N: usize>(xs: [f32; N]) -> [f64; N] {
+    xs.map(q)
+}
+
+fn reference(id: &str) -> Value {
+    json!({"$ogRef": id})
+}
+
+fn curve_value(keys: &[(f32, [f32; 1])]) -> Value {
+    json!(keys.iter().map(|(t, v)| qs([*t, v[0]])).collect::<Vec<_>>())
 }
 
 fn linear(c: f32) -> f32 {
@@ -174,7 +186,7 @@ struct Ctx<'a> {
     findings: Vec<Finding>,
     files: Vec<Out>,
     textures: Vec<(String, String)>,
-    elements: Vec<String>,
+    elements: Vec<Value>,
     /// Seconds the effect lasts at least.
     end: f32,
     looping: bool,
@@ -232,7 +244,7 @@ fn impact_frame(onsets: &[Onset], duration: f32) -> Option<u32> {
 
 /// A hit's light and shake at its impact frame `f`: a flash in the colour
 /// of what starts there, as far as it reaches, and a shake by its size.
-fn hit_elements(onsets: &[Onset], f: u32) -> String {
+fn hit_elements(onsets: &[Onset], f: u32) -> [Value; 2] {
     let at = f as f32 / FPS;
     let here: Vec<&Onset> = onsets
         .iter()
@@ -247,21 +259,20 @@ fn hit_elements(onsets: &[Onset], f: u32) -> String {
     let c = c / c.max_element().max(1e-4);
     let offset = mean(&|o| o.offset);
     let extent = here.iter().map(|o| o.extent).fold(0.0, f32::max);
-    let mut s = format!("light {{\n  at {}\n  life 0.3\n", n(at));
+    let mut light = json!({"at": q(at), "life": 0.3, "node": {
+        "kind": "light", "color": qs(c.to_array()),
+        "intensity": {"kind": "curve", "keys": [[0, 8], [1, 0]]},
+        "distance": q((extent * 4.0).clamp(2.0, 12.0))
+    }});
     if offset.length() > 1e-4 {
-        let _ = writeln!(s, "  offset {}", ns(&offset.to_array()));
+        light["offset"] = json!(qs(offset.to_array()));
     }
-    let _ = writeln!(s, "  color {}", ns(&c.to_array()));
-    s.push_str("  intensity curve 0 8 1 0\n");
-    let _ = writeln!(s, "  distance {}", n((extent * 4.0).clamp(2.0, 12.0)));
-    s.push_str("}\n");
-    let _ = writeln!(
-        s,
-        "shake {{\n  at {}\n  trauma {}\n}}",
-        n(at),
-        n((0.1 + extent * 0.1).clamp(0.1, 0.4))
-    );
-    s
+    [
+        light,
+        json!({"at": q(at), "node": {
+            "kind": "shake", "trauma": q((0.1 + extent * 0.1).clamp(0.1, 0.4))
+        }}),
+    ]
 }
 
 impl Ctx<'_> {
@@ -300,7 +311,14 @@ impl Ctx<'_> {
             id: id.clone(),
             kind,
             bytes,
+            declaration: None,
         });
+        id
+    }
+
+    fn declare(&mut self, leaf: &str, kind: OutKind, input: Value) -> String {
+        let id = self.write(leaf, kind, Vec::new());
+        self.files.last_mut().expect("just inserted").declaration = Some(input);
         id
     }
 }
@@ -315,7 +333,7 @@ fn png_size(b: &[u8]) -> Option<[f32; 2]> {
 }
 
 /// Converts a read project; a `hit` gets a light and a shake at its impact.
-pub fn convert(project: &Project, links: &Links<'_>, hit: bool) -> Conversion {
+pub fn convert(project: &Project, links: &Links<'_>, hit: bool) -> Result<Conversion, String> {
     let mut cx = Ctx {
         links,
         findings: Vec::new(),
@@ -352,31 +370,60 @@ pub fn convert(project: &Project, links: &Links<'_>, hit: bool) -> Conversion {
         cx.end
     }
     .max(1.0 / FPS);
-    let mut vfx = format!("type vfx\nversion {}\n---\n", og_bundle::vfx::VFX_VERSION);
-    let _ = writeln!(vfx, "# Converted from Effekseer by og vfx import.");
-    let _ = writeln!(vfx, "duration {}", n(duration));
-    if cx.looping {
-        vfx.push_str("loop true\n");
-    }
     // A one-shot's impact; a hit's light and shake there.
     let impact = (!cx.looping)
         .then(|| impact_frame(&cx.onsets, duration))
         .flatten();
+    if let Some(f) = impact
+        && hit
+        && cx.elements.len() + 2 <= MAX_ELEMENTS
+    {
+        cx.elements.extend(hit_elements(&cx.onsets, f));
+    }
+    let mut declaration =
+        json!({"duration": q(duration), "looping": cx.looping, "elements": cx.elements});
     if let Some(f) = impact {
-        let _ = writeln!(vfx, "impact {}", n(f as f32 / FPS));
-        if hit && cx.elements.len() + 2 <= MAX_ELEMENTS {
-            cx.elements.push(hit_elements(&cx.onsets, f));
-        }
+        declaration["events"] = json!([{"time": q(f as f32 / FPS), "name": "impact"}]);
     }
-    for e in &cx.elements {
-        vfx.push_str(e);
+    let vfx = VfxInput::schema()
+        .decode(declaration.clone())
+        .map_err(|e| e.to_string())?
+        .build()?;
+    for file in &mut cx.files {
+        let Some(input) = &file.declaration else {
+            continue;
+        };
+        file.bytes = match file.kind {
+            OutKind::Emitter => {
+                let input = ParticlesInput::schema()
+                    .decode(input.clone())
+                    .map_err(|e| e.to_string())?;
+                og_bundle::fx::cooked::Emitter::capture(|links| {
+                    input.build(links, &|_, _, _| {
+                        Err("Effekseer imports do not reference field assets".into())
+                    })
+                })?
+                .to_bytes()?
+            }
+            OutKind::Effect => {
+                let input = EffectInput::schema()
+                    .decode(input.clone())
+                    .map_err(|e| e.to_string())?;
+                og_bundle::fx::cooked::Effect::capture(|links| input.build(links), &|_| {
+                    Err("Effekseer imports do not reference shaders".into())
+                })?
+                .to_bytes()?
+            }
+            OutKind::Model => unreachable!(),
+        };
     }
-    Conversion {
+    Ok(Conversion {
         vfx,
+        declaration,
         files: cx.files,
         textures: cx.textures,
         findings: cx.findings,
-    }
+    })
 }
 
 fn walk<'a>(cx: &mut Ctx<'_>, node: &'a Node, chain: &mut Vec<&'a Node>) {
@@ -526,23 +573,23 @@ fn spawn_offset(s: &Spawn) -> Vec3 {
 }
 
 /// The element's common lines.
-fn element_head(out: &mut String, at: f32, place: &Place) {
-    let _ = writeln!(out, "  at {}", n(at));
+fn element_head(out: &mut Value, at: f32, place: &Place) {
+    out["at"] = json!(q(at));
     if place.offset.length() > 1e-4 {
         let o = place.offset;
-        let _ = writeln!(out, "  offset {}", ns(&[o.x, o.y, o.z]));
+        out["offset"] = json!(qs(o.to_array()));
     }
     let r = euler_xyz(place.rot);
     if r.length() > 1e-3 {
-        let _ = writeln!(out, "  rotate {}", ns(&[r.x, r.y, r.z]));
+        out["rotate"] = json!(qs(r.to_array()));
     }
     let v = place.vel * FPS;
     if v.length() > 1e-3 {
-        let _ = writeln!(out, "  move {}", ns(&[v.x, v.y, v.z]));
+        out["velocity"] = json!(qs(v.to_array()));
     }
     let a = place.acc * (FPS * FPS);
     if a.length() > 1e-3 {
-        let _ = writeln!(out, "  accelerate {}", ns(&[a.x, a.y, a.z]));
+        out["acceleration"] = json!(qs(a.to_array()));
     }
 }
 
@@ -641,13 +688,6 @@ fn width_height_keys(node: &Node, life: f32) -> (f32, Keys, Keys) {
     (peak, one(0), one(1))
 }
 
-fn curve_line(keys: &[(f32, [f32; 1])]) -> String {
-    keys.iter()
-        .map(|(t, v)| format!("{} {}", n(*t), n(v[0])))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 /// The node's blend; a strip's (a trail's) is additive or alpha.
 fn blend(cx: &mut Ctx<'_>, node: &Node, strip: bool) -> &'static str {
     match node.render.blend {
@@ -672,21 +712,21 @@ fn blend(cx: &mut Ctx<'_>, node: &Node, strip: bool) -> &'static str {
 
 /// The main-texture UV lines of an effect material for the node's UV
 /// (a region, a scroll), and whether a flipbook took it instead.
-fn uv_block(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>) -> Option<String> {
-    let region = |start: [f32; 2], sz: [f32; 2], scroll: [f32; 2]| -> Option<String> {
+fn uv_block(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>) -> Option<Value> {
+    let region = |start: [f32; 2], sz: [f32; 2], scroll: [f32; 2]| -> Option<Value> {
         let [w, h] = size?;
         let tile = [sz[0] / w, sz[1] / h];
         let off = [start[0] / w, start[1] / h];
         let scroll = [scroll[0] * FPS / w, scroll[1] * FPS / h];
-        let mut s = String::new();
+        let mut s = json!({});
         if (tile[0] - 1.0).abs() > 1e-3 || (tile[1] - 1.0).abs() > 1e-3 {
-            let _ = writeln!(s, "  tile {}", ns(&tile));
+            s["tile"] = json!(qs(tile));
         }
         if off[0].abs() > 1e-4 || off[1].abs() > 1e-4 {
-            let _ = writeln!(s, "  offset {}", ns(&off));
+            s["offset"] = json!(qs(off));
         }
         if scroll[0].abs() > 1e-5 || scroll[1].abs() > 1e-5 {
-            let _ = writeln!(s, "  scroll {}", ns(&scroll));
+            s["scroll"] = json!(qs(scroll));
         }
         Some(s)
     };
@@ -700,7 +740,7 @@ fn uv_block(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>) -> Option<Str
                     "a UV region of a texture whose size is not known (not a PNG)",
                 );
             }
-            s.filter(|s| !s.is_empty())
+            s.filter(|s| !s.as_object().expect("UV object").is_empty())
         }
         Uv::Scroll {
             start,
@@ -721,14 +761,14 @@ fn uv_block(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>) -> Option<Str
                     "a UV region of a texture whose size is not known (not a PNG)",
                 );
             }
-            s.filter(|s| !s.is_empty())
+            s.filter(|s| !s.as_object().expect("UV object").is_empty())
         }
         Uv::Curve => None,
     }
 }
 
 /// A flipbook `sheet` line for an animated UV that covers the texture's grid.
-fn sheet_line(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>, life: f32) -> Option<String> {
+fn sheet_line(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>, life: f32) -> Option<Value> {
     let Uv::Animation {
         start,
         size: cell,
@@ -754,16 +794,18 @@ fn sheet_line(cx: &mut Ctx<'_>, node: &Node, size: Option<[f32; 2]>, life: f32) 
         return None;
     }
     let mode = match (frame_length, loop_type) {
-        (None, _) => "off".to_string(),
-        (Some(len), 0) => format!("life {}", n((life / (len * frames as f32)).min(1.0))),
+        (None, _) => json!({"kind": "off"}),
+        (Some(len), 0) => {
+            json!({"kind": "life", "cycles": q((life / (len * frames as f32)).min(1.0))})
+        }
         (Some(len), lt) => {
             if *lt == 2 {
                 cx.find(node, "ping-pong UV animation: looped");
             }
-            format!("fps {}", n(FPS / len))
+            json!({"kind": "fps", "fps": q(FPS / len)})
         }
     };
-    Some(format!("sheet {cols} {rows} {frames} {mode}\n"))
+    Some(json!({"columns": cols, "rows": rows, "frames": frames, "mode": mode}))
 }
 
 /// An effect material file for a mesh or an emitter, or `None` when the
@@ -803,31 +845,31 @@ fn effect_file(
     if !mesh && uv.is_none() && !has_advanced {
         return None;
     }
-    let mut s = String::from("type effect\nversion 1\n---\n");
-    let _ = writeln!(s, "# Effekseer node {}", label(node));
-    let name = texture.map(|t| format!(" \"{}\"", t.0)).unwrap_or_default();
-    let body = uv.unwrap_or_default();
-    let polar_line = if polar { "  polar true\n" } else { "" };
-    if !name.is_empty() || !body.is_empty() || !polar_line.is_empty() {
-        let _ = writeln!(s, "main{name} rgba {{\n{body}{polar_line}}}");
+    let mut s = json!({});
+    if texture.is_some() || uv.is_some() || polar {
+        let mut main = json!({"channel": "rgba"});
+        if let Some((id, _)) = texture {
+            main["texture"] = reference(id);
+        }
+        let mut uv = uv.unwrap_or_else(|| json!({}));
+        if polar {
+            uv["polar"] = json!(true);
+        }
+        main["uv"] = uv;
+        s["main"] = main;
     }
     if let Some(id) = alpha_tex {
-        let _ = writeln!(s, "mask \"{id}\" alpha");
+        s["mask"] = json!({"texture": reference(&id), "channel": "alpha"});
     }
     if let Some((id, strength)) = flow_tex {
-        let _ = writeln!(s, "flowMap \"{id}\"");
-        let _ = writeln!(s, "flow {} 0.5", n(strength));
+        s["flowMap"] = json!({"texture": reference(&id)});
+        s["flow"] = json!({"strength": q(strength), "frequency": 0.5});
     }
     if let Some((pow, invert)) = node.render.falloff {
-        let _ = writeln!(
-            s,
-            "fresnel {} 1{}",
-            n(pow),
-            if invert { " invert" } else { "" }
-        );
+        s["fresnel"] = json!({"power": q(pow), "strength": 1, "invert": invert});
     }
     if mesh && let Some(d) = node.render.soft_distance {
-        let _ = writeln!(s, "softDepth {}", n(d.max(0.0)));
+        s["softDepth"] = json!(q(d.max(0.0)));
     }
     if let Some(AlphaCutoff {
         threshold,
@@ -838,7 +880,7 @@ fn effect_file(
     {
         let l = life.max(1.0);
         if threshold.is_fixed() {
-            let _ = writeln!(s, "erosion {}", n(threshold.at(0.0, l).clamp(0.0, 1.0)));
+            s["erosion"] = json!(q(threshold.at(0.0, l).clamp(0.0, 1.0)));
         } else {
             let keys = curve::keys(
                 |t| [threshold.at(t * l, l).clamp(0.0, 1.0)],
@@ -847,39 +889,35 @@ fn effect_file(
                 0.01,
             );
             if keys.len() > 1 && !curve::flat(&keys, 1e-3) {
-                let _ = writeln!(s, "erosion curve {}", curve_line(&keys));
+                s["erosion"] = json!({"kind": "curve", "keys": curve_value(&keys)});
             } else {
-                let _ = writeln!(s, "erosion {}", n(keys[0].1[0]));
+                s["erosion"] = json!(q(keys[0].1[0]));
             }
         }
-        s.push_str("erosionSoftness 0.05\n");
+        s["erosionSoftness"] = json!(0.05);
         if *edge_threshold > 0.0 {
             let r = linear(edge_color[0]) * edge_scaling;
             let g = linear(edge_color[1]) * edge_scaling;
             let b = linear(edge_color[2]) * edge_scaling;
-            let _ = writeln!(
-                s,
-                "erosionEdge {} {}",
-                n(*edge_threshold),
-                ns(&[r, g, b, edge_color[3]])
-            );
+            s["erosionEdge"] =
+                json!({"width": q(*edge_threshold), "color": qs([r, g, b, edge_color[3]])});
         }
     }
     if let Some(keys) = alpha {
         let a = keys.iter().map(|k| k.1[3]).fold(0.0, f32::max).max(1e-4);
-        let line: Vec<String> = keys
+        let line: Vec<[f64; 2]> = keys
             .iter()
-            .map(|(t, c)| format!("{} {}", n(*t), n((c[3] / a).clamp(0.0, 1.0))))
+            .map(|(t, c)| qs([*t, (c[3] / a).clamp(0.0, 1.0)]))
             .collect();
         if keys.iter().any(|k| (k.1[3] - keys[0].1[3]).abs() > 1e-3) {
-            let _ = writeln!(s, "alpha curve {}", line.join(" "));
+            s["alpha"] = json!({"kind": "curve", "keys": line});
         }
     }
-    let _ = writeln!(s, "blend {blend}");
+    s["blend"] = json!(blend);
     if mesh {
-        s.push_str("doubleSided true\n");
+        s["doubleSided"] = json!(true);
     }
-    Some(cx.write(leaf, OutKind::Effect, s.into_bytes()))
+    Some(cx.declare(leaf, OutKind::Effect, s))
 }
 
 fn leaf(node: &Node, what: &str) -> String {
@@ -948,8 +986,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let blend = blend(cx, node, false);
     let texture = cx.texture(node);
     let mut base = peak * p.scale * p.own;
-    // A ring's own shape: its lines in the element.
-    let mut ring = String::new();
+    // A ring's own shape in the element.
     let shape = match &node.draw {
         Draw::Ring(r) => {
             if r.billboard == 1 {
@@ -1003,15 +1040,15 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
                 lin(&r.center_color),
                 lin(&r.inner_color),
             ];
-            let _ = writeln!(ring, "  inner {}", n(inner));
-            let _ = writeln!(ring, "  band {}", n(r.center_ratio));
+            let mut ring =
+                json!({"inner": q(inner), "band": q(r.center_ratio), "colors": cs.map(qs)});
             if h[0].abs() > 1e-4 || h[1].abs() > 1e-4 {
-                let _ = writeln!(ring, "  height {}", ns(&h));
+                ring["height"] = json!(qs(h));
             }
             if r.viewing_angle < 360.0 {
-                let _ = writeln!(ring, "  arc {}", ns(&[start, r.viewing_angle]));
+                ring["start"] = json!(q(start));
+                ring["length"] = json!(q(r.viewing_angle));
             }
-            let _ = writeln!(ring, "  colors {}", ns(&cs.concat()));
             // The ring's radius over life times the node's scale.
             let keys = curve::keys(
                 |t| {
@@ -1025,22 +1062,22 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
             let pk = keys.iter().map(|k| k.1[0]).fold(0.0, f32::max).max(1e-4);
             scale = keys.iter().map(|(t, v)| (*t, [v[0] / pk])).collect();
             base = pk * p.scale * p.own;
-            "ring".into()
+            json!({"kind": "ring", "ring": ring})
         }
         Draw::Model { model: Some(m), .. } => {
             if !square {
                 cx.find(node, "a model scaled unevenly: drawn at its mean scale");
             }
             match model_id(cx, node, m) {
-                Some(id) => format!("\"{id}\""),
-                None => "sphere".into(),
+                Some(id) => json!({"kind": "model", "asset": reference(&id)}),
+                None => json!({"kind": "sphere"}),
             }
         }
         _ => {
             if !square {
                 cx.find(node, "a sprite scaled unevenly: drawn square at its mean");
             }
-            "quad".into()
+            json!({"kind": "quad"})
         }
     };
     // A node not removed at the end of its life stays, as its life left
@@ -1061,7 +1098,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let effect = effect_file(
         cx,
         node,
-        &leaf(node, "effect.ogt"),
+        &leaf(node, "effect.ts"),
         texture.as_ref(),
         true,
         Some(&colors),
@@ -1131,35 +1168,25 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
             acc: p.acc + own_a,
             ..*p
         };
-        let mut s = format!("mesh {shape} {{\n");
+        let mut s = json!({"life": q(life / FPS), "node": {
+            "kind": "mesh", "shape": shape, "effect": reference(&effect),
+            "color": qs(col), "blend": blend
+        }});
         element_head(&mut s, at, &me);
-        s.push_str(&ring);
-        let _ = writeln!(s, "  life {}", n(life / FPS));
-        let _ = writeln!(s, "  effect \"{effect}\"");
         // Effekseer's billboard (0) and rotated billboard (3) rings face
         // the camera.
         if matches!(&node.draw, Draw::Ring(r) if r.billboard == 0 || r.billboard == 3) {
-            s.push_str("  face camera\n");
+            s["node"]["faceCamera"] = json!(true);
         }
         if scale.len() > 1 && !curve::flat(&scale, 1e-3) {
-            let _ = writeln!(
-                s,
-                "  scale curve {}",
-                scale
-                    .iter()
-                    .map(|(t, v)| format!("{} {}", n(*t), n(v[0] * base)))
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            );
+            s["node"]["scale"] = json!({"kind": "curve", "keys": scale.iter()
+                .map(|(t, v)| qs([*t, v[0] * base])).collect::<Vec<_>>()});
         } else {
-            let _ = writeln!(s, "  scale {}", n(base * scale[0].1[0]));
+            s["node"]["scale"] = json!(q(base * scale[0].1[0]));
         }
         if spin.length() > 1e-3 {
-            let _ = writeln!(s, "  spin {}", ns(&[spin.x, spin.y, spin.z]));
+            s["node"]["spin"] = json!(qs(spin.to_array()));
         }
-        let _ = writeln!(s, "  color {}", ns(&col));
-        let _ = writeln!(s, "  blend {blend}");
-        s.push_str("}\n");
         cx.elements.push(s);
         cx.end = cx.end.max(at + life / FPS);
         let widest = scale.iter().map(|k| k.1[0]).fold(0.0, f32::max);
@@ -1429,7 +1456,7 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
             &parent_sch,
             Role::Parent {
                 child: &c.id,
-                leaf: &leaf(node, "parent.ogt"),
+                leaf: &leaf(node, "parent.ts"),
             },
         );
         let life = pe.life + c.life;
@@ -1453,7 +1480,7 @@ fn nested_finding(cx: &mut Ctx<'_>, node: &Node, n: f32) {
         node,
         format!(
             "nested generation: {} instances above its generator folded into one emitter",
-            self::n(n)
+            q(n)
         ),
     );
 }
@@ -1480,7 +1507,7 @@ fn emitter_element(cx: &mut Ctx<'_>, p: &Place, sch: &Schedule, e: &Emitted, lif
         ..*p
     };
     let at = place.delay / FPS;
-    let mut el = format!("emitter \"{}\" {{\n", e.id);
+    let mut el = json!({"node": {"kind": "emitter", "asset": reference(&e.id)}});
     element_head(&mut el, at, &place);
     let span = match sch.count {
         Some(c) => c.saturating_sub(1) as f32 * sch.interval,
@@ -1491,9 +1518,8 @@ fn emitter_element(cx: &mut Ctx<'_>, p: &Place, sch: &Schedule, e: &Emitted, lif
     if let Some(d) = place.deadline.take()
         && sch.count.is_none()
     {
-        let _ = writeln!(el, "  until {}", n((d / FPS).max(at)));
+        el["until"] = json!(q((d / FPS).max(at)));
     }
-    el.push_str("}\n");
     cx.elements.push(el);
     cx.end = cx.end.max(at + span / FPS + life / FPS);
     let (k, size, color) = e.onset;
@@ -1552,8 +1578,7 @@ fn emitter_file(
     } else {
         Rng::fixed(1.0)
     };
-    let mut e = String::from("type particles\nversion 1\n---\n");
-    let _ = writeln!(e, "# Effekseer node {}", label(node));
+    let mut e = json!({});
     // How many and when.
     let hosts = match role {
         Role::Drawn { hosts } => hosts,
@@ -1562,7 +1587,7 @@ fn emitter_file(
     let max = (peak_alive(node, sch, p.nested) * hosts * 1.25)
         .ceil()
         .clamp(4.0, 4096.0) as u32;
-    let _ = writeln!(e, "maxParticles {max}");
+    e["maxParticles"] = json!(max);
     // Where: the generator's spawn shape, rotated so +y is the direction.
     let mut rot = Quat::from_rotation_arc(Vec3::Y, dir);
     let mut half = mo.start_half;
@@ -1578,7 +1603,7 @@ fn emitter_file(
                 rot = Quat::IDENTITY;
                 spread = 0.0;
             }
-            let _ = writeln!(e, "shape sphere {}", n(radius.max * s));
+            e["shape"] = json!({"kind": "sphere", "radius": q(radius.max * s)});
         }
         Spawn::Circle {
             radius,
@@ -1591,7 +1616,7 @@ fn emitter_file(
             let (a0, a1) = (start.c(), end.c());
             let closed = (a1 - a0).abs() >= 359.0;
             let denom = if closed { 8.0 } else { 7.0 };
-            let pts: Vec<String> = (0..8)
+            let pts: Vec<[f64; 3]> = (0..8)
                 .map(|i| {
                     let a = (a0 + (a1 - a0) * i as f32 / denom).to_radians();
                     let (sn, cs) = og_core::math::sin_cos(a);
@@ -1602,15 +1627,10 @@ fn emitter_file(
                     };
                     // The spline is in the emitter's space, which `rot` turns.
                     let v = rot.inverse() * v;
-                    ns(&[v.x, v.y, v.z])
+                    qs(v.to_array())
                 })
                 .collect();
-            let _ = writeln!(
-                e,
-                "shape spline {}{}",
-                pts.join("  "),
-                if closed { " closed" } else { "" }
-            );
+            e["shape"] = json!({"kind": "spline", "points": pts, "closed": closed});
             if g.spawn_rotates {
                 cx.find(
                     node,
@@ -1630,12 +1650,8 @@ fn emitter_file(
             if line_safe {
                 let pa = rot.inverse() * (a * s);
                 let pb = rot.inverse() * (b * s);
-                let _ = writeln!(
-                    e,
-                    "shape spline {}  {}",
-                    ns(&[pa.x, pa.y, pa.z]),
-                    ns(&[pb.x, pb.y, pb.z])
-                );
+                e["shape"] =
+                    json!({"kind": "spline", "points": [qs(pa.to_array()), qs(pb.to_array())]});
                 emitted_shape = true;
             } else {
                 center += (a + b) * 0.5;
@@ -1647,71 +1663,70 @@ fn emitter_file(
     if !emitted_shape {
         if half.length() > 1e-4 {
             let h = (rot.inverse() * half).abs() * s;
-            let _ = writeln!(
-                e,
-                "shape box {}",
-                ns(&[h.x.max(1e-3), h.y.max(1e-3), h.z.max(1e-3)])
-            );
+            e["shape"] = json!({"kind": "box", "halfExtents": qs([h.x.max(1e-3), h.y.max(1e-3), h.z.max(1e-3)])});
         } else {
-            e.push_str("shape point\n");
+            e["shape"] = json!({"kind": "point"});
         }
     }
-    let _ = writeln!(e, "spread {}", n(spread));
+    e["spread"] = json!(q(spread));
     match sch.count {
         None => {
-            let _ = writeln!(e, "rate {}", n(FPS / sch.interval.max(0.1) * p.nested));
-            e.push_str("duration 1\nlooping true\n");
+            e["rate"] = json!(q(FPS / sch.interval.max(0.1) * p.nested));
+            e["duration"] = json!(1);
+            e["looping"] = json!(true);
         }
         Some(c) => {
             let per = p.nested.round().max(1.0) as u32;
             let span = c.saturating_sub(1) as f32 * sch.interval;
             if span < 1.0 {
                 // Within a frame: at once.
-                let _ = writeln!(e, "rate 0\nburst 0 {}", c * per);
-                let _ = writeln!(e, "duration {}", n(1.0 / FPS));
+                e["rate"] = json!(0);
+                e["bursts"] = json!([{"time": 0, "count": c * per}]);
+                e["duration"] = json!(q(1.0 / FPS));
             } else if sch.interval < 1.0 {
                 // Several a frame: a stream over the span.
-                let _ = writeln!(e, "rate {}", n(FPS / sch.interval * per as f32));
-                let _ = writeln!(e, "duration {}", n(c as f32 * sch.interval / FPS));
+                e["rate"] = json!(q(FPS / sch.interval * per as f32));
+                e["duration"] = json!(q(c as f32 * sch.interval / FPS));
             } else {
-                let _ = writeln!(e, "rate 0\nburst 0 {per} {c} {}", n(sch.interval / FPS));
-                let _ = writeln!(e, "duration {}", n((span + 1.0) / FPS));
+                e["rate"] = json!(0);
+                e["bursts"] = json!([{"time": 0, "count": per, "cycles": c, "interval": q(sch.interval / FPS)}]);
+                e["duration"] = json!(q((span + 1.0) / FPS));
             }
-            e.push_str("looping false\n");
+            e["looping"] = json!(false);
         }
     }
-    let _ = writeln!(e, "lifetime {}", ns(&[life.min / FPS, life.max / FPS]));
+    e["lifetime"] = json!(qs([life.min / FPS, life.max / FPS]));
     let speed = [speed[0] * so, speed[1] * so];
-    let _ = writeln!(e, "speed {}", ns(&speed));
+    e["speed"] = json!(qs(speed));
     if mo.speed_keys.len() > 1 && !curve::flat(&mo.speed_keys, 0.05) {
-        let _ = writeln!(e, "speedOverLife {}", curve_line(&mo.speed_keys));
+        e["speedOverLife"] = curve_value(&mo.speed_keys);
     }
     // What it draws in its first tenth of a second (the impact).
     let mut onset = (0.0, 0.0, [0.0; 4]);
     if let Role::Parent { child, .. } = role {
         // Its particles draw nothing; each runs the child's emission.
-        e.push_str("size 0\n");
-        let _ = writeln!(e, "subEmitter life \"{child}\"");
+        e["size"] = json!([0, 0]);
+        e["subEmitters"] = json!([{"trigger": "life", "emitter": reference(child)}]);
     } else {
         let (roll, spin) = spin_z(&node.rotation, lc);
         let size = peak * so;
-        let _ = writeln!(e, "size {}", ns(&[size * rel.min, size * rel.max]));
+        e["size"] = json!(qs([size * rel.min, size * rel.max]));
         if !curve::flat(&size_keys, 1e-3) {
-            let _ = writeln!(e, "sizeOverLife {}", curve_line(&size_keys));
+            e["sizeOverLife"] = curve_value(&size_keys);
         }
         if let Some(h) = &height_keys {
-            let _ = writeln!(e, "heightOverLife {}", curve_line(h));
+            e["heightOverLife"] = curve_value(h);
         }
         // Its own axes, in the emitter's space (turned by `rot`).
         let own = |v: Vec3| rot.inverse() * (start_rotation(&node.rotation) * v);
         match billboard {
             1 => {
-                let _ = writeln!(e, "align upright {}", ns(&own(Vec3::Y).to_array()));
+                e["align"] = json!({"kind": "upright", "axis": qs(own(Vec3::Y).to_array())});
             }
             2 => {
-                let _ = writeln!(e, "align facing {}", ns(&own(Vec3::Z).to_array()));
+                e["align"] = json!({"kind": "facing", "normal": qs(own(Vec3::Z).to_array())});
             }
-            4 => e.push_str("align velocity 0\n"),
+            4 => e["align"] = json!({"kind": "velocity", "stretch": 0}),
             _ => {}
         }
         // A random colour: each particle between its least and its most.
@@ -1725,11 +1740,12 @@ fn emitter_file(
             vec![("colorOverLife", None)]
         };
         for (key, share) in lines {
-            let _ = writeln!(e, "{key} {{");
-            for (t, c) in &color_keys(node, lc, share) {
-                let _ = writeln!(e, "  key {} {}", n(*t), ns(c));
-            }
-            e.push_str("}\n");
+            e[key] = json!(
+                color_keys(node, lc, share)
+                    .iter()
+                    .map(|(t, c)| (q(*t), qs(*c)))
+                    .collect::<Vec<_>>()
+            );
         }
         let brightest = color_keys(node, lc, None)
             .into_iter()
@@ -1744,19 +1760,19 @@ fn emitter_file(
         };
         onset = (first, size * rel.max, brightest);
         if roll.max.abs() > 1e-3 || roll.min.abs() > 1e-3 {
-            let _ = writeln!(e, "rotation {}", ns(&[roll.min, roll.max]));
+            e["rotation"] = json!(qs([roll.min, roll.max]));
         }
         if spin.max.abs() > 1e-3 || spin.min.abs() > 1e-3 {
-            let _ = writeln!(e, "angularVelocity {}", ns(&[spin.min, spin.max]));
+            e["angularVelocity"] = json!(qs([spin.min, spin.max]));
         }
     }
     let gravity = mo.accel * (FPS * FPS * so);
     if gravity.length() > 1e-3 {
         // In the simulation's (world) space: turned as the node's parents are.
         let gl = p.rot * gravity;
-        let _ = writeln!(e, "gravity {}", ns(&[gl.x, gl.y, gl.z]));
+        e["gravity"] = json!(qs(gl.to_array()));
     } else {
-        e.push_str("gravity 0 0 0\n");
+        e["gravity"] = json!([0, 0, 0]);
     }
     let mut drag_sum = 0.0f32;
     let mut curl_emitted = false;
@@ -1767,12 +1783,8 @@ fn emitter_file(
                 LocalForce::Drag(d) => drag_sum += *d,
                 LocalForce::Turbulence { power, scale } => {
                     if !curl_emitted && power.abs() > 1e-4 {
-                        let _ = writeln!(
-                            e,
-                            "field curl {} {} 0.2",
-                            n(*power * FPS * so),
-                            n(1.0 / scale.max(0.1))
-                        );
+                        e["field"] = json!({"kind": "curl", "strength": q(*power * FPS * so),
+                            "frequency": q(1.0 / scale.max(0.1)), "scroll": 0.2});
                         curl_emitted = true;
                     }
                 }
@@ -1781,16 +1793,16 @@ fn emitter_file(
                         let ap = rot.inverse() * ((*pos - center) * s);
                         let strength = *power * FPS * FPS * so;
                         let rad = *radius * s;
-                        if rad > 1e-3 {
-                            let _ = writeln!(
-                                e,
-                                "attractor {} {}",
-                                ns(&[ap.x, ap.y, ap.z, strength]),
-                                n(rad)
-                            );
-                        } else {
-                            let _ = writeln!(e, "attractor {}", ns(&[ap.x, ap.y, ap.z, strength]));
+                        if e.get("attractors").is_none() {
+                            e["attractors"] = json!([]);
                         }
+                        e["attractors"]
+                            .as_array_mut()
+                            .expect("attractor array")
+                            .push(json!({
+                                "position": qs(ap.to_array()), "strength": q(strength),
+                                "radius": if rad > 1e-3 { q(rad) } else { 0.0 }
+                            }));
                         attractors += 1;
                     }
                 }
@@ -1798,28 +1810,28 @@ fn emitter_file(
         }
     }
     if drag_sum > 1e-4 {
-        let _ = writeln!(e, "drag {}", n(drag_sum * FPS));
+        e["drag"] = json!(q(drag_sum * FPS));
     }
     if drawn {
         let blend = blend(cx, node, false);
         let texture = cx.texture(node);
         if let Some((id, size)) = &texture {
-            let _ = writeln!(e, "texture \"{id}\"");
+            e["texture"] = reference(id);
             if let Some(sheet) = sheet_line(cx, node, *size, lc) {
-                e.push_str(&sheet);
+                e["sheet"] = sheet;
             }
         }
-        let _ = writeln!(e, "blend {blend}");
+        e["blend"] = json!(blend);
         if let Some(d) = node.render.soft_distance {
-            let _ = writeln!(e, "softDistance {}", n(d.max(0.0)));
+            e["softDistance"] = json!(q(d.max(0.0)));
         }
         if let Some(d) = node.render.distortion {
-            let _ = writeln!(e, "distortion {}", n((d * 0.02).clamp(0.002, 0.1)));
+            e["distortion"] = json!(q((d * 0.02).clamp(0.002, 0.1)));
         }
         if let Some(fx) = effect_file(
             cx,
             node,
-            &leaf(node, "effect.ogt"),
+            &leaf(node, "effect.ts"),
             texture.as_ref(),
             false,
             None,
@@ -1827,14 +1839,14 @@ fn emitter_file(
             false,
             lc,
         ) {
-            let _ = writeln!(e, "effect \"{fx}\"");
+            e["effect"] = reference(&fx);
         }
     }
     let name = match role {
-        Role::Drawn { .. } => leaf(node, "emitter.ogt"),
+        Role::Drawn { .. } => leaf(node, "emitter.ts"),
         Role::Parent { leaf, .. } => leaf.to_string(),
     };
-    let id = cx.write(&name, OutKind::Emitter, e.into_bytes());
+    let id = cx.declare(&name, OutKind::Emitter, e);
     Emitted {
         id,
         rot,
@@ -1882,7 +1894,7 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let effect = effect_file(
         cx,
         node,
-        &leaf(node, "effect.ogt"),
+        &leaf(node, "effect.ts"),
         texture.as_ref(),
         true,
         None,
@@ -1956,26 +1968,20 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
         .find(|k| k.1[3] >= alpha - 1e-4)
         .map_or([1.0; 4], |k| k.1);
     let at = p.delay / FPS;
-    let mut s = String::from("trail {\n");
+    let mut s = json!({"life": q(span / FPS), "node": {
+        "kind": "trail", "width": qs([width[0] * p.scale * p.own, width[1] * p.scale * p.own]),
+        "lifetime": q(life / FPS), "color": qs([c[0], c[1], c[2], alpha])
+    }});
     element_head(&mut s, at, &p);
-    let _ = writeln!(s, "  life {}", n(span / FPS));
     if let Some(fx) = effect {
-        let _ = writeln!(s, "  effect \"{fx}\"");
+        s["node"]["effect"] = reference(&fx);
     }
-    let _ = writeln!(
-        s,
-        "  width {}",
-        ns(&[width[0] * p.scale * p.own, width[1] * p.scale * p.own])
-    );
-    let _ = writeln!(s, "  lifetime {}", n(life / FPS));
-    let _ = writeln!(s, "  color {}", ns(&[c[0], c[1], c[2], alpha]));
     if orbit[1] != 0.0 {
-        let _ = writeln!(s, "  orbit {}", ns(&orbit));
+        s["node"]["orbit"] = json!(qs(orbit));
     }
     if rise.abs() > 1e-3 {
-        let _ = writeln!(s, "  rise {}", n(rise));
+        s["node"]["rise"] = json!(q(rise));
     }
-    s.push_str("}\n");
     cx.elements.push(s);
     cx.end = cx.end.max(at + (span + life) / FPS);
 }

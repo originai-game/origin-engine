@@ -4,6 +4,83 @@ use og_cook::cook::source_schemas::procedural::{EffectInput, ParticlesInput, Vfx
 use og_render_data as r;
 use serde_json::json;
 
+#[test]
+fn effekseer_import_writes_checked_content_and_matching_native_fx() {
+    use og_cook::cook::efk::{self, Links, OutKind};
+    let dir = super::temp::TempDir::new("effekseer-content");
+    super::init_project(&dir);
+    let source = dir.join("burst.efkproj");
+    let xml = br#"<EffekseerProject><Root><Children><Node>
+      <CommonValues><MaxGeneration><Value>7</Value></MaxGeneration>
+        <Life><Center>83</Center></Life></CommonValues>
+      <RendererCommonValues><ColorTexture>leaf.png</ColorTexture></RendererCommonValues>
+    </Node></Children></Root></EffekseerProject>"#;
+    std::fs::write(&source, xml).unwrap();
+    image::RgbaImage::from_pixel(2, 3, image::Rgba([255, 127, 63, 255]))
+        .save(dir.join("leaf.png"))
+        .unwrap();
+    let out = dir.join("content/fx");
+    let imported = efk::import(&source, &out, None, true).unwrap();
+    assert_eq!(imported.id, "base/fx/burst");
+    assert_eq!(imported.written.len(), 3);
+    assert!(
+        imported
+            .written
+            .iter()
+            .all(|p| p.extension().is_none_or(|e| e != "ogt"))
+    );
+    assert_eq!(
+        std::fs::read(dir.join("assets/fx/textures/leaf.png")).unwrap(),
+        std::fs::read(dir.join("leaf.png")).unwrap()
+    );
+    let read = |p: &str| std::fs::read(dir.join(p)).ok();
+    let conversion = efk::convert(
+        xml,
+        &Links {
+            own: &|leaf| format!("base/fx/burst/{}", leaf.strip_suffix(".ts").unwrap()),
+            asset: &|_| "base/fx/textures/leaf".into(),
+            read: &read,
+        },
+        true,
+    )
+    .unwrap();
+    for path in imported
+        .written
+        .iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "ts"))
+    {
+        let text = std::fs::read_to_string(path).unwrap();
+        let (_, body) = text.split_once("export default file.").unwrap();
+        let (kind, body) = body.split_once('(').unwrap();
+        let input = serde_json::from_str(body.split_once(");").unwrap().0).unwrap();
+        if kind == "vfx" {
+            let native = VfxInput::schema().decode(input).unwrap().build().unwrap();
+            assert_eq!(native, conversion.vfx);
+            assert!(native.events.iter().any(|e| e.name == "impact"));
+            assert!(
+                native
+                    .elements
+                    .iter()
+                    .any(|e| matches!(e.kind, og_bundle::vfx::VfxKind::Light { .. }))
+            );
+        } else if kind == "particles" {
+            let input = ParticlesInput::schema().decode(input).unwrap();
+            let native =
+                Emitter::capture(|links| input.build(links, &|_, _, _| unreachable!())).unwrap();
+            let generated = conversion
+                .files
+                .iter()
+                .find(|f| f.kind == OutKind::Emitter)
+                .unwrap();
+            assert_eq!(native, Emitter::from_bytes(&generated.bytes).unwrap());
+            assert_eq!(native.data.lifetime, [1.3833; 2]);
+        } else {
+            panic!("unexpected declaration {kind}");
+        }
+    }
+    assert!(efk::import(&source, &dir.join("assets/wrong"), Some(&dir), false).is_err());
+}
+
 fn shader_params() -> Vec<r::ShaderParam> {
     vec![
         r::ShaderParam {

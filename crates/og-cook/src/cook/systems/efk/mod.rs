@@ -1,6 +1,6 @@
 //! Effekseer effects (`.efkproj`, `.efkefc`) imported as the engine's own:
-//! the project's node tree converted into a `type vfx` composed effect with
-//! the `type particles` emitters, `type effect` materials and meshes it
+//! the project's node tree converted into a native composed effect with
+//! checked particle emitters, effect materials and meshes it
 //! needs, so Effekseer can be the editor. Effekseer's runtime is not
 //! embedded; its file formats are read as its MIT source writes them
 //! (`third_party/effekseer/`).
@@ -8,7 +8,7 @@
 //! In `assets/` an Effekseer file is a composed effect under its own path
 //! (`og.load.vfx(world, "fx/hit.efkproj")`); what it generates joins the
 //! cook as `<path>#<name>`, and the textures and models it names are read
-//! relative to it. `og vfx import` writes the same conversion as text to
+//! relative to it. `og vfx import` writes the same conversion as TypeScript to
 //! edit. What the engine cannot express is a finding: a warning of the
 //! cook, a line of `og vfx import`.
 
@@ -32,9 +32,6 @@ pub const EXTENSIONS: [&str; 2] = ["efkproj", "efkefc"];
 /// The folder of `og vfx import`'s output its effects' textures share.
 const TEXTURES: &str = "textures/";
 
-/// The comment a finding is carried in through the generated text.
-const FINDING: &str = "# effekseer: ";
-
 /// The import settings of every mesh the conversion writes: an effect's
 /// mesh, which no face budget of the art contract holds or simplifies
 /// (`conform::ModelRole::Effect`). `og vfx import` writes them beside the
@@ -51,21 +48,19 @@ pub fn handles(rel: &str) -> bool {
 pub fn convert(bytes: &[u8], links: &Links<'_>, hit: bool) -> Result<Conversion, String> {
     let root = xml::read_project(bytes)?;
     let p = project::read(&root)?;
-    Ok(convert::convert(&p, links, hit))
+    convert::convert(&p, links, hit)
 }
 
-/// The vfx text with the findings carried in it as comments.
-pub fn vfx_text(c: &Conversion) -> String {
-    let mut t = c.vfx.clone();
-    for f in &c.findings {
-        t.push_str(FINDING);
-        t.push_str(&f.to_string().replace(['\n', '\r'], " "));
-        t.push('\n');
-    }
-    t
+/// Editable declarations use the checked author schema, not another language
+/// embedded in TypeScript. Content references are ordinary `$ogRef` values.
+fn declaration(kind: &str, input: &serde_json::Value) -> String {
+    format!(
+        "import {{ file }} from '@origingame/engine/author';\nexport default file.{kind}({});\n",
+        serde_json::to_string_pretty(input).expect("checked JSON input")
+    )
 }
 
-/// The cook's step: every Effekseer source becomes its vfx text, and what
+/// The cook's step: every Effekseer source becomes native FX, and what
 /// it generates joins the sources; the models it reads are consumed.
 pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let by_lower: BTreeMap<String, String> = sources
@@ -119,8 +114,19 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 consumed.insert(id);
             }
         }
-        s.bytes = vfx_text(&c).into_bytes();
+        s.fx = Some(crate::cook::Prepared::Vfx(c.vfx));
         for f in c.files {
+            let fx = match f.kind {
+                OutKind::Emitter => Some(crate::cook::Prepared::Emitter(
+                    og_bundle::fx::cooked::Emitter::from_bytes(&f.bytes)
+                        .expect("validated conversion"),
+                )),
+                OutKind::Effect => Some(crate::cook::Prepared::Effect(
+                    og_bundle::fx::cooked::Effect::from_bytes(&f.bytes)
+                        .expect("validated conversion"),
+                )),
+                OutKind::Model => None,
+            };
             extra.push(Source {
                 rel: f.id,
                 path: s.path.clone(),
@@ -148,7 +154,6 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 table: None,
                 font_pack: None,
                 fields: Default::default(),
-                fx: None,
                 terrains: Default::default(),
                 navmesh: None,
                 lightmap: None,
@@ -159,6 +164,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 rig2d: None,
                 scene: None,
                 authored_model: None,
+                fx,
                 conformed: None,
                 fracture: None,
             });
@@ -178,17 +184,34 @@ pub(crate) fn warnings(
         .iter()
         .filter(|s| s.kind == &crate::cook::vfx::VFX && handles(&s.rel))
     {
-        let text = String::from_utf8_lossy(&s.bytes);
-        let found: Vec<&str> = text
-            .lines()
-            .filter_map(|l| l.strip_prefix(FINDING))
-            .collect();
-        if found.is_empty() {
+        // Keep source bytes intact for input ownership and incremental stamps.
+        // Raw project imports (not the shipped TS packs) rebuild their findings
+        // from those bytes on cached cooks as well as cold ones.
+        let root = super::assets_root(s);
+        let dir = s.rel.rsplit_once('/').map_or("", |(dir, _)| dir);
+        let resolve = |p: &str| {
+            let id = normalise_rel(&format!("{dir}/{p}"));
+            sources
+                .iter()
+                .find(|s| s.rel.eq_ignore_ascii_case(&id))
+                .map_or(id.clone(), |s| s.rel.clone())
+        };
+        let own = |leaf: &str| format!("{}#{leaf}", s.rel);
+        let read = |p: &str| std::fs::read(root.join(resolve(p))).ok();
+        let Ok(c) = convert(
+            &s.bytes,
+            &Links {
+                own: &own,
+                asset: &resolve,
+                read: &read,
+            },
+            false,
+        ) else {
             continue;
-        }
+        };
         let report = reports.iter_mut().find(|r| r.source == s.rel);
         let mut notes = Vec::new();
-        for f in found {
+        for f in c.findings {
             let what = format!("warning: Effekseer import: {f}");
             warnings.push(format!("assets/{}: {what}", s.rel));
             notes.push(what);
@@ -210,14 +233,15 @@ pub struct Imported {
 }
 
 /// `og vfx import`: converts `file` and writes into `out` the effect as
-/// `<stem>.ogt` and beside it `<stem>/`: its emitters, effect materials and
-/// meshes (each with its import settings, [`MESH_SETTINGS`]), and copies
-/// of the textures it names in `textures/`, which every effect imported
-/// into `out` shares: one copy per file, by name, a different file of the
+/// `<stem>.ts` and beside it `<stem>/`: its emitters and effect materials.
+/// Textures and models are copied under the project's matching `assets/`
+/// path; models retain their import-settings sidecars.
+/// Textures in `textures/` are shared by every effect imported
+/// into `out`: one copy per file, by name, a different file of the
 /// same name under its name with its content's hash (so importing again,
 /// or importing more effects, is idempotent). Asset ids are relative to
-/// `root` (the game's `assets/`), by default the nearest `assets` folder
-/// holding `out`, else `out` itself.
+/// `root` (the game project), by default the nearest folder containing
+/// `og-project.json`. `out` must be inside that project's `content/`.
 pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result<Imported, String> {
     let bytes = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
     std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
@@ -230,13 +254,14 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
             .map_err(|e| format!("{}: {e}", r.display()))?,
         None => out
             .ancestors()
-            .find(|a| a.file_name().is_some_and(|n| n == "assets"))
-            .unwrap_or(&out)
+            .find(|a| a.join("og-project.json").is_file())
+            .ok_or("pass --root <project> or import into a game's content/ directory")?
             .to_path_buf(),
     };
     let base = out
-        .strip_prefix(&root)
-        .map_err(|_| format!("{} is not inside {}", out.display(), root.display()))?;
+        .strip_prefix(root.join("content"))
+        .map_err(|_| format!("{} is not inside {}/content", out.display(), root.display()))?;
+    let assets = root.join("assets").join(base);
     let prefix: String = base
         .components()
         .map(|c| format!("{}/", c.as_os_str().to_string_lossy()))
@@ -269,12 +294,12 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
             {
                 return Some((r.clone(), *b == bytes));
             }
-            let dir = std::fs::read_dir(out.join(TEXTURES)).ok()?;
+            let dir = std::fs::read_dir(assets.join(TEXTURES)).ok()?;
             let r = dir
                 .flatten()
                 .map(|e| format!("{TEXTURES}{}", e.file_name().to_string_lossy()))
                 .find(|r| r.eq_ignore_ascii_case(rel))?;
-            let same = std::fs::read(out.join(&r)).is_ok_and(|b| b == bytes);
+            let same = std::fs::read(assets.join(&r)).is_ok_and(|b| b == bytes);
             Some((r, same))
         };
         let mut rel = format!("{TEXTURES}{name}");
@@ -300,8 +325,21 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
             .insert(p.to_string(), (rel.clone(), bytes));
         rel
     };
-    let own = |leaf: &str| format!("{prefix}{stem}/{leaf}");
-    let asset = |p: &str| format!("{prefix}{}", local(p));
+    let own = |leaf: &str| {
+        let stem = format!("{prefix}{stem}/{leaf}");
+        format!(
+            "base/{}",
+            stem.rsplit_once('.')
+                .map_or(stem.as_str(), |(stem, _)| stem)
+        )
+    };
+    let asset = |p: &str| {
+        let path = local(p);
+        let stem = path
+            .rsplit_once('.')
+            .map_or(path.as_str(), |(stem, _)| stem);
+        format!("base/{prefix}{stem}")
+    };
     let c = convert(
         &bytes,
         &Links {
@@ -318,16 +356,34 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
         std::fs::write(&path, b).map_err(|e| format!("{}: {e}", path.display()))?;
         Ok(path)
     };
-    let mut written = vec![write(
-        out.join(format!("{stem}.ogt")),
-        vfx_text(&c).as_bytes(),
-    )?];
+    let mut text = declaration("vfx", &c.declaration);
+    for f in &c.findings {
+        text.push_str(&format!(
+            "// effekseer: {}\n",
+            f.to_string().replace(['\n', '\r'], " ")
+        ));
+    }
+    let mut written = vec![write(out.join(format!("{stem}.ts")), text.as_bytes())?];
     for f in &c.files {
-        let rel = f.id.strip_prefix(&prefix).unwrap_or(&f.id);
-        written.push(write(out.join(rel), &f.bytes)?);
+        let rel =
+            f.id.strip_prefix(&format!("base/{prefix}"))
+                .expect("generated id prefix");
+        if let Some(input) = &f.declaration {
+            let kind = if f.kind == OutKind::Emitter {
+                "particles"
+            } else {
+                "effect"
+            };
+            written.push(write(
+                out.join(format!("{rel}.ts")),
+                declaration(kind, input).as_bytes(),
+            )?);
+        } else {
+            written.push(write(assets.join(format!("{rel}.glb")), &f.bytes)?);
+        }
         if f.kind == OutKind::Model {
             written.push(write(
-                out.join(format!("{rel}.ogt")),
+                assets.join(format!("{rel}.glb.ogt")),
                 MESH_SETTINGS.as_bytes(),
             )?);
         }
@@ -337,7 +393,7 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
         if rel.is_empty() || b.is_empty() {
             return Err(format!("{}: unreadable", dir.join(p).display()));
         }
-        let path = out.join(&rel);
+        let path = assets.join(&rel);
         // A copy already there is left as it is.
         if std::fs::read(&path).is_ok_and(|on| on == b) {
             written.push(path);
@@ -347,7 +403,7 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
     }
     Ok(Imported {
         written,
-        id: format!("{prefix}{stem}.ogt"),
+        id: format!("base/{prefix}{stem}"),
         findings: c.findings,
     })
 }

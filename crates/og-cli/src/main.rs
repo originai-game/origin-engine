@@ -249,13 +249,14 @@ commands:
                       (downloads: $ORIGIN_ENGINE_DOWNLOADS, default
                       https://origingame.ai/downloads/engine); --any-engine installs a pack
                       whose minEngine is newer than this engine
-  vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>] [--hit]
-                      convert an Effekseer effect to the engine's own as text to edit:
-                      <out-dir>/<name>.ogt (type vfx), <name>/ (emitters, effect materials,
-                      meshes) and <out-dir>/textures/ (copies of its textures, shared by the
-                      effects imported there; asset ids from --root, default the
-                      nearest assets/ above <out-dir>), listing what did not convert; an
-                      Effekseer file in assets/ is converted the same way by og cook. A
+  vfx import <file.efkproj|file.efkefc> <content-dir> [--root <project>] [--hit]
+                      convert an Effekseer effect to checked TypeScript to edit:
+                      <content-dir>/<name>.ts (file.vfx), <name>/ (file.particles,
+                      file.effect), with raw meshes and shared textures under the matching
+                      assets/ path. The output must be inside the project's content/;
+                      --root is the project root, default the nearest og-project.json.
+                      References use canonical base/... IDs. Lists what did not convert;
+                      an Effekseer file in assets/ cooks directly to native FX. A
                       one-shot effect gets an impact where the most starts at once; --hit
                       adds a light and a camera shake there (hits, explosions)
   vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day]

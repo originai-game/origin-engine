@@ -7,9 +7,6 @@ pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, hue_rotate
 
 use og_render_data::{EffectValue, ParticleBlend};
 
-/// The `type vfx` version this engine writes; it reads every version from
-/// 1 (whose `flash` element is version 2's `glow`).
-pub const VFX_VERSION: u32 = 2;
 /// The event an `impact` line sends.
 pub const IMPACT: &str = "impact";
 /// Elements in one effect at most.
