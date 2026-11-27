@@ -21,7 +21,7 @@ fn faces() -> Result<[Vec<u8>; 2], String> {
     };
     Ok([
         read("styles/shared/InstrumentSans-Regular.ttf")?,
-        read("fonts/chinese-simplified/NotoSansSC-Regular.ttf")?,
+        read("fonts/chinese-simplified/assets/fonts/chinese-simplified/NotoSansSC-Regular.ttf")?,
     ])
 }
 
@@ -29,8 +29,9 @@ fn faces() -> Result<[Vec<u8>; 2], String> {
 fn faces() -> Result<[Vec<u8>; 2], String> {
     Ok([
         include_bytes!("../../../../templates/styles/shared/InstrumentSans-Regular.ttf").to_vec(),
-        include_bytes!("../../../../templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf")
-            .to_vec(),
+        include_bytes!(
+            "../../../../templates/fonts/chinese-simplified/assets/fonts/chinese-simplified/NotoSansSC-Regular.ttf"
+        ).to_vec(),
     ])
 }
 

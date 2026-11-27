@@ -174,7 +174,7 @@ fn expire(b: &mut Batch, k: u32) {
 fn face() -> og_text::fonts::Collection {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/fonts/latin/NotoSans-Latin.ttf"
+        "/../../templates/fonts/latin/assets/fonts/latin/NotoSans-Latin.ttf"
     );
     let mut fonts = og_text::fonts::Collection::new();
     let face = fonts
