@@ -46,6 +46,13 @@ test("the committed package is valid against the platform rules", () => {
 
 const guide = (r: Roots, name: string) => join(r.pkg, `wiki/guide-${name}.md`);
 
+test("skin terminology permits mesh preparation but still rejects UI skins beside probe terminology", () => {
+  const problems = added((r) => edit(guide(r, "start"), (s) => `${s}\nRelax only skin-probe stretched regions before welding and LODs.\n\nThe probe selects the UI skin for the settings panel.\n`));
+  expect(problems).toEqual([
+    'wiki/guide-start.md: calls a UI style a skin ("The probe selects the UI skin for the settings panel."); og-ui\'s word is style (og.load.style, styles/<name>/)',
+  ]);
+});
+
 test("every og.* name and Type.field a guide writes exists in the generated API", () => {
   const p = added((r) =>
     edit(

@@ -329,14 +329,15 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
 
 /**
  * What a sentence that says "skin" must also name for the word to be one of
- * its other meanings: a glTF rig's skin (joints, morphs, a model), the
+ * its other meanings: a glTF rig's skin (joints, morphs, a model), mesh
+ * preparation (deformation, welding, LODs), the
  * character controllers' collision gap (the `skin` field, off a surface),
  * a garment/cloth backstop behind the pose skin, a 2D skeleton's skin (a rig2d
  * `skin` block swapping a slot's attachment, `og.Skeleton2D.skin`, an
  * armature's setup pose), or a surface (a skin tone, peach skin, a crowd's or
  * a tile set's looks).
  */
-export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|rig2d|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|backstop|\bpose\b|garment|cloth|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
+export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|rig2d|bone|mesh|model|deform|weld|\blods?\b|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|backstop|\bpose\b|garment|cloth|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
 
 /**
  * A wiki page never calls a UI style a "skin": og-ui's word is
