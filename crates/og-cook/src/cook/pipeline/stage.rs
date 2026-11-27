@@ -180,6 +180,7 @@ pub(crate) fn import(
     consumed: &mut BTreeSet<String>,
     texture_cache: Option<&Path>,
     threads: usize,
+    rigs: &anim::Rigs,
 ) -> Imported {
     // Virtual map paths cannot collide with physical files (checked at expansion).
     let textures: BTreeMap<_, _> = sources
@@ -309,7 +310,7 @@ pub(crate) fn import(
             let result = if s.error.is_some() {
                 None
             } else {
-                import_source(s, texture_cache, &textures, &bases)
+                import_source(s, texture_cache, &textures, &bases, rigs)
             };
             s.hash = source_hash(s);
             (*i, result)
@@ -345,6 +346,9 @@ pub(crate) fn source_hash(s: &Source) -> u64 {
         h.write_str(text);
     }
     if let Some(g) = &s.gltf {
+        if let Some(hash) = g.skin_rig_hash {
+            h.write_u64(hash);
+        }
         let mut ext: Vec<_> = g.external.iter().collect();
         ext.sort_by(|a, b| a.0.cmp(&b.0));
         for (p, b) in ext {
@@ -362,6 +366,7 @@ fn import_source(
     texture_cache: Option<&Path>,
     textures: &BTreeMap<String, Vec<u8>>,
     bases: &BTreeMap<String, model::process::TransferInput>,
+    rigs: &anim::Rigs,
 ) -> Option<Made> {
     let mut made = Made::default();
     let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
@@ -578,11 +583,7 @@ fn import_source(
                         .unwrap_or(false);
                     if enabled {
                         let settings = anim_settings(s)?;
-                        model::skin_report::repair(
-                            &mut g,
-                            &assets_root(s),
-                            settings.rig.as_deref(),
-                        )?;
+                        model::skin_report::repair(&mut g, rigs, settings.rig.as_deref())?;
                     }
                     Ok::<_, String>(())
                 })();

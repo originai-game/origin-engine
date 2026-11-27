@@ -517,7 +517,7 @@ pub fn retarget(
     ] {
         if map.nodes[HIPS] == NONE {
             return Err(invalid(format!(
-                "the {which} skeleton has no hips the engine recognises (scheme '{}'); name them in a `type rig` .ogt (`hips \"<node>\"`)",
+                "the {which} skeleton has no hips the engine recognises (scheme '{}'); name them in a checked file.rig declaration (bones: {{hips: '<node>'}})",
                 map.scheme
             )));
         }

@@ -125,6 +125,8 @@ pub struct GltfSource {
     pub warnings: Vec<String>,
     /// Import-time skin relaxation facts, reported even on incremental cooks.
     pub(crate) skin_relax_notes: Vec<String>,
+    /// Checked rig input used by weight relaxation, part of the model's stamp.
+    pub(crate) skin_rig_hash: Option<u64>,
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
     pub(crate) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
@@ -737,6 +739,7 @@ pub(crate) fn load_with(
         orm_overrides,
         warnings,
         skin_relax_notes: Vec::new(),
+        skin_rig_hash: None,
         conform_plan: Default::default(),
         role: Default::default(),
         segments: None,
@@ -1196,7 +1199,7 @@ fn plan_model<'a>(
     }
     match anim_settings(s) {
         Ok(a) if anim::wanted(g) || !a.clips.is_empty() => {
-            let deps = anim::dependencies(&assets_root(s), &a);
+            let deps = anim::dependencies(&assets_root(s), &a, cx.rigs);
             let motion = contract
                 .and_then(|c| c.motion.as_ref())
                 .map(|m| m.describe())
@@ -1220,7 +1223,7 @@ fn plan_model<'a>(
                     format!("{}#anim", s.rel),
                     format::Animation::NAME,
                     st,
-                    Box::new(AnimationJob(prepared.clone(), a)),
+                    Box::new(AnimationJob(prepared.clone(), a, cx.rigs)),
                 ),
             );
         }
@@ -1427,17 +1430,20 @@ impl Job for ImpostorJob<'_> {
 
 /// A model's animation clips, with the skin and morph streams of the
 /// primitives its model cook made.
-struct AnimationJob<'a>(std::sync::Arc<PreparedModel<'a>>, anim::AnimSettings);
+struct AnimationJob<'a>(
+    std::sync::Arc<PreparedModel<'a>>,
+    anim::AnimSettings,
+    &'a anim::Rigs,
+);
 
 impl Job for AnimationJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let AnimationJob(prepared, a) = self;
+        let AnimationJob(prepared, a, rigs) = self;
         let Exec { options, .. } = ex;
         let s = prepared.source;
-        let g = s.gltf.as_ref().expect("loaded");
         let mesh = mesh_for(s, options)?;
         let primitives = &prepared.get(options)?.notes.sources;
-        anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s), primitives)
+        anim::cook(s, &mesh, a, p.stamp, rigs, primitives)
     }
 }
 

@@ -694,7 +694,7 @@ module anim {
     returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
   }
 
-  handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
+  handle Rig "A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles stand above the ground."
 
   column Rig {
     doc "A Rig handle field (0 is none): a humanoid map og.load.rig answered."
@@ -747,7 +747,7 @@ module anim {
     guide "animation §7"
     param world World "The world whose animation owns the skeletons and the clip."
     param desc RetargetDesc "The clip, the two skeletons and their rigs."
-    returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
+    returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node."
   }
 
   struct MirrorDesc {

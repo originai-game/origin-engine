@@ -1,5 +1,6 @@
 //! CPU-only experiment, not a runtime path. Inputs are source-locked plans and
 //! recorded poses; outputs are measurements. Never writes a world or an asset.
+use og_anim::cooked::BundleAnim;
 use og_anim::motion::contract::Pose;
 use og_anim::{HumanoidMap, NONE, SkeletonAsset, Trs};
 use og_core::glam::{Quat, Vec3, Vec4};
@@ -1555,7 +1556,22 @@ fn main() {
     let skeleton = soma.asset();
     let map = HumanoidMap::with_scheme(&skeleton, "soma").unwrap();
     let target = traveller(&args[3]);
-    let target_map = og_anim::RigAsset::parse(&std::fs::read_to_string(&args[4]).unwrap())
+    // The fourth input is a rig blob in its matching cooked bundle.
+    let rig_path = std::path::Path::new(&args[4]);
+    let cooked = rig_path
+        .ancestors()
+        .find(|dir| dir.join(".cook.ogt").is_file())
+        .expect("rig blob must be inside its cooked bundle");
+    let id = rig_path
+        .strip_prefix(cooked)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .strip_suffix(".ogb")
+        .expect("cooked rig has an .ogb extension");
+    let target_map = og_bundle::runtime::Bundle::open(cooked)
+        .unwrap()
+        .rig(id, &std::fs::read(rig_path).unwrap())
         .unwrap()
         .map(&target)
         .unwrap();

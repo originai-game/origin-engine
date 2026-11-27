@@ -690,11 +690,7 @@ pub(crate) fn cook_code(
 /// own (its emissive check decodes two of its images), on up to `threads`
 /// threads.
 pub(crate) fn diagnose_models(cx: &Cx, reports: &mut [AssetReport], threads: usize) -> Vec<String> {
-    let Cx {
-        sources,
-        assets_dir,
-        ..
-    } = *cx;
+    let Cx { sources, rigs, .. } = *cx;
     let mut warnings = Vec::new();
     let models: Vec<Option<&Source>> = sources
         .iter()
@@ -705,7 +701,7 @@ pub(crate) fn diagnose_models(cx: &Cx, reports: &mut [AssetReport], threads: usi
         let source = (*source)?;
         let gltf = source.gltf.as_ref()?;
         Some(anim_settings(source).and_then(|settings| {
-            let mut notes = model::skin_report::report(gltf, assets_dir, settings.rig.as_deref())?;
+            let mut notes = model::skin_report::report(gltf, rigs, settings.rig.as_deref())?;
             notes.extend(gltf.emissive_warnings()?);
             Ok(notes)
         }))

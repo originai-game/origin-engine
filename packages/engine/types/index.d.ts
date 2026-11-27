@@ -22681,7 +22681,7 @@ export interface GraphDesc {
 
 
 /**
- * A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground.
+ * A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles stand above the ground.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -39883,10 +39883,10 @@ export declare namespace og {
      */
     function animgraph(world: World, path: string): Result<GraphAsset>;
     /**
-     * Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
+     * Load a checked file.rig humanoid map for og.anim.retarget and og.anim.humanoid. Its native fields name the scheme, explicit bone overrides and optional ankle heights. Loading the same ID again answers the same handle.
      *
      * @param world The world whose animation uses it.
-     * @param path The rig's asset id, such as `rigs/strider.ogt`.
+     * @param path The canonical rig content ID, such as base/rigs/strider.
      * @returns Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
      */
     function rig(world: World, path: string): Result<Rig>;
@@ -40685,7 +40685,7 @@ export declare namespace og {
      *
      * @param world The world whose animation owns the skeletons and the clip.
      * @param desc The clip, the two skeletons and their rigs.
-     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
+     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node.
      */
     function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
     /**

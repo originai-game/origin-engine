@@ -6,7 +6,7 @@
 //!   common naming schemes ([`SCHEMES`]: Mixamo, VRM, Unity's humanoid,
 //!   Blender Rigify, Unreal's mannequin, plain Blender names, NVIDIA's SOMA,
 //!   the skeleton og.motion generates) or written in
-//!   a `type rig` .ogt ([`RigAsset`]), which can also name the scheme and
+//!   a checked TS rig declaration ([`RigAsset`]), which can name the scheme and
 //!   override single bones.
 //! - [`retarget`]: a clip of the source rig rewritten for the target rig.
 //!   Per frame, each mapped bone's model-space rotation change from the
@@ -37,7 +37,6 @@ use crate::asset::{Channel, ChannelPath, ClipAsset, NONE, SkeletonAsset, bind};
 use crate::pose::{Pose, sample};
 use crate::xform::{Trs, rotation_arc, unit};
 use og_core::glam::{Quat, Vec3};
-use og_core::ogt::{Document, Entry, Value};
 use og_core::{Error, ErrorKind, Result};
 
 /// The standard humanoid bones, in the order [`HumanoidMap::nodes`] holds
@@ -659,18 +658,8 @@ impl HumanoidMap {
     }
 }
 
-/// A `type rig` .ogt: the humanoid map of one skeleton, by the scheme its
-/// names follow (`scheme auto` detects it) and bones named outright.
-///
-/// ```text
-/// type rig
-/// version 1
-/// ---
-/// scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender | soma
-/// hips "Root_Pelvis"          # a standard bone and the node it is (overrides the scheme)
-/// leftToes none               # this rig has no such bone
-/// footHeight 0.08             # the ankles above the ground standing (or `footHeight <left> <right>`)
-/// ```
+/// The humanoid map of one skeleton, from a checked TS declaration or native
+/// blob. A naming scheme detects bones; explicit mappings override it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RigAsset {
     /// The scheme, or `None` for `auto`.
@@ -681,10 +670,6 @@ pub struct RigAsset {
     pub foot_height: Option<[f32; 2]>,
     /// Bones named outright: (standard bone index, node name or `None` for absent, line).
     pub bones: Vec<(usize, Option<String>, usize)>,
-}
-
-fn parse_err(e: &Entry, reason: impl std::fmt::Display) -> Error {
-    Error::new(ErrorKind::Parse, format!("line {}: {reason}", e.line))
 }
 
 impl RigAsset {
@@ -714,118 +699,6 @@ impl RigAsset {
         Ok(())
     }
 
-    /// File fields from the same naming schemes and bone list the reader accepts.
-    pub fn lines() -> Vec<og_core::ogt::line::Line> {
-        use og_core::ogt::line::Line;
-        let mut lines = vec![
-            Line::new(
-                "scheme",
-                "<naming scheme>",
-                "auto",
-                "Node naming scheme. Explicit bone mappings override it.",
-                "",
-            ),
-            Line::new(
-                "footHeight",
-                "<left> [<right>]",
-                "rest foot heights",
-                "Ankle heights above ground, -10..10 metres; one value applies to both feet.",
-                "",
-            ),
-        ];
-        lines.extend(HUMAN_BONES.iter().map(|name| {
-            Line::new(
-                name,
-                "\"<node name>\" | none",
-                "scheme mapping",
-                "Explicit node override, or no such bone; each standard bone occurs once.",
-                "",
-            )
-        }));
-        lines
-    }
-
-    /// Parses `type rig` text; errors name the line.
-    pub fn parse(text: &str) -> Result<RigAsset> {
-        let doc = Document::parse(text)?;
-        if doc.ty != "rig" || doc.version != 1 {
-            return Err(Error::new(
-                ErrorKind::Parse,
-                format!(
-                    "a rig is `type rig` `version 1`, not `type {}` `version {}`",
-                    doc.ty, doc.version
-                ),
-            ));
-        }
-        let mut rig = RigAsset::default();
-        for e in &doc.body.entries {
-            if e.key == "footHeight" {
-                if rig.foot_height.is_some() {
-                    return Err(parse_err(e, "'footHeight' is given twice"));
-                }
-                if !(1..=2).contains(&e.values.len()) || e.block.is_some() {
-                    return Err(parse_err(
-                        e,
-                        "'footHeight' takes one height, or the left's and the right's",
-                    ));
-                }
-                let mut h = [0f32; 2];
-                for (i, v) in h.iter_mut().enumerate() {
-                    *v = e
-                        .f32(i.min(e.values.len() - 1))
-                        .map_err(|x| parse_err(e, x.reason()))?;
-                    if !(v.is_finite() && (-10.0..=10.0).contains(v)) {
-                        return Err(parse_err(e, "a foot height is metres, -10..=10"));
-                    }
-                }
-                rig.foot_height = Some(h);
-                continue;
-            }
-            if e.values.len() != 1 || e.block.is_some() {
-                return Err(parse_err(e, format!("'{}' takes one value", e.key)));
-            }
-            if e.key == "scheme" {
-                let w = e.word(0).map_err(|x| parse_err(e, x.reason()))?;
-                rig.scheme = match w {
-                    "auto" => None,
-                    s if SCHEMES.contains(&s) => Some(s.to_string()),
-                    s => {
-                        return Err(parse_err(
-                            e,
-                            format!("scheme '{s}' is not auto or one of {}", SCHEMES.join(", ")),
-                        ));
-                    }
-                };
-                continue;
-            }
-            let Some(b) = human_bone(&e.key) else {
-                return Err(parse_err(
-                    e,
-                    format!(
-                        "'{}' is not `scheme`, `footHeight` or a humanoid bone ({})",
-                        e.key,
-                        HUMAN_BONES.join(", ")
-                    ),
-                ));
-            };
-            if rig.bones.iter().any(|(x, _, _)| *x == b) {
-                return Err(parse_err(e, format!("'{}' is named twice", e.key)));
-            }
-            let node = match &e.values[0] {
-                Value::String(s) => Some(s.clone()),
-                Value::Word(w) if w == "none" => None,
-                _ => {
-                    return Err(parse_err(
-                        e,
-                        format!("'{}' takes a node name in quotes or `none`", e.key),
-                    ));
-                }
-            };
-            rig.bones.push((b, node, e.line));
-        }
-        Ok(rig)
-    }
-
     /// The map of `skeleton`: its scheme's (or the detected one), then the
     /// bones named outright. A named node the skeleton lacks is refused.
     pub fn map(&self, skeleton: &SkeletonAsset) -> Result<HumanoidMap> {
@@ -838,8 +711,13 @@ impl RigAsset {
             m.nodes[*b] = match node {
                 None => NONE,
                 Some(name) => skeleton.node(name).ok_or_else(|| {
+                    let at = if *line == 0 {
+                        String::new()
+                    } else {
+                        format!("line {line}: ")
+                    };
                     invalid(format!(
-                        "line {line}: {} is '{name}', which the skeleton does not have",
+                        "{at}{} is '{name}', which the skeleton does not have",
                         HUMAN_BONES[*b]
                     ))
                 })?,
@@ -852,7 +730,7 @@ impl RigAsset {
         Ok(m)
     }
 
-    /// The canonical text (parses back equal, lines aside).
+    /// An internal text dump, not an author input or a cooked transport.
     pub fn to_text(&self) -> String {
         let mut s = String::from("type rig\nversion 1\n---\n");
         s.push_str(&format!(

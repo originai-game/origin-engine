@@ -7616,7 +7616,7 @@
         },
         {
           "name": "rig",
-          "doc": "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.",
+          "doc": "Load a checked file.rig humanoid map for og.anim.retarget and og.anim.humanoid. Its native fields name the scheme, explicit bone overrides and optional ankle heights. Loading the same ID again answers the same handle.",
           "params": [
             {
               "name": "world",
@@ -7628,7 +7628,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The rig's asset id, such as `rigs/strider.ogt`."
+              "doc": "The canonical rig content ID, such as base/rigs/strider."
             }
           ],
           "returns": "Result<Rig>",
@@ -9293,7 +9293,7 @@
             }
           ],
           "returns": "Result<ClipInfo>",
-          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.",
+          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node.",
           "publish": true
         },
         {
@@ -43140,7 +43140,7 @@
     "Rig": {
       "x-og-kind": "handle",
       "x-og-module": "anim",
-      "description": "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground.",
+      "description": "A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles stand above the ground.",
       "type": "integer",
       "minimum": 0
     },

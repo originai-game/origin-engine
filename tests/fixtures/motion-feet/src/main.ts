@@ -66,7 +66,7 @@ function build(world: World): void {
 
   const s = must(world.instantiate(must(og.load.gltf(world, "models/strider.glb")), { name: "strider", position: { x: 0, y: 0, z: 0 } }));
   world.insert(s, og.Skeleton, { asset: must(og.load.animation(world, "models/strider.glb")).skeleton, rootMotion: "off" });
-  world.insert(s, og.MotionAgent, { rig: must(og.load.rig(world, "rigs/strider.ogt")), drive: true });
+  world.insert(s, og.MotionAgent, { rig: must(og.load.rig(world, "base/rigs/strider")), drive: true });
   world.insert(s, og.Collider, { shape: "capsule", radius: 0.3, height: 1.2, offset: { x: 0, y: 0.9, z: 0 } });
   world.insert(s, og.CharacterController, {});
   strider(world, s);

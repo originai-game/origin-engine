@@ -32,13 +32,18 @@ pub use authored::{AuthoredClip, CHANNEL_LINES, CLIP_LINES};
 /// Per-vertex deltas of one morph target.
 type Deltas = Vec<[f32; 3]>;
 
-/// The `.ogt` type of a humanoid rig map.
-pub const RIG_TYPE: &str = "rig";
+/// Captured before model preparation: retargeting and weight relaxation need
+/// the same checked map that the rig writer will pack later.
+pub(crate) struct PreparedRig {
+    pub(crate) asset: og_anim::RigAsset,
+    pub(crate) hash: u64,
+    pub(crate) diagnostic: String,
+}
+
+pub(crate) type Rigs = std::collections::BTreeMap<String, PreparedRig>;
 
 /// Validates a rig and stores its native humanoid map, not author text.
-pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(bytes).map_err(|_| CookError("a rig is text (UTF-8)".into()))?;
-    let rig = og_anim::RigAsset::parse(text).map_err(|e| CookError(e.reason().to_string()))?;
+fn cook_rig(rig: &og_anim::RigAsset, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     rig.validate().map_err(|e| CookError(e.to_string()))?;
     let mut strings = Strings(Vec::new());
     let (scheme_offset, scheme_len) = strings.add(rig.scheme.as_deref().unwrap_or(""));
@@ -159,8 +164,8 @@ pub struct AnimSettings {
     pub rate: Option<f32>,
     /// Extra markers: (clip name, marker name, seconds).
     pub events: Vec<(String, String, f32)>,
-    /// The `type rig` .ogt of this model's humanoid map (a path under
-    /// `assets/`); detected from the node names when absent.
+    /// Canonical content ID of this model's humanoid map; detected from the
+    /// node names when absent.
     pub rig: Option<String>,
     /// Animation library glTFs (paths under `assets/`) whose clips are
     /// retargeted onto this model's skeleton and written into its `#anim`
@@ -213,7 +218,7 @@ pub const LINES: &[crate::grammar::Line] = &[
         "rig",
         "\"<asset>\"",
         "detected",
-        "Humanoid rig map under assets/.",
+        "Canonical content ID of a checked humanoid rig map.",
         "",
     ),
     crate::grammar::Line::new(
@@ -428,11 +433,12 @@ fn settings_of(doc: Option<&Document>) -> Result<AnimSettings, String> {
     )
 }
 
-/// What a model's retargeting reads besides the model: its rig file, each
+/// What a model's retargeting reads besides the model: its captured rig, each
 /// library with its import settings and rig, as `path=hash` lines (a file
 /// that is missing is `path=missing`), for the cook stamp.
-pub fn dependencies(root: &Path, settings: &AnimSettings) -> String {
-    let mut files: Vec<String> = settings.rig.iter().cloned().collect();
+pub(crate) fn dependencies(root: &Path, settings: &AnimSettings, rigs: &Rigs) -> String {
+    let mut files = Vec::new();
+    let mut maps: Vec<_> = settings.rig.iter().cloned().collect();
     for l in &settings.libraries {
         files.push(l.clone());
         files.push(format!("{l}.ogt"));
@@ -446,36 +452,38 @@ pub fn dependencies(root: &Path, settings: &AnimSettings) -> String {
         if let Ok(Some(d)) = import_settings(root, l)
             && let Ok(a) = settings_of(Some(&d))
         {
-            files.extend(a.rig);
+            maps.extend(a.rig);
         }
     }
-    files
+    let mut deps: Vec<_> = files
         .iter()
         .map(|f| match std::fs::read(root.join(f)) {
             Ok(b) => format!("{f}={:016x}", og_core::hash::hash_bytes(&b)),
             Err(_) => format!("{f}=missing"),
         })
-        .collect::<Vec<_>>()
-        .join("\n")
+        .collect();
+    deps.extend(maps.iter().map(|id| match rigs.get(id) {
+        Some(rig) => format!("{id}={:016x}", rig.hash),
+        None => format!("{id}=missing"),
+    }));
+    deps.join("\n")
 }
 
-/// The humanoid map of `skeleton`: from the rig file at `rig` (under
-/// `root`), else detected from its names.
+/// Map a skeleton with a captured checked declaration, else detect its names.
 pub(crate) fn humanoid(
-    root: &Path,
+    rigs: &Rigs,
     rig: Option<&str>,
     skeleton: &og_anim::SkeletonAsset,
 ) -> Result<og_anim::HumanoidMap, String> {
     match rig {
         None => Ok(og_anim::HumanoidMap::detect(skeleton)),
         Some(r) => {
-            let text =
-                std::fs::read_to_string(root.join(r)).map_err(|e| format!("rig '{r}': {e}"))?;
-            let asset =
-                og_anim::RigAsset::parse(&text).map_err(|e| format!("{r}: {}", e.reason()))?;
-            asset
+            let rig = rigs
+                .get(r)
+                .ok_or_else(|| format!("unknown rig content ID '{r}'"))?;
+            rig.asset
                 .map(skeleton)
-                .map_err(|e| format!("{r}: {}", e.reason()))
+                .map_err(|e| format!("{}{}", rig.diagnostic, e.reason()))
         }
     }
 }
@@ -963,24 +971,25 @@ pub(crate) fn clip_names(
     Ok(names)
 }
 
-/// Cooks the animation blob of a parsed glTF. `bytes` is the source file
-/// (for `extras`); `root` is `assets/`, where the settings' rig and
-/// libraries are read from. A library's clips are retargeted onto the
+/// Cooks the animation blob of a captured glTF source. Libraries are read from
+/// its asset root; humanoid maps come from checked snapshots. A library's clips are retargeted onto the
 /// model's skeleton (`og_anim::retarget`, each rig's humanoid map from its
 /// `rig` setting or detected) and written after the model's own clips; the
 /// `mirror` clips (own or a library's) after those, mirrored on the
 /// model's skeleton (`og_anim::mirror`), so nothing mirrors at run time.
 /// `primitives` are the model cook's [`model::ModelNotes::sources`], which
 /// the skin and morph streams are indexed by.
-pub fn cook(
-    src: &GltfSource,
-    bytes: &[u8],
+pub(crate) fn cook(
+    source: &Source,
     mesh: &MeshOptions,
     settings: &AnimSettings,
     stamp: u64,
-    root: &Path,
+    rigs: &Rigs,
     primitives: &[(usize, usize, Vec<u32>)],
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let src = source.gltf.as_ref().expect("imported model");
+    let bytes = &source.bytes;
+    let root = &super::assets_root(source);
     if settings.libraries.is_empty() && settings.mirrors.is_empty() {
         return cook_with(src, bytes, mesh, settings, stamp, &[], Some(primitives));
     }
@@ -1000,7 +1009,7 @@ pub fn cook(
     let target_map = if settings.libraries.is_empty() {
         None
     } else {
-        Some(humanoid(root, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?)
+        Some(humanoid(rigs, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?)
     };
     for lib in &settings.libraries {
         let target_map = target_map.as_ref().expect("a library has a target map");
@@ -1024,7 +1033,7 @@ pub fn cook(
         let library = og_anim::cooked::CookedAnimation::from_bytes("library#anim", &lib_blob)
             .map_err(|e| fail(e.to_string()))?;
         let source_map =
-            humanoid(root, lib_settings.rig.as_deref(), &library.skeleton).map_err(fail)?;
+            humanoid(rigs, lib_settings.rig.as_deref(), &library.skeleton).map_err(fail)?;
         for c in &library.clips {
             if own.clip(&c.name).is_some() || extra.iter().any(|x| x.name == c.name) {
                 notes.push(format!(
@@ -1499,30 +1508,34 @@ fn cook_with(
 pub(crate) static RIG: KindDef = KindDef {
     name: "rig",
     extensions: &[],
-    types: &[RIG_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_rig,
 };
 
 fn plan_rig<'a>(
-    _cx: &Cx<'a>,
+    cx: &Cx<'a>,
     _state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let st = stamp(&[Area::Anim], &[b"rig", &hash]);
-    outs.push((s.rel.clone(), format::Rig::NAME, st, Box::new(RigJob(s))));
+    outs.push((
+        s.rel.clone(),
+        format::Rig::NAME,
+        st,
+        Box::new(RigJob(&cx.rigs[&s.rel].asset)),
+    ));
 }
 
 /// A rig's one output.
-struct RigJob<'a>(&'a Source);
+struct RigJob<'a>(&'a og_anim::RigAsset);
 
 impl Job for RigJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let RigJob(s) = self;
-        cook_rig(&s.bytes, p.stamp)
+        cook_rig(self.0, p.stamp)
     }
 }
 

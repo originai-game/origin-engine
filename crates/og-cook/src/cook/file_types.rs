@@ -93,6 +93,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "motion-action" {
                 out.push_str("Output: native reaction fields consumed by og.motion.react. Source and optional rig are canonical content refs, not physical paths. Requires a named clip and 0 <= holdStart < holdEnd; playback additionally checks the clip duration. Hand contact and its head-local target are optional. No motion-action author or runtime text parser remains. See animation.\n\n");
             }
+            if ty == "rig" {
+                out.push_str("Output: native humanoid map loaded with og.load.rig. Scheme selects auto detection or one supported naming scheme; bones map standard humanoid names to skeleton node names, with null explicitly unmapping a bone. Optional footHeight is [left,right] in metres, each -10..10. Retargeting, skin relaxation and the writer share one checked declaration snapshot. Import animation settings name the canonical rig content ID. There is no rig author or runtime text parser. See animation.\n\n");
+            }
             if ty == "strings" {
                 out.push_str("Output: a native locale table loaded with og.load.strings. Fonts are ordered canonical content refs, bound to actual font outputs. Locale/fallback tags are canonicalized; direction defaults to the locale. Entries preserve Unicode and compile ICU messages before cook. Importing the TS declaration in UI code registers only its cooked ID; author code never runs in the game. og i18n tables --json reads checked tables across modules; --index returns IDs/paths without content evaluation. Extraction writes direct literals only and refuses computed/shared expressions. No string-table author or runtime OGT parser remains. See localization.\n\n");
             }
@@ -215,15 +218,6 @@ pub fn markdown() -> Result<String, String> {
                     &mut out,
                     "materials.material.vary",
                     super::systems::district::parse::VARY_LINES,
-                );
-            }
-            "rig" => {
-                out.push_str("Field coverage: parser-owned rig fields and every standard humanoid bone name accepted by the same reader. This maps a skeleton; it does not generate one.\n\n");
-                table(&mut out, &og_anim::RigAsset::lines());
-                let _ = writeln!(
-                    out,
-                    "\nAccepted schemes: `auto`, {}.\n",
-                    og_anim::SCHEMES.map(|s| format!("`{s}`")).join(", ")
                 );
             }
             "look" => {

@@ -212,6 +212,137 @@ fn typed_locales_preserve_messages_and_resolve_font_chains() {
     assert!(!cook_project(&root, &options).unwrap().ok());
 }
 
+/// Checked maps survive native loading and feed the actual retarget/skin
+/// pipeline, including imported helpers and invalidation of its warm outputs.
+#[test]
+fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
+    use og_anim::cooked::BundleAnim;
+    let root = crate::temp::TempDir::new("typed-rig");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'rigs',entry:'src/main.ts',modules:[{id:'cast',root:'modules/cast',dependsOn:['base']}]});",
+    );
+    let fixture =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/motion/assets");
+    std::fs::create_dir_all(root.join("assets/models")).unwrap();
+    std::fs::create_dir_all(root.join("assets/anims")).unwrap();
+    for path in ["models/strider.glb", "anims/humanoid-clips.glb"] {
+        std::fs::copy(fixture.join(path), root.join("assets").join(path)).unwrap();
+    }
+    write(
+        "assets/models/strider.glb.ogt",
+        "type import\nversion 1\n---\nmodel {\nrelaxSkin true\n}\nanimation {\nrig \"cast/rigs/hero\"\nlibrary \"anims/humanoid-clips.glb\"\n}\n",
+    );
+    write(
+        "modules/cast/lib/feet.ts",
+        "export const heights = [0.0625,0.1875];",
+    );
+    let declaration = "import {file} from '@origingame/engine/author';import {heights} from '../../lib/feet.ts';\nexport default file.rig({scheme:'mixamo',footHeight:heights,bones:{hips:'mixamorig:Hips',leftToes:null}});";
+    write("modules/cast/content/rigs/hero.ts", declaration);
+    write(
+        "content/auto.ts",
+        "import {file} from '@origingame/engine/author';export default file.rig({});",
+    );
+    write(
+        "content/unicode.ts",
+        "import {file} from '@origingame/engine/author';export default file.rig({bones:{hips:'骨盤'}});",
+    );
+    let options = CookOptions::default();
+    let mut previous = None;
+    let mut original_clips = None;
+    for _ in 0..2 {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("cast/rigs/hero").unwrap();
+        let rig = bundle.rig("cast/rigs/hero", &bytes).unwrap();
+        assert_eq!(rig.scheme.as_deref(), Some("mixamo"));
+        assert_eq!(rig.foot_height, Some([0.0625, 0.1875]));
+        assert_eq!(rig.bones.len(), 2);
+        let animation = bundle.load_animation("models/strider.glb").unwrap();
+        let map = rig.map(&animation.skeleton).unwrap();
+        assert_eq!(
+            map.nodes[og_anim::human_bone("hips").unwrap()],
+            animation.skeleton.node("mixamorig:Hips").unwrap()
+        );
+        assert_eq!(
+            map.nodes[og_anim::human_bone("leftToes").unwrap()],
+            og_anim::NONE
+        );
+        assert!(!animation.clips.is_empty(), "library was not retargeted");
+        original_clips = Some(animation.clips);
+        let auto = bundle
+            .rig("base/auto", &bundle.read("base/auto").unwrap())
+            .unwrap();
+        assert!(auto.scheme.is_none() && auto.foot_height.is_none() && auto.bones.is_empty());
+        let unicode = bundle
+            .rig("base/unicode", &bundle.read("base/unicode").unwrap())
+            .unwrap();
+        assert_eq!(unicode.bones[0].1.as_deref(), Some("骨盤"));
+        let outputs = [
+            bytes.to_vec(),
+            bundle.read("models/strider.glb").unwrap().to_vec(),
+            bundle.read("models/strider.glb#anim").unwrap().to_vec(),
+        ];
+        if let Some(previous) = &previous {
+            assert_eq!(previous, &outputs);
+        }
+        previous = Some(outputs);
+    }
+    write(
+        "modules/cast/lib/feet.ts",
+        "export const heights = [0.3125,0.4375];",
+    );
+    let report = cook_project(&root, &options).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let changed = bundle
+        .rig("cast/rigs/hero", &bundle.read("cast/rigs/hero").unwrap())
+        .unwrap();
+    assert_eq!(changed.foot_height, Some([0.3125, 0.4375]));
+    assert_ne!(
+        original_clips.unwrap(),
+        bundle.load_animation("models/strider.glb").unwrap().clips,
+        "retargeting reused the old map"
+    );
+    assert_ne!(
+        previous.unwrap()[1],
+        bundle.read("models/strider.glb").unwrap().to_vec(),
+        "skin preparation did not include its rig dependency"
+    );
+    for (from, to, expected) in [
+        ("'mixamo'", "'unknown'", "scheme"),
+        ("leftToes:null", "tail:null", "tail"),
+        ("footHeight:heights", "footHeight:[0,10.125]", "footHeight"),
+        ("mixamorig:Hips", "missing-骨盤", "missing-骨盤"),
+    ] {
+        write(
+            "modules/cast/content/rigs/hero.ts",
+            &declaration.replace(from, to),
+        );
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(
+            error.contains(expected) && error.contains("content/rigs/hero.ts:2"),
+            "{error}"
+        );
+    }
+    write("modules/cast/content/rigs/hero.ts", declaration);
+    write("assets/old.ogt", "type rig\nversion 1\n---\nscheme auto\n");
+    assert!(
+        !cook_project(&root, &options).unwrap().ok(),
+        "old rig author entry was accepted"
+    );
+}
+
 /// Public TS cook/load contract: canonical refs, native fields and rejection
 /// stay the same on a warm cook, including an imported source's physical ID.
 #[test]
@@ -228,8 +359,8 @@ fn typed_motion_actions_resolve_refs_and_load_native_fields() {
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
     );
     write(
-        "assets/human.ogt",
-        "type rig\nversion 1\n---\nscheme auto\n",
+        "content/human.ts",
+        "import {file} from '@origingame/engine/author';export default file.rig({scheme:'auto'});",
     );
     let declaration = "import {file,ref} from '@origingame/engine/author';\nexport default file['motion-action']({source:ref('base/brace'),clip:'brace-右',rig:ref('base/human'),holdStart:0.375,holdEnd:1.625,hand:'right',handTarget:[0.125,-0.25,0.75]});";
     write("content/actions/brace.ts", declaration);
@@ -251,7 +382,7 @@ fn typed_motion_actions_resolve_refs_and_load_native_fields() {
                 action.rig.as_str(),
                 action.clip.as_str()
             ),
-            ("brace.gltf", "human.ogt", "brace-右")
+            ("brace.gltf", "base/human", "brace-右")
         );
         assert_eq!((action.hold_start, action.hold_end), (0.375, 1.625));
         assert_eq!(action.hand, "right");

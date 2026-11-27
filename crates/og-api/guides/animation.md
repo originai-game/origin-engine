@@ -265,6 +265,14 @@ are not retroactive on seek unless authored that way.
   A-pose and differing bone frames agree; fingers turn from their hand, so
   a hand pose holds whatever the arm does. Name `footHeight` on each rig
   when the feet do not land on the ground of the rest pose.
+- Author a humanoid map under `content/rigs/` with
+  `export default file.rig({ scheme: 'auto', footHeight: [0.08, 0.09], bones: { hips: 'Root_Pelvis', leftToes: null } })`,
+  importing `file` from `@origingame/engine/author`. Bone names come from the
+  generated types; `null` explicitly unmaps a bone. Omit `footHeight` to use
+  rest-pose heights. Load `base/rigs/hero` for `content/rigs/hero.ts`; the
+  import setting `animation.rig` uses that same canonical ID. Checked maps
+  are captured before model preparation and packed as native fields, with no
+  rig author OGT or text-parser fallback.
 - Twist bones (unmapped nodes on a limb named `twist`, or Rigify's
   `DEF-….001`) take a share of the limb's twist by their position along
   it.

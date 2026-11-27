@@ -25,6 +25,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("motion-action", &anim::MOTION_ACTION),
     ("strings", &strings::STRINGS),
     ("font-extension", &font_pack::FONT_PACK),
+    ("rig", &anim::RIG),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -60,7 +61,6 @@ fn catalogue(
             &story::DIALOGUE,
             &model::MODEL,
             &texture::TEXTURE,
-            &anim::RIG,
             &font::FONT,
         ]
         .contains(&s.kind)
@@ -95,12 +95,71 @@ fn catalogue(
     Ok(bindings)
 }
 
+/// Rig maps are inputs of model preparation, which runs before terrain and
+/// navigation can consume imported meshes. Retain their checked content for
+/// the graph so the author entry is never evaluated again during this cook.
+pub(crate) fn rigs(
+    root: &Path,
+    project: &source_project::Project,
+) -> Result<(BTreeMap<String, source_content::Content>, anim::Rigs), CookError> {
+    let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
+    let mut evaluator = source_content::Evaluator::default();
+    let mut content = BTreeMap::new();
+    let mut rigs = anim::Rigs::new();
+    for entry in index.entries.values().filter(|e| e.factory == "rig") {
+        let checked = evaluator
+            .evaluate(root, project, entry, &BTreeMap::new(), None)
+            .map_err(|e| CookError(e.to_string()))?;
+        let file: crate::cook::source_schemas::File =
+            serde_json::from_value(checked.data().root().into_json())
+                .map_err(|e| CookError(e.to_string()))?;
+        let input: crate::cook::source_schemas::media::clips::Rig =
+            serde_json::from_value(file.value).map_err(|e| CookError(e.to_string()))?;
+        let asset = og_anim::RigAsset {
+            scheme: input.scheme.filter(|s| s != "auto"),
+            foot_height: input.foot_height,
+            bones: input
+                .bones
+                .into_iter()
+                .map(|(bone, node)| {
+                    let at = source_content::diagnostic(
+                        checked.source(),
+                        &entry.file,
+                        &format!("/bones/{bone}"),
+                        "",
+                    );
+                    (
+                        og_anim::human_bone(&bone).expect("schema checked bone name"),
+                        node,
+                        at.location.line,
+                    )
+                })
+                .collect(),
+        };
+        let at = source_content::diagnostic(checked.source(), &entry.file, "", "");
+        asset
+            .validate()
+            .map_err(|e| CookError(format!("{at}{}", e.reason())))?;
+        rigs.insert(
+            entry.id.clone(),
+            anim::PreparedRig {
+                asset,
+                hash: hash_bytes(checked.data().as_bytes()),
+                diagnostic: at.to_string(),
+            },
+        );
+        content.insert(entry.id.clone(), checked);
+    }
+    Ok((content, rigs))
+}
+
 pub(crate) fn sources(
     root: &Path,
     project: &source_project::Project,
     sources: &mut Vec<Source>,
     consumed: &mut BTreeSet<String>,
     provided: &provided::Provided,
+    mut prepared: BTreeMap<String, source_content::Content>,
 ) -> Result<source_content::Graph, CookError> {
     let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
     let records = source_records::Records::open(root, project).map_err(CookError)?;
@@ -112,15 +171,25 @@ pub(crate) fn sources(
     let mut fields = field::Fields::new();
     let mut terrains = BTreeMap::new();
     for entry in index.entries.values() {
-        let content = evaluator
-            .evaluate(
-                root,
-                project,
-                entry,
-                &BTreeMap::new(),
-                records.contexts[&entry.module].schema(&entry.factory),
-            )
-            .map_err(|e| CookError(e.to_string()))?;
+        let content = if let Some(content) = prepared.remove(&entry.id) {
+            if content.entry() != entry {
+                return Err(CookError(format!(
+                    "{}: source changed during cook",
+                    entry.file
+                )));
+            }
+            content
+        } else {
+            evaluator
+                .evaluate(
+                    root,
+                    project,
+                    entry,
+                    &BTreeMap::new(),
+                    records.contexts[&entry.module].schema(&entry.factory),
+                )
+                .map_err(|e| CookError(e.to_string()))?
+        };
         // Each domain consumes the canonical IR directly. A cutover removes
         // its legacy type claim instead of serializing data back into OGT.
         let kind = match entry.factory.as_str() {

@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "humanoid rig author input and animation.rig",
+    "change": "Humanoid maps are checked TypeScript declarations. Rig author OGT, its field table and the runtime text parser have been removed. Retargeting and skin relaxation consume the same checked snapshot as the rig writer.",
+    "fix": "Export file.rig({scheme:'auto',footHeight:[0.08,0.09],bones:{hips:'Root_Pelvis',leftToes:null}}) under content/. Use canonical IDs such as base/rigs/hero in animation.rig and og.load.rig, then re-cook with matching hosts."
+  }]
+}

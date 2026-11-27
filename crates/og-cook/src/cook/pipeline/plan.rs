@@ -10,6 +10,7 @@ pub(crate) struct Cx<'a> {
     pub(crate) cooked_dir: &'a Path,
     pub(crate) options: &'a CookOptions,
     pub(crate) sources: &'a [Source],
+    pub(crate) rigs: &'a anim::Rigs,
     pub(crate) known: &'a BTreeSet<String>,
     pub(crate) prefab_texts: &'a BTreeMap<String, String>,
     pub(crate) group_of: &'a BTreeMap<String, String>,

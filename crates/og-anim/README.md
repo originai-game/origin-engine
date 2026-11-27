@@ -541,18 +541,20 @@ is the metacarpal).
 | `ue` | Unreal's mannequin: `pelvis`, `spine_01`..`03`, `neck_01`, `clavicle_l`, `upperarm_l`, `lowerarm_l`, `thigh_r`, `calf_r`, `ball_r` |
 | `blender` | plain names with a side suffix (`.L`, `_R`, `.left`): `hips`/`pelvis`, `spine`, `chest`, `upper_arm`/`arm`, `forearm`, `thigh`, `shin`/`calf`, `foot`, `toe` |
 
-A `type rig` .ogt (`RigAsset`; cooked as `og.Rig`, `og.load.rig`) forces a
-scheme and names bones outright:
+A checked TS `file.rig` declaration (`RigAsset`; cooked as native `og.Rig`
+fields, loaded with `og.load.rig`) forces a scheme and names bones outright:
 
-```text
-type rig
-version 1
----
-scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender | soma
-hips "Root_Pelvis"          # a standard bone and the node it is
-leftToes none               # this rig has no such bone
-footHeight 0.08             # the ankles above the ground standing: one height, or the left's and the right's
+```ts
+import { file } from '@origingame/engine/author';
+export default file.rig({
+  scheme: 'auto', // or mixamo, vrm, unity, rigify, ue, blender, soma
+  bones: { hips: 'Root_Pelvis', leftToes: null },
+  footHeight: [0.08, 0.09], // left and right ankle heights in metres
+});
 ```
+
+Use `content/rigs/hero.ts` and load `base/rigs/hero`. Cook retargeting and skin
+relaxation use the same captured map; no rig author parser remains.
 
 `retarget(source, source_map, target, target_map, clip, options)` rewrites a
 clip of the source rig for the target, frame by frame:

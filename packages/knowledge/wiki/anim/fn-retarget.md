@@ -19,7 +19,7 @@ og.anim.retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>
 | `world` | `World` | no | The world whose animation owns the skeletons and the clip. |
 | `desc` | `RetargetDesc` | yes | The clip, the two skeletons and their rigs. |
 
-**Returns** `Result<ClipInfo>`: The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
+**Returns** `Result<ClipInfo>`: The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node.
 
 Binding symbol `og_anim_retarget` · publish builds: kept
 
@@ -29,7 +29,7 @@ fn retarget {
   guide "animation §7"
   param world World "The world whose animation owns the skeletons and the clip."
   param desc RetargetDesc "The clip, the two skeletons and their rigs."
-  returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
+  returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in file.rig), or a rig naming a missing node."
 }
 ```
 

@@ -54,7 +54,9 @@ fn plan<'a>(
                 ));
             }
             deps.extend_from_slice(&source.hash.to_le_bytes());
-            deps.extend_from_slice(anim::dependencies(cx.assets_dir, &settings).as_bytes());
+            deps.extend_from_slice(
+                anim::dependencies(cx.assets_dir, &settings, cx.rigs).as_bytes(),
+            );
             state
                 .parsed_refs
                 .entry(s.rel.clone())

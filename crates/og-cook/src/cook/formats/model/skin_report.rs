@@ -3,7 +3,8 @@
 //! Probes rotate about bind joints in model axes (+Y up, +Z forward), composed
 //! down the hierarchy. They are stress tests, not animations.
 
-use super::{GltfSource, Mat4, Path, Quat, Vec3, node_order};
+use super::{GltfSource, Mat4, Quat, Vec3, node_order};
+use crate::cook::anim::Rigs;
 use og_anim::{HumanoidMap, NONE, SkeletonAsset, SkeletonNode, Trs};
 use std::collections::BTreeMap;
 
@@ -176,10 +177,10 @@ fn longest(points: &[Vec3], t: &[u32]) -> f32 {
 /// stretch note starts with `warning:`. Recomputed on incremental cooks too.
 pub(in crate::cook) fn report(
     src: &GltfSource,
-    root: &Path,
+    rigs: &Rigs,
     rig: Option<&str>,
 ) -> Result<Vec<String>, String> {
-    let (mut notes, _) = inspect(src, root, rig, false)?;
+    let (mut notes, _) = inspect(src, rigs, rig, false)?;
     notes.extend(src.skin_relax_notes.iter().cloned());
     Ok(notes)
 }
@@ -188,10 +189,11 @@ pub(in crate::cook) fn report(
 /// shared/interleaved/normalized/sparse source accessors remain untouched.
 pub(in crate::cook) fn repair(
     src: &mut GltfSource,
-    root: &Path,
+    rigs: &Rigs,
     rig: Option<&str>,
 ) -> Result<(), String> {
-    let (notes, repairs) = inspect(src, root, rig, true)?;
+    let (notes, repairs) = inspect(src, rigs, rig, true)?;
+    src.skin_rig_hash = rig.and_then(|id| rigs.get(id).map(|rig| rig.hash));
     for ((mesh, prim), (joints, weights)) in repairs {
         for (semantic, component, bytes) in [
             ("JOINTS_0", 5123, bytemuck::cast_slice(&joints).to_vec()),
@@ -227,7 +229,7 @@ pub(in crate::cook) fn repair(
 
 fn inspect(
     src: &GltfSource,
-    root: &Path,
+    rigs: &Rigs,
     rig: Option<&str>,
     repair: bool,
 ) -> Result<(Vec<String>, Repairs), String> {
@@ -250,7 +252,7 @@ fn inspect(
             ),
         });
     }
-    let map = crate::cook::anim::humanoid(root, rig, &skeleton)?;
+    let map = crate::cook::anim::humanoid(rigs, rig, &skeleton)?;
     let mut notes = Vec::new();
     let mut repairs = BTreeMap::new();
     let mut bindings: BTreeMap<usize, Vec<Binding>> = BTreeMap::new();

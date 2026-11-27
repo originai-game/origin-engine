@@ -391,7 +391,8 @@ pub fn cook_project_with_texture_cache(
         warnings: scan_warnings,
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
-    let mut imported = import(&mut sources, &mut consumed, texture_cache, threads);
+    let (rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
+    let mut imported = import(&mut sources, &mut consumed, texture_cache, threads, &rigs);
     laps.lap("import");
     let before_author = sources.len();
     let content = pipeline::author::sources(
@@ -400,6 +401,7 @@ pub fn cook_project_with_texture_cache(
         &mut sources,
         &mut consumed,
         &project.provided,
+        rig_content,
     )?;
     // Districts expanded after TS terrain discovery can add model sources.
     // Import only those new sources; never re-import the captured originals.
@@ -408,6 +410,7 @@ pub fn cook_project_with_texture_cache(
         &mut consumed,
         texture_cache,
         threads,
+        &rigs,
     );
     imported.model_texts.extend(added.model_texts);
     imported.reused_fractures.extend(added.reused_fractures);
@@ -486,6 +489,7 @@ pub fn cook_project_with_texture_cache(
         cooked_dir,
         options,
         sources: &sources,
+        rigs: &rigs,
         known: &known,
         prefab_texts: &prefab_texts,
         group_of: &group_of,

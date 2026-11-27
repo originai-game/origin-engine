@@ -68,7 +68,7 @@ module anim {
 | [`og.anim.getNodeMatrix`](anim/fn-getNodeMatrix.md) | function | `(world: World, entity: Entity, node: number): Result<Matrix4>` | A node's matrix in the skeleton entity's frame, including node ancestors, as three.js Bone.matrixWorld relative to its SkinnedMesh; no entity/parent transforms. |
 | [`GraphDesc`](anim/type-GraphDesc.md) | desc struct |  | A blend-tree graph to register. |
 | [`og.anim.graph`](anim/fn-graph.md) | function | `(world: World, desc?: GraphDesc): Result<GraphAsset>` | Register a blend-tree graph for AnimationGraph.asset. |
-| [`Rig`](anim/type-Rig.md) | handle |  | A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles sta… |
+| [`Rig`](anim/type-Rig.md) | handle |  | A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles s… |
 | [`Rig()`](#column-Rig) | column kind |  | A Rig handle field (0 is none): a humanoid map og.load.rig answered. |
 | [`HumanBone`](anim/type-HumanBone.md) | struct |  | One standard humanoid bone of a skeleton. |
 | [`Humanoid`](anim/type-Humanoid.md) | struct |  | Which node of a skeleton is each standard humanoid bone (what retargeting maps). |

@@ -117,13 +117,16 @@ pub fn read(root: &Path) -> Result<BTreeMap<String, Timeline>, String> {
         .map_err(|e| e.to_string())?
         .sources;
     let mut consumed = Default::default();
-    super::super::stage::import(&mut sources, &mut consumed, None, 1);
+    let (rig_content, rigs) =
+        super::super::pipeline::author::rigs(root, &project.source).map_err(|e| e.to_string())?;
+    super::super::stage::import(&mut sources, &mut consumed, None, 1, &rigs);
     super::super::pipeline::author::sources(
         root,
         &project.source,
         &mut sources,
         &mut consumed,
         &project.provided,
+        rig_content,
     )
     .map_err(|e| e.to_string())?;
     Ok(sources
