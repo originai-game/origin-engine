@@ -535,6 +535,7 @@ pub(crate) fn scan_with(
             video: None,
             timeline: None,
             fields: Default::default(),
+            terrains: Default::default(),
             conformed: None,
             fracture: None,
         });

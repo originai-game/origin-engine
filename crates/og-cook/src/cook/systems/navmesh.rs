@@ -25,7 +25,7 @@
 //! model "models/crate.glb" {    # models placed by code
 //!   position 2 0 1
 //! }
-//! terrain "terrain/island.ogt" {  # a terrain's surface (phase 2), standing at
+//! terrain "base/terrain/island" {  # a checked TS terrain surface, standing at
 //!   position 0 0 0                #   its og.Terrain entity's position
 //!   step 2                        #   every 2nd sample (default 1)
 //! }
@@ -372,18 +372,10 @@ pub(crate) fn navmesh_dependencies(s: &Source) -> String {
     }
     for t in doc.body.get_all("terrain") {
         if let Some(p) = t.values.first().and_then(|v| v.as_str()) {
-            files.push(p.to_string());
-            if let Ok(text) = std::fs::read_to_string(root.join(p)) {
-                files.extend(super::terrain::terrain_files(p, &root, &text));
-                if let Ok(doc) = super::terrain::parse(p, &root, &text)
-                    && let Some(id) = doc.preserve
-                {
-                    fields.push(match super::field::get(&s.fields, &id) {
-                        Ok(field) => format!("preserve {id}={:016x}", field.hash),
-                        Err(e) => format!("preserve {id} error={e}"),
-                    });
-                }
-            }
+            fields.push(match super::terrain::get(s, p) {
+                Ok(terrain) => format!("terrain {p}={:016x}", terrain.hash),
+                Err(e) => format!("terrain {p} error={e}"),
+            });
         }
     }
     files.sort();
@@ -530,20 +522,15 @@ fn scene_triangles(
 /// cells reaching into `bounds` when given. Returns how many it added.
 fn terrain_triangles(
     source: &Source,
-    root: &Path,
     rel: &str,
     position: Vec3,
     step: usize,
     bounds: Option<(Vec3, Vec3)>,
     out: &mut Vec<[Vec3; 3]>,
 ) -> Result<usize, String> {
-    let text = std::fs::read_to_string(root.join(rel))
-        .map_err(|_| "does not exist under assets/".to_string())?;
-    let doc = super::terrain::parse(rel, root, &text)?;
-    let mut field = super::terrain::field(&doc, root, &source.fields)?;
-    super::district::terrain::apply(source.settings.as_ref().map(|(_, d)| d), rel, &mut field)?;
-    let heights = field.heights;
-    let holes = field.holes;
+    let field = super::terrain::get(source, rel)?.surface()?;
+    let heights = &field.heights;
+    let holes = &field.holes;
     let (cols, rows) = (field.columns as usize, field.rows as usize);
     // A quad of `step` cells is cut out where most of its cells are holes.
     let cut = |c: usize, r: usize| {
@@ -870,7 +857,6 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         let step = f32_of(tb, "step", 1.0).max(1.0) as usize;
         let n = terrain_triangles(
             s,
-            &root,
             p,
             vec3_of(tb, "position", Vec3::ZERO),
             step,

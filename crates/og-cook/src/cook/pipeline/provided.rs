@@ -15,6 +15,20 @@ pub(crate) struct Provided {
 }
 
 impl Provided {
+    /// Actual material outputs may be addressed by typed content refs. These
+    /// are already cooked assets, not source declarations or local producers.
+    pub(crate) fn material_outputs(&self) -> impl Iterator<Item = (&str, &str)> {
+        use crate::format::BlobKind;
+        self.by_id.iter().filter_map(|(id, (ty, _))| {
+            let kind = match ty.as_str() {
+                crate::format::Texture::NAME => "texture",
+                crate::format::TextureArray::NAME => "texture-array",
+                _ => return None,
+            };
+            Some((id.as_str(), kind))
+        })
+    }
+
     /// The bundles `cook.uses` names, read
     /// relative to the project `root`: each a cooked directory (one with
     /// `.cook.ogt`) or a project whose `cooked/` has one. The first bundle

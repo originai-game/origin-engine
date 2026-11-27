@@ -143,8 +143,6 @@ pub(crate) fn scan_sources(
     animated::expand(&mut sources, &mut consumed);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
-    // Districts become a scene, its cells and their models (`district/`).
-    district::expand(&mut sources, &mut consumed);
     Ok(Scanned {
         sources,
         ignored,
@@ -197,7 +195,7 @@ pub(crate) fn import(
     let operands: Vec<_> = sources
         .iter()
         .map(|s| {
-            if (s.kind == &model::MODEL || s.kind == &terrain::TERRAIN) && ext(&s.rel) == "ogt" {
+            if s.kind == &model::MODEL && ext(&s.rel) == "ogt" {
                 model_text::operand_references(&s.bytes)
             } else {
                 Vec::new()
@@ -641,12 +639,14 @@ pub(crate) fn resolve(
     // A terrain's heightmap and control map are part of the terrain, an
     // environment's image part of the environment.
     for s in sources.iter() {
-        if s.kind == &terrain::TERRAIN {
-            consumed.extend(terrain::terrain_files(
-                &s.rel,
-                assets_dir,
-                &String::from_utf8_lossy(&s.bytes),
-            ));
+        if s.kind == &terrain::TERRAIN
+            && let Ok(prepared) = terrain::get(s, &s.rel)
+        {
+            consumed.extend(prepared.files.iter().filter_map(|path| {
+                path.strip_prefix(assets_dir)
+                    .ok()
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+            }));
         }
         if s.kind == &rig2d::RIG2D {
             consumed.extend(autorig::part_files(
@@ -683,11 +683,11 @@ pub(crate) fn resolve(
         if s.kind == &crate::cook::model::MODEL && model_program::is_program(&s.rel) {
             consumed.remove(&s.rel);
         }
-        if s.kind == &terrain::TERRAIN {
-            for layer in
-                terrain::layer_files(&s.rel, assets_dir, &String::from_utf8_lossy(&s.bytes))
-            {
-                consumed.remove(&layer);
+        if s.kind == &terrain::TERRAIN
+            && let Ok(prepared) = terrain::get(s, &s.rel)
+        {
+            for layer in terrain::layer_files(&prepared.doc) {
+                consumed.remove(layer);
             }
         }
     }

@@ -18,9 +18,10 @@ pub struct TerrainInput {
     pub size: Option<[f32; 2]>,
     pub process: Option<TerrainProcess>,
     /// RGBA control images, one per four layers. Exclusive with biome rules.
-    #[schemars(length(max = 4))]
+    #[schemars(length(min = 1, max = 4), extend("x-og-input" = "bytes"))]
     pub control: Option<Vec<String>>,
     /// Raw hole image relative to the owning module: black/transparent cuts cells.
+    #[schemars(extend("x-og-input" = "bytes"))]
     pub holes: Option<String>,
     #[schemars(range(min = 16, max = 1024), extend("x-og-unit" = "quads"))]
     pub tile: Option<u32>,
@@ -52,6 +53,7 @@ impl TerrainInput {
 pub enum TerrainSource {
     Image {
         /// PNG/EXR source relative to the owning module; first channel is height.
+        #[schemars(length(min = 1), extend("x-og-input" = "bytes"))]
         source: String,
         /// Metres corresponding to image intensities zero and one.
         #[schemars(extend("x-og-unit" = "m"))]

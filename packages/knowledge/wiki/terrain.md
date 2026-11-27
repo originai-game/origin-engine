@@ -2,7 +2,7 @@
 
 # The `terrain` module
 
-Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
+Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
 
 Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
 
@@ -15,7 +15,7 @@ See `world §1`.
 
 ```ogt
 module terrain {
-  doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
+  doc "Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
   doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident."
   # declarations follow, each on its own page
 ```
@@ -46,7 +46,7 @@ module terrain {
 | [`TerrainStampDesc`](terrain/type-TerrainStampDesc.md) | desc struct |  | One stamp of a mesh into a terrain (og.terrain.stamp). |
 | [`TerrainLayerDesc`](terrain/type-TerrainLayerDesc.md) | desc struct |  | One material layer of a terrain: its look and the rules that place it. |
 | [`TerrainCreateDesc`](terrain/type-TerrainCreateDesc.md) | desc struct |  | Create a terrain directly at run time from a heightmap Float32Array (for example from og.procgen.heightmap or og.procgen.noiseGrid), with optional biome control map, holes, material layers and height… |
-| [`og.terrain.load`](terrain/fn-load.md) | function | `(world: World, path: string): Result<TerrainInfo>` | Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInf… |
+| [`og.terrain.load`](terrain/fn-load.md) | function | `(world: World, path: string): Result<TerrainInfo>` | Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under Te… |
 | [`og.terrain.create`](terrain/fn-create.md) | function | `(world: World, desc?: TerrainCreateDesc): Result<TerrainInfo>` | Create a procedural terrain at run time from height, control and hole TypedArrays, ready for og.Terrain, og.Collider (shape heightfield), og.Grass, og.TerrainScatter, og.terrain.sample, edit and stam… |
 | [`og.terrain.sample`](terrain/fn-sample.md) | function | `(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>` | The surface under a world point: its height, normal and slope. |
 | [`og.terrain.bounds`](terrain/fn-bounds.md) | function | `(world: World, data: TerrainData, origin?: Vector3, quaternion?: Quaternion, scale?: Vector3): Result<TerrainBounds>` | A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners. |

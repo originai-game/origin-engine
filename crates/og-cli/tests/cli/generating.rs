@@ -1,5 +1,185 @@
 use super::*;
 
+/// Typed terrain sources preserve raw-image ownership, ordered native edits,
+/// material bundle references and per-input cache invalidation.
+#[test]
+fn typed_terrains_load_module_images_noise_and_ordered_model_stamps() {
+    let root = TempDir::new("og-typed-terrain");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    for prefix in ["", "materials/"] {
+        write(
+            &format!("{prefix}og-project.json"),
+            r#"{"version":1,"name":"Terrain","engine":"0.9.0"}"#,
+        );
+        write(&format!("{prefix}src/main.ts"), "export default {};");
+    }
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'terrain',entry:'src/main.ts',cook:{uses:['materials/cooked']},modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write(
+        "materials/project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'materials',entry:'src/main.ts'});",
+    );
+    write(
+        "materials/content/materials.ts",
+        "import {file} from '@origingame/engine/author'; export default file['texture-array']({kind:'pixel',layers:['assets/layer.png']});",
+    );
+    std::fs::create_dir_all(root.join("materials/assets")).unwrap();
+    image::RgbaImage::from_pixel(2, 2, image::Rgba([73, 109, 193, 251]))
+        .save(root.join("materials/assets/layer.png"))
+        .unwrap();
+    let cook = |dir: &Path| {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", root.join("cache"))
+            .current_dir(dir)
+            .output()
+            .unwrap()
+    };
+    let out = cook(&root.join("materials"));
+    assert!(out.status.success(), "{}", text(&out));
+    let declaration = "import {file,ref} from '@origingame/engine/author'; export default file.terrain({source:{kind:'image',source:'assets/height.png',height:[-5,15]},size:[8,4],tile:16,control:['assets/control.png'],holes:'assets/holes.png',albedoArray:ref('base/materials'),layers:[{albedoLayer:0,normalStrength:0.75}],castShadows:false,collision:false,lod:{spacing:2,ring:32}});";
+    write("modules/north/content/surface.ts", declaration);
+    std::fs::create_dir_all(root.join("modules/north/assets")).unwrap();
+    image::RgbaImage::from_pixel(1, 1, image::Rgba([73, 109, 193, 251]))
+        .save(root.join("modules/north/assets/control.png"))
+        .unwrap();
+    image::GrayImage::from_raw(2, 1, vec![0, 255])
+        .unwrap()
+        .save(root.join("modules/north/assets/holes.png"))
+        .unwrap();
+    write(
+        "content/edited.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.terrain({source:{kind:'heightfield',field:{columns:5,rows:3,heights:Float32Array.from({length:15},()=>20)}},size:[8,4],tile:16,edits:[{kind:'brush',mode:'raise',center:[-2,0,0],radius:0.5,strength:3},{kind:'stamp',geometry:{kind:'modelGeometry',desc:{source:ref('base/stamp')}},transform:{position:[0,8,0]}},{kind:'brush',mode:'raise',center:[0,0,0],radius:0.5,strength:2}]});",
+    );
+    let mut previous_noise = None;
+    let mut previous_image = None;
+    for run in 0..3 {
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        let changed = run == 2;
+        let pixels: Vec<u16> = if changed {
+            vec![65535, 52428, 39321, 26214, 13107, 0]
+        } else {
+            vec![0, 13107, 26214, 39321, 52428, 65535]
+        };
+        image::ImageBuffer::<image::Luma<u16>, _>::from_raw(3, 2, pixels)
+            .unwrap()
+            .save(root.join("modules/north/assets/height.png"))
+            .unwrap();
+        write(
+            "assets/stamp.ogt",
+            &format!(
+                "type model\nversion 1\n---\nconform off\npart \"stamp\" {{\nboxGeometry {{\nwidth 2\nheight {}\ndepth 2\n}}\n}}\n",
+                if changed { 4 } else { 2 }
+            ),
+        );
+        write(
+            "content/noise.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.terrain({{source:{{kind:'noise',columns:5,rows:3,height:[2,6],noise:{{octaves:2,frequency:1.7}}}},seed:{},tile:16}});",
+                if changed { 11 } else { 7 }
+            ),
+        );
+        let out = cook(&root);
+        assert!(out.status.success(), "{}", text(&out));
+        let b = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let terrain = b.load_terrain("north/surface").unwrap();
+        assert_eq!(terrain.albedo_array.as_deref(), Some("base/materials"));
+        assert_eq!(terrain.layers[0].layer.albedo_layer, Some(0));
+        assert_eq!(terrain.layers[0].layer.normal_strength, 0.75);
+        assert!(!terrain.collision && !terrain.cast_shadows);
+        let field = terrain.field().unwrap();
+        assert_eq!(
+            (field.columns, field.rows, field.size.to_array()),
+            (3, 2, [8.0, 4.0])
+        );
+        let expected = if changed {
+            [15.0, 11.0, 7.0, 3.0, -1.0, -5.0]
+        } else {
+            [-5.0, -1.0, 3.0, 7.0, 11.0, 15.0]
+        };
+        for (actual, expected) in field.heights.iter().zip(expected) {
+            assert!((actual - expected).abs() < 0.001, "{actual} != {expected}");
+        }
+        assert_eq!(
+            field
+                .holes
+                .unwrap()
+                .iter()
+                .map(|&v| v != 0)
+                .collect::<Vec<_>>(),
+            [true, false]
+        );
+        assert!(
+            field
+                .control
+                .unwrap()
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| *p == [73, 109, 193, 251])
+        );
+        assert!(
+            b.read("base/materials").is_err(),
+            "used material bundle was repacked"
+        );
+        let edited = b.load_terrain("base/edited").unwrap().field().unwrap();
+        assert!((edited.heights[6] - 23.0).abs() < 0.001);
+        assert!((edited.heights[7] - if changed { 8.0 } else { 9.0 }).abs() < 0.001);
+        assert!((edited.heights[0] - 20.0).abs() < 0.001);
+        let noise = b.load_terrain("base/noise").unwrap().field().unwrap();
+        assert_eq!((noise.columns, noise.rows), (5, 3));
+        assert!(noise.heights.iter().all(|&v| (2.0..=6.0).contains(&v)));
+        assert!(
+            noise
+                .heights
+                .iter()
+                .any(|&v| (v - noise.heights[0]).abs() > 0.01)
+        );
+        let bytes = b.read("north/surface").unwrap().to_vec();
+        if let Some(previous) = previous_image.replace(bytes.clone()) {
+            assert_eq!(previous == bytes, !changed);
+        }
+        if let Some(previous) = previous_noise.replace(noise.heights.clone()) {
+            assert_eq!(previous == noise.heights, !changed);
+        }
+    }
+    write(
+        "modules/north/content/surface.ts",
+        &declaration.replace("ref('base/materials')", "ref('base/materials#layer0')"),
+    );
+    let out = cook(&root);
+    assert!(
+        !out.status.success(),
+        "wrong external material kind accepted"
+    );
+    assert!(text(&out).contains("has kind texture"), "{}", text(&out));
+    assert!(
+        text(&out).contains("modules/north/content/surface.ts:"),
+        "{}",
+        text(&out)
+    );
+    write("modules/north/content/surface.ts", declaration);
+    write(
+        "assets/removed.ogt",
+        "type terrain\nversion 1\n---\nheightmap \"height.png\"\n",
+    );
+    let out = cook(&root);
+    assert!(!out.status.success(), "terrain OGT authoring accepted");
+    assert!(
+        text(&out).contains("terrain OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+}
+
 /// Typed timeline tracks survive the public cook/load boundary; captured
 /// captions and namespace bindings invalidate the same cache on later cooks.
 #[test]
@@ -2020,18 +2200,18 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     // The same snapshot reaches terrain writing, navigation and projected
     // scatter. A changed mask must not leave any of those on a cached surface.
     std::fs::write(
-        assets.join("heights.ts"),
-        "export default () => ({columns:5,rows:3,heights:Array.from({length:15},(_,i)=>100+i)});",
+        root.join("lib/heights.ts"),
+        "export const field = {columns:5,rows:3,heights:Float32Array.from({length:15},(_,i)=>100+i)};",
     )
     .unwrap();
-    std::fs::write(assets.join("surface.ogt"), "type terrain\nversion 1\n---\nsize 8 4\ntile 16\ngenerate {\nscript \"heights.ts\"\npreserve \"base/protect\"\nchannel {\npoint -4 80 0\npoint 4 72 0\nwidth 4\ndepth 2\nriver true\n}\n}\n").unwrap();
+    std::fs::write(root.join("content/surface.ts"), "import {file,ref} from '@origingame/engine/author'; import {field} from '../lib/heights.ts'; export default file.terrain({source:{kind:'heightfield',field},size:[8,4],tile:16,process:{preserve:ref('base/protect'),channels:[{points:[[-4,80,0],[4,72,0]],width:4,depth:2,river:true}]}});").unwrap();
     std::fs::write(
         assets.join("marker.ogt"),
         "type prefab\nversion 1\n---\nentity \"marker\" {\n}\n",
     )
     .unwrap();
-    std::fs::write(assets.join("placed.ogt"), "type scatter\nversion 1\n---\nprefab \"marker.ogt\"\nproject \"surface.ogt\"\npoint 0 3 0\n").unwrap();
-    std::fs::write(assets.join("nav.ogt"), "type navmesh\nversion 1\n---\nterrain \"surface.ogt\"\ncellSize 1\ncellHeight 0.25\nagent {\nradius 0\nheight 1\nclimb 2\nslope 89\n}\n").unwrap();
+    std::fs::write(assets.join("placed.ogt"), "type scatter\nversion 1\n---\nprefab \"marker.ogt\"\nproject \"base/surface\"\npoint 0 3 0\n").unwrap();
+    std::fs::write(assets.join("nav.ogt"), "type navmesh\nversion 1\n---\nterrain \"base/surface\"\ncellSize 1\ncellHeight 0.25\nagent {\nradius 0\nheight 1\nclimb 2\nslope 89\n}\n").unwrap();
     let mut previous_nav = None;
     for (mask, height) in [(0, 74.0), (1, 107.0)] {
         std::fs::write(root.join("content/protect.ts"), format!("import {{file}} from '@origingame/engine/author';export default file.field({{dimensions:[5,3,1],channels:1,values:Array(15).fill({mask})}});")).unwrap();
@@ -2040,7 +2220,11 @@ fn generated_fields_load_losslessly_and_feed_particles() {
             let out = cook();
             assert!(out.status.success(), "{}", text(&out));
             let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-            let field = bundle.load_terrain("surface.ogt").unwrap().field().unwrap();
+            let field = bundle
+                .load_terrain("base/surface")
+                .unwrap()
+                .field()
+                .unwrap();
             assert!((field.heights[7] - height).abs() < 0.001);
             assert_eq!(
                 bundle.load_scene("placed.ogt").unwrap().components,

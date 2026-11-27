@@ -38,7 +38,7 @@ pub(crate) const LINES: &[Line] = &[
     ),
     Line::new(
         "project",
-        "\"<terrain.ogt>\"",
+        "\"<module/terrain-id>\"",
         "",
         "Add the named terrain surface height to each point's y. Reject off-surface points and holes, not clamp or discard them.",
         "",
@@ -75,11 +75,7 @@ fn numbers(e: &Entry) -> Result<Vec<f32>, String> {
         .collect()
 }
 
-pub(crate) fn expand(
-    s: &Source,
-    doc: &Document,
-    terrains: &dyn Fn(&str) -> Result<String, String>,
-) -> Result<Document, String> {
+pub(crate) fn expand(s: &Source, doc: &Document) -> Result<Document, String> {
     if doc.version != 1 {
         return Err("scatter is version 1".into());
     }
@@ -174,9 +170,7 @@ pub(crate) fn expand(
         .as_ref()
         .map(|rel| {
             let rel = crate::runtime::asset_id(rel);
-            let text = terrains(rel)?;
-            let doc = terrain::parse(rel, &root, &text)?;
-            terrain::field(&doc, &root, &s.fields)
+            terrain::get(s, rel)?.surface()
         })
         .transpose()?;
     let sampler = field

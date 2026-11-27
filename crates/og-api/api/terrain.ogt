@@ -1,5 +1,5 @@
 module terrain {
-  doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
+  doc "Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes."
   doc "Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident."
   guide "world §1"
   split world3d
@@ -447,7 +447,7 @@ module terrain {
     field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
     field castShadows bool "Its terrain file's `castShadows`."
     field holes bool "Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with."
-    field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
+    field seaLevel Option.f32 "A processed terrain's sea level (`process.sea`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
       unit m
     }
   }
@@ -699,9 +699,9 @@ module terrain {
   }
 
   fn load {
-    doc "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
+    doc "Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same ID again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
     param world World "The world."
-    param path String "The terrain file, such as `terrain/island.ogt`."
+    param path String "The canonical terrain output ID, such as base/terrain/island."
     returns Result.TerrainInfo "Refused for a path that is not a cooked terrain, or a layer texture that does not load."
   }
 

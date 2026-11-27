@@ -33,7 +33,7 @@ prop "lamp" {
   collider capsule 0.12 4
 }
 materials "materials/london.ogt"
-terrain "terrain/land.ogt" {
+terrain "base/terrain/land" {
   depth 0.25
 }
 cells {

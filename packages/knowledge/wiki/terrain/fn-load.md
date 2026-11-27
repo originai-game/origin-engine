@@ -6,7 +6,7 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 ### `og.terrain.load`
 
-Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
+Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same ID again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
 
 ```ts
 og.terrain.load(world: World, path: string): Result<TerrainInfo>
@@ -15,7 +15,7 @@ og.terrain.load(world: World, path: string): Result<TerrainInfo>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
-| `path` | `string` | no | The terrain file, such as `terrain/island.ogt`. |
+| `path` | `string` | no | The canonical terrain output ID, such as base/terrain/island. |
 
 **Returns** `Result<TerrainInfo>`: Refused for a path that is not a cooked terrain, or a layer texture that does not load.
 
@@ -23,9 +23,9 @@ Binding symbol `og_terrain_load` · publish builds: kept
 
 ```ogt
 fn load {
-  doc "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
+  doc "Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same ID again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
   param world World "The world."
-  param path String "The terrain file, such as `terrain/island.ogt`."
+  param path String "The canonical terrain output ID, such as base/terrain/island."
   returns Result.TerrainInfo "Refused for a path that is not a cooked terrain, or a layer texture that does not load."
 }
 ```

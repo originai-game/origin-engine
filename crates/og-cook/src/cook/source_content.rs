@@ -196,6 +196,7 @@ pub struct GraphBuilder<'a> {
     project: &'a Project,
     index: &'a Index,
     existing: BTreeMap<String, Entry>,
+    provided: BTreeSet<String>,
     nodes: BTreeMap<String, (Node, Vec<PendingReference>)>,
     outputs: BTreeMap<String, Output>,
 }
@@ -206,8 +207,28 @@ impl<'a> GraphBuilder<'a> {
             project,
             index,
             existing: BTreeMap::new(),
+            provided: BTreeSet::new(),
             nodes: BTreeMap::new(),
             outputs: BTreeMap::new(),
+        }
+    }
+
+    /// cook.uses grants access to actual cooked material outputs, not to the
+    /// provider's source namespace or author-only capabilities such as fields.
+    pub(crate) fn insert_provided(&mut self, provided: &super::provided::Provided) {
+        for (id, kind) in provided.material_outputs() {
+            if self.index.entries.contains_key(id) || self.outputs.contains_key(id) {
+                continue;
+            }
+            self.provided.insert(id.into());
+            self.outputs.insert(
+                id.into(),
+                Output {
+                    entry: id.into(),
+                    kind: kind.into(),
+                    asset: id.into(),
+                },
+            );
         }
     }
 
@@ -216,7 +237,7 @@ impl<'a> GraphBuilder<'a> {
     pub(crate) fn insert_scanned(&mut self, entry: Entry, asset: String) -> Result<Output, String> {
         if !matches!(
             entry.factory.as_str(),
-            "scene" | "prefab" | "look" | "dialogue"
+            "scene" | "prefab" | "look" | "dialogue" | "model" | "texture"
         ) {
             return Err(format!(
                 "{}: kind is outside the temporary scaffold catalogue",
@@ -370,6 +391,7 @@ impl<'a> GraphBuilder<'a> {
             .entries
             .keys()
             .chain(self.existing.keys())
+            .chain(self.provided.iter())
             .map(|id| (id.clone(), BTreeSet::new()))
             .collect();
         for (id, (node, references)) in &mut self.nodes {
@@ -420,9 +442,10 @@ fn resolve(
     let owner = index
         .entries
         .get(&target.entry)
-        .or_else(|| existing.get(&target.entry))
-        .expect("outputs have a registered producer");
+        .or_else(|| existing.get(&target.entry));
+    // Only actual provided bundle outputs have no local source owner.
     if let Some(module) = module
+        && let Some(owner) = owner
         && module != owner.module
         && !project.modules[module].depends_on.contains(&owner.module)
     {
@@ -446,13 +469,16 @@ fn resolve(
         ));
     }
     if let Some(factories) = &reference.factories
-        && (reference.id != owner.id || !factories.contains(&owner.factory))
+        && owner.is_none_or(|owner| reference.id != owner.id || !factories.contains(&owner.factory))
     {
         return Err(pending.error(
             file,
             format!(
                 "reference {} needs a primary source declaration from factory {:?}, not {} from {}",
-                reference.id, factories, target.kind, owner.factory,
+                reference.id,
+                factories,
+                target.kind,
+                owner.map_or("cooked bundle", |o| o.factory.as_str()),
             ),
         ));
     }

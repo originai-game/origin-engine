@@ -29,7 +29,7 @@ export default og.game({
   resources: [Sample],
   systems: [sample, fly],
   start(world) {
-    const info = must(og.terrain.load(world, "terrain/valley.ogt"));
+    const info = must(og.terrain.load(world, "base/terrain/valley"));
     const entity = must(world.spawn({ name: "terrain", position: { x: 3000, y: 0, z: 0 } }));
     world.insert(entity, og.Terrain, { data: info.data });
     const camera = must(world.resource(og.Camera));

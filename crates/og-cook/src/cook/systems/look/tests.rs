@@ -18,6 +18,7 @@ fn source(root: &Path, rel: &str) -> Source {
         video: None,
         timeline: None,
         fields: Default::default(),
+        terrains: Default::default(),
         conformed: None,
         fracture: None,
     }

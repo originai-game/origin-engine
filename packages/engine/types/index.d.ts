@@ -31174,7 +31174,7 @@ export interface EngineProbe extends RuntimeProbe {
 }
 
 // ── terrain ─────────────────────────────────────────────────────
-// Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
+// Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
 // Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
 // See `world §1`.
 
@@ -31853,7 +31853,7 @@ export interface TerrainInfo {
    */
   readonly holes: boolean;
   /**
-   * A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea.
+   * A processed terrain's sea level (`process.sea`) above its entity: place an og.Water there, the terrain's size; null without a sea.
    *
    * @unit m (metres)
    */
@@ -42215,16 +42215,16 @@ export declare namespace og {
    */
   const ScatterClearing: ComponentType<{ readonly size: FieldSpec<"Vector3"> }, ScatterClearing>;
   /**
-   * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
+   * Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
    * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
    * See `world §1`.
    */
   namespace terrain {
     /**
-     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
+     * Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same ID again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
      *
      * @param world The world.
-     * @param path The terrain file, such as `terrain/island.ogt`.
+     * @param path The canonical terrain output ID, such as base/terrain/island.
      * @returns Refused for a path that is not a cooked terrain, or a layer texture that does not load.
      */
     function load(world: World, path: string): Result<TerrainInfo>;

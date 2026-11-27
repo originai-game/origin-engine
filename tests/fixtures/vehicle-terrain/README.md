@@ -1,7 +1,7 @@
 # vehicle-terrain
 
 A driven `og.Vehicle` (a raycast car, grip 1.2, drift grip 0.6) on cooked
-terrain (`assets/terrain/hills.ogt`, generated from its own numbers: height
+terrain (`content/terrain/hills.ts`, generated from its own numbers: height
 0 to 6 m, two colour layers, a `heightfield` collider, the road
 flattened with `og.terrain.edit` under an asphalt slab), with a HUD speed
 readout (the component `assets/ui/hud.tsx` at the safe-area insets, the

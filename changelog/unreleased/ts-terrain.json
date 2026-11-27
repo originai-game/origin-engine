@@ -1,0 +1,8 @@
+{
+  "breaking": [{
+    "member": "file.terrain / og cook / terrain stamps / projected scatter / navigation terrain",
+    "change": "Terrain author OGT, its text schema and generate.script wrapper are removed. The typed image/noise/heightfield source and ordered edits call the native terrain and geometry kernels directly; terrain, navigation and projected scatter share one checked lazy surface. Raw image inputs are canonical owning-module paths, with no sibling/assets fallback.",
+    "fix": "Export file.terrain({source:{kind:'heightfield',field:{columns:2,rows:2,heights:[0,1,2,3]}},size:[8,4]}) from content/terrain/valley.ts and load base/terrain/valley. Import TS helpers directly. Put processing under process, material arrays under albedoArray/normalArray and ordered brushes/stamps under edits; use ref(id) for material, model and preserve-field outputs, including actual material outputs from project.ts cook.uses bundles. Navigation terrain and scatter project strings name the canonical TS terrain ID. See og api show file:terrain and generating.",
+    "find": ["type terrain", "terrain.generate.script", "layerNormals", "terrain/valley.ogt"]
+  }]
+}

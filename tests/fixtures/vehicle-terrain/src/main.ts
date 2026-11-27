@@ -68,7 +68,7 @@ function build(world: World): void {
     font: must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf")),
     monoFont: must(og.load.font(world, "fonts/PTMono-Regular.ttf")),
   });
-  const info = must(og.terrain.load(world, "terrain/hills.ogt"));
+  const info = must(og.terrain.load(world, "base/terrain/hills"));
   const hills = must(world.spawn({ name: "hills" }));
   must(world.insert(hills, og.Terrain, { data: info.data }));
   must(world.insert(hills, og.Collider, { shape: "heightfield", mesh: info.geometry, friction: 1 }));

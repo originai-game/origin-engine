@@ -19,7 +19,7 @@ Cook transfers and caches source data as canonical binary author IR. Numeric typ
 <a id="guide-generating-1"></a>
 ### `generating §1` Find the file contract
 
-`og api list --kind file` lists the registered cook types and the other engineering sources. `og api show file:terrain` describes terrain fields; `og api show file:terrain.generate.erosion` isolates a nested block. `og api find erosion --kind file` searches this namespace. Each entry states its field-coverage status: a type being registered does not mean its full field reference has been migrated yet. UI stays TSX; model programs and themes retain their existing JSON sources.
+`og api list --kind file` lists the registered cook types and the other engineering sources. `og api show file:terrain` describes the generated TS terrain input, including `process.erosion`. `og api find erosion --kind file` searches this namespace. Each entry states its author input: a schema or factory being registered does not mean its domain adapter has shipped. UI stays TSX; model programs and themes retain their existing JSON sources until their cutover.
 
 <a id="guide-generating-2"></a>
 ### `generating §2` Design heights, then process them
@@ -28,11 +28,11 @@ The following complete recipe includes its game entry, a terrain asset and TS he
 
 ```ts recipe ticks=2
 import { og } from "@origingame/engine";
-import heights from "../assets/heights.ts";
+import { heights } from "../lib/heights.ts";
 
 export default og.game({
   start(world) {
-    const base = heights({ params: { offset: 117 }, seed: 9, inputs: {} });
+    const base = heights(9, 117);
     const preserve = new Float32Array(base.columns * base.rows);
     preserve[3 * base.columns + 8] = 1;
     preserve[3 * base.columns + 6] = 0.5;
@@ -45,7 +45,7 @@ export default og.game({
     og.assert.always(result.ok, "runtime processing accepted", {});
     if (!result.ok) return;
     const made = result.value;
-    const loaded = og.terrain.load(world, "surface.ogt");
+    const loaded = og.terrain.load(world, "base/land");
     og.assert.always(loaded.ok, "cooked terrain loads", {});
     if (!loaded.ok) return;
     const spawned = world.spawn({ name: "ground" });
@@ -62,7 +62,7 @@ export default og.game({
     og.assert.always(made.heights[3 * base.columns + 8] === base.heights[3 * base.columns + 8], "full shape constraint preserves the designed peak exactly", {});
     og.assert.always(Math.abs(made.heights[3 * base.columns + 6]! - (base.heights[3 * base.columns + 6]! + 117) / 2) < 0.001, "half constraint blends the authored river bed toward the input", {});
     og.assert.always(Math.abs(made.riverLength - 2 * Math.sqrt(116)) < 0.001, "declared river segments are measured in terrain metres", {});
-    const edited = og.terrain.load(world, "edited.ogt");
+    const edited = og.terrain.load(world, "base/edited");
     if (!edited.ok) throw new Error(edited.reason);
     for (const [x, z, expected] of [[-8,-4,23], [4,0,9], [2,0,7], [10,4,20]]) {
       const sample = og.terrain.sample(world, { data: edited.value.data, x: x!, z: z! });
@@ -261,7 +261,7 @@ version 1
 material "surface" {
   label surface
   generate {
-    source "surface.svg"
+    source "surface-source.svg"
   }
   tile 2 1
   relief 0.02
@@ -270,96 +270,56 @@ material "surface" {
 }
 ```
 
-```text recipe file=assets/surface.svg
+```text recipe file=assets/surface-source.svg
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><rect width="32" height="16" fill="#bf7944"/><path fill="#483025" d="M3 0h5v16H3zM19 0h3v16h-3z"/></svg>
 ```
 
-```ogt recipe file=assets/surface.ogt
-type terrain
-version 1
----
-size 24 12
-tile 16
-generate {
-  script "heights.ts"
-  seed 9
-  params {
-    offset 117
-  }
-  thermal {
-    talus 20
-    iterations 3
-    rate 0.3
-  }
-  preserve "base/protect"
-  preserveBorder 1
-  channel {
-    point -8 120 0
-    point 8 116 0
-    width 8
-  }
-  channel {
-    point -10 120 -4
-    point 0 118 0
-    point 10 116 4
-    width 2
-    depth 1
-    river true
-  }
-}
-layer {
-  color 0.32 0.43 0.38
-  roughness 0.9
-}
+```ts recipe file=content/land.ts
+import { file, ref } from "@origingame/engine/author";
+import { heights } from "../lib/heights.ts";
+
+export default file.terrain({
+  source: { kind: "heightfield", field: heights(9, 117) },
+  size: [24, 12], tile: 16, seed: 9,
+  process: {
+    thermal: { talus: 20, iterations: 3, rate: 0.3 },
+    preserve: ref("base/protect"), preserveBorder: 1,
+    channels: [
+      { points: [[-8,120,0], [8,116,0]], width: 8 },
+      { points: [[-10,120,-4], [0,118,0], [10,116,4]], width: 2, depth: 1, river: true },
+    ],
+  },
+  layers: [{ color: [0.32,0.43,0.38], roughness: 0.9 }],
+});
 ```
 
-```ts recipe file=assets/heights.ts
-import { procgen, type GeneratorContext, type HeightfieldSource } from "@origingame/engine/generate";
+```ts recipe file=lib/heights.ts
+import { procgen, type HeightfieldSource } from "@origingame/engine/generate";
 
-export default function heights(ctx: GeneratorContext<{ offset: number }>) {
+export function heights(seed: number, offset: number) {
   const columns = 13, rows = 7;
   const heights = new Float32Array(columns * rows);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
-      const detail = 0.05 * c * procgen.noise({ seed: ctx.seed }, c / 7, r / 3, 0);
-      heights[r * columns + c] = ctx.params.offset + 0.7 * c + 0.2 * r + (c === 8 && r === 3 ? 9 : 0) + detail;
+      const detail = 0.05 * c * procgen.noise({ seed }, c / 7, r / 3, 0);
+      heights[r * columns + c] = offset + 0.7 * c + 0.2 * r + (c === 8 && r === 3 ? 9 : 0) + detail;
     }
   }
   return { columns, rows, heights } satisfies HeightfieldSource;
 }
 ```
 
-```ogt recipe file=assets/edited.ogt
-type terrain
-version 1
----
-size 24 12
-tile 16
-generate {
-  script "flat.ts"
-}
-edit {
-  mode raise
-  center -8 0 -4
-  radius 1
-  strength 3
-}
-stamp {
-  modelGeometry {
-    source "stamp.ogt"
-  }
-  position 4 8 0
-}
-edit {
-  mode raise
-  center 4 0 0
-  radius 1
-  strength 2
-}
-```
-
-```ts recipe file=assets/flat.ts
-export default () => ({ columns:13, rows:7, heights: new Float32Array(91).fill(20) });
+```ts recipe file=content/edited.ts
+import { file, ref } from "@origingame/engine/author";
+export default file.terrain({
+  source: { kind: "heightfield", field: { columns: 13, rows: 7, heights: new Float32Array(91).fill(20) } },
+  size: [24, 12], tile: 16,
+  edits: [
+    { kind: "brush", mode: "raise", center: [-8,0,-4], radius: 1, strength: 3 },
+    { kind: "stamp", geometry: { kind: "modelGeometry", desc: { source: ref("base/stamp") } }, transform: { position: [4,8,0] } },
+    { kind: "brush", mode: "raise", center: [4,0,0], radius: 1, strength: 2 },
+  ],
+});
 ```
 
 ```ogt recipe file=assets/stamp.ogt
@@ -554,7 +514,7 @@ type scatter
 version 1
 ---
 model "curves.ogt"
-project "surface.ogt"
+project "base/land"
 align true
 generate {
   script "scatter.ts"
@@ -605,14 +565,14 @@ export default function scatter(ctx: GeneratorContext) {
 }
 ```
 
-The TS default export synchronously returns `{columns, rows, heights}`. Samples are row-major from -z to +z and -x to +x; dimensions are 2..4097, every height is finite, and `size` defines positive x/z extents. A supplied field is never implicitly resampled or normalised. It cannot also request a noise source (`samples`, `noise`, `mask`) or intensity-to-height conversion (`height`). Relative static imports must name their extensions and stay inside the asset root.
+The TS terrain declaration supplies `{columns, rows, heights}` in `source.field`. Samples are row-major from -z to +z and -x to +x; dimensions are 2..4097, every height is finite, and `size` defines positive x/z extents. A supplied field is never implicitly resampled or normalised. Its discriminated source cannot also request noise or intensity-to-height conversion. Relative static imports must name their extensions and stay inside the project's allowed module dependencies.
 
-For an existing height image, write `heightmap "base.png"` (or EXR) beside `generate`. PNG intensity maps through `height low high`; EXR defaults to metres (`height 0 1`). The same processing runs after this conversion. Without a supplied field, `generate` starts with noise and maps it into `height` instead. Processing order is hydraulic erosion → thermal erosion → terraces → shore → automatic drainage/rivers → biome control. On supplied fields terraces anchor at zero and erosion may leave the original extrema. Author-directed valley lines, river networks and protection masks are separate inputs, not implied by automatic drainage.
+For an existing height image, use `source: {kind: 'image', source: 'assets/base.png', height: [low, high]}` (or EXR). PNG intensity maps through `height`; EXR defaults to metres (`[0,1]`). The same processing runs after this conversion. `source: {kind: 'noise', columns, rows, height, noise, mask}` instead generates seeded noise. Processing order is hydraulic erosion → thermal erosion → terraces → shore → automatic drainage/rivers → authored channels → preserve projection → biome control, followed by ordered edits. On supplied fields terraces anchor at zero and erosion may leave the original extrema. Author-directed valley lines, river networks and protection masks are separate inputs, not implied by automatic drainage.
 
 <a id="guide-generating-3"></a>
 ### `generating §3` Script, inputs and caching
 
-`og script heights.ts --root assets --params '{"offset":117}' --seed 9 --out og-out/heights.json --json` executes the very same generator as cook. `og mcp` exposes the same `script` tool. `--out` is an explicit JSON output, not permission for the TS module to write files. Run from the recipe project directory; parent directories are created and the complete output is published by rename.
+`og script <module.ts> --params '{"offset":117}' --seed 9 --out og-out/heights.json --json` executes a standalone synchronous default-exported generator. `og mcp` exposes the same `script` tool. This is not the terrain author entry: terrain imports ordinary helpers and exports `file.terrain` directly. `--out` is an explicit JSON output, not permission for the TS module to write files; parent directories are created and the complete output is published by rename.
 
 Use repeated `input "name" "relative/path"` entries inside `generate` (or `--input name=path` with script) for source bytes. Only those bytes are exposed at `ctx.inputs[name]`; the script cannot open paths. Parameters, seed, source, transitive imports, declared input contents and relevant engine/toolchain identity determine the shared cook cache key. Moving an unchanged project does not change its key. A source/input change invalidates it even when its timestamp was preserved.
 
@@ -795,9 +755,9 @@ export default file.field((() => {
 })());
 ```
 
-A particles file's `field "base/vectors" <strength> <size>` accepts a checked field by its canonical ID: a cubic 3-channel lattice, 1..16 samples a side. Terrain's `generate.preserve` likewise names the canonical ID of a one-channel field matching its height grid; navigation baking and projected scatter share that same checked value. Cook embeds particle vectors without RGB remapping or quantization. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe source sampling, not the emitter's transform. Changes to declared input bytes or transitive TS imports invalidate the field and any affected consumers. These consumer domains retain their current author syntax until their own cutover, but never read Field OGT or re-evaluate field TS.
+A particles file's `field "base/vectors" <strength> <size>` accepts a checked field by its canonical ID: a cubic 3-channel lattice, 1..16 samples a side. Terrain's `process.preserve: ref('base/protect')` names a one-channel field matching its height grid; navigation baking and projected scatter share that same checked value. Cook embeds particle vectors without RGB remapping or quantization. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe source sampling, not the emitter's transform. Changes to declared input bytes or transitive TS imports invalidate the field and affected consumers. Particles retain their current author syntax until their cutover, but never read Field OGT or re-evaluate field TS.
 
-`type scatter` uses either repeated `point x y z` lines or a `generate` block returning `ScatterSource`: flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). It places exactly one authored `model` or `prefab`; no model or distribution is selected for the author. The first recipe composes the shared Poisson mechanism and explicitly maps its rectangle into terrain-local metres. The normal scene pipeline owns model instancing and prefab expansion. `project "terrain.ogt"` adds the terrain's height to each y; `align true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes instead of silently moving or dropping them. Scene and terrain must use the same local coordinates. Load the result with `og.load.scene` or reference it as a sub-scene.
+`type scatter` uses either repeated `point x y z` lines or a `generate` block returning `ScatterSource`: flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). It places exactly one authored `model` or `prefab`; no model or distribution is selected for the author. The first recipe composes the shared Poisson mechanism and explicitly maps its rectangle into terrain-local metres. The normal scene pipeline owns model instancing and prefab expansion. `project "base/terrain"` names the canonical TS terrain output and adds its height to each y; `align true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes instead of silently moving or dropping them. Scene and terrain must use the same local coordinates. Load the result with `og.load.scene` or reference it as a sub-scene.
 
 <a id="guide-generating-8"></a>
 ### `generating §8` Cook explicit scene declarations

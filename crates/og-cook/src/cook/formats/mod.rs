@@ -9,6 +9,7 @@ pub mod cube_source;
 pub mod fbx;
 pub(super) mod font;
 pub(super) mod font_pack;
+pub(crate) mod geometry;
 pub mod icons;
 pub mod ktx2_source;
 pub(super) mod model;

@@ -144,6 +144,8 @@ pub(crate) struct Source {
     timeline: Option<timeline::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
+    /// Checked terrain surfaces shared by their writer, navigation and scatter.
+    terrains: std::sync::Arc<terrain::Terrains>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -371,9 +373,26 @@ pub fn cook_project_with_texture_cache(
         warnings: scan_warnings,
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
-    let imported = import(&mut sources, &mut consumed, texture_cache, threads);
+    let mut imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");
-    let content = pipeline::author::sources(root, &project.source, &mut sources)?;
+    let before_author = sources.len();
+    let content = pipeline::author::sources(
+        root,
+        &project.source,
+        &mut sources,
+        &mut consumed,
+        &project.provided,
+    )?;
+    // Districts expanded after TS terrain discovery can add model sources.
+    // Import only those new sources; never re-import the captured originals.
+    let added = import(
+        &mut sources[before_author..],
+        &mut consumed,
+        texture_cache,
+        threads,
+    );
+    imported.model_texts.extend(added.model_texts);
+    imported.reused_fractures.extend(added.reused_fractures);
     // Projected scatter needs both resolved mesh operands and the checked
     // TS field snapshot, just like the terrain writer and navmesh baker.
     scene::expand(&mut sources);

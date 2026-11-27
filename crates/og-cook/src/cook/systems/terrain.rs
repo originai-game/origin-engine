@@ -1,279 +1,117 @@
-//! The terrain cook step (phase 2; tiles for streaming in phase 3): a
-//! `type terrain` .ogt names its heightmap, the heights its black and
-//! white stand for, its size, an optional control map and up to four
-//! layered materials. The field is cooked into og-render's tile pyramid
-//! (`og_render_data::TerrainLayout`: level k every 2^k-th sample, tiles of
-//! `tile` quads): each tile's `(tile + 3)²` heights quantised to 16 bits
-//! over the terrain's whole range (so a sample has the same value in every
-//! tile and level that holds it) and zlib'd on its own, and with a control
-//! map its `(control + 2)²` texels of the map resampled for the tiles, zlib'd
-//! on their own; the layers into rows naming their textures (assets cooked
-//! on their own). Each tile can be read and decoded without the others.
-//!
-//! ```text
-//! type terrain
-//! version 1
-//! ---
-//! heightmap "island-height.png"   # 16-bit (or 8-bit) grey PNG, or an EXR (its first channel)
-//! height 0 320                    # the metres black and white stand for (EXR: 0 1, metres as stored)
-//! size 2048 2048                  # metres along x and z (default: one metre per sample)
-//! control "island-control.png"    # optional: RGBA, one channel per layer (past four layers,
-//!                                 # one more map per four: control "a.png" "b.png")
-//! holes "island-holes.png"        # optional: black (or transparent) cuts the cell out
-//! tile 128                        # quads per tile side (16 to 1024)
-//! heightBlend 0.6
-//! castShadows true
-//! lod {
-//!   spacing 0                     # the finest level's spacing in metres (0: the samples')
-//!   ring 64                       # quads per side of every clipmap level
-//! }
-//! layers "tiles.ogt"             # optional: a texture array (type texture-array, beside the terrain or under assets/) of the layers' albedos
-//! layerNormals "tiles-n.ogt"      # optional: a texture array (kind normal) of their normal maps
-//! layer {
-//!   albedo "textures/grass.png"   # colour texture (alpha: the layer's height)
-//!   normal "textures/rock-n.png"  # a normal map (give it `texture { kind normal }`)
-//!   albedoLayer 0                 # with layers: its albedo's layer (default: its place, 0 to 3)
-//!   normalLayer 0                 # with layerNormals: its normal map's layer (default: its place)
-//!   color 1 1 1
-//!   roughness 0.95
-//!   tile 6                        # metres per repeat
-//!   triplanar false
-//!   normalStrength 1
-//!   slope 0 34                    # degrees from flat where it shows
-//!   slopeFade 6
-//!   altitude -1000000 185         # metres above the terrain's origin
-//!   altitudeFade 25
-//!   projectSlope 50               # past 50° sampled by the two projections facing the face (0: triplanar decides)
-//!   antiTiling 1                  # hex-tiling: no visible repeat (0 to 1)
-//!   heightContrast 0.5            # the height blend's rim at its edges, sharper (0 to 1)
-//!   macroVariation 0.5            # brightness and hue drift, and a coarser repeat far off (0 to 1)
-//!   displacement 0.08             # metres the drawn ground moves by the albedo's alpha near the camera (0 to 4)
-//!   cellVariation 0.6             # each cell (its normal map's alpha) its own tone (0 to 1)
-//! }
-//! ```
-//!
-//! Or the terrain makes its field instead of reading one: a `generate`
-//! block in place of `heightmap`, whose noise samples are a
-//! heightmap's (`height` and `size` keep their meaning: the field is
-//! normalised so its lowest sample stands at `height`'s low and its
-//! highest at its high, before erosion, rivers and the shore, and no
-//! noise sample leaves that range), built by
-//! `terrain_generate` with only IEEE-exact arithmetic, so every host makes
-//! the same field. With `biome` rules it writes the control map (refused
-//! beside `control`); without them there is none, and the layers' own
-//! slope and altitude rules place them. A heightmap may also feed generate's
-//! processing; generate.script instead supplies a metre-valued heightfield.
-//! These authored fields skip noise/mask, are not normalised or clipped,
-//! and define their own dimensions. See the generated file reference for
-//! all fields and the generating guide for a multi-file TS/cook recipe.
-//! Noise generation, with its defaults:
-//!
-//! ```text
-//! generate {
-//!   samples 257 257          # columns and rows (2 to 4097)
-//!   seed 1                   # a whole number: another seed, another terrain
-//!   noise {
-//!     octaves 6              # 1 to 12
-//!     frequency 3            # features across the terrain's longer side
-//!     lacunarity 2           # each octave's frequency over the last's (1 to 8)
-//!     gain 0.5               # each octave's amplitude over the last's (0 to 1)
-//!     warp 0                 # domain warp, in features (0: none)
-//!   }
-//!   mask island 0.4          # land fades to the low over this share of the half size
-//!                            # or: mask ridge 1 (that share of the noise ridged); default no mask
-//!   erosion {                # hydraulic erosion by seeded drops (absent: none)
-//!     drops 40000
-//!     lifetime 30            # steps a drop lives
-//!     radius 3               # samples a drop erodes around it
-//!     inertia 0.05           # 0: down the slope, 1: straight on
-//!     capacity 4             # sediment carried per unit of speed, water and drop
-//!     deposition 0.3         # share of the excess sediment dropped per step
-//!     erosion 0.3            # share of the free capacity eroded per step
-//!     evaporation 0.01       # share of the water lost per step
-//!     gravity 4
-//!   }
-//!   thermal {                # thermal erosion (absent: none)
-//!     talus 35               # degrees: steeper slopes slump
-//!     iterations 20
-//!     rate 0.5               # share of the excess moved per iteration
-//!   }
-//!   terraces {               # (absent: none)
-//!     step 10                # metres between terraces
-//!     blend 0.4              # 0: hard steps, 1: smooth ramps
-//!   }
-//!   sea 0                    # metres above the origin (absent: no sea); og.terrain.load's seaLevel
-//!   shore 2                  # metres either side of the sea level flattened (needs sea)
-//!   rivers {                 # flow gathered over the filled field, carved (absent: none)
-//!     threshold 400          # samples draining through a sample before it is a river
-//!     depth 2                # metres carved where the river is full
-//!     width 6                # metres across where it is full
-//!   }
-//!   moisture {               # what a biome's moisture reads, 0 to 1
-//!     flow 1                 # weight of the flow gathered (a / (a + scale))
-//!     scale 64               # samples draining through for half the flow's share
-//!     noise 0.5              # weight of a noise
-//!     frequency 6            # its features across the terrain
-//!   }
-//!   biome {                  # any number; each writes its layer's control channel
-//!     layer 0                # the layer it writes (0 to 3), required
-//!     weight 1               # the channel where every rule holds (0 to 1)
-//!     altitude -1000000 1000000   # metres above the origin
-//!     altitudeFade 2
-//!     slope 0 90             # degrees from flat
-//!     slopeFade 4
-//!     moisture 0 1
-//!     moistureFade 0.1
-//!   }
-//! }
-//! ```
-//!
-//! A channel is the most any of its layer's biomes gives a sample (its
-//! weight times its three bands); the control map has the field's samples.
-//!
-//! **Holes.** A `holes` map (any size, read at each cell's centre) cuts
-//! the cells it is black or transparent over out of the surface: neither
-//! drawn nor collided with (a cave mouth, a pit, a tunnel through a
-//! hill). Each tile carries its hole mask after its heights, a byte per
-//! sample's cell, a coarser level's cell a hole where most of the field
-//! cells it spans are (`og_render_data::HoleCounts::tile_mask`).
-//!
-//! The heightmap and the control map are read relative to the terrain file
-//! (or, failing that, `assets/`); they are part of the terrain, not
-//! textures of their own.
-//!
-//! With `layers` (and `layerNormals`) the layers' maps are layers of two
-//! texture arrays, cooked on their own: the terrain samples two textures
-//! instead of up to eight. Up to sixteen layers; past four, their maps
-//! come from the arrays (a fifth layer naming its own `albedo` is
-//! refused), the control map takes one image per four layers (all of one
-//! size), and each pixel blends its four strongest layers. A layer then names no `albedo` or `normal` of
-//! its own; `albedoLayer` and `normalLayer` pick its layers. Rows of the heightmap run from -z (the image's
-//! top) to +z, columns from -x to +x.
+//! Typed terrain declarations share a checked surface with navigation/scatter.
+//! Existing native kernels own noise, erosion, rivers, controls and edits.
+//! The writer keeps independently compressed tile/LOD heights, horizons,
+//! controls and holes. No author OGT parser or script-path frontend remains.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
 };
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
-use og_core::ogt::{Block, Document};
-use std::path::Path;
 
-pub(crate) const TERRAIN_TYPE: &str = "terrain";
+pub(crate) struct Prepared {
+    pub doc: TerrainDoc,
+    pub hash: u64,
+    pub files: Vec<std::path::PathBuf>,
+    field: std::sync::OnceLock<Result<Field, String>>,
+    inputs: std::collections::BTreeMap<String, Vec<u8>>,
+    fields: std::sync::Arc<super::field::Fields>,
+    settings: Option<og_core::ogt::Document>,
+    id: String,
+    origin: crate::cook::generator::source::Diagnostic,
+}
 
-/// The most layers a terrain has (og-render's `MAX_TERRAIN_LAYERS`).
-const MAX_LAYERS: usize = og_render_data::MAX_TERRAIN_LAYERS;
-
-/// The asset path (under `assets/`) a terrain file's `name` refers to:
-/// beside the terrain file when it is there, else under `assets/`.
-pub(crate) fn resolve(terrain_rel: &str, root: &Path, name: &str) -> String {
-    let dir = terrain_rel.rsplit_once('/').map_or("", |(d, _)| d);
-    let beside = if dir.is_empty() {
-        name.to_string()
-    } else {
-        format!("{dir}/{name}")
-    };
-    if root.join(&beside).is_file() {
-        beside
-    } else {
-        name.to_string()
+impl Prepared {
+    /// Warm output plans need only the input key. Actual consumers share one
+    /// immutable surface, computed on their worker, never a quantized reload.
+    pub(crate) fn surface(&self) -> Result<&Field, String> {
+        self.field
+            .get_or_init(|| {
+                let mut field = field(&self.doc, &self.inputs, &self.fields)?;
+                super::district::terrain::apply(self.settings.as_ref(), &self.id, &mut field)?;
+                Ok(field)
+            })
+            .as_ref()
+            .map_err(|message| {
+                crate::cook::generator::source::Diagnostic {
+                    message: message.clone(),
+                    ..self.origin.clone()
+                }
+                .to_string()
+            })
     }
 }
 
-fn string_of(b: &Block, key: &str) -> Option<String> {
-    b.get(key)
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
+pub(crate) type Terrains = std::collections::BTreeMap<String, Prepared>;
+
+pub(crate) fn get<'a>(s: &'a Source, id: &str) -> Result<&'a Prepared, String> {
+    s.terrains.get(id).ok_or_else(|| {
+        format!("terrain '{id}' is not checked TS content; use its canonical module/content ID")
+    })
 }
 
-/// Every string value of `key` (none when absent).
-fn strings_of(b: &Block, key: &str) -> Vec<String> {
-    b.get(key)
-        .map(|e| {
-            e.values
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn numbers(b: &Block, key: &str) -> Option<Vec<f32>> {
-    let e = b.get(key)?;
-    e.values
+pub(crate) fn layer_files(doc: &TerrainDoc) -> impl Iterator<Item = &String> {
+    doc.layers
         .iter()
-        .map(|v| v.as_number().map(|n| n.as_f32()))
-        .collect()
+        .flat_map(|(a, n, _)| [a, n])
+        .chain([&doc.albedo_array, &doc.normal_array])
+        .flatten()
 }
 
-fn number(b: &Block, key: &str, default: f32) -> Result<f32, String> {
-    match numbers(b, key) {
-        None => Ok(default),
-        Some(v) if v.len() == 1 && v[0].is_finite() => Ok(v[0]),
-        Some(_) => Err(format!("'{key}' takes one number")),
-    }
-}
-
-/// A number from 0 to `max` (0 when absent).
-fn unit(b: &Block, key: &str, max: f32) -> Result<f32, String> {
-    let v = number(b, key, 0.0)?;
-    if !(0.0..=max).contains(&v) {
-        return Err(format!("'{key}' takes a number from 0 to {max}, got {v}"));
-    }
-    Ok(v)
-}
-
-fn pair(b: &Block, key: &str, default: [f32; 2]) -> Result<[f32; 2], String> {
-    match numbers(b, key) {
-        None => Ok(default),
-        Some(v) if v.len() == 2 && v.iter().all(|x| x.is_finite()) => Ok([v[0], v[1]]),
-        Some(_) => Err(format!("'{key}' takes two numbers")),
-    }
-}
-
-fn flag(b: &Block, key: &str, default: bool) -> Result<bool, String> {
-    match b.get(key).and_then(|e| e.values.first()) {
-        None => Ok(default),
-        Some(v) => v
-            .as_bool()
-            .ok_or_else(|| format!("'{key}' takes true or false")),
-    }
-}
-
-/// The files a terrain reads besides itself (its heightmap and control
-/// map, by asset path), for the stamp and so the walk does not cook them
-/// as textures.
-pub(crate) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
-    let Ok(doc) = Document::parse(text) else {
-        return Vec::new();
-    };
-    ["heightmap", "control", "holes"]
+pub(crate) fn prepare(
+    s: &Source,
+    doc: TerrainDoc,
+    origin: crate::cook::generator::source::Diagnostic,
+) -> Result<Prepared, String> {
+    let root = assets_root(s);
+    let files: Vec<_> = doc
+        .heightmap
         .iter()
-        .flat_map(|k| strings_of(&doc.body, k))
-        .map(|n| resolve(rel, root, &n))
-        .collect()
-}
-
-/// The layer textures a terrain names (`layers`, `layerNormals`, each
-/// `layer`'s `albedo` and `normal`), as the asset ids it loads them by.
-pub(crate) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
-    let Ok(doc) = Document::parse(text) else {
-        return Vec::new();
-    };
-    let mut out: Vec<String> = ["layers", "layerNormals"]
-        .iter()
-        .filter_map(|k| string_of(&doc.body, k))
-        .map(|t| resolve(rel, root, &t))
+        .chain(&doc.control)
+        .chain(&doc.holes)
+        .cloned()
         .collect();
-    for l in doc.body.get_all("layer") {
-        if let Some(b) = &l.block {
-            out.extend(["albedo", "normal"].iter().filter_map(|k| string_of(b, k)));
+    let mut hash = og_core::hash::StableHasher::new();
+    hash.write_u64(s.hash);
+    let mut inputs = std::collections::BTreeMap::new();
+    let mut paths = Vec::new();
+    for path in &files {
+        let checked =
+            crate::cook::source_path::checked(&root, path).map_err(|e| format!("{path}: {e}"))?;
+        let bytes = std::fs::read(&checked).map_err(|e| format!("{path}: {e}"))?;
+        hash.write_u64(super::hash_bytes(&bytes));
+        inputs.insert(path.clone(), bytes);
+        paths.push(checked);
+    }
+    // Imported mesh operands can change without changing the declaration.
+    // Hash their actual projected geometry before any costly terrain stages.
+    for step in &doc.edits {
+        if let super::terrain_edit::Step::Stamp { triangles, .. } = step {
+            for value in triangles.iter().flatten().flat_map(|v| v.to_array()) {
+                hash.write_u32(value.to_bits());
+            }
         }
     }
-    out.into_iter()
-        .map(|t| crate::runtime::asset_id(&t).to_string())
-        .collect()
+    if let Some(id) = &doc.preserve {
+        hash.write_u64(super::field::get(&s.fields, id)?.hash);
+    }
+    if let Some((settings, _)) = &s.settings {
+        hash.write_u64(super::hash_bytes(settings.as_bytes()));
+    }
+    Ok(Prepared {
+        doc,
+        hash: stamp(
+            &[Area::Terrain],
+            &[b"terrain surface 1", &hash.finish().to_le_bytes()],
+        ),
+        files: paths,
+        field: Default::default(),
+        inputs,
+        fields: s.fields.clone(),
+        settings: s.settings.as_ref().map(|(_, d)| d.clone()),
+        id: s.rel.clone(),
+        origin,
+    })
 }
 
 /// The stamp's dependencies: each file the terrain reads, with its hash,
@@ -283,57 +121,11 @@ pub(crate) fn terrain_dependencies(
     known: &dyn Fn(&str) -> bool,
     provided: &crate::cook::provided::Provided,
 ) -> String {
-    let root = assets_root(s);
-    let text = String::from_utf8_lossy(&s.bytes);
-    let mut out: Vec<String> = terrain_files(&s.rel, &root, &text)
-        .into_iter()
-        .map(|f| {
-            format!(
-                "{f}={:016x}",
-                std::fs::read(root.join(&f))
-                    .map(|b| super::hash_bytes(&b))
-                    .unwrap_or(0)
-            )
-        })
-        .collect();
-    if let Ok(doc) = Document::parse(&text) {
-        if let Some(g) = doc.body.get("generate").and_then(|e| e.block.as_ref()) {
-            if let Some(name) = string_of(g, "preserve") {
-                match super::field::get(&s.fields, &name) {
-                    Ok(field) => out.push(format!("preserve={:016x}", field.hash)),
-                    Err(e) => out.push(format!("preserve error={e}")),
-                }
-            }
-            let seed = g
-                .get("seed")
-                .and_then(|e| e.values.first())
-                .and_then(|v| v.as_number())
-                .map_or(1, |v| v.as_f64() as u32);
-            match super::super::generator::Spec::parse(g, seed).and_then(|spec| {
-                spec.map(|spec| super::super::generator::Program::prepare(&root, &s.rel, &spec))
-                    .transpose()
-            }) {
-                Ok(Some(program)) => out.push(format!("generator={}", program.key)),
-                Ok(None) => {}
-                Err(e) => out.push(format!("generator error={e}")),
-            }
-        }
-        for k in ["layers", "layerNormals"] {
-            if let Some(t) = string_of(&doc.body, k) {
-                let t = resolve(&s.rel, &root, &t);
-                out.push(format!("{t}={}", named(known, provided, &t)));
-            }
-        }
-        for l in doc.body.get_all("layer") {
-            if let Some(b) = &l.block {
-                for k in ["albedo", "normal"] {
-                    if let Some(t) = string_of(b, k) {
-                        out.push(format!("{t}={}", named(known, provided, &t)));
-                    }
-                }
-            }
-        }
-    }
+    let Ok(terrain) = get(s, &s.rel) else {
+        return String::new();
+    };
+    let mut out = vec![format!("source={:016x}", terrain.hash)];
+    out.extend(layer_files(&terrain.doc).map(|t| format!("{t}={}", named(known, provided, t))));
     out.join("\n")
 }
 
@@ -393,10 +185,10 @@ pub(crate) fn decode_heightmap(name: &str, bytes: &[u8]) -> Result<Heightmap, St
 
 /// A terrain file's settings, read and checked.
 pub(crate) struct TerrainDoc {
-    /// The heightmap (an asset path), or none: `generate` makes the field.
+    /// Explicit raw height image under the owning module, if image-sourced.
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
-    pub script: Option<super::super::generator::Program>,
+    pub heightfield: Option<super::super::generator::Heightfield>,
     pub preserve: Option<String>,
     pub edits: Vec<super::terrain_edit::Step>,
     /// The control maps (asset paths), one per four layers.
@@ -412,248 +204,153 @@ pub(crate) struct TerrainDoc {
     pub lod_spacing: f32,
     pub lod_ring: u32,
     pub layers: Vec<(Option<String>, Option<String>, og_render_data::TerrainLayer)>,
-    /// `layers` and `layerNormals`: the texture arrays (asset paths).
+    /// Resolved texture-array output IDs.
     pub albedo_array: Option<String>,
     pub normal_array: Option<String>,
 }
 
-pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    let body = &doc.body;
-    super::terrain_schema::check(body, super::terrain_schema::BODY, "terrain")?;
-    let heightmap = string_of(body, "heightmap");
-    let generate = body
-        .get("generate")
-        .map(super::terrain_generate::parse)
-        .transpose()?;
-    let mut script = None;
-    let mut preserve = None;
-    if let Some(g) = body.get("generate").and_then(|e| e.block.as_ref()) {
-        if let Some(e) = g.get("preserve") {
-            if e.values.len() != 1 || e.block.is_some() {
-                return Err("preserve takes one field asset path".into());
-            }
-            preserve = Some(e.string(0).map_err(|e| e.to_string())?.to_string());
+pub(crate) fn declaration(
+    input: crate::cook::source_schemas::procedural::terrain::TerrainInput,
+    models: &crate::cook::formats::geometry::Models<'_>,
+) -> Result<TerrainDoc, String> {
+    use crate::cook::source_schemas::procedural::terrain::TerrainSource;
+    let mut g = super::terrain_generate::Generate {
+        seed: input.seed.unwrap_or(1),
+        ..Default::default()
+    };
+    let mut heightmap = None;
+    let mut heightfield = None;
+    let noise_source = matches!(&input.source, TerrainSource::Noise { .. });
+    let height = match input.source {
+        TerrainSource::Image { source, height } => {
+            let exr = source.to_ascii_lowercase().ends_with(".exr");
+            heightmap = Some(source);
+            height.unwrap_or(if exr { [0.0, 1.0] } else { [0.0, 100.0] })
         }
-        let spec = super::super::generator::Spec::parse(
-            g,
-            generate.as_ref().expect("parsed generate").seed,
-        )?;
-        if spec.is_some() && heightmap.is_some() {
-            return Err("a terrain has one input: heightmap or generate.script, not both".into());
+        TerrainSource::Heightfield { field } => {
+            field.validate()?;
+            g.columns = field.columns;
+            g.rows = field.rows;
+            heightfield = Some(field);
+            [0.0, 1.0]
         }
-        if spec.is_none() && (g.get("params").is_some() || g.get("input").is_some()) {
-            return Err("generate.params/input require generate.script".into());
-        }
-        if spec.is_some() || heightmap.is_some() {
-            for key in ["samples", "noise", "mask"] {
-                if let Some(e) = g.get(key) {
-                    return Err(format!(
-                        "line {}: {key} describes a noise source; an authored field supplies its own samples and shape",
-                        e.line
-                    ));
+        TerrainSource::Noise {
+            columns,
+            rows,
+            height,
+            noise,
+            mask,
+        } => {
+            g.columns = columns.unwrap_or(g.columns);
+            g.rows = rows.unwrap_or(g.rows);
+            if let Some(n) = noise {
+                if let Some(v) = n.octaves {
+                    g.octaves = v;
+                }
+                if let Some(v) = n.frequency {
+                    g.frequency = v;
+                }
+                if let Some(v) = n.lacunarity {
+                    g.lacunarity = v;
+                }
+                if let Some(v) = n.gain {
+                    g.gain = v;
+                }
+                if let Some(v) = n.warp {
+                    g.warp = v;
                 }
             }
+            g.mask = super::terrain_generate::mask(mask);
+            height.unwrap_or([0.0, 100.0])
         }
-        if let Some(spec) = spec {
-            if body.get("height").is_some() {
-                return Err("height maps image intensities or noise; a TS heightfield already supplies metres".into());
-            }
-            script = Some(super::super::generator::Program::prepare(root, rel, &spec)?);
-        }
-    }
-    if heightmap.is_none() && generate.is_none() {
-        return Err("a terrain names its heightmap: heightmap \"<file>.png\" (16-bit grey) or .exr, or makes it: generate { ... }".into());
-    }
-    let exr = heightmap
-        .as_ref()
-        .is_some_and(|h| h.to_ascii_lowercase().ends_with(".exr"));
-    let height = pair(body, "height", if exr { [0.0, 1.0] } else { [0.0, 100.0] })?;
-    let size = match numbers(body, "size") {
-        None => None,
-        Some(v) if v.len() == 2 && v.iter().all(|x| x.is_finite() && *x > 0.0) => {
-            Some([v[0], v[1]])
-        }
-        Some(_) => return Err("'size' takes two positive numbers (metres along x and z)".into()),
     };
-    let tile = number(body, "tile", og_render_data::TERRAIN_TILE as f32)?;
-    if !(16.0..=1024.0).contains(&tile) || tile.fract() != 0.0 {
-        return Err(format!(
-            "'tile' is a whole number of quads from 16 to 1024, got {tile}"
-        ));
-    }
-    let lod = body
-        .get("lod")
-        .map(|e| {
-            let b = e
-                .block
-                .as_ref()
-                .ok_or_else(|| format!("line {}: lod is a block", e.line))?;
-            super::terrain_schema::check(b, super::terrain_schema::LOD, "lod")?;
-            Ok::<_, String>(b)
-        })
-        .transpose()?;
-    let (lod_spacing, lod_ring) = match lod {
-        Some(b) => (
-            number(b, "spacing", 0.0)?.max(0.0),
-            number(b, "ring", 0.0)?.max(0.0) as u32,
-        ),
-        None => (0.0, 0),
-    };
-    let albedo_array = string_of(body, "layers");
-    let normal_array = string_of(body, "layerNormals");
-    for (key, name) in [("layers", &albedo_array), ("layerNormals", &normal_array)] {
-        if let Some(e) = body.get(key)
-            && name
-                .as_deref()
-                .is_none_or(|n| !n.to_ascii_lowercase().ends_with(".ogt"))
-        {
-            return Err(format!(
-                "line {}: {key} names a texture array, an .ogt of type texture-array: {key} \"tiles.ogt\"",
-                e.line
-            ));
-        }
-    }
+    let processed = input.process.is_some() || noise_source;
+    let preserve = input
+        .process
+        .map(|p| super::terrain_generate::processing(&mut g, p))
+        .transpose()?
+        .flatten();
+    g.check()?;
+    let albedo_array = input.albedo_array.map(|r| r.id);
+    let normal_array = input.normal_array.map(|r| r.id);
     let arrayed = albedo_array.is_some() || normal_array.is_some();
     let mut layers = Vec::new();
-    for e in body.get_all("layer") {
-        let Some(b) = &e.block else {
-            return Err(format!(
-                "line {}: a layer is a block: layer {{ ... }}",
-                e.line
-            ));
-        };
-        super::terrain_schema::check(b, super::terrain_schema::LAYER, "layer")?;
-        let d = og_render_data::TerrainLayer::default();
-        let color = match numbers(b, "color") {
-            None => [1.0, 1.0, 1.0],
-            Some(v) if v.len() == 3 => [v[0], v[1], v[2]],
-            Some(_) => return Err(format!("line {}: 'color' takes three numbers", e.line)),
-        };
-        let place = layers.len() as f32;
-        let index = |key: &str, array: &Option<String>| -> Result<Option<u32>, String> {
-            match (b.get(key), array) {
-                (Some(k), None) => Err(format!(
-                    "line {}: '{key}' picks a layer of the terrain's {}: name it first",
-                    k.line,
-                    if key == "albedoLayer" {
-                        "layers \"<array>.ogt\""
-                    } else {
-                        "layerNormals \"<array>.ogt\""
-                    }
-                )),
-                (_, None) => Ok(None),
-                (_, Some(_)) => {
-                    let v = number(b, key, place)?;
-                    if v < 0.0 || v.fract() != 0.0 {
-                        return Err(format!("'{key}' is a whole layer number from 0, got {v}"));
-                    }
-                    Ok(Some(v as u32))
-                }
-            }
-        };
-        if !arrayed
-            && layers.len() >= og_render_data::TERRAIN_TEXTURED_LAYERS
-            && let Some(k) = b.get("albedo").or_else(|| b.get("normal"))
+    for v in input.layers.unwrap_or_default() {
+        let mut layer = og_render_data::TerrainLayer::default();
+        if (arrayed || layers.len() >= og_render_data::TERRAIN_TEXTURED_LAYERS)
+            && (v.albedo.is_some() || v.normal.is_some())
         {
-            return Err(format!(
-                "line {}: layer {} names its own '{}', but only the first {} layers have textures of their own: give the terrain layer arrays (layers \"<array>.ogt\", layerNormals) and the layers albedoLayer and normalLayer",
-                k.line,
-                layers.len(),
-                k.key,
-                og_render_data::TERRAIN_TEXTURED_LAYERS
-            ));
+            return Err("arrayed terrains and layers after the fourth use array slices, not individual albedo/normal textures".into());
         }
-        if arrayed && let Some(k) = b.get("albedo").or_else(|| b.get("normal")) {
-            return Err(format!(
-                "line {}: with layer arrays (layers, layerNormals) a layer's maps are their layers: albedoLayer and normalLayer, not '{}'",
-                k.line, k.key
-            ));
-        }
-        let layer = og_render_data::TerrainLayer {
-            albedo_layer: index("albedoLayer", &albedo_array)?,
-            normal_layer: index("normalLayer", &normal_array)?,
-            albedo: None,
-            normal: None,
-            color: color.into(),
-            roughness: number(b, "roughness", d.roughness)?,
-            tile: number(b, "tile", d.tile)?,
-            triplanar: flag(b, "triplanar", false)?,
-            normal_strength: number(b, "normalStrength", 1.0)?,
-            slope: pair(b, "slope", d.slope)?,
-            slope_fade: number(b, "slopeFade", d.slope_fade)?,
-            altitude: pair(b, "altitude", d.altitude)?,
-            altitude_fade: number(b, "altitudeFade", d.altitude_fade)?,
-            project_slope: unit(b, "projectSlope", 90.0)?,
-            anti_tiling: unit(b, "antiTiling", 1.0)?,
-            height_contrast: unit(b, "heightContrast", 1.0)?,
-            macro_variation: unit(b, "macroVariation", 1.0)?,
-            displacement: unit(b, "displacement", 4.0)?,
-            cell_variation: unit(b, "cellVariation", 1.0)?,
+        let index = |value: Option<u32>, array: &Option<String>| match (value, array) {
+            (Some(_), None) => {
+                Err("a layer slice index requires its terrain texture array".to_string())
+            }
+            (v, Some(_)) => Ok(Some(v.unwrap_or(layers.len() as u32))),
+            (None, None) => Ok(None),
         };
-        layers.push((string_of(b, "albedo"), string_of(b, "normal"), layer));
-    }
-    if layers.len() > MAX_LAYERS {
-        return Err(format!(
-            "a terrain has at most {MAX_LAYERS} layers, this one has {}",
-            layers.len()
-        ));
-    }
-    let control: Vec<String> = strings_of(body, "control")
-        .iter()
-        .map(|c| resolve(rel, root, c))
-        .collect();
-    let pages = layers.len().div_ceil(4).max(1);
-    if let Some(e) = body.get("control")
-        && (control.is_empty() || control.len() > pages)
-    {
-        return Err(format!(
-            "line {}: 'control' names one map per four layers (this terrain's {} layer(s) take {pages}), got {}",
-            e.line,
-            layers.len(),
-            control.len()
-        ));
-    }
-    if let Some(g) = &generate {
-        if let (Some(b), Some(c)) = (g.biomes.first(), body.get("control")) {
-            return Err(format!(
-                "line {}: biomes write the terrain's control map: drop 'control' (line {}) or the biomes",
-                b.line, c.line
-            ));
+        layer.albedo_layer = index(v.albedo_layer, &albedo_array)?;
+        layer.normal_layer = index(v.normal_layer, &normal_array)?;
+        if let Some(color) = v.color {
+            layer.color = color.into();
         }
-        if let Some(b) = g.biomes.iter().find(|b| b.layer as usize >= layers.len()) {
-            return Err(format!(
-                "line {}: the biome writes layer {} but the terrain has {} layer(s)",
-                b.line,
-                b.layer,
-                layers.len()
-            ));
-        }
+        macro_rules! set { ($($key:ident),+) => { $(if let Some(value) = v.$key { layer.$key = value; })+ }; }
+        set!(
+            roughness,
+            tile,
+            triplanar,
+            normal_strength,
+            slope,
+            slope_fade,
+            altitude,
+            altitude_fade,
+            project_slope,
+            anti_tiling,
+            height_contrast,
+            macro_variation,
+            displacement,
+            cell_variation
+        );
+        layers.push((v.albedo.map(|r| r.id), v.normal.map(|r| r.id), layer));
     }
+    let control = input.control.unwrap_or_default();
+    if control.len() > layers.len().div_ceil(4).max(1) {
+        return Err("control takes at most one map per four layers".into());
+    }
+    if !g.biomes.is_empty() && !control.is_empty() {
+        return Err("biomes write control; do not also name control images".into());
+    }
+    if g.biomes.iter().any(|b| b.layer as usize >= layers.len()) {
+        return Err("biome.layer must name an existing terrain material layer".into());
+    }
+    let (lod_spacing, lod_ring) = input.lod.map_or((0.0, 0), |l| {
+        (l.spacing.unwrap_or(0.0), l.ring.unwrap_or(0))
+    });
     Ok(TerrainDoc {
-        edits: super::terrain_edit::parse(body, layers.len())?,
-        heightmap: heightmap.map(|h| resolve(rel, root, &h)),
-        generate,
-        script,
-        preserve,
-        control,
-        holes: string_of(body, "holes").map(|c| resolve(rel, root, &c)),
+        edits: super::terrain_edit::prepare(input.edits.unwrap_or_default(), layers.len(), models)?,
+        heightmap,
+        heightfield,
         height,
-        size,
-        tile: tile as u32,
-        height_blend: number(body, "heightBlend", 0.0)?.max(0.0),
-        cast_shadows: flag(body, "castShadows", true)?,
-        collision: flag(body, "collision", true)?,
+        generate: processed.then_some(g),
+        preserve,
+        size: input.size,
+        tile: input.tile.unwrap_or(og_render_data::TERRAIN_TILE),
+        height_blend: input.height_blend.unwrap_or(0.0),
+        cast_shadows: input.cast_shadows.unwrap_or(true),
+        collision: input.collision.unwrap_or(true),
+        control,
+        holes: input.holes,
         lod_spacing,
         lod_ring,
         layers,
-        albedo_array: albedo_array.map(|a| resolve(rel, root, &a)),
-        normal_array: normal_array.map(|a| resolve(rel, root, &a)),
+        albedo_array,
+        normal_array,
     })
 }
 
 /// A terrain's samples, read from its heightmap (and control map) or made
 /// by its generator.
+#[derive(Clone)]
 pub(crate) struct Field {
     pub columns: u32,
     pub rows: u32,
@@ -673,20 +370,14 @@ pub(crate) struct Field {
 /// Reads (or makes) a terrain file's samples.
 pub(crate) fn field(
     doc: &TerrainDoc,
-    root: &Path,
+    inputs: &std::collections::BTreeMap<String, Vec<u8>>,
     fields: &super::field::Fields,
 ) -> Result<Field, String> {
-    let read = |rel: &str, what: &str| {
-        std::fs::read(root.join(rel)).map_err(|_| {
-            format!("the {what} '{rel}' does not exist beside the terrain or under assets/")
-        })
-    };
     // The control maps, one page each, all of the first's size.
     let control = || -> Result<Option<og_render_data::TerrainControl>, String> {
         let mut out: Option<(u32, u32, Vec<u8>)> = None;
         for c in &doc.control {
-            let img = super::texture::decode(&read(c, "control map")?)
-                .map_err(|e| format!("{c}: {e}"))?;
+            let img = super::texture::decode(&inputs[c]).map_err(|e| format!("{c}: {e}"))?;
             match &mut out {
                 None => out = Some((img.width, img.height, img.rgba)),
                 Some((w, h, rgba)) => {
@@ -713,7 +404,7 @@ pub(crate) fn field(
         let Some(h) = &doc.holes else {
             return Ok(None);
         };
-        let img = super::texture::decode(&read(h, "hole map")?).map_err(|e| format!("{h}: {e}"))?;
+        let img = super::texture::decode(&inputs[h]).map_err(|e| format!("{h}: {e}"))?;
         let (cx, cz) = (columns - 1, rows - 1);
         let mut out = vec![0u8; (cx * cz) as usize];
         for r in 0..cz {
@@ -732,19 +423,15 @@ pub(crate) fn field(
         doc.size
             .unwrap_or([(columns - 1) as f32, (rows - 1) as f32])
     };
-    let base = if let Some(program) = &doc.script {
-        let field = super::super::generator::Heightfield::schema()
-            .decode(program.run()?)
-            .map_err(|e| format!("generator heightfield: {e}"))?;
-        field.validate()?;
+    let base = if let Some(field) = &doc.heightfield {
         Some(Heightmap {
             columns: field.columns,
             rows: field.rows,
-            values: field.heights,
+            values: field.heights.clone(),
             exr: true,
         })
     } else if let Some(name) = &doc.heightmap {
-        let mut map = decode_heightmap(name, &read(name, "heightmap")?)?;
+        let mut map = decode_heightmap(name, &inputs[name])?;
         let [lo, hi] = doc.height;
         for h in &mut map.values {
             *h = lo + *h * (hi - lo);
@@ -810,7 +497,7 @@ pub(crate) fn field(
             &doc.edits,
         );
     }
-    let map = base.expect("parse: a heightmap or generate");
+    let map = base.expect("typed source supplies an image, heightfield or noise");
     super::terrain_edit::apply(
         Field {
             columns: map.columns,
@@ -832,13 +519,9 @@ pub(crate) fn cook_terrain(
     provided: &crate::cook::provided::Provided,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text =
-        std::str::from_utf8(&s.bytes).map_err(|_| CookError("a terrain is text (UTF-8)".into()))?;
-    let root = assets_root(s);
-    let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let mut source = field(&doc, &root, &s.fields).map_err(CookError)?;
-    super::district::terrain::apply(s.settings.as_ref().map(|(_, d)| d), &s.rel, &mut source)
-        .map_err(CookError)?;
+    let prepared = get(s, &s.rel).map_err(CookError)?;
+    let doc = &prepared.doc;
+    let source = prepared.surface().map_err(CookError)?.clone();
     let (columns, rows, size) = (source.columns, source.rows, source.size);
     let (sea, river_length) = source.generated.unwrap_or((None, 0.0));
     // A 16-bit heightmap's samples are already steps of the declared
@@ -852,7 +535,7 @@ pub(crate) fn cook_terrain(
         )
     });
     // A layer's texture or array is the project's own, or one a bundle of
-    // project.ogt's `cook { uses }` provides with the right type (packed
+    // project.ts's cook.uses provides with the right type (packed
     // there, not here: the game opens that bundle before og.terrain.load).
     let mut missing = Vec::new();
     let mut wrong = Vec::new();
@@ -873,7 +556,7 @@ pub(crate) fn cook_terrain(
     }
     if !missing.is_empty() {
         return Err(CookError(format!(
-            "the terrain names texture(s) not under assets/ nor in a bundle of project.ogt's cook {{ uses }}: {}",
+            "the terrain names texture(s) not in project content or a bundle of project.ts cook.uses: {}",
             missing.join(", ")
         )));
     }
@@ -1101,8 +784,8 @@ pub(crate) fn cook_terrain(
 pub(crate) static TERRAIN: KindDef = KindDef {
     name: "terrain",
     extensions: &[],
-    types: &[TERRAIN_TYPE],
-    by_content: false,
+    types: &[],
+    by_content: true,
     streams: false,
     plan: plan_terrain,
 };
@@ -1112,7 +795,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&TERRAIN];
 
 fn plan_terrain<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -1120,9 +803,7 @@ fn plan_terrain<'a>(
     let Cx {
         known, provided, ..
     } = *cx;
-    let PlanState { parsed_refs, .. } = state;
     let deps = terrain_dependencies(s, &|id| known.contains(id), provided);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
     let st = stamp(&[Area::Terrain], &[b"terrain 2", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),

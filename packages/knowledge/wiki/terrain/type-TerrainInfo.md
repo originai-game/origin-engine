@@ -21,7 +21,7 @@ A loaded terrain.
 | `collision` | `boolean` | `false` | — | — | — | Whether its terrain file asks for a collider (`collision`, default true). |
 | `castShadows` | `boolean` | `false` | — | — | — | Its terrain file's `castShadows`. |
 | `holes` | `boolean` | `false` | — | — | — | Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with. |
-| `seaLevel` | `number \| null` | `null` | — | `m` | — | A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea. |
+| `seaLevel` | `number \| null` | `null` | — | `m` | — | A processed terrain's sea level (`process.sea`) above its entity: place an og.Water there, the terrain's size; null without a sea. |
 
 ```ogt
 struct TerrainInfo {
@@ -43,7 +43,7 @@ struct TerrainInfo {
   field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
   field castShadows bool "Its terrain file's `castShadows`."
   field holes bool "Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with."
-  field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
+  field seaLevel Option.f32 "A processed terrain's sea level (`process.sea`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
     unit m
   }
 }

@@ -415,7 +415,7 @@ When a district crosses a height field, give it the terrain asset to
 carve at cook time:
 
 ```text
-terrain "terrain/land.ogt" {
+terrain "base/terrain/land" {
   depth 0.25
 }
 ```

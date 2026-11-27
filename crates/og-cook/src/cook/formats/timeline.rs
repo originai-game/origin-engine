@@ -112,12 +112,20 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
 
 /// Source inspection uses the exact same catalogue, evaluator and binder as cook.
 pub fn read(root: &Path) -> Result<BTreeMap<String, Timeline>, String> {
-    let project = crate::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let project = super::super::stage::Project::read(root).map_err(|e| e.to_string())?;
     let mut sources = super::super::pipeline::scan::scan(&root.join("assets"))
         .map_err(|e| e.to_string())?
         .sources;
-    super::super::pipeline::author::sources(root, &project, &mut sources)
-        .map_err(|e| e.to_string())?;
+    let mut consumed = Default::default();
+    super::super::stage::import(&mut sources, &mut consumed, None, 1);
+    super::super::pipeline::author::sources(
+        root,
+        &project.source,
+        &mut sources,
+        &mut consumed,
+        &project.provided,
+    )
+    .map_err(|e| e.to_string())?;
     Ok(sources
         .into_iter()
         .filter_map(|s| s.timeline.map(|p| (s.rel, p.timeline)))

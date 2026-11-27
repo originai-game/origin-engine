@@ -503,6 +503,7 @@ pub(in crate::cook) fn conform(
                 video: None,
                 timeline: None,
                 fields: Default::default(),
+                terrains: Default::default(),
                 conformed: None,
                 fracture: None,
             };

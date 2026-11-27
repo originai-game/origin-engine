@@ -14435,7 +14435,7 @@
     },
     {
       "name": "terrain",
-      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.\nLoad it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.\nSee `world §1`.",
+      "doc": "Terrain: a height field over a rectangle, cooked by og cook from a TS file.terrain declaration (an image, noise or evaluated heightfield source, control maps, up to sixteen layered materials and a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.\nLoad it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.\nSee `world §1`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -14464,7 +14464,7 @@
       "functions": [
         {
           "name": "load",
-          "doc": "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).",
+          "doc": "Load a cooked TS file.terrain output by canonical module/content ID and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same ID again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).",
           "params": [
             {
               "name": "world",
@@ -14476,7 +14476,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The terrain file, such as `terrain/island.ogt`."
+              "doc": "The canonical terrain output ID, such as base/terrain/island."
             }
           ],
           "returns": "Result<TerrainInfo>",
@@ -56544,7 +56544,7 @@
               "type": "null"
             }
           ],
-          "description": "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea.",
+          "description": "A processed terrain's sea level (`process.sea`) above its entity: place an og.Water there, the terrain's size; null without a sea.",
           "x-og-unit": "m"
         }
       },

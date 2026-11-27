@@ -21,7 +21,7 @@ export default og.game({
   systems: [view],
   start(world) {
     og.stream.setBudget(world, 512 * 1024 * 1024);
-    const land = og.terrain.load(world, "terrain/land.ogt");
+    const land = og.terrain.load(world, "base/terrain/land");
     if (!land.ok) throw new Error(land.reason);
     const ground = world.spawn({ name: "land" });
     if (!ground.ok) throw new Error(ground.reason);

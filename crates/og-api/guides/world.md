@@ -8,29 +8,32 @@ The API: `og api show terrain`, `og api show stream`, `og api show tilemap`,
 
 ## 1. Terrain: the file and placing it
 
-A `type terrain` `.ogt` names a 16-bit grey PNG or EXR heightmap (or a
-deterministic `generate.script` heightfield in metres), an
+A `content/terrain/valley.ts` exports `file.terrain` with an explicit
+image, noise or already evaluated TS heightfield source in metres, an
 optional control map, up to sixteen layered materials with slope and
 altitude rules (each pixel blends its four strongest), and an optional
 `holes` map whose black or transparent cells are cut out of the surface (a
 cave mouth, a pit, a tunnel through a hill). `og cook` cooks it into tiles.
 
-An image or TS heightfield may feed `generate` processing: hydraulic and
+An image or TS heightfield may feed `process`: hydraulic and
 thermal erosion, terraces, shore, automatic rivers and biome control, in
 that order. Given metre heights are not normalised or clipped to a noise
 range. See `generating` for a complete multi-file cook recipe and
-`file:terrain` for the parser's nested field reference.
+`file:terrain` for the generated typed input reference. Compose ordinary
+static imports, `procgen` and seeded `rng` directly; there is no embedded
+`generate.script` entry or sibling-path fallback. Raw images use canonical
+paths relative to their owning module, such as `assets/terrain/height.png`.
 
 - Layer maps are separate textures for the first four layers, or layers of
-  two texture arrays: `layers` and `layerNormals`, with each layer's
+  two texture arrays: `albedoArray` and `normalArray`, with each layer's
   `albedoLayer` and `normalLayer`. Arrays sample two textures instead of up
   to eight and are the only way past four layers; the control map is then
   one image per four layers.
 - Many terrain packs can share one material pack: in each terrain
   project's project.ts, `cook: { uses: ["../materials/cooked"] }` names
   another cooked bundle (its `cooked/` directory, or a project cooked
-  first). Its textures and texture arrays may then be named as layer maps
-  by asset id. The cook checks that the bundle has them with the right type
+  first). Its actual texture and texture-array outputs may then be named
+  with `ref(outputId)`. The cook checks that the bundle has them with the right type
   and packs none of them. og.terrain.load finds them in the boot bundle or
   a ready pack, in open order, so open the material pack first; before it,
   the load answers an error naming the missing array.
@@ -42,11 +45,11 @@ range. See `generating` for a complete multi-file cook recipe and
   its samples as steps of its `height`, so two terrains with the same
   `height` whose shared edge holds equal samples (one's last column the
   next one's first) read the same og.terrain.sample heights along it, to
-  the bit. An EXR or `generate` field is stored over its own lowest to
+  the bit. An EXR or generated field is stored over its own lowest to
   highest height, within 1/65535 of that range.
 
 ```ts
-const t = og.terrain.load(world, "terrain/valley.ogt").value!;
+const t = og.terrain.load(world, "base/terrain/valley").value!;
 const ground = world.spawn({ name: "ground" }).value!;
 world.insert(ground, og.Terrain, { data: t.data });
 world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
