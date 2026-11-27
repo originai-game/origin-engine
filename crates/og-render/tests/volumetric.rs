@@ -43,21 +43,25 @@ fn a_subfroxel_spot_beam_does_not_disappear_between_columns() {
         range: 4.0,
         ..Default::default()
     });
-    let image = render_to_rgba(
-        &RenderDesc {
-            width: 640,
-            height: 360,
-            ..Default::default()
-        },
-        &scene,
-    )
-    .expect("fog frame");
+    let desc = RenderDesc {
+        width: 640,
+        height: 360,
+        ..Default::default()
+    };
+    // The display pass dithers even black to 0 or 1. Compare with the
+    // same unlit pixel, so neither dither nor a global fog glow can pass
+    // for a beam (or fail an outside-cone check).
+    scene.lighting.lights[0].intensity = 0.0;
+    let dark = render_to_rgba(&desc, &scene).expect("unlit fog frame");
+    scene.lighting.lights[0].intensity = 100_000.0;
+    let image = render_to_rgba(&desc, &scene).expect("fog frame");
     let lit = image
         .pixels
         .as_chunks::<4>()
         .0
         .iter()
-        .filter(|c| c[0] > 0 || c[1] > 0 || c[2] > 0)
+        .zip(dark.pixels.as_chunks::<4>().0)
+        .filter(|(lit, dark)| lit[..3] != dark[..3])
         .count();
     assert!(
         lit > 0,
@@ -83,7 +87,7 @@ fn a_subfroxel_spot_beam_does_not_disappear_between_columns() {
         for x in 300..340 {
             let at = (179 * 640 + x) * 4;
             assert!(
-                image.pixels[at..at + 3].iter().any(|c| *c > 0),
+                image.pixels[at..at + 3] != dark.pixels[at..at + 3],
                 "{method:?}: the beam vanished in column {x}"
             );
         }
@@ -91,7 +95,11 @@ fn a_subfroxel_spot_beam_does_not_disappear_between_columns() {
         // stay dark: a global fog glow cannot satisfy the beam check.
         for (x, y) in [(320, 150), (200, 179), (500, 179)] {
             let at = (y * 640 + x) * 4;
-            assert_eq!(&image.pixels[at..at + 3], &[0, 0, 0], "{method:?}: {x},{y}");
+            assert_eq!(
+                image.pixels[at..at + 3],
+                dark.pixels[at..at + 3],
+                "{method:?}: {x},{y}"
+            );
         }
     }
 
@@ -116,7 +124,7 @@ fn a_subfroxel_spot_beam_does_not_disappear_between_columns() {
         .expect("fog from inside the cone");
         let at = (179 * 640 + 320) * 4;
         assert!(
-            image.pixels[at..at + 3].iter().any(|c| *c > 0),
+            image.pixels[at..at + 3] != dark.pixels[at..at + 3],
             "{method:?}: the eye inside a spot lost its beam"
         );
     }
