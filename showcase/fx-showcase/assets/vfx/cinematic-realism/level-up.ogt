@@ -1,0 +1,68 @@
+type vfx
+version 2
+---
+duration 2.2
+impact 0.2
+beam {
+  life 1.3
+  to 0 4.5 0
+  width 0.9
+  effect "vfx/cinematic-realism/beam-soft.ogt"
+  color 1.6 1.3 0.6 0.5
+}
+beam {
+  life 1.3
+  to 0 6 0
+  width 0.25
+  effect "vfx/cinematic-realism/beam-soft.ogt"
+  color 2.2 1.8 1 0.7
+}
+mesh ring {
+  life 0.8
+  offset 0 0.02 0
+  rotate -90 0 0
+  segments 64
+  inner 0.84
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  effect "vfx/cinematic-realism/shield-ripple.ogt"
+  scale curve 0 0.3 0.5 1.3 1 1.7
+  color 2 1.5 0.6
+}
+mesh ring {
+  at 0.2
+  life 0.8
+  offset 0 0.02 0
+  rotate -90 0 0
+  segments 64
+  inner 0.88
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  effect "vfx/cinematic-realism/shield-ripple.ogt"
+  scale curve 0 0.2 0.5 0.9 1 1.2
+  color 2 1.5 0.6
+}
+emitter "vfx/cinematic-realism/emitters/rise-flecks.ogt" {
+  offset 0 0.05 0
+}
+emitter "vfx/cinematic-realism/emitters/rise-flecks.ogt" {
+  at 0.3
+  offset 0 0.05 0
+  seed 3
+}
+glow {
+  life 0.6
+  offset 0 1 0
+  size curve 0 0.5 0.3 2.2 1 1
+  color 1.8 1.4 0.6 0.5
+}
+light {
+  life 1.5
+  offset 0 1.2 0
+  color 1 0.82 0.5
+  intensity curve 0 0 0.15 4 1 0
+  distance 7
+}
+sound "vfx/cinematic-realism/sounds/chime.ogt" {
+}
+sound "vfx/cinematic-realism/sounds/swell.ogt" {
+  playbackRate 1.2 1.3
+}

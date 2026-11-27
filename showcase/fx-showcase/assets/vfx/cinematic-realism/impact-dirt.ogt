@@ -1,0 +1,27 @@
+type vfx
+version 2
+---
+duration 10
+impact 0
+param mark 1
+emitter "vfx/cinematic-realism/emitters/dirt-spray.ogt" {
+  offset 0 0.04 0
+}
+emitter "vfx/cinematic-realism/emitters/clods.ogt" {
+  offset 0 0.03 0
+}
+decal {
+  until 10
+  fade 3
+  when mark
+  texture "vfx/cinematic-realism/textures/scorch.png"
+  normal "vfx/cinematic-realism/textures/scorch-normal.png"
+  normalScale 1.6
+  size 0.4 0.25 0.4
+  color 0.6 0.48 0.36 0.85
+  roughness 1
+  turn 0 360
+}
+sound "vfx/cinematic-realism/sounds/thud.ogt" {
+  playbackRate 0.9 1.1
+}

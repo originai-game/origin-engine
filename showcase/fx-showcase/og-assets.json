@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/fonts/latin/NotoSans-Latin.ttf",
+      "sha256": "91bd512f081c1f8fdd094cc5d3ce5379d6588d663cd93056f5c209adbc3d2f41",
+      "size": 125928,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/af.hyph",
+      "sha256": "b97f20e0edf51c7d67992afb804bc0ae36a83c8c459cfc95952601a73dfa9975",
+      "size": 61243,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/ca.hyph",
+      "sha256": "27a70e94fb14d5c2df252a6df211f69e7df9f4d0de9a014e0466a2ca731ddf5a",
+      "size": 1727,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/cs.hyph",
+      "sha256": "1f7cb32555583658b8bc6daa35d213e856f28b69d47f44322eae2e11c2037557",
+      "size": 40726,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/da.hyph",
+      "sha256": "c69e3d5d43abe2697b2220848a95225a14b292cc4611bf86864a031150084f42",
+      "size": 5759,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/de.hyph",
+      "sha256": "dc057dc24e655a602c6a26ba0bd1532fd143d5d5057c4aec58ce4fe7b30bf96e",
+      "size": 206263,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/en.hyph",
+      "sha256": "be2bcb386cb777a191813f68b995d0c22fbf30783ac52a0ad2489c8ebd7fd354",
+      "size": 26947,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/es.hyph",
+      "sha256": "fdca79005c290d9de18d753df630e5accd78333a3c73f418b9eff4a78499fbff",
+      "size": 13649,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/et.hyph",
+      "sha256": "a1f09425ddead58160e88ae5f55971ee01e51ff3471d35eaad226a4935c4b83c",
+      "size": 18774,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/fi.hyph",
+      "sha256": "365d87c66398e2cdae80eee5114d9fcbf589131cea1b5701c63acb7306011f14",
+      "size": 636,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/fr.hyph",
+      "sha256": "64359f17aeb80371018144eaa1afb638da546dfeb594e17a7e819eb8a39c06c5",
+      "size": 6988,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/gl.hyph",
+      "sha256": "d5d81437dc1d2c91c8999738c6a5836bffc3a7beac4daa65606740e34f842b9d",
+      "size": 7344,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/hr.hyph",
+      "sha256": "813c099f16948243b6159e128cd804ae338d3fe1cab48ff3429fbc4efa20a738",
+      "size": 1990,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/hu.hyph",
+      "sha256": "764dd370cd4fef49a39211ff663adfc185c882ed7dea9bbdfcdf6b08432af372",
+      "size": 353883,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/is.hyph",
+      "sha256": "518be600272fa747b74ea2864644fb88fc95f6690a3816e4bf9420895fc63cca",
+      "size": 21074,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/it.hyph",
+      "sha256": "a9dc16dbaa585c43b6db52e345c8d49bedf3c71df234a487e5d318adea0c24e7",
+      "size": 1555,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/la.hyph",
+      "sha256": "2bdf1055591eaf17fbe9ab10eb7124cbbaf0f1077f911f061aeb6774972c2984",
+      "size": 1003,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/lt.hyph",
+      "sha256": "ec9248f34ce15a0c5e8489c883588880150010f4e2029211fccacadd58b7061e",
+      "size": 6565,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/nl.hyph",
+      "sha256": "1177ef126b31bbb30f080633680fc14cc4cd6f56d1597981c975389b861d978b",
+      "size": 64293,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/no.hyph",
+      "sha256": "5fbd731178eea686a75f4e2febb317bfc91de9a8f100c7696ae7017575f74c18",
+      "size": 156375,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/pl.hyph",
+      "sha256": "cf4e14e2cc9b030b8ef8a1cff037c82bc06ac104d30a3f5f5c58809b3cf30cbd",
+      "size": 15530,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/pt.hyph",
+      "sha256": "4d55b1babb909cd40dd6f359442ddc77350bbca705246b8b020ce81be6e043a3",
+      "size": 1065,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/sk.hyph",
+      "sha256": "312e0c7b01dd0b505c9bcbae436d2874ecad3b7ec7b4f2f635f758f39ca38478",
+      "size": 13069,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/sl.hyph",
+      "sha256": "150615c0734cf7f6366eda2145fee4eaddb8f0a709e4ae70e077e9dde9048b79",
+      "size": 5598,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/sq.hyph",
+      "sha256": "fbeb999c0bef17c1db1e5df0084ff1a0b8344909148e8d43668b2f0bfa051735",
+      "size": 1407,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/sv.hyph",
+      "sha256": "eb9a3be6acbcba9df573a3b1065b0cf8ea2b08da7c2897a965f7280cd1639419",
+      "size": 23595,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/tk.hyph",
+      "sha256": "058eeee13d23d0dd2eacd41fa088b066253a817fea8f0975d03f33883c21a384",
+      "size": 1386,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/latin/tr.hyph",
+      "sha256": "1661448a091060bdee0d923c5489f6b717dc3dd11f00e2eaed364c8e07889c13",
+      "size": 526,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/chip-normal.png",
+      "sha256": "9dbe8a73420a7f2c92afcec1b9095f7027a7336c3152c14c8758ce9a0967906f",
+      "size": 14038,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/chip.png",
+      "sha256": "f6c5160ebb65d5c83488222701f423931304d5dd284c09aac97b48f285e97798",
+      "size": 25704,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/dent-normal.png",
+      "sha256": "038cd2eff5957fb403777b73299f7cc011d15d378e7114611ac0de036a5183ad",
+      "size": 8297,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/dent.png",
+      "sha256": "9f19e71af39491b83c0a985d1e323e9a056920af4efc0cfb7b53cdb3003a3479",
+      "size": 24796,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/dust.png",
+      "sha256": "2c4283a7e381e1ac458c9a5d5beefdc3033bc2fde8b8241bc741bdf36397d4f9",
+      "size": 713735,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/embers.png",
+      "sha256": "5d971cad0e59c9c36a921909a6adff15382a256155f8a145cbbfc9428149a1b5",
+      "size": 88905,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/explosion.png",
+      "sha256": "3b4e9dd52598f5d0ede4dc00223646cd3cd96fdf064a46c8979143b0f57ae0f4",
+      "size": 701310,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/flames.png",
+      "sha256": "e977974dfd80a93c5dd7b7609ac8fc1af8390776ca020a52aca748c6dbeb8848",
+      "size": 318933,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/fracture-normal.png",
+      "sha256": "6b2e86d5dde73b3aed89eecb9e412fe8a2924ecf2f35a96541d34f01d6df3a9d",
+      "size": 42277,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/fracture.png",
+      "sha256": "c95dd27e2456114695981b2354daadc4dd7c246dd0947f52c6ce49efb3efe5e9",
+      "size": 23154,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/gouge-normal.png",
+      "sha256": "7d18b3ac057a6e2a8a269bb7726f16427d3b7eb00ab4f607d640e8db10b4725c",
+      "size": 15782,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/gouge.png",
+      "sha256": "bb1d1044aad118e15817e321666716861edf6b863221e2f6e3bd4493a3fc41c9",
+      "size": 48679,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/leaves.png",
+      "sha256": "c6c474a6e69df8f9ff8f26a5f43396ed0bf48c437786fa9d65a0acc3ef3c528e",
+      "size": 74120,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/scorch-normal.png",
+      "sha256": "87d94a99338203833c51fff03d8160756df590134f831eea527bf7d733227646",
+      "size": 163232,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/scorch.png",
+      "sha256": "79a659846671ce10b11691a0ecf4544b43335fb5c9358becdc626d7cd21c6094",
+      "size": 213010,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/sigil.png",
+      "sha256": "1c02245724d61a352321dbdbf5dd1a2ff3abbc61717bbffb9f0d40c4f05afe4f",
+      "size": 74555,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/skid.png",
+      "sha256": "65b22e2689a1e802f4772ab3394e122841d0b8aacbbf200371dd25df3b26ac05",
+      "size": 23041,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/streak.png",
+      "sha256": "fad40ac3418ff8f08211e8adf06e63aececc670b71eaa12525dacb3f604dbaa2",
+      "size": 809,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/taper.png",
+      "sha256": "19965237439411e91d4e4ebb6f7314b0a563423c53fabd869b39f6b7080e6b88",
+      "size": 152,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/wet.png",
+      "sha256": "fec4572bcae0fa3eea9896e25bb8f5024d4bf40825f6a83dfd7c12fbadf6dc4e",
+      "size": 12587,
+      "visibility": "public"
+    }
+  ]
+}

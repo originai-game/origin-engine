@@ -1,0 +1,33 @@
+type vfx
+version 2
+---
+duration 10
+impact 0
+param mark 1
+emitter "vfx/cinematic-realism/emitters/chip-dust.ogt" {
+  offset 0 0.04 0
+}
+emitter "vfx/cinematic-realism/emitters/chips.ogt" {
+  offset 0 0.03 0
+}
+emitter "vfx/cinematic-realism/emitters/grit.ogt" {
+  offset 0 0.03 0
+}
+shake {
+  trauma 0.1
+}
+decal {
+  until 10
+  fade 3
+  when mark
+  texture "vfx/cinematic-realism/textures/chip.png"
+  normal "vfx/cinematic-realism/textures/chip-normal.png"
+  normalScale 1.4
+  size 0.34 0.2 0.34
+  roughness 0.9
+  turn 0 360
+}
+sound "vfx/cinematic-realism/sounds/tick.ogt" {
+  volume 0.8
+  playbackRate 0.8 1
+}

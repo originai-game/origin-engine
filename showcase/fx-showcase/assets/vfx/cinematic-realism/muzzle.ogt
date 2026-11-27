@@ -1,0 +1,33 @@
+type vfx
+version 2
+---
+duration 1.4
+impact 0
+emitter "vfx/cinematic-realism/emitters/muzzle.ogt" {
+}
+emitter "vfx/cinematic-realism/emitters/muzzle-petals.ogt" {
+  offset 0 0.03 0
+}
+emitter "vfx/cinematic-realism/emitters/gunsmoke.ogt" {
+  at 0.03
+  offset 0 0.06 0
+}
+glow {
+  life 0.06
+  offset 0 0.08 0
+  size curve 0 0.22 1 0.1
+  color 2.4 1.4 0.5 0.8
+}
+light {
+  life 0.07
+  offset 0 0.3 0
+  color 1 0.7 0.35
+  intensity curve 0 0.3 1 0
+  distance 2.2
+}
+shake {
+  trauma 0.12
+}
+sound "vfx/cinematic-realism/sounds/shot.ogt" {
+  playbackRate 0.96 1.04
+}
