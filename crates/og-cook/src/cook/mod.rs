@@ -23,6 +23,7 @@ use pipeline::{
     stream,
 };
 mod systems;
+pub use systems::shader_check::material_shader;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
     animgraph, autorig, behaviour, district, effect, effect_texture, environment, field, flipbook,
@@ -65,7 +66,7 @@ mod ui_packs;
 pub mod ui_themes;
 pub mod vector;
 
-use execute::{read_sibling, run};
+use execute::run;
 pub use graph::CodeGraph;
 pub use options::{CookOptions, FontSettings, MeshOptions, TextureOptions};
 use options::{

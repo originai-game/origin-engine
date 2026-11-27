@@ -57,7 +57,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Flipbook` | `FlipbookMeta` (text bytes) | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size, `array`) |
 | `og.Rig` | `RigMeta` (text bytes) | `text` (the canonical humanoid map: its scheme and the bones it names) |
 | `og.ParticleEmitter` | `EmitterMeta` (text bytes) | `text` (the validated emitter file) |
-| `og.MaterialShader` | `ShaderMeta` (text bytes) | `text` (the canonical shader file, its code inlined) |
+| `og.MaterialShader`, `og.PostPass`, `og.UiMaterial` | `ShaderMeta`, `PostMeta`, `UiMaterialMeta` | `code` (WGSL), `names` (UTF-8), `params` (`ShaderParamRow` defaults, ordered) |
 | `og.Behaviour` | `BehaviourMeta` (text bytes) | `text` (the validated behaviour file) |
 | `og.Strings` | `StringsMeta` (text bytes) | `text` (the validated string table) |
 | `og.NavMesh` | `NavMeshMeta` (cell size and height, the agent's height, radius, climb and slope, tile size, max error, origin, grid width and depth, tile count) | `columns` (a meshopt vertex stream of `NavColumnRow`, one a grid column), `spans` (a meshopt vertex stream of `NavSpanRow`; the two are the walkable heightfield), `tiles` `NavTileRow`, `verts` `NavVertRow`, `polys` `NavPolyRow`, `poly_verts` (u32) |

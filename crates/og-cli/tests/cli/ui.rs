@@ -1,5 +1,82 @@
 use super::*;
 
+/// Installed material declarations and captured WGSL form one usable pack;
+/// conflicts in any source root refuse the whole install without overwrites.
+#[test]
+fn material_pack_installs_checked_sources_and_cooks() {
+    let dir = TempDir::new("og-material-pack");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("og-project.json"),
+        r#"{"version":1,"name":"Materials","engine":"0.9.0"}"#,
+    )
+    .unwrap();
+    std::fs::write(dir.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'materials',entry:'src/main.ts'});").unwrap();
+    let add = || {
+        og().args(["ui", "add", "materials"])
+            .arg(&dir)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    std::fs::create_dir_all(dir.join("sources/materials/materials")).unwrap();
+    std::fs::write(dir.join("sources/materials/materials/keep.wgsl"), "owned").unwrap();
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(!dir.join("assets/materials/materials").exists());
+    assert!(!dir.join("content/materials/materials").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("sources/materials/materials/keep.wgsl")).unwrap(),
+        "owned"
+    );
+    std::fs::remove_dir_all(dir.join("sources/materials/materials")).unwrap();
+    // A failure after staging metadata/content must roll those roots back.
+    std::fs::remove_dir(dir.join("sources/materials")).unwrap();
+    std::fs::write(dir.join("sources/materials"), "owned parent").unwrap();
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(!dir.join("assets/materials/materials").exists());
+    assert!(!dir.join("content/materials/materials").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("sources/materials")).unwrap(),
+        "owned parent"
+    );
+    std::fs::remove_file(dir.join("sources/materials")).unwrap();
+    let out = add();
+    assert!(out.status.success(), "{}", text(&out));
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(text(&out).contains("nothing written"));
+    for command in ["check", "cook"] {
+        let out = og()
+            .arg(command)
+            .arg(&dir)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+    }
+    let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    for name in ["burn", "foil", "holo", "rarity"] {
+        let source = format!("sources/materials/materials/{name}.wgsl");
+        assert_eq!(
+            std::fs::read(dir.join(&source)).unwrap(),
+            std::fs::read(repo().join(format!(
+                "packages/engine/extensions/materials/sources/{name}.wgsl"
+            )))
+            .unwrap()
+        );
+        let id = format!("base/materials/materials/{name}");
+        let material = bundle.ui_material(&id, &bundle.read(&id).unwrap()).unwrap();
+        assert_eq!(
+            material.code,
+            std::fs::read_to_string(dir.join(source)).unwrap()
+        );
+        assert_eq!(material.params.len(), 4);
+    }
+}
+
 /// Serves `root`'s files over HTTP on a free local port (GET only, one
 /// request per connection); returns `http://127.0.0.1:<port>`.
 fn serve(root: PathBuf) -> String {
@@ -311,4 +388,27 @@ export function TitleScreen(p: TitleScreenProps) { return <View><Builtin keyArt=
         true,
     ));
     assert!(out.iter().all(|e| e["event"] != "ui-screens"), "{out:?}");
+
+    // Capability facts must follow the typed shader entry, not stale OGT discovery.
+    std::fs::create_dir_all(dir.join("content/shaders")).unwrap();
+    let shader = og_render::example_full_shader();
+    std::fs::write(dir.join("content/shaders/unlit.ts"), format!(
+        "import {{file}} from '@origingame/engine/author';export default file.shader({{mode:{{kind:'full',lit:false}},code:{},params:[{{name:'amount',kind:'float'}},{{name:'edge',kind:'float'}},{{name:'scale',kind:'float'}},{{name:'glow',kind:'vec4'}}]}});",
+        serde_json::to_string(&shader.code).unwrap()
+    )).unwrap();
+    let out = events(&check("export default 0;", true));
+    let warnings = out
+        .iter()
+        .find(|e| e["event"] == "shader-capabilities")
+        .expect("typed full-unlit shader was not inspected")["warnings"]
+        .as_array()
+        .unwrap();
+    assert_eq!(warnings.len(), 1, "{out:?}");
+    assert_eq!(warnings[0]["mode"], "full unlit");
+    assert!(
+        warnings[0]["file"]
+            .as_str()
+            .unwrap()
+            .ends_with("content/shaders/unlit.ts")
+    );
 }

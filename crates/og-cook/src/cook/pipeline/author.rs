@@ -19,6 +19,9 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("field", &field::FIELD),
     ("terrain", &terrain::TERRAIN),
     ("navmesh", &navmesh::NAVMESH),
+    ("shader", &shader_check::SHADER),
+    ("post", &shader_check::POST),
+    ("ui-material", &shader_check::UI_MATERIAL),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.

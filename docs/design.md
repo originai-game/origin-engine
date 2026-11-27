@@ -1434,12 +1434,12 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
 - **Layers** are three.js masks (bit n is layer n, default 1, drawn when
   `a & b != 0`), tested by every camera and by `og.render.raycast`; shadow
   maps take every caster.
-- **Full custom shaders** (`type shader`, `mode full`): own `vertex` and
+- **Full custom shaders** (TS `file.shader`, `mode: {kind: 'full', lit}`): own `vertex` and
   `fragment` entries over a fixed binding contract (camera, model matrix with
   skin and morphs, params, eight texture slots, standard helpers); the
   prepass, shadows and views run the user's vertex entry. The cook validates
   them with naga.
-- **Custom post passes** (`type post`, `PostEffects.custom`): up to
+- **Custom post passes** (TS `file.post`, `PostEffects.custom`): up to
   `RenderCapabilities.maxCustomPosts` WGSL passes after motion blur and
   before exposure; one the device refuses is skipped and reported
   (`og.render.postErrors`).

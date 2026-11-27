@@ -208,66 +208,49 @@ pub(super) fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
 /// some of what a scene can ask of it (`shader_capabilities_lint`).
 pub const SHADER_CAPABILITY_CODE: u32 = 9103;
 
-/// Every material shader under `assets/` (`.ogt` of `type shader`) whose
+/// Every checked file.shader declaration whose
 /// mesh surface does not take a capability a game sees, read from its lit
 /// module as the renderer builds it (`og_render_data::reach::material_shader_lacks`,
 /// the check of og-render's capability table): printed as warnings, or
 /// with `json` as one `shader-capabilities` event. Never fails a check; a
 /// shader the cook would refuse is the cook's to report.
 pub(super) fn shader_capabilities_lint(p: &Project, json: bool, to_stderr: bool) {
-    let assets = p.root.join("assets");
+    use og_cook::cook::{
+        material_shader, source_content, source_index, source_project, source_schemas,
+    };
+    let Ok(project) = source_project::Project::open(&p.root) else {
+        return;
+    };
+    let Ok(index) = source_index::Index::open(&p.root, &project) else {
+        return;
+    };
+    let mut evaluator = source_content::Evaluator::default();
     let mut found = Vec::new();
-    let mut dirs = vec![assets.clone()];
-    while let Some(dir) = dirs.pop() {
-        let Ok(entries) = std::fs::read_dir(dir) else {
+    for entry in index
+        .entries
+        .values()
+        .filter(|entry| entry.factory == "shader")
+    {
+        let Ok(content) = evaluator.evaluate(&p.root, &project, entry, &Default::default(), None)
+        else {
             continue;
         };
-        let mut entries: Vec<_> = entries.flatten().collect();
-        entries.sort_by_key(|e| e.path());
-        for entry in entries {
-            let Ok(ty) = entry.file_type() else { continue };
-            let path = entry.path();
-            if ty.is_dir() {
-                if !path.file_name().is_some_and(|n| {
-                    n == ".og" || n == "cooked" || n == "og-out" || n == "node_modules"
-                }) {
-                    dirs.push(path);
-                }
-                continue;
-            }
-            if !ty.is_file() || path.extension().is_none_or(|e| e != "ogt") {
-                continue;
-            }
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
-            };
-            if og_core::ogt::parse(&text)
-                .ok()
-                .is_none_or(|d| d.ty != og_cook::shader::SHADER_TYPE)
-            {
-                continue;
-            }
-            let file = path
-                .strip_prefix(&p.root)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .replace('\\', "/");
-            let name = path.file_stem().unwrap_or_default().to_string_lossy();
-            let mut read = |rel: &str| {
-                if rel.split('/').any(|c| c == ".." || c.is_empty()) {
-                    return Err(format!("'{rel}' is not a path under assets/"));
-                }
-                std::fs::read_to_string(assets.join(rel)).map_err(|e| e.to_string())
-            };
-            let Ok(shader) = og_cook::shader::parse_shader(&name, &text, &mut read) else {
-                continue;
-            };
-            let Ok(lacks) = og_render_data::reach::material_shader_lacks(&shader) else {
-                continue;
-            };
-            if !lacks.is_empty() {
-                found.push((file, shader.mode, lacks));
-            }
+        let Ok(file) =
+            serde_json::from_value::<source_schemas::File>(content.data().root().into_json())
+        else {
+            continue;
+        };
+        let Ok(input) = source_schemas::media::shader::Shader::schema().decode(file.value) else {
+            continue;
+        };
+        let Ok(shader) = material_shader(&entry.id, input) else {
+            continue;
+        };
+        let Ok(lacks) = og_render_data::reach::material_shader_lacks(&shader) else {
+            continue;
+        };
+        if !lacks.is_empty() {
+            found.push((entry.file.clone(), shader.mode, lacks));
         }
     }
     if found.is_empty() {

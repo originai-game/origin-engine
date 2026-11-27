@@ -1,15 +1,61 @@
-//! Material shader validation at cook time (`crate::shader`'s files):
+//! Material shader validation at cook time (checked TS declarations):
 //! the lit shader with a shader's hooks, a post pass and a UI material
 //! compiled through naga for every back end, so a broken one is refused
-//! with naga's message before it ships. The parsing and the cooked text
-//! are og-bundle's (`og_bundle::shader`), which never builds naga.
+//! with naga's message before it ships. The binary shader payload is
+//! og-bundle's (`og_bundle::shader`), which never builds naga.
 
 use super::{
-    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, format,
-    read_sibling, stamp,
+    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, format, stamp,
 };
+use crate::cook::source_schemas::media::shader as input;
 use crate::format::Area;
-use og_render_data::{MaterialShader, ShaderMode};
+use og_render_data::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
+
+fn params(input: Vec<input::Param>) -> Vec<ShaderParam> {
+    use input::Param::*;
+    input
+        .into_iter()
+        .map(|p| {
+            let (name, kind, default) = match p {
+                Float { name, default } => (
+                    name,
+                    ParamKind::Float,
+                    [default.unwrap_or(0.0), 0.0, 0.0, 0.0],
+                ),
+                Vec2 { name, default } => {
+                    let [x, y] = default.unwrap_or_default();
+                    (name, ParamKind::Vec2, [x, y, 0.0, 0.0])
+                }
+                Vec3 { name, default } | Color { name, default } => {
+                    let [x, y, z] = default.unwrap_or_default();
+                    (name, ParamKind::Vec3, [x, y, z, 0.0])
+                }
+                Vec4 { name, default } => (name, ParamKind::Vec4, default.unwrap_or_default()),
+            };
+            ShaderParam {
+                name,
+                kind,
+                default,
+            }
+        })
+        .collect()
+}
+
+/// The same typed shader construction for cook and og check's capability facts.
+pub fn material_shader(name: &str, input: input::Shader) -> Result<MaterialShader, String> {
+    let shader = MaterialShader {
+        name: name.into(),
+        code: input.code,
+        params: params(input.params),
+        mode: match input.mode {
+            None | Some(input::Mode::Hooks) => ShaderMode::Hooks,
+            Some(input::Mode::Sprite) => ShaderMode::Sprite,
+            Some(input::Mode::Full { lit }) => ShaderMode::Full { lit },
+        },
+    };
+    shader.check()?;
+    Ok(shader)
+}
 
 /// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL, HLSL). The
 /// engine also compiles it on the device and skips it, reported, when that
@@ -203,7 +249,7 @@ fn user_lines(report: &str, first: usize, lines: usize) -> String {
 pub(crate) static SHADER: KindDef = KindDef {
     name: "shader",
     extensions: &[],
-    types: &[crate::shader::SHADER_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_shader,
@@ -216,12 +262,7 @@ fn plan_shader<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    // The stamp covers the WGSL file the shader names.
-    let text = String::from_utf8_lossy(&s.bytes);
-    let wgsl = crate::shader::shader_source(&text)
-        .map(|src| read_sibling(s, &src).unwrap_or_default())
-        .unwrap_or_default();
-    let st = stamp(&[Area::Shader], &[b"shader", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"typed shader", &hash]);
     outs.push((
         s.rel.clone(),
         format::Shader::NAME,
@@ -230,20 +271,15 @@ fn plan_shader<'a>(
     ));
 }
 
-/// A shader's one output: its checked, canonical text.
+/// A shader's one output: its checked WGSL and typed uniforms.
 struct ShaderJob<'a>(&'a Source);
 
 impl Job for ShaderJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let ShaderJob(s) = self;
-        let text = std::str::from_utf8(&s.bytes)
-            .map_err(|_| CookError("a shader is text (UTF-8)".into()))?;
-        let name = s.rel.trim_end_matches(".ogt");
-        let shader = crate::shader::parse_shader(name, text, &mut |src| read_sibling(s, src))
-            .map_err(CookError)?;
+        let shader = material_shader(&s.rel, s.input().map_err(CookError)?).map_err(CookError)?;
         let compiled = validate_shader(&shader)
             .map_err(|e| CookError(format!("the shader does not compile: {e}")))?;
-        let canonical = crate::shader::shader_text(&shader);
         let mut w = og_blob::BlobWriter::new(
             format::Shader::type_hash(),
             format::Shader::schema_version(),
@@ -252,11 +288,17 @@ impl Job for ShaderJob<'_> {
         w.table(
             "meta",
             &[format::ShaderMeta {
-                text_bytes: canonical.len() as u32,
+                code_bytes: shader.code.len() as u32,
+                mode: match shader.mode {
+                    ShaderMode::Hooks => 0,
+                    ShaderMode::Full { lit: true } => 1,
+                    ShaderMode::Full { lit: false } => 2,
+                    ShaderMode::Sprite => 3,
+                },
             }],
             format::row_hash::<format::ShaderMeta>(),
-        )
-        .raw("text", canonical.into_bytes(), 16);
+        );
+        crate::shader::write(&mut w, &shader.code, &shader.params);
         Ok((
             w.finish(),
             vec![format!(
@@ -271,7 +313,7 @@ impl Job for ShaderJob<'_> {
 pub(crate) static POST: KindDef = KindDef {
     name: "post",
     extensions: &[],
-    types: &[crate::shader::POST_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_post,
@@ -284,28 +326,25 @@ fn plan_post<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let wgsl = crate::shader::shader_source(&text)
-        .map(|src| read_sibling(s, &src).unwrap_or_default())
-        .unwrap_or_default();
-    let st = stamp(&[Area::Shader], &[b"post", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"typed post", &hash]);
     outs.push((s.rel.clone(), format::Post::NAME, st, Box::new(PostJob(s))));
 }
 
-/// A post pass's one output: its checked, canonical text.
+/// A post pass's one output: its checked WGSL and typed uniforms.
 struct PostJob<'a>(&'a Source);
 
 impl Job for PostJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let PostJob(s) = self;
-        let text = std::str::from_utf8(&s.bytes)
-            .map_err(|_| CookError("a post pass is text (UTF-8)".into()))?;
-        let name = s.rel.trim_end_matches(".ogt");
-        let post = crate::shader::parse_post(name, text, &mut |src| read_sibling(s, src))
-            .map_err(CookError)?;
+        let input: input::Post = s.input().map_err(CookError)?;
+        let post = og_render_data::PostShader {
+            name: s.rel.clone(),
+            code: input.code,
+            params: params(input.params),
+        };
+        post.check().map_err(CookError)?;
         let compiled = validate_post(&post)
             .map_err(|e| CookError(format!("the post pass does not compile: {e}")))?;
-        let canonical = crate::shader::post_text(&post);
         let mut w = og_blob::BlobWriter::new(
             format::Post::type_hash(),
             format::Post::schema_version(),
@@ -314,11 +353,11 @@ impl Job for PostJob<'_> {
         w.table(
             "meta",
             &[format::PostMeta {
-                text_bytes: canonical.len() as u32,
+                code_bytes: post.code.len() as u32,
             }],
             format::row_hash::<format::PostMeta>(),
-        )
-        .raw("text", canonical.into_bytes(), 16);
+        );
+        crate::shader::write(&mut w, &post.code, &post.params);
         Ok((
             w.finish(),
             vec![format!(
@@ -333,8 +372,8 @@ impl Job for PostJob<'_> {
 pub(crate) static UI_MATERIAL: KindDef = KindDef {
     name: "ui-material",
     extensions: &[],
-    types: &[crate::shader::UI_MATERIAL_TYPE],
-    by_content: false,
+    types: &[],
+    by_content: true,
     streams: false,
     plan: plan_ui_material,
 };
@@ -346,11 +385,7 @@ fn plan_ui_material<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let wgsl = crate::shader::shader_source(&text)
-        .map(|src| execute::read_beside(s, &src).unwrap_or_default())
-        .unwrap_or_default();
-    let st = stamp(&[Area::Shader], &[b"ui-material", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"typed ui-material", &hash]);
     outs.push((
         s.rel.clone(),
         format::UiMaterial::NAME,
@@ -359,22 +394,21 @@ fn plan_ui_material<'a>(
     ));
 }
 
-/// A UI material's one output: its checked, canonical text.
+/// A UI material's one output: its checked WGSL and typed uniforms.
 struct UiMaterialJob<'a>(&'a Source);
 
 impl Job for UiMaterialJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let UiMaterialJob(s) = self;
-        let text = std::str::from_utf8(&s.bytes)
-            .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;
-        let name = s.rel.trim_end_matches(".ogt");
-        let material = crate::shader::parse_ui_material(name, text, &mut |src| {
-            super::execute::read_beside(s, src)
-        })
-        .map_err(CookError)?;
+        let input: input::UiMaterial = s.input().map_err(CookError)?;
+        let material = og_render_data::UiMaterialShader {
+            name: s.rel.clone(),
+            code: input.code,
+            params: params(input.params),
+        };
+        material.check().map_err(CookError)?;
         let compiled = validate_ui_material(&material)
             .map_err(|e| CookError(format!("the UI material does not compile: {e}")))?;
-        let canonical = crate::shader::ui_material_text(&material);
         let mut w = og_blob::BlobWriter::new(
             format::UiMaterial::type_hash(),
             format::UiMaterial::schema_version(),
@@ -383,11 +417,11 @@ impl Job for UiMaterialJob<'_> {
         w.table(
             "meta",
             &[format::UiMaterialMeta {
-                text_bytes: canonical.len() as u32,
+                code_bytes: material.code.len() as u32,
             }],
             format::row_hash::<format::UiMaterialMeta>(),
-        )
-        .raw("text", canonical.into_bytes(), 16);
+        );
+        crate::shader::write(&mut w, &material.code, &material.params);
         Ok((
             w.finish(),
             vec![format!(

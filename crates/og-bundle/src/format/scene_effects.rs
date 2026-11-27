@@ -342,57 +342,61 @@ impl BlobKind for Pack {
 }
 
 row!(
-    /// The root of a material shader blob (an `.ogt` of `type shader`).
-    ShaderMeta, "og.MaterialShader", 1 {
-        /// Bytes of the canonical shader text (code inlined) in `text`.
-        text_bytes: u32,
+    /// A checked file.shader declaration, with no author text in the blob.
+    ShaderMeta, "og.MaterialShader", 2 {
+        code_bytes: u32,
+        /// 0 hooks, 1 full lit, 2 full unlit, 3 sprite.
+        mode: u32,
     }
 );
 
-/// The material shader blob: `text` holds the shader file the cook
-/// compiled for every back end (`crate::shader`), its code inlined.
+row!(
+    /// Ordered shader uniforms, shared by the three shader families.
+    ShaderParamRow, "og.ShaderParam", 1 {
+        name_offset: u32, name_len: u32,
+        components: u32,
+        x: f32, y: f32, z: f32, w: f32,
+    }
+);
+
+/// Material shader: WGSL `code`, parameter `names` and `params` rows.
 pub struct Shader;
 impl BlobKind for Shader {
     const NAME: &'static str = "og.MaterialShader";
     fn schemas() -> Vec<Schema> {
-        vec![ShaderMeta::schema()]
+        vec![ShaderMeta::schema(), ShaderParamRow::schema()]
     }
 }
 
 row!(
-    /// The root of a custom post pass blob (an `.ogt` of `type post`).
-    PostMeta, "og.PostPass", 1 {
-        /// Bytes of the canonical post file (code inlined) in `text`.
-        text_bytes: u32,
+    /// The root of a checked file.post declaration.
+    PostMeta, "og.PostPass", 2 {
+        code_bytes: u32,
     }
 );
 
-/// The custom post pass blob: `text` holds the post file the cook compiled
-/// for every back end (`crate::shader`), its code inlined.
+/// Custom post pass: WGSL `code`, parameter `names` and `params` rows.
 pub struct Post;
 impl BlobKind for Post {
     const NAME: &'static str = "og.PostPass";
     fn schemas() -> Vec<Schema> {
-        vec![PostMeta::schema()]
+        vec![PostMeta::schema(), ShaderParamRow::schema()]
     }
 }
 
 row!(
-    /// The root of a custom UI material blob (an `.ogt` of `type ui-material`).
-    UiMaterialMeta, "og.UiMaterial", 1 {
-        /// Bytes of the canonical UI material file (code inlined) in `text`.
-        text_bytes: u32,
+    /// The root of a checked file['ui-material'] declaration.
+    UiMaterialMeta, "og.UiMaterial", 2 {
+        code_bytes: u32,
     }
 );
 
-/// The custom UI material blob (`docs/ui.md` §3.3): `text` holds the
-/// material file the cook compiled for every back end (`crate::shader`),
-/// its code inlined.
+/// Custom UI material: WGSL `code`, parameter `names` and `params` rows.
 pub struct UiMaterial;
 impl BlobKind for UiMaterial {
     const NAME: &'static str = "og.UiMaterial";
     fn schemas() -> Vec<Schema> {
-        vec![UiMaterialMeta::schema()]
+        vec![UiMaterialMeta::schema(), ShaderParamRow::schema()]
     }
 }
 

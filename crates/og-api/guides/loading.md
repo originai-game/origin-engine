@@ -329,9 +329,11 @@ refuses any other and names the ones it takes.
 
 ## 6. Shaders, styles, documents and looks
 
-- A shader is an `.ogt` of `type shader`; the cook compiles its WGSL for
-  every back end. `mode hooks` (the default) defines hooks of the lit
-  shader. `mode full lit` and `mode full unlit` define
+- A shader is a TS `file.shader` declaration; `code` holds inline WGSL or
+  `input.text('sources/shaders/finish.wgsl')`, relative to its module.
+  The cook compiles its WGSL for every back end. `mode: {kind: 'hooks'}`
+  (the default) defines hooks of the lit shader. `{kind: 'sprite'}` uses
+  sprite hooks. `{kind: 'full', lit: true}` and `lit: false` define
   `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput`
   and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over
   the binding contract: camera(), the model with its skin, Params, and
@@ -341,6 +343,11 @@ refuses any other and names the ones it takes.
   puddles and snow, and screen-space reflections by its roughness and
   metalness. The prepass and every shadow pass draw through the same
   entries.
+- `file.post` and `file['ui-material']` use the same `code` and ordered
+  `params` array (`name`, `kind`, optional `default`). Their limits are
+  eight and four parameters respectively. Load canonical module/content
+  IDs such as `base/shaders/finish`, without a source extension. The cook
+  stores typed binary payloads; runtime loading parses no author text.
 - A UI style is a directory under `assets/styles/<name>/` holding a theme
   recipe (`theme.json`), a style pack (`pack.json`) laid over it, or both
   (screens §3, themes §1). Start one with `og style init <name> [--from <theme>]`,

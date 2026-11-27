@@ -416,7 +416,7 @@ depth-normal prepass: the first one pays for it.
   flare, a single cloud crossing the disc does not. Each ghost takes an
   amber, teal or violet coating tint in turn.
 - Custom passes: write the whole list (`post.custom = [grade, crt]`,
-  `post.custom = []`; a look writes `custom "post/tint.ogt" "post/crt.ogt"`),
+  `post.custom = []`; a TS look names passes by canonical content ID),
   set parameters with `og.render.setPostParam`; each also reads the lit
   image. The cap is og-render's MAX_CUSTOM_POSTS.
 - Display output (RenderOptions.output, left out `best`): on a surface

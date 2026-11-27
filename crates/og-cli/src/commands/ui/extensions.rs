@@ -317,10 +317,32 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         .join("assets")
         .join(family)
         .join(&extension.manifest.name);
-    if target.exists() {
+    // Materials have checked declarations and external WGSL, not author data
+    // under assets/. Keep metadata at the discovery path; install each source
+    // root as a new directory, never overwrite any part of an existing pack.
+    let destinations = if extension.manifest.kind == "materials" {
+        vec![
+            ("metadata", target.clone()),
+            (
+                "content",
+                project
+                    .join("content/materials")
+                    .join(&extension.manifest.name),
+            ),
+            (
+                "sources",
+                project
+                    .join("sources/materials")
+                    .join(&extension.manifest.name),
+            ),
+        ]
+    } else {
+        vec![("metadata", target.clone())]
+    };
+    if let Some((_, path)) = destinations.iter().find(|(_, p)| p.exists()) {
         return Err(format!(
             "{} already exists; nothing written",
-            target.display()
+            path.display()
         ));
     }
     let all: Vec<PathBuf> = files(&extension.directory)?
@@ -335,18 +357,40 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         std::process::id()
     ));
     std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
+    let mut installed = Vec::new();
     let result = (|| -> Result<PathBuf, String> {
+        for (name, _) in &destinations {
+            std::fs::create_dir(staging.join(name)).map_err(|e| e.to_string())?;
+        }
         for file in all {
-            let dest = staging.join(&file);
+            let (part, local) = if extension.manifest.kind == "materials" {
+                if let Ok(local) = file.strip_prefix("content") {
+                    ("content", local)
+                } else if let Ok(local) = file.strip_prefix("sources") {
+                    ("sources", local)
+                } else {
+                    ("metadata", file.as_path())
+                }
+            } else {
+                ("metadata", file.as_path())
+            };
+            let dest = staging.join(part).join(local);
             std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
             std::fs::copy(extension.directory.join(file), dest).map_err(|e| e.to_string())?;
         }
-        std::fs::rename(&staging, &target).map_err(|e| e.to_string())?;
+        for (name, path) in &destinations {
+            std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+            std::fs::rename(staging.join(name), path).map_err(|e| e.to_string())?;
+            installed.push(path);
+        }
         Ok(target)
     })();
     if result.is_err() {
-        let _ = std::fs::remove_dir_all(staging);
+        for path in installed {
+            let _ = std::fs::remove_dir_all(path);
+        }
     }
+    let _ = std::fs::remove_dir_all(staging);
     result
 }
 

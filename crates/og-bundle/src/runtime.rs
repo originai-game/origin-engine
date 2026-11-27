@@ -870,32 +870,36 @@ impl Bundle {
     ) -> Result<og_render_data::MaterialShader, LoadError> {
         let blob = self.blob::<format::Shader>(id, bytes)?;
         let meta = one::<format::ShaderMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the shader text is cut short"));
-        }
-        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
-            .map_err(|_| invalid(&blob, "the shader text is not UTF-8"))?;
-        crate::shader::parse_shader(id, text, &mut |_| {
-            Err("a cooked shader carries its code".to_string())
-        })
-        .map_err(|e| invalid(&blob, &e))
+        let (code, params) = crate::shader::read(&blob, meta.code_bytes)?;
+        let mode = match meta.mode {
+            0 => og_render_data::ShaderMode::Hooks,
+            1 => og_render_data::ShaderMode::Full { lit: true },
+            2 => og_render_data::ShaderMode::Full { lit: false },
+            3 => og_render_data::ShaderMode::Sprite,
+            _ => return Err(invalid(&blob, "invalid shader mode")),
+        };
+        let shader = og_render_data::MaterialShader {
+            name: id.into(),
+            code,
+            params,
+            mode,
+        };
+        shader.check().map_err(|e| invalid(&blob, e))?;
+        Ok(shader)
     }
 
     /// The custom post pass of a post blob.
     pub fn post(&self, id: &str, bytes: &[u8]) -> Result<og_render_data::PostShader, LoadError> {
         let blob = self.blob::<format::Post>(id, bytes)?;
         let meta = one::<format::PostMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the post text is cut short"));
-        }
-        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
-            .map_err(|_| invalid(&blob, "the post text is not UTF-8"))?;
-        crate::shader::parse_post(id, text, &mut |_| {
-            Err("a cooked post pass carries its code".to_string())
-        })
-        .map_err(|e| invalid(&blob, &e))
+        let (code, params) = crate::shader::read(&blob, meta.code_bytes)?;
+        let post = og_render_data::PostShader {
+            name: id.into(),
+            code,
+            params,
+        };
+        post.check().map_err(|e| invalid(&blob, e))?;
+        Ok(post)
     }
 
     /// The custom UI material of a UI material blob.
@@ -906,16 +910,14 @@ impl Bundle {
     ) -> Result<og_render_data::UiMaterialShader, LoadError> {
         let blob = self.blob::<format::UiMaterial>(id, bytes)?;
         let meta = one::<format::UiMaterialMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the UI material text is cut short"));
-        }
-        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
-            .map_err(|_| invalid(&blob, "the UI material text is not UTF-8"))?;
-        crate::shader::parse_ui_material(id, text, &mut |_| {
-            Err("a cooked UI material carries its code".to_string())
-        })
-        .map_err(|e| invalid(&blob, &e))
+        let (code, params) = crate::shader::read(&blob, meta.code_bytes)?;
+        let material = og_render_data::UiMaterialShader {
+            name: id.into(),
+            code,
+            params,
+        };
+        material.check().map_err(|e| invalid(&blob, e))?;
+        Ok(material)
     }
 
     /// The triangles and paints of a vector blob, for

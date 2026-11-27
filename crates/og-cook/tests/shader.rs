@@ -1,127 +1,186 @@
-//! Material shaders through the cook and back (the E5 round): a shader
-//! `.ogt` naming its WGSL file cooks to a blob the runtime loads into the
-//! same og-render MaterialShader the reference scenes draw with; shaders
-//! that do not compile for every back end are refused with naga's message.
-
+//! TS shader-family cook/load contract: native backend validation, parameter
+//! order, captured WGSL inputs, module identities and no author text fallback.
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use og_tests::atmo_scenes::{DISSOLVE_WGSL, dissolve_shader};
-use std::path::PathBuf;
 
-const DISSOLVE: &str = r#"type shader
-version 1
----
-source "shaders/dissolve.wgsl"
-param amount float 0
-param scale float 3
-param edgeWidth float 0.08
-param edgeColor color 4 1.6 0.4
-"#;
+const DISSOLVE: &str = r#"import {file,input} from '@origingame/engine/author';
+import {scale} from '../lib/scale.ts';
+export default file.shader({
+  code:input.text('sources/dissolve.wgsl'),
+  params:[{name:'amount',kind:'float'}, {name:'scale',kind:'float',default:scale},
+          {name:'edgeWidth',kind:'float',default:0.08},
+          {name:'edgeColor',kind:'color',default:[4,1.6,0.4]}]
+});"#;
 
-fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join("og-cook-shader")
-        .join(name);
-    let _ = std::fs::remove_dir_all(&root);
-    crate::init_project(&root);
-    for (path, text) in files {
-        let p = root.join("assets").join(path);
-        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-        std::fs::write(p, text).unwrap();
-    }
-    root
+fn write(root: &std::path::Path, file: &str, text: &str) {
+    let path = root.join(file);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, text).unwrap();
 }
 
 #[test]
 fn a_shader_cooks_for_every_back_end_and_loads() {
-    let root = project(
-        "ok",
-        &[
-            ("shaders/dissolve.ogt", DISSOLVE),
-            ("shaders/copy.ogt", DISSOLVE),
-            ("shaders/dissolve.wgsl", DISSOLVE_WGSL),
-        ],
+    use og_render_data::{ParamKind, ShaderMode};
+    let root = crate::temp::TempDir::new("typed-shaders");
+    crate::init_project(&root);
+    write(
+        &root,
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'shaders',entry:'src/main.ts',modules:[{id:'north',root:'modules/north'}]});",
     );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    write(&root, "modules/north/content/dissolve.ts", DISSOLVE);
+    write(&root, "modules/north/content/copy.ts", DISSOLVE);
+    write(&root, "modules/north/lib/scale.ts", "export const scale=3;");
+    write(
+        &root,
+        "content/post.ts",
+        "import {file} from '@origingame/engine/author';export default file.post({code:'fn post(f: PostInput, p: Params) -> vec4<f32> {return previous(f.uv + p.offset)*p.tint;}',params:[{kind:'vec2',name:'offset',default:[0.125,-0.25]},{kind:'vec4',name:'tint',default:[0.5,0.75,1.25,0.875]}]});",
+    );
+    write(
+        &root,
+        "content/ui.ts",
+        "import {file} from '@origingame/engine/author';export default file['ui-material']({code:'fn material(m: MaterialInput, p: Params) -> vec4<f32> {return layer(m.uv)*vec4<f32>(p.tint,1.0);}',params:[{kind:'vec3',name:'tint',default:[0.25,0.5,0.75]}]});",
+    );
+    write(
+        &root,
+        "content/sprite.ts",
+        "import {file} from '@origingame/engine/author';export default file.shader({mode:{kind:'sprite'},code:'fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {return sprite_texel(h.uv)*c;}'});",
+    );
+    let full = og_render::example_full_shader();
+    for lit in [false, true] {
+        write(&root, &format!("content/full-{lit}.ts"), &format!("import {{file}} from '@origingame/engine/author';export default file.shader({{mode:{{kind:'full',lit:{lit}}},code:{},params:{}}});",
+            serde_json::to_string(&full.code).unwrap(),
+            serde_json::to_string(&full.params.iter().map(|p| serde_json::json!({"name":p.name,"kind":match p.kind {ParamKind::Float=>"float",ParamKind::Vec2=>"vec2",ParamKind::Vec3=>"vec3",ParamKind::Vec4=>"vec4"},"default":if p.kind==ParamKind::Float {serde_json::json!(p.default[0])} else {serde_json::json!(&p.default[..p.kind.count()])}})).collect::<Vec<_>>()).unwrap()));
+    }
+    let id = "north/dissolve";
+    let options = CookOptions {
+        threads: 3,
+        ..Default::default()
+    };
+    let mut previous = None;
+    for revision in [1, 2] {
+        let code = format!("{DISSOLVE_WGSL}\n// captured revision {revision}\n");
+        write(&root, "modules/north/sources/dissolve.wgsl", &code);
+        for warm in [false, true] {
+            let report = cook_project(&root, &options).unwrap();
+            assert!(report.ok(), "{:?}", report.errors());
+            let bundle = Bundle::open(&root.join("cooked")).unwrap();
+            let bytes = bundle.read(id).unwrap().to_vec();
+            let shader = bundle.shader(id, &bytes).unwrap();
+            assert_eq!(shader.code, code, "external input was stale or absent");
+            assert_eq!(shader.params, dissolve_shader().params);
+            assert_eq!(shader.mode, ShaderMode::Hooks);
+            assert_eq!(shader.name, id);
+            let copy = bundle.read("north/copy").unwrap();
+            assert_eq!(
+                bytes.as_slice(),
+                &*copy,
+                "identical declarations must share payloads"
+            );
+            assert_eq!(
+                bundle.shader("north/copy", &copy).unwrap().name,
+                "north/copy"
+            );
+            if warm {
+                assert_eq!(previous.as_ref().unwrap(), &bytes);
+            } else if let Some(previous) = &previous {
+                assert_ne!(previous, &bytes, "stale WGSL cache");
+            }
+            previous = Some(bytes);
+            let post = bundle
+                .post("base/post", &bundle.read("base/post").unwrap())
+                .unwrap();
+            assert_eq!(post.defaults()[0], [0.125, -0.25, 0.0, 0.0]);
+            assert_eq!(post.defaults()[1], [0.5, 0.75, 1.25, 0.875]);
+            let ui = bundle
+                .ui_material("base/ui", &bundle.read("base/ui").unwrap())
+                .unwrap();
+            assert_eq!(ui.defaults()[0], [0.25, 0.5, 0.75, 0.0]);
+            assert_eq!(
+                bundle
+                    .shader("base/sprite", &bundle.read("base/sprite").unwrap())
+                    .unwrap()
+                    .mode,
+                ShaderMode::Sprite
+            );
+            for lit in [false, true] {
+                let id = format!("base/full-{lit}");
+                let shader = bundle.shader(&id, &bundle.read(&id).unwrap()).unwrap();
+                assert_eq!(shader.mode, ShaderMode::Full { lit });
+                assert_eq!(shader.code, full.code);
+                assert_eq!(shader.params, full.params);
+            }
+        }
+    }
+    write(
+        &root,
+        "modules/north/lib/scale.ts",
+        "export const scale=2.5;",
+    );
+    let report = cook_project(&root, &options).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    let id = "shaders/dissolve.ogt";
-    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
-    let shader = bundle.shader(id, &bytes).unwrap();
-    let expected = dissolve_shader();
     assert_eq!(
-        shader.code, expected.code,
-        "the WGSL file is carried in the blob"
+        bundle
+            .shader(id, &bundle.read(id).unwrap())
+            .unwrap()
+            .defaults()[1][0],
+        2.5
     );
-    assert_eq!(shader.params, expected.params);
-    let copy = "shaders/copy.ogt";
-    assert_eq!(
-        bundle.asset(id).unwrap().source_hash,
-        bundle.asset(copy).unwrap().source_hash
-    );
-    assert_eq!(
-        bundle.output(id).unwrap().file,
-        bundle.output(copy).unwrap().file
-    );
-    let bytes = bundle.read(copy).unwrap();
-    assert_eq!(bundle.shader(copy, &bytes).unwrap().name, copy);
+    for kind in ["shader", "post", "ui-material"] {
+        write(
+            &root,
+            "assets/old.ogt",
+            &format!("type {kind}\nversion 1\n---\n"),
+        );
+        let report = cook_project(&root, &options).unwrap();
+        assert!(!report.ok(), "legacy {kind} author entry was accepted");
+    }
 }
 
 #[test]
 fn shaders_that_do_not_compile_are_refused_with_the_reason() {
-    let with = |code: &str| DISSOLVE.replace("source \"shaders/dissolve.wgsl\"", code);
-    let syntax = with(
-        r#"code "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c * ; }""#,
-    );
-    let types = with(
-        r#"code "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c.rgb; }""#,
-    );
-    let unknown = with(
-        r#"code "fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> { return e * p.glow; }""#,
-    );
-    let none = with(r#"code "fn helper() -> f32 { return 1.0; }""#);
-    let missing = with(r#"source "shaders/nowhere.wgsl""#);
-    let kind = with(
-        r#"code "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c; }""#,
-    )
-    .replace("param scale float 3", "param scale matrix 3");
-    let root = project(
-        "bad",
-        &[
-            ("s/syntax.ogt", syntax.as_str()),
-            ("s/types.ogt", types.as_str()),
-            ("s/unknown.ogt", unknown.as_str()),
-            ("s/none.ogt", none.as_str()),
-            ("s/missing.ogt", missing.as_str()),
-            ("s/kind.ogt", kind.as_str()),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    let errors = report.errors();
-    let of = |file: &str| {
-        errors
-            .iter()
-            .find(|e| e.contains(file))
-            .unwrap_or_else(|| panic!("no error for {file}: {errors:?}"))
-            .clone()
-    };
-    for file in ["s/syntax.ogt", "s/types.ogt", "s/unknown.ogt"] {
-        let e = of(file);
-        assert!(e.contains("the shader does not compile"), "{e}");
-        assert!(
-            e.contains("hooks:1"),
-            "the location is a line of the hooks: {e}"
+    let root = crate::temp::TempDir::new("typed-shader-errors");
+    crate::init_project(&root);
+    for (body, expected) in [
+        (
+            "code:'fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c * ; }'",
+            "hooks:1",
+        ),
+        (
+            "code:'fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c.rgb; }'",
+            "surface_color",
+        ),
+        (
+            "code:'fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> { return e * p.glow; }'",
+            "glow",
+        ),
+        (
+            "code:'fn helper() -> f32 { return 1.0; }'",
+            "defines none of the hooks",
+        ),
+        (
+            "code:input.text('sources/nowhere.wgsl')",
+            "sources/nowhere.wgsl",
+        ),
+        ("code:'',params:[{kind:'matrix',name:'scale'}]", "params"),
+    ] {
+        write(
+            &root,
+            "content/shader.ts",
+            &format!(
+                "import {{file,input}} from '@origingame/engine/author';\nexport default file.shader({{{body}}});"
+            ),
         );
+        let error = match cook_project(&root, &CookOptions::default()) {
+            Ok(report) => {
+                assert!(!report.ok());
+                format!("{:?}", report.errors())
+            }
+            Err(e) => e.to_string(),
+        };
+        assert!(error.contains(expected), "{error}");
+        assert!(error.contains("shader"), "{error}");
     }
-    assert!(
-        of("s/types.ogt").contains("surface_color"),
-        "naga names the function"
-    );
-    assert!(
-        of("s/unknown.ogt").contains("glow"),
-        "naga names the missing member"
-    );
-    assert!(of("s/none.ogt").contains("defines none of the hooks"));
-    assert!(of("s/missing.ogt").contains("shaders/nowhere.wgsl"));
-    assert!(of("s/kind.ogt").contains("parameter type `matrix`"));
 }

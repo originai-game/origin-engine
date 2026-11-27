@@ -1,0 +1,8 @@
+{
+  "breaking": [{
+    "member": "file.shader / file.post / file.ui-material / og ui add materials",
+    "change": "Shader, post and UI material author OGT and their parser are removed. Checked TS declarations cook directly into binary WGSL and uniform payloads; runtime loading parses no author text. Material packs install declarations under content/ and WGSL under sources/.",
+    "fix": "Export file.shader, file.post or file['ui-material'] from content/*.ts, with code (inline WGSL or input.text of a module-relative sources path) and ordered params [{name,kind,default}]. Load module/content IDs without extensions, for example base/materials/materials/foil. Shader mode is {kind:'hooks'|'sprite'} or {kind:'full',lit:true|false}. Reinstall material presets in the new layout.",
+    "find": ["type shader", "type post", "type ui-material", "materials/materials/foil.ogt", "param <name>"]
+  }]
+}

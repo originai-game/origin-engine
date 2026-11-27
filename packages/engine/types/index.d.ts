@@ -39748,19 +39748,19 @@ export declare namespace og {
      */
     function effect(world: World, path: string): Result<EffectMaterial>;
     /**
-     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end): `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path.
+     * A material shader for og.render.shaderMaterial, from a cooked TS file.shader declaration (its WGSL compiled by the cook for every back end): mode {kind:'hooks'} (the default) defines hooks of the lit shader; mode {kind:'full',lit:true|false} defines its own vertex and fragment entries over the binding contract, which the prepass and every shadow pass draw through too. Loaded once per path.
      * See `loading §6`.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `shaders/dissolve.ogt`.
+     * @param path The canonical asset id, such as `base/shaders/dissolve`.
      * @returns Refused for a path not in the bundle or not a shader.
      */
     function shader(world: World, path: string): Result<Shader>;
     /**
-     * A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour. The cook compiles it for every back end. Loaded once per path.
+     * A custom post pass for PostEffects.custom, from a cooked TS file.post declaration: code (inline WGSL or input.text of a module-relative source) defining fn post(f: PostInput, p: Params) -> vec4<f32>, and up to eight params with name, kind (float|vec2|vec3|vec4|color), and optional default. The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour. The cook compiles it for every back end. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `post/crt.ogt`.
+     * @param path The canonical asset id, such as `base/post/crt`.
      * @returns Refused for a path not in the bundle or not a post pass.
      */
     function post(world: World, path: string): Result<Post>;
@@ -39773,11 +39773,11 @@ export declare namespace og {
      */
     function vector(world: World, path: string): Result<VectorArt>;
     /**
-     * A custom UI material resource from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>` and up to four `param <name> float|vec2|vec3|vec4|color <default...>` lines. The cook compiles it for every back end. Loaded once per path (ui-materials §2).
+     * A custom UI material resource from a cooked TS file['ui-material'] declaration: code (inline WGSL or input.text of a module-relative source) defining fn material(m: MaterialInput, p: Params) -> vec4<f32>, and up to four params with name, kind (float|vec2|vec3|vec4|color), and optional default. The cook compiles it for every back end. Loaded once per path (ui-materials §2).
      * See `ui-materials §2`.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `materials/materials/rarity.ogt`.
+     * @param path The canonical asset id, such as `base/materials/materials/rarity`.
      * @returns Refused for a path not in the bundle or not a UI material.
      */
     function uiMaterial(world: World, path: string): Result<UiMaterial>;
