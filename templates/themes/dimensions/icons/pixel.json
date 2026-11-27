@@ -1,6 +1,6 @@
 {
   "about": "No rim, gloss or drop: the flat tones alone, for pixel and minimal themes.",
-  "set": "@styles/shared/icons/game.ogt",
+  "set": "@styles/shared/icons/game.ts",
   "colors": {
     "icon-outline": "#00000000",
     "icon-shadow": "#00000000",

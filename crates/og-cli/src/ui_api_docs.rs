@@ -971,11 +971,11 @@ fn utility_list(utilities: &[&str], what: &str) -> String {
 
 /// Generates `crates/og-api/guides/theme-tokens.md` from
 /// `crates/og-ui-next/default/pack.json`, og-ui-next's fallback icons and
-/// class parser, and `templates/styles/shared/icons/game.ogt`.
+/// class parser, and `templates/styles/shared/icons/game.ts`.
 pub fn theme_tokens_markdown(root: &Path) -> Result<String, String> {
     use og_ui_next::pack::{Layer, Pack, Scheme};
     const PACK: &str = "crates/og-ui-next/default/pack.json";
-    const GAME_ICONS: &str = "templates/styles/shared/icons/game.ogt";
+    const GAME_ICONS: &str = "templates/styles/shared/icons/game.ts";
     let pack_text = std::fs::read_to_string(root.join(PACK)).map_err(|e| format!("{PACK}: {e}"))?;
     let pack: serde_json::Value =
         serde_json::from_str(&pack_text).map_err(|e| format!("{PACK}: {e}"))?;
@@ -1126,23 +1126,19 @@ pub fn theme_tokens_markdown(root: &Path) -> Result<String, String> {
         list.len(),
         list.join(", ")
     );
-    let text =
-        std::fs::read_to_string(root.join(GAME_ICONS)).map_err(|e| format!("{GAME_ICONS}: {e}"))?;
-    let doc = og_core::ogt::Document::parse(&text).map_err(|e| format!("{GAME_ICONS}: {e}"))?;
-    let game_icons: Vec<String> = doc
-        .body
-        .entries
-        .iter()
-        .filter(|e| e.key == "icon")
-        .filter_map(|e| e.values.first().and_then(|v| v.as_str()))
-        .map(code)
-        .collect();
-    if game_icons.is_empty() {
-        return Err(format!("{GAME_ICONS}: no `icon \"<name>\"` entries"));
+    let data = og_cook::cook::generator::Program::prepare_value(root, GAME_ICONS)?.run_ir()?;
+    let file: og_cook::cook::source_schemas::File =
+        serde_json::from_value(data.root().into_json()).map_err(|e| e.to_string())?;
+    if file.kind != "icons" {
+        return Err(format!("{GAME_ICONS}: expected file.icons"));
     }
+    let set = og_cook::cook::source_schemas::world::source_data::IconSet::schema()
+        .decode(file.value)
+        .map_err(|e| format!("{GAME_ICONS}: {e}"))?;
+    let game_icons: Vec<_> = set.icons.iter().map(|(name, _)| code(name)).collect();
     let _ = writeln!(
         out,
-        "- **Shared game icon set (`@styles/shared/icons/game.ogt`)** ({}): {}",
+        "- **Shared game icon set (`@styles/shared/icons/game.ts`)** ({}): {}",
         game_icons.len(),
         game_icons.join(", ")
     );

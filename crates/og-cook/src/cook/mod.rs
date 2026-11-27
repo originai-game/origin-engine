@@ -276,10 +276,11 @@ fn normalise_rel(path: &str) -> String {
     out.join("/")
 }
 
-/// `assets/` of a source: its path less its id's components.
+/// A source's owning root. `@styles/` names the shipped styles root, not a
+/// physical directory within it; other ids are relative to their module root.
 pub(crate) fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
-    for _ in s.rel.split('/') {
+    for _ in s.rel.strip_prefix("@styles/").unwrap_or(&s.rel).split('/') {
         root.pop();
     }
     root
@@ -429,6 +430,7 @@ pub fn cook_project_with_texture_cache(
     );
     let project_key = project_key(&cook_index, &sources, texture_cache);
     let cx = Cx {
+        index: &cook_index,
         root,
         assets_dir,
         cooked_dir,

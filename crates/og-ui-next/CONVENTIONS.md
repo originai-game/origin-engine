@@ -754,11 +754,11 @@ is an error naming where it is, never ignored):
   `fallbackFonts`, the pack's other files, the locale's fonts and the
   default face. A role's Chinese face is the next family in its list.
 - **`icons`**: `name → art file`, over the default set, for `<Icon name>`.
-- **`iconSet`**: the icon set (an `.ogt` of `type icons`) `<Icon name>`
+- **`iconSet`**: the cooked icon set (`file.icons`) `<Icon name>`
   draws a name from when the game's own icons lack it; a later layer's
   set over an earlier one's, then the engine's Lucide fallback. The
   default pack's is the engine's game icon set,
-  `@styles/shared/icons/game.ogt` (its names in that directory's
+  `@styles/shared/icons/game.ts` (its names in that directory's
   README). An icon whose SVG paints in `var(--color-<role>)` is drawn in
   tones from the merged theme, as a sticker (`icon-outline`,
   `icon-shadow`), so a pack restyles it through its colours; a pack's own

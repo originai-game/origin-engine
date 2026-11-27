@@ -272,8 +272,12 @@ impl Index {
                 .map(|p| Some((p.clone(), stat(p).ok().filter(|s| !s.racy(clock))?)))
                 .collect()
         });
-        *self.external.lock().expect("index lock") =
-            stats.map_or(External::Unsettled, External::Read);
+        let mut external = self.external.lock().expect("index lock");
+        match (&mut *external, stats) {
+            (External::Kept, Some(stats)) => *external = External::Read(stats),
+            (External::Read(read), Some(stats)) => read.extend(stats),
+            _ => *external = External::Unsettled,
+        }
     }
 
     /// The checkpointed cook's report, when nothing it read or wrote has

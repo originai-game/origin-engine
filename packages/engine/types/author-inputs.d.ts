@@ -1103,7 +1103,7 @@ readonly "rule": (string);
 readonly "weight": (number);
 });
 }
-/** A parsed icon set file. */
+/** An icon declaration; SVG validation and distance-field baking stay native. */
 export type Input_icons = ({
 /** (name, SVG file stem), in index order.
 Unique names and paths beneath source are checked by the icon validator. */
@@ -1114,7 +1114,8 @@ readonly "join"?: (Input_iconsDefinitions["Join"]);
 readonly "range"?: (number);
 /** Square MSDF glyph size in pixels. */
 readonly "size"?: (number);
-/** Directory of source SVGs, relative to this source file. */
+/** Canonical directory of SVGs relative to the owning module, for example
+assets/icons. No source-file-relative or asset-root fallback. */
 readonly "source"?: (string);
 /** A toned icon's outline width and shadow offset, in 24ths of the em. */
 readonly "sticker"?: (readonly [(number), (number), (number)]);

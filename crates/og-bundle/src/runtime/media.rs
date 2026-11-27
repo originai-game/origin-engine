@@ -623,7 +623,7 @@ pub struct CookedFont {
     /// The font file, whole: what text is laid out and rastered from
     /// (`None` for an icon set, which draws from `pages`).
     pub file: Option<Vec<u8>>,
-    /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
+    /// An icon set's names (`file.icons`, cook::icons): icon
     /// `i` is the glyph at U+E000 + i. Empty for a text font.
     pub names: Vec<String>,
     /// An icon set's toned icons (its `tones` section, cook::icons): the

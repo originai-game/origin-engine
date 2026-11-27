@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.icons / og cook / default UI iconSet",
+      "change": "Icons consume checked TS declarations directly; the OGT icons parser and grammar are deleted. SVG paths are canonical relative to the owning module, without source-relative fallback. Exact SVG bytes are captured before cook cache lookup. Native glyph baking, tone runs, sticker and atlas layout are unchanged. The shared built-in iconSet is now @styles/shared/icons/game.ts, evaluated by the same closed TS evaluator.",
+      "fix": "Export file.icons({source:'assets/icons',icons:[['close','xmark']]}) from content/icons/ui.ts and load base/icons/ui as a font. source defaults to assets/icons; names are unique single lines and SVG stems stay beneath source. Replace references to @styles/shared/icons/game.ogt with @styles/shared/icons/game.ts. See og api show file:icons.",
+      "find": ["type icons", "@styles/shared/icons/game.ogt"]
+    }
+  ]
+}

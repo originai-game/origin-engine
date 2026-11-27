@@ -106,8 +106,8 @@ fn flatten(points: &[[f32; 2]], closed: bool, out: &mut Vec<IconSegment>) {
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
-/// texture, or an icon set cooked like a font (`face`: an `.ogt` of
-/// `type icons`, og-cook's `cook::icons`), whose icons are distance-field
+/// texture, or an icon set cooked like a font (`face`: `file.icons`,
+/// og-cook's `cook::icons`), whose icons are distance-field
 /// glyphs drawn crisp at any size and tinted by their ink.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct IconAtlas {

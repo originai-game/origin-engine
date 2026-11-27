@@ -405,9 +405,42 @@ pub(crate) fn scan_with(
             continue;
         }
         let extension = ext(rel);
+        let mut author_bytes = None;
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
             _ if rel.starts_with("@looks/") && builtins.contains_key(rel) => &look::LOOK,
             (Some(kind), _) => kind,
+            // Shipped declarations use the same closed TS evaluator, schemas
+            // and canonical IR as project content, never an OGT bridge. The
+            // reserved @styles/ prefix names the engine's styles root.
+            (None, "ts") if rel.starts_with("@styles/") && builtins.contains_key(rel) => {
+                let file = rel.strip_prefix("@styles/").expect("built-in style id");
+                let mut root = path.clone();
+                for _ in file.split('/') {
+                    root.pop();
+                }
+                let program = generator::Program::prepare_value(&root, file)
+                    .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                external.extend(program.dependencies.iter().map(|file| root.join(file)));
+                let data = program
+                    .run_ir()
+                    .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                let file: source_schemas::File = serde_json::from_value(data.root().into_json())
+                    .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                file.check(None)
+                    .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                let kind = super::author::KINDS
+                    .iter()
+                    .find(|(name, _)| *name == file.kind)
+                    .map(|(_, kind)| *kind)
+                    .ok_or_else(|| {
+                        CookError(format!(
+                            "{rel}: {} has not completed its TS domain cutover",
+                            file.kind
+                        ))
+                    })?;
+                author_bytes = Some(data.as_bytes().to_vec());
+                kind
+            }
             (None, "json") if model_program::is_program(rel) => &crate::cook::model::MODEL,
             (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
@@ -482,7 +515,10 @@ pub(crate) fn scan_with(
                 continue;
             }
         };
-        let bytes = read(rel, path)?;
+        let bytes = match author_bytes {
+            Some(bytes) => bytes,
+            None => read(rel, path)?,
+        };
         sources.push(Source {
             rel: rel.clone(),
             path: path.clone(),

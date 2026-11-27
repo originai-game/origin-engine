@@ -1,6 +1,6 @@
 # The engine's game icon set
 
-`game.ogt` is the icon set `<Icon name>` draws from when the game has no icon of
+`game.ts` is the icon set `<Icon name>` draws from when the game has no icon of
 that name (the default pack's `iconSet`, docs/ui.md §3.3); names it lacks fall
 back to the engine's Lucide line icons (`back`, `close`, `chevronLeft`, `gear` …).
 Every icon sits on a 24-unit grid and is cooked as a distance field at 48 px

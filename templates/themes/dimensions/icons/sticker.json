@@ -1,6 +1,6 @@
 {
   "about": "The set's default: a dark outline rim and a drop under the tones.",
-  "set": "@styles/shared/icons/game.ogt",
+  "set": "@styles/shared/icons/game.ts",
   "colors": {
     "icon-outline": "outline",
     "icon-shadow": "#00000059",

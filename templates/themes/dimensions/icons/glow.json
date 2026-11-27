@@ -1,6 +1,6 @@
 {
   "about": "Lit: an accent rim and a light gloss, no drop.",
-  "set": "@styles/shared/icons/game.ogt",
+  "set": "@styles/shared/icons/game.ts",
   "colors": {
     "icon-outline": "accent",
     "icon-shadow": "#00000000",

@@ -2,19 +2,12 @@
 //! like a font, so og-ui draws them through the MTSDF text path (crisp at
 //! any size, tinted by their ink, with a text glow when a skin asks).
 //!
-//! An `.ogt` of `type icons` names its SVGs:
+//! A checked TS declaration names SVGs under its owning module:
 //!
-//! ```text
-//! type icons
-//! version 1
-//! ---
-//! source "iconoir"       # the SVGs' directory, beside this file
-//! size 48                # atlas pixels per icon (its em)
-//! range 8                # the distance range, atlas pixels
-//! join round             # the join of a path that names none (round,
-//!                        # miter or bevel; SVG's miter when left out)
-//! icon "heart"           # an icon: its name, and its SVG's file name without
-//! icon "close" "xmark"   # .svg when the two differ
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file.icons({source: 'assets/icons', join: 'round',
+//!   icons: [['heart', 'heart'], ['close', 'xmark']]});
 //! ```
 //!
 //! Each icon is a glyph at U+E000 + its index (the Private Use Area), one em
@@ -56,70 +49,22 @@
 //! set's `sticker` line gives them in 24ths of the em, a 24-unit grid's
 //! units; 0 0 0 when it has none).
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
+use super::{Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
-
-/// The `.ogt` type of an icon set.
-pub const ICONS_TYPE: &str = "icons";
 /// The code point of the first icon.
 pub const ICON_PUA: u32 = 0xE000;
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "source",
-        "\"<directory>\"",
-        ".",
-        "SVG directory, relative to this file.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "size",
-        "<integer, 1..512>",
-        "48",
-        "Distance-field em size in pixels.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "range",
-        "<integer, 1..512>",
-        "8",
-        "Distance-field range in pixels.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "join",
-        "miter | round | bevel",
-        "miter",
-        "Join used by stroked SVG paths without their own join.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "icon",
-        "\"<name>\" [\"<SVG stem>\"]",
-        "",
-        "Repeat named glyphs in index order; omitted stem uses name. Names must be unique.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "sticker",
-        "<outline> <dx> <dy>",
-        "0 0 0",
-        "Outline 0..4 and offsets -4..4, in 24ths of the em.",
-        "",
-    ),
-];
-
-/// A parsed icon set file.
+/// An icon declaration; SVG validation and distance-field baking stay native.
 #[derive(
     Clone, Debug, PartialEq, serde::Deserialize, og_core::reflect::source::schemars::JsonSchema,
 )]
 #[schemars(crate = "og_core::reflect::source::schemars", extend("required" = ["icons"]))]
 #[serde(default, deny_unknown_fields)]
 pub struct IconSet {
-    /// Directory of source SVGs, relative to this source file.
+    /// Canonical directory of SVGs relative to the owning module, for example
+    /// assets/icons. No source-file-relative or asset-root fallback.
     pub source: String,
     /// Square MSDF glyph size in pixels.
     #[schemars(range(min = 1, max = 512), extend("x-og-unit" = "px"))]
@@ -153,7 +98,7 @@ impl IconSet {
 impl Default for IconSet {
     fn default() -> Self {
         Self {
-            source: ".".into(),
+            source: "assets/icons".into(),
             size: 48,
             range: 8,
             join: Join::Miter,
@@ -195,114 +140,6 @@ impl Join {
             _ => None,
         }
     }
-}
-
-/// Parses an icon set file.
-pub fn parse(text: &str) -> Result<IconSet, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != ICONS_TYPE {
-        return Err(format!("an icon set is `type icons`, not `{}`", doc.ty));
-    }
-    let mut set = IconSet::default();
-    for e in &doc.body.entries {
-        let at = |m: String| format!("line {}: {m}", e.line);
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(at(format!("unknown icons field '{}'", e.key)));
-        }
-        match e.key.as_str() {
-            "source" => set.source = e.string(0).map_err(|x| at(x.to_string()))?.to_owned(),
-            "size" | "range" => {
-                let v = e.f32(0).map_err(|x| at(x.to_string()))?;
-                if !((1.0..=512.0).contains(&v) && v.fract() == 0.0) {
-                    return Err(at(format!(
-                        "{} {v}: a whole number of pixels, 1 to 512",
-                        e.key
-                    )));
-                }
-                if e.key == "size" {
-                    set.size = v as u32;
-                } else {
-                    set.range = v as u32;
-                }
-            }
-            "join" => {
-                let v = e
-                    .word(0)
-                    .or_else(|_| e.string(0))
-                    .map_err(|x| at(x.to_string()))?;
-                set.join = Join::parse(v)
-                    .filter(|_| matches!(v, "round" | "miter" | "bevel"))
-                    .ok_or_else(|| at(format!("join \"{v}\": round, miter or bevel")))?;
-            }
-            "icon" => {
-                let name = e.string(0).map_err(|x| at(x.to_string()))?.to_owned();
-                let file = match e.values.len() {
-                    1 => name.clone(),
-                    _ => e.string(1).map_err(|x| at(x.to_string()))?.to_owned(),
-                };
-                if name.is_empty() || name.contains('\n') {
-                    return Err(at("an icon's name is one non-empty line".into()));
-                }
-                if set.icons.iter().any(|(n, _)| *n == name) {
-                    return Err(at(format!("icon \"{name}\" is named twice")));
-                }
-                if file.split('/').any(|c| c == ".." || c.is_empty()) {
-                    return Err(at(format!("\"{file}\" is not a file under the source")));
-                }
-                set.icons.push((name, file));
-            }
-            "sticker" => {
-                let mut v = [0.0; 3];
-                for (k, x) in v.iter_mut().enumerate() {
-                    *x = e.f32(k).map_err(|x| at(x.to_string()))?;
-                }
-                if !(0.0..=4.0).contains(&v[0]) || v[1].abs() > 4.0 || v[2].abs() > 4.0 {
-                    return Err(at(
-                        "sticker <outline> <dx> <dy>: 24ths of the em, 0 to 4 (an offset -4 to 4)"
-                            .into(),
-                    ));
-                }
-                set.sticker = v;
-            }
-            other => {
-                return Err(at(format!(
-                    "`{other}` is not an icon set line (source, size, range, join, sticker, icon)"
-                )));
-            }
-        }
-    }
-    if set.icons.is_empty() {
-        return Err("an icon set names at least one `icon`".into());
-    }
-    if set.icons.len() > 0x1900 {
-        return Err("an icon set holds at most 6,400 icons (the Private Use Area)".into());
-    }
-    Ok(set)
-}
-
-/// The directory the set's SVGs are read from.
-fn source_dir(s: &Source, set: &IconSet) -> std::path::PathBuf {
-    let mut dir = s.path.clone();
-    dir.pop();
-    dir.join(&set.source)
-}
-
-/// What the cook stamp covers besides the file: each SVG's bytes.
-pub(crate) fn dependencies(s: &Source) -> String {
-    let Ok(set) = parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return String::new();
-    };
-    let dir = source_dir(s, &set);
-    set.icons
-        .iter()
-        .map(|(_, f)| {
-            let h = std::fs::read(dir.join(format!("{f}.svg")))
-                .map(|b| super::hash_bytes(&b))
-                .unwrap_or(0);
-            format!("{f}={h:016x}")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 /// A flattened subpath: its points, and whether it closes.
@@ -722,11 +559,11 @@ fn tones_section(sticker: [f32; 3], runs: &[(u32, Vec<(u32, String)>)]) -> Strin
 }
 
 /// Cooks an icon set into an `og.Font` blob with a `names` section.
-pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError("an icon set is text (UTF-8)".into()))?;
-    let set = parse(text).map_err(CookError)?;
-    let dir = source_dir(s, &set);
+fn cook(
+    set: &IconSet,
+    svgs: &std::collections::BTreeMap<String, String>,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let pad = set.range.div_ceil(2) + 1;
     let cell = set.size + 2 * pad;
     let count = set.icons.len() as u32;
@@ -737,10 +574,7 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     // the set's order after, so the output does not depend on the threads.
     let threads = std::thread::available_parallelism().map_or(1, usize::from);
     let rendered = crate::cook::each(&set.icons, threads, |(name, file)| {
-        let path = dir.join(format!("{file}.svg"));
-        let svg = std::fs::read_to_string(&path)
-            .map_err(|e| CookError(format!("icon \"{name}\": {}: {e}", path.display())))?;
-        let (sh, view) = shapes(&svg, set.join)
+        let (sh, view) = shapes(&svgs[file], set.join)
             .map_err(|e| CookError(format!("icon \"{name}\" ({file}.svg): {e}")))?;
         let field = render(&sh, view, set.size, set.range, pad);
         let toned: Vec<Vec<u8>> = if sh.iter().all(|s| s.tone.is_empty()) {
@@ -849,7 +683,7 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
 pub(crate) static ICONS: KindDef = KindDef {
     name: "icons",
     extensions: &[],
-    types: &[ICONS_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_icons,
@@ -859,23 +693,74 @@ pub(crate) static ICONS: KindDef = KindDef {
 pub(crate) static KINDS: &[&KindDef] = &[&ICONS];
 
 fn plan_icons<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
+    cx: &Cx<'a>,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    // The stamp covers every SVG the set names.
-    let deps = dependencies(s);
-    let st = stamp(&[Area::Font], &[b"icons", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Font::NAME, st, Box::new(IconsJob(s))));
+    // Capture before cache lookup; the bake reads precisely the stamped bytes.
+    let prepared = (|| -> Result<_, String> {
+        let set = s.input::<IconSet>()?;
+        let root = crate::cook::assets_root(s);
+        let mut names = std::collections::BTreeSet::new();
+        let mut svgs = std::collections::BTreeMap::new();
+        let mut paths = Vec::new();
+        for (name, file) in &set.icons {
+            if name.is_empty() || name.contains(['\n', '\r']) || !names.insert(name) {
+                return Err(format!(
+                    "icon {name:?}: names must be unique, nonempty single lines"
+                ));
+            }
+            crate::cook::source_path::relative(file).map_err(|e| format!("icon {name:?}: {e}"))?;
+            if svgs.contains_key(file) {
+                continue;
+            }
+            let relative = format!("{}/{file}.svg", set.source);
+            let path = crate::cook::source_path::checked(&root, &relative)
+                .map_err(|e| format!("icon {name:?}: {relative}: {e}"))?;
+            paths.push(path.clone());
+            let svg = std::fs::read_to_string(path)
+                .map_err(|e| format!("icon {name:?}: {relative}: {e}"))?;
+            svgs.insert(file.clone(), svg);
+        }
+        cx.index.note_external(&paths);
+        Ok((set, svgs))
+    })();
+    let (set, svgs) = match prepared {
+        Ok(prepared) => prepared,
+        Err(error) => {
+            state.early_errors.push((s.rel.clone(), "icons", error));
+            return;
+        }
+    };
+    let mut parts = vec![b"icons typed 1".as_slice(), &hash];
+    parts.extend(svgs.values().map(|svg| svg.as_bytes()));
+    let st = stamp(&[Area::Font], &parts);
+    outs.push((
+        s.rel.clone(),
+        format::Font::NAME,
+        st,
+        Box::new(IconsJob {
+            source: s,
+            set,
+            svgs,
+        }),
+    ));
 }
 
 /// An icon set's one output.
-struct IconsJob<'a>(&'a Source);
+struct IconsJob<'a> {
+    source: &'a Source,
+    set: IconSet,
+    svgs: std::collections::BTreeMap<String, String>,
+}
 
 impl Job for IconsJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook(self.0, p.stamp)
+        cook(&self.set, &self.svgs, p.stamp)
+    }
+    fn action(&self) -> Action<'_> {
+        Action::Input(&self.source.bytes, false)
     }
 }

@@ -50,7 +50,7 @@ pub const LINES: &[Line] = &[
         "iconSet",
         "path",
         "none",
-        "Icons asset (.ogt), below individually named icons.",
+        "Cooked icon set (file.icons), below individually named icons.",
         "",
     ),
     Line::new(

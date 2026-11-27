@@ -2,7 +2,7 @@
 
 | File | Licence | Origin |
 |---|---|---|
-| `assets/icons/iconoir/*.svg` | MIT (`assets/icons/iconoir/LICENSE`, Copyright (c) 2021 Luca Burgio) | 72 icons of iconoir 7.12.1 (the platform's icon set, `iconoir` on npm), copied unchanged; `assets/icons/iconoir.ogt` (CC0) names them (and the kit's own names for 17 of them) for the cook, which renders them into a distance-field atlas |
+| `assets/icons/iconoir/*.svg` | MIT (`assets/icons/iconoir/LICENSE`, Copyright (c) 2021 Luca Burgio) | 72 icons of iconoir 7.12.1 (the platform's icon set, `iconoir` on npm), copied unchanged; `content/icons/iconoir.ts` (CC0) names them (and the kit's own names for 17 of them) for the cook, which renders them into a distance-field atlas |
 | `assets/textures/backdrop.png` | CC0 1.0 | self-made: a dusk landscape behind the HUD screens, same script |
 | `assets/fonts/NotoSansSC-Regular-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | a byte-identical copy of `templates/game/assets/fonts/` (the platform's project-template font) |
 | `../styles/<style>/` | CC0 1.0 art and style files; SIL OFL 1.1 fonts | atlases, icons and `style.ogt` drawn by `tools/make-styles.py` (deterministic); fonts and their origins in each style's `LICENSES.md` and `OFL.txt` |

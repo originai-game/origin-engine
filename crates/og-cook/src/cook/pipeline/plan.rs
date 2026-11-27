@@ -3,6 +3,8 @@ use super::*;
 /// What every stage after the art contract reads.
 #[derive(Clone, Copy)]
 pub(crate) struct Cx<'a> {
+    /// Inputs discovered by domain planners also participate in checkpoints.
+    pub(crate) index: &'a index::Index,
     pub(crate) root: &'a Path,
     pub(crate) assets_dir: &'a Path,
     pub(crate) cooked_dir: &'a Path,

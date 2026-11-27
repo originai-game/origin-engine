@@ -13,6 +13,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("vector", &vector::VECTOR),
     ("sfx", &sfx::SFX),
     ("environment", &environment::ENVIRONMENT),
+    ("icons", &icons::ICONS),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.

@@ -1,6 +1,6 @@
-// The UI gallery's icon sheet: the engine's game icon set (templates/styles/shared/icons/game.ogt)
+// The UI gallery's icon sheet: the engine's game icon set (templates/styles/shared/icons/game.ts)
 // at the sizes games draw it, on the pack's dark and light plates. Not a component: the gallery
-// copies it into its project with the set's names (./names.ts, written from game.ogt).
+// copies it into its project with the set's names (./names.ts, written from game-names.ts).
 import { Icon, Text, View, packClass } from "@origingame/engine/ui";
 import { INK, TONED } from "./names";
 

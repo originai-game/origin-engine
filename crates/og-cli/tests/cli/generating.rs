@@ -1,5 +1,182 @@
 use super::*;
 
+/// The public icon author/cook/load path preserves aliases and module ownership,
+/// refreshes external SVG inputs, and ships the default set without an OGT path.
+#[test]
+fn typed_icons_load_module_svg_aliases_and_builtin_styles() {
+    let root = TempDir::new("og-typed-icons");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Icons","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'icons',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "export default {};");
+    let declaration = "import {file} from '@origingame/engine/author'; export default file.icons({source:'sources/icons',size:24,range:5,join:'round',sticker:[0.6,-1,2],icons:[['gate/界','nested/gate'],['alias','nested/gate']]});";
+    write("content/icons/ui.ts", declaration);
+    write("modules/north/content/icons/ui.ts", declaration);
+    let svg = |edge: u32| {
+        format!(
+            r#"<svg viewBox="0 0 24 24"><path d="M2 3 H{edge} V19 H2 Z" fill="var(--color-icon-gold)"/><path d="M4 6 L13 17" fill="none" stroke="currentColor" stroke-width="2"/></svg>"#
+        )
+    };
+    write("modules/north/sources/icons/nested/gate.svg", &svg(9));
+    let cache = root.join("cache");
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let mut previous = None;
+    let mut north = None;
+    for (run, edge) in [16, 16, 21].into_iter().enumerate() {
+        write("sources/icons/nested/gate.svg", &svg(edge));
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let font = bundle.load_font("base/icons/ui").unwrap();
+        assert_eq!(font.names, ["gate/界", "alias"]);
+        assert!(font.file.is_none());
+        assert!(font.tones.contains("icon-gold"));
+        assert!(font.glyph('\u{e000}').is_some());
+        assert!(font.glyph('\u{e001}').is_some());
+        let other = bundle.load_font("north/icons/ui").unwrap();
+        assert_ne!(font.pages, other.pages, "module SVGs were mixed");
+        if let Some(before) = previous {
+            assert_eq!(
+                font == before,
+                run == 1,
+                "SVG change did not refresh the font"
+            );
+            assert_eq!(
+                Some(&other),
+                north.as_ref(),
+                "base SVG invalidated another module"
+            );
+        }
+        previous = Some(font);
+        north = Some(other);
+    }
+    for invalid in [
+        "{source:'sources/icons',icons:[['a','nested/gate'],['a','nested/gate']]}",
+        r#"{source:'sources/icons',icons:[['bad\nname','nested/gate']]}"#,
+        "{source:'sources/icons',icons:[['a','../gate']]}",
+        "{source:'sources/icons/../icons',icons:[['a','nested/gate']]}",
+        "{source:'../sources/icons',icons:[['a','nested/gate']]}",
+        "{source:'sources/icons',icons:[['a','nested/gate']],sticker:[0,5,0]}",
+        "{source:'sources/icons',icons:[]}",
+    ] {
+        write(
+            "content/icons/ui.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.icons({invalid});"
+            ),
+        );
+        let out = cook();
+        assert!(
+            !out.status.success(),
+            "invalid icon declaration accepted: {invalid}"
+        );
+    }
+    write("content/icons/ui.ts", declaration);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("nested", root.join("sources/icons/link")).unwrap();
+        write(
+            "content/icons/ui.ts",
+            &declaration.replace("nested/gate", "link/gate"),
+        );
+        assert!(!cook().status.success(), "symlink SVG parent accepted");
+        std::fs::remove_file(root.join("sources/icons/link")).unwrap();
+        write("content/icons/ui.ts", declaration);
+    }
+    write(
+        "assets/old.ogt",
+        "type icons\nversion 1\n---\nicon \"gate\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("icons OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+    std::fs::remove_file(root.join("assets/old.ogt")).unwrap();
+    // A style pack pulls in a typed built-in declaration and its imported names,
+    // using the same VM and native baker as the game's own content.
+    write(
+        "assets/styles/test/pack.json",
+        r#"{"iconSet":"@styles/shared/icons/game.ts"}"#,
+    );
+    for _ in 0..2 {
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let font = bundle.load_font("@styles/shared/icons/game.ts").unwrap();
+        assert_eq!(font.names.first().map(String::as_str), Some("coin"));
+        assert_eq!(font.names.last().map(String::as_str), Some("charm"));
+        assert!(font.names.iter().any(|n| n == "heart"));
+        assert!(font.tones.contains("icon-gold"));
+        assert!(font.file.is_none());
+        assert!(bundle.read("@styles/shared/icons/game.ogt").is_err());
+    }
+    // Installed styles can live in an arbitrarily named directory outside the
+    // project. Both imported TS and native SVG inputs invalidate its checkpoint.
+    let styles = TempDir::new("og-external-icon-styles");
+    let icons = styles.join("shared/icons");
+    std::fs::create_dir_all(&icons).unwrap();
+    std::fs::write(
+        icons.join("game.ts"),
+        "import {file} from '@origingame/engine/author'; import {icons} from './names.ts'; export default file.icons({source:'shared/icons',size:24,icons});",
+    )
+    .unwrap();
+    std::fs::write(
+        icons.join("names.ts"),
+        "export const icons = [['external','gate']] as const;",
+    )
+    .unwrap();
+    let mut previous = None;
+    for run in 0..4 {
+        match run {
+            0 => std::fs::write(icons.join("gate.svg"), svg(7)).unwrap(),
+            2 => std::fs::write(icons.join("gate.svg"), svg(23)).unwrap(),
+            3 => std::fs::write(
+                icons.join("names.ts"),
+                "export const icons = [['renamed','gate']] as const;",
+            )
+            .unwrap(),
+            _ => {}
+        }
+        let out = og()
+            .args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .env("OG_STYLES_DIR", styles.as_path())
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let font = bundle.load_font("@styles/shared/icons/game.ts").unwrap();
+        assert_eq!(font.names, [if run == 3 { "renamed" } else { "external" }]);
+        if let Some(before) = previous {
+            assert_eq!(font == before, run == 1, "external change was missed");
+        }
+        previous = Some(font);
+    }
+}
+
 /// Typed environment inputs retain native bake semantics, module ownership and
 /// dependency invalidation across the public CLI and bundle loader.
 #[test]

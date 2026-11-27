@@ -1066,7 +1066,7 @@ fn source_data_author_contracts() {
         .unwrap();
     assert_eq!(
         (icons.source.as_str(), icons.size, icons.range),
-        (".", 48, 8)
+        ("assets/icons", 48, 8)
     );
     assert!(matches!(
         TextureArrayInput::schema()

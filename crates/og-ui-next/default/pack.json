@@ -34,7 +34,7 @@
       }
     }
   },
-  "iconSet": "@styles/shared/icons/game.ogt",
+  "iconSet": "@styles/shared/icons/game.ts",
   "icons": {
     "key.altleft": "@styles/shared/glyphs/key-alt.svg",
     "key.altright": "@styles/shared/glyphs/key-alt.svg",

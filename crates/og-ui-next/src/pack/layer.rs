@@ -21,7 +21,7 @@ pub struct Layer {
     /// families as the files do.
     pub fonts: Vec<String>,
     pub icons: BTreeMap<String, String>,
-    /// The icon set (an `.ogt` of `type icons`) `<Icon name>` draws from,
+    /// The cooked icon set (`file.icons`) `<Icon name>` draws from,
     /// under the game's own icons: a later layer's over an earlier one's.
     pub icon_set: Option<String>,
     /// Nine-slice art by name, per scheme ([`Scheme::ALL`] order).

@@ -70,6 +70,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "environment" {
                 out.push_str("Output: an environment map loaded with og.load.environment. Source is exactly one of {equirect: path}, {ktx2: path}, or {faces: [px,nx,py,ny,pz,nz]}. Paths are canonical under the owning module's assets/ or sources/, without sibling fallback. Image bytes are captured before cache lookup. The existing HDR/LDR prefilter, upper hemisphere fill, sun extraction and prefiltered KTX2 chain are unchanged. Size is a power of two; prefiltered forbids samples and sun extraction. See loading and render.\n\n");
             }
+            if ty == "icons" {
+                out.push_str("Output: a named distance-field font loaded with og.load.font. SVG directory source is canonical relative to the owning module (default assets/icons), never relative to the declaration. icons is an ordered list of [name, SVG stem] pairs; names are unique single lines, and stems stay beneath source. Exact SVG bytes are captured before cache lookup. Native SVG stroke joins, fill, tone runs, sticker outline/shadow and atlas layout are unchanged. See theme-tokens for the shared set.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -233,10 +236,6 @@ pub fn markdown() -> Result<String, String> {
                     "materials.material.vary",
                     super::systems::district::parse::VARY_LINES,
                 );
-            }
-            "icons" => {
-                out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
-                table(&mut out, super::icons::LINES);
             }
             "navmesh" => {
                 out.push_str("Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.\n\n");
