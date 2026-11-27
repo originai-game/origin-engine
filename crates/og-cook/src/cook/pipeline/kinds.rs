@@ -168,6 +168,8 @@ mod tests {
                 }
             }
         }
-        assert!(seen.contains_key("glb") && seen.contains_key("scene"));
+        assert!(seen.contains_key("glb") && seen.contains_key("quest"));
+        assert_eq!(by_extension("glb").map(|k| k.name), Some(seen["glb"]));
+        assert_eq!(by_type("quest").map(|k| k.name), Some(seen["quest"]));
     }
 }
