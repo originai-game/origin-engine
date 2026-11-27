@@ -5,7 +5,7 @@
 use crate::engine::{Engine, engine};
 use crate::host::wire::LocaleInfo;
 use crate::parse;
-use og_i18n::{Arg, Catalog, StringTable};
+use og_i18n::{Arg, BundleStrings, Catalog, StringTable};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -97,10 +97,7 @@ fn authored(
 pub(crate) fn read_table(eng: &Engine, id: &str) -> Result<StringTable, String> {
     let assets = eng.assets.borrow();
     let (bytes, bundle) = assets.blob(id)?;
-    let text = bundle
-        .strings_text(id, bytes.bytes())
-        .map_err(|e| e.to_string())?;
-    StringTable::parse(&text).map_err(|e| format!("{id}: {e}"))
+    bundle.strings(id, bytes.bytes()).map_err(|e| e.to_string())
 }
 
 /// A UI's string table `id` as authored strings of its locale, beside the
@@ -523,14 +520,13 @@ pub fn og_i18n_load(world: u32, path: String) -> Result<crate::host::wire::Local
     (|| -> Result<LocaleInfo, String> {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let text = {
+        let table = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
             bundle
-                .strings_text(&id, bytes.bytes())
+                .strings(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
-        let table = StringTable::parse(&text).map_err(|e| format!("{id}: {e}"))?;
         with(world, |s| s.catalog.insert(table));
         apply(&eng)?;
         Ok(info(world))

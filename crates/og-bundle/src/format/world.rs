@@ -448,22 +448,38 @@ impl BlobKind for NavMesh {
 // ── E6: string tables ────────────────────────────────────────────────────
 
 row!(
-    /// The root of a string table blob (an `.ogt` of `type strings`).
-    StringsMeta, "og.Strings", 1 {
-        /// Bytes of the validated table text in `text`.
-        text_bytes: u32,
-        /// Its entries.
-        strings: u32,
+    /// Native locale metadata; ranges address UTF-8 `text` bytes.
+    StringsMeta, "og.Strings", 2 {
+        locale_offset: u32, locale_len: u32,
+        fallback_offset: u32, fallback_len: u32,
+        base: u32,
+        /// 0 left to right, 1 right to left.
+        direction: u32,
     }
 );
 
-/// The string table blob: `text` holds the table the cook validated
-/// (og-i18n's `StringTable::parse`), parsed again at load.
+row!(
+    /// One ICU message; both key and source ranges address `text`.
+    StringEntryRow, "og.StringEntry", 1 {
+        key_offset: u32, key_len: u32,
+        message_offset: u32, message_len: u32,
+    }
+);
+row!(
+    /// An ordered font asset ID in `text`.
+    StringFontRow, "og.StringFont", 1 { offset: u32, len: u32 }
+);
+
+/// Locale metadata, ordered fonts and ICU message sources, without author text.
 pub struct Strings;
 impl BlobKind for Strings {
     const NAME: &'static str = "og.Strings";
     fn schemas() -> Vec<Schema> {
-        vec![StringsMeta::schema()]
+        vec![
+            StringsMeta::schema(),
+            StringEntryRow::schema(),
+            StringFontRow::schema(),
+        ]
     }
 }
 

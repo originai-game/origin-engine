@@ -1715,18 +1715,6 @@ impl Bundle {
             })
             .collect())
     }
-
-    /// The validated text of a string table blob (`og.Strings`); parse it
-    /// with og-i18n's `StringTable::parse`.
-    pub fn strings_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
-        let blob = self.blob::<format::Strings>(id, bytes)?;
-        let meta = one::<format::StringsMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        text.get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .map(str::to_string)
-            .ok_or_else(|| invalid(&blob, "the string table is cut short or not UTF-8"))
-    }
 }
 
 // ── phase 3: streaming groups ────────────────────────────────────────────

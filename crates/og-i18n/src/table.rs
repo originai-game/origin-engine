@@ -77,6 +77,46 @@ fn string_of(v: &Value) -> Option<&str> {
 }
 
 impl StringTable {
+    /// Build a locale table from native values; compile only the ICU messages.
+    pub fn new(
+        locale: String,
+        fallback: Option<String>,
+        base: bool,
+        direction: Option<Direction>,
+        fonts: Vec<String>,
+        entries: BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        let tag = |s: &str| {
+            if s.trim().is_empty()
+                || !s
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
+            {
+                return Err(format!("invalid locale tag '{s}'"));
+            }
+            let canonical = canonical(s);
+            if canonical.is_empty() {
+                return Err(format!("invalid locale tag '{s}'"));
+            }
+            Ok(canonical)
+        };
+        let locale = tag(&locale)?;
+        Ok(Self {
+            direction: direction.unwrap_or_else(|| direction_of_locale(&locale)),
+            locale,
+            fallback: fallback.as_deref().map(tag).transpose()?,
+            base,
+            fonts,
+            entries: entries
+                .into_iter()
+                .map(|(key, source)| {
+                    let message = Message::parse(&source).map_err(|e| format!("'{key}': {e}"))?;
+                    Ok((key, (source, message)))
+                })
+                .collect::<Result<_, String>>()?,
+        })
+    }
+
     /// Parses a table, refusing a malformed entry or message with its line.
     pub fn parse(text: &str) -> Result<StringTable, String> {
         let doc = Document::parse(text).map_err(|e| e.to_string())?;

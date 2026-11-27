@@ -47,7 +47,7 @@
 //! | quest (`og.Quest`, an `.ogt` of `type quest`) | [`QuestMeta`] | `text` (the validated quest file) |
 //! | table (`og.Table`, an `.ogt` of `type table`) | [`TableMeta`] | `text` (the checked table file) |
 //! | navmesh (`og.NavMesh`, a checked `file.navmesh` declaration) | [`NavMeshMeta`] | `columns` (a meshopt vertex stream of [`NavColumnRow`], one a grid column), `spans` (a meshopt vertex stream of [`NavSpanRow`]; the two are the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
-//! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
+//! | string table (`og.Strings`) | [`StringsMeta`] | `entries` [`StringEntryRow`], ordered `fonts` [`StringFontRow`], `text` (UTF-8 locale tags, asset IDs and ICU messages, never an author document) |
 //! | font pack (`og.FontPack`, a font pack's `extension.json`) | [`FontPackMeta`] | `text` (og-i18n's `FontPack` index: languages, faces, coverage); `hyphenation:<language>` (a shipped hyphenation dictionary each), `segmentation:<dictionary>` (a shipped ICU word dictionary each, og-i18n's `segmenter` bytes) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids, the layer arrays' ids) |

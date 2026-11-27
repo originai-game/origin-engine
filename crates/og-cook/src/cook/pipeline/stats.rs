@@ -539,7 +539,8 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             )
         }
         "og.Strings" => {
-            let t = og_i18n::StringTable::parse(&bundle.strings_text(id, &bytes()?).map_err(e)?)?;
+            use og_i18n::BundleStrings;
+            let t = bundle.strings(id, &bytes()?).map_err(e)?;
             (
                 "strings",
                 json!({

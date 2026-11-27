@@ -461,6 +461,16 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert!(f.pages.is_empty() && f.glyphs.is_empty() && f.kerning.is_empty());
     assert!(f.meta.ascender > 0.5 && f.meta.descender < 0.0);
 
+    // Locale data and compiled ICU arguments survive the native blob boundary.
+    use og_i18n::BundleStrings;
+    let bytes = b.read("strings/en.ogt").unwrap();
+    let strings = b.strings("strings/en.ogt", &bytes).unwrap();
+    assert_eq!(strings.locale, "en");
+    assert!(strings.base && strings.fallback.is_none());
+    assert_eq!(strings.direction, og_i18n::Direction::Ltr);
+    assert_eq!(strings.entries["menu.title"].0, "Origin Engine");
+    assert_eq!(strings.entries["menu.spinning"].1.arguments(), ["speed"]);
+
     // Scene: entities, nesting, model instances and the Transform table.
     let scene = b.load_scene("scenes/main.ogt").unwrap();
     assert_eq!(scene.name, "Main");

@@ -1,14 +1,39 @@
-//! String tables (`type strings`): validated by og-i18n and kept as text.
+//! String tables: checked native metadata and ICU sources, never author text.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
-/// Cooks a string table (`type strings`): validated by og-i18n, kept as text.
+/// Cooks native locale fields. ICU source text is retained for formatting.
 pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a string table is text (UTF-8)".into()))?;
     let t = og_i18n::StringTable::parse(text).map_err(CookError)?;
+    let mut text = super::super::formats::model::Strings(Vec::new());
+    let (locale_offset, locale_len) = text.add(&t.locale);
+    let (fallback_offset, fallback_len) = text.add(t.fallback.as_deref().unwrap_or(""));
+    let entries: Vec<_> = t
+        .entries
+        .iter()
+        .map(|(key, (source, _))| {
+            let (key_offset, key_len) = text.add(key);
+            let (message_offset, message_len) = text.add(source);
+            format::StringEntryRow {
+                key_offset,
+                key_len,
+                message_offset,
+                message_len,
+            }
+        })
+        .collect();
+    let fonts: Vec<_> = t
+        .fonts
+        .iter()
+        .map(|font| {
+            let (offset, len) = text.add(font);
+            format::StringFontRow { offset, len }
+        })
+        .collect();
     let mut w = BlobWriter::new(
         format::Strings::type_hash(),
         format::Strings::schema_version(),
@@ -17,12 +42,22 @@ pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     w.table(
         "meta",
         &[format::StringsMeta {
-            text_bytes: text.len() as u32,
-            strings: t.entries.len() as u32,
+            locale_offset,
+            locale_len,
+            fallback_offset,
+            fallback_len,
+            base: u32::from(t.base),
+            direction: u32::from(t.direction == og_i18n::Direction::Rtl),
         }],
         format::row_hash::<format::StringsMeta>(),
     )
-    .raw("text", text.as_bytes().to_vec(), 16);
+    .table(
+        "entries",
+        &entries,
+        format::row_hash::<format::StringEntryRow>(),
+    )
+    .table("fonts", &fonts, format::row_hash::<format::StringFontRow>())
+    .raw("text", text.0, 1);
     Ok((
         w.finish(),
         vec![format!(

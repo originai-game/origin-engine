@@ -5,11 +5,13 @@ version = "0.9.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine localization: string tables (`type strings` .ogt), an ICU MessageFormat subset (placeholders, plurals, selects, numbers), CLDR plural rules, locale negotiation and text direction."
+description = "Origin Engine localization: typed string tables, an ICU MessageFormat subset (placeholders, plurals, selects, numbers), CLDR plural rules, locale negotiation and text direction."
 
-# Pure Rust over og-core; builds for wasm32-unknown-unknown.
+# Pure Rust; builds for wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
+# Cooked formats sit below localization; this crate builds the parsed ICU messages.
+og-bundle = { path = "../og-bundle" }
 # UAX #29 word boundaries (double-click selection, undo grouping) and
 # grapheme clusters (a base and its marks drawn by one font). The version
 # Parley breaks lines and words with; compiled rules, no LSTM model. Its

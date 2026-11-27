@@ -23,6 +23,7 @@
 // Generated (scripts/cldr.ts), one record per line: rustfmt leaves it as written.
 #[rustfmt::skip]
 mod cldr;
+mod cooked;
 pub mod font_pack;
 pub mod format;
 pub mod hyphenation;
@@ -34,6 +35,7 @@ pub mod spacing;
 pub mod table;
 pub mod text;
 
+pub use cooked::BundleStrings;
 pub use font_pack::FontPack;
 pub use format::{
     DateStyle, TimeStyle, format_compact, format_currency, format_date, format_decimal,

@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "og.i18n.load / og.Strings",
+    "change": "Cooked string tables contain reflected locale metadata, ordered font references and ICU message sources, not an embedded author document. Runtime localization loads the native payload and compiles only ICU messages; the old runtime text payload is removed.",
+    "fix": "Re-cook with the matching engine runtime. The TypeScript author-entry cutover follows in the same migration stack; this format step does not introduce a second author path."
+  }]
+}
