@@ -28,4 +28,4 @@ fn barks {
 }
 ```
 
-<sub>Module `story` line 394</sub>
+<sub>Module `story` line 387</sub>

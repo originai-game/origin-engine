@@ -1,5 +1,5 @@
-//! Origin Engine stories: Yarn dialogue compiled to engine IR
-//! and quests (`type quest`) declared in `.ogt`, their
+//! Origin Engine stories: native dialogues and quests from checked TS
+//! declarations or explicit Yarn imports, their
 //! expressions, and the story a world keeps. Pure logic over og-core: the
 //! runtime's og.story module mounts it on a world, saves it as a state
 //! block and sends its events. Deterministic: a story draws only from its
@@ -9,7 +9,7 @@
 //! | Module | What it holds |
 //! |---|---|
 //! | [`expr`] | [`Expr`], [`Val`]: conditions and values |
-//! | [`asset`] | [`Dialogue`], [`Quest`]: parsing and validation |
+//! | [`asset`] | [`Dialogue`], [`Quest`]: native codec and validation |
 //! | [`story`] | [`Story`], [`Library`]: conversations, quests, variables, event-counted objectives |
 //! | [`bark`] | barks and ambient lines: requests, cooldowns, priority |
 //! | [`graph`] | [`Dialogue::graph`]: its nodes and where each may lead |
@@ -24,8 +24,8 @@ pub mod story;
 pub mod yarn;
 
 pub use asset::{
-    Bark, Check, Choice, DIALOGUE_TYPE, Dialogue, Line, NARRATOR, Node, Objective, QUEST_TYPE,
-    Quest, QuestOp, Reward, Speaker, Stage, Step, Text, VarDecl,
+    Bark, Check, Choice, Dialogue, Line, NARRATOR, Node, Objective, Quest, QuestOp, Reward,
+    Speaker, Stage, Step, Text, VarDecl,
 };
 pub use bark::{Ambient, Request, Said};
 pub use expr::{Expr, Val};

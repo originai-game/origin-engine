@@ -24,7 +24,6 @@ pub(crate) struct Cx<'a> {
     pub(crate) font_desc: &'a str,
     pub(crate) budget_desc: &'a str,
     pub(crate) schema_hash: [u8; 8],
-    pub(crate) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
     pub(crate) story_functions_stamp: &'a [u8],
     /// The project's profile (its creation form's): the manifest's.
     pub(crate) profile: crate::look::Profile,

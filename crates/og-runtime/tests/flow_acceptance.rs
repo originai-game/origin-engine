@@ -52,6 +52,10 @@ fn project() -> &'static Path {
         let bgm = root.join("assets/bgm/theme.wav");
         std::fs::create_dir_all(bgm.parent().unwrap()).unwrap();
         std::fs::write(bgm, og_audio::wav(&pcm, 1, 48_000)).unwrap();
+        write(
+            "content/bgm/theme.ts",
+            "import {file} from '@origingame/engine/author';export default file.import({kind:'sound',source:'assets/bgm/theme.wav'});",
+        );
 
         write(
             "assets/subs/intro.vtt",
@@ -125,7 +129,11 @@ export default file.timeline({name:'LoopOne',duration:0.4,tracks:[
         );
 
         write(
-            "assets/story/film.yarn",
+            "content/story/film.ts",
+            "import {file,input,ref} from '@origingame/engine/author';export default file.dialogue({yarn:input.text('sources/story/film.yarn'),assets:{'bgm/theme.wav':ref('base/bgm/theme'),'base/timelines/intro':ref('base/timelines/intro'),'base/timelines/qte':ref('base/timelines/qte'),'base/timelines/dissolve':ref('base/timelines/dissolve'),'base/timelines/ending':ref('base/timelines/ending'),'base/timelines/loop_one':ref('base/timelines/loop_one')}});",
+        );
+        write(
+            "sources/story/film.yarn",
             "#og-profile:yarn-spinner-3.2.2\n\
              #og-name:film\n\
              title: Intro\n\
@@ -274,7 +282,7 @@ fn setup_engine(events: Rc<RefCell<Events>>) -> u32 {
     let game = og_game_game(Some(json!({ "seed": 17, "systems": [watch] }).to_string()));
     let options = json!({ "root": project().to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    og_story_load(engine, "story/film.yarn".into()).unwrap();
+    og_story_load(engine, "base/story/film".into()).unwrap();
     og_flow_load(engine, "film".into()).unwrap();
     engine
 }
@@ -357,7 +365,7 @@ fn flow_snapshot_restore_determinism() {
         a,
         flow,
         Some(
-            json!({ "sound": "bgm/theme.wav", "volume": 0.6, "fade": 0.2, "duck": 0.5 })
+            json!({ "sound": "base/bgm/theme", "volume": 0.6, "fade": 0.2, "duck": 0.5 })
                 .to_string(),
         ),
     )

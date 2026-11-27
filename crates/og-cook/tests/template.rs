@@ -182,6 +182,114 @@ fn typed_behaviours_inline_native_trees_and_refresh_machine_consumers() {
     assert_eq!(b.subtrees, ["north/patrol", "north/leaf"]);
 }
 
+/// Both author branches pack native stories, bind resources, and resume by
+/// stable identity. Explicit text imports invalidate warm cooks; loose Yarn
+/// is not an author entry.
+#[test]
+fn typed_stories_and_explicit_yarn_cook_native_and_resume() {
+    use og_story::{Library, Story, asset::Asset};
+    use std::sync::Arc;
+    let root = crate::temp::TempDir::new("native-stories");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    image::RgbaImage::from_pixel(2, 2, image::Rgba([17, 89, 231, 255]))
+        .save(root.join("assets/portrait.png"))
+        .unwrap();
+    crate::declare_import(&root, "portrait", "texture", "assets/portrait.png");
+    let typed = r#"import {file,ref} from '@origingame/engine/author';
+export default file.dialogue({name:'typed',start:'Start',vars:[{name:'gold',value:7,global:true}],
+speakers:[{id:'Smith',portrait:ref('base/portrait')}],strings:{hello:'Welcome',buy:'Buy'},
+nodes:[{id:'Start',steps:[{kind:'line',id:'greeting',speaker:'Smith',text:{key:'hello'}}],
+choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'literal',value:3}},
+{kind:'command',name:'bought',args:[{kind:'variable',name:'gold'}]},{kind:'end'}]}]}]});"#;
+    write("content/typed.ts", typed);
+    let yarn = "#og-profile:yarn-spinner-3.2.2\n#og-name:imported\ntitle: Start\nog-speaker: Smith||portrait.png|left\n---\n<<declare $gold = 7>>\nSmith: Welcome #line:hello\n-> Buy #line:buy\n    <<set $gold = 3>>\n    <<bought {$gold}>>\n    <<stop>>\n===\n";
+    write("sources/story.yarn", yarn);
+    write("assets/ignored.yarn", "not valid Yarn and never scanned");
+    write(
+        "content/imported.ts",
+        "import {file,input,ref} from '@origingame/engine/author';export default file.dialogue({yarn:input.text('sources/story.yarn'),assets:{'portrait.png':ref('base/portrait')}});",
+    );
+    write(
+        "content/quest.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.quest({id:'rescue',title:'quest.rescue',globals:{rescued:false},rewards:[{name:'reward',image:ref('base/portrait')}],stages:[{id:'find',objectives:[{id:'friend',text:{key:'quest.find'},when:{kind:'variable',name:'rescued'}}]}]});",
+    );
+    let mut previous = None;
+    for (iteration, text) in [(0, "Welcome"), (1, "Welcome"), (2, "Changed")] {
+        write("sources/story.yarn", &yarn.replace("Welcome", text));
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let load = |id| {
+            let bytes = bundle.read(id).unwrap();
+            Asset::from_bytes(&bundle.story_data(id, &bytes).unwrap()).unwrap()
+        };
+        let Asset::Quest(quest) = load("base/quest") else {
+            panic!("quest")
+        };
+        assert_eq!(quest.rewards[0].image, "base/portrait");
+        assert!(quest.vars[0].global);
+        let Asset::Dialogue(imported) = load("base/imported") else {
+            panic!("dialogue")
+        };
+        assert_eq!(imported.strings["hello"], format!("Smith: {text}"));
+        let packed = bundle.read("base/imported").unwrap().to_vec();
+        if let Some(before) = &previous {
+            assert_eq!(before == &packed, iteration == 1);
+        }
+        previous = Some(packed);
+        let Asset::Dialogue(typed) = load("base/typed") else {
+            panic!("dialogue")
+        };
+        for dialogue in [typed, imported] {
+            assert_eq!(dialogue.speakers[0].portrait, "base/portrait");
+            let name = dialogue.name.clone();
+            let lib = Library {
+                dialogues: BTreeMap::from([(name.clone(), Arc::new(dialogue))]),
+                ..Default::default()
+            };
+            let mut story = Story::new(og_core::Rng::new(19).fork("story"));
+            let id = story
+                .start(&lib, &name, BTreeMap::new(), BTreeMap::new(), None)
+                .unwrap();
+            let mut bytes = Vec::new();
+            story.save(&mut bytes);
+            let mut restored = Story::load(&bytes).unwrap();
+            for state in [&mut story, &mut restored] {
+                state.choose(&lib, id, 0).unwrap();
+                assert_eq!(state.globals["gold"], og_story::Val::Num(3.0));
+                assert!(state.events.iter().any(|e| matches!(e, og_story::Event::Emit {name, arg, ..} if name == "bought" && arg == "3")));
+                assert_eq!(state.convs[&id].wait, og_story::Wait::Ended);
+            }
+            let mut a = Vec::new();
+            let mut b = Vec::new();
+            story.save(&mut a);
+            restored.save(&mut b);
+            assert_eq!(a, b);
+        }
+    }
+    for (from, to, expected) in [
+        ("ref('base/portrait')", "ref('base/absent')", "base/absent"),
+        ("id:'Start',steps", "id:'Missing',steps", "start"),
+        ("value:3", "value:true", "expected"),
+    ] {
+        write("content/typed.ts", &typed.replace(from, to));
+        let error = cook_project(&root, &CookOptions::default())
+            .err()
+            .unwrap()
+            .to_string();
+        assert!(
+            error.contains("content/typed.ts:") && error.contains(expected),
+            "{error}"
+        );
+    }
+}
+
 /// Modules, delivery and residency are independent: selecting a package must
 /// neither rebuild another region nor turn a build-only input into a download.
 #[test]

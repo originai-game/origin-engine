@@ -1558,26 +1558,28 @@ impl Bundle {
         Ok(data.to_vec())
     }
 
-    /// The validated text of a dialogue (`og.Dialogue`) or quest
-    /// (`og.Quest`) blob; parse it with og-story.
-    pub fn story_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
-        let text = match self.blob::<format::Dialogue>(id, bytes) {
-            Ok(blob) => {
+    /// Native dialogue or quest payload. og-story decodes and validates its
+    /// fields; this layer owns the enclosing cooked format, not the feature.
+    pub fn story_data(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
+        let (data, blob) = match self.output(id)?.ty.as_str() {
+            "og.Dialogue" => {
+                let blob = self.blob::<format::Dialogue>(id, bytes)?;
                 let meta = one::<format::DialogueMeta>(&blob)?;
-                (blob.raw("text")?.get(..meta.text_bytes as usize), blob)
+                (blob.raw("data")?, (meta.data_bytes, blob))
             }
-            Err(_) => {
+            _ => {
                 let blob = self.blob::<format::Quest>(id, bytes)?;
                 let meta = one::<format::QuestMeta>(&blob)?;
-                (blob.raw("text")?.get(..meta.text_bytes as usize), blob)
+                (blob.raw("data")?, (meta.data_bytes, blob))
             }
         };
-        match text {
-            (Some(t), _) if std::str::from_utf8(t).is_ok() => {
-                Ok(std::str::from_utf8(t).unwrap().to_string())
-            }
-            (_, blob) => Err(invalid(&blob, "the story text is cut short or not UTF-8")),
+        if data.len() != blob.0 as usize {
+            return Err(invalid(
+                &blob.1,
+                "native story data length does not match metadata",
+            ));
         }
+        Ok(data.to_vec())
     }
 
     /// Native reflected rows and stable identities, never author source text.

@@ -21,9 +21,6 @@ macro_rules! __og_host_bindings_story {
             fn og_story_load(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_story_load(world, path))
             }
-            fn og_story_parse(&self, world: u32, text: String) -> String {
-                $crate::host_impl::answer($crate::og_story_parse(world, text))
-            }
             fn og_story_start(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_story_start(world, desc))
             }

@@ -800,10 +800,7 @@ pub(crate) fn diagnose(
     mut warnings: Vec<String>,
 ) -> (Vec<ConformEntry>, Vec<String>) {
     let Cx {
-        sources,
-        options,
-        story_functions,
-        ..
+        sources, options, ..
     } = *cx;
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &og_i18n::StringTable)> = sources
@@ -828,12 +825,11 @@ pub(crate) fn diagnose(
         }
     }
     // Dialogues and quests: every key they show is in the base table.
-    let stories: Vec<(&str, &[u8])> = sources
+    let stories: Vec<(&str, &og_story::asset::Asset)> = sources
         .iter()
-        .filter(|s| [&story::DIALOGUE, &story::QUEST].contains(&s.kind))
-        .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
+        .filter_map(|s| s.story.as_ref().map(|asset| (s.rel.as_str(), asset)))
         .collect();
-    for (rel, what) in story::check_story_keys(&tables, &stories, story_functions) {
+    for (rel, what) in story::check_story_keys(&tables, &stories) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);
@@ -872,8 +868,7 @@ pub(crate) fn diagnose(
         probed.borrow_mut().insert(id.to_string(), info);
         info
     };
-    let (flow_errors, flow_warnings) =
-        story::check_flows(&stories, &segment, &video_info, story_functions);
+    let (flow_errors, flow_warnings) = story::check_flows(&stories, &segment, &video_info);
     for (rel, what) in flow_warnings {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {

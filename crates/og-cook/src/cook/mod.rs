@@ -147,6 +147,8 @@ pub(crate) struct Source {
     strings: Option<og_i18n::StringTable>,
     /// Native table rows, packed once after project references are resolved.
     table: Option<og_core::table::Table>,
+    /// One native dialogue or quest, shared by planning and diagnostics.
+    story: Option<og_story::asset::Asset>,
     /// Checked membership, cmaps and captured dictionary inputs.
     font_pack: Option<font_pack::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
@@ -417,6 +419,7 @@ pub fn cook_project_with_texture_cache(
     let content = pipeline::author::sources(
         root,
         &project.source,
+        &project.story_functions,
         &mut sources,
         &mut consumed,
         &project.provided,
@@ -528,7 +531,6 @@ pub fn cook_project_with_texture_cache(
         font_desc: &font_desc,
         budget_desc: &project.budget_desc,
         schema_hash,
-        story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
         profile: project.profile,
         boot: boot.as_deref(),

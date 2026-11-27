@@ -174,6 +174,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> Option<crate::host::wire:
         let empty = og_story::Shown {
             node: c.node.clone(),
             step: 0,
+            line_id: String::new(),
             speaker: og_story::NARRATOR.into(),
             key: String::new(),
             args: Vec::new(),

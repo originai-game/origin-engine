@@ -328,6 +328,7 @@ pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: super::imports::Settin
         motion_action: None,
         strings: None,
         table: None,
+        story: None,
         font_pack: None,
         fields: Default::default(),
         fx: None,

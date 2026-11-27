@@ -2159,11 +2159,6 @@ pub fn og_story_load(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_story_parse(world: u32, text: String) -> String {
-    <Host as StoryApi>::og_story_parse(&Host, world, text)
-}
-
-#[wasm_bindgen]
 pub fn og_story_start(world: u32, desc: Option<String>) -> String {
     <Host as StoryApi>::og_story_start(&Host, world, desc)
 }

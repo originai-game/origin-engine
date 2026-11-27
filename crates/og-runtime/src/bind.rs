@@ -119,9 +119,9 @@ pub mod exports {
         og_story_advance, og_story_ambient, og_story_bark, og_story_barks, og_story_choose,
         og_story_complete_quest, og_story_conversations, og_story_fail_quest, og_story_get,
         og_story_graph, og_story_history, og_story_load, og_story_mark, og_story_mark_seen,
-        og_story_parse, og_story_progress, og_story_quest, og_story_quests, og_story_reset,
-        og_story_set, og_story_set_saliency, og_story_set_stage, og_story_start,
-        og_story_start_quest, og_story_stop, og_story_track, og_story_view,
+        og_story_progress, og_story_quest, og_story_quests, og_story_reset, og_story_set,
+        og_story_set_saliency, og_story_set_stage, og_story_start, og_story_start_quest,
+        og_story_stop, og_story_track, og_story_view,
     };
     pub use super::table::{
         og_table_get, og_table_load, og_table_missing, og_table_name, og_table_replace,

@@ -415,7 +415,7 @@ readonly "scores": (ReadonlyArray<(Input_behaviourDefinitions["Consideration"])>
 });
 readonly "Value": (((number)) | ((boolean)) | ((ReadonlyArray<(number)> & { readonly length: 3 })));
 }
-export type Input_dialogue = ((((Input_dialogueDefinitions["TypedDialogue"])) & { readonly "yarn"?: never; }) | (((Input_dialogueDefinitions["YarnImport"])) & { readonly "barks"?: never; readonly "locale"?: never; readonly "name"?: never; readonly "nodes"?: never; readonly "smart"?: never; readonly "speakers"?: never; readonly "start"?: never; readonly "strings"?: never; readonly "vars"?: never; }));
+export type Input_dialogue = ((((Input_dialogueDefinitions["TypedDialogue"])) & { readonly "assets"?: never; readonly "yarn"?: never; }) | (((Input_dialogueDefinitions["YarnImport"])) & { readonly "barks"?: never; readonly "locale"?: never; readonly "name"?: never; readonly "nodes"?: never; readonly "smart"?: never; readonly "speakers"?: never; readonly "start"?: never; readonly "strings"?: never; readonly "vars"?: never; }));
 export interface Input_dialogueDefinitions {
 readonly "Bark": ({
 readonly "cooldown"?: ((number) | (null));
@@ -510,6 +510,13 @@ readonly "kind": ("enum-value") & (string);
 readonly "name": (string);
 readonly "value": (Input_dialogueDefinitions["Value"]);
 })) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; }));
+readonly "Flow": ({
+readonly "chapter"?: ((string) | (null));
+readonly "dissolve"?: ((number) | (null));
+readonly "ending"?: ((string) | (null));
+readonly "music"?: (((Input_dialogueDefinitions["Music"])) | ((null)));
+readonly "title"?: ((string) | (null));
+});
 readonly "Line": ({
 readonly "expression"?: ((string) | (null));
 /** Stable author identity, independent of source position. */
@@ -519,15 +526,24 @@ readonly "speaker"?: ((string) | (null));
 readonly "text": (Input_dialogueDefinitions["Text"]);
 readonly "voice"?: (((Input_dialogueDefinitions["ContentRef"])) | ((null)));
 });
+readonly "Music": ({
+readonly "duck"?: ((number) | (null));
+readonly "fade"?: ((number) | (null));
+/** Omit to stop the current music. */
+readonly "sound"?: (((Input_dialogueDefinitions["ContentRef"])) | ((null)));
+readonly "volume"?: ((number) | (null));
+});
 readonly "Node": ({
 readonly "choiceFallback"?: ((string) | (null));
 readonly "choices"?: (ReadonlyArray<(Input_dialogueDefinitions["Choice"])> | (number extends ((Input_dialogueDefinitions["Choice"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "flow"?: (((Input_dialogueDefinitions["Flow"])) | ((null)));
 readonly "id": (string);
 readonly "segment"?: (((Input_dialogueDefinitions["ContentRef"])) | ((null)));
 readonly "shot"?: ((string) | (null));
 readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])> | (number extends ((Input_dialogueDefinitions["Step"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Tick count and fallback choice identity, not an array index. */
 readonly "timer"?: ((readonly [(number), (string)]) | (null));
+/** Owning source node; omit unless this is an explicit continuation block. */
 readonly "title"?: ((string) | (null));
 });
 readonly "Op": ("add" | "sub" | "mul" | "div" | "rem" | "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "and" | "or" | "xor") & (string);
@@ -640,6 +656,8 @@ readonly "name": (string);
 readonly "value": (Input_dialogueDefinitions["Value"]);
 });
 readonly "YarnImport": ({
+/** Yarn resource names mapped explicitly to checked content references. */
+readonly "assets"?: (Readonly<Record<string, (Input_dialogueDefinitions["ContentRef"])>>);
 /** Explicit Yarn source text from input.text; never automatically scanned. */
 readonly "yarn": (string);
 });
@@ -4551,13 +4569,14 @@ readonly "name": (string);
 export type Input_quest = ({
 readonly "category"?: ((string) | (null));
 readonly "giver"?: ((string) | (null));
+/** Quest variables always belong to the shared story, not a conversation. */
+readonly "globals"?: (Readonly<Record<string, (Input_questDefinitions["Value"])>>);
 readonly "id": (string);
 readonly "region"?: ((string) | (null));
 readonly "rewards"?: (ReadonlyArray<(Input_questDefinitions["Reward"])> | (number extends ((Input_questDefinitions["Reward"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "stages": (ReadonlyArray<(Input_questDefinitions["Stage"])> | (number extends ((Input_questDefinitions["Stage"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "summary"?: ((string) | (null));
 readonly "title": (string);
-readonly "vars"?: (ReadonlyArray<(Input_questDefinitions["Variable"])> | (number extends ((Input_questDefinitions["Variable"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_questDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
@@ -4646,11 +4665,6 @@ readonly "args"?: (Readonly<Record<string, (Input_questDefinitions["Expr"])>>);
 readonly "key": (string);
 });
 readonly "Value": (((number)) | ((boolean)) | ((string)));
-readonly "Variable": ({
-readonly "global"?: (boolean);
-readonly "name": (string);
-readonly "value": (Input_questDefinitions["Value"]);
-});
 }
 export type Input_rig = ({
 /** Humanoid bone name to skeleton node name; null explicitly unmaps it. */

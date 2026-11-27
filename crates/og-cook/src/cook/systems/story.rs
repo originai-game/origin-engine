@@ -1,33 +1,17 @@
-//! Dialogues and quests: Yarn compiled to the engine's IR, quests kept as
-//! data, and their keys checked against the base string table.
+//! Checked TS dialogues and quests share one native snapshot through planning,
+//! diagnostics and execution. Yarn is an explicit input branch of file.dialogue.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
-/// Yarn is compiled to engine IR; quests retain their data representation.
-pub(crate) fn cook_story(
-    s: &Source,
-    stamp: u64,
-    quest: bool,
-    functions: Option<&std::collections::BTreeMap<String, og_story::yarn::types::Function>>,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let what = if quest { "quest" } else { "dialogue" };
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError(format!("a {what} is text (UTF-8)")))?;
-    let compiled;
-    let text = if quest {
-        text
-    } else {
-        compiled =
-            og_story::yarn::compile_with_functions(text, functions.cloned().unwrap_or_default())
-                .map_err(CookError)?
-                .encode()
-                .map_err(CookError)?;
-        &compiled
-    };
-    let (mut w, note) = if quest {
-        let q = og_story::Quest::parse(text).map_err(CookError)?;
+fn cook_story(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let asset = s
+        .story
+        .as_ref()
+        .ok_or_else(|| CookError("story was not prepared".into()))?;
+    let data = asset.to_bytes().map_err(CookError)?;
+    let (mut w, note) = if let og_story::asset::Asset::Quest(q) = asset {
         let w = BlobWriter::new(
             format::Quest::type_hash(),
             format::Quest::schema_version(),
@@ -41,11 +25,9 @@ pub(crate) fn cook_story(
         );
         (w, note)
     } else {
-        let d = og_story::Dialogue::decode(text).map_err(CookError)?;
-        for (key, text) in &d.strings {
-            og_i18n::Message::parse(text)
-                .map_err(|e| CookError(format!("Yarn base string {key}: {e}")))?;
-        }
+        let og_story::asset::Asset::Dialogue(d) = asset else {
+            unreachable!()
+        };
         let w = BlobWriter::new(
             format::Dialogue::type_hash(),
             format::Dialogue::schema_version(),
@@ -60,11 +42,11 @@ pub(crate) fn cook_story(
         );
         (w, note)
     };
-    if quest {
+    if matches!(asset, og_story::asset::Asset::Quest(_)) {
         w.table(
             "meta",
             &[format::QuestMeta {
-                text_bytes: text.len() as u32,
+                data_bytes: data.len() as u32,
             }],
             format::row_hash::<format::QuestMeta>(),
         );
@@ -72,12 +54,12 @@ pub(crate) fn cook_story(
         w.table(
             "meta",
             &[format::DialogueMeta {
-                text_bytes: text.len() as u32,
+                data_bytes: data.len() as u32,
             }],
             format::row_hash::<format::DialogueMeta>(),
         );
     }
-    w.raw("text", text.as_bytes().to_vec(), 16);
+    w.raw("data", data, 16);
     Ok((w.finish(), vec![note]))
 }
 
@@ -86,8 +68,7 @@ pub(crate) fn cook_story(
 /// passed. As (source, line) warnings; nothing without a string table.
 pub(crate) fn check_story_keys(
     tables: &[(&str, &og_i18n::StringTable)],
-    stories: &[(&str, &[u8])],
-    functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
+    stories: &[(&str, &og_story::asset::Asset)],
 ) -> Vec<(String, String)> {
     let parsed: Vec<og_i18n::StringTable> =
         tables.iter().map(|(_, table)| (*table).clone()).collect();
@@ -95,23 +76,10 @@ pub(crate) fn check_story_keys(
         return Vec::new();
     };
     let mut out = Vec::new();
-    for (rel, bytes) in stories {
-        let Ok(text) = std::str::from_utf8(bytes) else {
-            continue;
-        };
-        let result = if rel.ends_with(".yarn") {
-            og_story::yarn::compile_with_functions(text, functions.clone())
-                .map(|d| (d.keys(), d.strings))
-        } else {
-            match og_core::ogt::Document::parse(text).map(|d| d.ty) {
-                Ok(t) if t == og_story::QUEST_TYPE => {
-                    og_story::Quest::parse(text).map(|q| (q.keys(), Default::default()))
-                }
-                _ => continue,
-            }
-        };
-        let Ok((keys, authored)) = result else {
-            continue;
+    for (rel, asset) in stories {
+        let keys = match asset {
+            og_story::asset::Asset::Dialogue(d) => d.keys(),
+            og_story::asset::Asset::Quest(q) => q.keys(),
         };
         for (key, args, line) in keys {
             let at = if line > 0 {
@@ -120,7 +88,8 @@ pub(crate) fn check_story_keys(
                 String::new()
             };
             match base.entries.get(&key) {
-                None if authored.contains_key(&key) => {}
+                None if matches!(asset, og_story::asset::Asset::Dialogue(d) if d.strings.contains_key(&key)) =>
+                    {}
                 None => out.push((
                     rel.to_string(),
                     format!(
@@ -134,7 +103,7 @@ pub(crate) fn check_story_keys(
                             out.push((
                                 rel.to_string(),
                                 format!(
-                                    "{at}the message '{key}' takes {{{a}}}, which nothing passes: add 'arg {a} \"...\"'"
+                                    "{at}the message '{key}' takes {{{a}}}, which nothing passes: add '{a}' to this text's args"
                                 ),
                             ));
                         }
@@ -159,18 +128,14 @@ type Findings = Vec<(String, String)>;
 /// choices are taken (they are read as the segment starts, before the
 /// game is played; its results belong in `#outcome` choices).
 pub(crate) fn check_flows(
-    stories: &[(&str, &[u8])],
+    stories: &[(&str, &og_story::asset::Asset)],
     segment: &dyn Fn(&str) -> Option<Result<og_timeline::segment::Segment, String>>,
     video_info: &dyn Fn(&str) -> Option<(f64, f64)>,
-    functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
 ) -> (Findings, Findings) {
     let mut out = Vec::new();
     let mut warnings = Vec::new();
-    for (rel, bytes) in stories.iter().filter(|(r, _)| r.ends_with(".yarn")) {
-        let Some(d) = std::str::from_utf8(bytes)
-            .ok()
-            .and_then(|t| og_story::yarn::compile_with_functions(t, functions.clone()).ok())
-        else {
+    for (rel, asset) in stories {
+        let og_story::asset::Asset::Dialogue(d) = asset else {
             continue;
         };
         let graph = d.graph();
@@ -200,7 +165,7 @@ pub(crate) fn check_flows(
             let hotspots: Option<Vec<String>> = match segment(seg) {
                 None => {
                     errors.push(format!(
-                        "node '{}': its segment '{seg}' is no timeline under assets/",
+                        "node '{}': its segment '{seg}' is not a timeline declaration",
                         n.title
                     ));
                     None
@@ -325,8 +290,8 @@ pub(crate) fn check_flows(
 
 pub(crate) static DIALOGUE: KindDef = KindDef {
     name: "dialogue",
-    extensions: &["yarn"],
-    types: &[og_story::DIALOGUE_TYPE],
+    extensions: &[],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_dialogue,
@@ -335,7 +300,7 @@ pub(crate) static DIALOGUE: KindDef = KindDef {
 pub(crate) static QUEST: KindDef = KindDef {
     name: "quest",
     extensions: &[],
-    types: &[og_story::QUEST_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_quest,
@@ -351,19 +316,16 @@ fn plan_dialogue<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx {
-        story_functions,
-        story_functions_stamp,
-        ..
-    } = *cx;
-    // A flow node's `og-flow: <segment>` header: the dialogue reaches the
-    // segment, and through it the segment's footage and scenes (needs.rs).
-    let segments: std::collections::BTreeSet<String> = String::from_utf8_lossy(&s.bytes)
-        .lines()
-        .filter_map(|l| l.trim().strip_prefix("og-flow:"))
-        .map(|v| v.trim().to_string())
-        .filter(|v| !v.is_empty())
-        .collect();
+    let story_functions_stamp = cx.story_functions_stamp;
+    let mut segments = std::collections::BTreeSet::new();
+    if let Some(mut asset) = s.story.clone() {
+        asset
+            .map_resources(|_, id| {
+                segments.insert(id.clone());
+                Ok(())
+            })
+            .expect("collect resource IDs");
+    }
     if !segments.is_empty() {
         state
             .parsed_refs
@@ -376,7 +338,7 @@ fn plan_dialogue<'a>(
         s.rel.clone(),
         format::Dialogue::NAME,
         st,
-        Box::new(DialogueJob(s, story_functions)),
+        Box::new(StoryJob(s)),
     ));
 }
 
@@ -392,27 +354,15 @@ fn plan_quest<'a>(
         s.rel.clone(),
         format::Quest::NAME,
         st,
-        Box::new(QuestJob(s)),
+        Box::new(StoryJob(s)),
     ));
 }
 
-/// A dialogue's one output, compiled with the project's story functions.
-struct DialogueJob<'a>(
-    &'a Source,
-    &'a std::collections::BTreeMap<String, og_story::yarn::types::Function>,
-);
+/// A story's one native output.
+struct StoryJob<'a>(&'a Source);
 
-impl Job for DialogueJob<'_> {
+impl Job for StoryJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_story(self.0, p.stamp, false, Some(self.1))
-    }
-}
-
-/// A quest's one output.
-struct QuestJob<'a>(&'a Source);
-
-impl Job for QuestJob<'_> {
-    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_story(self.0, p.stamp, true, None)
+        cook_story(self.0, p.stamp)
     }
 }

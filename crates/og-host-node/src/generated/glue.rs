@@ -2589,12 +2589,6 @@ pub fn og_story_load(env: Env, world: u32, path: String) -> String {
     <Host as StoryApi>::og_story_load(&Host, world, path)
 }
 
-#[napi(js_name = "og_story_parse")]
-pub fn og_story_parse(env: Env, world: u32, text: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as StoryApi>::og_story_parse(&Host, world, text)
-}
-
 #[napi(js_name = "og_story_start")]
 pub fn og_story_start(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

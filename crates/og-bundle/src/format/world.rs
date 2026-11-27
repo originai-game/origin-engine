@@ -226,14 +226,14 @@ impl BlobKind for Behaviour {
 }
 
 row!(
-    /// The root of a compiled Yarn dialogue blob.
-    DialogueMeta, "og.Dialogue", 3 {
-        /// Bytes of the engine IR in `text`.
-        text_bytes: u32,
+    /// The root of a native dialogue blob.
+    DialogueMeta, "og.Dialogue", 4 {
+        /// Bytes of the validated native asset in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The dialogue blob: `text` holds engine IR decoded by og-story, not Yarn source.
+/// The dialogue blob: `data` holds native og-story fields, never author text.
 pub struct Dialogue;
 impl BlobKind for Dialogue {
     const NAME: &'static str = "og.Dialogue";
@@ -243,15 +243,14 @@ impl BlobKind for Dialogue {
 }
 
 row!(
-    /// The root of a quest blob (an `.ogt` of `type quest`, G2-8).
-    QuestMeta, "og.Quest", 1 {
-        /// Bytes of the validated quest text in `text`.
-        text_bytes: u32,
+    /// The root of a native quest blob.
+    QuestMeta, "og.Quest", 2 {
+        /// Bytes of the validated native asset in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The quest blob: `text` holds the quest file the cook validated
-/// (og-story's `Quest::parse`), parsed again at load.
+/// The quest blob: `data` holds native og-story fields, never author text.
 pub struct Quest;
 impl BlobKind for Quest {
     const NAME: &'static str = "og.Quest";

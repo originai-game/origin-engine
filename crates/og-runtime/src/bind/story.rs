@@ -19,7 +19,7 @@ use crate::host::wire::{
 use crate::parse;
 use og_core::Rng;
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
-use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
+use og_story::{Dialogue, Event, Library, Story, Val, Wait};
 use serde_json::{Map, Value, json};
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -646,7 +646,7 @@ pub(crate) fn refresh(eng: &crate::engine::Engine) -> Vec<String> {
             let a = eng.assets.borrow();
             match a.blob(&id).and_then(|(bytes, bundle)| {
                 bundle
-                    .story_text(&id, bytes.bytes())
+                    .story_data(&id, bytes.bytes())
                     .map_err(|e| e.to_string())
             }) {
                 Ok(t) => t,

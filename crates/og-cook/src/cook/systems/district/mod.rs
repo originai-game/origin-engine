@@ -190,6 +190,7 @@ pub(crate) fn expand(
             motion_action: None,
             strings: None,
             table: None,
+            story: None,
             font_pack: None,
             fields: Default::default(),
             fx: None,

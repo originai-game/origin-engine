@@ -11,7 +11,7 @@ pub mod saliency;
 mod syntax;
 mod text;
 pub mod types;
-mod typing;
+pub(crate) mod typing;
 
 /// Parses the Yarn expression grammar without changing quest expressions.
 pub fn parse_expression(text: &str) -> Result<Expr, String> {
@@ -387,6 +387,7 @@ impl Compiler {
         }
         Ok((
             Line {
+                id: key.clone(),
                 speaker: speaker.into(),
                 text: Text { key, args },
                 voice: tags.get("voice").copied().unwrap_or_default().into(),
@@ -1356,19 +1357,4 @@ pub fn compile_with_functions(
     }
     c.dialogue.validate()?;
     Ok(c.dialogue)
-}
-
-impl Dialogue {
-    /// Serialized engine IR, not Yarn source. Only the cook invokes the compiler.
-    pub fn encode(&self) -> Result<String, String> {
-        serde_json::to_string(self).map_err(|e| e.to_string())
-    }
-
-    pub fn decode(ir: &str) -> Result<Self, String> {
-        let mut dialogue: Self =
-            serde_json::from_str(ir).map_err(|e| format!("invalid story IR: {e}"))?;
-        functions::validate(&mut dialogue.functions)?;
-        dialogue.validate()?;
-        Ok(dialogue)
-    }
 }

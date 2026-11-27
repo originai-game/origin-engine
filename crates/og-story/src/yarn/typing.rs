@@ -193,21 +193,101 @@ pub(super) fn check(
             value,
         });
     }
+    Ok(())
+}
+
+/// Shared native invariant: typed TS and imported Yarn must not recurse while
+/// reading smart variables, or assign to their read-only expressions.
+pub(crate) fn validate_smart(dialogue: &Dialogue) -> Result<(), String> {
     let mut done = BTreeSet::new();
     for name in dialogue.smart.keys() {
         acyclic(name, &dialogue.smart, &mut BTreeSet::new(), &mut done)?;
     }
-    for node in &dialogue.nodes {
-        for step in node
-            .steps
-            .iter()
-            .chain(node.choices.iter().flat_map(|c| &c.steps))
+    for step in dialogue
+        .nodes
+        .iter()
+        .flat_map(|node| {
+            node.steps
+                .iter()
+                .chain(node.choices.iter().flat_map(|c| &c.steps))
+        })
+        .chain(dialogue.barks.iter().flat_map(|b| &b.steps))
+    {
+        if let Step::Set(name, _) = step
+            && dialogue.smart.contains_key(name)
         {
-            if let Step::Set(name, _) = step
-                && dialogue.smart.contains_key(name)
-            {
-                return Err(format!("cannot assign to smart variable ${name}"));
+            return Err(format!("cannot assign to smart variable ${name}"));
+        }
+    }
+    Ok(())
+}
+
+/// Check structured declarations with the same signatures and expression
+/// constraints as the importer, without Yarn's source grammar or wrappers.
+pub(crate) fn check_native(dialogue: &mut Dialogue) -> Result<(), String> {
+    let mut types = Types {
+        variables: dialogue
+            .vars
+            .iter()
+            .map(|v| (v.name.clone(), Type::of(&v.value)))
+            .collect(),
+        functions: dialogue
+            .functions
+            .iter()
+            .map(|(n, f)| (n.clone(), f.signature.clone()))
+            .collect(),
+        ..Default::default()
+    };
+    loop {
+        let before = types.variables.len();
+        for (name, expr) in &mut dialogue.smart {
+            if let Some(ty) = types.infer(expr, None)? {
+                types.bind(name, &ty)?;
             }
+        }
+        if before == types.variables.len() {
+            break;
+        }
+    }
+    for expr in dialogue.smart.values() {
+        types.require_resolved(expr)?;
+    }
+    program(&mut types, dialogue, true)?;
+    for bark in &mut dialogue.barks {
+        if let Some(condition) = &mut bark.when {
+            expression(&mut types, condition, Some(&Type::Bool), true)?;
+        }
+    }
+    dialogue.validate()
+}
+
+/// Quest conditions use the same expression signatures as dialogue. World
+/// reads in event filters acquire their type from the surrounding expression.
+pub(crate) fn check_quest(quest: &crate::asset::Quest) -> Result<(), String> {
+    let types = || Types {
+        variables: quest
+            .vars
+            .iter()
+            .map(|v| (v.name.clone(), Type::of(&v.value)))
+            .collect(),
+        ..Default::default()
+    };
+    for stage in &quest.stages {
+        for condition in stage.fail.iter().chain(
+            stage
+                .objectives
+                .iter()
+                .flat_map(|o| o.when.iter().chain(&o.filter)),
+        ) {
+            expression(
+                &mut types(),
+                &mut condition.clone(),
+                Some(&Type::Bool),
+                true,
+            )?;
+        }
+        for objective in &stage.objectives {
+            text(&mut types(), &mut objective.text.clone(), true)?;
         }
     }
     Ok(())

@@ -1,5 +1,5 @@
 //! `og i18n extract`: every og.i18n key a project's dialogues, quests and
-//! tables show (`.yarn`, `type quest`, `file.table`), with the arguments they pass and
+//! tables show (`file.dialogue`, `file.quest`, `file.table`), with the arguments they pass and
 //! where, checked against each typed `file.strings` table: per locale,
 //! the keys it lacks and the messages that take an argument nothing
 //! passes. [`write_base`] adds the keys the base table lacks to it, each
@@ -9,7 +9,7 @@ use crate::cook::{
     generator, source_content, source_index, source_project, source_schemas, source_transaction,
 };
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Read a shipped declaration in the same closed evaluator as cook. Project
 /// entries must instead use the module-aware reader below.
@@ -103,63 +103,47 @@ impl Extract {
     }
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(rd) = std::fs::read_dir(dir) else {
-        return;
-    };
-    let mut entries: Vec<PathBuf> = rd.filter_map(|e| e.ok().map(|e| e.path())).collect();
-    entries.sort();
-    for p in entries {
-        if p.symlink_metadata()
-            .is_ok_and(|m| m.file_type().is_symlink())
-        {
-            continue;
-        } else if p.is_dir() {
-            walk(&p, out);
-        } else if p.extension().is_some_and(|x| x == "ogt" || x == "yarn") {
-            out.push(p);
-        }
-    }
-}
-
-/// Read the remaining asset stories and the module-aware typed locale tables.
+/// Read only explicit story declarations and module-aware typed locale tables.
 pub fn extract(project: &Path) -> Result<Extract, String> {
     let source = crate::cook::source_project::Project::open(project).map_err(|e| e.to_string())?;
     let functions = super::story_functions::read(&source.input.story_functions)?;
-    let assets = project.join("assets");
-    let mut files = Vec::new();
-    walk(&assets, &mut files);
     let mut x = Extract::default();
     let index = source_index::Index::open(project, &source).map_err(|e| e.to_string())?;
     let tables = read_tables(project, &source, &index)?;
-    for f in files {
-        let rel = f
-            .strip_prefix(project)
-            .unwrap_or(&f)
-            .to_string_lossy()
-            .replace('\\', "/");
-        let Ok(text) = std::fs::read_to_string(&f) else {
-            continue;
-        };
-        let ty = if f.extension().is_some_and(|x| x == "yarn") {
-            og_story::DIALOGUE_TYPE.into()
-        } else if let Ok(doc) = og_core::ogt::Document::parse(&text) {
-            doc.ty
-        } else {
-            continue;
-        };
-        let keys = match ty.as_str() {
-            t if t == og_story::DIALOGUE_TYPE => {
-                og_story::yarn::compile_with_functions(&text, functions.clone()).map(|d| {
+    let mut evaluator = source_content::Evaluator::default();
+    for entry in index
+        .entries
+        .values()
+        .filter(|e| matches!(e.factory.as_str(), "dialogue" | "quest"))
+    {
+        let rel = entry.file.clone();
+        let keys = (|| {
+            let content = evaluator
+                .evaluate(project, &source, entry, &BTreeMap::new(), None)
+                .map_err(|e| e.to_string())?;
+            let file: source_schemas::File =
+                serde_json::from_value(content.data().root().into_json())
+                    .map_err(|e| e.to_string())?;
+            let asset = if file.kind == "dialogue" {
+                let input: source_schemas::media::story::Dialogue =
+                    serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+                input.build(functions.clone())?
+            } else {
+                let input: source_schemas::media::story::Quest =
+                    serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+                og_story::asset::Asset::Quest(input.into())
+            };
+            asset.validate()?;
+            Ok::<_, String>(match asset {
+                og_story::asset::Asset::Dialogue(d) => {
                     for (key, text) in &d.strings {
                         x.keys.entry(key.clone()).or_default().text = Some(text.clone());
                     }
                     d.keys()
-                })
-            }
-            t if t == og_story::QUEST_TYPE => og_story::Quest::parse(&text).map(|q| q.keys()),
-            _ => continue,
-        };
+                }
+                og_story::asset::Asset::Quest(q) => q.keys(),
+            })
+        })();
         match keys {
             Ok(keys) => {
                 for (key, args, line) in keys {
@@ -177,7 +161,6 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
         }
     }
     let records = crate::cook::source_records::Records::open(project, &source)?;
-    let mut evaluator = source_content::Evaluator::default();
     for entry in index.entries.values().filter(|e| e.factory == "table") {
         let result = evaluator.evaluate(
             project,

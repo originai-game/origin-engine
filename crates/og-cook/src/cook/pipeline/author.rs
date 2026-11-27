@@ -2,7 +2,7 @@
 //! file importers. Domain cutovers consume canonical author IR, never OGT text
 //! generated from TS. The scaffold catalogue is removed in P1/P2/P3.
 use super::*;
-use crate::cook::{source_content, source_index, source_project, source_records};
+use crate::cook::{source_content, source_index, source_project, source_records, source_schemas};
 
 /// Domains whose sole author entry is now a checked TS declaration. Keep this
 /// separate from legacy type claims; the scanner must not accept their OGT.
@@ -45,6 +45,8 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("table", &table::TABLE),
     ("district", &district::DISTRICT),
     ("behaviour", &behaviour::BEHAVIOUR),
+    ("dialogue", &story::DIALOGUE),
+    ("quest", &story::QUEST),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -86,7 +88,7 @@ fn catalogue(
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let mut bindings = BTreeMap::new();
     for source in sources.iter().filter(|s| {
-        [&look::LOOK, &story::DIALOGUE, &district::MATERIALS].contains(&s.kind)
+        [&look::LOOK, &district::MATERIALS].contains(&s.kind)
             && !s.rel.starts_with('@')
             && s.path.starts_with(root.join("assets"))
     }) {
@@ -204,6 +206,7 @@ pub(super) fn declaration(
         motion_action: None,
         strings: None,
         table: None,
+        story: None,
         font_pack: None,
         fields: Default::default(),
         fx: None,
@@ -365,6 +368,7 @@ pub(crate) fn models(
 pub(crate) fn sources(
     root: &Path,
     project: &source_project::Project,
+    story_functions: &BTreeMap<String, og_story::yarn::types::Function>,
     sources: &mut Vec<Source>,
     consumed: &mut BTreeSet<String>,
     provided: &provided::Provided,
@@ -443,6 +447,18 @@ pub(crate) fn sources(
         }
         let mut source = declaration(root, entry, kind, bytes);
         let derived = (|| match entry.factory.as_str() {
+            "dialogue" => {
+                let input: source_schemas::media::story::Dialogue = source.input()?;
+                source.story = Some(input.build(story_functions.clone())?);
+                Ok(BTreeMap::new())
+            }
+            "quest" => {
+                let input: source_schemas::media::story::Quest = source.input()?;
+                let asset = og_story::asset::Asset::Quest(input.into());
+                asset.validate()?;
+                source.story = Some(asset);
+                Ok(BTreeMap::new())
+            }
             "table" => {
                 table_sources.insert(entry.id.clone(), content.source().clone());
                 Ok(BTreeMap::new())
@@ -660,6 +676,24 @@ pub(crate) fn sources(
     table::prepare(sources, &graph, &packed, &table_sources)?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if let Some(asset) = &mut source.story {
+            asset
+                .map_resources(|kind, id| {
+                    let output = graph
+                        .outputs
+                        .get(id)
+                        .ok_or_else(|| format!("unknown story resource '{id}'"))?;
+                    if output.kind != kind {
+                        return Err(format!(
+                            "story resource '{id}' has kind {}, expected {kind}",
+                            output.kind
+                        ));
+                    }
+                    *id = output.asset.clone();
+                    Ok(())
+                })
+                .map_err(|e| CookError(format!("{}: {e}", source.rel)))?;
+        }
         if let Some(doc) = &mut source.scene {
             std::sync::Arc::get_mut(doc)
                 .expect("unshared author scene")

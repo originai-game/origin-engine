@@ -1,8 +1,8 @@
 # Make an interactive film, or any game told in segments
 
-A flow is a Yarn dialogue whose nodes play segments: footage, a live
+A flow is a checked dialogue whose nodes play segments: footage, a live
 scene, or both, and levels or minigames that wait for the game. The story
-stays in Yarn (`yarn`), each segment is a timeline (`animation §13`), and
+uses `file.dialogue` (`yarn`), each segment is a timeline (`animation §13`), and
 footage is a streamed video (`audio §8`).
 og.flow moves the conversation from segment to segment and warms the
 segments a choice may lead to. Nothing else is new: captions, markers,
@@ -12,12 +12,13 @@ transitions and sound are the timeline's, saves are the world's.
 
 ```text
 project.ts                    # flow: { source: { $ogRef: "base/story/film" } }
-assets/story/film.yarn        # the story: nodes, choices, variables, endings
+content/story/film.ts        # file.dialogue: nodes, choices, variables, endings
+sources/story/film.yarn      # optional explicit external Yarn import
 content/segments/kitchen.ts  # file.timeline with one video track
 content/clips/kitchen.ts     # file.video({source:'assets/clips/kitchen.mp4',stream:true})
 assets/clips/kitchen.mp4     # binary footage; timeline video ID: base/clips/kitchen
 content/segments/live.ts     # file.timeline with scene and camera tracks
-assets/scenes/ending.ogt      # the scene it places
+content/scenes/ending.ts     # file.scene: the scene it places
 ```
 
 `og create --genre interactive-film` writes this skeleton: an opening on
@@ -45,12 +46,24 @@ them all at start. A game with several flows, or one that starts its flow
 later, calls the three itself:
 
 ```ts
-og.story.load(world, "story/side.yarn");
+og.story.load(world, "base/story/side");
 og.flow.load(world, "side");
 const flow = og.flow.start(world, { dialogue: "side", paused: true });
 ```
 
 ## 2. Write a flow node
+
+Typed nodes use `segment: ref("base/segments/kitchen")` and a structured
+`flow` object with optional `title`, `chapter`, `ending`, `dissolve` and
+`music: {sound: ref("base/music/theme"), volume: 0.8, fade: 0.5, duck: 0.4}`.
+Omit the music sound to stop it. Choices use stable `id`, localized `text`,
+`goto` and `tags` maps (`{default:""}` or `{hotspot:"knife"}`). A node without
+a segment runs its logic immediately. Flow nodes contain no spoken lines;
+put subtitles in their timeline's caption track.
+
+External Yarn can express the same graph when imported explicitly with
+`file.dialogue({yarn:input.text("sources/story/film.yarn"),assets:{...}})`.
+Map every timeline and sound name below to a checked `ref` in `assets`:
 
 ```yarn
 title: kitchen
@@ -227,10 +240,8 @@ A game that draws the flow itself says so, and mounts what it wants from
 Skip button when given `onSkip`, for a cutscene alone), `Subtitles` and
 `FlowChoices`, which take plain values from og.flow.view:
 
-```text
-flow "story/film.yarn" {
-  screen game
-}
+```ts
+flow: { source: { $ogRef: "base/story/film" }, screen: "game" },
 ```
 
 A test takes a choice without a press through a command

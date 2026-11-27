@@ -581,6 +581,7 @@ pub(in crate::cook) fn conform(
                 motion_action: None,
                 strings: None,
                 table: None,
+                story: None,
                 font_pack: None,
                 fields: Default::default(),
                 fx: None,

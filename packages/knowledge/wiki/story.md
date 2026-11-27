@@ -2,9 +2,9 @@
 
 # The `story` module
 
-Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards.
+Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning.
 
-og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error.
+Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
 
 See `yarn`.
 
@@ -14,8 +14,8 @@ See `yarn`.
 
 ```ogt
 module story {
-  doc "Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards."
-  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error."
+  doc "Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning."
+  doc "Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error."
   # declarations follow, each on its own page
 ```
 
@@ -54,8 +54,7 @@ module story {
 | [`RewardView`](story/type-RewardView.md) | struct |  | A quest's reward. |
 | [`ObjectiveView`](story/type-ObjectiveView.md) | struct |  | An objective of a quest's current stage. |
 | [`QuestView`](story/type-QuestView.md) | struct |  | A quest as a quest log shows it. |
-| [`og.story.load`](story/fn-load.md) | function | `(world: World, path: string): Result<StoryAsset>` | A cooked `.yarn` dialogue or `type quest` asset. |
-| [`og.story.parse`](story/fn-parse.md) | function | `(world: World, text: string): Result<StoryAsset>` | A dialogue or quest from text, now (tests and generated content; assets go through og cook). |
+| [`og.story.load`](story/fn-load.md) | function | `(world: World, path: string): Result<StoryAsset>` | A cooked file.dialogue or file.quest asset. |
 | [`og.story.start`](story/fn-start.md) | function | `(world: World, desc?: StartDesc): Result<number>` | Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. |
 | [`og.story.view`](story/fn-view.md) | function | `(world: World, conversation: number): DialogueView \| null` | The current dialogue line and choices, with text and markup spans resolved in the active locale. |
 | [`og.story.graph`](story/fn-graph.md) | function | `(world: World, dialogue: string): Result<readonly GraphNode[]>` | A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice. |

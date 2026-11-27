@@ -140,31 +140,16 @@ pub fn markdown() -> Result<String, String> {
             if ty == "behaviour" {
                 out.push_str("Output: native behaviour nodes, keys, routes and state machines loaded with og.ai.load by canonical ID. Named subtree refs inline checked tree inputs; cycles, machine subtrees and conflicting routes are rejected. Helper imports and all reached subtrees invalidate warm cooks. Runtime og.ai.create accepts the same structured definition with cooked subtree IDs as strings. No behaviour author/runtime text parser or sibling guessing remains. See world.\n\n");
             }
+            if matches!(ty, "dialogue" | "quest") {
+                out.push_str("Output: native story data loaded with og.story.load by canonical content ID. Dialogues declare nodes, stable line/choice IDs, structured expressions, speakers and barks. Localization keys are independent of line identity. Quests declare ordered stages, objectives, rewards and shared globals. Resource fields are canonical content refs. An external Yarn file is imported explicitly as file.dialogue({yarn: input.text('sources/story.yarn'), assets: {...}}); every Yarn resource name maps to ref(id). Neither cook nor source tools scan Yarn automatically. No story author OGT parser or runtime text API remains. See story and flow.\n\n");
+            }
             continue;
         }
-        let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
         let _ = writeln!(
             out,
-            "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `{input}` under assets/.\n"
+            "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `.ogt` under assets/.\n"
         );
         match ty {
-            "quest" => {
-                for scope in ["quest", "reward", "stage", "objective"] {
-                    let fields: Vec<_> = og_story::asset::QUEST_LINES
-                        .iter()
-                        .filter(|f| f.within.contains(&scope))
-                        .copied()
-                        .collect();
-                    if scope == "quest" {
-                        table(&mut out, &fields);
-                    } else {
-                        block(&mut out, &format!("quest.{scope}"), &fields);
-                    }
-                }
-            }
-            "dialogue" => {
-                out.push_str("Source: `.yarn`, not an authored `type dialogue` OGT. This registered kind is the cooked dialogue IR. The cook rejects removed OGT dialogue syntax; write Yarn with explicit #line: ids. See story for Yarn declarations, node headers, commands, expressions and validation.\n\n");
-            }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
                 block(

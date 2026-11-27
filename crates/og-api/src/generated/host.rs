@@ -975,8 +975,6 @@ pub trait StoryApi: Wire {
     fn og_story_set_saliency(&self, world: u32, strategy: String) -> String;
     /// `og.story.load`
     fn og_story_load(&self, world: u32, path: String) -> String;
-    /// `og.story.parse`
-    fn og_story_parse(&self, world: u32, text: String) -> String;
     /// `og.story.start`
     fn og_story_start(&self, world: u32, desc: Option<String>) -> String;
     /// `og.story.view`
@@ -1988,7 +1986,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ai_describe",
     "og_story_set_saliency",
     "og_story_load",
-    "og_story_parse",
     "og_story_start",
     "og_story_view",
     "og_story_graph",

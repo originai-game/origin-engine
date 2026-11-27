@@ -27249,8 +27249,8 @@ export interface AiDescription {
 
 
 // ── story ───────────────────────────────────────────────────────
-// Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards.
-// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error.
+// Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning.
+// Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
 // See `yarn`.
 
 /**
@@ -27599,7 +27599,7 @@ export interface GraphChoice {
 export interface GraphNode {
   /** Its title. */
   readonly title: string;
-  /** Its header lines, `{ title: "kitchen", "og-flow": "segments/kitchen.ogt" }`. */
+  /** Its normalized metadata, `{ title: "kitchen", "og-flow": "base/segments/kitchen" }`. */
   readonly headers: unknown;
   /** Its choices, in order (hidden ones too). */
   readonly choices: readonly GraphChoice[];
@@ -27829,7 +27829,6 @@ export interface QuestView {
   /** The current stage's objectives. */
   readonly objectives: readonly ObjectiveView[];
 }
-
 
 
 
@@ -41435,8 +41434,8 @@ export declare namespace og {
    */
   const StoryEvent: EventType<StoryEvent>;
   /**
-   * Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards.
-   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error.
+   * Dialogue and quests from checked file.dialogue and file.quest TypeScript declarations, cooked as native data. Stable node, line and choice IDs are independent of localization keys. Quests declare stages, objectives and rewards. External Yarn Spinner 3.2.2 uses an explicit input.text import, never automatic scanning.
+   * Load in setup, start a conversation, read view, then advance or choose. Lines resolve through og.i18n. Barks declare topics the engine schedules. Saves retain stable continuations; a missing saved continuation is an error.
    * See `yarn`.
    */
   namespace story {
@@ -41449,21 +41448,13 @@ export declare namespace og {
      */
     function setSaliency(world: World, strategy: StorySaliency): Result<void>;
     /**
-     * A cooked `.yarn` dialogue or `type quest` asset. Loading again replaces it; stable ids preserve the conversation at its next step. The first load registers og.Story and its events, so call it in setup: inside a system it is refused until one load has run outside one.
+     * A cooked file.dialogue or file.quest asset. Loading again replaces it; stable ids preserve the conversation at its next step. The first load registers og.Story and its events, so call it in setup: inside a system it is refused until one load has run outside one.
      *
      * @param world The world.
-     * @param path The asset, such as `story/smith.yarn`.
+     * @param path The canonical asset, such as `base/story/smith`.
      * @returns Refused for a path that is not a cooked dialogue or quest.
      */
     function load(world: World, path: string): Result<StoryAsset>;
-    /**
-     * A dialogue or quest from text, now (tests and generated content; assets go through og cook). Registers og.Story as load does.
-     *
-     * @param world The world.
-     * @param text Yarn text with its profile and name tags, or a `type quest` .ogt.
-     * @returns Refused with the first error's line and the fix.
-     */
-    function parse(world: World, text: string): Result<StoryAsset>;
     /**
      * Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. Several may run at once.
      *

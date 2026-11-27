@@ -349,7 +349,11 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
                 }
             }
         }
-        let d = Dialogue::decode(&d.encode()?)?;
+        let og_story::asset::Asset::Dialogue(d) =
+            og_story::asset::Asset::from_bytes(&og_story::asset::Asset::Dialogue(d).to_bytes()?)?
+        else {
+            unreachable!()
+        };
         let plan = std::fs::read_to_string(plan_path).map_err(|e| e.to_string())?;
         let uninterrupted = execute(d.clone(), &plan, false)?;
         let restored = execute(d, &plan, true)?;
@@ -390,8 +394,8 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
         };
         if let Some(expected) = expected_nodes {
             let d = result?;
-            let encoded = d.encode()?;
-            if Dialogue::decode(&encoded)? != d {
+            let asset = og_story::asset::Asset::Dialogue(d.clone());
+            if og_story::asset::Asset::from_bytes(&asset.to_bytes()?)? != asset {
                 return Err("compiler IR roundtrip changed fixture".into());
             }
             if d.headers.keys().map(|s| s.as_str()).collect::<Vec<_>>() != expected {
@@ -428,7 +432,7 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
             {
                 return Err("explicit string IDs changed".into());
             }
-            return Ok(encoded.into_bytes());
+            return asset.to_bytes();
         }
         // A failure caused by an unsupported feature is not proof of the
         // expected negative diagnostic. Match the rule each fixture violates.

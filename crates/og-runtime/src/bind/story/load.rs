@@ -2,19 +2,8 @@
 
 use super::*;
 
-pub(super) fn insert(engine_id: u32, text: &str) -> Result<StoryAsset, String> {
-    let ty = if text
-        .lines()
-        .map(str::trim)
-        .find(|s| !s.is_empty() && !s.starts_with("//") && !s.starts_with('#'))
-        .is_some_and(|s| s.starts_with("type "))
-    {
-        og_core::ogt::Document::parse(text)
-            .map_err(|e| e.reason().to_string())?
-            .ty
-    } else {
-        og_story::DIALOGUE_TYPE.to_string()
-    };
+pub(super) fn insert(engine_id: u32, data: &[u8]) -> Result<StoryAsset, String> {
+    let asset = og_story::asset::Asset::from_bytes(data)?;
     // The first load registers og.Story and the events (outside a system).
     let eng = engine(engine_id)?;
     match eng.world() {
@@ -27,8 +16,7 @@ pub(super) fn insert(engine_id: u32, text: &str) -> Result<StoryAsset, String> {
             }
         }
     }
-    if ty == og_story::QUEST_TYPE {
-        let q = Quest::parse(text)?;
+    if let og_story::asset::Asset::Quest(q) = asset {
         let info = StoryAsset {
             kind: "quest".into(),
             name: q.id.clone(),
@@ -48,11 +36,9 @@ pub(super) fn insert(engine_id: u32, text: &str) -> Result<StoryAsset, String> {
             return Err(e);
         }
         Ok(info)
-    } else if ty == og_story::DIALOGUE_TYPE {
-        let d = if text.trim_start().starts_with('{') {
-            Dialogue::decode(text)?
-        } else {
-            Dialogue::parse(text)?
+    } else {
+        let og_story::asset::Asset::Dialogue(d) = asset else {
+            unreachable!()
         };
         crate::bind::i18n::base_strings(&eng, &d.locale, &d.strings)?;
         load_voices(&eng, engine_id, &d);
@@ -80,10 +66,6 @@ pub(super) fn insert(engine_id: u32, text: &str) -> Result<StoryAsset, String> {
             return Err(e);
         }
         Ok(info)
-    } else {
-        Err(format!(
-            "expected Yarn dialogue or 'type quest', found 'type {ty}'"
-        ))
     }
 }
 
@@ -148,7 +130,7 @@ pub fn og_story_load(world: u32, path: String) -> Result<crate::host::wire::Stor
             let (bytes, bundle) = assets.blob(&id)?;
             let hash = bundle.output(&id).map(|o| o.hash).unwrap_or(0);
             let text = bundle
-                .story_text(&id, bytes.bytes())
+                .story_data(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?;
             (text, hash)
         };
@@ -158,8 +140,4 @@ pub fn og_story_load(world: u32, path: String) -> Result<crate::host::wire::Stor
         });
         Ok(asset)
     })()
-}
-
-pub fn og_story_parse(world: u32, text: String) -> Result<crate::host::wire::StoryAsset, String> {
-    insert(world, &text)
 }

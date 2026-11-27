@@ -8,6 +8,7 @@
 //! agent judges what is missing or wrong.
 
 use super::systems::story_functions;
+use super::{source_content, source_index, source_schemas};
 use og_story::graph::{FLOW_HEADER, GraphNode, flow_reach};
 use og_timeline::Track;
 use serde_json::{Value, json};
@@ -38,24 +39,46 @@ fn flows(root: &Path) -> Result<(Option<String>, Vec<Flow>), String> {
                 .get(&flow.source.id)
                 .filter(|output| output.kind == "dialogue")
                 .map(|output| output.asset.clone())
-                .ok_or_else(|| format!("project.ts: {} is not a scanned dialogue", flow.source.id))
+                .ok_or_else(|| {
+                    format!(
+                        "project.ts: {} is not a dialogue declaration",
+                        flow.source.id
+                    )
+                })
         })
         .transpose()?;
     let functions = story_functions::read(&project.input.story_functions)?;
-    let assets = root.join("assets");
-    let mut files = Vec::new();
-    walk(&assets, &mut files);
-    files.sort();
+    let index = source_index::Index::open(root, &project).map_err(|e| e.to_string())?;
+    let mut evaluator = source_content::Evaluator::default();
     let mut out = Vec::new();
-    for file in files {
-        let rel = rel_of(&assets, &file);
-        let text = std::fs::read_to_string(&file).map_err(|e| format!("assets/{rel}: {e}"))?;
-        let d = og_story::yarn::compile_with_functions(&text, functions.clone())
-            .map_err(|e| format!("assets/{rel}: {e}"))?;
+    for entry in index
+        .entries
+        .values()
+        .filter(|entry| entry.factory == "dialogue")
+    {
+        let content = evaluator
+            .evaluate(root, &project, entry, &BTreeMap::new(), None)
+            .map_err(|e| e.to_string())?;
+        let file: source_schemas::File =
+            serde_json::from_value(content.data().root().into_json()).map_err(|e| e.to_string())?;
+        let input: source_schemas::media::story::Dialogue =
+            serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+        let mut asset = input.build(functions.clone())?;
+        asset.map_resources(|kind, id| {
+            let output = bindings
+                .get(id)
+                .filter(|output| output.kind == kind)
+                .ok_or_else(|| format!("{}: '{id}' is not a {kind}", entry.file))?;
+            *id = output.asset.clone();
+            Ok(())
+        })?;
+        let og_story::asset::Asset::Dialogue(d) = asset else {
+            unreachable!()
+        };
         let graph = d.graph();
         if graph.iter().any(|n| n.headers.contains_key(FLOW_HEADER)) {
             out.push(Flow {
-                rel,
+                rel: entry.id.clone(),
                 name: d.name.clone(),
                 start: d.start.clone(),
                 graph,
@@ -66,39 +89,11 @@ fn flows(root: &Path) -> Result<(Option<String>, Vec<Flow>), String> {
         && !out.iter().any(|f| &f.rel == id)
     {
         return Err(format!(
-            "project.ts's flow names {id}, which is no dialogue with a flow node under assets/"
+            "project.ts's flow names {id}, which is no dialogue declaration with a flow node"
         ));
     }
     out.sort_by_key(|f| Some(&f.rel) != declared.as_ref());
     Ok((declared, out))
-}
-
-/// The `.yarn` files under `dir`, never following a directory symlink or
-/// entering the engine's own directories.
-fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for e in entries.flatten() {
-        let Ok(ty) = e.file_type() else { continue };
-        let name = e.file_name();
-        if ty.is_dir() {
-            if ![".og", "cooked", "og-out", "node_modules"]
-                .contains(&name.to_string_lossy().as_ref())
-            {
-                walk(&e.path(), out);
-            }
-        } else if ty.is_file() && e.path().extension().is_some_and(|x| x == "yarn") {
-            out.push(e.path());
-        }
-    }
-}
-
-fn rel_of(assets: &Path, file: &Path) -> String {
-    file.strip_prefix(assets)
-        .unwrap_or(file)
-        .to_string_lossy()
-        .replace('\\', "/")
 }
 
 /// A video asset's facts: whether it exists, its source file, and whether

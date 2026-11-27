@@ -13,22 +13,9 @@ use og_core::bytes::{ByteReader, ByteWriter};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MAGIC: &[u8; 4] = b"OGST";
-/// The saved form's version.
-/// 2 (G2-8 batch 2) adds each line's voice timing, barks, ambient
-/// barkers and the voices playing; 3 (R10) each line's camera shot and
-/// the solo the story holds. Version 4 replaces offsets with stable
-/// continuation IDs and saves detour stacks. Older versions remain readable
-/// for quest state; their dialogue continuations are not migrated to Yarn.
-/// Version 5 records source-node exits separately from IR-block traversal.
-/// Version 6 checkpoints offered option values, including random arguments.
-/// Version 7 retains the chosen option's arguments in dialogue history.
-/// Version 8 checkpoints option reason arguments and check targets.
-/// Version 9 adds a conversation's hold header and whether its node was
-/// let go from it (og.story's StartDesc.hold), and the held wait.
-/// Version 10 is version 9 after og.film became og.flow: a conversation
-/// saved holding on `og-film` holds on `og-flow`, the header its dialogue
-/// now carries.
-pub const SAVE_VERSION: u8 = 10;
+/// Native TS story identities, separate from localization keys. No older
+/// saved representation is accepted.
+pub const SAVE_VERSION: u8 = 11;
 
 /// og-core's [`ByteWriter`] (its primitives, by `Deref`) and the story's values.
 struct W<'a>(ByteWriter<'a>);
@@ -257,6 +244,7 @@ impl Story {
             w.u32(c.history.len() as u32);
             for s in &c.history {
                 w.str(&s.node);
+                w.str(&s.line_id);
                 w.str(&s.speaker);
                 w.str(&s.key);
                 w.args(&s.args);
@@ -451,7 +439,7 @@ impl Story {
             .ok_or("the story's saved state does not start with OGST")?;
         let mut r = R(ByteReader::new(rest, "the story's saved state"));
         let v = r.u8()?;
-        if !(1..=SAVE_VERSION).contains(&v) {
+        if v != SAVE_VERSION {
             return Err(format!(
                 "the story's saved state has version {v}; this engine reads {SAVE_VERSION}"
             ));
@@ -461,9 +449,7 @@ impl Story {
         let mut rng = Rng::new(seed);
         rng.restore(state);
         let mut s = Story::new(rng);
-        if v >= 4 {
-            s.tick = r.u32()?;
-        }
+        s.tick = r.u32()?;
         s.seq = r.u32()?;
         s.next_conv = r.u32()?;
         s.globals = r.vars()?;
@@ -474,51 +460,38 @@ impl Story {
             let dialogue = r.str()?;
             let node = r.str()?;
             let mut stack = Vec::new();
-            let pc = if v < 4 {
-                r.u32()?
-            } else {
-                for _ in 0..r.count()? {
-                    stack.push(r.str()?);
-                }
-                0
-            };
+            for _ in 0..r.count()? {
+                stack.push(r.str()?);
+            }
             let mut active_nodes = Vec::new();
-            if v >= 5 {
+            for _ in 0..r.count()? {
+                let mut frame = Vec::new();
                 for _ in 0..r.count()? {
-                    let mut frame = Vec::new();
-                    for _ in 0..r.count()? {
-                        frame.push(r.str()?);
-                    }
-                    active_nodes.push(frame);
+                    frame.push(r.str()?);
                 }
+                active_nodes.push(frame);
             }
             let wait = match r.u8()? {
                 0 => Wait::Line,
                 1 => Wait::Choices,
                 2 => Wait::Ended,
-                3 if v >= 9 => Wait::Held,
+                3 => Wait::Held,
                 w => return Err(format!("the story's saved state has a wait of kind {w}")),
             };
             let locals = r.vars()?;
             let mut choice_values = BTreeMap::new();
-            if v >= 6 {
-                for _ in 0..r.count()? {
-                    choice_values.insert(
-                        r.str()?,
-                        ChoiceValues {
-                            visible: r.bool()?,
-                            enabled: r.bool()?,
-                            chance: r.f64()?,
-                            args: r.args()?,
-                            reason_args: if v >= 8 { r.args()? } else { Vec::new() },
-                            target: if v >= 8 && r.bool()? {
-                                Some(r.f64()?)
-                            } else {
-                                None
-                            },
-                        },
-                    );
-                }
+            for _ in 0..r.count()? {
+                choice_values.insert(
+                    r.str()?,
+                    ChoiceValues {
+                        visible: r.bool()?,
+                        enabled: r.bool()?,
+                        chance: r.f64()?,
+                        args: r.args()?,
+                        reason_args: r.args()?,
+                        target: if r.bool()? { Some(r.f64()?) } else { None },
+                    },
+                );
             }
             let mut cast = BTreeMap::new();
             for _ in 0..r.count()? {
@@ -529,7 +502,7 @@ impl Story {
             let mut history = Vec::new();
             for _ in 0..r.count()? {
                 let node = r.str()?;
-                let step = if v < 4 { r.u32()? } else { 0 };
+                let line_id = r.str()?;
                 let speaker = r.str()?;
                 let key = r.str()?;
                 let args = r.args()?;
@@ -543,16 +516,14 @@ impl Story {
                 } else {
                     None
                 };
-                let (voice_ticks, voice_start) = if v >= 2 {
-                    (r.u32()?, r.opt_u32()?)
-                } else {
-                    (0, None)
-                };
-                let shot = if v >= 3 { r.str()? } else { String::new() };
-                let chosen_args = if v >= 7 { r.args()? } else { Vec::new() };
+                let voice_ticks = r.u32()?;
+                let voice_start = r.opt_u32()?;
+                let shot = r.str()?;
+                let chosen_args = r.args()?;
                 history.push(Shown {
                     node,
-                    step,
+                    line_id,
+                    step: 0,
                     speaker,
                     key,
                     args,
@@ -573,23 +544,14 @@ impl Story {
                 None
             };
             let last_roll = if r.bool()? { Some(r.roll()?) } else { None };
-            let (hold, released) = if v >= 9 {
-                let hold = r.str()?;
-                let hold = if v == 9 && hold == "og-film" {
-                    "og-flow".to_string()
-                } else {
-                    hold
-                };
-                (hold, r.bool()?)
-            } else {
-                (String::new(), false)
-            };
+            let hold = r.str()?;
+            let released = r.bool()?;
             s.convs.insert(
                 id,
                 Conv {
                     dialogue,
                     node,
-                    pc,
+                    pc: 0,
                     wait,
                     locals,
                     choice_values,
@@ -668,93 +630,86 @@ impl Story {
             };
             s.events.push(e);
         }
-        if v >= 2 {
-            for _ in 0..r.count()? {
-                let e = r.u64()?;
-                let dialogue = r.str()?;
-                let bark = r.str()?;
-                if v < 4 {
-                    r.u32()?;
-                }
-                let said = Said {
-                    dialogue,
-                    bark,
-                    key: r.str()?,
-                    args: r.args()?,
-                    speaker: r.str()?,
-                    voice: r.str()?,
-                    seq: r.u32()?,
-                    start: r.u32()?,
-                    until: r.u32()?,
-                    priority: r.u32()? as i32,
-                    voice_ticks: r.u32()?,
-                    voice_start: r.opt_u32()?,
-                };
-                s.barks.insert(e, said);
-            }
-            for _ in 0..r.count()? {
-                s.bark_requests.push(Request {
-                    entity: r.u64()?,
-                    topic: r.str()?,
-                    dialogue: r.str()?,
-                });
-            }
-            for _ in 0..r.count()? {
-                let e = r.u64()?;
-                let a = Ambient {
-                    topic: r.str()?,
-                    dialogue: r.str()?,
-                    every: r.u32()?,
-                    jitter: r.u32()?,
-                    next: r.u32()?,
-                };
-                s.ambient.insert(e, a);
-            }
-            for i in 0..2 {
-                let mut m = BTreeMap::new();
-                for _ in 0..r.count()? {
-                    let k = r.str()?;
-                    m.insert(k, r.u32()?);
-                }
-                if i == 0 {
-                    s.bark_last = m;
-                } else {
-                    s.bark_cycle = m;
-                }
-            }
+        for _ in 0..r.count()? {
+            let e = r.u64()?;
+            let dialogue = r.str()?;
+            let bark = r.str()?;
+            let said = Said {
+                dialogue,
+                bark,
+                key: r.str()?,
+                args: r.args()?,
+                speaker: r.str()?,
+                voice: r.str()?,
+                seq: r.u32()?,
+                start: r.u32()?,
+                until: r.u32()?,
+                priority: r.u32()? as i32,
+                voice_ticks: r.u32()?,
+                voice_start: r.opt_u32()?,
+            };
+            s.barks.insert(e, said);
+        }
+        for _ in 0..r.count()? {
+            s.bark_requests.push(Request {
+                entity: r.u64()?,
+                topic: r.str()?,
+                dialogue: r.str()?,
+            });
+        }
+        for _ in 0..r.count()? {
+            let e = r.u64()?;
+            let a = Ambient {
+                topic: r.str()?,
+                dialogue: r.str()?,
+                every: r.u32()?,
+                jitter: r.u32()?,
+                next: r.u32()?,
+            };
+            s.ambient.insert(e, a);
+        }
+        for i in 0..2 {
+            let mut m = BTreeMap::new();
             for _ in 0..r.count()? {
                 let k = r.str()?;
-                let e = r.u64()?;
-                s.bark_last_by.insert((k, e), r.u32()?);
+                m.insert(k, r.u32()?);
             }
-            s.bark_once = r.set()?;
-            for _ in 0..r.count()? {
-                let k = r.str()?;
-                let seq = r.u32()?;
-                s.voices.insert(k, (seq, r.u64()?));
+            if i == 0 {
+                s.bark_last = m;
+            } else {
+                s.bark_cycle = m;
             }
         }
-        if v >= 3 && r.bool()? {
+        for _ in 0..r.count()? {
+            let k = r.str()?;
+            let e = r.u64()?;
+            s.bark_last_by.insert((k, e), r.u32()?);
+        }
+        s.bark_once = r.set()?;
+        for _ in 0..r.count()? {
+            let k = r.str()?;
+            let seq = r.u32()?;
+            s.voices.insert(k, (seq, r.u64()?));
+        }
+        if r.bool()? {
             s.camera = Some((r.u64()?, r.u64()?));
         }
-        if v >= 5 {
-            for _ in 0..r.count()? {
-                let node = r.str()?;
-                s.visits.insert(node, r.u32()?);
-            }
-            s.once = r.set()?;
-            s.saliency = match r.u8()? {
-                0 => Saliency::First,
-                1 => Saliency::Best,
-                2 => Saliency::BestLeastRecentlyViewed,
-                3 => Saliency::RandomBestLeastRecentlyViewed,
-                4 => Saliency::ConditionalFirstWeighted,
-                _ => return Err("invalid saved saliency policy".into()),
-            };
-            for _ in 0..r.count()? {
-                let key = r.str()?;
-                s.content_views.insert(key, r.u32()?);
-            }
+        for _ in 0..r.count()? {
+            let node = r.str()?;
+            s.visits.insert(node, r.u32()?);
+        }
+        s.once = r.set()?;
+        s.saliency = match r.u8()? {
+            0 => Saliency::First,
+            1 => Saliency::Best,
+            2 => Saliency::BestLeastRecentlyViewed,
+            3 => Saliency::RandomBestLeastRecentlyViewed,
+            4 => Saliency::ConditionalFirstWeighted,
+            _ => return Err("invalid saved saliency policy".into()),
+        };
+        for _ in 0..r.count()? {
+            let key = r.str()?;
+            s.content_views.insert(key, r.u32()?);
         }
         if !r.0.is_done() {
             return Err("the story's saved state has bytes past its end".into());

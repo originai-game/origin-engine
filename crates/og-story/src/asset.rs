@@ -1,41 +1,6 @@
-//! Engine-owned story IR compiled from `.yarn` by [`crate::yarn`], and
-//! quests parsed from `type quest` data. Yarn lines carry base text and
-//! explicit stable `#line:` IDs; the runtime resolves them through i18n.
-//! Continuation blocks use semantic IDs, not source positions. The
-//! dialogue box still reads the same lines, speakers, choices and shots.
-//!
-//! ```text
-//! type quest
-//! version 1
-//! ---
-//! id rescue
-//! title "quest.rescue"
-//! summary "quest.rescue.summary"
-//! category main
-//! giver "npc.smith"
-//! region "region.vale"
-//! global wolvesFled false
-//! reward "item.gold" 50 {
-//!   image "art/gold.png"
-//!   rarity common
-//! }
-//! stage hunt {
-//!   objective wolves "quest.rescue.wolves" {
-//!     target 5
-//!     marker 12 0 4
-//!   }
-//!   objective sword "quest.rescue.sword" {
-//!     optional
-//!   }
-//!   fail "wolvesFled"
-//!   next report
-//! }
-//! stage report {
-//!   objective talk "quest.rescue.talk" {
-//!     when "seen(smith.bought)"
-//!   }
-//! }
-//! ```
+//! Engine-owned native story data from checked TS declarations or explicit
+//! Yarn imports. Lines have stable identities independent of localization
+//! keys; continuations use semantic IDs, never source positions.
 //!
 //! A stage is done when every objective that is not `optional` is; the
 //! quest moves to `next`, or completes after its last stage. `fail`
@@ -44,196 +9,10 @@
 //! the log until it first counts.
 
 use crate::expr::{Expr, Func, Val};
-use og_core::ogt::{Document, Entry, Value as OgtValue};
 use std::collections::BTreeSet;
 
-/// The cooked asset kind (legacy `.ogt` sources receive a migration error).
-pub const DIALOGUE_TYPE: &str = "dialogue";
-/// The `.ogt` type of a quest.
-pub const QUEST_TYPE: &str = "quest";
 /// The speaker every dialogue has without declaring it: no name, no portrait.
 pub const NARRATOR: &str = "narrator";
-
-/// Quest declarations and nested fields, shared with the file catalogue.
-pub const QUEST_LINES: &[og_core::ogt::line::Line] = &[
-    og_core::ogt::line::Line::of(&["quest"], "id", "<id>", "required", "Unique quest id.", ""),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "title",
-        "\"<i18n key>\"",
-        "required",
-        "Quest title.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest", "stage"],
-        "summary",
-        "\"<i18n key>\"",
-        "",
-        "Summary key.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "category",
-        "<word>",
-        "main",
-        "Game-owned category, no engine semantics.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "giver",
-        "\"<i18n key>\"",
-        "",
-        "Quest giver key.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "region",
-        "\"<i18n key>\"",
-        "",
-        "Quest region key.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "global",
-        "<name> <value>",
-        "",
-        "Repeated story variables, checked by the shared expression parser.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "reward",
-        "\"<i18n key>\" [<amount>] { ... }",
-        "",
-        "Declared reward metadata; amount defaults to one. Game applies rewards.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["quest"],
-        "stage",
-        "<id> { ... }",
-        "required",
-        "Repeated stages in authored order.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(&["reward"], "image", "\"<asset>\"", "", "Reward image.", ""),
-    og_core::ogt::line::Line::of(
-        &["reward"],
-        "rarity",
-        "<word>",
-        "",
-        "Game-owned rarity label.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["stage"],
-        "next",
-        "<stage id>",
-        "next stage",
-        "Explicit next stage; references are validated.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["stage"],
-        "fail",
-        "\"<expression>\"",
-        "",
-        "Fail when this condition holds.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["stage"],
-        "objective",
-        "<id> \"<i18n key>\" { ... }",
-        "",
-        "Repeated objectives; ids unique per stage.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "arg",
-        "<name> \"<expression>\"",
-        "",
-        "Repeated localized message arguments.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "target",
-        "<integer, 1..1000000>",
-        "1",
-        "Required progress count.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "when",
-        "\"<expression>\"",
-        "",
-        "Complete when condition holds.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "on",
-        "<event>",
-        "",
-        "Progress on this event.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "where",
-        "\"<expression>\"",
-        "",
-        "Filter the declared event.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "optional",
-        "",
-        "false",
-        "Not required for stage completion.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "hidden",
-        "",
-        "false",
-        "Hide until first progress.",
-        "",
-    ),
-    og_core::ogt::line::Line::of(
-        &["objective"],
-        "marker",
-        "<x> [<y> <z>]",
-        "",
-        "World point in metres; omitted y/z are zero.",
-        "",
-    ),
-];
-
-fn quest_fields(b: &og_core::ogt::Block, scope: &str) -> Result<(), String> {
-    for e in &b.entries {
-        if !QUEST_LINES
-            .iter()
-            .any(|f| f.key == e.key && f.within.contains(&scope))
-        {
-            return Err(err(e, format!("unknown {scope} field '{}'", e.key)));
-        }
-        if let Some(b) = &e.block {
-            quest_fields(b, &e.key)?;
-        }
-    }
-    Ok(())
-}
 
 /// A variable a dialogue or quest declares.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -269,6 +48,8 @@ pub struct Text {
 /// A line.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Line {
+    /// Stable identity, separate from the localization key.
+    pub id: String,
     pub speaker: String,
     pub text: Text,
     /// A voice clip's asset path (empty: none).
@@ -451,7 +232,7 @@ impl Dialogue {
 }
 
 /// An objective of a stage.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Objective {
     pub id: String,
     pub text: Text,
@@ -472,7 +253,7 @@ pub struct Objective {
 }
 
 /// A stage of a quest.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Stage {
     pub id: String,
     pub summary: String,
@@ -483,7 +264,7 @@ pub struct Stage {
 }
 
 /// A reward shown in the quest log.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Reward {
     /// Its name's i18n key.
     pub name: String,
@@ -493,7 +274,7 @@ pub struct Reward {
 }
 
 /// A parsed quest.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Quest {
     pub id: String,
     pub title: String,
@@ -512,102 +293,115 @@ impl Quest {
     }
 }
 
-fn err(e: &Entry, msg: impl Into<String>) -> String {
-    format!("line {}: {}", e.line, msg.into())
+/// Checked engine story data, shared by typed declarations and the Yarn importer.
+/// The enclosing cooked blob versions this native representation.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Asset {
+    Dialogue(Dialogue),
+    Quest(Quest),
 }
 
-fn word_or_str(v: &OgtValue) -> Option<&str> {
-    v.as_word().or_else(|| v.as_str())
-}
-
-/// The entry's value `i` as a word (or string).
-fn name_at(e: &Entry, i: usize, what: &str) -> Result<String, String> {
-    e.values
-        .get(i)
-        .and_then(word_or_str)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .ok_or_else(|| err(e, format!("'{}' needs {what}", e.key)))
-}
-
-fn key_at(e: &Entry, i: usize) -> Result<String, String> {
-    match e.values.get(i) {
-        Some(OgtValue::String(s)) if !s.is_empty() => Ok(s.clone()),
-        _ => Err(err(
-            e,
-            format!(
-                "'{}' needs an og.i18n key in quotes, such as \"npc.hello\" (text is never written inline: put it in your string tables)",
-                e.key
-            ),
-        )),
-    }
-}
-
-/// A value written as a literal (number, true/false) or a quoted expression.
-fn expr_at(e: &Entry, i: usize) -> Result<Expr, String> {
-    match e.values.get(i) {
-        Some(OgtValue::Number(n)) => Ok(Expr::Lit(Val::Num(n.as_f64()))),
-        Some(v) if v.as_bool().is_some() => Ok(Expr::Lit(Val::Bool(v.as_bool().unwrap()))),
-        Some(OgtValue::String(s)) => Expr::parse(s).map_err(|m| err(e, m)),
-        _ => Err(err(
-            e,
-            format!(
-                "'{}' needs a value: a number, true/false or an expression in quotes",
-                e.key
-            ),
-        )),
-    }
-}
-
-fn var_decl(e: &Entry, global: bool) -> Result<VarDecl, String> {
-    let name = name_at(e, 0, "a name")?;
-    if name.contains('.') || matches!(name.as_str(), "and" | "or" | "not" | "true" | "false") {
-        return Err(err(e, format!("'{name}' cannot name a variable")));
-    }
-    let value = match e.values.get(1) {
-        Some(OgtValue::Number(n)) => Val::Num(n.as_f64()),
-        Some(OgtValue::String(s)) => Val::Str(s.clone()),
-        Some(v) if v.as_bool().is_some() => Val::Bool(v.as_bool().unwrap()),
-        _ => {
-            return Err(err(
-                e,
-                format!(
-                    "'{} {name}' needs a starting value: a number, true/false or a string",
-                    e.key
-                ),
-            ));
-        }
-    };
-    Ok(VarDecl {
-        name,
-        value,
-        global,
-    })
-}
-
-fn text_of(e: &Entry, i: usize) -> Result<Text, String> {
-    let key = key_at(e, i)?;
-    let mut args = Vec::new();
-    if let Some(b) = &e.block {
-        for a in b.get_all("arg") {
-            args.push((name_at(a, 0, "a name")?, expr_at(a, 1)?));
+impl Asset {
+    pub fn validate(&self) -> Result<(), String> {
+        match self {
+            Self::Dialogue(d) => {
+                crate::yarn::functions::validate(&mut d.functions.clone())?;
+                d.validate()
+            }
+            Self::Quest(q) => q.validate(),
         }
     }
-    Ok(Text { key, args })
-}
 
-fn header(text: &str, ty: &str) -> Result<Document, String> {
-    let doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
-    if doc.ty != ty {
-        return Err(format!("expected 'type {ty}', found 'type {}'", doc.ty));
+    pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        use bincode::Options;
+        self.validate()?;
+        bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .serialize(self)
+            .map_err(|e| format!("native story: {e}"))
     }
-    if doc.version != 1 {
-        return Err(format!(
-            "{ty} version {} is not supported (1 is)",
-            doc.version
-        ));
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        use bincode::Options;
+        let asset: Self = bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .with_limit(bytes.len() as u64)
+            .reject_trailing_bytes()
+            .deserialize(bytes)
+            .map_err(|e| format!("native story: {e}"))?;
+        asset.validate()?;
+        Ok(asset)
     }
-    Ok(doc)
+
+    /// Resolve only resource-bearing fields, never story names or text keys.
+    pub fn map_resources(
+        &mut self,
+        mut map: impl FnMut(&str, &mut String) -> Result<(), String>,
+    ) -> Result<(), String> {
+        fn voice(
+            line: &mut Line,
+            map: &mut dyn FnMut(&str, &mut String) -> Result<(), String>,
+        ) -> Result<(), String> {
+            if !line.voice.is_empty() {
+                map("sound", &mut line.voice)?;
+            }
+            Ok(())
+        }
+        match self {
+            Self::Dialogue(d) => {
+                for speaker in &mut d.speakers {
+                    if !speaker.portrait.is_empty() {
+                        map("texture", &mut speaker.portrait)?;
+                    }
+                }
+                for header in d.headers.values_mut() {
+                    if let Some(segment) = header.get_mut(crate::graph::FLOW_HEADER) {
+                        map("timeline", segment)?;
+                    }
+                    if let Some(music) = header.get_mut("og-flow-music") {
+                        let mut parts = music.split_whitespace();
+                        if let Some(sound) = parts.next().filter(|s| *s != "none") {
+                            let mut sound = sound.to_string();
+                            map("sound", &mut sound)?;
+                            *music = std::iter::once(sound)
+                                .chain(parts.map(str::to_string))
+                                .collect::<Vec<_>>()
+                                .join(" ");
+                        }
+                    }
+                }
+                for node in &mut d.nodes {
+                    for step in node
+                        .steps
+                        .iter_mut()
+                        .chain(node.choices.iter_mut().flat_map(|c| &mut c.steps))
+                    {
+                        if let Step::Say(line) = step {
+                            voice(line, &mut map)?;
+                        }
+                    }
+                }
+                for bark in &mut d.barks {
+                    for line in &mut bark.lines {
+                        voice(line, &mut map)?;
+                    }
+                    for step in &mut bark.steps {
+                        if let Step::Say(line) = step {
+                            voice(line, &mut map)?;
+                        }
+                    }
+                }
+            }
+            Self::Quest(q) => {
+                for reward in &mut q.rewards {
+                    if !reward.image.is_empty() {
+                        map("texture", &mut reward.image)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Checks every variable an expression reads (`vars` declares them) and
@@ -650,7 +444,7 @@ fn check_reads(
         .find(|v| !v.contains('.') && !vars.contains(v.as_str()))
     {
         return Err(format!(
-            "line {line}: '{v}' is not declared: in Yarn add <<declare ${v} = value>>; in a quest add global {v} value"
+            "line {line}: '{v}' is not declared: add it to dialogue vars or quest globals; in imported Yarn use <<declare ${v} = value>>"
         ));
     }
     let mut calls = Vec::new();
@@ -676,12 +470,29 @@ fn check_reads(
 }
 
 impl Dialogue {
-    /// Parses and validates a dialogue.
-    pub fn parse(text: &str) -> Result<Dialogue, String> {
-        crate::yarn::compile(text)
+    /// Resolve and type-check a structured author declaration before packing.
+    pub fn check_native(&mut self) -> Result<(), String> {
+        self.validate()?;
+        crate::yarn::typing::check_native(self)
     }
 
-    pub(crate) fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.name.is_empty() || self.nodes.is_empty() || self.node(&self.start).is_none() {
+            return Err(
+                "a dialogue needs a name, nodes and a start naming one of its nodes".into(),
+            );
+        }
+        identities("node", self.nodes.iter().map(|n| n.id.as_str()))?;
+        identities("speaker", self.speakers.iter().map(|s| s.id.as_str()))?;
+        identities("bark", self.barks.iter().map(|b| b.id.as_str()))?;
+        identities(
+            "variable",
+            self.vars
+                .iter()
+                .map(|v| v.name.as_str())
+                .chain(self.smart.keys().map(String::as_str)),
+        )?;
+        crate::yarn::typing::validate_smart(self)?;
         let nodes: BTreeSet<&str> = self.nodes.iter().map(|n| n.id.as_str()).collect();
         let vars: BTreeSet<&str> = self
             .vars
@@ -689,6 +500,9 @@ impl Dialogue {
             .map(|v| v.name.as_str())
             .chain(self.smart.keys().map(String::as_str))
             .collect();
+        for expression in self.smart.values() {
+            check_expr(expression, 0, &vars, Some(&nodes))?;
+        }
         let target = |t: &str, line: usize| -> Result<(), String> {
             if nodes.contains(t) {
                 Ok(())
@@ -712,8 +526,8 @@ impl Dialogue {
                     Step::Say(l) => {
                         if l.speaker != NARRATOR && self.speaker(&l.speaker).is_none() {
                             return Err(format!(
-                                "line {}: '{}' is not a speaker: declare 'speaker {} {{ name \"...\" }}' or use narrator",
-                                l.line, l.speaker, l.speaker
+                                "line {}: '{}' is not a speaker: add it to speakers or use narrator",
+                                l.line, l.speaker
                             ));
                         }
                         text(&l.text, l.line)?;
@@ -721,7 +535,7 @@ impl Dialogue {
                     Step::Set(v, x) => {
                         if !vars.contains(v.as_str()) {
                             return Err(format!(
-                                "line {line}: 'set {v}': add <<declare ${v} = value>>"
+                                "line {line}: 'set {v}': add it to vars; in imported Yarn use <<declare ${v} = value>>"
                             ));
                         }
                         check_expr(x, line, &vars, Some(&nodes))?;
@@ -766,6 +580,22 @@ impl Dialogue {
             Ok(())
         };
         for n in &self.nodes {
+            identities("choice", n.choices.iter().map(|c| c.id.as_str()))?;
+            identities(
+                "line",
+                n.steps.iter().filter_map(|s| match s {
+                    Step::Say(l) => Some(l.id.as_str()),
+                    _ => None,
+                }),
+            )?;
+            if let Some((ticks, id)) = &n.timer
+                && (*ticks == 0 || !n.choices.iter().any(|c| &c.id == id))
+            {
+                return Err(format!(
+                    "node '{}': a timer needs ticks and an existing choice id",
+                    n.id
+                ));
+            }
             steps(&n.steps, &n.lines, n.line)?;
             if let Some(fallback) = &n.choice_fallback {
                 target(fallback, n.line)?;
@@ -794,6 +624,12 @@ impl Dialogue {
             }
         }
         for b in &self.barks {
+            if b.lines.is_empty() || !b.weight.is_finite() || b.weight < 0.0 {
+                return Err(format!(
+                    "bark '{}': needs lines and a finite nonnegative weight",
+                    b.id
+                ));
+            }
             if !b.speaker.is_empty() && b.speaker != NARRATOR && self.speaker(&b.speaker).is_none()
             {
                 return Err(format!(
@@ -859,220 +695,47 @@ impl Dialogue {
 }
 
 impl Quest {
-    /// Parses and validates a quest.
-    pub fn parse(text: &str) -> Result<Quest, String> {
-        let doc = header(text, QUEST_TYPE)?;
-        quest_fields(&doc.body, "quest")?;
-        let mut q = Quest {
-            id: String::new(),
-            title: String::new(),
-            summary: String::new(),
-            category: "main".into(),
-            giver: String::new(),
-            region: String::new(),
-            vars: Vec::new(),
-            rewards: Vec::new(),
-            stages: Vec::new(),
-        };
-        for e in &doc.body.entries {
-            match e.key.as_str() {
-                "id" => q.id = name_at(e, 0, "an id")?,
-                "title" => q.title = key_at(e, 0)?,
-                "summary" => q.summary = key_at(e, 0)?,
-                "category" => q.category = name_at(e, 0, "a word, such as main or side")?,
-                "giver" => q.giver = key_at(e, 0)?,
-                "region" => q.region = key_at(e, 0)?,
-                "global" => q.vars.push(var_decl(e, true)?),
-                "var" => {
-                    return Err(err(
-                        e,
-                        "a quest's variables are the story's: write 'global <name> <value>'",
-                    ));
-                }
-                "reward" => {
-                    let name = key_at(e, 0)?;
-                    let amount = e
-                        .values
-                        .get(1)
-                        .and_then(|v| v.as_number())
-                        .map_or(1.0, |n| n.as_f64());
-                    let mut r = Reward {
-                        name,
-                        amount,
-                        image: String::new(),
-                        rarity: String::new(),
-                    };
-                    for x in e
-                        .block
-                        .as_ref()
-                        .map(|b| b.entries.as_slice())
-                        .unwrap_or(&[])
-                    {
-                        match x.key.as_str() {
-                            "image" => r.image = name_at(x, 0, "an image path")?,
-                            "rarity" => r.rarity = name_at(x, 0, "a word")?,
-                            other => {
-                                return Err(err(
-                                    x,
-                                    format!("'{other}' is not part of a reward: image or rarity"),
-                                ));
-                            }
-                        }
-                    }
-                    q.rewards.push(r);
-                }
-                "stage" => {
-                    let mut s = Stage {
-                        id: name_at(e, 0, "an id")?,
-                        summary: String::new(),
-                        objectives: Vec::new(),
-                        next: None,
-                        fail: None,
-                        line: e.line,
-                    };
-                    if q.stage(&s.id).is_some() {
-                        return Err(err(e, format!("the stage '{}' is declared twice", s.id)));
-                    }
-                    for x in e
-                        .block
-                        .as_ref()
-                        .map(|b| b.entries.as_slice())
-                        .unwrap_or(&[])
-                    {
-                        match x.key.as_str() {
-                            "summary" => s.summary = key_at(x, 0)?,
-                            "next" => s.next = Some(name_at(x, 0, "a stage")?),
-                            "fail" => s.fail = Some(expr_at(x, 0)?),
-                            "objective" => {
-                                let id = name_at(x, 0, "an id")?;
-                                let mut o = Objective {
-                                    id,
-                                    text: text_of(x, 1)?,
-                                    target: 1,
-                                    when: None,
-                                    optional: false,
-                                    hidden: false,
-                                    marker: None,
-                                    on: None,
-                                    filter: None,
-                                    line: x.line,
-                                };
-                                for y in x
-                                    .block
-                                    .as_ref()
-                                    .map(|b| b.entries.as_slice())
-                                    .unwrap_or(&[])
-                                {
-                                    match y.key.as_str() {
-                                        "arg" => {}
-                                        "target" => {
-                                            o.target = y
-                                                .values
-                                                .first()
-                                                .and_then(|v| v.as_number())
-                                                .and_then(|n| n.as_u64().ok())
-                                                .filter(|t| (1..=1_000_000).contains(t))
-                                                .ok_or_else(|| {
-                                                    err(y, "'target' is a count, 1 to 1000000")
-                                                })?
-                                                as u32
-                                        }
-                                        "when" => o.when = Some(expr_at(y, 0)?),
-                                        "on" => {
-                                            o.on = Some(name_at(
-                                                y,
-                                                0,
-                                                "an event's name, such as og.CollisionStarted or EnemyDied",
-                                            )?)
-                                        }
-                                        "where" => o.filter = Some(expr_at(y, 0)?),
-                                        "optional" => o.optional = true,
-                                        "hidden" => o.hidden = true,
-                                        "marker" => {
-                                            let n = |i: usize| {
-                                                y.values
-                                                    .get(i)
-                                                    .and_then(|v| v.as_number())
-                                                    .map(|n| n.as_f32())
-                                            };
-                                            o.marker = Some([
-                                                n(0).ok_or_else(|| {
-                                                    err(y, "'marker' is a point: x y z")
-                                                })?,
-                                                n(1).unwrap_or(0.0),
-                                                n(2).unwrap_or(0.0),
-                                            ]);
-                                        }
-                                        other => {
-                                            return Err(err(
-                                                y,
-                                                format!(
-                                                    "'{other}' is not part of an objective: target, when, on, where, optional, hidden, marker or arg"
-                                                ),
-                                            ));
-                                        }
-                                    }
-                                }
-                                if s.objectives.iter().any(|p| p.id == o.id) {
-                                    return Err(err(
-                                        x,
-                                        format!("the objective '{}' is declared twice", o.id),
-                                    ));
-                                }
-                                s.objectives.push(o);
-                            }
-                            other => {
-                                return Err(err(
-                                    x,
-                                    format!(
-                                        "'{other}' is not part of a stage: summary, objective, next or fail"
-                                    ),
-                                ));
-                            }
-                        }
-                    }
-                    q.stages.push(s);
-                }
-                other => {
-                    return Err(err(
-                        e,
-                        format!(
-                            "'{other}' is not part of a quest: id, title, summary, category, giver, region, global, reward or stage"
-                        ),
-                    ));
-                }
-            }
-        }
-        if q.id.is_empty() {
+    /// Checks the native quest independently of its author representation.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.id.is_empty() {
             return Err("a quest needs an 'id'".into());
         }
-        if q.title.is_empty() {
+        if self.title.is_empty() {
             return Err("a quest needs a 'title' (an og.i18n key)".into());
         }
-        if q.stages.is_empty() {
+        if self.stages.is_empty() {
             return Err("a quest needs a 'stage'".into());
         }
-        let vars: BTreeSet<&str> = q.vars.iter().map(|v| v.name.as_str()).collect();
-        for s in &q.stages {
+        identities("stage", self.stages.iter().map(|s| s.id.as_str()))?;
+        identities("variable", self.vars.iter().map(|v| v.name.as_str()))?;
+        let vars: BTreeSet<&str> = self.vars.iter().map(|v| v.name.as_str()).collect();
+        for s in &self.stages {
+            identities("objective", s.objectives.iter().map(|o| o.id.as_str()))?;
             if let Some(n) = &s.next
-                && q.stage(n).is_none()
+                && self.stage(n).is_none()
             {
                 return Err(format!(
                     "line {}: 'next {n}' names no stage of '{}'",
-                    s.line, q.id
+                    s.line, self.id
                 ));
             }
             if let Some(x) = &s.fail {
                 check_expr(x, s.line, &vars, None)?;
             }
             for o in &s.objectives {
+                if !(1..=1_000_000).contains(&o.target) || o.text.key.is_empty() {
+                    return Err(format!(
+                        "objective '{}': needs a text key and target 1 to 1000000",
+                        o.id
+                    ));
+                }
                 if let Some(x) = &o.when {
                     check_expr(x, o.line, &vars, None)?;
                 }
                 if let Some(x) = &o.filter {
                     if o.on.is_none() {
                         return Err(format!(
-                            "line {}: 'where' filters an 'on' event: add 'on <Event>'",
+                            "line {}: an objective's filter needs its on event name",
                             o.line
                         ));
                     }
@@ -1083,7 +746,7 @@ impl Quest {
                 }
             }
         }
-        Ok(q)
+        crate::yarn::typing::check_quest(self)
     }
 
     /// Every i18n key it shows, with argument names and lines.
@@ -1110,4 +773,16 @@ impl Quest {
         }
         out
     }
+}
+
+fn identities<'a>(kind: &str, ids: impl Iterator<Item = &'a str>) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    for id in ids {
+        if id.is_empty() || !seen.insert(id) {
+            return Err(format!(
+                "{kind} identities must be nonempty and unique: '{id}'"
+            ));
+        }
+    }
+    Ok(())
 }

@@ -129,6 +129,7 @@ pub fn read(root: &Path) -> Result<BTreeMap<String, Timeline>, String> {
     super::super::pipeline::author::sources(
         root,
         &project.source,
+        &project.story_functions,
         &mut sources,
         &mut consumed,
         &project.provided,

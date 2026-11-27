@@ -1,8 +1,49 @@
-# Author dialogue in Yarn
+# Author dialogue and quests in TypeScript
 
-Put dialogue in `assets/story/*.yarn`, then run `og cook`. Load the asset
-with `og.story.load(world, "story/smith.yarn")`. The cook compiles Yarn to
-engine-owned IR. The runtime, saves, quests, and UI views remain engine-owned.
+Declare stories under `content/` with `file.dialogue` and `file.quest`, then
+cook and load their canonical IDs, for example `base/story/smith`. The cook
+checks structured nodes, lines, choices, expressions and resource references,
+then packs native story data. There is no story OGT author format or runtime
+text parser. Localization keys identify messages; line and choice IDs identify
+saved positions. Changing a translation key need not invalidate a saved line.
+
+```ts
+import { file } from "@origingame/engine/author";
+export default file.dialogue({
+  name: "smith", start: "Start", locale: "en",
+  vars: [{ name: "gold", value: 10, global: true }],
+  strings: { "smith.hello": "Welcome.", "smith.leave": "Leave" },
+  nodes: [{
+    id: "Start",
+    steps: [{ kind: "line", id: "greeting", text: { key: "smith.hello" } }],
+    choices: [{ id: "leave", text: { key: "smith.leave" }, steps: [{ kind: "end" }] }],
+  }],
+});
+```
+
+Conditions and assignments are expression objects: `{kind:"variable",name:"gold"}`,
+`{kind:"literal",value:10}`, or `{kind:"binary",op:"ge",left:...,right:...}`.
+A `command` step has a command `name` and expression `args`; a `call` invokes
+a registered typed function. Resource fields such as `portrait`, `voice`,
+`segment` and reward `image` take `ref("base/...")`, not raw paths. Dialogue
+names, quest IDs and localization keys remain story identifiers, not assets.
+
+## Explicit external Yarn import
+
+Yarn is optional exchange input. Keep it under `sources/` and import it through
+a checked declaration; neither cook nor source tools scan `.yarn` files.
+
+```ts
+import { file, input, ref } from "@origingame/engine/author";
+export default file.dialogue({
+  yarn: input.text("sources/story/smith.yarn"),
+  assets: { "vo/hello.wav": ref("base/vo/hello") },
+});
+```
+
+Every resource used by the imported Yarn (portraits, voice, flow segments and
+flow music) must have an explicit `assets` mapping. The following sections
+describe that external language and the shared runtime behavior.
 
 ## 1. Declare the profile and stable ids
 
@@ -160,10 +201,22 @@ group may carry the positive timeout; that option is the default choice.
 
 ## 4. Keep quests in engine data
 
-Quests remain `.ogt` files of `type quest`. Objectives retain reflected
-`on Event` and `where "event.field == 'value'"` filters, progression, rewards,
-and saves. QuestView does not change. Dialogue views retain their existing
-fields and add typed markup spans.
+Declare quests with `file.quest`, using ordered `stages`, `objectives`,
+`rewards` and shared `globals`. An objective's `on` names a reflected event;
+its `filter`, `when` and a stage's `fail` use structured expression objects.
+Text is `{key, args}`; rewards' images use checked content references.
+QuestView and reflected event progression remain engine-owned.
+
+```ts
+import { file } from "@origingame/engine/author";
+export default file.quest({
+  id: "rescue", title: "quest.rescue", globals: { rescued: false },
+  stages: [{ id: "find", objectives: [{
+    id: "friend", text: { key: "quest.find" },
+    when: { kind: "variable", name: "rescued" },
+  }] }],
+});
+```
 
 ## 5. Deliver localized text and spans
 
@@ -228,15 +281,16 @@ Use `->` options and `<<jump>>`. No v3.2.2 feature is excluded because a later
 development version removes it. Unknown engine profile versions fail cooking;
 arbitrary Yarn headers and hashtags remain metadata.
 
-Replace old `type dialogue` sources with `.yarn`; keep their localization
-keys as `#line:` ids and move the base text into the script. Re-cook all
-dialogue assets after changing the profile or registered functions.
+Replace old `type dialogue` sources with typed `file.dialogue` declarations.
+For external Yarn, use the explicit import branch and preserve its `#line:`
+ids. Re-cook all dialogue assets after changing the profile or registered
+functions.
 
 ## 8. Run dialogue, barks and quests from the game
 
 ```ts
 // setup
-og.story.load(world, "story/smith.yarn");
+og.story.load(world, "base/story/smith");
 // on talking to the smith
 const c = og.story.start(world, { dialogue: "smith" });
 // each frame: read the view, then answer it

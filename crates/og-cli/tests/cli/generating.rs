@@ -329,7 +329,11 @@ fn typed_locale_tools_extract_and_eject_without_overwriting_sources() {
     let declaration = "import {file} from '@origingame/engine/author';\n// keep this comment and spacing\nexport default file.strings({locale:'en',base:true,entries:{keep:'Untouched'}});\n";
     write("modules/north/content/labels.ts", declaration);
     write(
-        "assets/story/hello.yarn",
+        "content/story/hello.ts",
+        "import {file,input} from '@origingame/engine/author';export default file.dialogue({yarn:input.text('sources/story/hello.yarn')});",
+    );
+    write(
+        "sources/story/hello.yarn",
         "#og-profile:yarn-spinner-3.2.2\n#og-name:hello\ntitle: Start\n---\nHello, 北! #line:hello\n===\n",
     );
     let run = |args: &[&str]| {
@@ -353,7 +357,7 @@ fn typed_locale_tools_extract_and_eject_without_overwriting_sources() {
     assert_eq!(data["tables"][0]["entries"]["hello"], "Hello, 北!");
     assert!(!root.join("content/strings/en.ts").exists());
     write(
-        "assets/story/hello.yarn",
+        "sources/story/hello.yarn",
         "#og-profile:yarn-spinner-3.2.2\n#og-name:hello\ntitle: Start\n---\nMore #line:more\n===\n",
     );
     write(
@@ -968,7 +972,11 @@ fn typed_videos_cook_module_media_and_localized_audio() {
         "import {file,ref} from '@origingame/engine/author'; export default file.timeline({duration:0.5,tracks:[{kind:'video',keys:[{time:0,value:{video:ref('base/clips/intro')}}]}]});",
     );
     write(
-        "assets/story/intro.yarn",
+        "content/story/intro.ts",
+        "import {file,input,ref} from '@origingame/engine/author';export default file.dialogue({yarn:input.text('sources/story/intro.yarn'),assets:{'base/segments/intro':ref('base/segments/intro')}});",
+    );
+    write(
+        "sources/story/intro.yarn",
         "#og-profile:yarn-spinner-3.2.2\n#og-name:intro\ntitle: intro\nog-flow: base/segments/intro\n---\n===\n",
     );
     let out = og()
@@ -1800,8 +1808,8 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
     );
     write("assets/looks/harbor.ogt", "type look\nversion 1\n---\n");
     write(
-        "assets/dialogue/arrival.yarn",
-        "title: Start\n---\nWelcome\n===\n",
+        "content/dialogue/arrival.ts",
+        "import {file} from '@origingame/engine/author';export default file.dialogue({name:'arrival',start:'Start',nodes:[{id:'Start',steps:[{kind:'line',id:'welcome',text:{key:'arrival.welcome'}}]}]});",
     );
     let source = "import {defineProject,ref} from '@origingame/engine/author';\nimport {timing} from './lib/timing.ts';\nexport default defineProject({id:'startup',entry:'src/main.ts',...timing,saveVersion:4,scene:'harbor',scenes:{harbor:ref('base/scenes/harbor'),inland:ref('base/scenes/inland')},create:{form:'2.5d'},publish:{out:'export',fit:'letterbox',aspect:'4:3',dprCap:1.5,loading:'game'},flow:{source:ref('base/dialogue/arrival'),screen:'game'}});\n";
     write("project.ts", source);
@@ -1823,7 +1831,7 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
             "tick":30,"seed":83,"saveVersion":4,"scene":"harbor",
             "scenes":{"harbor":"base/scenes/harbor","inland":"base/scenes/inland"},
             "profile":"3d","loading":"game","look":"looks/harbor.ogt",
-            "flow":{"dialogue":"dialogue/arrival.yarn","screen":"game"}
+            "flow":{"dialogue":"base/dialogue/arrival","screen":"game"}
         })
     );
     assert_eq!(

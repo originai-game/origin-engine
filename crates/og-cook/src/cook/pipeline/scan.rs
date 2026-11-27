@@ -590,6 +590,7 @@ pub(crate) fn scan_with(
             motion_action: None,
             strings: None,
             table: None,
+            story: None,
             font_pack: None,
             fields: Default::default(),
             fx: None,

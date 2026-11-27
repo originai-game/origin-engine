@@ -782,7 +782,6 @@ export const og = Object.freeze({
   story: Object.freeze({
     setSaliency: (world: { readonly id: number }, strategy: string): unknown => JSON.parse(abi().og_story_set_saliency(world.id, strategy)) as unknown,
     load: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_story_load(world.id, path)) as unknown,
-    parse: (world: { readonly id: number }, text: string): unknown => JSON.parse(abi().og_story_parse(world.id, text)) as unknown,
     start: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_story_start(world.id, json(desc))) as unknown,
     view: (world: { readonly id: number }, conversation: number): unknown => JSON.parse(abi().og_story_view(world.id, conversation)) as unknown,
     graph: (world: { readonly id: number }, dialogue: string): unknown => JSON.parse(abi().og_story_graph(world.id, dialogue)) as unknown,

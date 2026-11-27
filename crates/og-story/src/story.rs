@@ -60,6 +60,7 @@ pub enum Wait {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shown {
     pub node: String,
+    pub line_id: String,
     /// Its step in the node.
     pub step: u32,
     pub speaker: String,
@@ -643,8 +644,8 @@ impl Story {
                 ));
             }
         }
-        let shown_key = c.history.last().map(|s| s.key.clone());
-        let fits = |pc: u32| matches!(node.steps.get(pc as usize), Some(Step::Say(l)) if Some(&l.text.key) == shown_key.as_ref());
+        let shown_id = c.history.last().map(|s| s.line_id.clone());
+        let fits = |pc: u32| matches!(node.steps.get(pc as usize), Some(Step::Say(l)) if Some(&l.id) == shown_id.as_ref());
         match c.wait {
             Wait::Line if !fits(c.pc) => {
                 let found = (0..node.steps.len() as u32).find(|&i| fits(i));
@@ -654,7 +655,7 @@ impl Story {
                     None => {
                         return Err(format!(
                             "conversation {id}: saved line '{}' is missing; restore its #line: id",
-                            shown_key.unwrap_or_default()
+                            shown_id.unwrap_or_default()
                         ));
                     }
                 }
@@ -970,11 +971,12 @@ impl Story {
             .iter()
             .map(|(k, x)| (k.clone(), self.value(lib, d, id, x)))
             .collect();
-        let read_id = format!("{}.{}.{}", d.name, node.id, l.text.key);
+        let read_id = format!("{}.{}.{}", d.name, node.id, l.id);
         let seen = !self.read.insert(read_id);
         self.seq = self.seq.wrapping_add(1);
         let shown = Shown {
             node: node.id.clone(),
+            line_id: l.id.clone(),
             step: pc as u32,
             speaker: l.speaker.clone(),
             key: l.text.key.clone(),

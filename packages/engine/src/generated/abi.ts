@@ -887,8 +887,6 @@ export interface HostAbi<A, V> {
   og_story_set_saliency(world: number, strategy: string): string;
   /** `og.story.load` */
   og_story_load(world: number, path: string): string;
-  /** `og.story.parse` */
-  og_story_parse(world: number, text: string): string;
   /** `og.story.start` */
   og_story_start(world: number, desc: string | undefined): string;
   /** `og.story.view` */
@@ -1803,7 +1801,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ai_describe",
   "og_story_set_saliency",
   "og_story_load",
-  "og_story_parse",
   "og_story_start",
   "og_story_view",
   "og_story_graph",

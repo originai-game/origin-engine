@@ -2159,11 +2159,6 @@ unsafe extern "C" fn og_story_load(args: *const crate::OgValue, out: *mut crate:
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_story_parse(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as StoryApi>::og_story_parse(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_story_start(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as StoryApi>::og_story_start(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3951,7 +3946,6 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_ai_describe", arity: 2, call: og_ai_describe },
     crate::Symbol { name: c"og_story_set_saliency", arity: 2, call: og_story_set_saliency },
     crate::Symbol { name: c"og_story_load", arity: 2, call: og_story_load },
-    crate::Symbol { name: c"og_story_parse", arity: 2, call: og_story_parse },
     crate::Symbol { name: c"og_story_start", arity: 2, call: og_story_start },
     crate::Symbol { name: c"og_story_view", arity: 2, call: og_story_view },
     crate::Symbol { name: c"og_story_graph", arity: 2, call: og_story_graph },
