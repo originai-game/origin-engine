@@ -554,6 +554,7 @@ pub(crate) fn scan_with(
             strings: None,
             font_pack: None,
             fields: Default::default(),
+            fx: None,
             terrains: Default::default(),
             navmesh: None,
             lightmap: None,

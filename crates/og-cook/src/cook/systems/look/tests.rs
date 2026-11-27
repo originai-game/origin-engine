@@ -21,6 +21,7 @@ fn source(root: &Path, rel: &str) -> Source {
         strings: None,
         font_pack: None,
         fields: Default::default(),
+        fx: None,
         terrains: Default::default(),
         navmesh: None,
         lightmap: None,

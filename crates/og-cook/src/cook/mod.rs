@@ -23,6 +23,7 @@ use pipeline::{
     stream,
 };
 mod systems;
+pub use systems::effect::Prepared;
 pub use systems::shader_check::material_shader;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
@@ -151,6 +152,9 @@ pub(crate) struct Source {
     font_pack: Option<font_pack::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
+    /// Native importer boundary; the following FX cutover wires its writer.
+    #[expect(dead_code, reason = "staged native FX importer boundary")]
+    fx: Option<effect::Prepared>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.
     terrains: std::sync::Arc<terrain::Terrains>,
     /// Captured static geometry for the typed navigation bake.

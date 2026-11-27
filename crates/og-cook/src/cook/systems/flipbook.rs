@@ -333,6 +333,7 @@ pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: Option<String>) -> Sou
         strings: None,
         font_pack: None,
         fields: Default::default(),
+        fx: None,
         terrains: Default::default(),
         navmesh: None,
         lightmap: None,

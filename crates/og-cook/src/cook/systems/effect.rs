@@ -7,6 +7,14 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
+/// Native boundary shared by checked author inputs and external importers.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Prepared {
+    Emitter(og_bundle::fx::cooked::Emitter),
+    Effect(og_bundle::fx::cooked::Effect),
+    Vfx(og_bundle::vfx::Vfx),
+}
+
 /// Generated declarations use the same parsers and links as authored effects.
 /// The executor owns source/input hashing, budgets and its BLAKE3 cache.
 pub(crate) fn expand(sources: &mut [Source]) {

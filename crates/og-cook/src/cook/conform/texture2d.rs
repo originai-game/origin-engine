@@ -574,6 +574,7 @@ pub(in crate::cook) fn conform(
                 strings: None,
                 font_pack: None,
                 fields: Default::default(),
+                fx: None,
                 terrains: Default::default(),
                 navmesh: None,
                 lightmap: None,
