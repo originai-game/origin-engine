@@ -437,6 +437,24 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
         for id in cells {
             assert!(id.starts_with("north/town#cell-"), "{id}");
             let cell = bundle.load_scene(id).unwrap();
+            let model_names: Vec<_> = cell
+                .entities
+                .iter()
+                .filter(|e| {
+                    e.instance
+                        .as_deref()
+                        .is_some_and(|m| m.starts_with("north/town#"))
+                })
+                .map(|e| e.name.as_str())
+                .collect();
+            if merge {
+                assert_eq!(model_names, [format!("{id}/model")]);
+            } else {
+                assert!(model_names.iter().all(|name| {
+                    *name == format!("{id}/model")
+                        || (name.starts_with(&format!("{id}.")) && name.ends_with("/model"))
+                }));
+            }
             for model in cell
                 .entities
                 .iter()

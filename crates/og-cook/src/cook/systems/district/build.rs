@@ -564,10 +564,15 @@ pub(super) fn build(
                 .filter(|m| used.contains(m.name.as_str()))
                 .collect();
             out.models.push((id.clone(), glb::write(acc, &mats, &uri)?));
-            // Named as the model is: names are unique in the whole
-            // world, across cells and districts.
+            // Entity names are game-visible, independent of blob IDs.
+            // Keep the cell/building name when the output suffix changes.
+            let name = if suffix.is_empty() {
+                format!("{base}/model")
+            } else {
+                format!("{base}.{suffix}/model")
+            };
             entities.push(texts::placed(
-                &format!("{id}/model"),
+                &name,
                 &id,
                 DVec3::ZERO,
                 DQuat::IDENTITY,
