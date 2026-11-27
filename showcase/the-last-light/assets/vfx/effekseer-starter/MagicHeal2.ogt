@@ -1,0 +1,41 @@
+type vfx
+version 2
+---
+# Converted from Effekseer by og vfx import.
+duration 4
+impact 0
+emitter "vfx/effekseer-starter/MagicHeal2/n0-0.emitter.ogt" {
+  at 0
+  offset 3 -1 0
+}
+emitter "vfx/effekseer-starter/MagicHeal2/n0-0-0.emitter.ogt" {
+  at 0
+  offset 3 -1 0
+}
+emitter "vfx/effekseer-starter/MagicHeal2/n1.emitter.ogt" {
+  at 1
+  offset 0 4 0
+}
+mesh ring {
+  at 0
+  rotate -90 0 0
+  inner 0.48
+  band 0.5
+  height 0.4 -0.1
+  colors 1 1 1 0 1 1 1 1 1 1 1 0
+  life 4
+  effect "vfx/effekseer-starter/MagicHeal2/n2.effect.ogt"
+  scale 5
+  color 1 1 1 1
+  blend additive
+}
+mesh quad {
+  at 0
+  rotate -90 0 0
+  life 4
+  effect "vfx/effekseer-starter/MagicHeal2/n3.effect.ogt"
+  scale 6
+  spin 0 0 -240
+  color 1 1 1 1
+  blend additive
+}

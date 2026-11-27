@@ -1,0 +1,29 @@
+type vfx
+version 2
+---
+duration 1.2
+impact 0
+emitter "vfx/cinematic-realism/emitters/impact-sparks.ogt" {
+}
+emitter "vfx/cinematic-realism/emitters/impact-dust.ogt" {
+  offset 0 0.05 0
+}
+emitter "vfx/cinematic-realism/emitters/grit.ogt" {
+  offset 0 0.03 0
+}
+glow {
+  life 0.16
+  offset 0 0.12 0
+  size curve 0 0.18 0.2 0.36 1 0
+  color 1.6 0.85 0.25 0.65
+}
+light {
+  life 0.12
+  offset 0 0.4 0
+  color 1 0.62 0.28
+  intensity curve 0 0.18 1 0
+  distance 1.8
+}
+shake {
+  trauma 0.18
+}

@@ -270,6 +270,612 @@
       "sha256": "077fba3895cf8cc656b5a7c956f1a67a62116a69e897c1a92ca7dcab6967de24",
       "size": 657054,
       "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/banner-coast.png",
+      "sha256": "7897cfcdb3482596fa0c87306f73b2f641b8456f5616582cdcc8844c56453b2b",
+      "size": 1644919,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/card-ember-strike.png",
+      "sha256": "565a52ce7371115db00636217f747930d0f7cd12a33ae49d0c7ad05b7a9763ac",
+      "size": 748118,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/card-iron-guard.png",
+      "sha256": "82140d36f1fe9f23348208a5e38f68a9eb86eabe5e8ddf1df3cfe56eed7fac70",
+      "size": 816429,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/portrait-cultist.png",
+      "sha256": "6118f6a19bfb2b6713eb39447d887c19a5299b8c62c7c42778806dd099a640ff",
+      "size": 390919,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/portrait-mage.png",
+      "sha256": "4edfc495ff5fc0029de81454ab2d5c9cac3faa556d69eb19d2fe6a5bdd4733cf",
+      "size": 479144,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/art/portrait-ranger.png",
+      "sha256": "3a69633176e4a1c9a0c4f65aa4cf444688923e209176acaeb37b0c7184027354",
+      "size": 423540,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/dust.png",
+      "sha256": "2c4283a7e381e1ac458c9a5d5beefdc3033bc2fde8b8241bc741bdf36397d4f9",
+      "size": 713735,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/cinematic-realism/textures/explosion.png",
+      "sha256": "3b4e9dd52598f5d0ede4dc00223646cd3cd96fdf064a46c8979143b0f57ae0f4",
+      "size": 701310,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/Icicle2/model-icicle1.glb",
+      "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
+      "size": 4972,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/Icicle2/model-icicle3.glb",
+      "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
+      "size": 4968,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/meteo1/model-block1.glb",
+      "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/meteo1/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Aurora.png",
+      "sha256": "e756192afd2e7e8be11e798b07542fbfae399d5703803fec19ff5df5494354c0",
+      "size": 4486,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/AuroraRing.png",
+      "sha256": "e6c64b342b2730c93ff70049d392885c24be1685e90d2e8d2a398f04e0f4eea4",
+      "size": 5274,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Aurora_B.png",
+      "sha256": "9ccbcfecb7341edc28f085c4c48620db108f4aa30e24ec64d37f74f1b53de1e6",
+      "size": 5693,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Burst01.png",
+      "sha256": "8ea1d671a9e17f6c0a73fe2378708c4ce1a11ff16c7f420caa6a8ccb0d44c2ae",
+      "size": 20936,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Cloud01.png",
+      "sha256": "4e9846ddefb9d33469402edd7fe4dc74cdd0c6b48972acfcdc06a916ffd66894",
+      "size": 12735,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Distortion.png",
+      "sha256": "22d6563bf3c8040873aa83ca8c7f961c383356ff915e7a8ecc7110b191348dee",
+      "size": 60688,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Distortion11.png",
+      "sha256": "726e72206a18e9faffc554f90c832ec9bd9dc1e0d80be44ceb6a26dc51243f4a",
+      "size": 42508,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Distortion6.png",
+      "sha256": "926922911980c121100ed8620a4ae08ccd9410cf468721d426e3204a5e7bde06",
+      "size": 69753,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ExperimentalBlur.png",
+      "sha256": "80f2f7271b28f4333c190a08f9390ab87fe45e0a1f5d1410cdafad56a29728d0",
+      "size": 25784,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ExperimentalNoise.png",
+      "sha256": "e68891efd767baf97b4adb3b13d120ef22429a71d5a17142cdc634f624f190df",
+      "size": 27284,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Feather.png",
+      "sha256": "9fa902c068b0fd9bc53322ea50e27898f60d81001582e094039ef7141866bff0",
+      "size": 42080,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire.png",
+      "sha256": "d5d24d6065db8bfff23d86c7dd7a707c697556dcc8f8d9ca0ec37706bc18f9cf",
+      "size": 71754,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire4.png",
+      "sha256": "c29ee0d06beb113d865deb6428deb8c00d890e73c4720188ccc0c77fe9b7c977",
+      "size": 7581,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire6.png",
+      "sha256": "aae4702e37e8f5a4d8ad4eb98acdb99a1067d031250e1c12dc305b448dbde6f7",
+      "size": 158244,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/FireFog.png",
+      "sha256": "a8c31c7f26a195e56d1621f669fcd08fafdf0efbd1953787ea897b16c3832fe5",
+      "size": 31418,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire_Blur.png",
+      "sha256": "9a128965ce60eea2b2393a484f532e9aaa3303cb638ae972dc278e7b5ccb1516",
+      "size": 110542,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire_Single-5d682741.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fire_Single.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/FlameRadiation.png",
+      "sha256": "e7351e4efd7d9530798ce66469a5368ecb357c282fc05eed87664c0bfb9b1ede",
+      "size": 13984,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Foam001-713b55cf.png",
+      "sha256": "6c34d96f48009c8d66dd044f04d9539ae01606e3c2dc384b61d483d7a2eecb8c",
+      "size": 2056,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Foam001.png",
+      "sha256": "65cfb22673b0c52256aada8aad47d5f16204dc325f06221f8f01fd737628c32e",
+      "size": 1421,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Foam002.png",
+      "sha256": "8ef95c08b6c47a0d04ed4669b5744b59f22996c011f19c9a895a4f007c820570",
+      "size": 2130,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Foam003.png",
+      "sha256": "c531c05797ea95321c2ebc10d4afcd2d7c3a8986a4063107272b476a263d9f1f",
+      "size": 1824,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fog001.png",
+      "sha256": "2f16da9bd7bd70a41079f9764b4467bd610341e8eb3c6ef32feba6f23c0c7c16",
+      "size": 10835,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Fog3001.png",
+      "sha256": "31c1a7860e55fe082dd89d593439f3329522e111792bf88fedd91b72b1bb8003",
+      "size": 20891,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/FractalNoise_2.png",
+      "sha256": "9200b90717a0d8936a735da1367bde3de852d072c5ff56644875cbb209fd4a12",
+      "size": 135192,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Hammer1.png",
+      "sha256": "bdf82b9c52db41298a050087c53fe415bf9b1f6f7759b367f1d7bd99738bbef8",
+      "size": 87976,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/LaserMain02.png",
+      "sha256": "77b7b9c9286d5c7ab1b37d3a29ca5012332384e7616b157ef7ec6e34893902bc",
+      "size": 653,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line01-d5bd32db.png",
+      "sha256": "4ff473504dc111a9ab2174a57619b3423862bc7f4edb7cdc14157a9fbed392df",
+      "size": 1020,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line01.png",
+      "sha256": "8a12d37ac233d3f7852257c3dc428d250f93a72ca049064284433de30ed942f0",
+      "size": 2925,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line1.png",
+      "sha256": "3443fa6d3cda9abf473b7a8a04d42c075103ecaf4a9d641d3d59a9ede255609d",
+      "size": 328,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line3.png",
+      "sha256": "25e5d0badd87d22cc2fee22afa0dc75073e48d806be1ee98dbe9242087ad2b6c",
+      "size": 3076,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line6-9f180d6d.png",
+      "sha256": "33e3104048408f5f8d1bc727a4eac56b1145f07db2efe4d7c8d3b8594f41e541",
+      "size": 785,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Line6.png",
+      "sha256": "0090daa2712e9b5fe9a93a1fb992a0a6724345d7c4722b759a1b62c59a8cf1f6",
+      "size": 1315,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/MagicCircle1.png",
+      "sha256": "9b0dc41a117dcb2052a294f5a06532632bea6a836ca324c17076738acc0bc47f",
+      "size": 57839,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/MagicCircle4.png",
+      "sha256": "0086fd31af48e070f2a9d29d95faf25ee81c5fc9f1702cd880bc85f4e090f3e9",
+      "size": 29384,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle01-8c6ffbd0.png",
+      "sha256": "193bf2ea4097cae95af93cff7b16d39e04aa1e8e4e87f1d5a6a2d2b6fecbab3b",
+      "size": 2567,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle01-b96f716d.png",
+      "sha256": "604e70bb41afe27afe001ff978969bc8e2e32dec590a8da3fcf1c0c7c6e27f10",
+      "size": 3705,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "size": 3644,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle02-b223f51c.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle02.png",
+      "sha256": "9d2057a8d908e82ba42be77b16df55908b5602e03bc581e8ebaf6a8965e089ba",
+      "size": 2367,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle_Hard.png",
+      "sha256": "f221176840510167871663dad1a44ba7b031af4a7edbda5352ca91ca8b553d93",
+      "size": 4290,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Particle_Soft.png",
+      "sha256": "b3e7d46229a22b58fa5df4883abc8e5ef8b3edd29cca2e4d8d05507331e7756a",
+      "size": 3973,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Photon.png",
+      "sha256": "c136cea4a4d49f87cdd81dbe96a37d5e87c394c90903b819daecc5b17f0afbfe",
+      "size": 4982,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/PolkaDot.png",
+      "sha256": "8a0a9458367b69aed86bede596edd5a3e3fae9fe299343cb94631dcb2db44b30",
+      "size": 6797,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ShadowEye.png",
+      "sha256": "f4c120ad60ac293fadac3e9b00e1c0149c2b7a0fe0078890d5e1de2a83e2c7df",
+      "size": 6645,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ShockWave1.png",
+      "sha256": "f4c5dbc600b77ced1db1aade3dbada635b24eb4bfa96c35b0b07a09a62e54ebd",
+      "size": 1878,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ShockWave3.png",
+      "sha256": "5b8eff6996259002d1e04a1b8b016b1150da27e1a89aafebbaa7692476d8954b",
+      "size": 224,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ShockWave4.png",
+      "sha256": "fc3658b2025d71d71656c7bba4abd264c04e0e63ef8ed711ed5692d294d06cef",
+      "size": 1789,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ShockWave5.png",
+      "sha256": "763493d7ba1e221e82fdb4b34cde4d4ad7b83ebea080c9f2732a03f8774f01e3",
+      "size": 3762,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Shock_wave_ring0011.png",
+      "sha256": "778c1d1ea5a33690c3d9e55e4c4f00bd5f74ec28869fa3df44776e1d0514a505",
+      "size": 5113,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Shock_wave_ring004.png",
+      "sha256": "a78723895894e4ec4406b35fed7109e2f4f6d74d2e4cd8efc323bbbd7f70dfc2",
+      "size": 4276,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Smoke-037c8d34.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Smoke.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/SnowCrystals_M.png",
+      "sha256": "9b908479d7fa168ba1c89d0daf59c1eae49c6e5904046cb4ff8f9983e0ea0b4a",
+      "size": 6772,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/SnowCrystals_S.png",
+      "sha256": "6cbda6aced22a6a9289e7770a869d208e210fe0ad9844a07ea3f8f552e3f37aa",
+      "size": 903,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Splash.png",
+      "sha256": "7c8f07fdf2646526d0b0764a18db96faeb1d9ff8f43356b3ac2e460f6ea19db1",
+      "size": 53158,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "size": 9101,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/WaterForm1.png",
+      "sha256": "9ea511439184d72cd88d640272432f1c1c9e6a719f3d979c48bbf042eccc1dd0",
+      "size": 134848,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/Wind.png",
+      "sha256": "ab37c0b69e4a506816b5fe81e112476f2b4d918351ce608f244dad13a028408d",
+      "size": 25921,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/actionlines.png",
+      "sha256": "d460c6aadb7f567837977f5d532a93b8bf100f349e534a24a25472e919df4b72",
+      "size": 8385,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/burst02_red.png",
+      "sha256": "3de7bf00cd370150259b263bd6f0581dbaa9002e1735fbf333f4fb257747e5ae",
+      "size": 58243,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/circle1.png",
+      "sha256": "0ddb62a35d0dd995b5ac3765eab491e88823e79b3bd2f7e8e23130eaf7f8cb9b",
+      "size": 6312,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/clockHand.png",
+      "sha256": "8976d47129ccf2bb1b11115c36d94ead5d8364d5dfb62cb1cda4735a1892fc23",
+      "size": 1755,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/drillshi.png",
+      "sha256": "54d43003e1f366aa4ebf51a24ed959b891ffb6ae0d7e521b0e969d00b5569248",
+      "size": 23727,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/eggzero.png",
+      "sha256": "5e0dd84e2eae54c1cd2be6191f9978755c0dd91a41a8cd2b5c8966c5e82f36e6",
+      "size": 654,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/fog1.png",
+      "sha256": "4a64e3b73742718e76d079716d90559859940406eeeb97025c165fb0b1484c2b",
+      "size": 37414,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/hisigata0.png",
+      "sha256": "885c27010d6d4389c4aa1b95b8928cf32a75b6d6742ee635da9d389ff302ffa3",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/hisigata1.png",
+      "sha256": "326189240bb7d2f45dca5377637324da43b146b72b168005175d37e2c9c93e95",
+      "size": 2237,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/icicle2.png",
+      "sha256": "b4d92270492804a7e5e23fb00523a2b3c2c1fdb49587d8bae9c2f63348f95314",
+      "size": 69294,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/naihu.png",
+      "sha256": "9e1d64e8a254f03dd1feb31b36ef911ef52cf23a3dbe91aebc4d5aae08717a81",
+      "size": 2192,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/particle.png",
+      "sha256": "0ecd83e1378e52163f53d495c3bc52d0642b57be74c4279b90df604e02ceb2c6",
+      "size": 307,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/particle2.png",
+      "sha256": "29325443ef31d6abe7bd3b01690fc14a044451d3bddf4553b969b617cdc183c4",
+      "size": 776,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/particle4.png",
+      "sha256": "19860e8d23bab5a01979e5cfac67390b4d44f36801ff478f679f0730502fe497",
+      "size": 496,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/rainnaka.png",
+      "sha256": "887f12bf3adf015d80ed1f3874939b741183709f189bdbcfd3490bc7b13a6eb1",
+      "size": 3464,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/ribbon01_trans.png",
+      "sha256": "105aef42a940951b759ee308624783fe8c9cf48b3b3338a3b00b5aa79b6b8429",
+      "size": 213,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/sakura-1.png",
+      "sha256": "26349b87e8596b8ac34d8d4f38c64a8f9830f4754a55cbde54778ff3d9eb7341",
+      "size": 5648,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/smoke_01.png",
+      "sha256": "643a06c242bdb9423698329e4329580567fa3418e2892ac9adcc37d913cd9557",
+      "size": 4483,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/squareWave.png",
+      "sha256": "d917ad45f7705283ad637acf6ff5f444b6802f24d973985b5fdc759271f9a3f6",
+      "size": 502,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/star.png",
+      "sha256": "b8d08eddd036efb5760fcec9f1ba375452e4289036917480ed4380e443e1a04d",
+      "size": 8196,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/starpart_.png",
+      "sha256": "3755d50108f2f85947be344bdb03479225793010704d75dc3d2b98f6ee951309",
+      "size": 153,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/effekseer-starter/textures/t0002.png",
+      "sha256": "e645cc9c76d3825659b3a11bd8bc0c84801855b5c6fce02ce7c546a4cfae99b1",
+      "size": 660,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/dirt.png",
+      "sha256": "232ded677f1fdba0585fcd8c0971936c50d69dcf65d47765928cffb783fdb85f",
+      "size": 280833,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/fire.png",
+      "sha256": "b0fde238e03d5d407588713f7c28555b6ad3e2352d5117834626681622d888ff",
+      "size": 114197,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/flame.png",
+      "sha256": "d4890fd59cdcc93e11be41b0a9a1987b686577243ecd46b24c2938ff565b565e",
+      "size": 117394,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/muzzle.png",
+      "sha256": "1ff07057dc1f6ac5cb05ddc3dd4ad6adaec5ba81a5b5183c0979f5b56e528e4f",
+      "size": 144063,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/ring.png",
+      "sha256": "513ee482c5602e7a738eb61dc170461a9f75bf0e5f339a95a80dc2df8c859513",
+      "size": 38480,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/scorch.png",
+      "sha256": "ce46d67d70f0d0ac8653dcf9e360fcba0c7aa7bcb5b1ba84db0819e3a0dc17c6",
+      "size": 35839,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/vfx/realistic-starter/textures/smoke.png",
+      "sha256": "396d44615ff1257213f63b9133334e317533341aefb0087019abec1d9aa0fcdc",
+      "size": 174645,
+      "visibility": "public"
     }
   ]
 }

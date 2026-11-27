@@ -1,0 +1,14 @@
+type particles
+version 1
+---
+# Effekseer node 1.4 "*Z軸ランダム"
+maxParticles 32
+shape point
+spread 0
+rate 240
+duration 0.1042
+looping false
+lifetime 1.6667 1.6667
+speed 0 0
+size 0
+subEmitter life "vfx/effekseer-starter/Cure7/n1-4-0-0-0.emitter.ogt"

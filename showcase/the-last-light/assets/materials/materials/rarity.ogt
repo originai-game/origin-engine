@@ -1,0 +1,16 @@
+type ui-material
+version 1
+---
+# Rarity glow: a soft glow inside the element's edge in its tier's colour,
+# breathing with the clock, and a thin bright rim (an epic or legendary
+# item's slot). Draw the element's own frame and contents as usual; the
+# glow takes the layer's alpha for its edge.
+source "rarity.wgsl"
+# The tier's colour, linear RGB.
+param color color 1.0 0.5 0.05
+# How far the glow reaches in from the edge, CSS px.
+param size float 10
+# Breaths a second (0: steady).
+param pulse float 0.6
+# The glow's strength at its brightest, 0–2.
+param strength float 1.0

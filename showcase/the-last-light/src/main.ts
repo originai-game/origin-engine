@@ -12,6 +12,7 @@ import { buildPlayer, Player, Walk } from "./player.ts";
 import { buildQuest, mountHud, Play, Quest, questCommands } from "./quest.ts";
 import { CAMERA } from "./layout.ts";
 import { must } from "./must.ts";
+import { Burn, loadReel, mountReel, ReelAssets, reelCommands } from "./reel.ts";
 
 function build(world: World): void {
   const coast = buildCoast(world);
@@ -21,10 +22,11 @@ function build(world: World): void {
   buildClimate(world);
   buildPlayer(world);
   buildQuest(world);
+  loadReel(world);
 
   const cam = must(world.resource(og.Camera));
   cam.fov = CAMERA.fov;
   cam.far = 6000;
 }
 
-export default og.game({ start: build, resources: [Climate, Player, Quest, Clips], systems: [Walk, Play, Seasons, Beam], ui: mountHud, commands: { ...climateCommands, ...questCommands }, commandHelp: climateHelp });
+export default og.game({ start: build, resources: [Climate, Player, Quest, Clips, ReelAssets], systems: [Walk, Play, Seasons, Beam, Burn], ui: (world) => { mountHud(world); mountReel(world); }, commands: { ...climateCommands, ...questCommands, ...reelCommands }, commandHelp: climateHelp });

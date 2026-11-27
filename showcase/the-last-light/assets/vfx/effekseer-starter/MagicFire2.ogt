@@ -1,0 +1,11 @@
+type vfx
+version 2
+---
+# Converted from Effekseer by og vfx import.
+duration 1.91
+impact 0
+emitter "vfx/effekseer-starter/MagicFire2/n0.emitter.ogt" {
+  at 0.0017
+  offset 0 0.5 0
+  rotate 0 0 -90
+}

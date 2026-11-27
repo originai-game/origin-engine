@@ -1,0 +1,12 @@
+type vfx
+version 2
+---
+# Converted from Effekseer by og vfx import.
+duration 0.4833
+impact 0
+emitter "vfx/effekseer-starter/Magic2_fire/n0.emitter.ogt" {
+  at 0
+}
+emitter "vfx/effekseer-starter/Magic2_fire/n1.emitter.ogt" {
+  at 0
+}

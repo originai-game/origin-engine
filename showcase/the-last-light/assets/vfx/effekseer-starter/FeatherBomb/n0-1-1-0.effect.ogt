@@ -1,0 +1,9 @@
+type effect
+version 1
+---
+# Effekseer node 0.1.1.0 "Feather"
+main "vfx/effekseer-starter/textures/Feather.png" rgba {
+  tile 0.25 0.25
+  offset 0.5 0.75
+}
+blend alpha
