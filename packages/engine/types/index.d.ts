@@ -38710,12 +38710,12 @@ export declare namespace og {
      */
     function isActionJustReleased(world: World, name: string): boolean;
     /**
-     * Whether an action has been down for its holdMs.
+     * Whether an action has been down for at least its ActionDesc.holdMs: a long press, true from that tick until it goes up. isActionDown is down at all.
      *
      * @param world The world.
      * @param name The action.
      */
-    function isActionHeld(world: World, name: string): boolean;
+    function isActionLongPressed(world: World, name: string): boolean;
     /**
      * An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. 0 for an unknown action.
      *

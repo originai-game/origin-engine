@@ -385,8 +385,8 @@ pub trait InputApi: Wire {
     fn og_input_is_action_just_pressed(&self, world: u32, name: String) -> bool;
     /// `og.input.isActionJustReleased`
     fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool;
-    /// `og.input.isActionHeld`
-    fn og_input_is_action_held(&self, world: u32, name: String) -> bool;
+    /// `og.input.isActionLongPressed`
+    fn og_input_is_action_long_pressed(&self, world: u32, name: String) -> bool;
     /// `og.input.actionValue`
     fn og_input_action_value(&self, world: u32, name: String) -> f64;
     /// `og.input.actionVector`
@@ -1719,7 +1719,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_is_action_down",
     "og_input_is_action_just_pressed",
     "og_input_is_action_just_released",
-    "og_input_is_action_held",
+    "og_input_is_action_long_pressed",
     "og_input_action_value",
     "og_input_action_vector",
     "og_input_move_relative",

@@ -4347,8 +4347,8 @@
           "publish": true
         },
         {
-          "name": "isActionHeld",
-          "doc": "Whether an action has been down for its holdMs.",
+          "name": "isActionLongPressed",
+          "doc": "Whether an action has been down for at least its ActionDesc.holdMs: a long press, true from that tick until it goes up. isActionDown is down at all.",
           "params": [
             {
               "name": "world",

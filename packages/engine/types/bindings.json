@@ -19652,10 +19652,10 @@
     {
       "id": 115,
       "kind": "fn",
-      "path": "og.input.isActionHeld",
-      "symbol": "og_input_is_action_held",
+      "path": "og.input.isActionLongPressed",
+      "symbol": "og_input_is_action_long_pressed",
       "module": "input",
-      "name": "isActionHeld",
+      "name": "isActionLongPressed",
       "params": [
         {
           "name": "world",

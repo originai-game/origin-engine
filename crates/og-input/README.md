@@ -128,7 +128,7 @@ key codes and the engine's dotted pad and mouse controls.
 Polling has one word per state: `isActionDown` is down continuously;
 `isActionJustPressed` and `isActionJustReleased` are edges in the current
 fixed tick, not the render frame. A tap between ticks sets both edges.
-`isActionHeld` instead means down for `holdMs`. Raw `Input`, `Pointers` and
+`isActionLongPressed` instead means down for `holdMs`. Raw `Input`, `Pointers` and
 `Gamepad` polling and `ActionState` use the same words: `down`,
 `justPressed`, `justReleased`. The Rust fields and methods of this crate
 keep `pressed` and `released` for the edges; `#[reflect(name)]` carries the

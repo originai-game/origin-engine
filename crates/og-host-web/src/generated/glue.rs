@@ -804,8 +804,8 @@ pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_input_is_action_held(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_is_action_held(&Host, world, name)
+pub fn og_input_is_action_long_pressed(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_long_pressed(&Host, world, name)
 }
 
 #[wasm_bindgen]

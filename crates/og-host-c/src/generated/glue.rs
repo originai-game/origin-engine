@@ -804,8 +804,8 @@ unsafe extern "C" fn og_input_is_action_just_released(args: *const crate::OgValu
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_input_is_action_held(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as InputApi>::og_input_is_action_held(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_input_is_action_long_pressed(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as InputApi>::og_input_is_action_long_pressed(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3686,7 +3686,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_input_is_action_down", arity: 2, call: og_input_is_action_down },
     crate::Symbol { name: c"og_input_is_action_just_pressed", arity: 2, call: og_input_is_action_just_pressed },
     crate::Symbol { name: c"og_input_is_action_just_released", arity: 2, call: og_input_is_action_just_released },
-    crate::Symbol { name: c"og_input_is_action_held", arity: 2, call: og_input_is_action_held },
+    crate::Symbol { name: c"og_input_is_action_long_pressed", arity: 2, call: og_input_is_action_long_pressed },
     crate::Symbol { name: c"og_input_action_value", arity: 2, call: og_input_action_value },
     crate::Symbol { name: c"og_input_action_vector", arity: 2, call: og_input_action_vector },
     crate::Symbol { name: c"og_input_move_relative", arity: 3, call: og_input_move_relative },

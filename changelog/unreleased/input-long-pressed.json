@@ -1,0 +1,11 @@
+{
+  "breaking": [
+    {
+      "member": "og.input.isActionHeld",
+      "change": "Renamed og.input.isActionLongPressed: it answers whether an action has been down for its holdMs (a long press), which `held` read as merely down.",
+      "fix": "Call og.input.isActionLongPressed(world, name) where og.input.isActionHeld(world, name) was. For down at all, call og.input.isActionDown.",
+      "find": ["isActionHeld"],
+      "codemod": { "from": "og.input.isActionHeld(", "to": "og.input.isActionLongPressed(" }
+    }
+  ]
+}

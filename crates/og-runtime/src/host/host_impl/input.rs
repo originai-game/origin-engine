@@ -36,8 +36,8 @@ macro_rules! __og_host_bindings_input {
             fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool {
                 $crate::og_input_is_action_just_released(world, name)
             }
-            fn og_input_is_action_held(&self, world: u32, name: String) -> bool {
-                $crate::og_input_is_action_held(world, name)
+            fn og_input_is_action_long_pressed(&self, world: u32, name: String) -> bool {
+                $crate::og_input_is_action_long_pressed(world, name)
             }
             fn og_input_action_value(&self, world: u32, name: String) -> f64 {
                 $crate::og_input_action_value(world, name)

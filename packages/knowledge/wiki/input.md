@@ -63,7 +63,7 @@ module input {
 | [`og.input.isActionDown`](input/fn-isActionDown.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
 | [`og.input.isActionJustPressed`](input/fn-isActionJustPressed.md) | function | `(world: World, name: string): boolean` | Whether an action went down this tick. |
 | [`og.input.isActionJustReleased`](input/fn-isActionJustReleased.md) | function | `(world: World, name: string): boolean` | Whether an action went up this tick. |
-| [`og.input.isActionHeld`](input/fn-isActionHeld.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for its holdMs. |
+| [`og.input.isActionLongPressed`](input/fn-isActionLongPressed.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for at least its ActionDesc.holdMs: a long press, true from that tick until it goes up. |
 | [`og.input.actionValue`](input/fn-actionValue.md) | function | `(world: World, name: string): number` | An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. |
 | [`og.input.actionVector`](input/fn-actionVector.md) | function | `(world: World, name: string): Vector2` | A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others. |
 | [`og.input.moveRelative`](input/fn-moveRelative.md) | function | `(world: World, name: string, camera: Quaternion): Vector3` | A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wh… |

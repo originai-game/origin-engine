@@ -174,7 +174,7 @@ pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.released)
 }
 
-pub fn og_input_is_action_held(world: u32, name: String) -> bool {
+pub fn og_input_is_action_long_pressed(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.held)
 }
 

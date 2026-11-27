@@ -10,7 +10,7 @@
     {
       "member": "og.ui.actionFired, og.ui.actionHeld",
       "change": "Removed with og.ui's actions: the UI actions are og-input's.",
-      "fix": "Read og.input.isActionJustPressed(world, name) where og.ui.actionFired(name) was, and og.input.isActionHeld(world, name) where og.ui.actionHeld(name) was. Both take the world, which a system has.",
+      "fix": "Read og.input.isActionJustPressed(world, name) where og.ui.actionFired(name) was, and og.input.isActionLongPressed(world, name) where og.ui.actionHeld(name) was. Both take the world, which a system has.",
       "find": ["og.ui.actionFired", "og.ui.actionHeld"]
     },
     {

@@ -345,8 +345,8 @@ export interface HostAbi<A, V> {
   og_input_is_action_just_pressed(world: number, name: string): boolean;
   /** `og.input.isActionJustReleased` */
   og_input_is_action_just_released(world: number, name: string): boolean;
-  /** `og.input.isActionHeld` */
-  og_input_is_action_held(world: number, name: string): boolean;
+  /** `og.input.isActionLongPressed` */
+  og_input_is_action_long_pressed(world: number, name: string): boolean;
   /** `og.input.actionValue` */
   og_input_action_value(world: number, name: string): number;
   /** `og.input.actionVector` */
@@ -1534,7 +1534,7 @@ export const SYMBOLS: readonly string[] = [
   "og_input_is_action_down",
   "og_input_is_action_just_pressed",
   "og_input_is_action_just_released",
-  "og_input_is_action_held",
+  "og_input_is_action_long_pressed",
   "og_input_action_value",
   "og_input_action_vector",
   "og_input_move_relative",

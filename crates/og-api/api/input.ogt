@@ -358,8 +358,9 @@ module input {
     returns bool
   }
 
-  fn isActionHeld {
-    doc "Whether an action has been down for its holdMs."
+  fn isActionLongPressed {
+    doc "Whether an action has been down for at least its ActionDesc.holdMs: a long press, true from that tick until it goes up. isActionDown is down at all."
+    aliases "long press, press and hold, hold button, isActionHeld"
     param world World "The world."
     param name String "The action."
     returns bool

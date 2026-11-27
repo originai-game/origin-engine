@@ -963,10 +963,10 @@ pub fn og_input_is_action_just_released(env: Env, world: u32, name: String) -> b
     <Host as InputApi>::og_input_is_action_just_released(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_is_action_held")]
-pub fn og_input_is_action_held(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_long_pressed")]
+pub fn og_input_is_action_long_pressed(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_is_action_held(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_long_pressed(&Host, world, name)
 }
 
 #[napi(js_name = "og_input_action_value")]
