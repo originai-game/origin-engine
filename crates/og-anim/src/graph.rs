@@ -9,8 +9,10 @@ use og_core::glam::Vec2;
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_core::{Error, ErrorKind, Result};
 
+mod cooked;
 mod schema;
 mod source;
+mod validate;
 pub use schema::BLOCKS;
 pub use source::{ClipBinding, GraphSource, SOURCE_LINES};
 

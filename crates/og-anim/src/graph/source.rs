@@ -28,10 +28,9 @@ pub struct ClipBinding {
 
 #[derive(Clone, Debug)]
 pub struct GraphSource {
-    /// The original document, including the file's tracked asset bindings.
-    pub document: Document,
-    /// Only graph declarations, for the same parser used at runtime.
-    pub text: String,
+    /// Clip handles are one-based slots in `clips`, not runtime handles.
+    pub asset: GraphAsset,
+    pub clips: Vec<String>,
     pub sprite: bool,
     pub bindings: Vec<ClipBinding>,
 }
@@ -93,19 +92,18 @@ impl GraphSource {
             .entries
             .retain(|e| find(SOURCE_LINES, &e.key, &[]).is_none());
         let text = graph.to_text()?;
-        if sprite {
-            crate::SpriteGraph::parse(&text)?;
-        } else {
-            GraphAsset::parse(&text, &|name| {
-                bindings
-                    .iter()
-                    .position(|b| b.name == name)
-                    .map(|i| i as u64 + 1)
-            })?;
+        let parsed = crate::SpriteGraph::parse(&text)?;
+        if !sprite
+            && parsed
+                .clips
+                .iter()
+                .any(|name| !bindings.iter().any(|b| &b.name == name))
+        {
+            return Err(Error::new(ErrorKind::Parse, "graph clip has no binding"));
         }
         Ok(Self {
-            document,
-            text,
+            asset: parsed.asset,
+            clips: parsed.clips,
             sprite,
             bindings,
         })

@@ -21,7 +21,7 @@ fn plan<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let result = (|| -> Result<(String, Vec<u8>), String> {
+    let result = (|| -> Result<(Vec<u8>, Vec<u8>), String> {
         let text = std::str::from_utf8(&s.bytes).map_err(|e| e.to_string())?;
         let graph = GraphSource::parse(text).map_err(|e| e.to_string())?;
         let mut deps = Vec::new();
@@ -63,7 +63,7 @@ fn plan<'a>(
                 .or_default()
                 .insert(format!("{}#anim", b.source));
         }
-        Ok((graph.document.to_text().map_err(|e| e.to_string())?, deps))
+        Ok((graph.to_bytes(), deps))
     })();
     match result {
         Ok((text, deps)) => {
@@ -79,7 +79,7 @@ fn plan<'a>(
     }
 }
 
-struct GraphJob(String);
+struct GraphJob(Vec<u8>);
 impl Job for GraphJob {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let mut w = BlobWriter::new(
@@ -90,14 +90,14 @@ impl Job for GraphJob {
         w.table(
             "meta",
             &[format::AnimGraphMeta {
-                text_bytes: self.0.len() as u32,
+                data_bytes: self.0.len() as u32,
             }],
             format::row_hash::<format::AnimGraphMeta>(),
         )
-        .raw("text", self.0.as_bytes().to_vec(), 16);
+        .raw("data", self.0.clone(), 16);
         Ok((w.finish(), Vec::new()))
     }
     fn action(&self) -> Action<'_> {
-        Action::Input(self.0.as_bytes(), false)
+        Action::Input(&self.0, false)
     }
 }

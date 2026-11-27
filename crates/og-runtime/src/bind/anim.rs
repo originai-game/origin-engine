@@ -430,25 +430,28 @@ pub fn og_load_animgraph(world: u32, path: String) -> Result<Value, String> {
             .animgraph(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let mut clips = Vec::new();
+    let mut by_name = BTreeMap::new();
     for b in source.bindings {
         let animation: Animation = wire::value(&load_animation(&eng, &b.source)?, "animation")?;
-        let mut clip = animation
+        let clip = animation
             .clips
             .into_iter()
             .find(|c| c.name == b.clip)
             .ok_or_else(|| format!("{id}: '{}' has no clip '{}'", b.source, b.clip))?;
-        clip.name = b.name;
-        clips.push(clip);
+        by_name.insert(b.name, clip.clip);
     }
-    let result = graph(
-        &eng,
-        &GraphDesc {
-            text: source.text,
-            clips,
-            sprite: source.sprite,
-        },
-    )?;
+    let mut asset = source.asset;
+    if !source.sprite {
+        for n in &mut asset.nodes {
+            if let og_anim::Motion::Clip { clip, .. } = &mut n.motion {
+                let name = &source.clips[(*clip - 1) as usize];
+                *clip = *by_name
+                    .get(name)
+                    .ok_or_else(|| format!("{id}: unbound clip '{name}'"))?;
+            }
+        }
+    }
+    let result = register_graph(&eng, asset, source.sprite.then_some(source.clips))?;
     eng.state
         .borrow_mut()
         .anim_assets
@@ -483,20 +486,9 @@ fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
     // A graph for og.Flipbook and og.Skeleton2D: its clip lines name the
     // sheet's or rig's clips, found as it plays.
     if desc.sprite {
-        let graph = std::sync::Arc::new(
-            og_anim::SpriteGraph::parse(text).map_err(|e| format!("the graph: {}", e.reason()))?,
-        );
-        let feel = crate::present::feel::feel_of(eng)?;
-        let mut st = eng.state.borrow_mut();
-        let h = st.anim_assets.mint();
-        feel.flipbooks
-            .add_graph(h, graph.clone())
-            .map_err(|e| format!("the graph: {}", e.reason()))?;
-        feel.skeletons
-            .add_graph(h, graph.clone())
-            .map_err(|e| format!("the graph: {}", e.reason()))?;
-        st.feel_assets.graphs.insert(h, graph);
-        return Ok(json!(h as f64));
+        let graph =
+            og_anim::SpriteGraph::parse(text).map_err(|e| format!("the graph: {}", e.reason()))?;
+        return register_graph(eng, graph.asset, Some(graph.clips));
     }
     let mut by_name = BTreeMap::new();
     for c in &desc.clips {
@@ -508,7 +500,6 @@ fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
         }
         by_name.insert(c.name.clone(), c.clip);
     }
-    let sys = system(eng)?;
     let known = eng
         .state
         .borrow()
@@ -540,6 +531,33 @@ fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
             });
         }
     };
+    register_graph(eng, graph, None)
+}
+
+fn register_graph(
+    eng: &Engine,
+    graph: GraphAsset,
+    sprite_clips: Option<Vec<String>>,
+) -> Result<Value, String> {
+    graph.validate().map_err(|e| e.to_string())?;
+    if let Some(clips) = sprite_clips {
+        let graph = std::sync::Arc::new(og_anim::SpriteGraph {
+            asset: graph,
+            clips,
+        });
+        let feel = crate::present::feel::feel_of(eng)?;
+        let mut st = eng.state.borrow_mut();
+        let h = st.anim_assets.mint();
+        feel.flipbooks
+            .add_graph(h, graph.clone())
+            .map_err(|e| e.to_string())?;
+        feel.skeletons
+            .add_graph(h, graph.clone())
+            .map_err(|e| e.to_string())?;
+        st.feel_assets.graphs.insert(h, graph);
+        return Ok(json!(h as f64));
+    }
+    let sys = system(eng)?;
     let mut st = eng.state.borrow_mut();
     let h = st.anim_assets.mint();
     sys.add_graph(h, graph.clone())

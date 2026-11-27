@@ -1,8 +1,8 @@
 use super::*;
 
 row!(
-    /// Validated animation graph source with tracked asset bindings.
-    AnimGraphMeta, "og.AnimGraph", 1 { text_bytes: u32 }
+    /// Native animation graph with local clip slots and model bindings.
+    AnimGraphMeta, "og.AnimGraph", 2 { data_bytes: u32 }
 );
 pub struct AnimGraph;
 impl BlobKind for AnimGraph {

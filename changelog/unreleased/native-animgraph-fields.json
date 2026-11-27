@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "cooked animation graphs",
+    "change": "Animation graph blobs now store validated native motions, layers, transitions and clip bindings instead of author text. Old graph blobs are rejected.",
+    "fix": "Re-cook animation graphs and use matching native and web hosts."
+  }]
+}
