@@ -126,8 +126,43 @@ fn resolve(from: &str, target: &str) -> String {
     parts.join("/")
 }
 
+/// CommonMark distinguishes links from brackets inside code or escaped text,
+/// and resolves reference labels, titles and balanced destination parentheses.
+fn link_targets(text: &str) -> impl Iterator<Item = pulldown_cmark::CowStr<'_>> {
+    use pulldown_cmark::{Event, Parser, Tag};
+    Parser::new(text).filter_map(|event| match event {
+        Event::Start(Tag::Link { dest_url, .. } | Tag::Image { dest_url, .. }) => Some(dest_url),
+        _ => None,
+    })
+}
+
 #[test]
 fn every_module_has_a_page_and_every_link_lands() {
+    assert_eq!(
+        link_targets(
+            r###"
+[inline](module.md#node "title")
+[reference][target]
+![image](image.png)
+[parentheses](guide-(part).md)
+
+[target]: other.md "reference title"
+
+`file["effect-texture"]({...})`
+``file["effect"](`nested`)``
+\[escaped](missing-escaped.md)
+
+```ts
+[fenced](missing-fenced.md)
+```
+
+    [indented](missing-indented.md)
+"###
+        )
+        .map(|target| target.into_string())
+        .collect::<Vec<_>>(),
+        ["module.md#node", "other.md", "image.png", "guide-(part).md"]
+    );
     let w = wiki();
     let index = &w.pages["index.md"];
     assert!(w.pages.contains_key(og_idl::search::INDEX_FILE));
@@ -167,13 +202,11 @@ fn every_module_has_a_page_and_every_link_lands() {
     // Every link on every page lands on a page, and on an anchor when it names one.
     let mut links = 0;
     for (from, text) in w.pages.iter().filter(|(n, _)| n.ends_with(".md")) {
-        for part in text.split("](").skip(1) {
-            let Some(end) = part.find(')') else { continue };
-            let target = &part[..end];
-            if target.contains("://") || target.contains(' ') {
+        for target in link_targets(text) {
+            if target.contains("://") {
                 continue;
             }
-            let (file, anchor) = target.split_once('#').unwrap_or((target, ""));
+            let (file, anchor) = target.split_once('#').unwrap_or((&target, ""));
             let file = if file.is_empty() {
                 from.clone()
             } else {

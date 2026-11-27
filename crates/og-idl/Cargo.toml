@@ -13,3 +13,6 @@ og-core = { path = "../og-core" }
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
+
+[dev-dependencies]
+pulldown-cmark = { version = "0.13", default-features = false }

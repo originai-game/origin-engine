@@ -107,6 +107,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
     assert_eq!(
         fns("load"),
         [
+            "field",
             "bundle",
             "bundleInfo",
             "progress",
@@ -138,6 +139,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "error",
             "gltfInfo",
             "animation",
+            "animgraph",
             "rig",
             "flipbook",
             "tilemap",
