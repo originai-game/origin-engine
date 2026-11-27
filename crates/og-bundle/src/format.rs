@@ -45,7 +45,7 @@
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
 //! | dialogue (`og.Dialogue`, a `.yarn` script) | [`DialogueMeta`] | `text` (serialized engine story IR with base strings) |
 //! | quest (`og.Quest`, an `.ogt` of `type quest`) | [`QuestMeta`] | `text` (the validated quest file) |
-//! | table (`og.Table`, an `.ogt` of `type table`) | [`TableMeta`] | `text` (the checked table file) |
+//! | table (`og.Table`, checked `file.table`) | [`TableMeta`] | reflected `rows`, `schema`, identity/localization/relocation `info` |
 //! | navmesh (`og.NavMesh`, a checked `file.navmesh` declaration) | [`NavMeshMeta`] | `columns` (a meshopt vertex stream of [`NavColumnRow`], one a grid column), `spans` (a meshopt vertex stream of [`NavSpanRow`]; the two are the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`) | [`StringsMeta`] | `entries` [`StringEntryRow`], ordered `fonts` [`StringFontRow`], `text` (UTF-8 locale tags, asset IDs and ICU messages, never an author document) |
 //! | font pack (`og.FontPack`) | [`FontPackMeta`] | `faces` and `languages` ([`FontPackStringRow`]), `coverage` ([`FontPackRangeRow`]), `strings` (UTF-8 names and IDs); `hyphenation:<language>` (a shipped hyphenation dictionary each), `segmentation:<dictionary>` (a shipped ICU word dictionary each, og-i18n's `segmenter` bytes) |

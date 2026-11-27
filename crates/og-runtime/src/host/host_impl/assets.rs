@@ -364,14 +364,14 @@ macro_rules! __og_host_bindings_assets {
             fn og_table_load(&self, world: u32, path: String, schema: String) -> String {
                 $crate::host_impl::answer($crate::og_table_load(world, path, schema))
             }
-            fn og_table_parse(
+            fn og_table_replace(
                 &self,
                 world: u32,
                 path: String,
-                text: String,
+                data: String,
                 schema: String,
             ) -> String {
-                $crate::host_impl::answer($crate::og_table_parse(world, path, text, schema))
+                $crate::host_impl::answer($crate::og_table_replace(world, path, data, schema))
             }
             fn og_table_row(&self, world: u32, table: String, id: String) -> String {
                 $crate::host_impl::answer($crate::og_table_row(world, table, id))

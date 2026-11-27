@@ -362,6 +362,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         timeline: None,
                         motion_action: None,
                         strings: None,
+                        table: None,
                         font_pack: None,
                         fields: Default::default(),
                         fx: None,

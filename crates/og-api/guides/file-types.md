@@ -4499,24 +4499,7 @@ Output: a native locale table loaded with og.load.strings. Fonts are ordered can
 <a id="file-table"></a>
 ### `file:table`
 
-An authored `table` asset, cooked by `table`. Input: `.ogt` under assets/.
-
-Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.
-
-| Field | Default | Meaning |
-|---|---|---|
-| `locale "<language tag>"` | `en` | One non-empty tag for text fields' base language. |
-| `row "<id>" { ... }` | `` | Repeat unique, non-empty row ids. Each row field occurs once, has values and has no block. |
-
-<a id="file-table-row"></a>
-### `file:table.row`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `<field> <number \| string \| word> ...` | `` | Plain values are checked against the game's record when loaded. |
-| `<field> asset "<path>"` | `` | One asset-root path checked by cook. |
-| `<field> text "<key>" "<base message>"` | `` | Localized text; a key cannot have conflicting base messages. |
-| `<field> row ["<table asset>"] "<id>" ...` | `` | One or more row references; omitted table refers to this table. Cook checks referenced rows. |
+Author `content/**/*.ts` with `export default file.table({record: 'Item', rows: [{id: 'sword', values: {power: 12}}]})` from `@origingame/engine/author`. Run `og api gen --project <dir>` for the project's component row types and defaults. Rows have stable identities independent of order. Use canonical ref tokens for typed assets, {asset: ref(...)} for string asset IDs, {text: {key, base}} for localized strings, and {row, table?: ref(...)} for row references. Cross-table cycles are allowed; every referenced row must exist. Runtime og.table.replace accepts structured runtime values and numeric handles, never author tokens or text. No table author OGT parser remains. See data.
 
 <a id="file-terrain"></a>
 ### `file:terrain`

@@ -1046,7 +1046,7 @@ export const og = Object.freeze({
   }),
   table: Object.freeze({
     load: (world: { readonly id: number }, path: string, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_load(world.id, path, schema.name)) as unknown,
-    parse: (world: { readonly id: number }, path: string, text: string, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_parse(world.id, path, text, schema.name)) as unknown,
+    replace: (world: { readonly id: number }, path: string, data: unknown, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_replace(world.id, path, JSON.stringify(data ?? null), schema.name)) as unknown,
     row: (world: { readonly id: number }, table: string, id: string): unknown => JSON.parse(abi().og_table_row(world.id, table, id)) as unknown,
     rows: (world: { readonly id: number }, table: string): unknown => JSON.parse(abi().og_table_rows(world.id, table)) as unknown,
     get: (world: { readonly id: number }, row: number, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_get(world.id, row, schema.name)) as unknown,

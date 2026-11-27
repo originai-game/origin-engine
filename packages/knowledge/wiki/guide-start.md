@@ -228,7 +228,7 @@ most; `--all` lists every member.
 | move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
 | break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |
 | compose combat, abilities, items and interactions | `combat`, `abilities`, `items`, `interaction` | `og.systems.combat`, `og.systems.abilities`, `og.systems.inventory`, `og.systems.interact` |
-| author reflected data tables | `data` | `og.table`, `type table` |
+| author reflected data tables | `data` | `og.table`, `file.table` |
 | point the camera | `camera` | `og.Camera`, `og.Follow2D`, `og.camera.shake` |
 | play sound and music | `audio` | `og.AudioSource`, `og.audio.createSound` |
 | play online or build shared worlds | `networking`, `shared-worlds`, determinism §3 | `og.Lockstep`, `og.PlayerInput`, `og.net.submit`, `og.shared` |

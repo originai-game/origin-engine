@@ -1,11 +1,11 @@
 // The tables as `og test` plays them (src/main.ts): rows read through
 // handles across both tables, a reload that keeps every handle, a broken
-// row refused by its line with the old table kept, and a deleted row that
+// row refused by its field with the old table kept, and a deleted row that
 // og.table.missing names. Two runs end on the same world hash.
 import { expect, test } from "bun:test";
 import { runPlaytest } from "@origingame/engine/playtest";
 
-test("rows are read by handle across tables, reload keeps handles, a bad row is refused by line", async () => {
+test("rows are read by handle across tables, reload keeps handles, a bad row is refused by field", async () => {
   const run = await runPlaytest({
     runs: 2,
     require: ["the tables were read"],
@@ -23,10 +23,10 @@ test("rows are read by handle across tables, reload keeps handles, a bad row is 
       "0.4:expect:state:sameHandle==1",
       "0.4:expect:state:swordDamage==15",
       "0.4:expect:state:arrowDamage==4",
-      // A string in a number field at line 6: refused, the reloaded table kept.
+      // A string in a number field: refused, the reloaded table kept.
       "0.5:bad",
       "0.6:expect:state:refusals==1",
-      "0.6:expect:state:refusedLine==6",
+      "0.6:expect:state:refusedLine==1",
       "0.6:expect:state:swordDamage==15",
       // The arrow row gone: the quiver's handle is what og.table.missing lists.
       "0.7:drop",

@@ -392,7 +392,7 @@ export interface ColumnKinds {
   /** An InteractRule field: the variant's index. */
   InteractRule: { readonly array: Uint32Array; readonly stride: 1; readonly value: InteractRule };
   /**
-   * A TableRow handle field: a row of a table, written in a table as `row "id"` or `row "table" "id"`.
+   * A stable row handle. Author {row: 'id'} for this table or {table: ref('module/table'), row: 'id'} for another table.
    */
   TableRow: { readonly array: Uint32Array; readonly stride: 2; readonly value: TableRow };
   /** A StatusStacking field: the variant's index. */
@@ -37918,7 +37918,7 @@ export interface InteractEntities {
 }
 
 // ── table ───────────────────────────────────────────────────────
-// A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them.
+// A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them.
 // See `data`.
 
 /**
@@ -37929,7 +37929,7 @@ export interface InteractEntities {
 export type TableRow = number & { readonly [handleType]: "TableRow" };
 
 /**
- * A TableRow handle field: a row of a table, written in a table as `row "id"` or `row "table" "id"`.
+ * A stable row handle. Author {row: 'id'} for this table or {table: ref('module/table'), row: 'id'} for another table.
  *
  * A `TableRow` field: stored in a `Uint32Array` with stride 2.
  * @param value The field's default; omitted, the column's zero value.
@@ -43776,7 +43776,7 @@ export declare namespace og {
    */
   const InteractEntities: ResourceType<{ readonly interactors: ListSpec<"Entity">; readonly toggles: ListSpec<"Entity">; readonly doors: ListSpec<"Entity"> }, InteractEntities>;
   /**
-   * A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them.
+   * A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. Author file.table in content/**\/*.ts against a component declared in project.schemas. Cook validates rows and references and packs native reflected values. load installs these rows; replace installs generated runtime values. Stable handles survive reordering, reload and saves. The values are the game's: nothing here picks, sums or balances them.
    * See `data`.
    */
   namespace table {
@@ -43786,19 +43786,19 @@ export declare namespace og {
      * @param world The world.
      * @param path The table's path.
      * @param schema The game component each row is read as.
-     * @returns Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field.
+     * @returns Refused for a path that is not a cooked table, a different or undeclared component, colliding row handles, or incompatible values.
      */
     function load<C extends AnyComponent>(world: World, path: string, schema: C): Result<TableInfo>;
     /**
-     * A table from text, now, under the asset id `path` (tests and generated content; files go through og cook, which also checks assets and the rows named): the same reader and checks as og.table.load.
+     * Atomically replace a table with structured runtime rows. Values use the component's runtime shapes and numeric asset/row handles, not author ref tokens. Omitted fields take their component defaults. Refusal preserves the previous table. Author files go through file.table and cook instead.
      *
      * @param world The world.
-     * @param path The asset id it is loaded under, which its own `row "id"` fields name.
-     * @param text A `type table` .ogt.
+     * @param path The canonical identity to install, such as base/items.
+     * @param data {locale?: string, strings?: {[key: string]: string}, rows: [{id: string, values: {...}}]}; row IDs must be unique and nonempty; strings supplies localized base messages.
      * @param schema The game component each row is read as.
      * @returns Refused as og.table.load is.
      */
-    function parse<C extends AnyComponent>(world: World, path: string, text: string, schema: C): Result<TableInfo>;
+    function replace<C extends AnyComponent>(world: World, path: string, data: unknown, schema: C): Result<TableInfo>;
     /**
      * The handle of a row by its table and id.
      *

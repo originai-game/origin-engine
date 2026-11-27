@@ -5,15 +5,15 @@
 // counts every item held anywhere, in slots and lying in the world.
 //
 //   og run tests/fixtures/inventory-chest --headless --commands "2:dump_world;3:quit"
-import { defineComponent, defineResource, defineSystem, og, str, u32 } from "@origingame/engine";
+import { defineResource, defineSystem, og, u32 } from "@origingame/engine";
 import type { Entity, Result, World } from "@origingame/engine";
+import { ItemRow } from "./schema/items.ts";
+export { ItemRow } from "./schema/items.ts";
 
 function must<T>(r: Result<T>): T {
   if (!r.ok) throw new Error(r.reason);
   return r.value;
 }
-
-export const ItemRow = defineComponent("ItemRow", { maxStack: u32(), name: str(32) });
 
 /** What the game read back: counts by row in each container, and the commands' answers. */
 export const Facts = defineResource("ChestFacts", {
@@ -31,7 +31,7 @@ export const Facts = defineResource("ChestFacts", {
   merged: u32(),
 });
 
-const row = (world: World, id: string) => must(og.table.row(world, "items.ogt", id));
+const row = (world: World, id: string) => must(og.table.row(world, "base/items", id));
 
 /** The walker's x on tick `t`: from -3 to 3 over a second, across the pickups at -2, 0 and 2. */
 export const walk = (tick: number): number => Math.min(3, -3 + 0.1 * tick);
@@ -104,7 +104,7 @@ export default og.game({
   resources: [Facts],
   systems: [Walk, ...og.systems.inventory, Check],
   start(world) {
-    must(og.table.load(world, "items.ogt", ItemRow));
+    must(og.table.load(world, "base/items", ItemRow));
     const bag = must(world.spawn({ name: "bag" }));
     must(world.insert(bag, og.Container, { slots: 4, stack: "maxStack" }));
     const chest = must(world.spawn({ name: "chest" }));

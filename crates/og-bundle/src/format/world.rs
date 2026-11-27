@@ -262,16 +262,13 @@ impl BlobKind for Quest {
 }
 
 row!(
-    /// The root of a table blob (an `.ogt` of `type table`): a game's data rows.
-    TableMeta, "og.Table", 1 {
-        /// Bytes of the checked table text in `text`.
-        text_bytes: u32,
+    /// Native reflected rows and identity/localization metadata.
+    TableMeta, "og.Table", 2 {
+        row_count: u32,
     }
 );
 
-/// The table blob: `text` holds the table file the cook checked
-/// (og-core's `table::Table::parse`, its assets and the rows it names),
-/// read again at load against the game's record.
+/// `rows` holds packed reflected values; `schema` and `info` describe them.
 pub struct Table;
 impl BlobKind for Table {
     const NAME: &'static str = "og.Table";

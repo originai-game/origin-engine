@@ -212,10 +212,13 @@ fn bind(roles: &BTreeMap<&str, Map<String, Value>>) -> Result<Context, String> {
     // shared TS emitter see the same correlated record-name/row contract.
     let mut branches = Vec::new();
     let mut definitions = Map::new();
-    for (name, schema) in roles.values().flat_map(|records| records.iter()) {
+    for (name, schema) in &roles["component"] {
         let table: InputSchema<TableInput> = bind(&[
             ("record-name", json!({"type":"string", "const":name})),
-            ("row", schema.clone()),
+            (
+                "row",
+                source_schemas::world::table::row_schema(schema.clone()),
+            ),
         ])?;
         let mut document = table.document().clone();
         use og_core::reflect::source::schemars::{

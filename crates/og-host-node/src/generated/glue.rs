@@ -4176,10 +4176,10 @@ pub fn og_table_load(env: Env, world: u32, path: String, schema: String) -> Stri
     <Host as TableApi>::og_table_load(&Host, world, path, schema)
 }
 
-#[napi(js_name = "og_table_parse")]
-pub fn og_table_parse(env: Env, world: u32, path: String, text: String, schema: String) -> String {
+#[napi(js_name = "og_table_replace")]
+pub fn og_table_replace(env: Env, world: u32, path: String, data: String, schema: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as TableApi>::og_table_parse(&Host, world, path, text, schema)
+    <Host as TableApi>::og_table_replace(&Host, world, path, data, schema)
 }
 
 #[napi(js_name = "og_table_row")]

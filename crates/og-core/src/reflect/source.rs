@@ -115,10 +115,31 @@ impl<T> InputSchema<T> {
     }
 
     pub fn validate(&self, value: &Value) -> Result<(), Diagnostic> {
-        self.validator.validate(value).map_err(|e| Diagnostic {
-            path: e.instance_path().to_string(),
-            message: e.to_string(),
-        })
+        fn diagnostic(e: &jsonschema::ValidationError<'_>) -> Diagnostic {
+            use jsonschema::error::ValidationErrorKind;
+            if let ValidationErrorKind::AnyOf { context }
+            | ValidationErrorKind::OneOfNotValid { context } = e.kind()
+            {
+                // A unique branch without a failed discriminator carries the
+                // useful field error. Ambiguous unions retain the union error.
+                let mut candidates = context.iter().filter(|errors| {
+                    !errors
+                        .iter()
+                        .any(|e| matches!(e.kind(), ValidationErrorKind::Constant { .. }))
+                });
+                if let Some(branch) = candidates.next()
+                    && candidates.next().is_none()
+                    && let Some(error) = branch.first()
+                {
+                    return diagnostic(error);
+                }
+            }
+            Diagnostic {
+                path: e.instance_path().to_string(),
+                message: e.to_string(),
+            }
+        }
+        self.validator.validate(value).map_err(|e| diagnostic(&e))
     }
 
     /// Match a document subschema without detaching its local references.

@@ -5,6 +5,7 @@ import { defineProject } from "@origingame/engine/author";
 export default defineProject({
   "id": "data-tables",
   "entry": "src/main.ts",
+  "schemas": ["src/schema/items.ts"],
   "tick": 60,
   "seed": 1
 });

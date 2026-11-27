@@ -1545,19 +1545,64 @@ impl Bundle {
         }
     }
 
-    /// The checked text of a table blob (`og.Table`); read it with
-    /// og-core's `table::Table::parse`.
-    pub fn table_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// Native reflected rows and stable identities, never author source text.
+    pub fn table(&self, id: &str, bytes: &[u8]) -> Result<og_core::table::Table, LoadError> {
         let blob = self.blob::<format::Table>(id, bytes)?;
         let meta = one::<format::TableMeta>(&blob)?;
-        match blob
-            .raw("text")?
-            .get(..meta.text_bytes as usize)
-            .map(std::str::from_utf8)
+        let schema = og_core::Schema::from_json(
+            std::str::from_utf8(blob.raw("schema")?).map_err(|e| invalid(&blob, e.to_string()))?,
+        )
+        .map_err(|e| invalid(&blob, e.to_string()))?;
+        #[derive(serde::Deserialize)]
+        struct Info(
+            String,
+            Vec<String>,
+            BTreeMap<String, String>,
+            BTreeMap<usize, serde_json::Map<String, serde_json::Value>>,
+        );
+        let Info(locale, ids, strings, bindings) =
+            serde_json::from_slice(blob.raw("info")?).map_err(|e| invalid(&blob, e.to_string()))?;
+        let (bytes, stride) = blob.rows("rows", schema.layout_hash())?;
+        let size = og_core::Layout::of(&schema).size();
+        if stride != size.max(1)
+            || ids.len() != meta.row_count as usize
+            || bytes.len() / stride != ids.len()
+            || locale.is_empty()
         {
-            Some(Ok(t)) => Ok(t.to_string()),
-            _ => Err(invalid(&blob, "the table text is cut short or not UTF-8")),
+            return Err(invalid(
+                &blob,
+                "table row count, stride or locale is invalid",
+            ));
         }
+        let mut seen = std::collections::BTreeSet::new();
+        let rows = ids
+            .into_iter()
+            .zip(bytes.chunks_exact(stride))
+            .map(|(id, bytes)| {
+                if id.is_empty() || !seen.insert(id.clone()) {
+                    return Err(invalid(&blob, "empty or duplicate table row ID"));
+                }
+                schema
+                    .check_packed(&bytes[..size])
+                    .map_err(|e| invalid(&blob, e.to_string()))?;
+                Ok(og_core::table::Row {
+                    id,
+                    bytes: bytes[..size].to_vec(),
+                })
+            })
+            .collect::<Result<Vec<_>, LoadError>>()?;
+        for (row, fields) in &bindings {
+            if *row >= rows.len() || fields.keys().any(|f| schema.field_index(f).is_none()) {
+                return Err(invalid(&blob, "table relocation is out of range"));
+            }
+        }
+        Ok(og_core::table::Table {
+            schema,
+            locale,
+            rows,
+            strings,
+            bindings,
+        })
     }
 
     /// The look of a look blob (`og.Look`): flattened and checked by the

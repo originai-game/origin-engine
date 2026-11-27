@@ -73,6 +73,18 @@ enum TaggedSource {
 
 #[test]
 fn one_author_schema_checks_values_and_typescript() {
+    let tagged = InputSchema::<Mode>::new().unwrap();
+    let error = tagged
+        .decode(json!({"kind":"grid","cell-size":[1,2,"bad"]}))
+        .unwrap_err();
+    assert_eq!(error.path, "/cell-size/2");
+    assert!(
+        tagged
+            .decode(json!({"kind":"missing","value":3}))
+            .unwrap_err()
+            .path
+            .is_empty()
+    );
     let branches = InputSchema::<serde_json::Value>::from_document(json!({
         "type": "object", "properties": {
             "界~/#": {"anyOf": [{"$ref":"#/$defs/positive"}, {"type":"null"}]}

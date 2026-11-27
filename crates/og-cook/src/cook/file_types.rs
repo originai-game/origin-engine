@@ -44,6 +44,10 @@ pub fn markdown() -> Result<String, String> {
             .iter()
             .any(|(name, _)| *name == ty)
         {
+            if ty == "table" {
+                out.push_str("<a id=\"file-table\"></a>\n### `file:table`\n\nAuthor `content/**/*.ts` with `export default file.table({record: 'Item', rows: [{id: 'sword', values: {power: 12}}]})` from `@origingame/engine/author`. Run `og api gen --project <dir>` for the project's component row types and defaults. Rows have stable identities independent of order. Use canonical ref tokens for typed assets, {asset: ref(...)} for string asset IDs, {text: {key, base}} for localized strings, and {row, table?: ref(...)} for row references. Cross-table cycles are allowed; every referenced row must exist. Runtime og.table.replace accepts structured runtime values and numeric handles, never author tokens or text. No table author OGT parser remains. See data.\n\n");
+                continue;
+            }
             if matches!(ty, "scene" | "prefab") {
                 let _ = writeln!(
                     out,
@@ -254,11 +258,6 @@ pub fn markdown() -> Result<String, String> {
                         }
                     }
                 }
-            }
-            "table" => {
-                out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");
-                table(&mut out, og_core::table::LINES);
-                block(&mut out, "table.row", og_core::table::ROW_LINES);
             }
             "particles" | "effect" | "vfx" => {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");

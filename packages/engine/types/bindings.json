@@ -31352,10 +31352,10 @@
     {
       "id": 643,
       "kind": "fn",
-      "path": "og.table.parse",
-      "symbol": "og_table_parse",
+      "path": "og.table.replace",
+      "symbol": "og_table_replace",
       "module": "table",
-      "name": "parse",
+      "name": "replace",
       "generics": [
         {
           "name": "C",
@@ -31374,8 +31374,8 @@
           "optional": false
         },
         {
-          "name": "text",
-          "type": "String",
+          "name": "data",
+          "type": "Json",
           "optional": false
         },
         {

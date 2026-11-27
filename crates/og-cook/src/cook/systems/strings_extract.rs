@@ -1,5 +1,5 @@
 //! `og i18n extract`: every og.i18n key a project's dialogues, quests and
-//! tables show (`.yarn`, `type quest`, `type table`), with the arguments they pass and
+//! tables show (`.yarn`, `type quest`, `file.table`), with the arguments they pass and
 //! where, checked against each typed `file.strings` table: per locale,
 //! the keys it lacks and the messages that take an argument nothing
 //! passes. [`write_base`] adds the keys the base table lacks to it, each
@@ -158,15 +158,6 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
                 })
             }
             t if t == og_story::QUEST_TYPE => og_story::Quest::parse(&text).map(|q| q.keys()),
-            // A table's `text` fields: each key with its base text.
-            t if t == og_core::table::TABLE_TYPE => og_core::table::Table::parse(&text).map(|t| {
-                t.texts()
-                    .map(|(key, base, line)| {
-                        x.keys.entry(key.to_string()).or_default().text = Some(base.to_string());
-                        (key.to_string(), Vec::new(), line)
-                    })
-                    .collect::<Vec<_>>()
-            }),
             _ => continue,
         };
         match keys {
@@ -183,6 +174,50 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
                 x.stories.push(rel);
             }
             Err(e) => x.errors.push((rel, e)),
+        }
+    }
+    let records = crate::cook::source_records::Records::open(project, &source)?;
+    let mut evaluator = source_content::Evaluator::default();
+    for entry in index.entries.values().filter(|e| e.factory == "table") {
+        let result = evaluator.evaluate(
+            project,
+            &source,
+            entry,
+            &BTreeMap::new(),
+            records.contexts[&entry.module].schema("table"),
+        );
+        match result {
+            Ok(content) => {
+                let file: source_schemas::File =
+                    serde_json::from_value(content.data().root().into_json())
+                        .map_err(|e| e.to_string())?;
+                let input: source_schemas::world::table::TableInput =
+                    serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+                for (i, row) in input.rows.iter().enumerate() {
+                    for (name, value) in &row.values {
+                        if let Some(text) = value.get("text") {
+                            let key = text["key"].as_str().expect("checked text");
+                            let base = text["base"].as_str().expect("checked text");
+                            let k = x.keys.entry(key.into()).or_default();
+                            k.text = Some(base.into());
+                            let pointer = format!(
+                                "/rows/{i}/values/{}",
+                                name.replace('~', "~0").replace('/', "~1")
+                            );
+                            let at = source_content::diagnostic(
+                                content.source(),
+                                &entry.file,
+                                &pointer,
+                                "",
+                            );
+                            k.sources
+                                .push(format!("{}:{}", entry.file, at.location.line));
+                        }
+                    }
+                }
+                x.stories.push(entry.file.clone());
+            }
+            Err(e) => x.errors.push((entry.file.clone(), e.to_string())),
         }
     }
     let parsed: Vec<og_i18n::StringTable> = tables.iter().map(|(_, t)| t.clone()).collect();

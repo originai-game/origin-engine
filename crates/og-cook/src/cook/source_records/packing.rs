@@ -14,6 +14,10 @@ pub struct PackedRecord {
 }
 
 impl PackedRecord {
+    pub fn column(&self, name: &str) -> Option<&str> {
+        self.columns.get(name).map(String::as_str)
+    }
+
     pub fn new(record: &Record) -> Result<Self, String> {
         let mut fields = Vec::new();
         let mut defaults = Vec::new();

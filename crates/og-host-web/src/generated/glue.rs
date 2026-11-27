@@ -3489,8 +3489,8 @@ pub fn og_table_load(world: u32, path: String, schema: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_table_parse(world: u32, path: String, text: String, schema: String) -> String {
-    <Host as TableApi>::og_table_parse(&Host, world, path, text, schema)
+pub fn og_table_replace(world: u32, path: String, data: String, schema: String) -> String {
+    <Host as TableApi>::og_table_replace(&Host, world, path, data, schema)
 }
 
 #[wasm_bindgen]

@@ -3489,8 +3489,8 @@ unsafe extern "C" fn og_table_load(args: *const crate::OgValue, out: *mut crate:
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_table_parse(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as TableApi>::og_table_parse(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
+unsafe extern "C" fn og_table_replace(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_replace(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -4253,7 +4253,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_loading_status", arity: 1, call: og_loading_status },
     crate::Symbol { name: c"og_play_candidates", arity: 2, call: og_play_candidates },
     crate::Symbol { name: c"og_table_load", arity: 3, call: og_table_load },
-    crate::Symbol { name: c"og_table_parse", arity: 4, call: og_table_parse },
+    crate::Symbol { name: c"og_table_replace", arity: 4, call: og_table_replace },
     crate::Symbol { name: c"og_table_row", arity: 3, call: og_table_row },
     crate::Symbol { name: c"og_table_rows", arity: 2, call: og_table_rows },
     crate::Symbol { name: c"og_table_get", arity: 3, call: og_table_get },

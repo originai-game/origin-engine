@@ -1581,8 +1581,8 @@ pub trait PlayApi: Wire {
 pub trait TableApi: Wire {
     /// `og.table.load`
     fn og_table_load(&self, world: u32, path: String, schema: String) -> String;
-    /// `og.table.parse`
-    fn og_table_parse(&self, world: u32, path: String, text: String, schema: String) -> String;
+    /// `og.table.replace`
+    fn og_table_replace(&self, world: u32, path: String, data: String, schema: String) -> String;
     /// `og.table.row`
     fn og_table_row(&self, world: u32, table: String, id: String) -> String;
     /// `og.table.rows`
@@ -2245,7 +2245,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_loading_status",
     "og_play_candidates",
     "og_table_load",
-    "og_table_parse",
+    "og_table_replace",
     "og_table_row",
     "og_table_rows",
     "og_table_get",

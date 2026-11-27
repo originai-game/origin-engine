@@ -124,8 +124,8 @@ pub mod exports {
         og_story_start_quest, og_story_stop, og_story_track, og_story_view,
     };
     pub use super::table::{
-        og_table_get, og_table_load, og_table_missing, og_table_name, og_table_parse, og_table_row,
-        og_table_rows,
+        og_table_get, og_table_load, og_table_missing, og_table_name, og_table_replace,
+        og_table_row, og_table_rows,
     };
     pub use super::terrain::{
         og_terrain_bounds, og_terrain_create, og_terrain_edit, og_terrain_layer, og_terrain_load,

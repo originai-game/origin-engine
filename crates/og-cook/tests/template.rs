@@ -14,6 +14,109 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Table data is packed, not author text; cyclic row identities, defaults and
+/// localized strings survive both cold and warm cooks and schema edits.
+#[test]
+fn typed_tables_pack_rows_and_validate_cross_table_identities() {
+    let root = crate::temp::TempDir::new("typed-tables");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'tables',entry:'src/main.ts',schemas:['src/schema/items.ts']});",
+    );
+    let schema = "import * as s from '@origingame/engine/schema';export const Item=s.defineComponent('Item',{power:s.u32(17,{min:1,max:90}),label:s.str(24,'北'),icon:s.str(64),image:s.Texture(),next:s.TableRow(),links:s.list(s.TableRow(),4)});";
+    write("src/schema/items.ts", schema);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    image::RgbaImage::from_pixel(2, 2, image::Rgba([17, 89, 231, 255]))
+        .save(root.join("assets/icon.png"))
+        .unwrap();
+    let table = "import {file,ref} from '@origingame/engine/author';\nexport default file.table({record:'Item',rows:[\n{id:'bow',values:{label:{text:{key:'items.bow',base:'Bow'}},icon:{asset:ref('base/icon')},image:ref('base/icon'),next:{table:ref('base/materials'),row:'wood'},links:[{row:'arrow'}]}},\n{id:'arrow',values:{power:3}}]});";
+    write("content/items.ts", table);
+    write(
+        "content/materials.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.table({record:'Item',rows:[{id:'wood',values:{next:{table:ref('base/items'),row:'bow'}}}]});",
+    );
+    let mut previous = None;
+    for (threads, default) in [(1, 17), (3, 17), (2, 29)] {
+        if default == 29 {
+            write("src/schema/items.ts", &schema.replace("u32(17", "u32(29"));
+        }
+        let report = cook_project(
+            &root,
+            &CookOptions {
+                threads,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("base/items").unwrap();
+        let native = bundle.table("base/items", &bytes).unwrap();
+        assert_eq!(
+            native
+                .rows
+                .iter()
+                .map(|r| r.id.as_str())
+                .collect::<Vec<_>>(),
+            ["bow", "arrow"]
+        );
+        let layout = og_core::Layout::of(&native.schema);
+        let field = |i: usize, name| {
+            &native.rows[i].bytes[layout.range(native.schema.field_index(name).unwrap())]
+        };
+        assert_eq!(
+            u32::from_le_bytes(field(0, "power").try_into().unwrap()),
+            default
+        );
+        assert_eq!(u32::from_le_bytes(field(1, "power").try_into().unwrap()), 3);
+        assert_eq!(og_core::unpack_str(field(1, "label")), "北");
+        assert_eq!(og_core::unpack_str(field(0, "label")), "items.bow");
+        assert_eq!(native.strings["items.bow"], "Bow");
+        assert_eq!(og_core::unpack_str(field(0, "icon")), "icon.png");
+        assert_eq!(native.bindings[&0]["image"]["$ogRef"], "icon.png");
+        assert_eq!(
+            u64::from_le_bytes(field(0, "next").try_into().unwrap()),
+            og_core::table::row_handle("base/materials", "wood")
+        );
+        let links = &native.schema.fields[native.schema.field_index("links").unwrap()];
+        assert_eq!(
+            og_core::list_elements(links.ty, field(0, "links"))
+                .map(|b| u64::from_le_bytes(b.try_into().unwrap()))
+                .collect::<Vec<_>>(),
+            [og_core::table::row_handle("base/items", "arrow")]
+        );
+        if let Some(was) = &previous {
+            if default == 17 {
+                assert_eq!(was, &bytes.to_vec());
+            } else {
+                assert_ne!(was, &bytes.to_vec());
+            }
+        }
+        previous = Some(bytes.to_vec());
+    }
+    for (from, to, message, line) in [
+        ("row:'wood'", "row:'absent'", "has no row 'absent'", 3),
+        ("id:'arrow'", "id:'bow'", "duplicate row id bow", 2),
+        ("power:3", "power:91", "90", 4),
+    ] {
+        write("content/items.ts", &table.replace(from, to));
+        let error = cook_project(&root, &CookOptions::default())
+            .err()
+            .unwrap()
+            .to_string();
+        assert!(
+            error.contains(message) && error.contains(&format!("content/items.ts:{line}:")),
+            "{error}"
+        );
+    }
+}
+
 /// Checked static and animated declarations share native frame, timing and
 /// subresource contracts, including captured exchange inputs on warm cooks.
 #[test]

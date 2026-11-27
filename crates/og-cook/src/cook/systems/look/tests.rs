@@ -19,6 +19,7 @@ fn source(root: &Path, rel: &str) -> Source {
         timeline: None,
         motion_action: None,
         strings: None,
+        table: None,
         font_pack: None,
         fields: Default::default(),
         fx: None,

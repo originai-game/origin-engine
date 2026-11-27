@@ -20,7 +20,7 @@ og.table.load<C extends AnyComponent>(world: World, path: string, schema: C): Re
 | `path` | `string` | no | The table's path. |
 | `schema` | `C` | no | The game component each row is read as. |
 
-**Returns** `Result<TableInfo>`: Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field.
+**Returns** `Result<TableInfo>`: Refused for a path that is not a cooked table, a different or undeclared component, colliding row handles, or incompatible values.
 
 Binding symbol `og_table_load` · publish builds: kept
 
@@ -32,7 +32,7 @@ fn load {
   param world World "The world."
   param path String "The table's path."
   param schema C "The game component each row is read as."
-  returns Result.TableInfo "Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field."
+  returns Result.TableInfo "Refused for a path that is not a cooked table, a different or undeclared component, colliding row handles, or incompatible values."
 }
 ```
 

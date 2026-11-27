@@ -1,6 +1,6 @@
 # inventory-chest
 
-og.systems.inventory with an item table (`assets/items.ogt`, stack limits
+og.systems.inventory with an item table (`content/items.ts`, stack limits
 in `maxStack`, read as the game's `ItemRow`): a 4-slot bag carried by a
 kinematic walker (an og.Collector), a 3-slot chest holding a sword and 4
 ore, and three pickups on the walker's path (60 coins, 12 ore, 8 ore)

@@ -76,18 +76,12 @@ function must<T>(r: Result<T>): T {
 
 const Item = defineComponent("Item", { maxStack: u32(), gem: TableRow() });
 
-const ITEMS = `type table
-version 1
----
-row "gem" {
-  maxStack 5
-}
-row "ring" {
-  maxStack 1
-}
-`;
+const ITEMS = { rows: [
+  { id: "gem", values: { maxStack: 5 } },
+  { id: "ring", values: { maxStack: 1 } },
+] };
 
-const row = (world: World, id: string) => must(og.table.row(world, "items.ogt", id));
+const row = (world: World, id: string) => must(og.table.row(world, "base/items", id));
 
 const Check = defineSystem("Check", { reads: [], writes: [og.Container, og.ItemStack] }, (_q, _time, world) => {
   const pouch = world.find("pouch") as Entity;
@@ -105,7 +99,7 @@ const Check = defineSystem("Check", { reads: [], writes: [og.Container, og.ItemS
 export default og.game({
   systems: [...og.systems.inventory, Check],
   start(world) {
-    must(og.table.parse(world, "items.ogt", ITEMS, Item));
+    must(og.table.replace(world, "base/items", ITEMS, Item));
     const pouch = must(world.spawn({ name: "pouch" }));
     must(world.insert(pouch, og.Container, { slots: 3, stack: "maxStack" }));
     const gem = row(world, "gem");

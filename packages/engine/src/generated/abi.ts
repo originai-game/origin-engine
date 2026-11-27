@@ -1401,8 +1401,8 @@ export interface HostAbi<A, V> {
   og_play_candidates(world: number, desc: string | undefined): string;
   /** `og.table.load` */
   og_table_load(world: number, path: string, schema: string): string;
-  /** `og.table.parse` */
-  og_table_parse(world: number, path: string, text: string, schema: string): string;
+  /** `og.table.replace` */
+  og_table_replace(world: number, path: string, data: string, schema: string): string;
   /** `og.table.row` */
   og_table_row(world: number, table: string, id: string): string;
   /** `og.table.rows` */
@@ -2060,7 +2060,7 @@ export const SYMBOLS: readonly string[] = [
   "og_loading_status",
   "og_play_candidates",
   "og_table_load",
-  "og_table_parse",
+  "og_table_replace",
   "og_table_row",
   "og_table_rows",
   "og_table_get",

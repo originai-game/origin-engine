@@ -201,7 +201,7 @@ commands:
                       an authored entity becomes a new prefab, its block an instance of it
   i18n extract [project] [--json] [--write] [--check]
                       every og.i18n key the dialogues, quests and tables show (.yarn,
-                      type quest, type table), with the arguments they pass and where,
+                      type quest, file.table), with the arguments they pass and where,
                       against each string table: per locale, the keys it lacks and the arguments nothing passes;
                       --write adds the keys the base table lacks to it (content/strings/en.ts
                       when there is none); --check exits 1 while any table is incomplete

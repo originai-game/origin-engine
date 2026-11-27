@@ -39,7 +39,7 @@ impl TableInput {
         row.validate().map_err(|e| e.to_string())?;
         records::bind(&[
             ("record-name", json!({"type":"string", "const":row.name})),
-            ("row", schema_for_layout(row)?),
+            ("row", row_schema(schema_for_layout(row)?)),
         ])
     }
 
@@ -54,4 +54,40 @@ impl TableInput {
         }
         Ok(())
     }
+}
+
+/// Table-only author forms. Preserve the underlying record schema everywhere
+/// else: a scene's str is not a localized key, and TableRow is not an asset.
+pub(crate) fn row_schema(mut schema: Value) -> Value {
+    fn column(schema: &mut Value) {
+        if schema.get("type").and_then(Value::as_str) == Some("array") {
+            column(&mut schema["items"]);
+        } else if schema["x-og-handle-column"] == "TableRow" {
+            let mut table =
+                og_core::reflect::source::schemars::schema_for!(super::super::ContentRef)
+                    .to_value();
+            table["x-og-ref-kinds"] = json!(["table"]);
+            *schema = json!({"type":"object","properties":{
+                "row":{"type":"string","minLength":1},"table":table},
+                "required":["row"],"additionalProperties":false});
+        } else if schema["type"] == "string" && schema.get("x-og-capacity-bytes").is_some() {
+            let reference =
+                og_core::reflect::source::schemars::schema_for!(super::super::ContentRef)
+                    .to_value();
+            *schema = json!({"anyOf":[schema.clone(),
+                {"type":"object","properties":{"asset":reference},"required":["asset"],"additionalProperties":false},
+                {"type":"object","properties":{"text":{"type":"object","properties":{
+                    "key":{"type":"string","minLength":1},"base":{"type":"string"}},
+                    "required":["key","base"],"additionalProperties":false}},"required":["text"],"additionalProperties":false}
+            ]});
+        }
+    }
+    for field in schema["properties"]
+        .as_object_mut()
+        .expect("record properties")
+        .values_mut()
+    {
+        column(field);
+    }
+    schema
 }

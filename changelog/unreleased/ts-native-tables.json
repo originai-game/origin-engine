@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "file.table / og.table.replace",
+      "change": "Tables are checked TS declarations packed as reflected native rows with canonical defaults, row identities, localization and typed asset relocations. The author OGT table parser and runtime og.table.parse are removed; cooked tables are not reparsed source text.",
+      "fix": "Declare components in pure project.schemas modules and export file.table({record, locale?, rows:[{id,values}]}) from content/**/*.ts. Use {row:'id',table:ref('module/table')} for cross-table handles, {text:{key,base}} for localized strings and {asset:ref('module/id')} for string asset IDs. Use og.table.replace(world,id,{locale?,strings?,rows},Component) for runtime-generated rows in runtime component shapes. Platforms must accept canonical table IDs, refresh generated types and retire OGT table generators."
+    }
+  ]
+}

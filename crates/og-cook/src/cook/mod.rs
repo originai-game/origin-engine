@@ -148,6 +148,8 @@ pub(crate) struct Source {
     motion_action: Option<og_bundle::motion_action::MotionAction>,
     /// Compiled ICU messages and resolved locale font chain.
     strings: Option<og_i18n::StringTable>,
+    /// Native table rows, packed once after project references are resolved.
+    table: Option<og_core::table::Table>,
     /// Checked membership, cmaps and captured dictionary inputs.
     font_pack: Option<font_pack::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.

@@ -39,6 +39,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("scatter", &scene::SCENE),
     ("model", &model::MODEL),
     ("model-program", &model::MODEL),
+    ("table", &table::TABLE),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -200,6 +201,7 @@ fn declaration(root: &Path, entry: &source_index::Entry, kind: Kind, bytes: Vec<
         timeline: None,
         motion_action: None,
         strings: None,
+        table: None,
         font_pack: None,
         fields: Default::default(),
         fx: None,
@@ -379,6 +381,7 @@ pub(crate) fn sources(
     let mut grammars = BTreeMap::new();
     let mut flipbooks = BTreeMap::new();
     let mut deferred_flipbooks = BTreeMap::new();
+    let mut table_sources = BTreeMap::new();
     for entry in index.entries.values() {
         let content = if let Some(content) = prepared.remove(&entry.id) {
             if content.entry() != entry {
@@ -419,6 +422,10 @@ pub(crate) fn sources(
         }
         let mut source = declaration(root, entry, kind, bytes);
         let derived = (|| match entry.factory.as_str() {
+            "table" => {
+                table_sources.insert(entry.id.clone(), content.source().clone());
+                Ok(BTreeMap::new())
+            }
             "rig2d" => {
                 let prepared =
                     rig2d::Prepared::new(source.input()?, &assets_root(&source), &source.rel)?;
@@ -606,6 +613,7 @@ pub(crate) fn sources(
         source.conformed = Some(bytes);
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
+    table::prepare(sources, &graph, &packed, &table_sources)?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
         if let Some(doc) = &mut source.scene {
