@@ -15,7 +15,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og, type Sound } from "@origingame/engine";
-import { createEngine, type CreateOptions, type Engine, type GameToken } from "../../src/runtime.ts";
+import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
+import { readConfig } from "../../shell/page.ts";
 
 const argv = process.argv.slice(2);
 const opt = (name: string) => argv[argv.indexOf(name) + 1] ?? "";
@@ -49,7 +50,12 @@ const fnv = (bytes: Iterable<number>): string => {
 
 if (which === "startup") {
   const game = og.game({}) as unknown as GameToken;
-  const project = { tick: 30, seed: 83, saveVersion: 4, profile: "3d" as const };
+  // Exercise the exported page's JSON boundary, not only createEngine's
+  // typed input. Dropping an object here silently boots with GameDesc defaults.
+  const config = (project: unknown) => readConfig({
+    getElementById: () => ({ textContent: JSON.stringify({ project }) }),
+  } as unknown as Document).project!;
+  const project = config({ tick: 30, seed: 83, saveVersion: 4, profile: "3d" });
   const created = createEngine(game, { project });
   if (!created.ok) throw new Error(created.reason);
   const engine = created.value;
@@ -76,7 +82,7 @@ if (which === "startup") {
     { tick: 0 }, { tick: 241 }, { tick: 30.5 }, { seed: -1 }, { seed: 4294967296 },
     { saveVersion: 0 }, { unknown: 1 }, { flow: { dialogue: "x", unknown: true } }, { tick: null },
   ].map((project) => {
-    const result = createEngine(game, { project: project as unknown as NonNullable<CreateOptions["project"]> });
+    const result = createEngine(game, { project: config(project) });
     if (result.ok) { result.value.destroy(); throw new Error("invalid project startup accepted"); }
     return result.reason;
   });

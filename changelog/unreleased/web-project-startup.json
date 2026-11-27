@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "web project startup",
+      "summary": "The player shell carries checked ProjectStartup objects from og-config through the Worker to createEngine, preserving project.ts clock, seed, scenes and save version in dev and web exports. Malformed startup data reaches the shared native/web decoder and fails visibly instead of silently using defaults. The removed project-text string form is not supported."
+    }
+  ]
+}

@@ -219,7 +219,9 @@ export function readConfig(doc: Document = document): ShellConfig {
     telemetry: c.telemetry === "off" ? "off" : "on",
     build: c.build === "publish" ? "publish" : "dev",
     name: c.name ?? "Origin Engine",
-    ...(typeof c.project === "string" ? { project: c.project } : {}),
+    // Preserve supplied startup data, including malformed values: the shared
+    // native/web decoder must refuse them, never silently start with defaults.
+    ...(c.project === undefined ? {} : { project: c.project }),
     isolation: c.isolation ?? "preferred",
     fit: c.fit === "fill" ? "fill" : "letterbox",
     aspect: typeof c.aspect === "number" && c.aspect > 0 ? c.aspect : null,
