@@ -35,11 +35,30 @@ fn cooked() -> CookedTexture {
     image
         .save(root.join("assets/tex/grad.png"))
         .expect("write the png");
+    for (file, text) in [
+        (
+            "og-project.json",
+            r#"{"version":1,"name":"Device formats","engine":"0.9.0"}"#,
+        ),
+        (
+            "project.ts",
+            "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'device-formats',entry:'src/main.ts'});",
+        ),
+        ("src/main.ts", "export default {};"),
+        (
+            "content/tex/grad.ts",
+            "import {file} from '@origingame/engine/author';export default file.import({kind:'texture',source:'assets/tex/grad.png'});",
+        ),
+    ] {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).expect("project dir");
+        std::fs::write(path, text).expect("project file");
+    }
     let report = cook_project(&root, &CookOptions::default()).expect("cook");
     assert!(report.ok(), "{:?}", report.errors());
     Bundle::open(&root.join("cooked"))
         .expect("bundle")
-        .load_texture("tex/grad.png")
+        .load_texture("base/tex/grad")
         .expect("the texture loads")
 }
 
