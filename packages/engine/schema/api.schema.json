@@ -7679,7 +7679,7 @@
         },
         {
           "name": "video",
-          "doc": "Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.\nSee `loading §9`.",
+          "doc": "Load cooked footage authored with file.video in content/**/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.\nSee `loading §9`.",
           "params": [
             {
               "name": "world",
@@ -7691,7 +7691,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The video's asset id: the `.ogt`, such as `clips/intro.ogt`."
+              "doc": "The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts."
             }
           ],
           "returns": "Result<VideoInfo>",
@@ -14856,7 +14856,7 @@
     },
     {
       "name": "video",
-      "doc": "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.\nPlayback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.\nSee `audio §8`.",
+      "doc": "Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream: true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.\nPlayback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.\nSee `audio §8`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -57486,7 +57486,7 @@
         },
         "sound": {
           "$ref": "#/$defs/Sound",
-          "description": "Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio false`."
+          "description": "Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio: false`."
         },
         "width": {
           "type": "integer",
@@ -57528,15 +57528,15 @@
         },
         "streamed": {
           "type": "boolean",
-          "description": "Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames."
+          "description": "Whether it is a stream (`stream: true`: decoded as it plays) rather than a clip of cooked frames."
         },
         "aiGenerated": {
           "type": "boolean",
-          "description": "Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it."
+          "description": "Whether the footage was made by a generative model (`aiGenerated: true` in file.video): a game or store labels AI content from it."
         },
         "alpha": {
           "type": "boolean",
-          "description": "Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear."
+          "description": "Whether its frames carry the source's alpha (`alpha: true` in file.video): keyed footage drawn over the scene through its texture shows the scene where the matte is clear."
         },
         "codec": {
           "type": "string",

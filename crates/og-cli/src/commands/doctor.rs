@@ -232,10 +232,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             "optional",
             "ffmpeg",
             "not found (OG_FFMPEG or PATH): og render writes frames only",
-            Some("install ffmpeg (apt install ffmpeg, brew install ffmpeg) or set OG_FFMPEG for video and footage (type video)".into()),
+            Some("install ffmpeg (apt install ffmpeg, brew install ffmpeg) or set OG_FFMPEG for video and footage (file.video)".into()),
         ),
     }
-    // ffprobe: the cook reads a `type video` source's length and size with it.
+    // ffprobe: the cook reads a file.video source's length and size with it.
     let probe = og_cook::cook::video::ffprobe_bin();
     match version_of_dash(&probe) {
         Some(v) => out.check(
@@ -247,7 +247,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         None => out.check(
             "optional",
             "ffprobe",
-            "not found (OG_FFPROBE or PATH): og cook refuses `type video` assets",
+            "not found (OG_FFPROBE or PATH): og cook refuses file.video assets",
             None,
         ),
     }

@@ -720,8 +720,8 @@ tick, exact seeking by snapshot, headless runs and the offline mixer.
 - **Review.** `--contact-sheet` writes a labelled grid; `--timeline <name>`
   plays a timeline over its duration (§2.7). Agents iterate small and review
   the sheet.
-- **Footage.** A `type video` asset cooks to frames in a texture array or, with
-  `stream true`, an AV1 stream decoded by rav1d natively and WebCodecs (or
+- **Footage.** A checked `file.video` TS declaration cooks to frames in a texture array or, with
+  `stream: true`, an AV1 stream decoded by rav1d natively and WebCodecs (or
   rav1d in its own Worker) on the web; a stream is never in the startup
   bundle. It is cooked as an index and chunks from a key frame on, fetched
   through the streaming queue ahead of the players that need them and let

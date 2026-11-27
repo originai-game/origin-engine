@@ -1,5 +1,233 @@
 use super::*;
 
+/// Video declarations, source tools and incremental cook use the same typed
+/// input and module ownership; actual frame outputs bound references.
+#[test]
+fn typed_videos_cook_module_media_and_localized_audio() {
+    let root = TempDir::new("og-typed-video");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Video","engine":"0.9.0"}"#,
+    );
+    let project = "import {defineProject,ref} from '@origingame/engine/author'; export default defineProject({id:'video',entry:'src/main.ts',roots:[ref('base/clips/intro#frames#layer1')],modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});";
+    write("project.ts", project);
+    write("src/main.ts", "export default {};");
+    write("lib/clip.ts", "export const limit=0.5;");
+    let declaration = "import {file} from '@origingame/engine/author'; import {limit} from '../../lib/clip.ts'; export default file.video({source:'sources/intro.mp4',fps:4,maxSeconds:limit,kind:'pixel',aiGenerated:true,placeholder:true,audioLocale:{fr:'sources/fr.wav'}});";
+    write("content/clips/intro.ts", declaration);
+    write(
+        "modules/north/content/clips/intro.ts",
+        "import {file} from '@origingame/engine/author'; export default file.video({source:'sources/intro.mp4',fps:4,maxSeconds:0.5,kind:'pixel'});",
+    );
+    let media = |file: &str, size: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let out = Command::new(og_cook::cook::video::ffmpeg_bin())
+            .args([
+                "-v",
+                "error",
+                "-nostdin",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                &format!("testsrc2=size={size}:rate=4:duration=1"),
+                "-an",
+                "-c:v",
+                "libx264",
+                "-threads",
+                "1",
+                "-pix_fmt",
+                "yuv420p",
+            ])
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+    };
+    let audio = |sample: i16| {
+        let mut wav = hound::WavWriter::create(
+            root.join("sources/fr.wav"),
+            hound::WavSpec {
+                channels: 1,
+                sample_rate: 8000,
+                bits_per_sample: 16,
+                sample_format: hound::SampleFormat::Int,
+            },
+        )
+        .unwrap();
+        for n in 0..8000 {
+            wav.write_sample(if n % 17 < 6 { sample } else { -sample })
+                .unwrap();
+        }
+        wav.finalize().unwrap();
+    };
+    media("modules/north/sources/intro.mp4", "80x64");
+    let cache = root.join("cache");
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let mut previous = None;
+    let mut north = None;
+    for (run, size) in ["96x64", "96x64", "128x72", "128x72"]
+        .into_iter()
+        .enumerate()
+    {
+        if run == 3 {
+            audio(19000);
+        } else if run != 1 {
+            media("sources/intro.mp4", size);
+            audio(if run == 0 { 7000 } else { 13000 });
+        } else {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let id = "base/clips/intro";
+        let meta = bundle.video(id, &bundle.read(id).unwrap()).unwrap();
+        assert_eq!(
+            (
+                meta.width,
+                meta.height,
+                meta.frames,
+                meta.fps,
+                meta.streamed,
+                meta.audio
+            ),
+            (
+                if run >= 2 { 128 } else { 96 },
+                if run >= 2 { 72 } else { 64 },
+                2,
+                4,
+                0,
+                0
+            )
+        );
+        let frames = bundle.load_texture_array(&format!("{id}#frames")).unwrap();
+        assert_eq!(
+            frames.layers,
+            [format!("{id}#frames#layer0"), format!("{id}#frames#layer1")]
+        );
+        let layer = bundle.load_texture(&frames.layers[1]).unwrap();
+        let localized = bundle.load_sound(&format!("{id}#audio.fr")).unwrap();
+        assert_eq!(localized.meta.channels, 2);
+        assert_eq!(localized.meta.sample_rate, 48000);
+        let other = bundle
+            .load_texture_array("north/clips/intro#frames")
+            .unwrap();
+        assert_eq!((other.meta.width, other.meta.height), (80, 64));
+        if let Some((before, sound)) = previous {
+            assert_eq!(
+                layer == before,
+                run == 1 || run == 3,
+                "source refresh/cache mismatch"
+            );
+            assert_eq!(
+                localized == sound,
+                run == 1,
+                "localized audio refresh/cache mismatch"
+            );
+            assert_eq!(Some(&other), north.as_ref());
+        }
+        previous = Some((layer, localized));
+        north = Some(other);
+    }
+    // The source tools execute the declaration, including imported expressions,
+    // instead of looking for textual source/maxSeconds lines.
+    let edges = og()
+        .args(["video", "edges", "content/clips/intro.ts", "--out", "edges"])
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(edges.status.success(), "{}", text(&edges));
+    assert!(root.join("edges/intro.first.png").is_file());
+    assert!(root.join("edges/intro.last.png").is_file());
+    write(
+        "assets/segments/intro.ogt",
+        "type timeline\nversion 1\n---\nduration 0.5\ntrack video {\n key 0 {\n  video \"base/clips/intro\"\n }\n}\n",
+    );
+    write(
+        "assets/story/intro.yarn",
+        "#og-profile:yarn-spinner-3.2.2\n#og-name:intro\ntitle: intro\nog-flow: segments/intro.ogt\n---\n===\n",
+    );
+    let out = og()
+        .args(["flow", "list", ".", "--json"])
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(text(&out).contains("sources/intro.mp4"), "{}", text(&out));
+    assert!(text(&out).contains("placeholder"), "{}", text(&out));
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    for invalid in [
+        "{source:'sources/intro.mp4',keyframe:1}",
+        "{source:'sources/intro.mp4',fps:0}",
+        "{source:'sources/intro.mp4',maxSeconds:0}",
+        "{source:'sources/intro.mp4',posterSize:1,stream:true}",
+        "{source:'sources/intro.mp4',audioLocale:{fr:'sources/fr.wav',FR:'sources/fr.wav'}}",
+        "{source:'sources/intro.mp4',audioLocale:{'fr/CA':'sources/fr.wav'}}",
+        "{source:'../sources/intro.mp4'}",
+        "{source:'sources/../sources/intro.mp4'}",
+        "{source:'intro.mp4'}",
+        "{source:'sources/intro.png'}",
+        "{source:'sources/missing.mov'}",
+    ] {
+        write(
+            "content/clips/intro.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.video({invalid});"
+            ),
+        );
+        let out = cook();
+        assert!(!out.status.success(), "accepted {invalid}");
+        assert!(
+            text(&out).contains("content/clips/intro.ts"),
+            "{}",
+            text(&out)
+        );
+    }
+    write("content/clips/intro.ts", declaration);
+    write("project.ts", &project.replace("#layer1", "#layer2"));
+    assert!(
+        !cook().status.success(),
+        "accepted nonexistent frame reference"
+    );
+    write("project.ts", project);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("intro.mp4", root.join("sources/link.mp4")).unwrap();
+        write(
+            "content/clips/intro.ts",
+            &declaration.replace("intro.mp4", "link.mp4"),
+        );
+        assert!(!cook().status.success(), "accepted symlink media");
+        std::fs::remove_file(root.join("sources/link.mp4")).unwrap();
+        write("content/clips/intro.ts", declaration);
+    }
+    write(
+        "assets/old.ogt",
+        "type video\nversion 1\n---\nsource \"intro.mp4\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("video OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+}
+
 /// The public icon author/cook/load path preserves aliases and module ownership,
 /// refreshes external SVG inputs, and ships the default set without an OGT path.
 #[test]

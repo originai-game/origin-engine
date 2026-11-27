@@ -532,6 +532,7 @@ pub(crate) fn scan_with(
             encoded: std::sync::OnceLock::new(),
             whole: Default::default(),
             model: Default::default(),
+            video: None,
             conformed: None,
             fracture: None,
         });

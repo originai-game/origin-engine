@@ -138,6 +138,8 @@ pub(crate) struct Source {
     /// A model's cook (its blob, notes and LOD surfaces), made once by
     /// the first of its outputs that needs it.
     model: std::sync::OnceLock<Result<model::ModelOutput, CookError>>,
+    /// One media snapshot and plan, from content discovery through execution.
+    video: Option<video::Prepared>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

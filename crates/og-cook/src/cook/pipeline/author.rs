@@ -14,6 +14,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("sfx", &sfx::SFX),
     ("environment", &environment::ENVIRONMENT),
     ("icons", &icons::ICONS),
+    ("video", &video::VIDEO),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -94,15 +95,6 @@ pub(crate) fn sources(
                 records.contexts[&entry.module].schema(&entry.factory),
             )
             .map_err(|e| CookError(e.to_string()))?;
-        let derived = match entry.factory.as_str() {
-            "effect-texture" => effect_texture::derived(content.data()),
-            "sound" => audio::derived(content.data()),
-            "texture-array" => texture_array::derived(content.data()),
-            _ => Ok(BTreeMap::new()),
-        }
-        .map_err(|e| {
-            CookError(source_content::diagnostic(content.source(), &entry.file, "", e).to_string())
-        })?;
         // Each domain consumes the canonical IR directly. A cutover removes
         // its legacy type claim instead of serializing data back into OGT.
         let kind = match entry.factory.as_str() {
@@ -115,11 +107,8 @@ pub(crate) fn sources(
                 )));
             }
         };
-        graph
-            .insert(&content, &derived)
-            .map_err(|e| CookError(e.to_string()))?;
         let bytes = content.data().as_bytes().to_vec();
-        sources.push(Source {
+        let mut source = Source {
             rel: entry.id.clone(),
             path: root.join(&entry.file),
             kind,
@@ -132,9 +121,30 @@ pub(crate) fn sources(
             encoded: Default::default(),
             whole: Default::default(),
             model: Default::default(),
+            video: None,
             conformed: None,
             fracture: None,
-        });
+        };
+        let derived = (|| match entry.factory.as_str() {
+            "effect-texture" => effect_texture::derived(content.data()),
+            "sound" => audio::derived(content.data()),
+            "texture-array" => texture_array::derived(content.data()),
+            "video" => {
+                let decl = video::declaration(source.input()?)?;
+                let prepared = video::Prepared::new(&assets_root(&source), decl)?;
+                let outputs = prepared.outputs();
+                source.video = Some(prepared);
+                Ok(outputs)
+            }
+            _ => Ok(BTreeMap::new()),
+        })()
+        .map_err(|e| {
+            CookError(source_content::diagnostic(content.source(), &entry.file, "", e).to_string())
+        })?;
+        graph
+            .insert(&content, &derived)
+            .map_err(|e| CookError(e.to_string()))?;
+        sources.push(source);
     }
     graph.finish().map_err(|e| CookError(e.to_string()))
 }

@@ -457,7 +457,7 @@ pub struct VfxKey {
 }
 
 /// A key of a `video` track: from its time (until the next key), the
-/// entity's og.VideoPlayer plays `video` (a `type video` asset id), its
+/// entity's og.VideoPlayer plays `video` (a canonical video asset id), its
 /// time `from + (t − time) · speed` at the timeline's time `t`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VideoKey {

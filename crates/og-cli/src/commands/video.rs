@@ -5,7 +5,7 @@
 //!   of a clip as PNG (`<stem>.first.png`, `<stem>.last.png`): the last
 //!   frame is the seed an image-to-video model continues from for the next
 //!   clip, the first lets an author check a cut joins. `path` is a media
-//!   file (`.mp4`, `.webm`, `.mov`) or a `type video` `.ogt`, whose
+//!   file (`.mp4`, `.webm`, `.mov`) or a checked `file.video` TS declaration, whose
 //!   `source`, `maxSeconds` and `fps` it reads.
 
 mod study;
@@ -40,7 +40,7 @@ pub fn run(args: &[&str]) -> ExitCode {
 }
 
 /// The media file an argument names: a media file as given, or the
-/// `source` of a `type video` `.ogt` (beside it or under assets/), with
+/// `source` of a checked `file.video` declaration in its owning module, with
 /// the seconds kept (`maxSeconds`), if any.
 fn resolve(path: &Path) -> Result<(PathBuf, Option<f64>), String> {
     let ext = path
@@ -50,44 +50,29 @@ fn resolve(path: &Path) -> Result<(PathBuf, Option<f64>), String> {
     if matches!(ext.as_deref(), Some("mp4" | "webm" | "mov")) {
         return Ok((path.to_path_buf(), None));
     }
-    if ext.as_deref() != Some("ogt") {
+    if ext.as_deref() != Some("ts") {
         return Err(format!(
-            "{} is neither a media file (.mp4, .webm, .mov) nor a type video .ogt",
+            "{} is neither a media file (.mp4, .webm, .mov) nor a file.video TS declaration",
             path.display()
         ));
     }
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut source = None;
-    let mut max_seconds = None;
-    for line in text.lines() {
-        let line = line.trim();
-        if let Some(rest) = line.strip_prefix("source ") {
-            source = Some(rest.trim().trim_matches('"').to_string());
-        } else if let Some(rest) = line.strip_prefix("maxSeconds ") {
-            max_seconds = rest.trim().parse::<f64>().ok();
-        }
-    }
-    let source = source.ok_or_else(|| format!("{} names no source", path.display()))?;
-    let dir = path.parent().unwrap_or(Path::new("."));
-    let beside = dir.join(&source);
-    let assets_root = path
+    let absolute = path
+        .canonicalize()
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let root = absolute
         .ancestors()
-        .find(|a| a.file_name().is_some_and(|n| n == "assets"));
-    let under_assets = assets_root.map(|a| a.join(&source));
-    let file = if beside.exists() {
-        beside
-    } else if let Some(p) = under_assets.filter(|p| p.exists()) {
-        p
-    } else {
-        PathBuf::from(&source)
-    };
-    if !file.exists() {
-        return Err(format!(
-            "source '{source}' is neither beside {} nor under assets/",
-            path.display()
-        ));
-    }
-    Ok((file, max_seconds))
+        .find(|p| p.join("og-project.json").is_file())
+        .ok_or("a file.video declaration belongs to a project with og-project.json")?;
+    let relative = absolute
+        .strip_prefix(root)
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .replace('\\', "/");
+    let (module, decl) = og_cook::cook::video::read(root, &relative)?;
+    Ok((
+        module.join(decl.source),
+        decl.max_seconds.is_finite().then_some(decl.max_seconds),
+    ))
 }
 
 fn edges(args: &[&str]) -> Result<(), String> {

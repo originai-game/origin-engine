@@ -17,13 +17,14 @@ transitions and sound are the timeline's, saves are the world's.
 project.ts                    # flow: { source: { $ogRef: "base/story/film" } }
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
 assets/segments/kitchen.ogt   # a segment: type timeline with one video track
-assets/clips/kitchen.ogt      # footage: type video, stream true
+content/clips/kitchen.ts     # file.video({source:'assets/clips/kitchen.mp4',stream:true})
+assets/clips/kitchen.mp4     # binary footage; timeline video ID: base/clips/kitchen
 assets/segments/live.ogt      # a live segment: a scene track and a camera track
 assets/scenes/ending.ogt      # the scene it places
 ```
 
 `og create --genre interactive-film` writes this skeleton: an opening on
-placeholder footage (its clip says `placeholder true` until the game's own
+placeholder footage (its declaration says `placeholder: true` until the game's own
 footage replaces it), and two endings, one on footage and one live, a set
 of built-in geometry the camera track pushes in on.
 
@@ -97,7 +98,7 @@ version 1
 duration 18
 track video {
   key 0 {
-    video "clips/kitchen.ogt"
+    video "base/clips/kitchen"
   }
 }
 track caption {
@@ -157,8 +158,8 @@ track hotspot {
   what its reflections show.
 - Keyed footage over the scene (an actor shot on green, a smoke or fire
   element): export it with alpha (ProRes 4444, QuickTime Animation, PNG in
-  `.mov`, or VP9 WebM with alpha) and write `alpha true` in its `type
-  video`. Its picture then shows the live scene where the matte is clear,
+  `.mov`, or VP9 WebM with alpha) and set `alpha: true` in `file.video`.
+  Its picture then shows the live scene where the matte is clear,
   drawn over it as any `layer over` footage. A stream carries the matte
   below the colour, so it costs about half again the bytes; key the source
   before the cook, which keeps the alpha it is given and makes none.
@@ -171,11 +172,11 @@ track hotspot {
   (or cuts at once for `#immediate`).
 - A caption track imports `.srt`, `.vtt` (WebVTT with `<v Speaker>`, `<i>`,
   `<b>`, `<font color>`, and top/bottom positioning), or `.json` word timings.
-- A `type video` asset may declare `posterSize 480`, `loudness -16` (two-pass
+- A `file.video` declaration may set `posterSize: 480`, `loudness: -16` (two-pass
   linear EBU R128 normalisation), and localized dubbing tracks via
-  `audioLocale "<tag>" "<path>"` (automatically selected from `og.i18n.locale`);
+  `audioLocale: {fr: 'assets/audio/intro-fr.wav'}` (automatically selected from `og.i18n.locale`);
   streamed audio cooks to chunked Opus and video streams cook `#stream` and
-  `#stream720` renditions, and with `lowRendition true` a `#stream480` one,
+  `#stream720` renditions, and with `lowRendition: true` a `#stream480` one,
   selectable via `og.video.setQuality` (`low` without it plays the 720p).
 - A node without choices plays to its cut and goes on.
 - `from` lets several segments share one long file, which the one-decoder
@@ -353,10 +354,10 @@ a cut that lands on one decodes a single frame, not a run. A small
 When a generative video model makes the clips, two cook settings keep them
 consistent and two tools verify them:
 
-- `loudness -16` in a `type video` normalises its sound to −16 LUFS via
+- `loudness: -16` in `file.video` normalises its sound to −16 LUFS via
   two-pass linear EBU R128 loudnorm, so clips a model made at different
   levels play the same.
-- `aiGenerated true` marks the footage; VideoInfo.aiGenerated carries it, so
+- `aiGenerated: true` marks the footage; VideoInfo.aiGenerated carries it, so
   a game or store labels AI content.
 - `og video edges <clip>` writes the first and last frame of a clip as PNG.
   Feed the last frame to an image-to-video model as the seed for the next

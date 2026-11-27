@@ -1,5 +1,5 @@
 // Keyed footage on the web (`alpha true`, docs/design.md §2.9): the video
-// fixture's `keyed` command plays clips/keyed.ogt, an AV1 stream whose
+// fixture's `keyed` command plays base/clips/keyed, an AV1 stream whose
 // alpha is packed below its colour, on a UI image over black, in headless
 // Chrome on WebGPU from the dev web export. The browser decodes the packed
 // picture (WebCodecs, else rav1d-wasm), copyExternalImageToTexture puts it

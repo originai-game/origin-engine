@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.video / og cook / og video / og flow",
+      "change": "Video declarations consume checked TS author IR directly; the OGT parser, grammar and sibling/assets lookup are deleted. Source and localized audio paths are canonical under the owning module's assets/ or sources/. Planning, reference outputs, stamps and encoding share immutable disk-backed media snapshots. Clip, streamed AV1, alpha, localized audio and browser rendition algorithms are unchanged.",
+      "fix": "Export file.video({source:'assets/clips/intro.mp4',stream:true}) from content/clips/intro.ts; load and reference base/clips/intro. og video edges/study accept the TS declaration or raw media. Use audioLocale:{fr:'assets/audio/intro-fr.wav'} and renditions:[] to disable browser renditions. Film scaffolds now include content/clips/opening.ts, not assets/clips/opening.ogt. See og api show file:video.",
+      "find": ["type video", "assets/clips/opening.ogt"]
+    }
+  ]
+}

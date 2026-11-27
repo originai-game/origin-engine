@@ -177,14 +177,14 @@ and `cooldown`.
 <a id="guide-audio-8"></a>
 ### `audio §8` Video and its sound
 
-Footage is a `type video` asset cooked by ffmpeg, loaded with
+Footage is a `file.video` TS declaration cooked by ffmpeg, loaded with
 og.load.video and played by og.VideoPlayer; its sound plays on the entity's
 og.AudioSource in step with the picture.
 
 | Kind | Cooked to | Use |
 |---|---|---|
 | clip (the default) | a texture array of its frames, at most 256 | short loops: a screen in the world, an animated sign |
-| stream (`stream true`) | AV1, decoded as it plays: rav1d on its own thread natively, WebCodecs on the web, rav1d in a Worker of its own where the browser has no AV1 decoder | any length: intros, cutscenes |
+| stream (`stream: true`) | AV1, decoded as it plays: rav1d on its own thread natively, WebCodecs on the web, rav1d in a Worker of its own where the browser has no AV1 decoder | any length: intros, cutscenes |
 
 - The frame shown is a Texture any material map, og.Sprite or UI image
   draws. With several players of one video, show each player's own

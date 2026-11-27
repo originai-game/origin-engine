@@ -385,7 +385,7 @@ commands:
                       none reaches (a step marked ? passes a logic node's condition)
   video edges <clip> [--out DIR]
                       write <stem>.first.png and <stem>.last.png; clip is .mp4, .webm, .mov or
-                      a type video .ogt (source and maxSeconds); requires ffmpeg (OG_FFMPEG)
+                      a file.video TS declaration (source and maxSeconds); requires ffmpeg (OG_FFMPEG)
   video study <clip> [--out DIR] [--interval S] [--at 2,5,8] [--window S] [--cut-change F]
                       study AI footage or a recording with ffmpeg (OG_FFMPEG); clip as for edges;
                       output defaults to <clip-stem>.study/ beside the clip: study.json,

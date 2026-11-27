@@ -50,7 +50,7 @@ game told in segments (`og api show flow`): its form is 3d unless named
 and its view may be left out, and creation writes the same skeleton plus
 `assets/story/film.yarn` (three flow nodes, two endings),
 `assets/segments/opening.ogt` and `ending.ogt` and a placeholder
-`assets/clips/opening.ogt` stream (from `templates/film`, packed as
+`content/clips/opening.ts` video stream (from `templates/film`, packed as
 `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
 runs `bun scripts/assets.ts ensure templates` first), and project.ts's
 `flow: { source: { $ogRef: "base/story/film" } }`, which the engine starts and draws with its

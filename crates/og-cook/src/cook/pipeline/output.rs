@@ -807,11 +807,9 @@ pub(crate) fn diagnose(
             .iter()
             .find(|s| s.rel == id && s.kind == &video::VIDEO)
             .and_then(|s| {
-                let text = std::str::from_utf8(&s.bytes).ok()?;
-                let root = crate::cook::assets_root(s);
-                let decl = video::parse(&s.rel, text, &|p| root.join(p).is_file()).ok()?;
-                let probe = video::probe(&root.join(&decl.source)).ok()?;
-                let seconds = probe.duration.min(decl.max_seconds);
+                let prepared = s.video.as_ref()?;
+                let decl = &prepared.plan.decl;
+                let seconds = prepared.plan.probe.duration.min(decl.max_seconds);
                 let keyframe = if decl.stream { decl.keyframe } else { 0.0 };
                 Some((seconds, keyframe))
             });

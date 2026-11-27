@@ -1,4 +1,4 @@
-//! Footage: an `.ogt` of `type video` naming an `.mp4`, `.webm` or `.mov`,
+//! Footage: a checked `file.video` TS declaration naming an `.mp4`, `.webm` or `.mov`,
 //! cooked by `ffmpeg` (docs/design.md §2.9). A clip (the default, for
 //! short loops) cooks to
 //!
@@ -10,23 +10,16 @@
 //! - `<id>#audio`: its sound track as an `og.Sound` (QOA, 48 kHz stereo),
 //!   when it has one and `audio` is not `false`.
 //!
-//! ```text
-//! type video
-//! version 1
-//! ---
-//! source "clips/intro.mp4"   # .mp4, .webm or .mov, beside this file or under assets/
-//! fps 30                     # frames per second kept (default 30)
-//! maxSeconds 8               # what is kept from the start (default 8)
-//! size 320 180               # each frame's size (default the source's, at most 1024 wide)
-//! kind color                 # color (default) or pixel (nearest, lossless)
-//! audio true                 # its sound track as <id>#audio (default true)
-//! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
-//! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
-//! placeholder true           # stand-in footage to replace (og flow list reports it)
-//! alpha true                 # keep the source's alpha (ProRes 4444, QuickTime Animation, PNG, VP8/VP9 WebM)
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file.video({
+//!   source: 'assets/clips/intro.mp4', fps: 30, maxSeconds: 8,
+//!   size: [320, 180], kind: 'color', audio: true, loudness: -16,
+//!   aiGenerated: true, placeholder: true, alpha: true,
+//! });
 //! ```
 //!
-//! `alpha true` keeps the source's alpha channel (refused for a source
+//! `alpha: true` keeps the source's alpha channel (refused for a source
 //! without one); without it every frame is opaque. A clip's layers hold
 //! it. A stream's codecs carry no alpha, so each unit is a picture twice
 //! the frame's height (packed alpha): the colour above, the alpha below as
@@ -35,7 +28,7 @@
 //! alpha natively and for the poster (og-video's `Decoder::packed_alpha`);
 //! on the web og-render does it on the GPU after the browser's copy.
 //!
-//! A stream (`stream true`: long footage, decoded as it plays) cooks to
+//! A stream (`stream: true`: long footage, decoded as it plays) cooks to
 //!
 //! - `<id>`: the `og.Video` blob, `streamed` 1, `codec` AV1;
 //! - `<id>#stream`: an `og.VideoStream` ([`format::VideoStreamMeta`]): the
@@ -63,17 +56,13 @@
 //!   decoder;
 //! - `<id>#audio`: its sound track as an Opus `og.Sound` (48 kHz).
 //!
-//! ```text
-//! stream true                # decoded as it plays; no frame limit
-//! maxSeconds 600             # default: the whole source
-//! size 1280 720              # default the source's, at most 1920 wide
-//! keyframe 1                 # seconds between key frames (default 1): a seek decodes at most this much
-//! chunk 6                    # seconds per chunk (default 6, whole key frame intervals): what a player fetches at a time
-//! crf 32                     # AV1 quality, 0 (best) to 63 (default 32)
-//! crf720 38                  # the 720p rendition's (default crf + 6, at most 63)
-//! renditions hevc h264       # beside the AV1: hevc, h264, both, or none (default hevc)
-//! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
-//! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file.video({
+//!   source: 'assets/clips/film.mp4', stream: true, maxSeconds: 600,
+//!   size: [1280, 720], keyframe: 1, chunk: 6, crf: 32, crf720: 38,
+//!   renditions: ['hevc', 'h264'], loudness: -16, aiGenerated: true,
+//! });
 //! ```
 //!
 //! `loudness` runs ffmpeg's `loudnorm` on the sound so AI-generated clips,
@@ -98,159 +87,19 @@
 
 use super::texture;
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, audio, hash_bytes,
-    stamp, texture_array,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, audio, stamp,
+    texture_array,
 };
 use crate::format::{self, Area, BlobKind, VideoMeta, row_hash};
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex, OnceLock};
 
-/// The `.ogt` type of a video.
-pub const VIDEO_TYPE: &str = "video";
-
-/// Video source fields, shared by validation and the generated file directory.
-pub(crate) const LINES: &[crate::grammar::Line] = {
-    use crate::grammar::Line;
-    &[
-        Line::new(
-            "source",
-            "\"<mp4/webm/mov>\"",
-            "required",
-            "Footage beside this file or under assets/; absolute and parent paths are refused.",
-            "",
-        ),
-        Line::new(
-            "fps",
-            "<integer 1..120>",
-            "30",
-            "Frames per second kept.",
-            "",
-        ),
-        Line::new(
-            "maxSeconds",
-            "<seconds > 0>",
-            "8 (clip); whole source (stream)",
-            "Keep source from its beginning for this duration.",
-            "",
-        ),
-        Line::new(
-            "size",
-            "<width> <height>",
-            "source capped at width 1024 (clip), 1920 (stream)",
-            "Each dimension 2..4096; explicit resize.",
-            "",
-        ),
-        Line::new(
-            "kind",
-            "color | pixel",
-            "color",
-            "Frame texture processing kind.",
-            "",
-        ),
-        Line::new(
-            "audio",
-            "true | false",
-            "true",
-            "Keep source audio as a sound subasset when present.",
-            "",
-        ),
-        Line::new(
-            "audioLocale",
-            "\"<locale>\" \"<audio file>\"",
-            "",
-            "Repeat alternate localized audio tracks; unique case-insensitive alphanumeric/hyphen/underscore tags.",
-            "",
-        ),
-        Line::new(
-            "loudness",
-            "<LUFS -30..0>",
-            "off",
-            "Normalize source sound with ffmpeg loudnorm.",
-            "",
-        ),
-        Line::new(
-            "aiGenerated",
-            "true | false",
-            "false",
-            "Recorded provenance flag, not a generation request.",
-            "",
-        ),
-        Line::new(
-            "placeholder",
-            "true | false",
-            "false",
-            "Recorded stand-in flag, reported by og flow.",
-            "",
-        ),
-        Line::new(
-            "alpha",
-            "true | false",
-            "false",
-            "Retain source alpha; refuses a source without alpha.",
-            "",
-        ),
-        Line::new(
-            "stream",
-            "true | false",
-            "false",
-            "Encode chunked AV1 instead of a clip frame array.",
-            "",
-        ),
-        Line::new(
-            "keyframe",
-            "<seconds 0.1..10>",
-            "1",
-            "Stream keyframe interval.",
-            "",
-        ),
-        Line::new(
-            "chunk",
-            "<seconds 0.5..60>",
-            "6",
-            "Stream chunk interval, rounded to whole keyframe intervals.",
-            "",
-        ),
-        Line::new(
-            "crf",
-            "<integer 0..63>",
-            "32",
-            "Stream AV1 constant rate factor.",
-            "",
-        ),
-        Line::new(
-            "crf720",
-            "<integer 0..63>",
-            "min(crf + 6, 63)",
-            "720p rendition constant rate factor.",
-            "",
-        ),
-        Line::new(
-            "posterSize",
-            "0 | <integer 64..4096>",
-            "480",
-            "Stream poster's longest side; zero keeps full resolution.",
-            "",
-        ),
-        Line::new(
-            "renditions",
-            "hevc h264 | none",
-            "hevc when encoder available",
-            "Explicit list of browser codec renditions beside AV1; none appears alone.",
-            "",
-        ),
-        Line::new(
-            "lowRendition",
-            "true | false",
-            "false",
-            "Also encode a 480p stream rendition.",
-            "",
-        ),
-    ]
-};
+mod input;
+pub use input::read;
+pub(crate) use input::{Prepared, declaration};
 
 /// The most frames a video keeps: a texture array's layers.
 pub const MAX_FRAMES: u32 = super::texture_array::MAX_LAYERS as u32;
@@ -267,7 +116,7 @@ const DEFAULT_STREAM_WIDTH: u32 = 1920;
 /// A parsed video file.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VideoDecl {
-    /// The source's path under `assets/`.
+    /// Canonical source path under the owning module's assets/ or sources/.
     pub source: String,
     pub fps: u32,
     pub max_seconds: f64,
@@ -488,291 +337,6 @@ impl VideoPlan {
 /// `stream::LEAD`).
 pub const CHUNK_SECONDS: f64 = 6.0;
 
-/// Parses a video file; `exists(rel)` says whether a path under `assets/`
-/// is a file (the source is looked for beside the file first).
-pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<VideoDecl, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != VIDEO_TYPE {
-        return Err(format!("a video is `type {VIDEO_TYPE}`"));
-    }
-    if doc.version != 1 {
-        return Err(format!(
-            "video version {} (this engine reads 1)",
-            doc.version
-        ));
-    }
-    let dir = rel.rsplit_once('/').map_or("", |(d, _)| d);
-    let mut out = VideoDecl {
-        source: String::new(),
-        fps: 30,
-        max_seconds: 8.0,
-        size: None,
-        kind: format::kind::COLOR,
-        audio: true,
-        stream: false,
-        keyframe: 1.0,
-        chunk: CHUNK_SECONDS,
-        crf: 32,
-        crf720: None,
-        renditions: None,
-        loudness: None,
-        ai_generated: false,
-        placeholder: false,
-        alpha: false,
-        poster_size: DEFAULT_POSTER_SIZE,
-        audio_locales: Vec::new(),
-        low_rendition: false,
-    };
-    let mut max_given = false;
-    for e in &doc.body.entries {
-        let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-        let line = e.line;
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(format!(
-                "line {line}: unknown key '{}' ({})",
-                e.key,
-                LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
-            ));
-        }
-        match e.key.as_str() {
-            "source" => {
-                let p = e.string(0).map_err(err)?;
-                let ext = p.rsplit_once('.').map(|(_, x)| x.to_ascii_lowercase());
-                if !matches!(ext.as_deref(), Some("mp4" | "webm" | "mov")) {
-                    return Err(format!("line {line}: '{p}' is not an .mp4, .webm or .mov"));
-                }
-                if p.is_empty() || p.starts_with('/') || p.split('/').any(|c| c == "..") {
-                    return Err(format!("line {line}: '{p}' is not a path under assets/"));
-                }
-                let sibling = if dir.is_empty() {
-                    p.to_string()
-                } else {
-                    format!("{dir}/{p}")
-                };
-                out.source = if exists(&sibling) {
-                    sibling
-                } else if exists(p) {
-                    p.to_string()
-                } else {
-                    return Err(format!(
-                        "line {line}: source '{p}' is neither beside the video file nor under assets/"
-                    ));
-                };
-            }
-            "fps" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if v.fract() != 0.0 || !(1.0..=120.0).contains(&v) {
-                    return Err(format!("line {line}: fps is a whole number from 1 to 120"));
-                }
-                out.fps = v as u32;
-            }
-            "maxSeconds" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if !(v > 0.0 && v.is_finite()) {
-                    return Err(format!("line {line}: maxSeconds is above 0"));
-                }
-                out.max_seconds = v;
-                max_given = true;
-            }
-            "stream" => {
-                out.stream = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: stream is true or false"))?;
-            }
-            "keyframe" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if !(0.1..=10.0).contains(&v) {
-                    return Err(format!("line {line}: keyframe is 0.1 to 10 seconds"));
-                }
-                out.keyframe = v;
-            }
-            "chunk" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if !(0.5..=60.0).contains(&v) {
-                    return Err(format!("line {line}: chunk is 0.5 to 60 seconds"));
-                }
-                out.chunk = v;
-            }
-            "crf" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if v.fract() != 0.0 || !(0.0..=63.0).contains(&v) {
-                    return Err(format!("line {line}: crf is a whole number from 0 to 63"));
-                }
-                out.crf = v as u32;
-            }
-            "crf720" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if v.fract() != 0.0 || !(0.0..=63.0).contains(&v) {
-                    return Err(format!(
-                        "line {line}: crf720 is a whole number from 0 to 63"
-                    ));
-                }
-                out.crf720 = Some(v as u32);
-            }
-            "posterSize" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if v.fract() != 0.0 || (v != 0.0 && !(64.0..=4096.0).contains(&v)) {
-                    return Err(format!(
-                        "line {line}: posterSize is 0 (full size) or 64 to 4096 pixels"
-                    ));
-                }
-                out.poster_size = v as u32;
-            }
-            "audioLocale" => {
-                let tag = e.string(0).map_err(err)?.to_string();
-                let p = e.string(1).map_err(err)?;
-                if tag.is_empty()
-                    || !tag
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-                {
-                    return Err(format!("line {line}: audioLocale tag '{tag}' is invalid"));
-                }
-                if out
-                    .audio_locales
-                    .iter()
-                    .any(|(t, _)| t.eq_ignore_ascii_case(&tag))
-                {
-                    return Err(format!(
-                        "line {line}: audioLocale '{tag}' is declared twice"
-                    ));
-                }
-                if p.is_empty() || p.starts_with('/') || p.split('/').any(|c| c == "..") {
-                    return Err(format!("line {line}: '{p}' is not a path under assets/"));
-                }
-                let sibling = if dir.is_empty() {
-                    p.to_string()
-                } else {
-                    format!("{dir}/{p}")
-                };
-                let resolved = if exists(&sibling) {
-                    sibling
-                } else if exists(p) {
-                    p.to_string()
-                } else {
-                    return Err(format!(
-                        "line {line}: audioLocale '{tag}' file '{p}' is neither beside the video file nor under assets/"
-                    ));
-                };
-                out.audio_locales.push((tag, resolved));
-            }
-            "renditions" => {
-                let mut list = Vec::new();
-                for i in 0..e.values.len() {
-                    match e.word(i).map_err(err)? {
-                        "hevc" => list.push(Rendition::Hevc),
-                        "h264" => list.push(Rendition::H264),
-                        "none" if e.values.len() == 1 => {}
-                        w => {
-                            return Err(format!(
-                                "line {line}: renditions takes hevc, h264, both, or none alone, not '{w}'"
-                            ));
-                        }
-                    }
-                }
-                if e.values.is_empty() {
-                    return Err(format!(
-                        "line {line}: renditions takes hevc, h264, both, or none"
-                    ));
-                }
-                list.dedup();
-                out.renditions = Some(list);
-            }
-            "size" => {
-                let w = e.number(0).map_err(err)?.as_f64();
-                let h = e.number(1).map_err(err)?.as_f64();
-                let ok = |v: f64| v.fract() == 0.0 && (2.0..=4096.0).contains(&v);
-                if !ok(w) || !ok(h) {
-                    return Err(format!(
-                        "line {line}: size is a width and a height, whole numbers from 2 to 4096"
-                    ));
-                }
-                out.size = Some((w as u32, h as u32));
-            }
-            "kind" => {
-                out.kind = match e.word(0).map_err(err)? {
-                    "color" => format::kind::COLOR,
-                    "pixel" => format::kind::PIXEL,
-                    w => return Err(format!("line {line}: kind '{w}' (color or pixel)")),
-                }
-            }
-            "audio" => {
-                out.audio = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: audio is true or false"))?;
-            }
-            "loudness" => {
-                let v = e.number(0).map_err(err)?.as_f64();
-                if !(-30.0..=0.0).contains(&v) {
-                    return Err(format!(
-                        "line {line}: loudness is a LUFS target from -30 to 0 (-23 broadcast, -16 streaming, -14 louder)"
-                    ));
-                }
-                out.loudness = Some(v);
-            }
-            "aiGenerated" => {
-                out.ai_generated = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: aiGenerated is true or false"))?;
-            }
-            "placeholder" => {
-                out.placeholder = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: placeholder is true or false"))?;
-            }
-            "lowRendition" => {
-                out.low_rendition = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: lowRendition is true or false"))?;
-            }
-            "alpha" => {
-                out.alpha = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| format!("line {line}: alpha is true or false"))?;
-            }
-            _ => unreachable!("video field table and parser agree"),
-        }
-    }
-    if out.source.is_empty() {
-        return Err("a video names its file: `source \"clips/intro.mp4\"`".into());
-    }
-    if out.stream && !max_given {
-        out.max_seconds = f64::INFINITY;
-    }
-    if !out.stream
-        && doc.body.entries.iter().any(|e| {
-            matches!(
-                e.key.as_str(),
-                "keyframe"
-                    | "chunk"
-                    | "crf"
-                    | "crf720"
-                    | "posterSize"
-                    | "renditions"
-                    | "lowRendition"
-            )
-        })
-    {
-        return Err(
-            "keyframe, chunk, crf, crf720, posterSize, renditions and lowRendition are a stream's (`stream true`)"
-                .into(),
-        );
-    }
-    Ok(out)
-}
-
 /// The `ffmpeg` the cook runs: `OG_FFMPEG`, else on PATH.
 pub fn ffmpeg_bin() -> PathBuf {
     std::env::var_os("OG_FFMPEG")
@@ -864,7 +428,9 @@ pub fn plan(decl: &VideoDecl, probe: Probe, encoder: &str) -> Result<VideoPlan, 
         Some(s) => s,
         None => {
             if probe.width == 0 || probe.height == 0 {
-                return Err("ffprobe gives no frame size: name one with `size W H`".into());
+                return Err(
+                    "ffprobe gives no frame size: name one with `size: [width, height]`".into(),
+                );
             }
             let w = probe.width.min(widest);
             // Even, as most codecs keep them.
@@ -876,7 +442,7 @@ pub fn plan(decl: &VideoDecl, probe: Probe, encoder: &str) -> Result<VideoPlan, 
     };
     if decl.alpha && !probe.has_alpha {
         return Err(format!(
-            "`alpha true`, but {} carries no alpha ({}): export it with alpha (ProRes 4444, QuickTime Animation, PNG in .mov, or VP9 WebM with alpha), or leave alpha out",
+            "`alpha: true`, but {} carries no alpha ({}): export it with alpha (ProRes 4444, QuickTime Animation, PNG in .mov, or VP9 WebM with alpha), or leave alpha out",
             decl.source,
             if probe.codec.is_empty() {
                 "its codec is unknown"
@@ -895,7 +461,7 @@ pub fn plan(decl: &VideoDecl, probe: Probe, encoder: &str) -> Result<VideoPlan, 
     }
     if frames > MAX_FRAMES && !decl.stream {
         return Err(format!(
-            "{seconds:.2} s at {} fps is {frames} frames; a clip keeps at most {MAX_FRAMES} (a texture array's layers): stream it (`stream true`), or lower fps or maxSeconds (at {} fps, maxSeconds {:.2})",
+            "{seconds:.2} s at {} fps is {frames} frames; a clip keeps at most {MAX_FRAMES} (a texture array's layers): stream it (`stream: true`), or lower fps or maxSeconds (at {} fps, maxSeconds {:.2})",
             decl.fps,
             decl.fps,
             f64::from(MAX_FRAMES) / f64::from(decl.fps)
@@ -1989,7 +1555,7 @@ pub fn cook_poster(
 pub(crate) static VIDEO: KindDef = KindDef {
     name: "video",
     extensions: &[],
-    types: &[VIDEO_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_video,
@@ -2007,24 +1573,19 @@ fn plan_video<'a>(
 ) {
     let Cx { tex_desc, .. } = *cx;
     let PlanState { early_errors, .. } = state;
-    let text = String::from_utf8_lossy(&s.bytes);
-    let root = crate::cook::assets_root(s);
-    let planned = parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
-        let src = root.join(&d.source);
-        let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
-        let encoder = if d.stream { stream_encoder()? } else { "" };
-        let mut plan = plan(&d, probe(&src)?, encoder)?;
-        if d.stream {
-            (plan.renditions, plan.missing) = renditions(&d)?;
-        }
-        let mut locale_files = Vec::with_capacity(d.audio_locales.len());
-        for (tag, rel) in &d.audio_locales {
-            let p = root.join(rel);
-            let b = std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-            locale_files.push((tag.clone(), p, hash_bytes(&b)));
-        }
-        Ok((src, hash_bytes(&bytes), plan, locale_files))
-    });
+    let planned = s
+        .video
+        .as_ref()
+        .ok_or("video has no checked media snapshot")
+        .map(|prepared| {
+            cx.index.note_external(&prepared.dependencies);
+            (
+                prepared.source.clone(),
+                prepared.hash,
+                prepared.plan.clone(),
+                prepared.locales.clone(),
+            )
+        });
     match planned {
         Ok((src, src_hash, plan, locale_files)) => {
             let described = plan.describe();
@@ -2045,50 +1606,13 @@ fn plan_video<'a>(
             if plan.decl.stream {
                 // Each stream (the AV1, its 720p & 480p renditions, its HEVC
                 // and H.264 ones): its index and its chunks.
-                let mut streams = vec![(
-                    stream_id(&s.rel),
-                    stamp(
+                for (suffix, sp) in input::streams(&plan) {
+                    let id = format!("{}#{suffix}", s.rel);
+                    let st = stamp(
                         &[Area::Video],
-                        &[&base[..], &[b"stream".as_slice()]].concat(),
-                    ),
-                    plan.clone(),
-                )];
-                let s720 = og_video::stream::fallback_size(plan.size);
-                if let Some(size) = s720 {
-                    streams.push((
-                        stream_fallback_id(&s.rel),
-                        stamp(
-                            &[Area::Video],
-                            &[&base[..], &[b"stream720".as_slice()]].concat(),
-                        ),
-                        Box::new(fallback_plan(&plan, size)),
-                    ));
-                }
-                if let Some(size480) =
-                    og_video::stream::low_size(plan.size).filter(|_| plan.decl.low_rendition)
-                    && Some(size480) != s720
-                {
-                    streams.push((
-                        stream_low_id(&s.rel),
-                        stamp(
-                            &[Area::Video],
-                            &[&base[..], &[b"stream480".as_slice()]].concat(),
-                        ),
-                        Box::new(low_plan(&plan, size480)),
-                    ));
-                }
-                for &r in &plan.renditions {
-                    let rp = rendition_plan(&plan, r);
-                    streams.push((
-                        rendition_id(&s.rel, r),
-                        stamp(
-                            &[Area::Video],
-                            &[&base[..], &[r.word().as_bytes(), rp.describe().as_bytes()]].concat(),
-                        ),
-                        Box::new(rp),
-                    ));
-                }
-                for (id, st, sp) in streams {
+                        &[&base[..], &[suffix.as_bytes(), sp.describe().as_bytes()]].concat(),
+                    );
+                    let sp = Box::new(sp);
                     for n in 0..sp.chunks() {
                         outs.push((
                             og_bundle::runtime::video_chunk_id(&id, n),
@@ -2196,7 +1720,7 @@ fn plan_video<'a>(
                 );
             }
         }
-        Err(e) => early_errors.push((s.rel.clone(), "video", e)),
+        Err(e) => early_errors.push((s.rel.clone(), "video", e.into())),
     }
 }
 

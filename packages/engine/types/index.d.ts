@@ -32593,7 +32593,7 @@ export interface StreamBudget {
 
 
 // ── video ───────────────────────────────────────────────────────
-// Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
+// Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream: true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
 // Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
 // See `audio §8`.
 
@@ -32620,7 +32620,7 @@ export interface VideoInfo {
   /** The texture that shows the frame its og.VideoPlayer is at (frame 0 until one plays it). */
   readonly texture: Texture;
   /**
-   * Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio false`.
+   * Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio: false`.
    */
   readonly sound: Sound;
   /** Each frame's width in texels. */
@@ -32648,15 +32648,15 @@ export interface VideoInfo {
    */
   readonly bytes: number;
   /**
-   * Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames.
+   * Whether it is a stream (`stream: true`: decoded as it plays) rather than a clip of cooked frames.
    */
   readonly streamed: boolean;
   /**
-   * Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it.
+   * Whether the footage was made by a generative model (`aiGenerated: true` in file.video): a game or store labels AI content from it.
    */
   readonly aiGenerated: boolean;
   /**
-   * Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear.
+   * Whether its frames carry the source's alpha (`alpha: true` in file.video): keyed footage drawn over the scene through its texture shows the scene where the matte is clear.
    */
   readonly alpha: boolean;
   /**
@@ -39908,11 +39908,11 @@ export declare namespace og {
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
     /**
-     * Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.
+     * Load cooked footage authored with file.video in content/**\/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.
      * See `loading §9`.
      *
      * @param world The world whose renderer and audio own it.
-     * @param path The video's asset id: the `.ogt`, such as `clips/intro.ogt`.
+     * @param path The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts.
      * @returns Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.
      */
     function video(world: World, path: string): Result<VideoInfo>;
@@ -42377,7 +42377,7 @@ export declare namespace og {
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f64">; readonly loopEnd: FieldSpec<"f64">; readonly wait: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
-   * Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
+   * Footage authored with file.video in TypeScript, cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream: true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
    * Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
    * See `audio §8`.
    */

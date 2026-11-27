@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-bundle/source", "og-core/source", "og-render-data/bake", "dep:og-generation", "dep:og-audio", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake", "dep:oxc_codegen", "dep:oxc_semantic", "dep:oxc_transformer", "dep:rquickjs"]
+cook = ["og-bundle/source", "og-core/source", "og-render-data/bake", "dep:og-generation", "dep:og-audio", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake", "dep:oxc_codegen", "dep:oxc_semantic", "dep:oxc_transformer", "dep:rquickjs", "dep:tempfile"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -55,7 +55,7 @@ og-shape = { path = "../og-shape", optional = true }
 # A model whose source is an og-shape program is written as a glTF binary
 # (`cook/formats/model_program.rs`).
 og-shape-formats = { path = "../og-shape-formats", optional = true }
-# A streamed `type video`: the IVF ffmpeg writes is read into units, and its
+# A streamed file.video: the IVF ffmpeg writes is read into units, and its
 # poster is frame 0 as rav1d decodes it (the frame the runtime shows first).
 og-video = { path = "../og-video", optional = true }
 # Timelines and paths: the cook validates and canonicalises them (importing
@@ -106,6 +106,8 @@ opus-pure = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 blake3 = { version = "1.8.7", optional = true }
+# Immutable media snapshots shared by planning and ffmpeg jobs; cook only.
+tempfile = { version = "3.27", optional = true }
 oxc_allocator = { version = "=0.157.0", optional = true }
 oxc_ast = { version = "=0.157.0", optional = true }
 oxc_ast_visit = { version = "=0.157.0", optional = true }

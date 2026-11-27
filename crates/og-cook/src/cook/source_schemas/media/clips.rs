@@ -6,24 +6,29 @@ use std::collections::BTreeMap;
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Video {
-    /// Module-relative footage input; resolving and codec probing are cook work.
+    /// Canonical .mp4, .webm or .mov path under the owning module's assets/
+    /// or sources/, without declaration-relative or sibling fallback.
     #[schemars(length(min = 1), extend("x-og-input" = "bytes"))]
     pub source: String,
     #[schemars(range(min = 1, max = 120), extend("x-og-unit" = "Hz"))]
     pub fps: Option<u32>,
-    /// Omitted: clip limit or whole stream, as selected by stream.
+    /// Seconds retained from the beginning; omitted: 8 for a clip, whole source for a stream.
     #[schemars(extend("exclusiveMinimum" = 0, "x-og-unit" = "s"))]
     pub max_seconds: Option<f64>,
     /// Width, height in pixels.
     #[schemars(inner(range(min = 2, max = 4096)), extend("x-og-unit" = "px"))]
     pub size: Option<[u32; 2]>,
+    /// Frame processing; omitted color, pixel keeps nearest/lossless encoding.
     pub kind: Option<FrameKind>,
+    /// Keep the source audio when present; omitted true.
     pub audio: Option<bool>,
+    /// Alternate audio paths under this module's assets/ or sources/.
+    /// Locale tags are unique ignoring case; ASCII letters, digits, '-' and '_'.
     #[serde(default)]
     #[schemars(extend("x-og-input" = "bytes"))]
     pub audio_locale: BTreeMap<String, String>,
     #[schemars(range(min = -30, max = 0), extend("x-og-unit" = "LUFS"))]
-    pub loudness: Option<f32>,
+    pub loudness: Option<f64>,
     pub ai_generated: Option<bool>,
     pub placeholder: Option<bool>,
     pub alpha: Option<bool>,
@@ -39,6 +44,8 @@ pub struct Video {
     /// Zero keeps the full resolution; otherwise 64..4096 pixels.
     #[schemars(extend("anyOf" = [{"const": 0}, {"type": "integer", "minimum": 64, "maximum": 4096}, {"type": "null"}]))]
     pub poster_size: Option<u32>,
+    /// Browser codecs beside AV1; omitted HEVC when available, [] disables them.
+    /// All rendition controls require stream: true.
     pub renditions: Option<Vec<Rendition>>,
     pub low_rendition: Option<bool>,
 }

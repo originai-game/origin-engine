@@ -94,7 +94,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   (`og.WorldOrigin`, in `og.transform`).
 - Procedural geometry: three.js shapes, extrude, lathe, sweeps, CSG
   (`og.shapes`; og-shape).
-- Video: `type video` clips as texture arrays, or AV1 streams decoded by
+- Video: `file.video` TS declarations cooked as texture arrays, or AV1 streams decoded by
   rav1d natively and by WebCodecs (rav1d in a Worker as a fallback) on the web
   (`og.video`; og-video, og-video-wasm).
 - Debug draw and debug views (physics, navigation, bounds, LOD, lighting

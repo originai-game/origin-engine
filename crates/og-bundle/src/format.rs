@@ -20,7 +20,7 @@
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true|convex|vhacd`: the primitive count, each one's u32 offset and length after the header, then og-physics' hash-validated `bake_collider` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] and `impostor_materials` (optional) [`ImpostorMaterialRow`]; `skin_binds` (optional) [`NodeBindRow`]; `shape` (optional: a model with triangles) [`ShapeRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file); `mips` (a streamed tail's whole chain), `orientation` (its source's EXIF orientation, a u32 2 to 8, the texels as stored; absent: upright) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
-//! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
+//! | video (`og.Video`, a `file.video` TS declaration cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
 //! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video: its index, fetched when a player first wants a frame; its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264` the same) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU, H.264's `avcC` or HEVC's `hvcC` record), `units` [`VideoUnitRow`] (each frame's place in its chunk) |
 //! | video chunk (`og.VideoChunk`, `<stream id>.<n>`: a stream's frames from key frame `n · chunk_frames` on, fetched ahead of its players) | [`VideoChunkMeta`] | `data` (the AV1 temporal units, or the H.264 or HEVC samples as MP4 holds them) |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
@@ -959,7 +959,7 @@ impl BlobKind for TextureArray {
 }
 
 row!(
-    /// The root of a video blob (an `.ogt` of `type video`, cooked by
+    /// The root of a video blob (a `file.video` declaration, cooked by
     /// ffmpeg). A clip (`streamed` 0): its frames are the layers of the
     /// texture array `<id>#frames`. A stream (`streamed` 1): its frames are
     /// the AV1 units of `<id>#stream` ([`VideoStreamMeta`]), decoded as it
@@ -1013,7 +1013,7 @@ impl BlobKind for Video {
 
 row!(
     /// The root of a video stream blob (`<id>#stream` of a streamed
-    /// `type video`, or one of its renditions): its index. The `config`
+    /// video, or one of its renditions): its index. The `config`
     /// section is the codec's configuration (AV1: the sequence header OBU;
     /// H.264 and HEVC: the `avcC` or `hvcC` record), `units` one
     /// [`VideoUnitRow`] per frame (frame n is unit n, shown at n / fps). The

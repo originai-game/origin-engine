@@ -538,8 +538,8 @@ pub struct CookedVideoChunk {
     pub data: Vec<u8>,
 }
 
-/// The id of chunk `n` of a video stream (`clips/intro.ogt#stream.3`, the
-/// file `clips/intro.ogt.stream.3.ogb`).
+/// The id of chunk `n` of a video stream (`base/clips/intro#stream.3`, the
+/// file `base/clips/intro.stream.3.ogb`).
 pub fn video_chunk_id(stream: &str, n: u32) -> String {
     format!("{stream}.{n}")
 }

@@ -3,9 +3,9 @@
 // `pair` halves it and adds a second player of the video the screen plays
 // (the clip, or the stream after `stream`) half a second ahead on the right; Show puts each player's own texture (VideoPlayer.texture) on
 // its sprite, so the two halves show different frames.
-// `stream` plays the streamed cook of the same source (count-stream.ogt:
+// `stream` plays the streamed cook of the same source (base/clips/count-stream:
 // AV1 decoded as it plays) on the screen from its current time.
-// `keyed` shows clips/keyed.ogt (white, its alpha a ramp, streamed with
+// `keyed` shows base/clips/keyed (white, its alpha a ramp, streamed with
 // `alpha true`) on the UI image over a black background, the sprite gone,
 // beside the host's own blend of the same alphas (Frame's swatches).
 // `surfaces` takes the sprite away and shows the player's texture twice:
@@ -51,9 +51,9 @@ export default og.game({
     camera.orthographic = true;
     camera.height = 9;
     camera.position = { x: 0, y: 0, z: 50 };
-    const info = must(og.load.video(world, "clips/count.ogt"));
+    const info = must(og.load.video(world, "base/clips/count"));
     // The stream too, so its handles are the same in every process (`stream` loads it again).
-    must(og.load.video(world, "clips/count-stream.ogt"));
+    must(og.load.video(world, "base/clips/count-stream"));
     const screen = must(world.spawn({ name: "screen", position: { x: 0, y: 0, z: 0 } }));
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
     must(world.insert(screen, og.VideoPlayer, { video: info.video }));
@@ -71,7 +71,7 @@ export default og.game({
   commands: {
     stream: (world: World) => {
       const screen = world.find("screen")!;
-      const streamed = must(og.load.video(world, "clips/count-stream.ogt")).video;
+      const streamed = must(og.load.video(world, "base/clips/count-stream")).video;
       must(world.set(screen, og.VideoPlayer, { video: streamed }) as never);
     },
     pair: (world: World) => {
@@ -87,7 +87,7 @@ export default og.game({
       const screen = world.find("screen")!;
       must(world.set(screen, og.Sprite, { width: 0, height: 0 }) as never);
       must(world.resource(og.Camera)).background = { r: 0, g: 0, b: 0 };
-      const keyed = must(og.load.video(world, "clips/keyed.ogt"));
+      const keyed = must(og.load.video(world, "base/clips/keyed"));
       const player = must(world.spawn({ name: "keyed" }));
       must(world.insert(player, og.VideoPlayer, { video: keyed.video, loop: true }));
       must(og.ui.scope(world, "video").writable("texture", 0).set(keyed.texture as number));

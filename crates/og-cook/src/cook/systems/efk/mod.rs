@@ -141,6 +141,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 encoded: Default::default(),
                 whole: Default::default(),
                 model: Default::default(),
+                video: None,
                 conformed: None,
                 fracture: None,
             });

@@ -400,11 +400,14 @@ each one moves.
 
 ## 9. Video
 
-An `.ogt` of `type video` names `source` (an .mp4, .webm or .mov beside
-it or under assets/), `fps`, `maxSeconds`, `size W H`, `kind
-color|pixel` and `audio`. A stream adds `stream true`, `keyframe`,
-`chunk` (seconds per chunk, 6 by default), `crf` and `renditions`
-(`hevc`, the default; `h264`; both; or `none`).
+Export `file.video({...})` from content/clips/intro.ts and load it as
+`base/clips/intro`. Its `source` is a canonical .mp4, .webm or .mov path
+under the owning module's assets/ or sources/, without sibling fallback.
+A stream uses `stream: true`. Inspect the complete typed input with
+`og api show file:video`; `og api gen` provides project-local completion.
+`renditions: ['hevc', 'h264']` selects browser codecs; `[]` disables them,
+and omission enables HEVC when available. Actual frames, streams, posters,
+audio tracks and chunks are referenceable subresources of the canonical ID.
 The cook needs ffmpeg (`og doctor` checks it and its encoders).
 
 | Kind | Cooked as | Plays |

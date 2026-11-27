@@ -73,6 +73,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "icons" {
                 out.push_str("Output: a named distance-field font loaded with og.load.font. SVG directory source is canonical relative to the owning module (default assets/icons), never relative to the declaration. icons is an ordered list of [name, SVG stem] pairs; names are unique single lines, and stems stay beneath source. Exact SVG bytes are captured before cache lookup. Native SVG stroke joins, fill, tone runs, sticker outline/shadow and atlas layout are unchanged. See theme-tokens for the shared set.\n\n");
             }
+            if ty == "video" {
+                out.push_str("Output: video metadata plus its actual frames/stream/poster/audio subresources. Source and audioLocale files use canonical paths under the owning module's assets/ or sources/, without sibling fallback. The closed TS evaluator and schema are shared with og video edges and flow tools. Planning, hashing, ffprobe and ffmpeg share one immutable, disk-backed media snapshot. Clip encoding, AV1 streams, alpha, localized sound and browser renditions are unchanged. Stream-only controls require stream: true; renditions: [] disables browser renditions. Requires ffmpeg/ffprobe.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -344,10 +347,6 @@ pub fn markdown() -> Result<String, String> {
                     "lightmap.volume",
                     og_bundle::lightmap::VOLUME_LINES,
                 );
-            }
-            "video" => {
-                out.push_str("Field coverage: complete video parser field table. Sources require ffmpeg/ffprobe. Clip output is an ordinary video with frames and optional sound; stream output is chunked AV1 with declared renditions. Stream-only controls are refused on clips.\n\n");
-                table(&mut out, super::video::LINES);
             }
             "table" => {
                 out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");

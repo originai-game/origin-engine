@@ -117,14 +117,9 @@ fn timeline(assets: &Path, id: &str) -> Result<Timeline, String> {
 
 /// A video asset's facts: whether it exists, its source file, and whether
 /// it is still placeholder footage (`placeholder true`).
-fn footage(assets: &Path, id: &str, problems: &mut Vec<String>) -> Value {
-    let Ok(text) = std::fs::read_to_string(assets.join(id)) else {
-        problems.push(format!("its footage {id} is no file under assets/"));
-        return json!({ "id": id, "exists": false });
-    };
-    let exists = |p: &str| assets.join(p).is_file();
-    match super::video::parse(id, &text, &exists) {
-        Ok(v) => {
+fn footage(root: &Path, id: &str, problems: &mut Vec<String>) -> Value {
+    match super::video::read(root, id) {
+        Ok((_, v)) => {
             if v.placeholder {
                 problems.push(format!(
                     "its footage {id} is placeholder footage (`placeholder true`): replace the clip"
@@ -202,7 +197,7 @@ pub fn list(root: &Path) -> Result<Value, String> {
                         "hold": s.hold,
                         "loopRegion": s.loop_region.map(|(a, b)| json!({ "start": a, "end": b })),
                         "footage": s.video.as_ref().map(|(v, from)| {
-                            let mut f = footage(&assets, v, &mut problems);
+                            let mut f = footage(root, v, &mut problems);
                             f["from"] = json!(from);
                             f
                         }),
@@ -415,7 +410,6 @@ fn sample_frame_rgb(media: &Path, at_seconds: Option<f64>) -> Result<Vec<u8>, St
 pub fn check_cuts(root: &Path) -> Result<Value, String> {
     let (_, flows) = flows(root)?;
     let assets = root.join("assets");
-    let exists = |p: &str| assets.join(p).is_file();
     let mut out = Vec::new();
     for f in &flows {
         // Resolve each flow node's (media_path, from, cut) when it has footage.
@@ -433,16 +427,13 @@ pub fn check_cuts(root: &Path) -> Result<Value, String> {
             let Some((vid_id, from)) = s.video else {
                 continue;
             };
-            let Ok(vtext) = std::fs::read_to_string(assets.join(&vid_id)) else {
-                continue;
-            };
-            let Ok(vdecl) = super::video::parse(&vid_id, &vtext, &exists) else {
+            let Ok((module, vdecl)) = super::video::read(root, &vid_id) else {
                 continue;
             };
             media_of.insert(
                 n.title.as_str(),
                 (
-                    assets.join(&vdecl.source),
+                    module.join(&vdecl.source),
                     f64::from(from),
                     f64::from(from) + f64::from(s.cut),
                 ),
