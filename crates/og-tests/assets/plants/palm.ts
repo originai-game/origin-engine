@@ -1,6 +1,2 @@
-type model
-version 1
----
-plant "palm" {
-  kind palm
-}
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{items:[{name:'palm',input:{kind:'plant',desc:{kind:'palm'}}}]}});

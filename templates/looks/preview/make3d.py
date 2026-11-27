@@ -11,9 +11,9 @@
                                look's prop budget, so no look's cook
                                simplifies it
 
-The textures are embedded (type model has no texture maps); the heights come
-from fixed sines, so a run writes the same bytes. The other models are
-`type model` text beside them.
+The textures are embedded; the heights come from fixed sines, so a run writes
+the same bytes. The other models are checked file.model TypeScript under
+3d/content/models/.
 """
 import json, math, os, struct
 

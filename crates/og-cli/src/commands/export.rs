@@ -1,5 +1,5 @@
 //! `og export gltf <asset> [project] -o <file.glb> [--lod N]`: a cooked
-//! model as a glTF binary, so a model the cook generates (a `type model`
+//! model as a glTF binary, so a model the cook generates (a checked model
 //! of parts or a plant, a `.vox`) leaves the engine for another tool or
 //! renderer, and a glTF comes back as the engine draws it.
 //!

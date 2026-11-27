@@ -134,9 +134,9 @@ a BVH for `og.render.raycast` and is a `Collider.mesh` at once
 Two more go beyond three.js: `og.render.sweepGeometry` sweeps a section
 along an og.path with a scale and twist over its length (horns, tusks,
 handles), and a prop built of these parts belongs in an asset rather
-than in code: an `.ogt` of `type model` names each part by its
-`og.render` call with the desc's fields, places it as `mergeGeometries`
-does and gives it a material and a pivot; the cook builds it into the
+than in runtime code: a checked `file.model` TS declaration names each part by its
+geometry kind and desc fields, places it with `placements`
+and gives it a material and a pivot; the cook builds it into the
 model blob a glTF cooks to, with levels of detail and the BVH, and
 `og.load.gltf` loads it (`og api show shapes`); art-review §5 says how
 to review such a prop against a reference image.
@@ -227,7 +227,7 @@ call names an asset id, the path under `assets/` (`og api show load`).
 | `loader.loadAsync(url)` and `await` | no promises: a load completes at a tick boundary, and under `og run` before the next tick, so it lands on the same tick every run |
 
 `FBXLoader` and `OBJLoader` (with `MTLLoader`) become an `.fbx` or `.obj` in `assets/`, loaded with `og.load.gltf` too: the cook reads them into the same model. A MagicaVoxel `.vox` loads with `og.load.gltf` too, and so does a
-`type model` asset (§4).
+`file.model` asset by canonical content ID (§4).
 
 ## 8. The render loop: the tick
 
@@ -325,7 +325,7 @@ if (hits.length > 0) og.debug.sphere(world, hits[0].point, 0.05);
   (`og.transform.decompose(m)`), `setColorAt` a per-entity colour through
   `Mesh.flash` or a texture-array layer (`Mesh.materialLayer`), or one
   material per colour. A part repeated inside one model is instanced by
-  the cook (`type model`'s `at { }` blocks).
+  the cook (a `file.model` part's `placements`).
 - **No OrbitControls object.** Nothing takes a DOM element or listens to
   events. The og.OrbitCamera component is the same controller as data:
   put it on the entity to orbit, list `...og.systems.cameras` first in

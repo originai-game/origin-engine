@@ -187,8 +187,8 @@ pub(crate) struct Settings {
     impact: Option<(DVec3, f64)>,
     anchor: Anchor,
     interior_scale: f64,
-    interior: Option<Block>,
-    mortar: Option<Block>,
+    interior: Option<crate::cook::source_schemas::world::materials::Material>,
+    mortar: Option<crate::cook::source_schemas::world::materials::Material>,
 }
 
 fn num(b: &Block, k: &str, default: f64) -> Result<f64, String> {
@@ -215,6 +215,94 @@ fn count(b: &Block, k: &str, default: u32, min: u32, max: u32) -> Result<u32, St
 }
 
 impl Settings {
+    pub(crate) fn from_input(
+        input: &crate::cook::source_schemas::world::model::process::Fracture,
+    ) -> Result<Self, String> {
+        use crate::cook::source_schemas::world::model::process as source;
+        let style = match input.style {
+            None | Some(source::Style::Voronoi) => Style::Voronoi,
+            Some(source::Style::Concrete) => Style::Concrete,
+            Some(source::Style::Brick) => Style::Brick,
+            Some(source::Style::Wood) => Style::Wood,
+            Some(source::Style::Glass) => Style::Glass,
+        };
+        let pattern = match input.pattern {
+            None | Some(source::Pattern::Auto) => Pattern::Auto,
+            Some(source::Pattern::Volume) => Pattern::Volume,
+            Some(source::Pattern::Slab) => Pattern::Slab,
+        };
+        let sites: Vec<_> = input
+            .sites
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .copied()
+            .map(DVec3::from_array)
+            .collect();
+        for (i, site) in sites.iter().enumerate() {
+            if sites[..i].contains(site) {
+                return Err("fracture sites must be distinct".into());
+            }
+        }
+        if !sites.is_empty()
+            && (style != Style::Voronoi
+                || pattern != Pattern::Volume
+                || input.chunks.is_some()
+                || input.impact.is_some())
+        {
+            return Err(
+                "fracture.sites needs style voronoi, pattern volume, and no chunks or impact"
+                    .into(),
+            );
+        }
+        let anchor = match input.anchor.as_ref() {
+            None => Anchor {
+                bottom: true,
+                ..Default::default()
+            },
+            Some(source::Anchor::None) => Anchor::default(),
+            Some(source::Anchor::Supports { bottom, ends }) => Anchor {
+                bottom: *bottom,
+                ends: *ends,
+                plane: None,
+            },
+            Some(source::Anchor::Plane { normal, distance }) => {
+                let n = DVec3::from_array(normal.map(f64::from));
+                if n.length_squared() == 0.0 {
+                    return Err("anchor plane needs a nonzero normal and distance".into());
+                }
+                Anchor {
+                    plane: Some((n.normalize(), f64::from(*distance) / n.length())),
+                    ..Default::default()
+                }
+            }
+        };
+        let [w, h] = input.brick.unwrap_or([0.25, 0.1]);
+        Ok(Self {
+            chunks: input.chunks.unwrap_or(16),
+            seed: input.seed.unwrap_or(1),
+            sites,
+            children: input.children.unwrap_or(0),
+            pattern,
+            style,
+            brick: (w, h),
+            grain: input.grain.as_ref().map(|a| match a {
+                source::Axis::X => 0,
+                source::Axis::Y => 1,
+                source::Axis::Z => 2,
+            }),
+            rings: input.rings.unwrap_or(2),
+            impact: input
+                .impact
+                .as_ref()
+                .map(|i| (DVec3::from_array(i.position), i.radius)),
+            anchor,
+            interior_scale: input.interior_scale.unwrap_or(1.0),
+            interior: input.interior.clone(),
+            mortar: input.mortar.clone(),
+        })
+    }
+
     pub(crate) fn parse(b: &Block) -> Result<Settings, String> {
         for e in &b.entries {
             if crate::grammar::find(LINES, &e.key, &[]).is_none() {
@@ -349,8 +437,14 @@ impl Settings {
                 })
                 .transpose()
         };
-        let interior = block("interior")?;
-        let mortar = block("mortar")?;
+        let interior = block("interior")?
+            .as_ref()
+            .map(crate::cook::materials::material_input)
+            .transpose()?;
+        let mortar = block("mortar")?
+            .as_ref()
+            .map(crate::cook::materials::material_input)
+            .transpose()?;
         let mut sites = Vec::new();
         for e in b.get_all("site") {
             let values: Option<Vec<_>> = e
@@ -394,19 +488,8 @@ impl Settings {
         })
     }
 
-    /// A source's `fracture` block: the top of a `type model` text, else
-    /// its import settings'.
-    pub(crate) fn of(
-        text: Option<&str>,
-        settings: Option<&Document>,
-    ) -> Result<Option<Settings>, String> {
-        if let Some(t) = text
-            && let Ok(doc) = Document::parse(t)
-            && let Some(e) = doc.body.get(BLOCK)
-        {
-            let b = e.block.as_ref().ok_or("fracture is a block")?;
-            return Settings::parse(b).map(Some);
-        }
+    /// An external model's import settings; authored models use native inputs.
+    pub(crate) fn of(settings: Option<&Document>) -> Result<Option<Settings>, String> {
         match settings.and_then(|d| d.body.get(BLOCK)) {
             Some(e) => {
                 let b = e.block.as_ref().ok_or("fracture is a block")?;

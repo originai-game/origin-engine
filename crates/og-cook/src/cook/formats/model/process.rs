@@ -1,7 +1,8 @@
 //! Explicit static-mesh preparation through the same kernels as `og model`.
 //! The file owns the choices; processing never guesses a budget or a rig.
+use crate::cook::source_schemas::world::model::process as input;
 use crate::grammar::Line;
-use og_core::ogt::{Block, Document};
+use og_core::ogt::Block;
 use og_shape::tools::{self, Atlas, Bake, BakeSource, Decimate, Part, Repair, Scene, Unwrap};
 use std::{cell::RefCell, path::Path};
 
@@ -141,28 +142,13 @@ fn sub<'a>(b: &'a Block, key: &str, fields: &[Line]) -> Result<Option<&'a Block>
     Ok(Some(inner))
 }
 
-/// Settings are owned by the model text, or its import.model block, not both.
-pub(crate) fn settings(
-    text: Option<&str>,
-    imported: Option<&Block>,
-) -> Result<Option<Block>, String> {
-    let doc = text
-        .map(Document::parse)
-        .transpose()
-        .map_err(|e| e.to_string())?;
-    let authored = doc.as_ref().and_then(|d| d.body.get("process"));
+/// External model import settings; authored models already hold native inputs.
+pub(crate) fn settings(imported: Option<&Block>) -> Result<Option<input::Process>, String> {
     let sidecar = imported.and_then(|b| b.get("process"));
-    if doc
-        .as_ref()
-        .is_some_and(|d| d.body.get_all("process").count() > 1)
-        || imported.is_some_and(|b| b.get_all("process").count() > 1)
-    {
+    if imported.is_some_and(|b| b.get_all("process").count() > 1) {
         return Err("a model declares process once".into());
     }
-    if authored.is_some() && sidecar.is_some() {
-        return Err("process is declared in both model and import settings".into());
-    }
-    let Some(e) = authored.or(sidecar) else {
+    let Some(e) = sidecar else {
         return Ok(None);
     };
     let b = e
@@ -171,14 +157,114 @@ pub(crate) fn settings(
         .filter(|_| e.values.is_empty())
         .ok_or("process takes a block")?;
     check(b, LINES)?;
-    Ok((!b.entries.is_empty()).then(|| b.clone()))
+    if b.entries.is_empty() {
+        return Ok(None);
+    }
+    let repair = sub(b, "repair", REPAIR)?
+        .map(|b| {
+            Ok::<_, String>(input::Repair {
+                weld: Some(number(b, "weld", 0.0, 1e9)?),
+                weld_all: Some(boolean(b, "weldAll", false)?),
+                floaters: Some(number(b, "floaters", 0.0, 1e9)?),
+                floater_fraction: Some(number(b, "floaterFraction", 0.0, 1.0)?),
+                non_manifold: Some(boolean(b, "nonManifold", false)?),
+                hole_edges: Some(whole(b, "holeEdges", 0, u32::MAX)?),
+                holes_through: Some(boolean(b, "holesThrough", false)?),
+                thicken: Some(number(b, "thicken", 0.0, 1e9)?),
+                fuse: Some(boolean(b, "fuse", false)?),
+                min_edge: Some(number(b, "minEdge", 0.0, 1e9)?),
+            })
+        })
+        .transpose()?;
+    let decimate = sub(b, "decimate", DECIMATE)?
+        .map(|b| {
+            Ok::<_, String>(input::Decimate {
+                target: Some(whole(b, "target", 0, u32::MAX)?),
+                ratio: Some(number(b, "ratio", 0.0, 1.0)?),
+                max_error: Some(number(b, "maxError", 0.0, 1e9)?),
+                lock_border: Some(boolean(b, "lockBorder", false)?),
+                merge_charts: Some(number(b, "mergeCharts", 0.0, 1e9)?),
+                cross_color_borders: Some(boolean(b, "crossColorBorders", false)?),
+            })
+        })
+        .transpose()?;
+    let unwrap = sub(b, "unwrap", UNWRAP)?
+        .map(|b| {
+            Ok::<_, String>(input::Unwrap {
+                angle: Some(number(b, "angle", 0.0, 89.999999)?),
+                resolution: Some(whole(b, "resolution", 0, 8192)?),
+                padding: Some(number(b, "padding", 0.0, 8192.0)?),
+                shared: Some(boolean(b, "shared", false)?),
+                conformal: Some(boolean(b, "conformal", false)?),
+                seams: Some(boolean(b, "seams", false)?),
+            })
+        })
+        .transpose()?;
+    let bake = sub(b, "bake", BAKE)?
+        .map(|b| {
+            Ok::<_, String>(input::Bake {
+                size: Some(whole(b, "size", 1024, 8192)?),
+                distance: Some(number(b, "distance", 0.0, 1e9)?),
+                padding: Some(whole(b, "padding", 4, 8192)?),
+                dilate: Some(whole(b, "dilate", 0, u32::MAX)?),
+                normals: Some(boolean(b, "normals", true)?),
+            })
+        })
+        .transpose()?;
+    let project = sub(b, "project", projection::LINES)?
+        .map(projection::settings)
+        .transpose()?;
+    let transfer = sub(b, "transfer", transfer::LINES)?
+        .map(transfer::settings)
+        .transpose()?;
+    let rig = sub(b, "rig", RIG)?
+        .map(|b| {
+            let mut joints = Vec::new();
+            for e in b.get_all("joint") {
+                if e.values.len() != 5 || e.block.is_some() {
+                    return Err("joint takes name, parent, x y z".into());
+                }
+                let position = [e.f32(2), e.f32(3), e.f32(4)]
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| e.to_string())?;
+                if position.iter().any(|v| !v.is_finite()) {
+                    return Err("joint positions must be finite".into());
+                }
+                joints.push(input::Joint {
+                    name: e.string(0).map_err(|e| e.to_string())?.into(),
+                    parent: e.string(1).map_err(|e| e.to_string())?.into(),
+                    position: position.try_into().unwrap(),
+                });
+            }
+            let auto = boolean(b, "auto", false)?;
+            if auto == !joints.is_empty() {
+                return Err("rig needs either explicit joints or auto true".into());
+            }
+            Ok::<_, String>(if auto {
+                input::Rig::Auto
+            } else {
+                input::Rig::Joints { joints }
+            })
+        })
+        .transpose()?;
+    Ok(Some(input::Process {
+        repair,
+        decimate,
+        unwrap,
+        bake,
+        project,
+        transfer,
+        rig,
+    }))
 }
 
 /// The result embeds maps; read dependencies remain attached to the original source.
 pub(crate) fn apply(
     bytes: &[u8],
     resolve: &dyn Fn(&str) -> Result<Vec<u8>, String>,
-    b: &Block,
+    b: &input::Process,
+    parameters: &[u8],
     cache: Option<&Path>,
     base: Option<&TransferInput>,
 ) -> Result<(Vec<u8>, crate::cook::model_program::Read), String> {
@@ -208,10 +294,12 @@ pub(crate) fn apply(
     {
         return Err("process requires static mesh primitives without skins, clips, morphs or skipped input; animation import remains the animation pipeline".into());
     }
-    let projection = sub(b, "project", projection::LINES)?
+    let projection = b
+        .project
+        .as_ref()
         .map(|b| projection::read(b, &resolve_tracked))
         .transpose()?;
-    let transfer = sub(b, "transfer", transfer::LINES)?;
+    let transfer = b.transfer.as_ref();
     let base = if transfer.is_some() {
         Some(base.ok_or("transfer.source did not import as a model")?)
     } else {
@@ -220,14 +308,7 @@ pub(crate) fn apply(
     let mut read = read.into_inner();
     read.sort_by(|a, b| a.0.cmp(&b.0));
     read.dedup();
-    let parameters = Document {
-        ty: "model-process".into(),
-        version: 1,
-        body: b.clone(),
-    }
-    .to_text()
-    .map_err(|e| e.to_string())?;
-    let mut inputs = vec![bytes, parameters.as_bytes()];
+    let mut inputs = vec![bytes, parameters];
     for (name, data) in &read {
         inputs.extend([name.as_bytes(), data.as_slice()]);
     }
@@ -242,23 +323,20 @@ pub(crate) fn apply(
     if let Some((bytes, _)) = store.as_ref().and_then(|s| s.action(&key)) {
         return Ok((bytes, read));
     }
-    let repair = sub(b, "repair", REPAIR)?;
-    let decimate = sub(b, "decimate", DECIMATE)?;
-    let unwrap = sub(b, "unwrap", UNWRAP)?;
-    let bake = sub(b, "bake", BAKE)?;
-    let rig = sub(b, "rig", RIG)?;
+    let repair = b.repair.as_ref();
+    let decimate = b.decimate.as_ref();
+    let unwrap = b.unwrap.as_ref();
+    let bake = b.bake.as_ref();
+    let rig = b.rig.as_ref();
     let u = unwrap
-        .map(|b| {
-            Ok::<_, String>(Unwrap {
-                angle: number(b, "angle", 0.0, 89.999999)?,
-                resolution: whole(b, "resolution", 0, 8192)?,
-                padding: number(b, "padding", 0.0, 8192.0)?,
-                shared: boolean(b, "shared", false)?,
-                conformal: boolean(b, "conformal", false)?,
-                seams: boolean(b, "seams", false)?,
-            })
+        .map(|b| Unwrap {
+            angle: b.angle.unwrap_or(0.0),
+            resolution: b.resolution.unwrap_or(0),
+            padding: b.padding.unwrap_or(0.0),
+            shared: b.shared.unwrap_or(false),
+            conformal: b.conformal.unwrap_or(false),
+            seams: b.seams.unwrap_or(false),
         })
-        .transpose()?
         .unwrap_or_default();
     let mut solids = Vec::new();
     let mut materials = Vec::new();
@@ -270,18 +348,18 @@ pub(crate) fn apply(
             solid = tools::repair(
                 &solid,
                 &Repair {
-                    weld: number(b, "weld", 0.0, 1e9)? * 1000.0,
-                    weld_all: boolean(b, "weldAll", false)?,
+                    weld: b.weld.unwrap_or(0.0) * 1000.0,
+                    weld_all: b.weld_all.unwrap_or(false),
                     floaters: tools::repair::Floaters {
-                        size: number(b, "floaters", 0.0, 1e9)? * 1000.0,
-                        fraction: number(b, "floaterFraction", 0.0, 1.0)?,
+                        size: b.floaters.unwrap_or(0.0) * 1000.0,
+                        fraction: b.floater_fraction.unwrap_or(0.0),
                     },
-                    non_manifold: boolean(b, "nonManifold", false)?,
-                    max_hole_edges: whole(b, "holeEdges", 0, u32::MAX)? as usize,
-                    holes_through: boolean(b, "holesThrough", false)?,
-                    thicken: number(b, "thicken", 0.0, 1e9)? * 1000.0,
-                    fuse: boolean(b, "fuse", false)?,
-                    min_edge: number(b, "minEdge", 0.0, 1e9)? * 1000.0,
+                    non_manifold: b.non_manifold.unwrap_or(false),
+                    max_hole_edges: b.hole_edges.unwrap_or(0) as usize,
+                    holes_through: b.holes_through.unwrap_or(false),
+                    thicken: b.thicken.unwrap_or(0.0) * 1000.0,
+                    fuse: b.fuse.unwrap_or(false),
+                    min_edge: b.min_edge.unwrap_or(0.0) * 1000.0,
                     check_intersections: false,
                 },
             )
@@ -292,12 +370,12 @@ pub(crate) fn apply(
             solid = tools::decimate(
                 &solid,
                 &Decimate {
-                    target: whole(b, "target", 0, u32::MAX)? as usize,
-                    ratio: number(b, "ratio", 0.0, 1.0)?,
-                    max_error: number(b, "maxError", 0.0, 1e9)? * 1000.0,
-                    lock_border: boolean(b, "lockBorder", false)?,
-                    merge_charts: number(b, "mergeCharts", 0.0, 1e9)?,
-                    cross_color_borders: boolean(b, "crossColorBorders", false)?,
+                    target: b.target.unwrap_or(0) as usize,
+                    ratio: b.ratio.unwrap_or(0.0),
+                    max_error: b.max_error.unwrap_or(0.0) * 1000.0,
+                    lock_border: b.lock_border.unwrap_or(false),
+                    merge_charts: b.merge_charts.unwrap_or(0.0),
+                    cross_color_borders: b.cross_color_borders.unwrap_or(false),
                     ..Default::default()
                 },
             )
@@ -305,7 +383,7 @@ pub(crate) fn apply(
             .0;
         }
         if let Some(b) = bake {
-            let size = whole(b, "size", 1024, 8192)?;
+            let size = b.size.unwrap_or(1024);
             if size == 0 {
                 return Err("bake.size must be positive".into());
             }
@@ -315,7 +393,7 @@ pub(crate) fn apply(
                 &u,
                 &Atlas {
                     size,
-                    padding: whole(b, "padding", 4, 8192)?,
+                    padding: b.padding.unwrap_or(4),
                     no_turns: false,
                 },
             )
@@ -329,9 +407,9 @@ pub(crate) fn apply(
                 &solid,
                 &Bake {
                     size,
-                    distance: number(b, "distance", 0.0, 1e9)? * 1000.0,
-                    dilate: whole(b, "dilate", 0, u32::MAX)?,
-                    no_normals: !boolean(b, "normals", true)?,
+                    distance: b.distance.unwrap_or(0.0) * 1000.0,
+                    dilate: b.dilate.unwrap_or(0),
+                    no_normals: !b.normals.unwrap_or(true),
                 },
                 &og_shape_formats::texture::CODEC,
             )
@@ -350,34 +428,25 @@ pub(crate) fn apply(
         materials.push(material);
     }
     if let Some(b) = rig {
-        let mut joints = Vec::new();
-        for e in b.get_all("joint") {
-            if e.values.len() != 5 || e.block.is_some() {
-                return Err("joint takes name, parent, x y z".into());
+        let skeleton = match b {
+            input::Rig::Auto => {
+                og_shape::skin::humanoid(&tools::join(&imported.parts).map_err(|e| e.to_string())?)
+                    .map_err(|e| e.to_string())?
+                    .0
             }
-            let p = [e.f32(2), e.f32(3), e.f32(4)]
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string())?;
-            if p.iter().any(|v| !v.is_finite()) {
-                return Err("joint positions must be finite".into());
-            }
-            joints.push(og_shape::skin::Joint {
-                name: e.string(0).map_err(|e| e.to_string())?.into(),
-                parent: e.string(1).map_err(|e| e.to_string())?.into(),
-                at: glam::DVec3::new(p[0] as f64, -(p[2] as f64), p[1] as f64) * 1000.0,
-            });
-        }
-        let auto = boolean(b, "auto", false)?;
-        if auto == !joints.is_empty() {
-            return Err("rig needs either explicit joints or auto true".into());
-        }
-        let skeleton = if auto {
-            og_shape::skin::humanoid(&tools::join(&imported.parts).map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?
-                .0
-        } else {
-            og_shape::skin::Skeleton { joints }
+            input::Rig::Joints { joints } => og_shape::skin::Skeleton {
+                joints: joints
+                    .iter()
+                    .map(|j| {
+                        let [x, y, z] = j.position.map(f64::from);
+                        og_shape::skin::Joint {
+                            name: j.name.clone(),
+                            parent: j.parent.clone(),
+                            at: glam::DVec3::new(x, -z, y) * 1000.0,
+                        }
+                    })
+                    .collect(),
+            },
         };
         for solid in &mut solids {
             *solid = og_shape::skin::bind(solid, &skeleton)

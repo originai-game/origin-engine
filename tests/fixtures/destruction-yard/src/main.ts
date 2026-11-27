@@ -54,9 +54,9 @@ function build(world: World): void {
   // The slab the chunks land on, its top at y = 0, and the pane's plinth.
   solid("ground", { x: SLAB.x, y: -0.25, z: 0 }, { x: SLAB.w, y: 0.5, z: SLAB.d }, { r: 0.2, g: 0.19, b: 0.18 });
   solid("plinth", { x: PANE.x, y: 0.2, z: 0 }, { x: 1.8, y: 0.4, z: 0.3 }, { r: 0.3, g: 0.3, b: 0.32 });
-  prop("props/wall.ogt", "wall", WALL, { ...material(MATERIAL_BRICK), breakFx: dust });
-  prop("props/pillar.ogt", "pillar", PILLAR, { ...material(MATERIAL_CONCRETE), breakFx: dust });
-  prop("props/pane.ogt", "pane", PANE, material(MATERIAL_GLASS));
+  prop("base/props/wall", "wall", WALL, { ...material(MATERIAL_BRICK), breakFx: dust });
+  prop("base/props/pillar", "pillar", PILLAR, { ...material(MATERIAL_CONCRETE), breakFx: dust });
+  prop("base/props/pane", "pane", PANE, material(MATERIAL_GLASS));
 
   const sun = must(world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.4, y: -0.75, z: -0.5 }) }));
   must(world.insert(sun, og.DirectionalLight, { intensity: 2.4, castShadow: true }));

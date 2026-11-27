@@ -7,7 +7,6 @@
 //! is gone from level 1); the model has a level for each detail its parts
 //! name, as glTF `MSFT_lod` nodes, and the cook keeps them as its levels.
 
-use og_core::ogt::{Block, Value};
 use og_shape::generators::Mesh;
 
 use super::build::Acc;
@@ -71,17 +70,17 @@ pub(super) fn write(
     let mut images = Vec::new();
     let mut mats = Vec::new();
     for m in materials {
-        let mut fields = Block::new();
-        for e in &m.fields.entries {
-            let mut e = e.clone();
-            if matches!(
-                e.key.as_str(),
-                "map" | "normalMap" | "metalnessMap" | "aoMap"
-            ) && let Some(Value::String(id)) = e.values.first()
-            {
-                e.values[0] = Value::String(uri(crate::runtime::asset_id(id)));
-            }
-            fields.push(e);
+        let mut fields = m.fields.clone();
+        for id in [
+            &mut fields.map,
+            &mut fields.normal_map,
+            &mut fields.metalness_map,
+            &mut fields.ao_map,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            *id = uri(crate::runtime::asset_id(id));
         }
         let mut material = model_text::material(&m.name, &fields, &mut images, 0)
             .map_err(|e| format!("material `{}`: {e}", m.name))?;

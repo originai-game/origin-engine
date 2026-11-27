@@ -1,12 +1,12 @@
 # Model programs and the og model tools
 
-How to build a prop as a model program (`.shape.json`): parts from primitives and generators, CSG, bevels, materials and parameters, cooked by `og cook` like a `.glb`. It also covers the `og model` commands, which build, measure, preview, compare, process and texture a model, whether it is a program or a mesh file. The `type model` text, made from og.render's geometry descs, is a separate format, described in `models`.
+Build a model program with `file["model-program"]` in `content/**/*.ts`: primitives, CSG, bevels, materials and parameters, cooked like an imported model. `models` covers the geometry/plant form of `file.model`. The `og model` commands build, measure, preview, compare, process and texture checked program declarations or mesh files. Standalone tools may also read kernel `.shape.json`; the cook never scans it as an author entry.
 
 The command reference: `og model help`.
 
 ## 1. The program
 
-A program is JSON: a `name`, optional `params`, and `ops`, a list that is
+A program is structured data: a `name`, optional `params`, and `ops`, a list that is
 replayed in order. Every operation that makes a part answers an `id`
 (0, 1, 2, … in the order parts are made), and later operations name parts
 by that id. The same program always builds the same bytes, on every machine.
@@ -91,25 +91,19 @@ may then be `"$height"` or an expression over parameters and numbers:
 `"$height - 30"`, `"($width - 2 * $leg) / 2"` (`+ - * /`, parentheses and
 unary minus, in f64). A name that is not declared, or a division by 0, is
 an error that names the expression. A
-variant is a `type model` text beside the program that names it and sets
-its own values:
+variant is a checked model declaration referencing the program's canonical content ID:
 
-```text
-type model
-version 1
----
-program "table.shape.json"
-params {
-  height 900
-}
-material "oak" {
-  color 0.4 0.25 0.15
-}
+```ts
+import {file,ref} from '@origingame/engine/author';
+export default file.model({kind:'program',desc:{
+  program:ref('base/table'),params:{height:900},
+  materials:[{name:'oak',color:[0.4,0.25,0.15]}]
+}});
 ```
 
 `og cook` builds both the program at its own values and every variant.
-A variant's `material` blocks replace only the fields they name (`color`
-is linear here, as in glTF). `atlas <px>` packs every part's UVs into one
+A variant's materials replace only the fields they name (`color`
+is linear here, as in glTF). `atlas` packs every part's UVs into one
 atlas, the layout `og model bake` paints its maps on.
 
 ### Procedural surfaces
@@ -158,7 +152,7 @@ Fit the program to the concept first, then texture it:
    size that the views fix as a parameter, and derive the other sizes
    from those with expressions.
 2. Build and check every view in one call: `og model compare
-   chair.shape.json --image front=f.png --image left=l.png --image
+   content/chair.ts --image front=f.png --image left=l.png --image
    top=t.png --json`. `byAspect` puts the view with the worst proportions
    first. Its `ratio` is model over image, so divide the parameter that
    sets that view's width or height by the ratio. `byIou` points at a
@@ -173,9 +167,9 @@ Fit the program to the concept first, then texture it:
 3. `og model measure` lists every remaining problem in `issues`, each with
    the option that fixes it. A program's parts that touch are an
    assembly, not an issue.
-4. `og model bake chair.shape.json --project front=f.png --project
+4. `og model bake content/chair.ts --project front=f.png --project
    left=l.png --project top=t.png` paints the base colour, and
-   `og model bake tall.ogt --from chair.ogt` carries that colour to each
+   `og model bake content/tall.ts --from content/chair.baked.ts` carries that colour to each
    variant.
 
 A generated mesh goes through `og model process` instead. Its `issues`
@@ -209,8 +203,8 @@ radius as parameters. Each part is made once and mirrored into place.
 
 ## 7. The og model commands
 
-Each command takes a program, a mesh file (`.glb`, `.gltf`, `.obj`,
-`.fbx`), a mesh's import settings (`x.glb.ogt`) or a variant `.ogt`. With
+Each command takes a checked TS program/variant, a standalone kernel program or a mesh file (`.glb`, `.gltf`, `.obj`,
+`.fbx`), never a guessed sibling settings file. With
 `--json` it prints one JSON object. A failure prints `{"error": "…"}` and
 exits 2 for a usage mistake or 1 for a failure. Lengths without a unit
 are metres. Every report gives facts and never a verdict: the thresholds
@@ -242,7 +236,7 @@ are the game's.
 - `bake model --project front=a.png --project left=b.png`: the base colour
   painted from concept images onto the UVs, one texture per material
   beside the model, with each material's coverage.
-- `bake tall.ogt --from chair.ogt`: a variant takes its baked base's maps
+- `bake content/tall.ts --from content/chair.baked.ts`: a variant takes its baked base's maps
   part by part, with no new images. Parts that grew read the nearest
   region of the same part, at the same texel density; the report gives
   each part's `transferred` and `extended` share.

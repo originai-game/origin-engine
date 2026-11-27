@@ -183,6 +183,7 @@ pub(crate) fn expand(
             flipbook: None,
             rig2d: None,
             scene: None,
+            authored_model: None,
             conformed: None,
             fracture: None,
         };

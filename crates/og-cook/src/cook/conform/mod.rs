@@ -20,7 +20,7 @@ pub(super) mod texture2d;
 /// Oklab palette extraction and pixel usage, shared with footage study.
 pub use texture2d::palette;
 
-use og_core::ogt::{Block, Document, Entry};
+use og_core::ogt::{Block, Entry};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -132,7 +132,10 @@ pub enum ModelRole {
 /// meshes no face budget holds, read from the project's sources as the
 /// cook reads them, for `og style check-project`.
 pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
-    let sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
+    let mut sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
+    let project = super::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    super::pipeline::author::models(root, &project, &mut sources, &mut BTreeMap::new())
+        .map_err(|e| e.to_string())?;
     let mut out = BTreeMap::new();
     for s in sources
         .iter()
@@ -146,20 +149,20 @@ pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     Ok(out)
 }
 
-/// What a model says it is ([`ModelRole`]): `conform character` or
-/// `conform effect` at the top of its `type model` text or of its import
-/// settings (a glTF's, a `.vox`'s). `conform off` is also read here;
-/// another word is an error.
+/// What a model says it is ([`ModelRole`]): its checked conform choice, or
+/// the import settings of an external glTF/VOX. `off` is also read here.
 pub(super) fn model_role(s: &super::Source) -> Result<ModelRole, String> {
-    let text;
-    let body = if s.rel.ends_with(".ogt") {
-        text = Document::parse(&String::from_utf8_lossy(&s.bytes)).map_err(|e| e.to_string())?;
-        &text.body
-    } else {
-        match &s.settings {
-            Some((_, d)) => &d.body,
-            None => return Ok(ModelRole::Prop),
-        }
+    if let Some(model) = &s.authored_model {
+        use super::source_schemas::world::model::Conform;
+        return Ok(match model.conform() {
+            Some(Conform::Character) => ModelRole::Character,
+            Some(Conform::Effect) => ModelRole::Effect,
+            _ => ModelRole::Prop,
+        });
+    }
+    let body = match &s.settings {
+        Some((_, d)) => &d.body,
+        None => return Ok(ModelRole::Prop),
     };
     Ok(
         match AssetConform::of(body, &["character", "effect"])?.and_then(|c| c.role) {

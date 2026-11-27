@@ -71,7 +71,15 @@ fn plan<'a>(
                 )
             })?;
             let settings = anim_settings(source)?;
-            let names = anim::clip_names(g, &settings, cx.assets_dir)?;
+            let names = anim::clip_names(
+                g,
+                &settings,
+                cx.assets_dir,
+                source
+                    .authored_model
+                    .as_ref()
+                    .and_then(|m| m.libraries.get()),
+            )?;
             if !names.contains(&b.clip) {
                 return Err(format!(
                     "bind '{}': '{}' has no clip '{}'; available: {}",
@@ -83,7 +91,7 @@ fn plan<'a>(
             }
             deps.extend_from_slice(&source.hash.to_le_bytes());
             deps.extend_from_slice(
-                anim::dependencies(cx.assets_dir, &settings, cx.rigs).as_bytes(),
+                anim::dependencies(cx.assets_dir, &settings, cx.rigs, source).as_bytes(),
             );
             state
                 .parsed_refs

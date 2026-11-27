@@ -15,16 +15,15 @@
 //! colour of the painted texel nearest it on the model; `padded` grows
 //! each chart's gutter. [`write`] puts the textures beside the model.
 //!
-//! A program is baked on its parts' own UVs (the `uvs` operation, which
-//! og cook runs for a program whose materials have maps), and its
-//! `<name>.ogt` (`type model`, `program "<file>"`) gains a `material`
-//! block per material a view saw naming `<name>.<material>.basecolor.png`;
-//! the program is never written. A material no view saw keeps its colour. A mesh file keeps its UVs (one without is
+//! A program is baked on its parts' own UVs. A new checked `<name>.baked.ts`
+//! declaration retains its parameters and overrides, with captured maps under
+//! the owning module's sources/. The original declaration is never rewritten.
+//! A material no view saw keeps its colour. A mesh file keeps its UVs (one without is
 //! refused: `og model process` or `og model unwrap` gives it some), and
 //! is rewritten with the textures as its materials' base-colour maps.
 //!
-//! A variant of a baked program (`og model bake tall.ogt --from
-//! chair.ogt`) is not painted from images: [`super::transfer`] carries the
+//! A variant of a baked program (`og model bake content/tall.ts --from
+//! content/chair.baked.ts`) is not painted from images: [`super::transfer`] carries the
 //! base's maps onto it part by part.
 //!
 //! The report: `views` (each view's image, its fitted scale, and
@@ -254,9 +253,7 @@ pub fn bake(files: &dyn Files, d: &BakeDesc) -> Result<String, Failure> {
         .collect::<Result<_, _>>()?;
     let paint = |scene: &Scene| paint(scene, d, &images, size);
     let (report, program) = match super::source::program_of(files, input)? {
-        // A program is painted on its parts packed into one atlas of the
-        // texture's size, as og cook packs it for the `atlas` the `.ogt`
-        // then names.
+        // Paint the same packed atlas the checked model declaration cooks.
         Some((p, read)) => {
             let (r, _) = p
                 .scene(size, &read, |scene, _| {
@@ -400,7 +397,7 @@ fn name_of(input: &Path) -> String {
 }
 
 /// Writes each material's texture as `<name>.<material>.basecolor.png`,
-/// then the program's `<name>.ogt` or the mesh file with the maps.
+/// then a checked program variant or the mesh file with the maps.
 pub(super) fn write(
     files: &dyn Files,
     input: &Path,
@@ -415,6 +412,44 @@ pub(super) fn write(
         .or_else(|| input.parent().map(Path::to_path_buf))
         .unwrap_or_default();
     let name = name_of(input);
+    let module = if program.is_some() {
+        let absolute = std::path::absolute(&dir).map_err(failed)?;
+        let root = absolute.ancestors().find(|p| p.join("og-project.json").is_file())
+            .ok_or_else(|| Failure::Usage("baked program declarations must be written inside a project's content/ directory".into()))?;
+        let project = og_cook::cook::source_project::Project::open(root).map_err(failed)?;
+        let owner = project
+            .modules
+            .values()
+            .filter_map(|m| {
+                let module = root.join(&m.root);
+                absolute
+                    .strip_prefix(module.join("content"))
+                    .ok()
+                    .map(|rel| (module, m.id.clone(), rel.to_path_buf()))
+            })
+            .max_by_key(|(root, _, _)| root.components().count())
+            .ok_or_else(|| {
+                Failure::Usage(
+                    "write a baked program declaration inside its owning module's content/".into(),
+                )
+            })?;
+        if super::source::extension(input) == "ts" {
+            let input = std::path::absolute(input).map_err(failed)?;
+            let index = og_cook::cook::source_index::Index::open(root, &project).map_err(failed)?;
+            if !index
+                .entries
+                .values()
+                .any(|entry| root.join(&entry.file) == input && entry.module == owner.1)
+            {
+                return Err(Failure::Usage(
+                    "write the baked variant in the input declaration's owning module".into(),
+                ));
+            }
+        }
+        Some(owner)
+    } else {
+        None
+    };
     let mut textures = Vec::new();
     let mut files_of = Vec::new();
     for (material, png) in maps {
@@ -422,7 +457,22 @@ pub(super) fn write(
             "{name}.{}.basecolor.png",
             super::process::file_stem(material)
         );
-        let path = dir.join(&file);
+        let file = if let Some((_, _, local)) = &module {
+            Path::new("sources/baked")
+                .join(local)
+                .join(&name)
+                .join(file)
+                .to_string_lossy()
+                .replace('\\', "/")
+        } else {
+            file
+        };
+        let path = module
+            .as_ref()
+            .map_or_else(|| dir.join(&file), |(root, _, _)| root.join(&file));
+        if module.is_some() {
+            std::fs::create_dir_all(path.parent().unwrap()).map_err(failed)?;
+        }
         files.write(&path, png)?;
         textures.push(
             json!({ "material": material, "path": path.display().to_string(), "bytes": png.len() }),
@@ -431,8 +481,81 @@ pub(super) fn write(
     }
     let model = match program {
         Some(p) => {
-            let path = dir.join(format!("{name}.ogt"));
-            let text = program_settings(files, &path, &p.file, atlas, &files_of)?;
+            let path = dir.join(format!("{name}.baked.ts"));
+            let (module_root, module_id, local) = module.as_ref().unwrap();
+            let mut desc = p.authoring.clone().unwrap_or_else(|| {
+                json!({
+                    "program":{"$ogRef":p.file}, "params":p.params, "materials":[]
+                })
+            });
+            if p.file.ends_with(".shape.json") {
+                let program_file = dir.join(format!("{name}.program.ts"));
+                let mut value: Value = serde_json::from_str(&p.text).map_err(failed)?;
+                fn inputs(value: &mut Value, names: &std::collections::BTreeMap<String, String>) {
+                    match value {
+                        Value::Object(o) => {
+                            for (key, v) in o {
+                                if matches!(key.as_str(), "font" | "map") {
+                                    if let Some(path) = v.as_str().and_then(|s| names.get(s)) {
+                                        *v = Value::String(path.clone());
+                                    }
+                                } else {
+                                    inputs(v, names);
+                                }
+                            }
+                        }
+                        Value::Array(a) => {
+                            for v in a {
+                                inputs(v, names);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                let mut names = std::collections::BTreeMap::new();
+                for (i, (key, (_, bytes))) in p.inputs.iter().enumerate() {
+                    let source = Path::new("sources/baked")
+                        .join(local)
+                        .join(&name)
+                        .join(format!("input-{i}"))
+                        .to_string_lossy()
+                        .replace('\\', "/");
+                    files.write(&module_root.join(&source), bytes)?;
+                    names.insert(key.clone(), source);
+                }
+                inputs(&mut value, &names);
+                let text = format!(
+                    "import {{file}} from '@origingame/engine/author';\nexport default file['model-program']({});\n",
+                    serde_json::to_string_pretty(&value).map_err(failed)?
+                );
+                files.write(&program_file, text.as_bytes())?;
+                let id = local
+                    .join(format!("{name}.program"))
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                desc["program"] = json!({"$ogRef":format!("{module_id}/{id}")});
+            }
+            desc["atlas"] = json!(atlas);
+            let materials = desc
+                .as_object_mut()
+                .unwrap()
+                .entry("materials")
+                .or_insert_with(|| json!([]))
+                .as_array_mut()
+                .unwrap();
+            for (name, file, _) in &files_of {
+                if let Some(old) = materials.iter_mut().find(|m| m["name"] == *name) {
+                    old["color"] = json!([1, 1, 1]);
+                    old["map"] = json!(file);
+                } else {
+                    materials.push(json!({"name":name,"color":[1,1,1],"map":file}));
+                }
+            }
+            let value = json!({"kind":"program","desc":desc});
+            let text = format!(
+                "import {{file}} from '@origingame/engine/author';\nexport default file.model({});\n",
+                serde_json::to_string_pretty(&value).map_err(failed)?
+            );
             files.write(&path, text.as_bytes())?;
             json!({ "path": path.display().to_string(), "bytes": text.len() })
         }
@@ -460,72 +583,6 @@ pub(super) fn write(
         }
     };
     Ok(json!({ "textures": textures, "model": model }))
-}
-
-/// The program's `.ogt`: the one at `path` if there is one (a variant,
-/// its other entries kept), else a new `type model` naming `program`;
-/// each baked material's block (which replaces the fields it names of the
-/// program's material) white, with the texture as its map.
-fn program_settings(
-    files: &dyn Files,
-    path: &Path,
-    program: &str,
-    atlas: u32,
-    maps: &[(String, String, &Vec<u8>)],
-) -> Result<String, Failure> {
-    use og_core::ogt::{Block, Document, Entry, Number};
-    let mut doc = match files.read(path) {
-        Ok(bytes) => {
-            let text = String::from_utf8(bytes)
-                .map_err(|_| Failure::Failed(format!("{}: not UTF-8", path.display())))?;
-            let doc = Document::parse(&text)
-                .map_err(|e| Failure::Failed(format!("{}: {e}", path.display())))?;
-            if doc.ty != "model" {
-                return Err(Failure::Failed(format!(
-                    "{}: type {}, not model",
-                    path.display(),
-                    doc.ty
-                )));
-            }
-            doc
-        }
-        Err(_) => {
-            let mut doc = Document::new("model", 1);
-            doc.body
-                .push(Entry::new("program").with(og_core::ogt::Value::String(program.into())));
-            doc
-        }
-    };
-    let num = |v: f64| -> Result<og_core::ogt::Value, Failure> {
-        Number::from_f64(v).map(Into::into).map_err(failed)
-    };
-    let atlas_entry = Entry::new("atlas").with(num(f64::from(atlas))?);
-    match doc.body.entries.iter_mut().find(|e| e.key == "atlas") {
-        Some(e) => *e = atlas_entry,
-        None => doc.body.push(atlas_entry),
-    }
-    for (material, file, _) in maps {
-        let block = Block::new()
-            .with(
-                Entry::new("color")
-                    .with(num(1.0)?)
-                    .with(num(1.0)?)
-                    .with(num(1.0)?),
-            )
-            .with(Entry::new("map").with(og_core::ogt::Value::String(file.clone())));
-        let entry = Entry::new("material")
-            .with(og_core::ogt::Value::String(material.clone()))
-            .with_block(block);
-        let same = |e: &Entry| {
-            e.key == "material"
-                && e.values.first().and_then(|v| v.as_str()) == Some(material.as_str())
-        };
-        match doc.body.entries.iter_mut().find(|e| same(e)) {
-            Some(e) => *e = entry,
-            None => doc.body.push(entry),
-        }
-    }
-    doc.to_text().map_err(failed)
 }
 
 /// `--project <view>=<image>`, each.

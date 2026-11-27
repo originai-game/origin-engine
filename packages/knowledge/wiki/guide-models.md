@@ -2,244 +2,78 @@
 
 # The `models` guide: Models as code
 
-The `type model` asset: a prop or stylised character written as text from the engine's own geometry generators, cooked into the same model blob a glTF becomes. Use it when a model has to follow the look's shape language exactly, or when no catalogue or generated asset fits.
+Author procedural models as checked TypeScript under `content/`, with one default `file.model(...)` declaration per entry. The cook builds the same model blob as a glTF import; the game loads its canonical content ID. There is no model OGT parser, sibling import file or TS-to-text bridge. Kernel programs use `file["model-program"]` instead (`model`).
 
-The geometry descs are `og.render`'s: `og api find geometry` lists them,
-`og api show og.render.boxGeometry` (and the others) gives each field and
-default. The shapes and paths are og.Shape's and og.path's.
+Use procedural models when the silhouette needs to follow the look's shape language or when an imported model does not fit. `og api show file:model` describes the complete schema; geometry descs use the runtime's three.js vocabulary and shared geometry kernels, not another set of generators.
 
 <a id="guide-models-1"></a>
 ### `models §1` The file
 
-An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `type model`, `version 1`,
-`---`, then these blocks (a plant in §3):
+```ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{items:[
+  {name:'wood',input:{kind:'material',desc:{color:[0.3,0.16,0.07],roughness:0.8}}},
+  {name:'hinge',input:{kind:'pivot',desc:{transform:{position:[0,1,-0.5]}}}},
+  {name:'lid',input:{kind:'part',desc:{
+    material:'wood',pivot:'hinge',
+    geometry:{kind:'boxGeometry',desc:{width:1,height:0.1,depth:1}},
+    placements:[{transform:{position:[0,0,0.5]}}]
+  }}}
+]}});
+```
 
-- `material "<name>" { ... }`: glTF metallic-roughness, by three.js
-  names: `color` (linear, as `baseColorFactor`), `opacity`, `metalness`,
-  `roughness`, `emissive`, `emissiveIntensity`, `doubleSided`,
-  `alphaTest`, `map`, `normalMap`, `metalnessMap` (roughness in green,
-  metalness in blue) and `aoMap` (occlusion in red), image files beside the model,
-  `normalScale`, `transmission`, `ior`, `thickness`, `clearcoat`,
-  `clearcoatRoughness`, and a leaf's `translucency`, `domeNormals`,
-  `season`, `autumnColor`, `autumnColor2` and `seasonShift`.
-  Unit fields are 0 to 1; an unknown key is an error.
-- `pivot "<name>" { position ...; parent "<pivot>" }`: a named node that
-  animation and code find by name. A part hangs from its `pivot` (default:
-  the model's root).
-- `part "<name>" { material ...; pivot ...; <geometry> { ... }; at { ... } }`:
-  one geometry block named by its `og.render` call (`bufferGeometry`, `boxGeometry`,
-  `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`, `sphereGeometry`,
-  `torusGeometry`, `ringGeometry`, `circleGeometry`, `tubeGeometry`,
-  `latheGeometry`, `shapeGeometry`, `extrudeGeometry`,
-  `sweepGeometry`, the polyhedra, `csgGeometry` with operands `a` and `b`,
-  and `mergeGeometries` of nested `part` blocks), and its placement
-  (`position`, `quaternion`, `scale`, `mirror`).
+Ordered items declare named materials, pivots, parts and a plant. Declare a dependency before its consumer. A pivot is a parent-first named node; parts attach to it and animation channels address their stable node names. Repeated placements instance one mesh; reflections bake triangle winding and tangent handedness correctly. Give a model under `content/models/chest.ts` the ID `base/models/chest` in a scene or `og.load.gltf` call.
 
-A `ringGeometry` uses `innerRadius`, `outerRadius`, `thetaSegments`,
-`phiSegments`, `thetaStart` and `thetaLength`; a `circleGeometry` uses
-`radius`, `segments`, `thetaStart` and `thetaLength`. Angles are radians.
-A `tubeGeometry` takes either flat xyz `points` (at least two points)
-and `closed`, or a `path { kind ...; point x y z; ... }` block with its own
-`closed` and `tension`. Its other fields are `tubularSegments`, `radius`
-and `radialSegments`. Both forms call the runtime's tube implementation;
-neither is the model program's hollow straight `tube` solid.
+Generate mesh arrays directly in TS, in the declaration or an imported `lib/**/*.ts` helper. Put its result in a `bufferGeometry` desc. Use `input.bytes`/`input.text` for explicit raw inputs and `rng(seed)` for deterministic randomness. No `bufferGeometry.generate` wrapper or script filename is needed. Explicit normals, UVs, colours and tangent frames survive import and placed merges; topology-changing CSG regenerates frames when required. See `generating` for an executable multi-file recipe.
 
-A `bufferGeometry` takes flat `positions`, optional `normals`, `uvs`,
-`colors` (RGB or RGBA), `tangents` (xyzw) and triangle `indices`, with
-the same validation and missing-normal computation as the runtime.
-Instead of those arrays, its `generate { script "mesh.ts"; ... }` block
-may return `MeshSource` from a deterministic TS module. Materials and
-placements stay in the model. Explicit tangent frames survive cook and
-placed/mirrored merges; a topology-changing CSG computes new frames when
-needed. See `generating` for the multi-file recipe and
-`file:model.part.bufferGeometry` for its parser-owned field table.
+Shapes are structured path commands, including holes, consumed by the same outline and extrusion kernels as the runtime. A tube's sampled points or curve path make a curved tube; this differs from the model program's hollow straight tube solid. `modelGeometry` uses a canonical content ref and optional node name, never a filename guessed beside the declaration. Cycles are errors, and selected nodes retain their rest placement.
 
-A three.js outline pastes into og.Shape as it is. Make shapes in start or
-a command. A geometry's `shape` block is og.Shape's calls, one a line, with
-`hole { }` blocks inside it:
-`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`.
-Several `at { }` blocks place one mesh drawn instanced. `og cook` builds
-the file into the model blob a glTF cooks to (levels of detail, raycast
-BVH, nodes) and refuses it past project.ts's triangle and vertex budgets;
-`og dev` re-cooks it on an edit.
-
-A scene's `model` line names the file, and `og.load.gltf` loads its blob
-like any glTF. The look presets carry examples under
-`templates/looks/<slug>/models/`, such as toy-3d's paper variant's `paper/models/tree.ogt` and
-`hero.ogt`.
+Maps and projection images are explicit owning-module paths under `assets/` or `sources/`. The cook captures their bytes once. Model `process` runs repair, decimation, UV preparation/baking, projection, transfer and skin binding on native input. Authored model `options` owns LODs, collision, raycast acceleration, impostors, texture streaming, animation keys and skin relaxation; there are no sibling settings. Animation rig and library refs are canonical content IDs.
 
 <a id="guide-models-2"></a>
 ### `models §2` Building one
 
-1. Start from the look: its `ArtShape` gives the face budgets
-   (`propFaces`, `characterFaces`), the normals (smooth, flat, by angle)
-   and the bevel; its palette gives the colours. A model over budget is
-   built by the cook at fewer segments (every count scaled by one factor,
-   down to a 5-sided round), so write the counts the style wants instead
-   of dense ones.
-2. Block the silhouette with three to six primitives at the right
-   proportions before any detail. Check it from the front and the side
-   (`view:<entity>:front`, `view:<entity>:side` on the command channel)
-   before adding parts.
-3. Repeat a part with `at` blocks, not copies: one mesh under several
-   nodes draws instanced. `mirror` (or a negative scale) bakes a mirrored
-   copy with its triangles turned, so symmetric halves cost one mesh each.
-4. Put moving parts under pivots placed at their hinge (a lid's back edge,
-   a wheel's axle). A pivot at the part's centre rotates it through itself.
-5. Use `csgGeometry` for cut-outs (windows, sockets) only where an
-   extrusion with a `hole` cannot do it: CSG adds faces along every cut.
-6. Review with `turntable:<entity>:<n>` and `og compare` (`art-review §5` gives
-   the thresholds), then fix the largest error first.
+1. Start from the look's face budget, normals, bevel and palette. Budget rebuilding reduces generator detail rather than silently dropping parts. Write the counts the style wants, not dense placeholders.
+2. Block the silhouette with three to six primitives at the right proportions. Check front and side views before adding detail.
+3. Repeat placements rather than copying meshes. Put moving parts under pivots at their hinge or axle, not at their geometric centre.
+4. Prefer an extrusion with a hole to CSG when both express the shape: CSG adds faces along each cut.
+5. Review a turntable and fix the largest silhouette or material error first (`art-review`).
 
 <a id="guide-models-3"></a>
 ### `models §3` Plants
 
-A `plant "<name>" { ... }` block grows a tree, a shrub or a flower from
-numbers and a seed instead of parts: one a model, at its root. The cook
-makes its wood and its leaves and petals (in vertex colours, lit from both
-faces with light through them), each vertex with what the wind needs, so
-the instance sways once `og.Model.sway` is set and og.Wind blows.
+A plant item grows wood, leaves and petals from explicit growth parameters and a seed, with vertex colours and wind data. It is one model at its root. Set `og.Model.sway` and `og.Wind` to move it. Each file grows one plant so wind bends it around one root.
 
-- The plant: `kind` (one of the kinds below: the block's defaults are
-  that plant's, and every key it names sets only that), `seed`
-  (another seed is another individual of the same kind), `growth` (`deciduous`, or `evergreen` for a leader with boughs
-  shortening to its top), `levels` (branch levels past the trunk, 0 to 3),
-  `force x y z strength` (the limbs bend towards the direction; a negative
-  strength droops them), `barkColor` or `material`.
-- A level, `trunk` and `branch1` to `branch3`: `length` (m), `radius` (m
-  for the trunk, a share of its parent's for a branch), `sections` and
-  `segments` (rings along it, sides round it), `taper`, `gnarliness` (how
-  far each section wanders), `twist`, `children` (the branches each one
-  grows), and for a branch `angle` from its parent (degrees) and `start`
-  (where along its parent the first may grow).
-- `leaves { ... }`: `shape` (`blade`, a pointed leaf without a texture;
-  `card` or `cross`, quads for a leaf texture through `material`), `count`
-  along each last-level branch, `start` and `end` (the part of the branch
-  they grow along), `angle`, `facing` (0 as they grow, 1 flat to the sky),
-  `rows` (0 anywhere round the branch; 2 in two rows to its sides, a
-  palm's or a fern's frond), `size` (m), `width`, `sizeVariance`, `color` and `color2` (each leaf one
-  between the two, linear), `colorVariation`, `translucency`,
-  `domeNormals`, and how they follow the year: `season` (0 evergreen, 1
-  deciduous), `autumnColor` and `autumnColor2` (each leaf turns to one
-  between the two, linear) and `seasonShift` (days its species runs
-  late, negative early, at most 120).
-- `flowers { ... }`: `share` of the branch ends that flower, `count` more
-  along each branch, `petals`, `size` (a petal's length, m), `width`, `cup`
-  (degrees: 0 flat as a daisy, 60 a tulip), `color`, `color2`,
-  `centerColor`.
+```ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{
+  options:{impostor:true},
+  items:[{name:'birch',input:{kind:'plant',desc:{
+    kind:'birch',seed:12,
+    leaves:{color:[0.5,0.3,0.02],color2:[0.6,0.14,0.02]}
+  }}}]
+}});
+```
 
-A tree shades its own crown: its leaves hide the sky from what is inside
-the crown, by how densely they fill it (their area over the crown's
-volume), so the leaves and wood deep in a crown take less of the sky's
-light and of the sun and reflect less of the sky, and what light they do
-take is tinted by the leaves around them, less of it each leaf deeper; a translucent leaf also takes the sky's light
-through from behind. Nothing to set: a denser crown is darker inside.
-The meshlet path draws it (render capabilities `compute` and `indirect`),
-and so does og.TerrainScatter for its copies of a plant on every device,
-with their leaves' flutter and year; impostor cards are lit without it
-(their bake holds the crown's light). A leaf takes the
-light around it along its canopy's rounded normal (`foliage.y`) but
-reflects the sky off its own face, as a crown of leaves at every angle
-does, so its inner leaves show no sheen of the sky at their edge.
+Kinds are growth starting points, not gameplay: oak, birch, willow, pine, palm, bamboo, cactus, shrub, fern, reed, daisy and tulip. Override only the shape that differs; nested leaf/flower/level inputs retain the kind's other values. Seeds give different individuals. A plant without a kind starts as a small broadleaf tree, with leaves and flowers only when specified. Use parts or an import for a shape none of these mechanisms describes.
 
-A plant starts from its kind: `plant "palm" { kind palm }` is a whole
-palm, and the keys beside `kind` set what differs (without a kind the
-defaults are a small broadleaf tree of about 6 m, with leaves and flowers
-only when their block is there). A block named inside a kind keeps the
-kind's other keys: `leaves { color 0.5 0.3 0.02 }` is the same tree in
-another colour.
+Growth follows the trunk and up to three branch levels. Evergreen growth shortens boughs toward the leader; forces bend or droop limbs. Leaves may be procedural blades or textured cards/crosses; named leaf materials own translucency, rounded normals and seasonal colours. Two colours vary leaves or petals within one individual. Seasonal metadata is retained on materials; it does not itself advance a game calendar.
 
-| `kind` | The plant | Height, triangles | What gives its shape |
-|---|---|---|---|
-| `oak` | a broadleaf tree with a round crown | 13.6 m, 37 000 | `levels 3`, a trunk forking into 6, leaves `count 60` |
-| `birch` | a slender tree, pale bark, small leaves | 9.1 m, 17 000 | a thin trunk `radius 0.11`, short limbs at `angle 38`, drooping a little |
-| `willow` | a weeping tree | 7.6 m, 40 000 | `force 0 1 0 -0.035` on long thin `branch3` shoots, leaves in `rows 2` |
-| `pine` | a conifer | 10.1 m, 48 000 | `growth evergreen`, 60 boughs at `angle 105`, dark narrow leaves |
-| `palm` | a palm | 10.2 m, 4 300 | `levels 1`: 17 fronds from `start 0.97` of a bare trunk, leaves in `rows 2` |
-| `bamboo` | one cane (stand several close together) | 7.7 m, 3 000 | a green trunk `radius 0.035 taper 0.35`, short twigs |
-| `cactus` | a saguaro, flowers on its arms | 3.8 m, 1 300 | thick arms `taper 0.12` turned up by `force 0 1 0 0.12`, no leaves |
-| `shrub` | a flowering bush | 2.7 m, 20 000 | a trunk of `length 0.05` that branches at the ground, flowers `share 0.8` |
-| `fern` | a fern | 0.9 m, 2 000 | 11 fronds from the ground at `angle 34`, leaves in `rows 2` |
-| `reed` | a tuft of reeds or tall grass with plumes | 1.7 m, 700 | 7 stems at `angle 7`, long leaves `width 0.05`, closed flowers `cup 82` |
-| `daisy` | a flower with a rosette at its foot | 0.4 m, 110 | `levels 0`, a green stem, flowers `petals 14 cup 8` |
-| `tulip` | a cupped flower | 0.4 m, 70 | `levels 0`, flowers `petals 6 cup 68`, three upright leaves |
+An explicit branch list replaces growth. Parent indices name earlier branches; path points and per-ring radii preserve the designed centreline. A guided trunk path can still grow procedural foliage. Bounds constrain centrelines, not foliage triangles, and reject an outside explicit skeleton instead of moving it. Custom leaf and flower geometries accept the same native geometry union as a part.
 
-Colours and seeds make the variety, a file each: `color` and `color2` on
-leaves and flowers give autumn trees, pale grasses and flowers of any
-colour from the same shape (`kind tulip` with `flowers { color 1 0.7 0
-}`, `kind birch` with `leaves { color 0.5 0.3 0.02 color2 0.6 0.14 0.02
-}`), three or four seeds of one kind stop a wood from repeating, and
-`trunk { length }`, a level's `children` or the leaves' `size` make a
-young, an old or a sparse one. A plant no kind is near (a vine, a
-mushroom's cap) is a model of parts or an imported one.
+A crown shades its interior from leaf density and volume. The meshlet and terrain-scatter paths retain canopy light and flutter; an impostor holds this light in its bake. Round canopy normals gather diffuse light while each leaf's own face reflects the sky, avoiding a shiny outline around inner leaves.
 
-The leaves of `oak`, `birch`, `willow`, `shrub`, `fern` and `reed` have
-`season 1`, each kind with its own autumn colours (birch and willow
-yellow, oak russet, fern brown, reed straw, shrub orange to red) and oak
-10 days late, birch 5 and willow 10 early; the other kinds' are 0, and a
-plant without a kind starts at 0. The cook keeps these four with the
-leaf material, as glTF `extras.ogFoliage` members of the same names, so
-an imported tree states them on its leaf material. Leaves do not yet
-change with the date.
+Leaves dominate triangle cost: branch children multiply down the levels, then by leaf count. Distant levels thin leaves/petals and enlarge retained ones to keep crown coverage. Small plants retain all leaves. Near-camera stands should first reduce count and increase size, then reduce branch children. The cook refuses more than 20,000 branches or 120,000 leaves and petals.
 
-A plant's triangles are mostly its leaves (`children` multiplied down
-the levels, times `count`, four triangles a blade). As written above the
-oak is 37 000 triangles (34 000 of them leaves), the pine 48 000, the
-shrub 20 000, the daisy 114. With distance the cook thins the leaves
-instead of simplifying them: two more levels keep a half and a quarter
-of the leaves and petals, each kept one made larger so the crown covers
-as much (the oak's leaves are 34 000, 17 000 and 8 500 triangles), and a
-plant of fewer than 16 leaves keeps them all. A copy takes a level once
-what it moved the leaves by is under 2 pixels, so the copies near the
-camera are the full plant: one that stands close in tens or hundreds
-takes a lower `count` with a larger `size` first, then fewer `children`.
-The cook refuses a plant past 20 000 branches or 120 000 leaves and
-petals.
+Far scattered copies can use an impostor, enabled in the declaration's `options`. At 128 pixels per frame, an impostor reads soft when its texels exceed screen pixels. For a 50° view, start at the plant's radius × screen height / 60: about 110 m for a 9 m-radius oak at 720 rows, or 28 m for a 2.3 m-radius shrub. Increasing frame size brings that boundary nearer and grows atlas area quadratically. Below-horizon views need the lower hemisphere, doubling atlas width. Cards sway around the model's foot.
 
-A placed model (og.Model) turning to another level, or to or from its
-impostor, cross-fades over 0.4 s: both are drawn, dithered against each
-other, as a streamed model fades in. A posed model, a crowd member and
-a scattered copy's mesh levels switch at once.
-
-A wood is plants scattered whole (og.TerrainScatter's `model`,
-`og api show "world §3"`). Far copies draw as one card when the plant is cooked
-with an impostor: import settings beside the model text, named after it
-with one more `.ogt` (`oak.ogt.ogt` for `oak.ogt`), holding `type
-import`, `version 1` and `model { impostor true }`. The card is lit as
-the leaves are (the same light, the plant's own shade baked in), but
-it is a picture 128 texels across the plant (`impostorSize`): nearer
-than where a texel covers a pixel it reads soft beside the leaves. Set
-impostorDistance to at least the plant's radius times the screen's
-height in pixels, divided by 60 (a 50 degree view; 12 radii at 720
-rows, 18 at 1080; the radius is that of the sphere around the whole
-plant): 110 m for an oak of 9 m at 720 rows, 28 m for a shrub of 2.3 m.
-A larger `impostorSize` brings that nearer in proportion and multiplies
-the atlas by its square.
-
-The card holds views from the horizon up. Seen from under its horizon
-(a tree on a cliff over the camera, a model hanging or flying) it draws
-the view from the horizon, upright: whole, and flatter the steeper the
-view. Add `impostorBelow true` for a model seen that way: its underside
-is baked too, and the atlas is twice as wide. A card sways as its model
-does (TerrainScatter.sway, Model.sway), bending from its foot.
-
-og.Wind's `strength` is lean per metre of height: 0.05 to 0.1 moves a
-10 m tree as a breeze does, and what suits grass (0.5 and up) lays a tree
-flat. Give trees their own lower `sway` when one wind blows over both.
+A placed `og.Model` cross-fades mesh LOD/impostor changes over 0.4 s; posed, crowd and scatter mesh LODs switch directly. Wind strength is lean per metre: a 10 m tree needs much less sway than grass. Give trees their own lower sway when they share a wind field.
 
 <a id="guide-models-4"></a>
 ### `models §4` Pitfalls
 
-- Colours are linear. An sRGB colour picked from a reference reads too
-  light: convert it (or take the palette's value from the look).
-- An `extrudeGeometry` with a bevel grows by `bevelSize` on every side:
-  shrink the shape to keep the outer size.
-- A `type model` has no skin. A character that must animate as a humanoid
-  is a rigged glTF (the cook's auto-rig, `og api find auto rig`), or a
-  model whose limbs hang from pivots and move by code or clips.
-- The cook's mesh LOD chain and raycast BVH treat it as any glTF: a
-  `type model` needs no export step.
-- A model grows one plant: the wind bends a model as one tree about its
-  root, so two plants in one file are two files.
-- Leaves that name a `material` take `translucency`, `domeNormals` and the
-  four season keys from that material block; without either the leaves draw one face, as bark.
+- Colours are linear. Convert an sRGB sample or use the look's palette.
+- Extrusion bevels grow the outer size; shrink the outline to compensate.
+- Rigid-node keys animate named pivots and parts. Humanoid motion requires a skin, whether imported or explicitly bound in processing.
+- Unwrapping textured geometry requires baking its appearance onto the new UVs; processing rejects existing clips, skins and morphs rather than discarding them.
+- LODs, raycast acceleration, collision and model loading need no export step. An authored model is native input to the normal model cook.

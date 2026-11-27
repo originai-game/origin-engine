@@ -1,6 +1,6 @@
 //! Registered views into prepared material UVs, using the existing CPU projection kernel.
 //! Cameras and alpha masks are explicit inputs; cook never invents or fits concept art.
-use super::{Block, Line, Scene, check, number, whole};
+use super::{Block, Line, Scene, check, input, number, whole};
 use glam::{Vec2, Vec3};
 use og_bake::projection::{
     GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, fill_unpainted, padded, project, silhouette,
@@ -67,10 +67,7 @@ pub(super) struct Projection {
     views: Vec<(ViewSpec, Image)>,
 }
 
-pub(super) fn read(
-    b: &Block,
-    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
-) -> Result<Projection, String> {
+pub(super) fn settings(b: &Block) -> Result<input::Project, String> {
     let vector = |b: &Block, key: &str| -> Result<Vec3, String> {
         let e = b
             .get(key)
@@ -105,9 +102,46 @@ pub(super) fn read(
         if (fov > 0.0) == (ortho > 0.0) {
             return Err("projection camera needs either positive fov or positive ortho".into());
         }
+        views.push(input::View {
+            image: e.string(0).map_err(|e| e.to_string())?.into(),
+            position: position.to_array(),
+            target: target.to_array(),
+            projection: if ortho > 0.0 {
+                input::Projection::Orthographic { ortho }
+            } else {
+                input::Projection::Perspective { fov }
+            },
+        });
+    }
+    let size = whole(b, "size", 1024, 8192)?;
+    if size == 0 || views.is_empty() {
+        return Err("project needs positive size and at least one registered view".into());
+    }
+    Ok(input::Project {
+        size: Some(size),
+        padding: Some(whole(b, "padding", 4, 8192)?),
+        views,
+    })
+}
+
+pub(super) fn read(
+    b: &input::Project,
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Result<Projection, String> {
+    let mut views = Vec::new();
+    for view in &b.views {
+        let position = Vec3::from_array(view.position);
+        let target = Vec3::from_array(view.target);
+        if position.distance_squared(target) <= 1e-12 {
+            return Err("projection camera position and target must differ".into());
+        }
+        let (fov, ortho) = match view.projection {
+            input::Projection::Perspective { fov } => (fov, 0.0),
+            input::Projection::Orthographic { ortho } => (0.0, ortho),
+        };
         let mut spec = ViewSpec::looking(position, target, fov, ViewKind::Ground);
         spec.ortho = ortho;
-        let path = e.string(0).map_err(|e| e.to_string())?;
+        let path = &view.image;
         let decoded = crate::cook::decode_image(&read(path)?)?;
         let image = Image {
             width: decoded.width,
@@ -121,13 +155,13 @@ pub(super) fn read(
         }
         views.push((spec, image));
     }
-    let size = whole(b, "size", 1024, 8192)?;
+    let size = b.size.unwrap_or(1024);
     if size == 0 || views.is_empty() {
         return Err("project needs positive size and at least one registered view".into());
     }
     Ok(Projection {
         size,
-        padding: whole(b, "padding", 4, 8192)?,
+        padding: b.padding.unwrap_or(4),
         views,
     })
 }

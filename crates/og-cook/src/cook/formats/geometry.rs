@@ -44,7 +44,7 @@ pub(crate) fn placement<M>(value: Option<&Reflected<M>>) -> Result<Placement, St
     })
 }
 
-fn placed(value: &input::PlacedGeometry, models: &Models<'_>) -> Result<Mesh, String> {
+fn placed(value: &input::PlacedGeometry, models: &Models<'_>, detail: f64) -> Result<Mesh, String> {
     let mirror = match value.mirror {
         Some(input::Mirror::X) => Mirror {
             x: true,
@@ -61,7 +61,7 @@ fn placed(value: &input::PlacedGeometry, models: &Models<'_>) -> Result<Mesh, St
         _ => Mirror::default(),
     };
     shape::merge(&[shape::Part {
-        mesh: &build(&value.geometry, models)?,
+        mesh: &build_at(&value.geometry, models, detail)?,
         placement: placement(value.transform.as_ref())?,
         mirror,
     }])
@@ -164,16 +164,42 @@ fn from_render(m: og_render_data::MeshData) -> Mesh {
         positions: m.vertices.iter().map(|v| v.position).collect(),
         normals: m.vertices.iter().map(|v| v.normal).collect(),
         uvs: m.vertices.iter().map(|v| v.uv).collect(),
-        colors: m.vertices.iter().map(|v| v.color).collect(),
-        tangents: m.vertices.iter().map(|v| v.tangent).collect(),
+        colors: if m.vertices.iter().any(|v| v.color != [1.0; 4]) {
+            m.vertices.iter().map(|v| v.color).collect()
+        } else {
+            Vec::new()
+        },
+        tangents: if m.vertices.iter().any(|v| v.tangent[3] != 0.0) {
+            m.vertices.iter().map(|v| v.tangent).collect()
+        } else {
+            Vec::new()
+        },
         indices: m.indices,
     }
 }
 
 pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh, String> {
+    build_at(value, models, 1.0)
+}
+
+/// Rebuild authored geometry at a face-budget factor, keeping the same floors
+/// as the model cook. Terrain uses the unscaled entry above.
+pub(crate) fn build_at(
+    value: &input::Geometry,
+    models: &Models<'_>,
+    detail: f64,
+) -> Result<Mesh, String> {
     use input::Geometry::*;
     use og_render_data::geometry::primitives as primitive;
     let tau = og_core::math::double::TAU;
+    let scaled = |n: u32, floor: u32| {
+        if detail >= 1.0 {
+            n
+        } else {
+            ((f64::from(n) * detail).round() as u32).clamp(floor.min(n), n)
+        }
+    };
+    let subdivisions = |n: u32| scaled(n + 1, 1) - 1;
     // Every descriptor has the same UV field; physics/dynamic are runtime
     // flags only. Collision is owned by the consuming model/terrain pipeline.
     macro_rules! repeat { ($($kind:ident),+ $(,)?) => { match value { $($kind(d) => d.uv_repeat),+ } }; }
@@ -225,8 +251,8 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
         )),
         SphereGeometry(d) => {
             let mut mesh = og_render_data::shapes::sphere(
-                d.width_segments.unwrap_or(32),
-                d.height_segments.unwrap_or(16),
+                scaled(d.width_segments.unwrap_or(32), 5),
+                scaled(d.height_segments.unwrap_or(16), 3),
             );
             for vertex in &mut mesh.vertices {
                 for c in &mut vertex.position {
@@ -239,8 +265,8 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
             radius_top: d.radius_top.unwrap_or(1.0) as f32,
             radius_bottom: d.radius_bottom.unwrap_or(1.0) as f32,
             height: d.height.unwrap_or(1.0) as f32,
-            radial_segments: d.radial_segments.unwrap_or(32),
-            height_segments: d.height_segments.unwrap_or(1),
+            radial_segments: scaled(d.radial_segments.unwrap_or(32), 5),
+            height_segments: scaled(d.height_segments.unwrap_or(1), 1),
             open_ended: d.open_ended.unwrap_or(false),
             theta_start: d.theta_start.unwrap_or(0.0) as f32,
             theta_length: d.theta_length.unwrap_or(tau) as f32,
@@ -248,42 +274,42 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
         ConeGeometry(d) => from_render(primitive::cone(
             d.radius.unwrap_or(1.0) as f32,
             d.height.unwrap_or(1.0) as f32,
-            d.radial_segments.unwrap_or(32),
-            d.height_segments.unwrap_or(1),
+            scaled(d.radial_segments.unwrap_or(32), 5),
+            scaled(d.height_segments.unwrap_or(1), 1),
             d.open_ended.unwrap_or(false),
         )),
         CapsuleGeometry(d) => from_render(primitive::capsule(
             d.radius.unwrap_or(1.0) as f32,
             d.height.unwrap_or(1.0) as f32,
-            d.cap_segments.unwrap_or(4),
-            d.radial_segments.unwrap_or(8),
-            d.height_segments.unwrap_or(1),
+            scaled(d.cap_segments.unwrap_or(4), 1),
+            scaled(d.radial_segments.unwrap_or(8), 5),
+            scaled(d.height_segments.unwrap_or(1), 1),
         )),
         TorusGeometry(d) => from_render(primitive::torus(
             d.radius.unwrap_or(1.0) as f32,
             d.tube.unwrap_or(0.4) as f32,
-            d.radial_segments.unwrap_or(12),
-            d.tubular_segments.unwrap_or(48),
+            scaled(d.radial_segments.unwrap_or(12), 3),
+            scaled(d.tubular_segments.unwrap_or(48), 6),
             d.arc.unwrap_or(tau) as f32,
         )),
         RingGeometry(d) => from_render(primitive::ring(
             d.inner_radius.unwrap_or(0.5) as f32,
             d.outer_radius.unwrap_or(1.0) as f32,
-            d.theta_segments.unwrap_or(32),
-            d.phi_segments.unwrap_or(1),
+            scaled(d.theta_segments.unwrap_or(32), 5),
+            scaled(d.phi_segments.unwrap_or(1), 1),
             d.theta_start.unwrap_or(0.0) as f32,
             d.theta_length.unwrap_or(tau) as f32,
         )),
         CircleGeometry(d) => from_render(primitive::circle(
             d.radius.unwrap_or(1.0) as f32,
-            d.segments.unwrap_or(32),
+            scaled(d.segments.unwrap_or(32), 5),
             d.theta_start.unwrap_or(0.0) as f32,
             d.theta_length.unwrap_or(tau) as f32,
         )),
         TubeGeometry(d) => {
-            let t = d.tubular_segments.unwrap_or(64);
+            let t = scaled(d.tubular_segments.unwrap_or(64), 6);
             let r = d.radius.unwrap_or(1.0) as f32;
-            let n = d.radial_segments.unwrap_or(8);
+            let n = scaled(d.radial_segments.unwrap_or(8), 5);
             from_render(match &d.path {
                 input::TubePath::Points { points, closed } => primitive::tube(
                     &points
@@ -313,13 +339,13 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
         }
         ShapeGeometry(d) => shape::shape_geometry(&shapes(
             d.shapes.as_deref(),
-            d.curve_segments.unwrap_or(12),
+            scaled(d.curve_segments.unwrap_or(12), 2),
             &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]],
         )),
         ExtrudeGeometry(d) => {
             let shapes = shapes(
                 d.shapes.as_deref(),
-                d.curve_segments.unwrap_or(12),
+                scaled(d.curve_segments.unwrap_or(12), 2),
                 &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]],
             );
             let thickness = d.bevel_thickness.unwrap_or(0.2);
@@ -330,7 +356,7 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
                 bevel_thickness: thickness,
                 bevel_size: d.bevel_size.unwrap_or(thickness - 0.1),
                 bevel_offset: d.bevel_offset.unwrap_or(0.0),
-                bevel_segments: d.bevel_segments.unwrap_or(3),
+                bevel_segments: scaled(d.bevel_segments.unwrap_or(3), 1),
             };
             match &d.extrude_path {
                 None => shape::extrude(&shapes, &options, None),
@@ -353,7 +379,7 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
                 .as_ref()
                 .map(|p| p.iter().copied().map(DVec2::from_array).collect())
                 .unwrap_or_else(|| shape::Lathe::default().points),
-            segments: d.segments.unwrap_or(12),
+            segments: scaled(d.segments.unwrap_or(12), 5),
             phi_start: d.phi_start.unwrap_or(0.0),
             phi_length: d.phi_length.unwrap_or(tau),
         }),
@@ -361,17 +387,19 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
             vertices: d.vertices.clone(),
             indices: d.indices.clone(),
             radius: d.radius.unwrap_or(1.0),
-            detail: d.detail.unwrap_or(0),
+            detail: subdivisions(d.detail.unwrap_or(0)),
         })?,
         IcosahedronGeometry(d) => {
-            shape::icosahedron(d.radius.unwrap_or(1.0), d.detail.unwrap_or(0))
+            shape::icosahedron(d.radius.unwrap_or(1.0), subdivisions(d.detail.unwrap_or(0)))
         }
         DodecahedronGeometry(d) => {
-            shape::dodecahedron(d.radius.unwrap_or(1.0), d.detail.unwrap_or(0))
+            shape::dodecahedron(d.radius.unwrap_or(1.0), subdivisions(d.detail.unwrap_or(0)))
         }
-        OctahedronGeometry(d) => shape::octahedron(d.radius.unwrap_or(1.0), d.detail.unwrap_or(0)),
+        OctahedronGeometry(d) => {
+            shape::octahedron(d.radius.unwrap_or(1.0), subdivisions(d.detail.unwrap_or(0)))
+        }
         TetrahedronGeometry(d) => {
-            shape::tetrahedron(d.radius.unwrap_or(1.0), d.detail.unwrap_or(0))
+            shape::tetrahedron(d.radius.unwrap_or(1.0), subdivisions(d.detail.unwrap_or(0)))
         }
         SweepGeometry(d) => {
             let p = path(&d.path)?;
@@ -386,8 +414,9 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
             };
             shape::sweep(
                 &shape::Sweep {
-                    section: contour(&d.section).get_points(d.curve_segments.unwrap_or(12)),
-                    steps: d.steps.unwrap_or(64),
+                    section: contour(&d.section)
+                        .get_points(scaled(d.curve_segments.unwrap_or(12), 2)),
+                    steps: scaled(d.steps.unwrap_or(64), 6),
                     scale: keys(d.scale.as_ref()),
                     twist: keys(d.twist.as_ref()),
                     caps: d.caps.unwrap_or(true),
@@ -405,9 +434,9 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
                 Some(input::CsgOp::Intersect) => og_shape::boolean::CsgOp::Intersect,
             };
             og_shape::boolean::csg(
-                &placed(&d.a, models)?,
+                &placed(&d.a, models, detail)?,
                 Placement::default(),
-                &placed(&d.b, models)?,
+                &placed(&d.b, models, detail)?,
                 Placement::default(),
                 op,
             )?
@@ -416,7 +445,7 @@ pub(crate) fn build(value: &input::Geometry, models: &Models<'_>) -> Result<Mesh
             let meshes = d
                 .parts
                 .iter()
-                .map(|v| placed(v, models))
+                .map(|v| placed(v, models, detail))
                 .collect::<Result<Vec<_>, _>>()?;
             shape::merge(
                 &meshes

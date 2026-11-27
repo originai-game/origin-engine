@@ -1,5 +1,5 @@
 //! Cook's dependency and image boundary for the shared part-local transfer kernel.
-use super::{Block, Line, Part, Scene, TransferInput, projection, sub, whole};
+use super::{Block, Line, Part, Scene, TransferInput, input, projection, whole};
 use og_bake::projection::{Texels, Transfer, fill_unpainted, padded};
 use og_shape::tools::{self, Image, Texture};
 
@@ -27,26 +27,35 @@ pub(crate) const LINES: &[Line] = &[
     ),
 ];
 
-pub(crate) fn source(process: &Block) -> Result<Option<String>, String> {
-    let Some(b) = sub(process, "transfer", LINES)? else {
-        return Ok(None);
-    };
+pub(super) fn settings(b: &Block) -> Result<input::Transfer, String> {
     let e = b.get("source").ok_or("transfer requires source")?;
     if e.values.len() != 1 || e.block.is_some() {
         return Err("transfer.source takes one model asset path".into());
     }
     let id = e.string(0).map_err(|e| e.to_string())?;
-    Ok(Some(crate::cook::normalise_rel(crate::runtime::asset_id(
-        id,
-    ))))
+    Ok(input::Transfer {
+        source: crate::cook::source_schemas::ContentRef {
+            id: crate::cook::normalise_rel(crate::runtime::asset_id(id)),
+        },
+        size: Some(whole(b, "size", 1024, 8192)?),
+        padding: Some(whole(b, "padding", 4, 8192)?),
+    })
 }
 
-pub(super) fn apply(scene: &mut Scene, b: &Block, input: &TransferInput) -> Result<(), String> {
-    let size = whole(b, "size", 1024, 8192)?;
+pub(crate) fn source(process: &input::Process) -> Option<&str> {
+    process.transfer.as_ref().map(|t| t.source.id.as_str())
+}
+
+pub(super) fn apply(
+    scene: &mut Scene,
+    b: &input::Transfer,
+    input: &TransferInput,
+) -> Result<(), String> {
+    let size = b.size.unwrap_or(1024);
     if size == 0 {
         return Err("transfer.size must be positive".into());
     }
-    let padding = whole(b, "padding", 4, 8192)?;
+    let padding = b.padding.unwrap_or(4);
     let imported = og_shape_formats::import(&input.bytes, &Default::default(), &|uri| {
         input
             .files

@@ -203,8 +203,8 @@ fn lightmap_bakes_roundtrip_typed_sources_and_module_ownership() {
     write("src/main.ts", "");
     write("modules/north/lib/empty.ts", "");
     write(
-        "assets/box.ogt",
-        "type model\nversion 1\n---\npart \"box\" {\nboxGeometry {\nwidth 1\nheight 1\ndepth 1\n}\n}\n",
+        "content/box.ts",
+        "import {file} from '@origingame/engine/author'; export default file.model({kind:'geometry',desc:{items:[{name:'box',input:{kind:'part',desc:{geometry:{kind:'boxGeometry',desc:{width:1,height:1,depth:1}}}}}]}});",
     );
     write(
         "content/room.ts",
@@ -487,9 +487,9 @@ fn typed_terrains_load_module_images_noise_and_ordered_model_stamps() {
             .save(root.join("modules/north/assets/height.png"))
             .unwrap();
         write(
-            "assets/stamp.ogt",
+            "content/stamp.ts",
             &format!(
-                "type model\nversion 1\n---\nconform off\npart \"stamp\" {{\nboxGeometry {{\nwidth 2\nheight {}\ndepth 2\n}}\n}}\n",
+                "import {{file}} from '@origingame/engine/author';export default file.model({{kind:'geometry',desc:{{conform:'off',items:[{{name:'stamp',input:{{kind:'part',desc:{{geometry:{{kind:'boxGeometry',desc:{{width:2,height:{},depth:2}}}}}}}}}}]}}}});",
                 if changed { 4 } else { 2 }
             ),
         );
@@ -3665,6 +3665,8 @@ fn generated_mesh_cooks_with_attributes_and_placed_frames() {
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::create_dir_all(root.join("lib")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
         root.join("og-project.json"),
@@ -3673,54 +3675,24 @@ fn generated_mesh_cooks_with_attributes_and_placed_frames() {
     .unwrap();
     std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'mesh',entry:'src/main.ts'});").unwrap();
     std::fs::write(
-        assets.join("mesh.ogt"),
-        r#"type model
-version 1
----
-conform off
-part "source" {
-  bufferGeometry {
-    generate {
-      script "mesh.ts"
-    }
-  }
-}
-part "placed" {
-  mergeGeometries {
-    part {
-      bufferGeometry {
-        generate {
-          script "mesh.ts"
-        }
-      }
-      scale 2 1 3
-      mirror x
-    }
-  }
-}
-part "mixed" {
-  mergeGeometries {
-    part {
-      bufferGeometry {
-        generate {
-          script "mesh.ts"
-        }
-      }
-    }
-    part {
-      bufferGeometry {
-        positions 10 0 0 12 0 0 10 1 0
-        uvs 0 1 1 1 0 0
-      }
-    }
-  }
-}
-"#,
+        root.join("content/mesh.ts"),
+        r#"import {file} from '@origingame/engine/author';
+import mesh from '../lib/mesh.ts';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+ {name:'source',input:{kind:'part',desc:{geometry:{kind:'bufferGeometry',desc:mesh()}}}},
+ {name:'placed',input:{kind:'part',desc:{geometry:{kind:'mergeGeometries',desc:{parts:[
+   {geometry:{kind:'bufferGeometry',desc:mesh()},transform:{scale:[2,1,3]},mirror:'x'}
+ ]}}}}},
+ {name:'mixed',input:{kind:'part',desc:{geometry:{kind:'mergeGeometries',desc:{parts:[
+   {geometry:{kind:'bufferGeometry',desc:mesh()}},
+   {geometry:{kind:'bufferGeometry',desc:{positions:[10,0,0,12,0,0,10,1,0],uvs:[0,1,1,1,0,0]}}}
+ ]}}}}}
+]}});"#,
     )
     .unwrap();
     let source = "({positions: [-2, 0, 0, 3, 0, 0, 1, 4, 0], colors: [1,0,0, 0,1,0, 0,0,1], uvs: [0,1, 1,1, 0.6,0], tangents: [1,0,0,-1, 1,0,0,-1, 1,0,0,-1], indices: [0,1,2]})";
     std::fs::write(
-        assets.join("mesh.ts"),
+        root.join("lib/mesh.ts"),
         format!("export default () => {source};"),
     )
     .unwrap();
@@ -3733,7 +3705,7 @@ part "mixed" {
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let model = bundle.load_model("mesh.ogt").unwrap();
+    let model = bundle.load_model("base/mesh").unwrap();
     assert_eq!(model.primitives.len(), 3);
     for (i, p) in model.primitives.iter().take(2).enumerate() {
         assert_eq!(p.lods[0].count, 3);
@@ -3768,12 +3740,12 @@ part "mixed" {
     }
     // An explicit image/camera recipe must retain its asymmetric source
     // placement, and changing only the image must invalidate the cooked map.
-    std::fs::write(assets.join("projection.ogt"), "type model\nversion 1\n---\nconform off\npart \"panel\" {\nplaneGeometry {\nwidth 2\nheight 2\n}\n}\nprocess {\nproject {\nsize 32\npadding 2\nview \"view.svg\" {\nposition 0 0 4\ntarget 0 0 0\northo 1\n}\n}\n}\n").unwrap();
+    std::fs::write(root.join("content/projection.ts"), "import {file} from '@origingame/engine/author';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'panel',input:{kind:'part',desc:{geometry:{kind:'planeGeometry',desc:{width:2,height:2}}}}}],process:{project:{size:32,padding:2,views:[{image:'assets/view.svg',position:[0,0,4],target:[0,0,0],projection:{kind:'orthographic',ortho:1}}]}}}});").unwrap();
     let image = r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#e34a2c"/><rect x="24" width="8" height="32" fill="#2c69df"/></svg>"##;
     std::fs::write(assets.join("view.svg"), image).unwrap();
     // The wider variant sorts before its processed base. Transfer retains
     // metric distances rather than stretching the base image over the variant.
-    std::fs::write(assets.join("a-variant.ogt"), "type model\nversion 1\n---\nconform off\npart \"panel\" {\nplaneGeometry {\nwidth 3\nheight 2\n}\n}\nprocess {\ntransfer {\nsource \"projection.ogt\"\nsize 32\npadding 2\n}\n}\n").unwrap();
+    std::fs::write(root.join("content/a-variant.ts"), "import {file,ref} from '@origingame/engine/author';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'panel',input:{kind:'part',desc:{geometry:{kind:'planeGeometry',desc:{width:3,height:2}}}}}],process:{transfer:{source:ref('base/projection'),size:32,padding:2}}}});").unwrap();
     let cooked_map = |id: &str| {
         let out = cook();
         assert!(out.status.success(), "{}", text(&out));
@@ -3790,39 +3762,39 @@ part "mixed" {
             .to_texture_data()
             .unwrap()
     };
-    let first = cooked_map("projection.ogt");
+    let first = cooked_map("base/projection");
     assert_eq!((first.width, first.height), (32, 32));
     let pixel = |rgba: &[u8], x: usize| rgba[(16 * 32 + x) * 4..(16 * 32 + x) * 4 + 3].to_vec();
     let left = pixel(&first.rgba, 8);
     let right = pixel(&first.rgba, 28);
     assert!(left[0] > 180 && left[2] < 90, "{left:?}");
     assert!(right[2] > 180 && right[0] < 90, "{right:?}");
-    assert_eq!(cooked_map("projection.ogt").rgba, first.rgba);
-    let variant = cooked_map("a-variant.ogt");
+    assert_eq!(cooked_map("base/projection").rgba, first.rgba);
+    let variant = cooked_map("base/a-variant");
     let middle = pixel(&variant.rgba, 20);
     assert!(
         middle[2] > 180 && middle[0] < 90,
         "metric transfer must not stretch the red region: {middle:?}"
     );
     assert_eq!(pixel(&variant.rgba, 8), pixel(&first.rgba, 8));
-    assert_eq!(cooked_map("a-variant.ogt").rgba, variant.rgba);
+    assert_eq!(cooked_map("base/a-variant").rgba, variant.rgba);
     std::fs::write(assets.join("view.svg"), image.replace("#e34a2c", "#2ce34a")).unwrap();
-    let changed = cooked_map("projection.ogt");
+    let changed = cooked_map("base/projection");
     let left = pixel(&changed.rgba, 8);
     assert!(left[1] > 180 && left[0] < 90, "{left:?}");
     assert_eq!(pixel(&changed.rgba, 28), right);
-    let variant = cooked_map("a-variant.ogt");
+    let variant = cooked_map("base/a-variant");
     assert_eq!(pixel(&variant.rgba, 8), left);
     let middle = pixel(&variant.rgba, 20);
     assert!(middle[2] > 180 && middle[0] < 90, "{middle:?}");
     // The consumer sorts before its source. Import order is a dependency,
     // not filename order, and a selected node keeps its rest placement.
-    let operand = "type model\nversion 1\n---\nconform off\npart \"copy\" {\nmergeGeometries {\npart {\nmodelGeometry {\nsource \"mesh.ogt\"\nnode \"placed\"\n}\nposition 0 2 0\n}\n}\n}\n";
-    std::fs::write(assets.join("a-copy.ogt"), operand).unwrap();
+    let operand = "import {file,ref} from '@origingame/engine/author';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'copy',input:{kind:'part',desc:{geometry:{kind:'mergeGeometries',desc:{parts:[{geometry:{kind:'modelGeometry',desc:{source:ref('base/mesh'),node:'placed'}},transform:{position:[0,2,0]}}]}}}}}]}});";
+    std::fs::write(root.join("content/a-copy.ts"), operand).unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let copy = bundle.load_model("a-copy.ogt").unwrap();
+    let copy = bundle.load_model("base/a-copy").unwrap();
     let p = &copy.primitives[0];
     assert_eq!((p.min.x, p.max.x, p.min.y, p.max.y), (-6.0, 4.0, 2.0, 6.0));
     for (v, t) in p.vertices.iter().zip(&p.tangents) {
@@ -3831,7 +3803,7 @@ part "mixed" {
         assert_eq!(v.color.iter().sum::<f32>(), 2.0);
     }
     std::fs::write(
-        assets.join("mesh.ts"),
+        root.join("lib/mesh.ts"),
         format!(
             "export default () => {};",
             source.replace("-2, 0, 0", "-4, 0, 0")
@@ -3842,21 +3814,23 @@ part "mixed" {
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     assert_eq!(
-        bundle.load_model("a-copy.ogt").unwrap().primitives[0].max.x,
+        bundle.load_model("base/a-copy").unwrap().primitives[0]
+            .max
+            .x,
         8.0
     );
     std::fs::write(
-        assets.join("mesh.ogt"),
+        root.join("content/mesh.ts"),
         operand
-            .replace("mesh.ogt", "a-copy.ogt")
-            .replace("node \"placed\"", ""),
+            .replace("base/mesh", "base/a-copy")
+            .replace(",node:'placed'", ""),
     )
     .unwrap();
     let out = cook();
     assert!(!out.status.success());
     assert!(text(&out).contains("dependency cycle"), "{}", text(&out));
-    std::fs::remove_file(assets.join("a-copy.ogt")).unwrap();
-    std::fs::write(assets.join("mesh.ogt"), "type model\nversion 1\n---\nconform off\npart \"source\" {\nbufferGeometry {\ngenerate {\nscript \"mesh.ts\"\n}\n}\n}\n").unwrap();
+    std::fs::remove_file(root.join("content/a-copy.ts")).unwrap();
+    std::fs::write(root.join("content/mesh.ts"), "import {file} from '@origingame/engine/author';import mesh from '../lib/mesh.ts';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'source',input:{kind:'part',desc:{geometry:{kind:'bufferGeometry',desc:mesh()}}}}]}});").unwrap();
     for invalid in [
         "({positions: [0,0,0, 1,0,0, 0,1,0], indices: [0,1,3]})",
         "({positions: [0,0,0, 1,0,0, 0,1,0], colors: [1,0,0]})",
@@ -3864,7 +3838,7 @@ part "mixed" {
         "({positions: [0,0,0, 1,0,0, 0,1,0], indices: [0,1,1.5]})",
     ] {
         std::fs::write(
-            assets.join("mesh.ts"),
+            root.join("lib/mesh.ts"),
             format!("export default () => {invalid};"),
         )
         .unwrap();
@@ -3897,8 +3871,8 @@ fn generated_scene_cooks_as_authored_declarations() {
     )
     .unwrap();
     std::fs::write(
-        assets.join("model.ogt"),
-        "type model\nversion 1\n---\nconform off\npart \"part\" {\nboxGeometry {\n}\n}\n",
+        root.join("content/model.ts"),
+        "import {file} from '@origingame/engine/author';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'part',input:{kind:'part',desc:{geometry:{kind:'boxGeometry',desc:{}}}}}]}});",
     )
     .unwrap();
     std::fs::write(root.join("content/base.ts"), "import {file} from '@origingame/engine/author';export default file.prefab({entity:{name:'base',components:{Stats:{weight:2}},children:[{name:'prefab-child',components:{Stats:{weight:4}}}]}});").unwrap();

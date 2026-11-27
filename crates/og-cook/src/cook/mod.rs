@@ -173,6 +173,8 @@ pub(crate) struct Source {
     rig2d: Option<rig2d::Prepared>,
     /// One checked scene tree shared by all author consumers.
     scene: Option<std::sync::Arc<scene::Document>>,
+    /// Checked model fields and captured geometry/image inputs, retained for budget rebuilding.
+    authored_model: Option<std::sync::Arc<model_text::Prepared>>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -409,8 +411,17 @@ pub fn cook_project_with_texture_cache(
         warnings: scan_warnings,
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
-    let (rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
-    let mut imported = import(&mut sources, &mut consumed, texture_cache, threads, &rigs);
+    let (mut rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
+    pipeline::author::models(root, &project.source, &mut sources, &mut rig_content)?;
+    let model_bindings = pipeline::author::bindings(root, &project.source, &sources)?;
+    let mut imported = import(
+        &mut sources,
+        &mut consumed,
+        texture_cache,
+        threads,
+        &rigs,
+        &model_bindings,
+    );
     laps.lap("import");
     let before_author = sources.len();
     let content = pipeline::author::sources(
@@ -429,8 +440,8 @@ pub fn cook_project_with_texture_cache(
         texture_cache,
         threads,
         &rigs,
+        &model_bindings,
     );
-    imported.model_texts.extend(added.model_texts);
     imported.reused_fractures.extend(added.reused_fractures);
     // Projected scatter needs both resolved mesh operands and the checked
     // TS field snapshot, just like the terrain writer and navmesh baker.
@@ -463,7 +474,6 @@ pub fn cook_project_with_texture_cache(
         &content,
         &mut sources,
         &known,
-        &imported.model_texts,
         options,
         &mut early_errors,
     )?;

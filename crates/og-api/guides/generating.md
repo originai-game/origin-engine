@@ -16,7 +16,7 @@ Cook transfers and caches source data as canonical binary author IR. Numeric typ
 
 ## 1. Find the file contract
 
-`og api list --kind file` lists the registered cook types and the other engineering sources. `og api show file:terrain` describes the generated TS terrain input, including `process.erosion`. `og api find erosion --kind file` searches this namespace. Each entry states its author input: a schema or factory being registered does not mean its domain adapter has shipped. UI stays TSX; model programs and themes retain their existing JSON sources until their cutover.
+`og api list --kind file` lists the registered cook types and the other engineering sources. `og api show file:terrain` describes the generated TS terrain input, including `process.erosion`. `og api find erosion --kind file` searches this namespace. Each entry states its author input: a schema or factory being registered does not mean its domain adapter has shipped. Models and model programs use checked TS declarations; UI stays TSX, and themes retain JSON until their cutover.
 
 ## 2. Design heights, then process them
 
@@ -64,7 +64,7 @@ export default og.game({
       const sample = og.terrain.sample(world, { data: edited.value.data, x: x!, z: z! });
       og.assert.always(sample.ok && Math.abs(sample.value!.height - expected!) < 0.002, "cook applies authored brushes and model stamps in written order", {});
     }
-    const model = og.load.gltf(world, "curves.ogt", {});
+    const model = og.load.gltf(world, "base/curves", {});
     if (!model.ok) throw new Error(model.reason);
     const info = og.load.gltfInfo(world, model.value);
     if (!info.ok) throw new Error(info.reason);
@@ -94,7 +94,7 @@ export default og.game({
     const projected = og.terrain.sample(world, { data: loaded.value.data, x: at.value.position.x, z: at.value.position.z });
     og.assert.always(projected.ok && Math.abs(at.value.position.y - projected.value!.height - 0.2) <= tolerance, "scatter projects onto the same terrain surface", {});
     og.assert.always(Math.abs(at.value.scale.x - 0.15) < 0.00001, "scatter preserves explicit scales", {});
-    const operand = og.load.gltf(world, "copy.ogt", {});
+    const operand = og.load.gltf(world, "base/copy", {});
     if (!operand.ok) throw new Error(operand.reason);
     const copied = og.load.gltfInfo(world, operand.value);
     if (!copied.ok) throw new Error(copied.reason);
@@ -103,7 +103,7 @@ export default og.game({
     const graph = og.load.animgraph(world, "base/graph");
     const again = og.load.animgraph(world, "base/graph");
     og.assert.always(graph.ok && again.ok && graph.value === again.value, "cooked sprite graph loads once", {});
-    const plant = og.load.gltf(world, "guided.ogt", {});
+    const plant = og.load.gltf(world, "base/guided", {});
     if (!plant.ok) throw new Error(plant.reason);
     const foliage = og.load.gltfInfo(world, plant.value);
     if (!foliage.ok) throw new Error(foliage.reason);
@@ -117,7 +117,7 @@ export default og.game({
     ];
     const skeleton = og.procgen.plant({branches});
     if (!skeleton.ok) throw new Error(skeleton.reason);
-    const skeletonModel = og.load.gltf(world, "skeleton.ogt", {});
+    const skeletonModel = og.load.gltf(world, "base/skeleton", {});
     if (!skeletonModel.ok) throw new Error(skeletonModel.reason);
     const skeletonInfo = og.load.gltfInfo(world, skeletonModel.value);
     if (!skeletonInfo.ok) throw new Error(skeletonInfo.reason);
@@ -135,17 +135,17 @@ export default og.game({
     let top = -Infinity;
     for (let i=1; i<pruned.value.wood.positions.length; i+=3) top = Math.max(top, pruned.value.wood.positions[i]!);
     og.assert.always(Math.abs(top - 2) < 0.00001, "growth stops before the first outside centreline ring", {});
-    const processed = og.load.gltf(world, "processed.ogt", {});
+    const processed = og.load.gltf(world, "base/processed", {});
     if (!processed.ok) throw new Error(processed.reason);
     const prepared = og.load.gltfInfo(world, processed.value);
     if (!prepared.ok) throw new Error(prepared.reason);
     const reduced = og.render.geometryInfo(world, prepared.value.parts[0]!.geometry);
     og.assert.always(reduced.ok && reduced.value!.triangles > 0 && reduced.value!.triangles < 168, "authored repair, reduction and atlas baking produce a loadable mesh", {});
-    const projectedModel = og.load.gltf(world, "projected.ogt", {});
+    const projectedModel = og.load.gltf(world, "base/projected", {});
     if (!projectedModel.ok) throw new Error(projectedModel.reason);
     const projectionInfo = og.load.gltfInfo(world, projectedModel.value);
     og.assert.always(projectionInfo.ok && projectionInfo.value.parts.length === 1, "registered image projection cooks a normal model", {});
-    const variant = og.load.gltf(world, "variant.ogt", {});
+    const variant = og.load.gltf(world, "base/variant", {});
     if (!variant.ok) throw new Error(variant.reason);
     const variantInfo = og.load.gltfInfo(world, variant.value);
     if (!variantInfo.ok) throw new Error(variantInfo.reason);
@@ -156,70 +156,25 @@ export default og.game({
 });
 ```
 
-```ogt recipe file=assets/processed.ogt
-type model
-version 1
----
-conform off
-material "surface" {
-  map "surface.png"
-  normalMap "surface-normal.png"
-  roughness 0.8
-}
-part "surface" {
-  material "surface"
-  sphereGeometry {
-    widthSegments 12
-    heightSegments 8
-  }
-}
-process {
-  repair {
-    weld 0
-  }
-  decimate {
-    ratio 0.6
-  }
-  unwrap {
-    resolution 64
-  }
-  bake {
-    size 64
-    padding 2
-  }
-  rig {
-    joint "root" "" 0 -1 0
-    joint "tip" "root" 0 1 0
-  }
-}
+```ts recipe file=content/processed.ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'surface',input:{kind:'material',desc:{map:'assets/surface.png',normalMap:'assets/surface-normal.png',roughness:0.8}}},
+  {name:'surface',input:{kind:'part',desc:{material:'surface',geometry:{kind:'sphereGeometry',desc:{widthSegments:12,heightSegments:8}}}}}
+],process:{repair:{weld:0},decimate:{ratio:0.6},unwrap:{resolution:64},bake:{size:64,padding:2},
+  rig:{kind:'joints',joints:[{name:'root',parent:'',position:[0,-1,0]},{name:'tip',parent:'root',position:[0,1,0]}]}
+}}});
 ```
 
 The model's `process` block runs repair, decimation, UV preparation/material baking and skin binding in that order, through the existing mesh kernels. It accepts static meshes only; it refuses existing animation, skins and morphs rather than discarding them. An explicit skeleton uses model-local metres, Y up. Unwrapping a textured input requires baking so its authored appearance survives the UV replacement. Processed maps are embedded and their source bytes remain cook dependencies.
 
 `process.project` projects author-supplied, camera-registered square images into the prepared UVs with the existing projection kernel. It is a deterministic processing step, not image generation: there is no implicit silhouette fitting, view selection or network request. Camera positions use local metres, Y up; `ortho` is half the image's height in metres. All image bytes join the action's dependency key. Unseen texels use the existing nearest-painted-surface fill. Other material channels stay unchanged.
 
-```ogt recipe file=assets/projected.ogt
-type model
-version 1
----
-conform off
-part "panel" {
-  planeGeometry {
-    width 2
-    height 2
-  }
-}
-process {
-  project {
-    size 32
-    padding 2
-    view "registered.svg" {
-      position 0 0 4
-      target 0 0 0
-      ortho 1
-    }
-  }
-}
+```ts recipe file=content/projected.ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'panel',input:{kind:'part',desc:{geometry:{kind:'planeGeometry',desc:{width:2,height:2}}}}}
+],process:{project:{size:32,padding:2,views:[{image:'assets/registered.svg',position:[0,0,4],target:[0,0,0],projection:{kind:'orthographic',ortho:1}}]}}}});
 ```
 
 ```text recipe file=assets/registered.svg
@@ -228,24 +183,11 @@ process {
 
 `process.transfer` carries an imported base model's painted maps to its variant using the same part-local metric mechanism as the model bake command. Stable part names identify corresponding surfaces. Each part anchors at its own minimum corner, in metres, without fitting or rescaling: an enlarged region extends the nearest same-facing base region. The source's normal importer, processing and external image dependencies run first; cycles fail. Both models need prepared UVs. Source painted maps must be square and share one size; destination `size` is independent. Only base colour changes; other material channels stay authored. Projection runs before transfer when both are declared.
 
-```ogt recipe file=assets/variant.ogt
-type model
-version 1
----
-conform off
-part "panel" {
-  planeGeometry {
-    width 3
-    height 2
-  }
-}
-process {
-  transfer {
-    source "projected.ogt"
-    size 32
-    padding 2
-  }
-}
+```ts recipe file=content/variant.ts
+import {file,ref} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'panel',input:{kind:'part',desc:{geometry:{kind:'planeGeometry',desc:{width:3,height:2}}}}}
+],process:{transfer:{source:ref('base/projected'),size:32,padding:2}}}});
 ```
 
 A material library's explicit `generate` block invokes the existing periodic/PBR map preparation during cook. Destinations must not collide with authored files or other outputs. Generated PNG inputs exist in the cook graph, not in `assets/`; model, processing and fracture consumers resolve the same bytes. The image and every processing parameter form the action key. `og materials make` remains the explicit authoring command when source files are wanted.
@@ -318,18 +260,11 @@ export default file.terrain({
 });
 ```
 
-```ogt recipe file=assets/stamp.ogt
-type model
-version 1
----
-conform off
-part "underside" {
-  boxGeometry {
-    width 4
-    height 2
-    depth 4
-  }
-}
+```ts recipe file=content/stamp.ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'underside',input:{kind:'part',desc:{geometry:{kind:'boxGeometry',desc:{width:4,height:2,depth:4}}}}}
+]}});
 ```
 
 ```ts recipe file=content/protect.ts
@@ -342,65 +277,28 @@ export default file.field((() => {
 })());
 ```
 
-```ogt recipe file=assets/guided.ogt
-type model
-version 1
----
-conform off
-plant "guided" {
-  levels 0
-  path -2 0 1 -1 2 1 1 3 -1
-  trunk {
-    radius 0.2
-    segments 4
-  }
-  leaves {
-    count 1
-    start 0.5
-    end 0.5
-    sizeVariance 0
-  }
-  leafGeometry {
-    bufferGeometry {
-      generate {
-        script "leaf.ts"
-      }
-    }
-  }
-}
+```ts recipe file=content/guided.ts
+import {file} from '@origingame/engine/author';
+import leaf from '../lib/leaf.ts';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'guided',input:{kind:'plant',desc:{levels:0,path:[[-2,0,1],[-1,2,1],[1,3,-1]],trunk:{radius:0.2,segments:4},leaves:{count:1,start:0.5,end:0.5,sizeVariance:0},leafGeometry:{kind:'bufferGeometry',desc:leaf()}}}}
+]}});
 ```
 
 An explicit `branch` list replaces procedural growth altogether. The first limb is the root; children name an earlier limb and start on its centreline. Per-ring radii retain the authored silhouette, and terminal limbs receive the same leaves, flowers and wind data. `bounds` limits centreline growth, not the triangles of wood or foliage; it rejects an outside explicit skeleton rather than silently changing that design.
 
-```ogt recipe file=assets/skeleton.ogt
-type model
-version 1
----
-conform off
-plant "skeleton" {
-  bounds -4 -1 -2 3 5 2
-  branch {
-    parent -1
-    path 0 0 0 0 2 0 0 4 0
-    radii 0.2 0.15 0.05
-    segments 6
-  }
-  branch {
-    parent 0
-    path 0 2 0 -2 3 0 -3 3 1
-    radii 0.1 0.06 0.02
-    segments 5
-  }
-  branch {
-    parent 0
-    path 0 1 0 2 2 -1
-    radii 0.12 0.03
-    segments 4
-  }
-}
+```ts recipe file=content/skeleton.ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'skeleton',input:{kind:'plant',desc:{bounds:[[-4,-1,-2],[3,5,2]],branches:[
+    {parent:-1,path:[[0,0,0],[0,2,0],[0,4,0]],radii:[0.2,0.15,0.05],segments:6},
+    {parent:0,path:[[0,2,0],[-2,3,0],[-3,3,1]],radii:[0.1,0.06,0.02],segments:5},
+    {parent:0,path:[[0,1,0],[2,2,-1]],radii:[0.12,0.03],segments:4}
+  ]}}}
+]}});
 ```
 
-```ts recipe file=assets/leaf.ts
+```ts recipe file=lib/leaf.ts
 import type { MeshSource } from "@origingame/engine/generate";
 export default () => ({
   positions: new Float32Array([0,0,0,1,0,0,0,1,0]),
@@ -409,57 +307,19 @@ export default () => ({
 }) satisfies MeshSource;
 ```
 
-```ogt recipe file=assets/curves.ogt
-type model
-version 1
----
-conform off
-part "disc" {
-  circleGeometry {
-    radius 2
-    segments 8
-    thetaLength 3.141592653589793
-  }
-}
-part "ring" {
-  ringGeometry {
-    innerRadius 0.7
-    outerRadius 2.3
-    thetaSegments 8
-    phiSegments 2
-  }
-}
-part "polyline" {
-  tubeGeometry {
-    points 0 0 0 1 2 0 3 2 1
-    radius 0.2
-    tubularSegments 9
-    radialSegments 4
-  }
-}
-part "curve" {
-  tubeGeometry {
-    path {
-      kind catmullRom
-      point 0 0 0
-      point 1 1 1
-      point 3 2 0
-    }
-    radius 0.3
-    tubularSegments 8
-    radialSegments 5
-  }
-}
-part "buffer" {
-  bufferGeometry {
-    generate {
-      script "mesh.ts"
-    }
-  }
-}
+```ts recipe file=content/curves.ts
+import {file} from '@origingame/engine/author';
+import mesh from '../lib/mesh.ts';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+ {name:'disc',input:{kind:'part',desc:{geometry:{kind:'circleGeometry',desc:{radius:2,segments:8,thetaLength:3.141592653589793}}}}},
+ {name:'ring',input:{kind:'part',desc:{geometry:{kind:'ringGeometry',desc:{innerRadius:0.7,outerRadius:2.3,thetaSegments:8,phiSegments:2}}}}},
+ {name:'polyline',input:{kind:'part',desc:{geometry:{kind:'tubeGeometry',desc:{path:{kind:'points',points:[[0,0,0],[1,2,0],[3,2,1]]},radius:0.2,tubularSegments:9,radialSegments:4}}}}},
+ {name:'curve',input:{kind:'part',desc:{geometry:{kind:'tubeGeometry',desc:{path:{kind:'curve',curve:{kind:'catmullRom',points:[[0,0,0],[1,1,1],[3,2,0]]}},radius:0.3,tubularSegments:8,radialSegments:5}}}}},
+ {name:'buffer',input:{kind:'part',desc:{geometry:{kind:'bufferGeometry',desc:mesh()}}}}
+]}});
 ```
 
-```ts recipe file=assets/mesh.ts
+```ts recipe file=lib/mesh.ts
 import type { MeshSource } from "@origingame/engine/generate";
 
 export default function mesh() {
@@ -491,22 +351,13 @@ export default file.prefab({ entity: {
 } });
 ```
 
-```ogt recipe file=assets/copy.ogt
-type model
-version 1
----
-conform off
-part "copy" {
-  mergeGeometries {
-    part {
-      modelGeometry {
-        source "curves.ogt"
-        node "buffer"
-      }
-      position 0 2 0
-    }
-  }
-}
+```ts recipe file=content/copy.ts
+import {file,ref} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+ {name:'copy',input:{kind:'part',desc:{geometry:{kind:'mergeGeometries',desc:{parts:[
+   {geometry:{kind:'modelGeometry',desc:{source:ref('base/curves'),node:'buffer'}},transform:{position:[0,2,0]}}
+ ]}}}}}
+]}});
 ```
 
 ```ts recipe file=content/graph.ts
@@ -553,7 +404,7 @@ Outputs contain finite numbers, strings, booleans, null, plain objects and dense
 
 Typed buffers remain typed inside the generator, including nested mesh attributes and WFC/BSP grids; a `subarray` denotes only that slice. At the final JSON output boundary they become numeric arrays. Result-returning mechanisms keep `{ok, value}` / `{ok: false, reason}`: check `ok` before composing them. These pure mechanisms do not load assets or return runtime handles. Existing files remain the normal input for plants, sound synthesis and prefracture; calling a mechanism in TS does not bypass a target asset's source validation.
 
-A model's `bufferGeometry.generate` returns `MeshSource`: flat vertex attribute arrays with the same names and validation as `og.render.bufferGeometry`, not a runtime geometry handle. Materials, pivots and placements stay in the surrounding model file. The first recipe cooks an asymmetric coloured triangle with explicit tangent frames. Missing normals are computed by the shared implementation; explicit UVs, colours and tangent frames survive normal model import. `bufferGeometry` also accepts authored arrays directly, or participates in nested merges and CSG. Placed merges transform frames with the geometry; CSG creates new topology and regenerates frames when needed.
+A checked `file.model` declaration calls ordinary TS helpers to fill a `bufferGeometry` desc: flat vertex attribute arrays with the same names and validation as `og.render.bufferGeometry`, not a runtime geometry handle. There is no `bufferGeometry.generate` or model text wrapper. Materials, pivots and placements stay in the declaration. The first recipe cooks an asymmetric coloured triangle with explicit tangent frames. Missing normals are computed by the shared implementation; explicit UVs, colours and tangent frames survive normal model import. Placed merges transform frames with the geometry; CSG creates new topology and regenerates frames when needed.
 
 The guide gate writes all attached files and explicitly cooks the project before running the assertions twice. An attached fence's `file=` is project-relative and cannot escape the recipe directory; it belongs to the preceding `ts recipe` main entry. The guide contains no per-recipe shell harness.
 
@@ -712,9 +563,9 @@ An animation graph is a checked `file.animgraph` TS asset, loaded by its canonic
 
 ## 10. Author model-local animation keys
 
-An import sidecar's `animation.clip` appends named clips to the imported model, including a static model. Each channel names a unique model node and `translation`, `rotation`, `scale`, `weights` or `visibility`. Times are nonnegative seconds and strictly increase. Translation is metres, rotation is a nonzero xyzw quaternion, scale is dimensionless, and morph lanes must match the target mesh. Visibility uses step keys of 0 or 1. Cubic-spline keys contain in-tangent, value and out-tangent, with tangents per second. The same glTF resampler, compression, events, libraries and mirrored-clip pipeline cooks authored keys; this does not record GPU neural motion or bake runtime IK.
+The model's `options.animation.clips` appends named clips, including to a static model. Each channel names a unique model node and `translation`, `rotation`, `scale`, `weights` or `visibility`. Times are nonnegative seconds and strictly increase. Translation is metres, rotation is a nonzero xyzw quaternion, scale is dimensionless, and morph lanes must match the target mesh. Visibility uses step keys of 0 or 1. Cubic-spline keys contain in-tangent, value and out-tangent, with tangents per second. The same glTF resampler, compression, events, libraries and mirrored-clip pipeline cooks authored keys; this does not record GPU neural motion or bake runtime IK.
 
-This recipe creates a static model, adds a clip using only its sidecar, then plays and reads the completed pose. A fixed root pivot keeps the panel's authored local travel separate from root-motion extraction. The game does not reconstruct the keys.
+This recipe declares a model and its clip together, then plays and reads the completed pose. A fixed root pivot keeps the panel's authored local travel separate from root-motion extraction. The game does not reconstruct the keys.
 
 ```ts recipe ticks=35
 import { og, defineSystem } from "@origingame/engine";
@@ -723,7 +574,7 @@ const Verify = defineSystem("Verify", { reads: [og.Skeleton] }, (_query, time, w
   if (time.tick !== 33) return;
   const entity = world.find("animated");
   if (!entity) throw new Error("animated entity missing");
-  const animation = og.load.animation(world, "animated.ogt");
+  const animation = og.load.animation(world, "base/animated");
   if (!animation.ok) throw new Error(animation.reason);
   const pose = og.anim.getNodeMatrix(world, entity, animation.value.nodes.indexOf("panel"));
   if (!pose.ok) throw new Error(pose.reason);
@@ -733,8 +584,8 @@ const Verify = defineSystem("Verify", { reads: [og.Skeleton] }, (_query, time, w
 });
 
 export default og.game({ systems: [Verify], start(world) {
-  const model = og.load.gltf(world, "animated.ogt", {});
-  const animation = og.load.animation(world, "animated.ogt");
+  const model = og.load.gltf(world, "base/animated", {});
+  const animation = og.load.animation(world, "base/animated");
   const entity = world.spawn({ name: "animated" });
   if (!model.ok || !animation.ok || !entity.ok) throw new Error("authored animation failed to load");
   world.insert(entity.value, og.Model, { asset: model.value });
@@ -743,39 +594,13 @@ export default og.game({ systems: [Verify], start(world) {
 } });
 ```
 
-```ogt recipe file=assets/animated.ogt
-type model
-version 1
----
-conform off
-pivot "root" {
-}
-part "panel" {
-  pivot "root"
-  boxGeometry {
-    width 1
-    height 2
-    depth 0.5
-  }
-}
-```
-
-```ogt recipe file=assets/animated.ogt.ogt
-type import
-version 1
----
-animation {
-  rate 30
-  clip "designed" {
-    channel "panel" translation {
-      key 0 0 0 0
-      key 0.5 2 1 0
-    }
-    channel "panel" rotation {
-      key 0 0 0 0 1
-      key 0.5 0 0 0.70710678 0.70710678
-    }
-  }
-  event "designed" "end" 0.5
-}
+```ts recipe file=content/animated.ts
+import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+  {name:'root',input:{kind:'pivot',desc:{}}},
+  {name:'panel',input:{kind:'part',desc:{pivot:'root',geometry:{kind:'boxGeometry',desc:{width:1,height:2,depth:0.5}}}}}
+],options:{animation:{rate:30,clips:[{name:'designed',channels:[
+  {node:'panel',path:'translation',keys:[{time:0,values:[0,0,0]},{time:0.5,values:[2,1,0]}]},
+  {node:'panel',path:'rotation',keys:[{time:0,values:[0,0,0,1]},{time:0.5,values:[0,0,0.70710678,0.70710678]}]}
+]}],events:[{clip:'designed',marker:'end',time:0.5}]}}}});
 ```

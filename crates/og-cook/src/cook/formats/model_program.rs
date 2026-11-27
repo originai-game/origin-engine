@@ -1,34 +1,8 @@
-//! A model whose source is an og-shape program: the program file itself
-//! (`chair.shape.json`), or a `type model` text naming one with values
-//! for its parameters and material blocks over its materials (a variant):
-//!
-//! ```text
-//! type model
-//! version 1
-//! ---
-//! program "chair.shape.json"     # beside this file
-//! params {
-//!   height 1100                  # the program's "$height"
-//! }
-//! material "seat" {              # over the program's material "seat"
-//!   color 1 1 1                  # linear, as glTF's baseColorFactor
-//!   map "chair-tall.seat.basecolor.png"
-//! }
-//! ```
-//!
-//! The cook replays the program with the kernel ([`og_shape::model`]),
-//! which is deterministic: the same program and values give the same
-//! bytes on every machine. The model is then a glTF binary, and the rest
-//! of the cook treats it as any `.glb`. A material block with a `map`
-//! replays the program with UVs on every part (its first operation
-//! `uvs`), as `og model bake` does when it paints the map.
-//!
-//! Entry: [`parse`] reads the source; [`Program::model`] replays it and
-//! [`Program::glb`] writes it.
+//! Native model-kernel replay and material overrides. Checked TS declarations
+//! supply the cook input; standalone modelling tools may read kernel JSON.
 
 use std::path::{Path, PathBuf};
 
-use og_core::ogt::{Block, Document, Entry};
 use og_shape::model::Model;
 use og_shape::model::program::{self, Params};
 use og_shape::tools::{ColorSpace, Material, Texture};
@@ -38,13 +12,9 @@ pub fn is_program(rel: &str) -> bool {
     rel.to_ascii_lowercase().ends_with(".shape.json")
 }
 
-/// Whether a `type model` text names a program.
-pub fn names_program(doc: &Document) -> bool {
-    doc.body.get("program").is_some()
-}
-
 /// One material block's fields; what it leaves out is the program's.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct MaterialOver {
     /// The program material's name (a part's name when it has none).
     pub name: String,
@@ -90,181 +60,48 @@ pub struct Program {
     /// `atlas <px>`: every part's UVs packed into one atlas on this grid
     /// (what `og model bake` paints its maps on); 0 is none.
     pub atlas: u32,
+    /// Captured kernel font/image bytes, keyed by their explicit input name.
+    pub inputs: std::collections::BTreeMap<String, (String, Vec<u8>)>,
+    /// Checked variant descriptor retained by authoring tools when baking maps.
+    pub authoring: Option<serde_json::Value>,
 }
 
 /// Texels between an atlas's charts, enough for the bake's gutter.
 pub const ATLAS_PADDING: u32 = 4;
 
-/// The fields a material block takes.
-pub(crate) const MATERIAL_FIELDS: [&str; 22] = [
-    "color",
-    "metalness",
-    "roughness",
-    "opacity",
-    "emissive",
-    "emissiveIntensity",
-    "map",
-    "normalMap",
-    "normalScale",
-    "roughnessMap",
-    "metalnessMap",
-    "emissiveMap",
-    "aoMap",
-    "aoMapIntensity",
-    "clearcoat",
-    "clearcoatRoughness",
-    "sheen",
-    "sheenRoughness",
-    "transmission",
-    "iridescence",
-    "alphaTest",
-    "doubleSided",
-];
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "program",
-        "\"<file.shape.json>\"",
-        "required",
-        "Model program beside this model.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "params",
-        "{ <name> <finite number> ... }",
-        "program parameters",
-        "Named numeric parameter overrides.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "material",
-        "\"<name>\" { ... }",
-        "program materials",
-        "Material overrides by name.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "atlas",
-        "<integer 16..8192>",
-        "none",
-        "Repack UVs at this texel grid, gutter 4.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "conform",
-        "off | character | effect",
-        "project look",
-        "Art conformance category.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "process",
-        "{ ... }",
-        "off",
-        "Shared static model preparation.",
-        "",
-    ),
-];
-
-fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
-    format!("line {}: {} {msg}", e.line, e.key)
+/// Model tools read the cook's checked declaration and captured maps, not an
+/// adjacent program guessed from the declaration's filename.
+pub fn read(root: &Path, file: &str) -> Result<(Program, Read), String> {
+    let project = crate::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let index =
+        crate::cook::source_index::Index::open(root, &project).map_err(|e| e.to_string())?;
+    let id = index
+        .files
+        .get(file)
+        .ok_or_else(|| format!("{file}: not a content declaration"))?;
+    let mut sources = Vec::new();
+    crate::cook::pipeline::author::models(root, &project, &mut sources, &mut Default::default())
+        .map_err(|e| e.to_string())?;
+    let prepared = sources
+        .iter()
+        .find(|s| &s.rel == id)
+        .and_then(|s| s.authored_model.as_ref())
+        .ok_or_else(|| format!("{file}: not a model declaration"))?;
+    let program = prepared
+        .program
+        .as_ref()
+        .ok_or_else(|| format!("{file}: not a program model"))?;
+    Ok((
+        program.clone(),
+        prepared
+            .images
+            .iter()
+            .map(|(p, b)| (p.clone(), b.clone()))
+            .collect(),
+    ))
 }
 
-fn material(e: &Entry) -> Result<MaterialOver, String> {
-    let name = e.string(0).map_err(|x| at(e, x))?.to_string();
-    let empty = Block::new();
-    let b = e.block.as_ref().unwrap_or(&empty);
-    let mut m = MaterialOver {
-        name,
-        ..Default::default()
-    };
-    for f in &b.entries {
-        let num = |i: usize| -> Result<f64, String> {
-            f.number(i)
-                .map(|n| n.as_f64())
-                .ok()
-                .filter(|v| v.is_finite())
-                .ok_or_else(|| at(f, "takes numbers"))
-        };
-        let unit = |v: f64| -> Result<f64, String> {
-            if (0.0..=1.0).contains(&v) {
-                Ok(v)
-            } else {
-                Err(at(f, format!("is 0 to 1, got {v}")))
-            }
-        };
-        let non_neg = |v: f64| -> Result<f64, String> {
-            if v >= 0.0 {
-                Ok(v)
-            } else {
-                Err(at(f, format!("cannot be negative, got {v}")))
-            }
-        };
-        let rgb = || -> Result<[f64; 3], String> {
-            if f.values.len() != 3 {
-                return Err(at(f, "takes r g b, linear 0 to 1"));
-            }
-            Ok([num(0)?, num(1)?, num(2)?])
-        };
-        let rel_image = || -> Result<String, String> {
-            let file = f.string(0).map_err(|x| at(f, x))?;
-            if file.is_empty() || file.starts_with('/') || file.contains('\\') {
-                return Err(at(f, "names an image file beside the model, in quotes"));
-            }
-            Ok(file.to_string())
-        };
-        let flag = || -> Result<bool, String> {
-            f.values
-                .first()
-                .and_then(|v| v.as_bool())
-                .ok_or_else(|| at(f, "takes true or false"))
-        };
-        match f.key.as_str() {
-            "color" => m.color = Some(rgb()?),
-            "emissive" => m.emissive = Some(rgb()?),
-            "emissiveIntensity" | "emissive_intensity" => {
-                m.emissive_intensity = Some(non_neg(num(0)?)?)
-            }
-            "metalness" => m.metalness = Some(unit(num(0)?)?),
-            "roughness" => m.roughness = Some(unit(num(0)?)?),
-            "opacity" => m.opacity = Some(unit(num(0)?)?),
-            "map" => m.map = Some(rel_image()?),
-            "normalMap" | "normal_map" => m.normal_map = Some(rel_image()?),
-            "normalScale" | "normal_scale" => m.normal_scale = Some(non_neg(num(0)?)?),
-            "roughnessMap" | "roughness_map" | "metalnessMap" | "metalness_map" => {
-                m.roughness_map = Some(rel_image()?)
-            }
-            "emissiveMap" | "emissive_map" => m.emissive_map = Some(rel_image()?),
-            "aoMap" | "ao_map" => m.ao_map = Some(rel_image()?),
-            "aoMapIntensity" | "ao_map_intensity" => m.ao_map_intensity = Some(unit(num(0)?)?),
-            "clearcoat" => m.clearcoat = Some(unit(num(0)?)?),
-            "clearcoatRoughness" | "clearcoat_roughness" => {
-                m.clearcoat_roughness = Some(unit(num(0)?)?)
-            }
-            "sheen" | "sheenColor" | "sheen_color" => m.sheen = Some(rgb()?),
-            "sheenRoughness" | "sheen_roughness" => m.sheen_roughness = Some(unit(num(0)?)?),
-            "transmission" => m.transmission = Some(unit(num(0)?)?),
-            "iridescence" => m.iridescence = Some(unit(num(0)?)?),
-            "alphaTest" | "alpha_test" => m.alpha_test = Some(unit(num(0)?)?),
-            "transparent" => m.transparent = Some(flag()?),
-            "doubleSided" | "double_sided" => m.double_sided = Some(flag()?),
-            other => {
-                return Err(at(
-                    f,
-                    format!(
-                        "is not a field of a program's material block ({other}); it takes {}",
-                        MATERIAL_FIELDS.join(", ")
-                    ),
-                ));
-            }
-        }
-    }
-    Ok(m)
-}
-
-/// Reads a program source: `rel` names it (a `.shape.json`, or an `.ogt`),
-/// `bytes` are its own, and `read` gives a file by its path relative to
-/// the source's folder (for a variant's program).
+/// Reads standalone kernel JSON for modelling tools, not a cook author entry.
 pub fn parse(
     rel: &str,
     bytes: &[u8],
@@ -273,74 +110,18 @@ pub fn parse(
     let utf8 = |b: Vec<u8>, what: &str| {
         String::from_utf8(b).map_err(|_| format!("{what}: not UTF-8 text"))
     };
-    if is_program(rel) {
-        let file = Path::new(rel)
-            .file_name()
-            .and_then(|f| f.to_str())
-            .unwrap_or(rel)
-            .to_string();
-        return Ok(Program {
-            file,
-            text: utf8(bytes.to_vec(), rel)?,
-            ..Default::default()
-        });
-    }
-    let doc = Document::parse(&utf8(bytes.to_vec(), rel)?).map_err(|e| e.to_string())?;
-    crate::grammar::check(&doc.body, LINES, "program model")?;
-    let mut p = Program::default();
-    for e in &doc.body.entries {
-        match e.key.as_str() {
-            "program" => {
-                let file = e.string(0).map_err(|x| at(e, x))?;
-                if !is_program(file) || file.starts_with('/') || file.contains('\\') {
-                    return Err(at(
-                        e,
-                        "names a program file beside the model, in quotes (\"chair.shape.json\")",
-                    ));
-                }
-                p.file = file.to_string();
-            }
-            "params" => {
-                for f in e.block.iter().flat_map(|b| &b.entries) {
-                    let v = f
-                        .number(0)
-                        .map(|n| n.as_f64())
-                        .ok()
-                        .filter(|v| v.is_finite() && f.values.len() == 1)
-                        .ok_or_else(|| at(f, "takes one number, the parameter's value"))?;
-                    p.params.insert(f.key.clone(), v);
-                }
-            }
-            "material" => p.materials.push(material(e)?),
-            "atlas" => {
-                p.atlas = e
-                    .number(0)
-                    .ok()
-                    .and_then(|n| n.as_u64().ok())
-                    .filter(|&n| (16..=8192).contains(&n))
-                    .ok_or_else(|| at(e, "takes the atlas's texels across, 16 to 8192"))?
-                    as u32;
-            }
-            // Read by the cook's conform step.
-            "conform" | "process" => {}
-            other => {
-                return Err(at(
-                    e,
-                    format!(
-                        "is not an entry of a program model ({other}); it takes program, params, material, atlas and conform"
-                    ),
-                ));
-            }
-        }
-    }
-    if p.file.is_empty() {
-        return Err("a program model names its program: program \"chair.shape.json\"".into());
-    }
-    p.text = utf8(
-        read(&p.file).map_err(|e| format!("{}: {e}", p.file))?,
-        &p.file,
-    )?;
-    Ok(p)
+    let file = Path::new(rel)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(rel)
+        .to_string();
+    let mut program = Program {
+        file,
+        text: utf8(bytes.to_vec(), rel)?,
+        ..Default::default()
+    };
+    program.capture(read)?;
+    Ok(program)
 }
 
 /// Files read beside a source: (path relative to its folder, bytes).
@@ -357,6 +138,25 @@ pub struct Written {
 }
 
 impl Program {
+    /// Capture native kernel inputs once; replay and budget passes never reopen them.
+    pub fn capture(
+        &mut self,
+        read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+    ) -> Result<(), String> {
+        let text = program::with_params(&self.text, &self.params).map_err(|e| e.to_string())?;
+        let base = Path::new(&self.file).parent().unwrap_or(Path::new(""));
+        for name in program::fonts_named(&text)
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .chain(program::textures_named(&text).map_err(|e| e.to_string())?)
+        {
+            let path = join(base, &name);
+            let bytes = read(&path)?;
+            self.inputs.insert(name, (path, bytes));
+        }
+        Ok(())
+    }
+
     /// Whether a material block paints any texture map, so every part needs UVs.
     pub fn wants_uvs(&self) -> bool {
         self.materials.iter().any(|m| {
@@ -370,11 +170,7 @@ impl Program {
 
     /// The program replayed at its parameters, with UVs on every part when
     /// `uvs` or [`Program::wants_uvs`]; the files it read.
-    pub fn model(
-        &self,
-        uvs: bool,
-        read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
-    ) -> Result<(Model, Read), String> {
+    pub fn model(&self, uvs: bool) -> Result<(Model, Read), String> {
         let fail = |e: og_shape::model::ModelError| format!("{}: {e}", self.file);
         let mut text = program::with_params(&self.text, &self.params).map_err(fail)?;
         if uvs || self.wants_uvs() {
@@ -385,19 +181,15 @@ impl Program {
             }
             text = v.to_string();
         }
-        // The program's fonts and maps are beside the program.
-        let base = Path::new(&self.file)
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_default();
-        let rel = |name: &str| -> String { join(&base, name) };
         let mut files = vec![(self.file.clone(), self.text.clone().into_bytes())];
         let mut named = |names: Vec<String>| -> Result<program::Fonts, String> {
             let mut out = program::Fonts::new();
             for name in names {
-                let bytes = read(&rel(&name)).map_err(|e| format!("{}: {name}: {e}", self.file))?;
-                files.push((rel(&name), bytes.clone()));
-                out.insert(name, bytes);
+                let (path, bytes) = self.inputs.get(&name).ok_or_else(|| {
+                    format!("{}: {name}: not a captured program input", self.file)
+                })?;
+                files.push((path.clone(), bytes.clone()));
+                out.insert(name, bytes.clone());
             }
             Ok(out)
         };
@@ -428,7 +220,7 @@ impl Program {
         read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
         f: impl FnOnce(&og_shape::tools::Scene, &Model) -> Result<T, String>,
     ) -> Result<(T, Read), String> {
-        let (model, mut files) = self.model(atlas > 0, read)?;
+        let (model, mut files) = self.model(atlas > 0)?;
         let built = model.build().map_err(|e| format!("{}: {e}", self.file))?;
         let mut scene = built.scene();
         let packed = if atlas > 0 {

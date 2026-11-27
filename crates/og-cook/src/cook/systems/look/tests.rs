@@ -31,6 +31,7 @@ fn source(root: &Path, rel: &str) -> Source {
         flipbook: None,
         rig2d: None,
         scene: None,
+        authored_model: None,
         conformed: None,
         fracture: None,
     }

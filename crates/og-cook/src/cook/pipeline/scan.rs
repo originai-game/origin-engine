@@ -458,7 +458,6 @@ pub(crate) fn scan_with(
                 author_bytes = Some(data.as_bytes().to_vec());
                 kind
             }
-            (None, "json") if model_program::is_program(rel) => &crate::cook::model::MODEL,
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
             (None, "svelte") => {
                 early_errors.push((rel.clone(), "document", ".svelte documents are removed: write the screen as a TSX component and mount it with mount(world, Screen, props, { layer }) from @origingame/engine/ui".into()));
@@ -564,6 +563,7 @@ pub(crate) fn scan_with(
             flipbook: None,
             rig2d: None,
             scene: None,
+            authored_model: None,
             conformed: None,
             fracture: None,
         };

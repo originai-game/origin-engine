@@ -134,8 +134,8 @@ pub struct GltfSource {
     /// [`super::conform::model_role`]): the face budget the art contract
     /// holds it to.
     pub role: super::conform::ModelRole,
-    /// A `type model` built again at fewer segments for its face budget
-    /// (`model_text::to_glb_within`): the factor and the triangles it
+    /// A checked model built again at fewer segments for its face budget:
+    /// the factor and the triangles it
     /// drew as written, for the cook report.
     pub(crate) segments: Option<(f64, usize)>,
     /// The model's impostor, baked by the first of its two atlases' outputs.
@@ -874,7 +874,7 @@ impl Strings {
 pub(crate) static MODEL: KindDef = KindDef {
     name: "model",
     extensions: &["glb", "gltf", "vox", "fbx", "obj"],
-    types: &[super::model_text::MODEL_TYPE],
+    types: &[],
     by_content: false,
     streams: true,
     plan: plan_model,
@@ -1199,7 +1199,7 @@ fn plan_model<'a>(
     }
     match anim_settings(s) {
         Ok(a) if anim::wanted(g) || !a.clips.is_empty() => {
-            let deps = anim::dependencies(&assets_root(s), &a, cx.rigs);
+            let deps = anim::dependencies(&assets_root(s), &a, cx.rigs, s);
             let motion = contract
                 .and_then(|c| c.motion.as_ref())
                 .map(|m| m.describe())
@@ -1317,10 +1317,10 @@ impl Job for ModelJob<'_> {
         let prepared = &data.notes;
         let budgets = ex.budgets;
         let mut notes = prepared.notes.clone();
-        // A model written as text past the project's budgets is cooked
+        // An authored model past the project's budgets is cooked
         // and flagged: the budgets are reported numbers, never a reason
         // a model is not made (indices are u32; nothing breaks past them).
-        if ext(&s.rel) == "ogt" {
+        if s.authored_model.is_some() {
             for (what, value, limit, key) in [
                 (
                     "LOD 0 triangles",

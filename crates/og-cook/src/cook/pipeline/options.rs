@@ -230,6 +230,64 @@ impl Default for MeshOptions {
 }
 
 impl MeshOptions {
+    pub(crate) fn for_input(
+        &self,
+        input: Option<&crate::cook::source_schemas::world::model::ModelOptions>,
+    ) -> Result<Self, String> {
+        use crate::cook::source_schemas::world::import::{Collider, ColliderMethod};
+        let mut o = self.clone();
+        let Some(d) = input else { return Ok(o) };
+        if let Some(lods) = &d.lods {
+            if lods.first() != Some(&1.0)
+                || lods.len() > 8
+                || !lods.windows(2).all(|w| w[1] > 0.0 && w[1] < w[0])
+            {
+                return Err(
+                    "lods needs at most eight decreasing fractions beginning at one".into(),
+                );
+            }
+            o.lods = Some(lods.clone());
+        }
+        if let Some(error) = d.lod_error {
+            o.lod_max_error = error;
+        }
+        if let Some(raycast) = d.raycast {
+            o.raycast = raycast;
+        }
+        if let Some(on) = d.impostor {
+            o.impostor = on.then(model::ImpostorBake::default);
+        }
+        if d.impostor_grid.is_some() || d.impostor_size.is_some() || d.impostor_below.is_some() {
+            let bake = o
+                .impostor
+                .as_mut()
+                .ok_or("impostor sizing requires impostor: true")?;
+            if let Some(grid) = d.impostor_grid {
+                bake.grid = grid;
+            }
+            if let Some(size) = d.impostor_size {
+                bake.frame = size;
+            }
+            if let Some(below) = d.impostor_below {
+                bake.below = below;
+            }
+        }
+        if o.impostor
+            .is_some_and(|bake| bake.columns() * bake.frame > 4096)
+        {
+            return Err("impostor atlas width exceeds 4096 pixels".into());
+        }
+        if let Some(collider) = &d.collider {
+            use og_physics_data::trimesh::BakeKind;
+            (o.collider, o.collider_kind) = match collider {
+                Collider::Enabled(on) => (*on, BakeKind::Trimesh),
+                Collider::Method(ColliderMethod::Convex) => (true, BakeKind::Convex),
+                Collider::Method(ColliderMethod::Vhacd) => (true, BakeKind::Vhacd),
+            };
+        }
+        Ok(o)
+    }
+
     /// Each level's fraction of the full mesh's triangles, level 0 first (1).
     pub fn fractions(&self) -> Vec<f32> {
         match &self.lods {
@@ -542,11 +600,18 @@ pub(crate) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core
     s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
 }
 
-/// An asset's own `conform off` (docs/art.md §2.3), at the top of its
-/// `.ogt` (a `type model`) or of its import settings: why it
+/// An asset's own conform opt-out (docs/art.md §2.3), in its checked model
+/// declaration or its import settings: why it
 /// keeps its source as made. Read before the 2D pass takes the line out
 /// of a sheet's text.
 pub(crate) fn own_conform_off(s: &Source) -> Option<String> {
+    if let Some(model) = &s.authored_model {
+        return matches!(
+            model.conform(),
+            Some(super::super::source_schemas::world::model::Conform::Off)
+        )
+        .then(|| format!("conform off ({})", s.path.display()));
+    }
     let off = |b: &og_core::ogt::Block| {
         b.get("conform")
             .and_then(|e| e.values.first())
@@ -601,10 +666,11 @@ pub(crate) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform:
 /// The mesh options of a model `s` under the art contract: its import
 /// settings', with the contract unless the model opts out.
 pub(crate) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
-    let mut m = options
-        .mesh
-        .for_model(settings_block(s, "model"))
-        .map_err(CookError)?;
+    let mut m = match &s.authored_model {
+        Some(model) => options.mesh.for_input(model.options()),
+        None => options.mesh.for_model(settings_block(s, "model")),
+    }
+    .map_err(CookError)?;
     if conform_off(s, options) {
         m.conform = None;
     }
@@ -659,6 +725,12 @@ pub(crate) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
 /// their levels above the mip tail, as a texture file's `texture { stream
 /// true }` does.
 pub(crate) fn model_stream_textures(s: &Source) -> Result<bool, String> {
+    if let Some(model) = &s.authored_model {
+        return Ok(model
+            .options()
+            .and_then(|o| o.stream_textures)
+            .unwrap_or(false));
+    }
     let Some(e) = settings_block(s, "model").and_then(|b| b.get("stream_textures")) else {
         return Ok(false);
     };
@@ -672,6 +744,9 @@ pub(crate) fn model_stream_textures(s: &Source) -> Result<bool, String> {
 }
 
 pub(crate) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
+    if let Some(model) = &s.authored_model {
+        return anim::AnimSettings::from_input(model.options().and_then(|o| o.animation.as_ref()));
+    }
     anim::AnimSettings::parse(settings_block(s, "animation"))
 }
 

@@ -42,6 +42,38 @@ pub(crate) struct PreparedRig {
 
 pub(crate) type Rigs = std::collections::BTreeMap<String, PreparedRig>;
 
+pub(crate) struct Library {
+    pub bytes: Vec<u8>,
+    pub files: Vec<(String, Vec<u8>)>,
+    pub settings: AnimSettings,
+    pub hash: u64,
+}
+
+fn library(
+    root: &Path,
+    id: &str,
+    captured: Option<&std::collections::BTreeMap<String, Library>>,
+) -> Result<(GltfSource, Vec<u8>, AnimSettings), String> {
+    if let Some(libraries) = captured {
+        let lib = libraries
+            .get(id)
+            .ok_or_else(|| format!("{id}: library was not captured"))?;
+        let model = model::load_with(&lib.bytes, &|file| {
+            lib.files
+                .iter()
+                .find(|(name, _)| name == file)
+                .map(|(_, bytes)| bytes.clone())
+                .ok_or_else(|| format!("{file}: not a captured library input"))
+        })?;
+        return Ok((model, lib.bytes.clone(), lib.settings.clone()));
+    }
+    let bytes = std::fs::read(root.join(id)).map_err(|e| e.to_string())?;
+    let path = root.join(id);
+    let model = model::load(&bytes, path.parent().unwrap_or(root))?;
+    let doc = import_settings(root, id)?;
+    Ok((model, bytes, settings_of(doc.as_ref())?))
+}
+
 /// Validates a rig and stores its native humanoid map, not author text.
 fn cook_rig(rig: &og_anim::RigAsset, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     rig.validate().map_err(|e| CookError(e.to_string()))?;
@@ -275,6 +307,41 @@ impl Default for AnimSettings {
 }
 
 impl AnimSettings {
+    pub(crate) fn from_input(
+        d: Option<&crate::cook::source_schemas::world::import::animation::Animation>,
+    ) -> Result<Self, String> {
+        let mut a = Self::default();
+        let Some(d) = d else { return Ok(a) };
+        a.rate = d.rate;
+        a.compress = d.compress.unwrap_or(a.compress);
+        a.tolerance = d.tolerance.unwrap_or(a.tolerance);
+        a.foot_ik = d.foot_ik.unwrap_or(a.foot_ik);
+        a.rig = d.rig.as_ref().map(|r| r.id.clone());
+        a.libraries = d.libraries.iter().map(|r| r.id.clone()).collect();
+        a.events = d
+            .events
+            .iter()
+            .map(|e| (e.clip.clone(), e.marker.clone(), e.time))
+            .collect();
+        for m in &d.mirrors {
+            let name = m
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("{}.mirrored", m.clip));
+            if name == m.clip || a.mirrors.iter().any(|(_, n)| n == &name) {
+                return Err(format!("the mirrored clip '{name}' is named twice"));
+            }
+            a.mirrors.push((m.clip.clone(), name));
+        }
+        for c in &d.clips {
+            if a.clips.iter().any(|clip| clip.name == c.name) {
+                return Err(format!("duplicate clip '{}'", c.name));
+            }
+            a.clips.push(AuthoredClip::from_input(c)?);
+        }
+        Ok(a)
+    }
+
     pub fn describe(&self) -> String {
         let mut s = format!(
             "rate {} resample f64 skin u16x4/unorm16x4 morph f32 sparse codec meshopt-v1 samples {}",
@@ -436,10 +503,27 @@ fn settings_of(doc: Option<&Document>) -> Result<AnimSettings, String> {
 /// What a model's retargeting reads besides the model: its captured rig, each
 /// library with its import settings and rig, as `path=hash` lines (a file
 /// that is missing is `path=missing`), for the cook stamp.
-pub(crate) fn dependencies(root: &Path, settings: &AnimSettings, rigs: &Rigs) -> String {
+pub(crate) fn dependencies(
+    root: &Path,
+    settings: &AnimSettings,
+    rigs: &Rigs,
+    source: &Source,
+) -> String {
     let mut files = Vec::new();
     let mut maps: Vec<_> = settings.rig.iter().cloned().collect();
+    let captured = source
+        .authored_model
+        .as_ref()
+        .and_then(|m| m.libraries.get());
+    let mut deps = Vec::new();
     for l in &settings.libraries {
+        if let Some(libraries) = captured {
+            if let Some(lib) = libraries.get(l) {
+                deps.push(format!("{l}={:016x}", lib.hash));
+                maps.extend(lib.settings.rig.clone());
+            }
+            continue;
+        }
         files.push(l.clone());
         files.push(format!("{l}.ogt"));
         // A directory's settings count once they exist; a missing one is
@@ -455,13 +539,15 @@ pub(crate) fn dependencies(root: &Path, settings: &AnimSettings, rigs: &Rigs) ->
             maps.extend(a.rig);
         }
     }
-    let mut deps: Vec<_> = files
-        .iter()
-        .map(|f| match std::fs::read(root.join(f)) {
-            Ok(b) => format!("{f}={:016x}", og_core::hash::hash_bytes(&b)),
-            Err(_) => format!("{f}=missing"),
-        })
-        .collect();
+    deps.extend(
+        files
+            .iter()
+            .map(|f| match std::fs::read(root.join(f)) {
+                Ok(b) => format!("{f}={:016x}", og_core::hash::hash_bytes(&b)),
+                Err(_) => format!("{f}=missing"),
+            })
+            .collect::<Vec<_>>(),
+    );
     deps.extend(maps.iter().map(|id| match rigs.get(id) {
         Some(rig) => format!("{id}={:016x}", rig.hash),
         None => format!("{id}=missing"),
@@ -930,6 +1016,7 @@ pub(crate) fn clip_names(
     src: &GltfSource,
     settings: &AnimSettings,
     root: &Path,
+    captured: Option<&std::collections::BTreeMap<String, Library>>,
 ) -> Result<Vec<String>, String> {
     let mut names: Vec<_> = src.doc.animations().map(|a| clip_name(&a)).collect();
     for c in &settings.clips {
@@ -939,11 +1026,7 @@ pub(crate) fn clip_names(
         names.push(c.name.clone());
     }
     for lib in &settings.libraries {
-        let bytes = std::fs::read(root.join(lib)).map_err(|e| e.to_string())?;
-        let path = root.join(lib);
-        let model = model::load(&bytes, path.parent().unwrap_or(root))?;
-        let lib_doc = import_settings(root, lib)?;
-        let lib_settings = settings_of(lib_doc.as_ref())?;
+        let (model, _, lib_settings) = library(root, lib, captured)?;
         if !lib_settings.libraries.is_empty() {
             return Err(format!(
                 "library '{lib}': an animation library cannot name libraries of its own"
@@ -953,7 +1036,7 @@ pub(crate) fn clip_names(
             mirrors: Vec::new(),
             ..lib_settings
         };
-        for name in clip_names(&model, &own, root)? {
+        for name in clip_names(&model, &own, root, captured)? {
             if !names.contains(&name) {
                 names.push(name);
             }
@@ -1014,12 +1097,15 @@ pub(crate) fn cook(
     for lib in &settings.libraries {
         let target_map = target_map.as_ref().expect("a library has a target map");
         let fail = |e: String| CookError(format!("library '{lib}': {e}"));
-        let lib_bytes = std::fs::read(root.join(lib)).map_err(|e| fail(e.to_string()))?;
-        let dir = root.join(lib);
-        let dir = dir.parent().unwrap_or(root);
-        let lib_src = model::load(&lib_bytes, dir).map_err(fail)?;
-        let lib_doc = import_settings(root, lib).map_err(fail)?;
-        let lib_settings = settings_of(lib_doc.as_ref()).map_err(fail)?;
+        let (lib_src, lib_bytes, lib_settings) = library(
+            root,
+            lib,
+            source
+                .authored_model
+                .as_ref()
+                .and_then(|m| m.libraries.get()),
+        )
+        .map_err(fail)?;
         if !lib_settings.libraries.is_empty() {
             return Err(fail(
                 "an animation library cannot name libraries of its own".into(),

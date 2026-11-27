@@ -152,14 +152,14 @@ for (const slot of slots) {
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets/looks/main.ogt"), `type look\nversion 1\n---\nname "Preview: ${name}"\nextends ${JSON.stringify(slug)}\n${variant ? `variant ${JSON.stringify(variant)}\n` : ""}`);
-  if (scene.models) cpSync(join(looks, scene.models), join(dir, "assets/models"), { recursive: true });
+  if (scene.models) cpSync(join(looks, scene.models), join(dir, "content/models"), { recursive: true });
   if (scene.scene === "3d") {
     const sprites: Record<string, { path: string; width: number; height: number }> = {};
     if (scene.art) cpSync(join(looks, scene.art), join(dir, "assets/art"), { recursive: true });
     for (const [beat, s] of Object.entries(scene.sprites ?? {})) {
       sprites[beat] = { path: `art/${s.file}`, width: s.height * aspect(join(looks, scene.art!, s.file)), height: s.height };
     }
-    const ground = existsSync(join(dir, "assets/models/field.ogt")) ? "models/field.ogt" : "models/ground.glb";
+    const ground = existsSync(join(dir, "content/models/field.ts")) ? "base/models/field" : "models/ground.glb";
     writeFileSync(join(dir, "src/sprites.ts"), `// Written by templates/looks/preview/render.ts from preview.json.\nexport const GROUND = ${JSON.stringify(ground)};\nexport const SPRITES: Record<string, { path: string; width: number; height: number }> = ${JSON.stringify(sprites)};\n`);
   } else {
     stage2d(dir, name, scene, looks, repo);

@@ -173,8 +173,8 @@ commands:
                       assets/ into cooked/, incrementally; --report prints the ten slowest
                       assets by their last cook; --watch cooks each change, timing it
   export gltf <asset> [project] -o <file.glb> [--lod N]
-                      cook the project and write the cooked model <asset> (its path under assets/:
-                      a glTF, a `type model` of parts or a plant, a .vox) as a glTF binary: one
+                      cook the project and write the cooked model <asset> (a canonical content ID
+                      for authored parts/plants/programs, or an imported mesh ID) as a glTF binary: one
                       level of detail (0, the full mesh, by default), its materials with PNG
                       textures, its instances as nodes, its skins, clips and morph targets
   assets [--kind KIND] [--group GROUP] [--unused] [--refs] [--by] [--dupes [--near N]] [--json] [text]

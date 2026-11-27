@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::sync::OnceLock;
 
 /// Omitted fields remain absent until the material domain normalizes them.
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Material {
@@ -73,6 +73,13 @@ pub struct Material {
     pub stains: Option<f64>,
     #[schemars(range(min = 0, max = 1))]
     pub stochastic: Option<f64>,
+}
+
+impl Material {
+    pub fn schema() -> &'static InputSchema<Self> {
+        static SCHEMA: OnceLock<InputSchema<Material>> = OnceLock::new();
+        SCHEMA.get_or_init(|| InputSchema::new().expect("material input schema"))
+    }
 }
 
 #[derive(Deserialize, JsonSchema)]

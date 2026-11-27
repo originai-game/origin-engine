@@ -10,7 +10,8 @@ never promises more than a game in that look draws (docs/art.md §2.6).
   cel bands, strokes or material must show on them. Every model is cooked,
   so the cook conforms each to the look's art contract. `make3d.py` writes
   the two glbs (the crate, and the 10 x 10 cell meadow, within every look's
-  prop budget) from `sources/`; the rest is `type model` text.
+  prop budget) from `sources/`; the rest is checked `file.model` TypeScript
+  under `content/models/`, loaded by canonical content ID.
 - `2d/`: one place as a 2D game's screen, drawn in every 2D look: a hooded
   traveller with a lantern on a level's ground (a tilemap of a 4 x 4 tile
   set, with a ledge two tiles up), a floating platform with gems over it, a

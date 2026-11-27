@@ -138,8 +138,8 @@ The lantern is packed by `tools/pack.ts` as the generated models are
 
 ### Written here
 
-`assets/plants/*.ogt` (the grasses, flowers and the hawthorn),
-`assets/props/staff.ogt` and `assets/terrain/coast.ogt` are model and
+`content/plants/*.ts` (the grasses, flowers and the hawthorn) and
+`content/props/staff.ts` declare models. `assets/terrain/coast.ogt` is
 terrain text; `tools/terrain.ts` generates `coast-height.png` and
 `coast-control.png` (pinned with the rest) from `src/layout.ts`.
 `assets/fonts/latin` came with `og create` (Noto Sans, OFL; its licence

@@ -33,9 +33,9 @@ use super::{Failure, Files};
 /// What to carry over. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TransferDesc {
-    /// The variant: a `type model` naming a program, or a program.
+    /// The variant: a checked program model, or standalone kernel JSON.
     pub input: Input,
-    /// The baked base: a `type model` whose materials have maps.
+    /// The baked base: a checked program model whose materials have maps.
     pub base: PathBuf,
     /// Texels across each texture; 0 is the base's atlas size.
     pub size: u32,

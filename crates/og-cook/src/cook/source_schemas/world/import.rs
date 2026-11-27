@@ -46,19 +46,8 @@ input!(Model {
     /// the importer and must enter the closed input/dependency graph as well.
     #[schemars(length(min = 1), extend("x-og-input" = "bytes"))]
     source: String,
-    /// At most eight strictly decreasing fractions beginning at one; ordering
-    /// and first value are domain constraints, not a guessed default sequence.
-    #[schemars(length(min = 1, max = 8), extend("items" = {"type":"number","format":"float","exclusiveMinimum":0,"maximum":1}))]
-    lods: Option<Vec<f32>>,
-    #[schemars(range(max = 1), extend("exclusiveMinimum" = 0))]
-    lod_error: Option<f32>,
-    raycast: Option<bool>, collider: Option<Collider>, impostor: Option<bool>,
-    #[schemars(range(min = 2, max = 32))]
-    impostor_grid: Option<u32>,
-    /// Atlas width (grid × frame size) must not exceed 4096 pixels.
-    #[schemars(range(min = 16, max = 512), extend("x-og-unit" = "px"))]
-    impostor_size: Option<u32>,
-    impostor_below: Option<bool>, stream_textures: Option<bool>,
+    #[serde(flatten)]
+    options: super::model::ModelOptions,
     process: Option<Process>,
     /// Source forward axis rotated to +Z; must be perpendicular to up.
     front: Option<Axis>,
@@ -70,12 +59,7 @@ input!(Model {
     vox_fps: Option<f32>,
     #[serde(default)]
     vox_clips: Vec<VoxClip>,
-    animation: Option<animation::Animation>,
     conform: Option<Conform>,
-    /// Opt-in probe-region skin relaxation (12 passes). The importer reports
-    /// changed vertices and remaining stretched triangles; absent means off.
-    #[serde(default)]
-    relax_skin: bool,
 });
 
 #[derive(Deserialize, JsonSchema)]

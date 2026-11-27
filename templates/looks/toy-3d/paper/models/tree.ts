@@ -1,56 +1,12 @@
-type model
-version 1
----
-# toy-3d's paper variant's version: the stepped tree folded from card
-# (paper fold): each tier a six-sided folded cone, the trunk a five-sided
-# rolled tube, every fold a crisp edge.
-material "bark" {
-  color 0.42 0.27 0.15
-  roughness 1
-}
-material "leaves" {
-  color 0.24 0.44 0.22
-  roughness 1
-}
-material "leaves-light" {
-  color 0.33 0.52 0.27
-  roughness 1
-}
-part "trunk" {
-  material "bark"
-  position 0 0.6 0
-  cylinderGeometry {
-    radiusTop 0.12
-    radiusBottom 0.18
-    height 1.2
-    radialSegments 5
-  }
-}
-part "tier-0" {
-  material "leaves"
-  position 0 1.55 0
-  coneGeometry {
-    radius 1.15
-    height 1.1
-    radialSegments 6
-  }
-}
-part "tier-1" {
-  material "leaves-light"
-  position 0 2.25 0
-  quaternion 0 0.2588 0 0.9659
-  coneGeometry {
-    radius 0.85
-    height 0.95
-    radialSegments 6
-  }
-}
-part "tier-2" {
-  material "leaves"
-  position 0 2.85 0
-  coneGeometry {
-    radius 0.55
-    height 0.85
-    radialSegments 6
-  }
-}
+import { file } from '@origingame/engine/author';
+
+// The paper tree: a rolled five-sided trunk and crisp six-sided folded tiers.
+export default file.model({kind:'geometry',desc:{items:[
+  {name:'bark',input:{kind:'material',desc:{color:[0.42,0.27,0.15],roughness:1}}},
+  {name:'leaves',input:{kind:'material',desc:{color:[0.24,0.44,0.22],roughness:1}}},
+  {name:'leaves-light',input:{kind:'material',desc:{color:[0.33,0.52,0.27],roughness:1}}},
+  {name:'trunk',input:{kind:'part',desc:{material:'bark',placements:[{transform:{position:[0,0.6,0]}}],geometry:{kind:'cylinderGeometry',desc:{radiusTop:0.12,radiusBottom:0.18,height:1.2,radialSegments:5}}}}},
+  {name:'tier-0',input:{kind:'part',desc:{material:'leaves',placements:[{transform:{position:[0,1.55,0]}}],geometry:{kind:'coneGeometry',desc:{radius:1.15,height:1.1,radialSegments:6}}}}},
+  {name:'tier-1',input:{kind:'part',desc:{material:'leaves-light',placements:[{transform:{position:[0,2.25,0],quaternion:[0,0.2588,0,0.9659]}}],geometry:{kind:'coneGeometry',desc:{radius:0.85,height:0.95,radialSegments:6}}}}},
+  {name:'tier-2',input:{kind:'part',desc:{material:'leaves',placements:[{transform:{position:[0,2.85,0]}}],geometry:{kind:'coneGeometry',desc:{radius:0.55,height:0.85,radialSegments:6}}}}},
+]}});

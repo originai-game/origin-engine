@@ -157,9 +157,9 @@ rewrites the references to it.
 
 `og export gltf <asset> [project] -o <file.glb> [--lod N]` cooks the
 project and writes one cooked model as a glTF binary: a model the cook
-generates (a `type model` of parts or a plant, a `.vox`) for another tool
-or renderer, or a glTF as the cook left it. `<asset>` is the model's path
-under `assets/` (`plants/oak.ogt`, `models/ship.glb`).
+generates (a checked `file.model` of parts or a plant, a `.vox`) for another tool
+or renderer, or a glTF as the cook left it. `<asset>` is the model's canonical
+content ID (`base/plants/oak`) or scanned import ID (`models/ship.glb`).
 
 The file is what the game draws: the conformed geometry and colours, the
 normals, uvs, tangents and vertex colours, the metallic-roughness materials

@@ -62,7 +62,7 @@ export function buildWanderer(world: World, coast: Coast): void {
 
   // The staff is carried upright by the right side, its hook outwards; the
   // hand rests on its grip (player.ts moves the grip with the wanderer).
-  must(world.instantiate(must(og.load.gltf(world, "props/staff.ogt")), {
+  must(world.instantiate(must(og.load.gltf(world, "base/props/staff")), {
     name: "staff", parent: body, position: CARRY.staff,
     quaternion: quat.multiply(og.transform.fromAxisAngle(up, Math.PI), og.transform.fromAxisAngle({ x: 0, y: 0, z: 1 }, CARRY.lean)),
   }));

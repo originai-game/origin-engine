@@ -106,8 +106,8 @@ mixed street, a `pick` in `Ground` can choose this shopfront or a second
 composition with a narrow entrance and raised residential windows; put
 that choice on the street's front face, not every party wall.
 
-A material library gives each label its materials, each a `type model`
-material (models §1) with its own fields:
+A material library gives each label its materials, each sharing the native
+surface fields of `file.model` materials (models §1):
 
 ```text
 type materials

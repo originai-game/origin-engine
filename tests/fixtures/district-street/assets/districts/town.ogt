@@ -25,7 +25,7 @@ buildings {
   rule "base/grammars/terrace"
 }
 prop "lamp" {
-  model "models/lamp.ogt"
+  model "base/models/lamp"
   every 22
   jitter 1
   kerb 0.5

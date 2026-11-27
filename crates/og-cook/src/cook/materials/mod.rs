@@ -20,6 +20,45 @@ mod tests;
 
 use super::systems::district::parse;
 
+/// The remaining material-library/import text boundary decodes into the shared
+/// native surface schema. Model declarations never pass through this adapter.
+pub(crate) fn material_input(
+    b: &og_core::ogt::Block,
+) -> Result<super::source_schemas::world::materials::Material, String> {
+    use super::source_schemas::world::materials::Material;
+    let mut fields = serde_json::Map::new();
+    for e in &b.entries {
+        if e.block.is_some() || fields.contains_key(&e.key) {
+            return Err(format!(
+                "line {}: {}: expected one material value",
+                e.line, e.key
+            ));
+        }
+        let values = e
+            .values
+            .iter()
+            .map(|v| {
+                if let Some(n) = v.as_number() {
+                    serde_json::json!(n.as_f64())
+                } else if let Some(b) = v.as_bool() {
+                    serde_json::json!(b)
+                } else {
+                    serde_json::json!(v.as_str())
+                }
+            })
+            .collect::<Vec<_>>();
+        let value = if values.len() == 1 {
+            values.into_iter().next().unwrap()
+        } else {
+            values.into()
+        };
+        fields.insert(e.key.clone(), value);
+    }
+    Material::schema()
+        .decode(fields.into())
+        .map_err(|e| e.to_string())
+}
+
 /// One image a library asks for.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Request {
@@ -51,22 +90,18 @@ pub fn requests(text: &str) -> Result<Vec<Request>, String> {
             continue;
         }
         let subject = m.brief.unwrap_or_default();
-        let named = |k: &str| -> Result<Option<String>, String> {
-            match m.fields.get(k) {
-                None => Ok(None),
-                Some(e) => e
-                    .string(0)
-                    .map(|s| Some(crate::runtime::asset_id(s).to_string()))
-                    .map_err(|e| format!("material `{}`: {k}: {e}", m.name)),
-            }
+        let named = |value: &Option<String>| {
+            value
+                .as_deref()
+                .map(|s| crate::runtime::asset_id(s).to_string())
         };
-        let map = named("map")?.ok_or_else(|| {
+        let map = named(&m.fields.map).ok_or_else(|| {
             format!(
                 "material `{}` states a brief but names no `map` for it to make",
                 m.name
             )
         })?;
-        let normal_map = named("normalMap")?;
+        let normal_map = named(&m.fields.normal_map);
         if m.relief != 0.0 && normal_map.is_none() {
             return Err(format!(
                 "material `{}` states a relief but names no `normalMap` for it",
@@ -79,8 +114,8 @@ pub fn requests(text: &str) -> Result<Vec<Request>, String> {
                 m.name
             ));
         };
-        let roughness_map = named("metalnessMap")?;
-        let ao_map = named("aoMap")?;
+        let roughness_map = named(&m.fields.metalness_map);
+        let ao_map = named(&m.fields.ao_map);
         if m.roughness_range.is_some() && roughness_map.is_none() {
             return Err(format!(
                 "material `{}`: roughnessRange needs a metalnessMap destination",
@@ -339,6 +374,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         flipbook: None,
                         rig2d: None,
                         scene: None,
+                        authored_model: None,
                         conformed: None,
                         fracture: None,
                     });

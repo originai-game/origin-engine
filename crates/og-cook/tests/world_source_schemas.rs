@@ -36,7 +36,7 @@ fn import_and_model_program_author_contracts() {
     else {
         panic!()
     };
-    assert!(!defaults.relax_skin);
+    assert!(!defaults.options.relax_skin.unwrap_or(false));
     for (path, bad) in [
         ("/relaxSkin", json!(1)),
         ("/lods", json!([1, 0])),

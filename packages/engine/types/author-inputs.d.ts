@@ -1193,14 +1193,12 @@ readonly "impostorGrid"?: ((number) | (null));
 readonly "impostorSize"?: ((number) | (null));
 readonly "kind": ("model") & (string);
 readonly "lodError"?: ((number) | (null));
-/** At most eight strictly decreasing fractions beginning at one; ordering
-and first value are domain constraints, not a guessed default sequence. */
+/** At most eight strictly decreasing fractions beginning at one. */
 readonly "lods"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "process"?: (((Input_importDefinitions["Process"])) | ((null)));
 readonly "raycast"?: ((boolean) | (null));
-/** Opt-in probe-region skin relaxation (12 passes). The importer reports
-changed vertices and remaining stretched triangles; absent means off. */
-readonly "relaxSkin"?: (boolean);
+/** Opt-in probe-region skin relaxation (12 passes); absent means off. */
+readonly "relaxSkin"?: ((boolean) | (null));
 /** GLB/glTF/OBJ/FBX/VOX input. External buffers and images are discovered by
 the importer and must enter the closed input/dependency graph as well. */
 readonly "source": (string);
@@ -2249,6 +2247,17 @@ readonly "distance": (number);
 readonly "kind": ("plane") & (string);
 readonly "normal": (ReadonlyArray<(number)> & { readonly length: 3 });
 })) & { readonly "bottom"?: never; readonly "ends"?: never; }));
+readonly "Animation": ({
+readonly "clips"?: (ReadonlyArray<(Input_modelDefinitions["Clip"])> | (number extends ((Input_modelDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "compress"?: ((boolean) | (null));
+readonly "events"?: (ReadonlyArray<(Input_modelDefinitions["Event"])> | (number extends ((Input_modelDefinitions["Event"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "footIk"?: ((boolean) | (null));
+readonly "libraries"?: (ReadonlyArray<(Input_modelDefinitions["ContentRef"])> | (number extends ((Input_modelDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "mirrors"?: (ReadonlyArray<(Input_modelDefinitions["Mirror2"])> | (number extends ((Input_modelDefinitions["Mirror2"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "rate"?: ((number) | (null));
+readonly "rig"?: (((Input_modelDefinitions["ContentRef"])) | ((null)));
+readonly "tolerance"?: ((number) | (null));
+});
 readonly "Arc": ({
 readonly "center": (ReadonlyArray<(number)> & { readonly length: 2 });
 readonly "clockwise"?: (boolean);
@@ -2321,6 +2330,13 @@ readonly "radius"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
+readonly "Channel": ({
+readonly "interpolation"?: (((Input_modelDefinitions["Interpolation"])) | ((null)));
+readonly "keys": (ReadonlyArray<(Input_modelDefinitions["Key"])> | (number extends ((Input_modelDefinitions["Key"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "node": (string);
+readonly "path": (Input_modelDefinitions["ChannelPath"]);
+});
+readonly "ChannelPath": ("translation" | "rotation" | "scale" | "weights" | "visibility") & (string);
 readonly "CircleGeometry": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
@@ -2333,6 +2349,12 @@ readonly "thetaStart"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
+readonly "Clip": ({
+readonly "channels": (ReadonlyArray<(Input_modelDefinitions["Channel"])> | (number extends ((Input_modelDefinitions["Channel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "name": (string);
+});
+readonly "Collider": (((boolean)) | ((Input_modelDefinitions["ColliderMethod"])));
+readonly "ColliderMethod": ("convex" | "vhacd") & (string);
 readonly "ConeGeometry": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
@@ -2408,6 +2430,11 @@ readonly "end": (number);
 readonly "radii": (ReadonlyArray<(number)> & { readonly length: 2 });
 readonly "rotation"?: (number);
 readonly "start": (number);
+});
+readonly "Event": ({
+readonly "clip": (string);
+readonly "marker": (string);
+readonly "time": (number);
 });
 readonly "ExtrudeGeometry": ({
 readonly "bevelEnabled"?: ((boolean) | (null));
@@ -2534,6 +2561,7 @@ readonly "conform"?: (((Input_modelDefinitions["Conform"])) | ((null)));
 readonly "fracture"?: (((Input_modelDefinitions["Fracture"])) | ((null)));
 /** Ordered declarations: a named dependency must precede its consumer. */
 readonly "items": (ReadonlyArray<(Input_modelDefinitions["Item"])> | (number extends ((Input_modelDefinitions["Item"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "options"?: (((Input_modelDefinitions["ModelOptions"])) | ((null)));
 readonly "process"?: (((Input_modelDefinitions["Process"])) | ((null)));
 });
 readonly "Growth": ("deciduous" | "evergreen") & (string);
@@ -2541,6 +2569,7 @@ readonly "Impact": ({
 readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
 readonly "radius": (number);
 });
+readonly "Interpolation": ("step" | "linear" | "cubicSpline") & (string);
 readonly "Item": ({
 readonly "input": (Input_modelDefinitions["ItemInput"]);
 readonly "name": (string);
@@ -2563,6 +2592,12 @@ readonly "name": (string);
 /** Empty string denotes root; all other parents must precede the child. */
 readonly "parent": (string);
 readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
+});
+readonly "Key": ({
+readonly "time": (number);
+/** Metres, xyzw unit quaternion, scale factors, morph weights or 0/1.
+Cubic spline keys contain in-tangent, value, out-tangent (per second). */
+readonly "values": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "LatheGeometry": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
@@ -2665,6 +2700,10 @@ readonly "physics"?: ((boolean) | (null));
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
 readonly "Mirror": ("none" | "x" | "y" | "z") & (string);
+readonly "Mirror2": ({
+readonly "clip": (string);
+readonly "name"?: ((string) | (null));
+});
 readonly "ModelGeometry": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
@@ -2676,6 +2715,22 @@ readonly "physics"?: ((boolean) | (null));
 readonly "source": (Input_modelDefinitions["ContentRef"]);
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
+});
+readonly "ModelOptions": ({
+readonly "animation"?: (((Input_modelDefinitions["Animation"])) | ((null)));
+readonly "collider"?: (((Input_modelDefinitions["Collider"])) | ((null)));
+readonly "impostor"?: ((boolean) | (null));
+readonly "impostorBelow"?: ((boolean) | (null));
+readonly "impostorGrid"?: ((number) | (null));
+/** Atlas width (grid × frame size) must not exceed 4096 pixels. */
+readonly "impostorSize"?: ((number) | (null));
+readonly "lodError"?: ((number) | (null));
+/** At most eight strictly decreasing fractions beginning at one. */
+readonly "lods"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "raycast"?: ((boolean) | (null));
+/** Opt-in probe-region skin relaxation (12 passes); absent means off. */
+readonly "relaxSkin"?: ((boolean) | (null));
+readonly "streamTextures"?: ((boolean) | (null));
 });
 readonly "Part": ({
 readonly "geometry": (Input_modelDefinitions["Geometry"]);
@@ -2827,6 +2882,7 @@ readonly "ProgramModel": ({
 readonly "atlas"?: ((number) | (null));
 readonly "conform"?: (((Input_modelDefinitions["Conform"])) | ((null)));
 readonly "materials"?: (ReadonlyArray<(Input_modelDefinitions["ProgramMaterial"])> | (number extends ((Input_modelDefinitions["ProgramMaterial"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "options"?: (((Input_modelDefinitions["ModelOptions"])) | ((null)));
 readonly "params"?: (Readonly<Record<string, (number)>>);
 readonly "process"?: (((Input_modelDefinitions["Process"])) | ((null)));
 readonly "program": (Input_modelDefinitions["ContentRef"]);

@@ -135,7 +135,6 @@ pub(crate) fn scan_sources(
     crate::cook::materials::expand(&mut sources);
     // Typed script results enter the ordinary asset pipelines before planning.
     effect::expand(&mut sources);
-    model_text::expand(&mut sources);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
     Ok(Scanned {
@@ -149,9 +148,6 @@ pub(crate) fn scan_sources(
 
 /// What the model import stage keeps beside the sources it rewrote.
 pub(crate) struct Imported {
-    // The `type model` texts, built again under the art contract's face
-    // budget once the look is read (below).
-    pub(crate) model_texts: BTreeMap<String, String>,
     /// The fractured models whose prefracture came from the cache.
     pub(crate) reused_fractures: BTreeSet<String>,
 }
@@ -159,8 +155,6 @@ pub(crate) struct Imported {
 /// What importing one source made beside the source itself.
 #[derive(Default)]
 struct Made {
-    /// A `type model`'s text.
-    text: Option<String>,
     /// Its prefracture came from the cache.
     reused_fracture: bool,
     /// The files its glTF read, which are part of it.
@@ -176,6 +170,7 @@ pub(crate) fn import(
     texture_cache: Option<&Path>,
     threads: usize,
     rigs: &anim::Rigs,
+    bindings: &BTreeMap<String, source_content::Output>,
 ) -> Imported {
     // Virtual map paths cannot collide with physical files (checked at expansion).
     let textures: BTreeMap<_, _> = sources
@@ -183,19 +178,22 @@ pub(crate) fn import(
         .filter(|s| s.kind == &texture::TEXTURE && !s.path.exists())
         .map(|s| (s.rel.clone(), s.bytes.clone()))
         .collect();
-    let ids: BTreeMap<_, _> = sources
+    let mut ids: BTreeMap<_, _> = sources
         .iter()
         .enumerate()
         .map(|(i, s)| (s.rel.clone(), i))
         .collect();
+    for (id, output) in bindings {
+        if let Some(&i) = ids.get(&output.asset) {
+            ids.insert(id.clone(), i);
+        }
+    }
     let operands: Vec<_> = sources
         .iter()
         .map(|s| {
-            if s.kind == &model::MODEL && ext(&s.rel) == "ogt" {
-                model_text::operand_references(&s.bytes)
-            } else {
-                Vec::new()
-            }
+            s.authored_model.as_ref().map_or_else(Vec::new, |m| {
+                m.references().into_iter().map(|(id, _)| id).collect()
+            })
         })
         .collect();
     let transfers: Vec<_> = sources
@@ -204,11 +202,16 @@ pub(crate) fn import(
             if s.kind != &model::MODEL {
                 return None;
             }
-            let text = (ext(&s.rel) == "ogt").then(|| String::from_utf8_lossy(&s.bytes));
-            model::process::settings(text.as_deref(), settings_block(s, "model"))
+            if let Some(m) = &s.authored_model {
+                return m
+                    .process()
+                    .and_then(model::process::transfer::source)
+                    .map(str::to_string);
+            }
+            model::process::settings(settings_block(s, "model"))
                 .ok()
                 .flatten()
-                .and_then(|b| model::process::transfer::source(&b).ok().flatten())
+                .and_then(|b| model::process::transfer::source(&b).map(str::to_string))
         })
         .collect();
     let dependencies: Vec<_> = operands
@@ -256,25 +259,40 @@ pub(crate) fn import(
             .iter()
             .filter(|&&i| !operands[i].is_empty())
             .map(|&i| {
-                let bytes = model_text::expand_operands(&sources[i].bytes, |id, node| {
-                    let s = ids
-                        .get(id)
-                        .map(|&i| &sources[i])
-                        .ok_or_else(|| format!("modelGeometry source '{id}' is not an asset"))?;
-                    let gltf = s.gltf.as_ref().ok_or_else(|| {
-                        format!(
-                            "modelGeometry source '{id}' did not import as a model: {}",
-                            s.error.as_deref().unwrap_or("not a model")
-                        )
-                    })?;
-                    model::operand_geometry(gltf, node)
-                });
-                (i, bytes)
+                let prepared = sources[i].authored_model.as_ref().expect("model operands");
+                let meshes = prepared
+                    .references()
+                    .into_iter()
+                    .map(|(id, node)| {
+                        let s = ids.get(&id).map(|&i| &sources[i]).ok_or_else(|| {
+                            format!("modelGeometry source '{id}' is not an asset")
+                        })?;
+                        let gltf = s.gltf.as_ref().ok_or_else(|| {
+                            format!(
+                                "modelGeometry source '{id}' did not import as a model: {}",
+                                s.error.as_deref().unwrap_or("not a model")
+                            )
+                        })?;
+                        Ok((
+                            (id, node.clone()),
+                            model::operand_geometry(gltf, node.as_deref())?,
+                        ))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, String>>();
+                (i, meshes)
             })
             .collect();
-        for (i, bytes) in expanded {
-            match bytes {
-                Ok(bytes) => sources[i].bytes = bytes,
+        for (i, meshes) in expanded {
+            match meshes {
+                Ok(meshes) => {
+                    sources[i]
+                        .authored_model
+                        .as_ref()
+                        .unwrap()
+                        .operands
+                        .set(meshes)
+                        .expect("operands captured once");
+                }
                 Err(e) => sources[i].error = Some(e),
             }
         }
@@ -314,22 +332,68 @@ pub(crate) fn import(
         }
         pending.retain(|i| !ready.contains(i));
     }
-    let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
     for (s, made) in sources.iter().zip(made) {
         let Some(made) = made else { continue };
-        if let Some(text) = made.text {
-            model_texts.insert(s.rel.clone(), text);
-        }
         if made.reused_fracture {
             reused_fractures.insert(s.rel.clone());
         }
         consumed.extend(made.consumed);
     }
-    Imported {
-        model_texts,
-        reused_fractures,
+    let libraries: Vec<_> = sources
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.authored_model.is_some())
+        .map(|(i, source)| {
+            let captured = (|| -> Result<_, String> {
+                let settings = anim_settings(source)?;
+                settings
+                    .libraries
+                    .iter()
+                    .map(|id| {
+                        let lib = ids
+                            .get(id)
+                            .map(|&i| &sources[i])
+                            .ok_or_else(|| format!("{id}: not a model library"))?;
+                        let gltf = lib
+                            .gltf
+                            .as_ref()
+                            .ok_or_else(|| format!("{id}: library did not import"))?;
+                        let settings = anim_settings(lib)?;
+                        if !settings.libraries.is_empty() {
+                            return Err(format!(
+                                "{id}: an animation library cannot name libraries of its own"
+                            ));
+                        }
+                        Ok((
+                            id.clone(),
+                            anim::Library {
+                                bytes: lib.bytes.clone(),
+                                files: gltf.external.clone(),
+                                settings,
+                                hash: lib.hash,
+                            },
+                        ))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, String>>()
+            })();
+            (i, captured)
+        })
+        .collect();
+    for (i, captured) in libraries {
+        match captured {
+            Ok(libraries) => {
+                let _ = sources[i]
+                    .authored_model
+                    .as_ref()
+                    .unwrap()
+                    .libraries
+                    .set(libraries);
+            }
+            Err(error) => sources[i].error = Some(error),
+        }
     }
+    Imported { reused_fractures }
 }
 
 /// A source's hash: its own bytes', a byte at a time, with its settings
@@ -337,6 +401,9 @@ pub(crate) fn import(
 pub(crate) fn source_hash(s: &Source) -> u64 {
     let mut h = StableHasher::new();
     h.write(&s.bytes);
+    if let Some(model) = &s.authored_model {
+        h.write(&model.hash);
+    }
     if let Some((text, _)) = &s.settings {
         h.write_str(text);
     }
@@ -369,16 +436,19 @@ fn import_source(
         .rel
         .rsplit_once('/')
         .map_or(String::new(), |(p, _)| format!("{p}/"));
+    let authored = s.authored_model.clone();
     let read = |file: &str| {
+        if let Some(model) = &authored {
+            return model.read(file);
+        }
         textures
             .get(&normalise_rel(&format!("{base}{file}")))
             .cloned()
             .map(Ok)
             .unwrap_or_else(|| std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}")))
     };
-    let processing = if s.kind == &model::MODEL {
-        let text = (ext(&s.rel) == "ogt").then(|| String::from_utf8_lossy(&s.bytes));
-        match model::process::settings(text.as_deref(), settings_block(s, "model")) {
+    let imported_processing = if s.kind == &model::MODEL && authored.is_none() {
+        match model::process::settings(settings_block(s, "model")) {
             Ok(v) => v,
             Err(e) => {
                 s.error = Some(e);
@@ -388,6 +458,15 @@ fn import_source(
     } else {
         None
     };
+    let processing = authored
+        .as_ref()
+        .and_then(|m| m.process())
+        .or(imported_processing.as_ref());
+    let parameters = processing.as_ref().map(|_| {
+        let mut bytes = s.bytes.clone();
+        bytes.extend_from_slice(s.settings.as_ref().map_or("", |(text, _)| text).as_bytes());
+        bytes
+    });
     // What a model says it is (`conform character`, `conform effect`),
     // read from its text or import settings before a text becomes a glb.
     let role = if s.kind == &crate::cook::model::MODEL {
@@ -432,36 +511,10 @@ fn import_source(
             }
         }
     }
-    // A model whose source is an og-shape program (the program, or a
-    // `type model` naming it with its values): replayed by the kernel
-    // and written as a glTF binary here (`model_program.rs`); the
-    // program and the files it read join its hash.
-    if s.kind == &crate::cook::model::MODEL
-        && (model_program::is_program(&s.rel)
-            || (ext(&s.rel) == "ogt"
-                && Document::parse(&String::from_utf8_lossy(&s.bytes))
-                    .is_ok_and(|d| model_program::names_program(&d))))
-    {
-        match model_program::parse(&s.rel, &s.bytes, &read).and_then(|p| p.glb(&read)) {
-            Ok(w) => {
-                s.bytes = w.glb;
-                imported = Some((w.read, Vec::new()));
-            }
-            Err(e) => {
-                s.error = Some(e);
-                return None;
-            }
-        }
-    }
-    // A model written as text (`type model`): its parts built and
-    // written as a glTF binary here, so the rest of the cook sees a .glb.
-    else if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
-        let text = String::from_utf8_lossy(&s.bytes).to_string();
-        match model_text::to_glb(&text) {
-            Ok(glb) => {
-                s.bytes = glb;
-                made.text = Some(text);
-            }
+    // Checked declarations write native geometry directly to glTF.
+    if let Some(model) = &authored {
+        match model.glb(0) {
+            Ok((glb, _)) => s.bytes = glb,
             Err(e) => {
                 s.error = Some(e);
                 return None;
@@ -484,18 +537,25 @@ fn import_source(
             }
         }
     }
-    if let Some(processing) = &processing {
-        let processed = model::process::transfer::source(processing).and_then(|id| {
+    if let Some(processing) = processing {
+        let processed = (|| {
+            let id = model::process::transfer::source(processing);
             let base = id
-                .as_ref()
                 .map(|id| {
                     bases
                         .get(id)
                         .ok_or_else(|| format!("transfer.source '{id}' did not import as a model"))
                 })
                 .transpose()?;
-            model::process::apply(&s.bytes, &read, processing, texture_cache, base)
-        });
+            model::process::apply(
+                &s.bytes,
+                &read,
+                processing,
+                parameters.as_deref().unwrap(),
+                texture_cache,
+                base,
+            )
+        })();
         match processed {
             Ok((bytes, read)) => {
                 s.bytes = bytes;
@@ -509,23 +569,29 @@ fn import_source(
     }
     // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
     if s.kind == &crate::cook::model::MODEL {
-        let text = made.text.as_deref();
+        let parameters = authored
+            .as_ref()
+            .map_or(&[][..], |model| model.hash.as_slice());
         let input_stamp = stamp(
             &[Area::Fracture],
             &[
                 &s.bytes,
-                text.unwrap_or_default().as_bytes(),
+                parameters,
                 s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
             ],
         );
-        match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
+        let fracture = match &authored {
+            Some(model) => model.fracture(),
+            None => fracture::Settings::of(s.settings.as_ref().map(|(_, d)| d)),
+        };
+        match fracture.and_then(|f| {
             f.map(|f| {
                 let key = cache::key(
                     &[crate::format::Area::Fracture],
                     "fracture",
                     &[
                         &s.bytes,
-                        text.unwrap_or_default().as_bytes(),
+                        parameters,
                         s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
                     ],
                 );
@@ -559,23 +625,27 @@ fn import_source(
         match model::load_with(&s.bytes, &read) {
             Ok(mut g) => {
                 let relaxed = (|| {
-                    let enabled = settings_block(s, "model")
-                        .and_then(|b| b.get("relaxSkin"))
-                        .map(|e| {
-                            if e.values.len() == 1 {
-                                e.values[0].as_bool()
-                            } else {
-                                None
-                            }
-                            .ok_or_else(|| {
-                                format!(
-                                    "line {}: relaxSkin takes true or false (the default)",
-                                    e.line
-                                )
+                    let enabled = if let Some(model) = &s.authored_model {
+                        model.options().and_then(|o| o.relax_skin).unwrap_or(false)
+                    } else {
+                        settings_block(s, "model")
+                            .and_then(|b| b.get("relaxSkin"))
+                            .map(|e| {
+                                if e.values.len() == 1 {
+                                    e.values[0].as_bool()
+                                } else {
+                                    None
+                                }
+                                .ok_or_else(|| {
+                                    format!(
+                                        "line {}: relaxSkin takes true or false (the default)",
+                                        e.line
+                                    )
+                                })
                             })
-                        })
-                        .transpose()?
-                        .unwrap_or(false);
+                            .transpose()?
+                            .unwrap_or(false)
+                    };
                     if enabled {
                         let settings = anim_settings(s)?;
                         model::skin_report::repair(&mut g, rigs, settings.rig.as_deref())?;
@@ -608,11 +678,6 @@ fn import_source(
             }
             Err(e) => s.error = Some(e),
         }
-    }
-    // Rebuilding procedural primitives under an art face budget would erase
-    // the authored preparation. The normal imported-mesh budget applies instead.
-    if processing.is_some() {
-        made.text = None;
     }
     Some(made)
 }
@@ -667,11 +732,6 @@ pub(crate) fn resolve(
         if s.kind == &crate::cook::texture::TEXTURE && s.own_settings() {
             consumed.remove(&s.rel);
         }
-        // A model program is a model of its own at its own values, also
-        // when a `type model` variant reads it as its part.
-        if s.kind == &crate::cook::model::MODEL && model_program::is_program(&s.rel) {
-            consumed.remove(&s.rel);
-        }
         if s.kind == &terrain::TERRAIN
             && let Ok(prepared) = terrain::get(s, &s.rel)
         {
@@ -709,7 +769,6 @@ pub(crate) fn contract(
     content: &source_content::Graph,
     sources: &mut Vec<Source>,
     known: &BTreeSet<String>,
-    model_texts: &BTreeMap<String, String>,
     options: &CookOptions,
     early_errors: &mut Vec<EarlyError>,
 ) -> Result<Contracted, CookError> {
@@ -834,8 +893,8 @@ pub(crate) fn contract(
             Err(e) => early_errors.push((id.clone(), "look", e)),
         }
     }
-    // A `type model` past its face budget is built again at the style's
-    // segment counts (`model_text::to_glb_within`) before the 3D pass
+    // A procedural model past its face budget is rebuilt from its captured
+    // native input at the style's segment counts before the 3D pass
     // decimates what is left. Its stamp already carries the budget
     // (`Conform::model_desc`).
     if let Some(c) = &with_contract.mesh.conform {
@@ -843,12 +902,12 @@ pub(crate) fn contract(
             .iter_mut()
             .filter(|s| s.error.is_none() && !c.off.contains_key(&s.rel))
         {
-            let (Some(text), Some(g)) = (model_texts.get(&s.rel), &s.gltf) else {
+            let (Some(model), Some(g)) = (&s.authored_model, &s.gltf) else {
                 continue;
             };
             // A fractured model keeps its chunks; the decimation that
             // follows holds it to the budget.
-            if s.fracture.is_some() {
+            if s.fracture.is_some() || model.process().is_some() {
                 continue;
             }
             if !c.applies(g) {
@@ -857,21 +916,11 @@ pub(crate) fn contract(
             let (budget, _) = c.budget(g);
             let role = g.role;
             let written = conform::mesh::drawn_triangles(g);
-            let rebuilt = model_text::to_glb_within(text, budget).and_then(|(glb, detail)| {
+            let rebuilt = model.glb(budget).and_then(|(glb, detail)| {
                 if detail >= 1.0 {
                     return Ok(None);
                 }
-                let dir = s.path.parent().unwrap_or(Path::new("."));
-                let mut g = model::load_with(&glb, &|file| {
-                    g.external
-                        .iter()
-                        .find(|(name, _)| name == file)
-                        .map(|(_, bytes)| bytes.clone())
-                        .map(Ok)
-                        .unwrap_or_else(|| {
-                            std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}"))
-                        })
-                })?;
+                let mut g = model::load_with(&glb, &|file| model.read(file))?;
                 g.role = role;
                 g.segments = Some((detail, written));
                 Ok(Some((glb, g)))

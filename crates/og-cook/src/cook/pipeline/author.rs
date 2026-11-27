@@ -37,6 +37,8 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("scene", &scene::SCENE),
     ("prefab", &scene::PREFAB),
     ("scatter", &scene::SCENE),
+    ("model", &model::MODEL),
+    ("model-program", &model::MODEL),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -180,6 +182,182 @@ pub(crate) fn rigs(
     Ok((content, rigs))
 }
 
+fn declaration(root: &Path, entry: &source_index::Entry, kind: Kind, bytes: Vec<u8>) -> Source {
+    Source {
+        rel: entry.id.clone(),
+        path: root.join(&entry.file),
+        kind,
+        hash: hash_bytes(&bytes),
+        bytes,
+        settings: None,
+        settings_files: Vec::new(),
+        gltf: None,
+        error: None,
+        encoded: Default::default(),
+        whole: Default::default(),
+        model: Default::default(),
+        video: None,
+        timeline: None,
+        motion_action: None,
+        strings: None,
+        font_pack: None,
+        fields: Default::default(),
+        fx: None,
+        terrains: Default::default(),
+        navmesh: None,
+        lightmap: None,
+        tileset: None,
+        tilemap: None,
+        animgraph: None,
+        flipbook: None,
+        rig2d: None,
+        scene: None,
+        authored_model: None,
+        conformed: None,
+        fracture: None,
+    }
+}
+
+/// Mesh operands must be imported before terrain/navigation. Evaluate each
+/// declaration once and retain its checked content for the complete graph.
+pub(crate) fn models(
+    root: &Path,
+    project: &source_project::Project,
+    sources: &mut Vec<Source>,
+    prepared: &mut BTreeMap<String, source_content::Content>,
+) -> Result<(), CookError> {
+    use source_schemas::world::model::{ModelInput, ProgramModel};
+    let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
+    let mut evaluator = source_content::Evaluator::default();
+    for entry in index
+        .entries
+        .values()
+        .filter(|e| matches!(e.factory.as_str(), "model" | "model-program"))
+    {
+        let content = evaluator
+            .evaluate(root, project, entry, &BTreeMap::new(), None)
+            .map_err(|e| CookError(e.to_string()))?;
+        prepared.insert(entry.id.clone(), content);
+    }
+    for entry in index
+        .entries
+        .values()
+        .filter(|e| matches!(e.factory.as_str(), "model" | "model-program"))
+    {
+        let content = &prepared[&entry.id];
+        let file: source_schemas::File = serde_json::from_value(content.data().root().into_json())
+            .map_err(|e| CookError(e.to_string()))?;
+        let mut source = declaration(
+            root,
+            entry,
+            &model::MODEL,
+            content.data().as_bytes().to_vec(),
+        );
+        let mut program = None;
+        let mut hash = source.bytes.clone();
+        let input = if entry.factory == "model-program" {
+            ModelInput::Program(Box::new(ProgramModel {
+                program: source_schemas::ContentRef {
+                    id: entry.id.clone(),
+                },
+                params: BTreeMap::new(),
+                materials: Vec::new(),
+                atlas: None,
+                conform: None,
+                process: None,
+                options: None,
+            }))
+        } else {
+            serde_json::from_value::<ModelInput>(file.value.clone())
+                .map_err(|e| CookError(e.to_string()))?
+        };
+        if let ModelInput::Program(d) = &input {
+            let target = index
+                .entries
+                .get(&d.program.id)
+                .filter(|e| e.factory == "model-program")
+                .ok_or_else(|| {
+                    CookError(
+                        source_content::diagnostic(
+                            content.source(),
+                            &entry.file,
+                            "/desc/program",
+                            format!("{} is not a model-program declaration", d.program.id),
+                        )
+                        .to_string(),
+                    )
+                })?;
+            let checked = &prepared[&target.id];
+            let program_file: source_schemas::File =
+                serde_json::from_value(checked.data().root().into_json())
+                    .map_err(|e| CookError(e.to_string()))?;
+            let materials = file
+                .value
+                .pointer("/desc/materials")
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!([]));
+            let mut p = model_program::Program {
+                file: target.id.clone(),
+                text: program_file.value.to_string(),
+                params: d.params.clone(),
+                materials: serde_json::from_value(materials)
+                    .map_err(|e| CookError(e.to_string()))?,
+                atlas: d.atlas.unwrap_or(0),
+                inputs: BTreeMap::new(),
+                authoring: file.value.get("desc").cloned(),
+            };
+            let text = og_shape::model::program::with_params(&p.text, &p.params)
+                .map_err(|e| CookError(e.to_string()))?;
+            let paths = og_shape::model::program::fonts_named(&text)
+                .map_err(|e| CookError(e.to_string()))?
+                .into_iter()
+                .chain(
+                    og_shape::model::program::textures_named(&text)
+                        .map_err(|e| CookError(e.to_string()))?,
+                );
+            let module = &project.modules[&target.module].root;
+            for path in paths {
+                if !path.starts_with("assets/") && !path.starts_with("sources/") {
+                    return Err(CookError(format!(
+                        "{path}: program inputs belong under the owning module's assets/ or sources/"
+                    )));
+                }
+                let file = normalise_rel(&format!("{module}/{path}"));
+                let checked = crate::cook::source_path::checked(root, &file)
+                    .map_err(|e| CookError(e.to_string()))?;
+                p.inputs.insert(
+                    path,
+                    (
+                        file,
+                        std::fs::read(checked).map_err(|e| CookError(e.to_string()))?,
+                    ),
+                );
+            }
+            hash.extend_from_slice(checked.data().as_bytes());
+            program = Some(p);
+        }
+        let module_root = root.join(&project.modules[&entry.module].root);
+        let read = |path: &str| {
+            let at = module_root.join(path);
+            if let Some(source) = sources.iter().find(|s| s.path == at && !s.path.exists()) {
+                return Ok(source.bytes.clone());
+            }
+            let checked =
+                crate::cook::source_path::checked(&module_root, path).map_err(|e| e.to_string())?;
+            std::fs::read(checked).map_err(|e| format!("{path}: {e}"))
+        };
+        source.authored_model = Some(std::sync::Arc::new(
+            model_text::Prepared::new(input, hash, &read, program).map_err(|e| {
+                CookError(
+                    source_content::diagnostic(content.source(), &entry.file, "", e).to_string(),
+                )
+            })?,
+        ));
+        sources.push(source);
+    }
+    Ok(())
+}
+
 pub(crate) fn sources(
     root: &Path,
     project: &source_project::Project,
@@ -233,38 +411,13 @@ pub(crate) fn sources(
             }
         };
         let bytes = content.data().as_bytes().to_vec();
-        let mut source = Source {
-            rel: entry.id.clone(),
-            path: root.join(&entry.file),
-            kind,
-            hash: hash_bytes(&bytes),
-            bytes,
-            settings: None,
-            settings_files: Vec::new(),
-            gltf: None,
-            error: None,
-            encoded: Default::default(),
-            whole: Default::default(),
-            model: Default::default(),
-            video: None,
-            timeline: None,
-            motion_action: None,
-            strings: None,
-            font_pack: None,
-            fields: Default::default(),
-            fx: None,
-            terrains: Default::default(),
-            navmesh: None,
-            lightmap: None,
-            tileset: None,
-            tilemap: None,
-            animgraph: None,
-            flipbook: None,
-            rig2d: None,
-            scene: None,
-            conformed: None,
-            fracture: None,
-        };
+        if matches!(entry.factory.as_str(), "model" | "model-program") {
+            graph
+                .insert(&content, &BTreeMap::new())
+                .map_err(|e| CookError(e.to_string()))?;
+            continue;
+        }
+        let mut source = declaration(root, entry, kind, bytes);
         let derived = (|| match entry.factory.as_str() {
             "rig2d" => {
                 let prepared =

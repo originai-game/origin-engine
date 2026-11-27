@@ -1,4 +1,4 @@
-//! Plants the cook grows (a `plant` block in a `type model`, og-shape's
+//! Plants the cook grows (a checked `file.model` plant item, og-shape's
 //! `plant`) and a wood scattered from them: og-tests' assets/plants, the
 //! models guide's kinds (each asset a `kind` and nothing else, two with a
 //! colour of their own), cooked in a project of their own, the oak, the
@@ -46,22 +46,22 @@ use og_render::{
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-/// The plants cooked once per process: `(name, impostor)`.
-const PLANTS: [(&str, bool); 14] = [
-    ("oak", true),
-    ("pine", true),
-    ("bush", true),
-    ("daisy", false),
-    ("palm", false),
-    ("birch", false),
-    ("willow", false),
-    ("bamboo", false),
-    ("cactus", false),
-    ("fern", false),
-    ("reed", false),
-    ("tulip", false),
-    ("tulip-yellow", false),
-    ("birch-autumn", false),
+/// The plants cooked once per process; each source owns its mesh options.
+const PLANTS: [&str; 14] = [
+    "oak",
+    "pine",
+    "bush",
+    "daisy",
+    "palm",
+    "birch",
+    "willow",
+    "bamboo",
+    "cactus",
+    "fern",
+    "reed",
+    "tulip",
+    "tulip-yellow",
+    "birch-autumn",
 ];
 
 fn cooked() -> Result<&'static PathBuf, String> {
@@ -69,22 +69,23 @@ fn cooked() -> Result<&'static PathBuf, String> {
     ROOT.get_or_init(|| {
         let root = std::env::temp_dir().join(format!("og-tests-plants-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let dir = root.join("assets/plants");
+        let dir = root.join("content/plants");
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        for (name, impostor) in PLANTS {
-            let file = format!("{name}.ogt");
+        std::fs::create_dir_all(root.join("src")).map_err(|e| e.to_string())?;
+        for (file, text) in [
+            ("og-project.json", r#"{"version":1,"name":"Plants","engine":"0.9.0"}"#),
+            ("project.ts", "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'plants',entry:'src/main.ts'});"),
+            ("src/main.ts", ""),
+        ] {
+            std::fs::write(root.join(file), text).map_err(|e| e.to_string())?;
+        }
+        for name in PLANTS {
+            let file = format!("{name}.ts");
             std::fs::write(
                 dir.join(&file),
                 crate::scenes::asset(&format!("plants/{file}"))?,
             )
             .map_err(|e| format!("{file}: {e}"))?;
-            if impostor {
-                std::fs::write(
-                    dir.join(format!("{file}.ogt")),
-                    "type import\nversion 1\n---\nmodel {\n  impostor true\n}\n",
-                )
-                .map_err(|e| format!("{file}.ogt: {e}"))?;
-            }
         }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
             .map_err(|e| format!("cook: {e}"))?;
@@ -111,7 +112,7 @@ struct Plant {
 type Levels = [Option<(MeshHandle, f32)>; 2];
 
 fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, String> {
-    let id = format!("plants/{name}.ogt");
+    let id = format!("base/plants/{name}");
     let model = bundle.load_model(&id).map_err(|e| format!("{id}: {e}"))?;
     let texture = |t: &str| {
         bundle

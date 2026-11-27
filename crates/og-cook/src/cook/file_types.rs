@@ -115,6 +115,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "rig" {
                 out.push_str("Output: native humanoid map loaded with og.load.rig. Scheme selects auto detection or one supported naming scheme; bones map standard humanoid names to skeleton node names, with null explicitly unmapping a bone. Optional footHeight is [left,right] in metres, each -10..10. Retargeting, skin relaxation and the writer share one checked declaration snapshot. Import animation settings name the canonical rig content ID. There is no rig author or runtime text parser. See animation.\n\n");
             }
+            if matches!(ty, "model" | "model-program") {
+                out.push_str("Output: a native model loaded with og.load.model. file.model selects ordered geometry/material/pivot/plant items or a canonical model-program ref with parameters and material overrides. file['model-program'] supplies checked kernel operations directly. Model operands and animation libraries are canonical refs; font, image and projection inputs are explicit owning-module assets/ or sources/ paths, captured before caching. Options control LODs, colliders, impostors, streaming and animation. There is no model author OGT parser, bufferGeometry.generate script or sibling program guessing. Standalone og model tools may still read kernel JSON as an exchange format. See models, model and generating.\n\n");
+            }
             if ty == "flipbook" {
                 out.push_str("Output: native frames, clips, durations, pivots and events loaded with og.load.flipbook. Choose a canonical texture ref (grid, explicit frames and/or atlas: input.text of Aseprite/TexturePacker JSON), or animated sources at explicit owning-module assets/ or sources/ paths. Animated inputs emit #sheet. array: true emits #array and actual #array#layerN textures; all frames must share a size. Clip frames are names, never numeric-index fallback. Image bytes, external atlas text and helper imports invalidate warm cooks. No author OGT parser, text writer or sibling guessing remains. See loading.\n\n");
             }
@@ -173,12 +176,14 @@ pub fn markdown() -> Result<String, String> {
             }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
-                let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES
-                    .iter()
-                    .chain(super::model_text::schema::MATERIAL)
-                    .copied()
-                    .collect();
-                block(&mut out, "materials.material", &fields);
+                block(
+                    &mut out,
+                    "materials.material",
+                    super::systems::district::parse::MATERIAL_LINES,
+                );
+                out.push_str(
+                    "Surface fields use MaterialInput from file:model's native material items.\n\n",
+                );
                 block(
                     &mut out,
                     "materials.material.generate",
@@ -289,76 +294,6 @@ pub fn markdown() -> Result<String, String> {
                     }
                 }
             }
-            "model" => {
-                out.push_str("Field coverage: text-model declarations, every geometry, placement, material, plant level and fracture block share parser line tables. Output: a normal model loaded with og.load.gltf. Program-based models instead use program/params and the .shape.json language (see model); program operation schema is separate. Segment counts can be reduced by the project's face budget, never increased. A part contains one geometry; merge parts and CSG a/b are geometries plus placement, not named model parts.\n\n");
-                table(&mut out, &super::model_text::schema::fields(""));
-                block(&mut out, "model.program", super::model_program::LINES);
-                let fields: Vec<_> = super::model_program::MATERIAL_FIELDS.iter().map(|&key| {
-                    let args = match key {
-                        "color" | "emissive" | "sheen" => "<r> <g> <b>; linear",
-                        "map" | "normalMap" | "roughnessMap" | "metalnessMap" | "emissiveMap" | "aoMap" => "\"<image path>\"; relative to model",
-                        "doubleSided" => "true | false",
-                        "normalScale" | "emissiveIntensity" => "<number >= 0>",
-                        _ => "<number 0..1>",
-                    };
-                    Line::new(key, args, "program material", "Override the named program material; source image contents are tracked.", "")
-                }).collect();
-                block(&mut out, "model.program.material", &fields);
-                for name in super::model_text::GEOMETRIES {
-                    if matches!(name, "bufferGeometry" | "modelGeometry") {
-                        continue;
-                    }
-                    block(
-                        &mut out,
-                        &format!("model.part.{name}"),
-                        &super::model_text::schema::fields(name),
-                    );
-                }
-                for (name, _) in super::model_text::schema::BLOCKS {
-                    if name.is_empty()
-                        || name.ends_with("Geometry")
-                        || matches!(*name, "solid" | "plant.level")
-                    {
-                        continue;
-                    }
-                    block(
-                        &mut out,
-                        &format!("model.{name}"),
-                        &super::model_text::schema::fields(name),
-                    );
-                }
-                for name in ["trunk", "branch1", "branch2", "branch3"] {
-                    block(
-                        &mut out,
-                        &format!("model.plant.{name}"),
-                        &super::model_text::schema::fields(&format!("plant.{name}")),
-                    );
-                }
-                block(&mut out, "model.fracture", super::systems::fracture::LINES);
-                block(&mut out, "model.process", super::model::process::LINES);
-                for (name, fields) in [
-                    ("repair", super::model::process::REPAIR),
-                    ("decimate", super::model::process::DECIMATE),
-                    ("unwrap", super::model::process::UNWRAP),
-                    ("bake", super::model::process::BAKE),
-                    ("project", super::model::process::projection::LINES),
-                    ("project.view", super::model::process::projection::VIEW),
-                    ("transfer", super::model::process::transfer::LINES),
-                    ("rig", super::model::process::RIG),
-                ] {
-                    block(&mut out, &format!("model.process.{name}"), fields);
-                }
-                out.push_str("\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n");
-                block(
-                    &mut out,
-                    "model.part.bufferGeometry",
-                    super::model_text::BUFFER_LINES,
-                );
-                out.push_str("\n<a id=\"file-model-part-modelGeometry\"></a>\n### `file:model.part.modelGeometry`\n\nAn imported model's rest geometry as an operand of mergeGeometries or CSG, or as a part by itself. The source uses its ordinary importer and generation path before this model.\n\n");
-                table(&mut out, super::model_text::OPERAND_LINES);
-                out.push_str("\n<a id=\"file-model-part-bufferGeometry-generate\"></a>\n### `file:model.part.bufferGeometry.generate`\n\nReturns MeshSource: positions, and optional normals/uvs/colors/tangents/indices. Materials, pivots and placements remain authored in the model.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
-            }
             _ => return Err(format!("cook type '{ty}' has no file field catalogue")),
         }
         out.push('\n');
@@ -372,10 +307,6 @@ pub fn markdown() -> Result<String, String> {
         (
             "import",
             "A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.",
-        ),
-        (
-            "model-program",
-            ".shape.json: model program operations; consumed by model. See model.",
         ),
         (
             "theme",
@@ -458,31 +389,6 @@ pub fn markdown() -> Result<String, String> {
                 super::anim::CHANNEL_LINES,
             );
             block(&mut out, "import.fracture", super::systems::fracture::LINES);
-        }
-        if ty == "model-program" {
-            block(
-                &mut out,
-                "model-program.surface",
-                og_shape::model::program::SURFACE,
-            );
-            block(
-                &mut out,
-                "model-program.surface.layer",
-                og_shape::model::program::SURFACE_LAYER,
-            );
-            out.push_str("The operation and profile key sets below are the exact tables used to reject unknown JSON fields; parameter expressions are resolved before dispatch. For value types, units and construction examples see model. These are JSON objects, not OGT blocks. The op discriminator selects an operation, and a one-key profile object selects a profile.\n");
-            for (prefix, entries) in [
-                ("op", og_shape::model::program::OPS),
-                ("profile", og_shape::model::program::PROFILES),
-            ] {
-                for (name, fields) in entries {
-                    let lines: Vec<_> = fields
-                        .iter()
-                        .map(|key| og_shape::model::program::field(name, key, prefix == "profile"))
-                        .collect::<Result<_, _>>()?;
-                    block(&mut out, &format!("model-program.{prefix}.{name}"), &lines);
-                }
-            }
         }
     }
     out.push_str("Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.\n");

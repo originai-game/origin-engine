@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Model authoring and bufferGeometry.generate",
+      "change": "Model OGT sources, bufferGeometry.generate script wrappers, scanned .shape.json programs and sibling-program guessing are removed. Models and model programs are checked TypeScript declarations consumed directly by the native cook. Model processing, fracture, materials, plants and animation options share the checked declaration snapshot.",
+      "fix": "Declare content/**/*.ts with file.model({kind:'geometry',desc:{items,...}}) or file.model({kind:'program',desc:{program:ref('module/program'),...}}); declare programs with file['model-program']({...}). Compute bufferGeometry arrays in ordinary imported TS helpers. Use canonical content refs for mesh operands and animation libraries, and explicit owning-module assets/ or sources/ paths for images and fonts. Put model import controls in desc.options. og model tools accept checked program declarations; bake writes a new .baked.ts declaration under content/ and captured maps under sources/baked/. Standalone kernel JSON remains a modelling-tool exchange input only.",
+      "find": ["type model", "bufferGeometry.generate", ".shape.json"]
+    }
+  ]
+}

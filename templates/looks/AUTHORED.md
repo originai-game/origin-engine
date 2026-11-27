@@ -26,7 +26,7 @@ variant, the variant's name:
   expressionist, lush and luminous-layers variants (hero, tree, crate,
   lantern, ground, backdrop).
 - `<slug>/models/` and `<slug>/<variant>/models/`: the 3D beats built in the
-  style (`type model` text), for neon-vector, low-resolution-3d and toy-3d's
+  style (checked `file.model` TypeScript), for neon-vector, low-resolution-3d and toy-3d's
   paper variant.
 - `cinematic-realism/realistic-set/`: the realistic asset set that
   cinematic-realism and its muted variant share (packed glbs, their README

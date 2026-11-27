@@ -6,7 +6,7 @@
 // rest. Round forms and rolling land on purpose: a look's facets, bands,
 // strokes or material must show on them. A look that stands pixel sprites in
 // its set (preview.json's sprites) draws those beats as sprites; a look whose
-// models bring their own ground (field.ogt) stands the scene on it.
+// models bring their own ground (content/models/field.ts) stands the scene on it.
 import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { GROUND, SPRITES } from "./sprites.ts";
@@ -25,7 +25,7 @@ function model(world: World, name: string, x: number, z: number, turn = 0) {
     must(world.insert(e, og.Sprite, { texture, width: sprite.width, height: sprite.height, anchor: { x: 0.5, y: 0 }, facing: "cameraY", dropShadow: 0.5 }));
     return;
   }
-  const path = name === "ground" ? GROUND : `models/${name}.${name === "crate" ? "glb" : "ogt"}`;
+  const path = name === "ground" ? GROUND : name === "crate" ? "models/crate.glb" : `base/models/${name}`;
   must(world.instantiate(must(og.load.gltf(world, path)), at));
 }
 

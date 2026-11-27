@@ -51,14 +51,17 @@ fn cooked_rigid_node_keys_move_the_drawn_model() {
     let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("rigid-node-animation-{}", std::process::id()));
     crate::init_project(&root);
-    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
     std::fs::write(
-        root.join("assets/panel.ogt"),
-        "type model\nversion 1\n---\nconform off\npivot \"root\" {\nposition 1 3 0\n}\npart \"panel\" {\npivot \"root\"\nboxGeometry {\nwidth 1\nheight 2\ndepth 0.5\n}\n}\n",
-    ).unwrap();
-    std::fs::write(
-        root.join("assets/panel.ogt.ogt"),
-        "type import\nversion 1\n---\nanimation {\nclip \"open\" {\nchannel \"panel\" translation {\nkey 0 0 0 0\nkey 0.5 2 1 0\n}\nchannel \"panel\" rotation {\nkey 0 0 0 0 1\nkey 0.5 0 0 0.70710678 0.70710678\n}\n}\n}\n",
+        root.join("content/panel.ts"),
+        r#"import {file} from '@origingame/engine/author';
+export default file.model({kind:'geometry',desc:{conform:'off',items:[
+ {name:'root',input:{kind:'pivot',desc:{transform:{position:[1,3,0]}}}},
+ {name:'panel',input:{kind:'part',desc:{pivot:'root',geometry:{kind:'boxGeometry',desc:{width:1,height:2,depth:0.5}}}}}
+],options:{animation:{clips:[{name:'open',channels:[
+ {node:'panel',path:'translation',keys:[{time:0,values:[0,0,0]},{time:0.5,values:[2,1,0]}]},
+ {node:'panel',path:'rotation',keys:[{time:0,values:[0,0,0,1]},{time:0.5,values:[0,0,0.70710678,0.70710678]}]}
+]}]}}}});"#,
     ).unwrap();
     let cooked = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
     assert!(cooked.ok(), "{:?}", cooked.errors());
@@ -70,8 +73,8 @@ fn cooked_rigid_node_keys_move_the_drawn_model() {
         .unwrap() as u32;
     let drawn = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(engine, Some(Box::new(Recorder(drawn.clone())))).unwrap();
-    let model = og_load_gltf(engine, "panel.ogt".into(), None).unwrap();
-    let animation = og_load_animation(engine, "panel.ogt".into()).unwrap();
+    let model = og_load_gltf(engine, "base/panel".into(), None).unwrap();
+    let animation = og_load_animation(engine, "base/panel".into()).unwrap();
     let entity = og_world_spawn(
         engine,
         Some(json!({"position":{"x":5,"y":2,"z":0}}).to_string()),

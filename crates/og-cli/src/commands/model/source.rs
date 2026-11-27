@@ -64,15 +64,6 @@ pub fn extension(p: &Path) -> String {
         .unwrap_or_default()
 }
 
-/// The mesh file a mesh's import settings (`boulder.glb.ogt`) set, which
-/// stands for its model; any other path as it is.
-pub fn settings_of(p: &Path) -> PathBuf {
-    match p.to_str().and_then(|s| s.strip_suffix(".ogt")) {
-        Some(mesh) if is_mesh(Path::new(mesh)) => PathBuf::from(mesh),
-        _ => p.to_path_buf(),
-    }
-}
-
 /// Whether a path names a mesh file, by its extension.
 pub fn is_mesh(p: &Path) -> bool {
     MESH_EXTENSIONS.contains(&extension(p).as_str())
@@ -112,7 +103,6 @@ pub fn load_uvs(
     d: &Import,
     uvs: bool,
 ) -> Result<Source, Failure> {
-    let input = &resolved(input);
     match input {
         Input::None => Err(Failure::Usage(
             "no input: give a program or a mesh file".into(),
@@ -122,16 +112,24 @@ pub fn load_uvs(
                 .into(),
         )),
         Input::Path(p) if is_mesh(p) => mesh_file(files, p, d).map(Source::Mesh),
-        // A `type model` naming a program: the model og cook builds.
-        Input::Path(p) if extension(p) == "ogt" => match program_of(files, p)? {
-            Some((program, read)) => {
+        Input::Path(p) if extension(p) == "ts" => match program_of(files, p)? {
+            Some((mut program, read)) => {
+                if uvs {
+                    let mut value: serde_json::Value =
+                        serde_json::from_str(&program.text).map_err(failed)?;
+                    value["ops"]
+                        .as_array_mut()
+                        .expect("checked program operations")
+                        .insert(0, serde_json::json!({"op":"uvs"}));
+                    program.text = value.to_string();
+                }
                 let w = program
                     .glb(&read)
                     .map_err(|e| Failure::Failed(format!("{}: {e}", p.display())))?;
                 mesh_bytes(files, p, w.glb, d).map(Source::Mesh)
             }
             None => Err(Failure::Usage(format!(
-                "{}: an .ogt input is a mesh's import settings or a type model naming a program",
+                "{}: expected a checked program-model declaration",
                 p.display()
             ))),
         },
@@ -147,7 +145,7 @@ pub fn load_uvs(
 
 /// Reads an input that must be a mesh file.
 pub fn load_mesh(files: &dyn Files, input: &Input, d: &Import) -> Result<Mesh, Failure> {
-    match &resolved(input) {
+    match input {
         Input::Path(p) if is_mesh(p) => mesh_file(files, p, d),
         Input::None => Err(Failure::Usage("no input: give a mesh file".into())),
         _ => Err(Failure::Usage(format!(
@@ -200,21 +198,37 @@ fn program(
 /// A reader of files beside a source, by their path relative to it.
 pub type Beside<'a> = Box<dyn Fn(&str) -> Result<Vec<u8>, String> + 'a>;
 
-/// The program a path is (a `.shape.json`, or a `type model` `.ogt`
-/// naming one, og cook's [`Program`]) with a reader of the files beside
-/// it; `None` for any other path.
+/// Standalone kernel JSON or a checked TS program model, with its image reader.
 pub fn program_of<'a>(
     files: &'a dyn Files,
     path: &Path,
 ) -> Result<Option<(og_cook::cook::model_program::Program, Beside<'a>)>, Failure> {
     use og_cook::cook::model_program as mp;
     let rel = path.to_string_lossy();
-    let named = extension(path) == "ogt"
-        && files.read(path).ok().is_some_and(|b| {
-            og_core::ogt::Document::parse(&String::from_utf8_lossy(&b))
-                .is_ok_and(|d| d.ty == "model" && mp::names_program(&d))
+    if extension(path) == "ts" {
+        let path = std::path::absolute(path).map_err(failed)?;
+        let root = path
+            .ancestors()
+            .skip(1)
+            .find(|p| p.join("og-project.json").is_file())
+            .ok_or_else(|| {
+                Failure::Usage("a model declaration belongs to an og-project.json project".into())
+            })?;
+        let file = path
+            .strip_prefix(root)
+            .map_err(failed)?
+            .to_string_lossy()
+            .replace('\\', "/");
+        let (program, maps) = mp::read(root, &file).map_err(failed)?;
+        let read: Beside<'a> = Box::new(move |file| {
+            maps.iter()
+                .find(|(p, _)| p == file)
+                .map(|(_, b)| b.clone())
+                .ok_or_else(|| format!("{file}: not a captured model input"))
         });
-    if !mp::is_program(&rel) && !named {
+        return Ok(Some((program, read)));
+    }
+    if !mp::is_program(&rel) {
         return Ok(None);
     }
     let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
@@ -223,13 +237,6 @@ pub fn program_of<'a>(
     let p = mp::parse(&rel, &files.read(path)?, &read)
         .map_err(|e| Failure::Failed(format!("{}: {e}", path.display())))?;
     Ok(Some((p, read)))
-}
-
-fn resolved(input: &Input) -> Input {
-    match input {
-        Input::Path(p) => Input::Path(settings_of(p)),
-        i => i.clone(),
-    }
 }
 
 fn mesh_file(files: &dyn Files, path: &Path, d: &Import) -> Result<Mesh, Failure> {

@@ -10,7 +10,7 @@ use og_shape::tools::Import;
 
 use super::args::Args;
 use super::report::{array, object, string};
-use super::source::{Local, Source, load_uvs};
+use super::source::{Input, Local, Source, load_uvs, program_of};
 use super::{Failure, failed};
 
 /// The built model's name and parts: each part's name, parent, joint
@@ -61,7 +61,13 @@ pub fn report(model: &Model) -> Result<String, Failure> {
 /// The command line.
 pub fn run(a: &Args) -> Result<String, Failure> {
     a.only(&["--uvs"])?;
-    match load_uvs(&Local, &a.input()?, &Import::default(), a.switch("--uvs"))? {
+    let input = a.input()?;
+    if let Input::Path(path) = &input
+        && let Some((program, _)) = program_of(&Local, path)?
+    {
+        return report(&program.model(a.switch("--uvs")).map_err(failed)?.0);
+    }
+    match load_uvs(&Local, &input, &Import::default(), a.switch("--uvs"))? {
         Source::Program(m) => report(&m),
         Source::Mesh(_) => Err(Failure::Usage(
             "build takes a program; `shape import` reports a mesh file".into(),

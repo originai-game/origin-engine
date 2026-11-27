@@ -557,9 +557,8 @@ pub(crate) struct Material {
     pub roughness_range: Option<[f64; 2]>,
     /// Cavity darkening strength and sampling radius in texels.
     pub occlusion: Option<[f64; 2]>,
-    /// Its glTF fields, as `type model`'s `material` block takes them;
-    /// `map` and `normalMap` name asset ids.
-    pub fields: Block,
+    /// Native glTF surface fields; maps name asset ids.
+    pub fields: crate::cook::source_schemas::world::materials::Material,
 }
 
 /// The keys of a library's material that are not the drawn material's.
@@ -791,7 +790,7 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             relief,
             roughness_range,
             occlusion,
-            fields,
+            fields: crate::cook::materials::material_input(&fields)?,
         });
     }
     Ok(out)

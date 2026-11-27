@@ -44,7 +44,7 @@ export function buildCoast(world: World): Coast {
 
   // The hawthorn on the crag, its crown combed inland over the path.
   const tree = must(world.spawn({ name: "hawthorn", position: { x: -6.2, y: heightAt(-6.2, -1.6) + 1.2, z: -1.6 }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 2.6) }));
-  must(world.insert(tree, og.Model, { asset: must(og.load.gltf(world, "plants/hawthorn.ogt")) }));
+  must(world.insert(tree, og.Model, { asset: must(og.load.gltf(world, "base/plants/hawthorn")) }));
 
   // Turf: fine grass everywhere it holds, tall plumed grass in drifts, and
   // the cliff-top flowers in their own patches.
@@ -56,11 +56,11 @@ export function buildCoast(world: World): Coast {
       seed, minScale: scale[0], maxScale: scale[1], castShadows: false, avoidWater: 3,
     }));
   };
-  grow("plume-grass", "plants/plume-grass.ogt", 0.7, 9, 0.46, 3, 70, [0.75, 1.3]);
-  grow("oxeye", "plants/oxeye.ogt", 5, 5, 0.6, 5);
-  grow("buttercup", "plants/buttercup.ogt", 5, 4, 0.62, 8);
-  grow("thrift", "plants/thrift.ogt", 6, 6, 0.6, 13);
-  grow("foxglove", "plants/foxglove.ogt", 0.8, 7, 0.55, 21, 45, [0.8, 1.2]);
+  grow("plume-grass", "base/plants/plume-grass", 0.7, 9, 0.46, 3, 70, [0.75, 1.3]);
+  grow("oxeye", "base/plants/oxeye", 5, 5, 0.6, 5);
+  grow("buttercup", "base/plants/buttercup", 5, 4, 0.62, 8);
+  grow("thrift", "base/plants/thrift", 6, 6, 0.6, 13);
+  grow("foxglove", "base/plants/foxglove", 0.8, 7, 0.55, 21, 45, [0.8, 1.2]);
 
   const sea = must(world.spawn({ name: "sea" }));
   must(world.insert(sea, og.Water, {

@@ -43,6 +43,7 @@ input!(GeometryModel {
     conform: Option<Conform>,
     process: Option<process::Process>,
     fracture: Option<process::Fracture>,
+    options: Option<ModelOptions>,
 });
 
 input!(ProgramModel {
@@ -56,6 +57,28 @@ input!(ProgramModel {
     atlas: Option<u32>,
     conform: Option<Conform>,
     process: Option<process::Process>,
+    options: Option<ModelOptions>,
+});
+
+input!(ModelOptions {
+    /// At most eight strictly decreasing fractions beginning at one.
+    #[schemars(length(min = 1, max = 8), extend("items" = {"type":"number","format":"float","exclusiveMinimum":0,"maximum":1}))]
+    lods: Option<Vec<f32>>,
+    #[schemars(range(max = 1), extend("exclusiveMinimum" = 0))]
+    lod_error: Option<f32>,
+    raycast: Option<bool>,
+    collider: Option<super::import::Collider>,
+    impostor: Option<bool>,
+    #[schemars(range(min = 2, max = 32))]
+    impostor_grid: Option<u32>,
+    /// Atlas width (grid × frame size) must not exceed 4096 pixels.
+    #[schemars(range(min = 16, max = 512), extend("x-og-unit" = "px"))]
+    impostor_size: Option<u32>,
+    impostor_below: Option<bool>,
+    stream_textures: Option<bool>,
+    animation: Option<super::import::animation::Animation>,
+    /// Opt-in probe-region skin relaxation (12 passes); absent means off.
+    relax_skin: Option<bool>,
 });
 
 #[derive(Deserialize, JsonSchema)]
