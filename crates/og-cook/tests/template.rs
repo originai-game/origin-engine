@@ -14,6 +14,82 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Public TS cook/load contract: canonical refs, native fields and rejection
+/// stay the same on a warm cook, including an imported source's physical ID.
+#[test]
+fn typed_motion_actions_resolve_refs_and_load_native_fields() {
+    let root = crate::temp::TempDir::new("typed-reaction");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "assets/brace.gltf",
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
+    );
+    write(
+        "assets/human.ogt",
+        "type rig\nversion 1\n---\nscheme auto\n",
+    );
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nexport default file['motion-action']({source:ref('base/brace'),clip:'brace-右',rig:ref('base/human'),holdStart:0.375,holdEnd:1.625,hand:'right',handTarget:[0.125,-0.25,0.75]});";
+    write("content/actions/brace.ts", declaration);
+    write(
+        "content/actions/plain.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file['motion-action']({source:ref('base/brace'),clip:'idle',holdEnd:0.75});",
+    );
+    let options = CookOptions::default();
+    let mut previous = None;
+    for _ in 0..2 {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = bundle.read("base/actions/brace").unwrap();
+        let action = bundle.motion_action("base/actions/brace", &bytes).unwrap();
+        assert_eq!(
+            (
+                action.source.as_str(),
+                action.rig.as_str(),
+                action.clip.as_str()
+            ),
+            ("brace.gltf", "human.ogt", "brace-右")
+        );
+        assert_eq!((action.hold_start, action.hold_end), (0.375, 1.625));
+        assert_eq!(action.hand, "right");
+        assert_eq!(action.hand_target, [0.125, -0.25, 0.75]);
+        let plain = bundle.read("base/actions/plain").unwrap();
+        let plain = bundle.motion_action("base/actions/plain", &plain).unwrap();
+        assert_eq!((plain.hold_start, plain.hold_end), (0.0, 0.75));
+        assert!(plain.rig.is_empty() && plain.hand.is_empty());
+        assert_eq!(plain.hand_target, [0.0; 3]);
+        if let Some(previous) = &previous {
+            assert_eq!(previous, &bytes.to_vec());
+        }
+        previous = Some(bytes.to_vec());
+    }
+    for (from, to, expected) in [
+        ("holdEnd:1.625", "holdEnd:0.375", "holdStart < holdEnd"),
+        ("base/brace", "base/missing", "base/missing"),
+        ("base/brace", "base/human", "model"),
+    ] {
+        write("content/actions/brace.ts", &declaration.replace(from, to));
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(error.contains(expected), "{error}");
+        assert!(error.contains("content/actions/brace.ts:2"), "{error}");
+    }
+    write("content/actions/brace.ts", declaration);
+    write(
+        "assets/old.ogt",
+        "type motion-action\nversion 1\n---\nsource \"brace.gltf\"\nclip \"brace\"\nholdEnd 1\n",
+    );
+    let report = cook_project(&root, &options).unwrap();
+    assert!(!report.ok(), "old motion-action author entry was accepted");
+}
+
 /// A public navigation bake roundtrip, including imported buffer changes,
 /// module refs, profile selection, ordered areas and full-width link IDs.
 #[test]

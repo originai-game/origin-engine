@@ -502,6 +502,7 @@ pub(in crate::cook) fn conform(
                 model: Default::default(),
                 video: None,
                 timeline: None,
+                motion_action: None,
                 fields: Default::default(),
                 terrains: Default::default(),
                 navmesh: None,

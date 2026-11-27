@@ -1549,12 +1549,32 @@ impl Bundle {
     ) -> Result<crate::motion_action::MotionAction, LoadError> {
         let blob = self.blob::<format::MotionAction>(id, bytes)?;
         let meta = one::<format::MotionActionMeta>(&blob)?;
-        let text = blob
-            .raw("text")?
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the motion-action text is cut short or not UTF-8"))?;
-        crate::motion_action::MotionAction::parse(text).map_err(|e| invalid(&blob, e))
+        let strings = blob.raw("strings")?;
+        let text = |offset: u32, len: u32| {
+            (offset as usize)
+                .checked_add(len as usize)
+                .and_then(|end| strings.get(offset as usize..end))
+                .and_then(|t| std::str::from_utf8(t).ok())
+                .map(str::to_string)
+                .ok_or_else(|| invalid(&blob, "motion-action string is out of range or not UTF-8"))
+        };
+        let action = crate::motion_action::MotionAction {
+            source: text(meta.source_offset, meta.source_len)?,
+            clip: text(meta.clip_offset, meta.clip_len)?,
+            rig: text(meta.rig_offset, meta.rig_len)?,
+            hold_start: meta.hold_start,
+            hold_end: meta.hold_end,
+            hand: match meta.hand {
+                0 => "",
+                1 => "left",
+                2 => "right",
+                _ => return Err(invalid(&blob, "invalid motion-action hand")),
+            }
+            .into(),
+            hand_target: [meta.target_x, meta.target_y, meta.target_z],
+        };
+        action.validate().map_err(|e| invalid(&blob, e))?;
+        Ok(action)
     }
 
     /// Decodes a lightmap blob (`og.Lightmap`): the lightmap text and its

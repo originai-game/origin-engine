@@ -6,7 +6,7 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `ReactionDesc` (desc struct)
 
-An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.
+An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.
 
 See `animation §11`.
 
@@ -14,7 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `action` | `string` | `""` | — | — | — | The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction. |
+| `action` | `string` | `""` | — | — | — | The canonical motion-action content ID, such as base/actions/brace. Empty releases the current reaction. |
 | `direction` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing. |
 | `strength` | `number` | `1` | 0 … 1 | — | — | Contribution of the authored reaction; 0 leaves locomotion unchanged. |
 | `duration` | `number` | `1` | ≥ 0 | `s` | — | Seconds to hold between the action's holdStart and holdEnd, after its entry; then play its exit. |
@@ -22,10 +22,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ReactionDesc {
-  doc "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only."
+  doc "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only."
   guide "animation §11"
   desc true
-  field action String "The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction."
+  field action String "The canonical motion-action content ID, such as base/actions/brace. Empty releases the current reaction."
   field direction Vector3 "World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing."
   field strength f32 "Contribution of the authored reaction; 0 leaves locomotion unchanged." {
     default 1

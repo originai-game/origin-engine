@@ -64,25 +64,38 @@ pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), Cook
     ))
 }
 
-/// Validates an authored humanoid action and stores its text in a typed blob.
-pub fn cook_motion_action(
-    bytes: &[u8],
-    stamp: u64,
-    known: &dyn Fn(&str) -> bool,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(bytes)
-        .map_err(|_| CookError("a motion-action is UTF-8 text".into()))?;
-    let action = og_bundle::motion_action::MotionAction::parse(text).map_err(CookError)?;
-    for path in [&action.source, &action.rig]
-        .into_iter()
-        .filter(|p| !p.is_empty())
-    {
-        if !known(path) {
-            return Err(CookError(format!(
-                "motion-action asset '{path}' does not exist"
-            )));
+/// Domain construction after the shared TS schema and before graph binding.
+pub(crate) fn motion_action(
+    input: crate::cook::source_schemas::media::clips::MotionAction,
+) -> Result<og_bundle::motion_action::MotionAction, String> {
+    use crate::cook::source_schemas::media::clips::Hand;
+    let action = og_bundle::motion_action::MotionAction {
+        source: input.source.id,
+        clip: input.clip,
+        rig: input.rig.map_or_else(String::new, |r| r.id),
+        hold_start: input.hold_start,
+        hold_end: input.hold_end,
+        hand: match input.hand {
+            None => "",
+            Some(Hand::Left) => "left",
+            Some(Hand::Right) => "right",
         }
-    }
+        .into(),
+        hand_target: input.hand_target.unwrap_or([0.0; 3]),
+    };
+    action.validate()?;
+    Ok(action)
+}
+
+/// The blob carries native fields, never an embedded author document.
+fn cook_motion_action(
+    action: &og_bundle::motion_action::MotionAction,
+    stamp: u64,
+) -> (Vec<u8>, Vec<String>) {
+    let mut strings = Strings(Vec::new());
+    let (source_offset, source_len) = strings.add(&action.source);
+    let (clip_offset, clip_len) = strings.add(&action.clip);
+    let (rig_offset, rig_len) = strings.add(&action.rig);
     let mut w = BlobWriter::new(
         format::MotionAction::type_hash(),
         format::MotionAction::schema_version(),
@@ -91,18 +104,33 @@ pub fn cook_motion_action(
     w.table(
         "meta",
         &[format::MotionActionMeta {
-            text_bytes: bytes.len() as u32,
+            source_offset,
+            source_len,
+            clip_offset,
+            clip_len,
+            rig_offset,
+            rig_len,
+            hold_start: action.hold_start,
+            hold_end: action.hold_end,
+            hand: match action.hand.as_str() {
+                "left" => 1,
+                "right" => 2,
+                _ => 0,
+            },
+            target_x: action.hand_target[0],
+            target_y: action.hand_target[1],
+            target_z: action.hand_target[2],
         }],
         format::row_hash::<format::MotionActionMeta>(),
     )
-    .raw("text", bytes.to_vec(), 16);
-    Ok((
+    .raw("strings", strings.0, 1);
+    (
         w.finish(),
         vec![format!(
             "motion-action: {} in {}",
             action.clip, action.source
         )],
-    ))
+    )
 }
 
 /// `animation { … }` import settings of a glTF.
@@ -1482,7 +1510,7 @@ impl Job for RigJob<'_> {
 pub(crate) static MOTION_ACTION: KindDef = KindDef {
     name: "motion-action",
     extensions: &[],
-    types: &["motion-action"],
+    types: &[],
     by_content: true,
     streams: false,
     plan: plan_motion_action,
@@ -1490,28 +1518,55 @@ pub(crate) static MOTION_ACTION: KindDef = KindDef {
 
 fn plan_motion_action<'a>(
     _cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[Area::Anim], &[b"motion-action", &hash]);
+    let Some(action) = &s.motion_action else {
+        return;
+    };
+    state.parsed_refs.entry(s.rel.clone()).or_default().extend(
+        [&action.source, &action.rig]
+            .into_iter()
+            .filter(|id| !id.is_empty())
+            .cloned(),
+    );
+    // Reference bindings can change independently of the logical declaration.
+    let st = stamp(
+        &[Area::Anim],
+        &[
+            b"motion-action TS 1",
+            &hash,
+            action.source.as_bytes(),
+            action.rig.as_bytes(),
+        ],
+    );
     outs.push((
         s.rel.clone(),
         format::MotionAction::NAME,
         st,
-        Box::new(MotionActionJob(s)),
+        Box::new(MotionActionJob(action)),
     ));
 }
 
 /// A motion action's one output.
-struct MotionActionJob<'a>(&'a Source);
+struct MotionActionJob<'a>(&'a og_bundle::motion_action::MotionAction);
 
 impl Job for MotionActionJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let MotionActionJob(s) = self;
-        let Exec { known, .. } = ex;
-        cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
+        let MotionActionJob(action) = self;
+        for id in [&action.source, &action.rig]
+            .into_iter()
+            .filter(|id| !id.is_empty())
+        {
+            if !ex.known.contains(id) {
+                return Err(CookError(format!(
+                    "motion-action asset '{id}' does not exist"
+                )));
+            }
+        }
+        Ok(cook_motion_action(action, p.stamp))
     }
 }
 

@@ -143,6 +143,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 model: Default::default(),
                 video: None,
                 timeline: None,
+                motion_action: None,
                 fields: Default::default(),
                 terrains: Default::default(),
                 navmesh: None,

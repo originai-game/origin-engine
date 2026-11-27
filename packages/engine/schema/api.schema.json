@@ -60872,12 +60872,12 @@
     "ReactionDesc": {
       "x-og-kind": "desc",
       "x-og-module": "motion",
-      "description": "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.\nSee `animation §11`.",
+      "description": "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.\nSee `animation §11`.",
       "type": "object",
       "properties": {
         "action": {
           "type": "string",
-          "description": "The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction.",
+          "description": "The canonical motion-action content ID, such as base/actions/brace. Empty releases the current reaction.",
           "default": ""
         },
         "direction": {

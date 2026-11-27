@@ -469,22 +469,23 @@ if (s.ok && s.value.goal === "none") nextBeat();
 
 A reaction (og.motion.react: a brace against wind, a flinch) plays an
 authored clip over locomotion: entry, a held interval, exit. Its clip is a
-cooked `type motion-action` asset:
+cooked TS declaration in `content/actions/brace.ts`:
 
-```text
-type motion-action
-version 1
----
-source "anims/brace.glb"
-clip "brace"
-rig "rigs/meshy.ogt"
-holdStart 0.5
-holdEnd 1.5
-hand right
-handTarget 0.1 -0.05 0.25
+```ts
+import { file, ref } from '@origingame/engine/author';
+export default file['motion-action']({
+  source: ref('base/anims/brace'),
+  clip: 'brace',
+  rig: ref('base/rigs/meshy'),
+  holdStart: 0.5,
+  holdEnd: 1.5,
+  hand: 'right',
+  handTarget: [0.1, -0.05, 0.25],
+});
 ```
 
-- Paths are relative to assets/; `rig` is optional. The hold lies inside
+- References are canonical content IDs; `rig` is optional. React with
+  action `base/actions/brace`. The hold lies inside
   the clip (0 <= holdStart < holdEnd < its duration) with matching poses at
   both ends, so it loops.
 - Author it with a stationary root, +Z facing the reaction's source, entry

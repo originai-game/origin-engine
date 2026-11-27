@@ -90,6 +90,9 @@ pub fn markdown() -> Result<String, String> {
             if matches!(ty, "shader" | "post" | "ui-material") {
                 out.push_str("Output: checked WGSL and ordered typed uniforms, loaded with og.load.shader, og.load.post or og.load.uiMaterial. Use code: input.text('sources/example.wgsl') for an external WGSL file; imports and exact input bytes enter the shared evaluator/cache key. Shader mode explicitly selects hooks, sprite or full with lit. Parameters select float/vec2/vec3/vec4/color; defaults are zero and colors are linear RGB. Native checks and naga validate the existing WGSL contracts for SPIR-V, MSL and HLSL before writing the binary payload. No shader-family author OGT or runtime text parser remains. See render and ui-materials.\n\n");
             }
+            if ty == "motion-action" {
+                out.push_str("Output: native reaction fields consumed by og.motion.react. Source and optional rig are canonical content refs, not physical paths. Requires a named clip and 0 <= holdStart < holdEnd; playback additionally checks the clip duration. Hand contact and its head-local target are optional. No motion-action author or runtime text parser remains. See animation.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -223,10 +226,6 @@ pub fn markdown() -> Result<String, String> {
                     "\nAccepted schemes: `auto`, {}.\n",
                     og_anim::SCHEMES.map(|s| format!("`{s}`")).join(", ")
                 );
-            }
-            "motion-action" => {
-                out.push_str("Field coverage: complete shared action parser line table. Defines an existing authored clip's hold interval/contact, not offline neural motion inference.\n\n");
-                table(&mut out, og_bundle::motion_action::LINES);
             }
             "look" => {
                 out.push_str("Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.\n\n");

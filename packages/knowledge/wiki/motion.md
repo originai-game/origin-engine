@@ -36,7 +36,7 @@ module motion {
 | [`WalkGoalDesc`](motion/type-WalkGoalDesc.md) | desc struct |  | Walk or run to a point (og.motion.walkTo); needs og.MotionAgent.drive. |
 | [`JumpGoalDesc`](motion/type-JumpGoalDesc.md) | desc struct |  | A jump (og.motion.jump); needs og.MotionAgent.drive. |
 | [`LookAtDesc`](motion/type-LookAtDesc.md) | desc struct |  | A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. |
-| [`ReactionDesc`](motion/type-ReactionDesc.md) | desc struct |  | An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarge… |
+| [`ReactionDesc`](motion/type-ReactionDesc.md) | desc struct |  | An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and… |
 | [`MotionStatus`](motion/type-MotionStatus.md) | struct |  | An agent's goals, as the game set them: the current goal and how many wait. |
 | [`MotionPresentationState`](motion/type-MotionPresentationState.md) | enum |  | Presentation progress, dependent on GPU timing, never simulation state. |
 | [`MotionPresentationStatus`](motion/type-MotionPresentationStatus.md) | struct |  | Visual readiness only, outside snapshots and hashes. |

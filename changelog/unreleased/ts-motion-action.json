@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "file:motion-action",
+      "change": "Motion reactions now have one checked TypeScript author entry and a native binary payload; the motion-action OGT parser and embedded author text are removed.",
+      "fix": "Export file['motion-action']({...}) from content/**/*.ts using @origingame/engine/author. Use ref('module/content-id') for source and optional rig, and pass the declaration's canonical ID to og.motion.react. Re-cook with the matching runtime."
+    }
+  ]
+}

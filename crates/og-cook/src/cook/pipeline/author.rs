@@ -22,6 +22,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("shader", &shader_check::SHADER),
     ("post", &shader_check::POST),
     ("ui-material", &shader_check::UI_MATERIAL),
+    ("motion-action", &anim::MOTION_ACTION),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -57,6 +58,7 @@ fn catalogue(
             &story::DIALOGUE,
             &model::MODEL,
             &texture::TEXTURE,
+            &anim::RIG,
         ]
         .contains(&s.kind)
             && !s.rel.starts_with('@')
@@ -143,6 +145,7 @@ pub(crate) fn sources(
             model: Default::default(),
             video: None,
             timeline: None,
+            motion_action: None,
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
@@ -150,6 +153,10 @@ pub(crate) fn sources(
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "motion-action" => {
+                source.motion_action = Some(anim::motion_action(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
             "effect-texture" => effect_texture::derived(content.data()),
             "sound" => audio::derived(content.data()),
             "texture-array" => texture_array::derived(content.data()),
@@ -197,6 +204,15 @@ pub(crate) fn sources(
         sources.push(source);
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
+    for source in sources.iter_mut() {
+        if let Some(action) = &mut source.motion_action {
+            for id in [&mut action.source, &mut action.rig] {
+                if let Some(output) = graph.outputs.get(id.as_str()) {
+                    *id = output.asset.clone();
+                }
+            }
+        }
+    }
     timeline::bind(sources, &graph)?;
     field::bind(sources, fields);
     // Street carves address actual canonical terrain IDs, discovered above.

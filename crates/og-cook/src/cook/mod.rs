@@ -143,6 +143,8 @@ pub(crate) struct Source {
     video: Option<video::Prepared>,
     /// Native tracks and captured captions, shared by planning and execution.
     timeline: Option<timeline::Prepared>,
+    /// Checked reaction with references resolved to its producers' outputs.
+    motion_action: Option<og_bundle::motion_action::MotionAction>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.

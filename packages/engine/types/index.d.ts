@@ -34941,14 +34941,14 @@ export interface LookAtDesc {
 }
 
 /**
- * An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.
+ * An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked file['motion-action'] TS declaration (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only.
  * See `animation §11`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface ReactionDesc {
   /**
-   * The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction.
+   * The canonical motion-action content ID, such as base/actions/brace. Empty releases the current reaction.
    *
    * @default ""
    */

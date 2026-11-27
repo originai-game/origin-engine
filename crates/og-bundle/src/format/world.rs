@@ -301,9 +301,15 @@ impl BlobKind for Rig {
 }
 
 row!(
-    /// The validated motion-action text in `text`.
-    MotionActionMeta, "og.MotionAction", 1 {
-        text_bytes: u32,
+    /// A checked reaction; string ranges address the UTF-8 `strings` section.
+    MotionActionMeta, "og.MotionAction", 2 {
+        source_offset: u32, source_len: u32,
+        clip_offset: u32, clip_len: u32,
+        rig_offset: u32, rig_len: u32,
+        hold_start: f32, hold_end: f32,
+        /// 0 no contact, 1 left, 2 right.
+        hand: u32,
+        target_x: f32, target_y: f32, target_z: f32,
     }
 );
 

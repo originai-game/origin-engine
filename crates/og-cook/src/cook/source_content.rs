@@ -237,7 +237,7 @@ impl<'a> GraphBuilder<'a> {
     pub(crate) fn insert_scanned(&mut self, entry: Entry, asset: String) -> Result<Output, String> {
         if !matches!(
             entry.factory.as_str(),
-            "scene" | "prefab" | "look" | "dialogue" | "model" | "texture"
+            "scene" | "prefab" | "look" | "dialogue" | "model" | "texture" | "rig"
         ) {
             return Err(format!(
                 "{}: kind is outside the temporary scaffold catalogue",
