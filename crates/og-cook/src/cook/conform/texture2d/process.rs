@@ -172,12 +172,6 @@ pub(super) fn run(art: &Art, src: &Rgba, role: &Role, size: Option<u32>) -> Done
                     0
                 };
                 let p = palette::adaptive(&img.px, Some(img.w), max, art.ramp_steps);
-                let all: Vec<usize> = (0..p.rgb.len()).collect();
-                let ix = if p.rgb.is_empty() {
-                    vec![None; img.px.len()]
-                } else {
-                    palette::map(&img.px, img.w, &origin, &p, &all, art.dither)
-                };
                 what.push(format!(
                     "{before} colours to {} of its own{}{}",
                     p.rgb.len(),
@@ -192,8 +186,14 @@ pub(super) fn run(art: &Art, src: &Rgba, role: &Role, size: Option<u32>) -> Done
                         String::new()
                     },
                 ));
-                index = Some(ix);
-                pal = Some((p, None));
+                // A fully transparent image has no palette to swap. Do
+                // not emit an empty palette asset; with no outline to add
+                // a colour, that asset would fail its own cook.
+                if !p.rgb.is_empty() {
+                    let all: Vec<usize> = (0..p.rgb.len()).collect();
+                    index = Some(palette::map(&img.px, img.w, &origin, &p, &all, art.dither));
+                    pal = Some((p, None));
+                }
             }
         }
         if let (Some(ix), Some((p, _))) = (&index, &pal) {

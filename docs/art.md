@@ -115,6 +115,16 @@ or `conform effect` (an effect's mesh, which no face budget simplifies;
 | models (glTF, `type model`, `.vox`) | `ArtShape`, `ArtTexels`, `ArtPalette` | decimate to the face budget (meshopt), flat normals or an angle split, bevel hard edges, voxelise at `voxel` with palette colours, bake vertex colours for untextured styles, the outline hull's data for `ArtLine` |
 | clips and flipbooks | `ArtMotion` | step the sampled clip at `stepFps`, drop frames beyond `maxFrames` with a warning |
 
+`type vfx2d` recipes already author their pixel grid, colour ramps,
+coverage and outline. Their generated `#sheet` textures carry `conform
+off`: the sprite contract must not shrink thin particles, turn a ramp's
+dark steps into outline, or replace its highlights. This applies to every
+recipe, not just the bundled packs, and preserves the recipe under every
+look. Frame-level treatment still belongs to the look. Ordinary sprites,
+flipbooks and tile sets still conform as above. A fully transparent
+conformed texture has no adaptive palette or index asset; `ArtLine.width
+0` adds nothing and never requires an empty palette to be cooked.
+
 Ported algorithms (Pixelorama, cleanEdge; both MIT) keep their notices in
 `third_party/<name>/LICENSE` beside the ported code's header.
 

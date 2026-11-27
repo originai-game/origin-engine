@@ -6,7 +6,10 @@
 //! packed into a texture of its own, `<id>#sheet` (pixel art, `filter
 //! nearest`), and one clip named after the file with the recipe's fps and
 //! loop and a FlipbookEvent `impact` on the impact frame. The rest of the
-//! cook and the runtime see a sheet.
+//! cook and the runtime see a sheet. Its recipe already authors the pixel
+//! grid, colour ramps, coverage and outline: the generated texture opts
+//! out of the sprite art contract, which would re-step its ramps, erase
+//! thin particles and draw another outline over its highlights.
 //!
 //! ```text
 //! type vfx2d
@@ -400,7 +403,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             }
         };
         let settings = format!(
-            "type import\nversion 1\n---\n# vfx2d renderer {ENGINE_VERSION}\ntexture {{\n  kind pixel\n}}\n"
+            "type import\nversion 1\n---\n# vfx2d renderer {ENGINE_VERSION}\nconform off\ntexture {{\n  kind pixel\n}}\n"
         );
         let doc = Document::parse(&settings).expect("the import text");
         s.bytes = built.text.into_bytes();
