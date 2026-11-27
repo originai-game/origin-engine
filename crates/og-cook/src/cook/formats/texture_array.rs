@@ -1,133 +1,66 @@
-//! Texture arrays: an `.ogt` of `type texture-array` naming N images of one
-//! size, cooked into an `og.TextureArray` blob (its size, kind and layer
+//! Typed texture arrays name explicit module-relative images of one size,
+//! cooked into an `og.TextureArray` blob (its size, kind and layer
 //! ids) and one `og.Texture` per layer (`<id>#layer<n>`, encoded like any
 //! texture of its kind), which the runtime uploads as one 2D-array texture.
 //!
-//! ```text
-//! type texture-array
-//! version 1
-//! ---
-//! kind color                 # color (default) | normal | linear | pixel
-//! layer "tiles/grass.png"    # relative to this file when it exists there, else under assets/
-//! layer "tiles/dirt.png"
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file['texture-array']({
+//!   kind: 'color', layers: ['assets/tiles/grass.png', 'assets/tiles/dirt.png'],
+//! });
 //! ```
 
 use super::texture;
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
+use crate::cook::source_schemas::world::source_data::{TextureArrayInput, TextureKind};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
 use std::path::Path;
-
-/// The `.ogt` type of a texture array.
-pub const ARRAY_TYPE: &str = "texture-array";
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "kind",
-        "color | normal | linear | single | pixel",
-        "color",
-        "Shared texture encoding and sampling kind for all layers.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "layer",
-        "\"<image>\"",
-        "required, 1..256",
-        "Repeat same-sized images in layer order; paths resolve beside this file, then under assets/.",
-        "",
-    ),
-];
 
 /// The most layers an array holds (WebGPU's guaranteed
 /// `maxTextureArrayLayers` is 256).
 pub const MAX_LAYERS: usize = 256;
 
-/// A parsed texture array file: its kind and its layers' files.
+/// A texture array's encoding kind and module-relative layer files.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrayDecl {
     pub kind: u32,
-    /// Each layer's path under `assets/`.
+    /// Each layer's explicit path under the owning module.
     pub layers: Vec<String>,
 }
 
-/// Parses a texture array file; `exists(rel)` says whether a path under
-/// `assets/` is a file (a layer names one relative to the array file first).
-pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<ArrayDecl, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != ARRAY_TYPE {
-        return Err(format!("a texture array is `type {ARRAY_TYPE}`"));
-    }
-    if doc.version != 1 {
-        return Err(format!(
-            "texture array version {} (this engine reads 1)",
-            doc.version
-        ));
-    }
-    let dir = rel.rsplit_once('/').map_or("", |(d, _)| d);
-    let mut out = ArrayDecl {
-        kind: format::kind::COLOR,
-        layers: Vec::new(),
-    };
-    for e in &doc.body.entries {
-        let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(format!(
-                "line {}: unknown texture-array field '{}'",
-                e.line, e.key
-            ));
-        }
-        match e.key.as_str() {
-            "kind" => {
-                out.kind = match e.word(0).map_err(err)? {
-                    "color" => format::kind::COLOR,
-                    "normal" => format::kind::NORMAL,
-                    "linear" => format::kind::LINEAR,
-                    "single" => format::kind::SINGLE,
-                    "pixel" => format::kind::PIXEL,
-                    w => {
-                        return Err(format!(
-                            "line {}: kind '{w}' (color, normal, linear, single or pixel)",
-                            e.line
-                        ));
-                    }
-                }
-            }
-            "layer" => {
-                let p = e.string(0).map_err(err)?;
-                if p.is_empty() || p.starts_with('/') || p.split('/').any(|c| c == "..") {
-                    return Err(format!(
-                        "line {}: '{p}' is not a path under assets/",
-                        e.line
-                    ));
-                }
-                let sibling = if dir.is_empty() {
-                    p.to_string()
-                } else {
-                    format!("{dir}/{p}")
-                };
-                let path = if exists(&sibling) {
-                    sibling
-                } else if exists(p) {
-                    p.to_string()
-                } else {
-                    return Err(format!(
-                        "line {}: layer '{p}' is neither beside the array nor under assets/",
-                        e.line
-                    ));
-                };
-                out.layers.push(path);
-            }
-            k => return Err(format!("line {}: unknown key '{k}' (kind, layer)", e.line)),
+fn declaration(s: &Source) -> Result<ArrayDecl, String> {
+    let input = s.input::<TextureArrayInput>()?;
+    let root = crate::cook::assets_root(s);
+    for layer in &input.layers {
+        let path = crate::cook::source_path::checked(&root, layer)
+            .map_err(|e| format!("layer '{layer}': {e}"))?;
+        if !path.is_file() {
+            return Err(format!("layer '{layer}' is not a regular image file"));
         }
     }
-    if out.layers.is_empty() || out.layers.len() > MAX_LAYERS {
-        return Err(format!(
-            "a texture array has 1 to {MAX_LAYERS} layers, not {}",
-            out.layers.len()
-        ));
-    }
-    Ok(out)
+    Ok(ArrayDecl {
+        kind: match input.kind {
+            TextureKind::Color => format::kind::COLOR,
+            TextureKind::Normal => format::kind::NORMAL,
+            TextureKind::Linear => format::kind::LINEAR,
+            TextureKind::Single => format::kind::SINGLE,
+            TextureKind::Pixel => format::kind::PIXEL,
+        },
+        layers: input.layers,
+    })
+}
+
+/// The checked declaration reports exactly the layer textures it produces.
+pub(crate) fn derived(
+    data: &crate::cook::generator::value::Data,
+) -> Result<std::collections::BTreeMap<String, String>, String> {
+    let file: crate::cook::source_schemas::File =
+        serde_json::from_value(data.root().into_json()).map_err(|e| e.to_string())?;
+    let input: TextureArrayInput = serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+    Ok((0..input.layers.len())
+        .map(|n| (format!("layer{n}"), "texture".into()))
+        .collect())
 }
 
 /// The id of layer `n` of a texture array.
@@ -250,7 +183,7 @@ pub fn dependencies(root: &Path, decl: &ArrayDecl) -> String {
 pub(crate) static TEXTURE_ARRAY: KindDef = KindDef {
     name: "texture-array",
     extensions: &[],
-    types: &[ARRAY_TYPE],
+    types: &[],
     by_content: false,
     streams: true,
     plan: plan_texture_array,
@@ -272,9 +205,8 @@ fn plan_texture_array<'a>(
         parsed_refs,
         ..
     } = state;
-    let text = String::from_utf8_lossy(&s.bytes);
     let root = crate::cook::assets_root(s);
-    match parse(&s.rel, &text, &|p| root.join(p).is_file()) {
+    match declaration(s) {
         Ok(decl) => {
             let deps = dependencies(&root, &decl);
             assets::record_dependencies(parsed_refs, &s.rel, &deps);

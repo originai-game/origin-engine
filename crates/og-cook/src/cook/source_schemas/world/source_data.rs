@@ -18,7 +18,8 @@ use std::sync::OnceLock;
 pub struct TextureArrayInput {
     #[serde(default)]
     pub kind: TextureKind,
-    /// Paths beside this file, then under the asset root; not runtime handles.
+    /// Explicit canonical paths relative to the owning module (e.g.
+    /// assets/tiles/grass.png), without sibling or asset-root fallback.
     #[schemars(length(min = 1, max = 256), inner(length(min = 1)), extend("x-og-input" = "bytes"))]
     pub layers: Vec<String>,
 }

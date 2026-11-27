@@ -58,6 +58,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "sound" {
                 out.push_str("Output: an ordinary sound loaded with og.load.sound. Explicit rate 8000..192000 Hz, channels 1 or 2, and at least one complete interleaved frame of finite samples are required. Float samples share the WAV importer's clamping and quantization, then the normal sound encoder and automatic streaming. Actual #chunkN outputs are reported by the producer. Oscillator synthesis remains the separate sfx domain.\n\n");
             }
+            if ty == "texture-array" {
+                out.push_str("Outputs: one texture array at the primary ID, plus exactly #layer0 through #layerN-1 as ordinary textures. Give 1..256 equally sized images in layer order. Each layer is an explicit canonical path relative to the owning module, such as assets/tiles/grass.png; there is no sibling/assets fallback. Image bytes participate in cook stamps, including warm-cache rebuilds. Encoding kinds are color, normal, linear, single and pixel.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -228,15 +231,14 @@ pub fn markdown() -> Result<String, String> {
                     super::systems::district::parse::VARY_LINES,
                 );
             }
-            "environment" | "icons" | "vector" | "texture-array" => {
+            "environment" | "icons" | "vector" => {
                 out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
                 table(
                     &mut out,
                     match ty {
                         "environment" => super::environment::LINES,
                         "icons" => super::icons::LINES,
-                        "vector" => super::vector::LINES,
-                        _ => super::texture_array::LINES,
+                        _ => super::vector::LINES,
                     },
                 );
             }

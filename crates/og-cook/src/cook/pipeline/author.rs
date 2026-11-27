@@ -9,6 +9,7 @@ use crate::cook::{source_content, source_index, source_project, source_records};
 pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("effect-texture", &effect_texture::TEXTURE),
     ("sound", &audio::SOUND),
+    ("texture-array", &texture_array::TEXTURE_ARRAY),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -92,6 +93,7 @@ pub(crate) fn sources(
         let derived = match entry.factory.as_str() {
             "effect-texture" => effect_texture::derived(content.data()),
             "sound" => audio::derived(content.data()),
+            "texture-array" => texture_array::derived(content.data()),
             _ => Ok(BTreeMap::new()),
         }
         .map_err(|e| {

@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.texture-array / og cook",
+      "change": "Texture-array authoring now consumes checked TS declarations directly. The OGT parser and sibling/assets path fallback are deleted. Only actual layer textures are registered in the content reference graph; image bytes remain part of warm cook cache keys.",
+      "fix": "Export file['texture-array']({kind:'color',layers:['assets/tiles/grass.png','assets/tiles/dirt.png']}) from content/<name>.ts, importing file from @origingame/engine/author. Layer paths are explicit canonical paths relative to the owning module. Load <module>/<content-relative-stem> or its #layerN textures instead of an .ogt path. See og api show file:texture-array.",
+      "find": ["type texture-array", "layer \"", "texture-array.ogt"]
+    }
+  ]
+}

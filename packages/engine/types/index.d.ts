@@ -39790,12 +39790,12 @@ export declare namespace og {
      */
     function texture(world: World, path: string): Result<Texture>;
     /**
-     * Load a cooked texture array (an `.ogt` of `type texture-array`: a `kind` and 1 to 256 `layer` images of one size) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture, `<path>#layer<n>`. Loading the same path again answers the same array.
+     * Load a cooked TS file['texture-array'] declaration as one 2D-array texture: 1..256 equally sized images, in declaration order, encoded for their kind. Each layer is also a texture, `<path>#layer<n>`. Repeated loads return the same array.
      * Sprites (SpriteDesc.array, og.Sprite.array) and 2D particle emitters draw from it, one draw per array. In a streaming group it loads once the group is resident (refused before, naming the group), draws nothing while the group is away and returns under the same handle.
      * See `loading §8`.
      *
      * @param world The world whose renderer owns the array.
-     * @param path The array's asset id, such as `tiles/ground.ogt`.
+     * @param path The array's canonical asset id, such as `base/tiles/ground`.
      * @returns Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;

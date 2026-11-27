@@ -372,10 +372,14 @@ each one moves.
 <a id="guide-loading-8"></a>
 ### `loading §8` Texture arrays and flipbooks
 
-- A texture array is an `.ogt` of `type texture-array`: `kind
-  color|normal|linear|pixel` and one `layer "<file>"` per layer, 1 to 256
-  images of one size. Each path is beside the file or under assets/.
-  Each layer is also a texture of its own, `<path>#layer<n>`.
+- A texture array exports `file["texture-array"]({kind:"color",
+  layers:["assets/tiles/grass.png","assets/tiles/dirt.png"]})` from
+  `content/tiles.ts`, importing `file` from `@origingame/engine/author`.
+  Give 1..256 images of one size, in layer order; kinds are `color`,
+  `normal`, `linear`, `single` and `pixel`. Paths are explicit and relative
+  to the owning module, never chosen by a sibling/assets fallback.
+  Load `base/tiles` (or the owning module's ID); each actual layer is also
+  a texture of its own, `base/tiles#layer<n>`. OGT array sources are refused.
 - Sprites, og.Sprite and 2D particle emitters draw from an array with
   one draw per array, whatever layer each shows, with glow and the
   additive blend. Materials and terrain layers do not sample arrays yet.

@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.textureArray`
 
-Load a cooked texture array (an `.ogt` of `type texture-array`: a `kind` and 1 to 256 `layer` images of one size) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture, `<path>#layer<n>`. Loading the same path again answers the same array.
+Load a cooked TS file['texture-array'] declaration as one 2D-array texture: 1..256 equally sized images, in declaration order, encoded for their kind. Each layer is also a texture, `<path>#layer<n>`. Repeated loads return the same array.
 
 Sprites (SpriteDesc.array, og.Sprite.array) and 2D particle emitters draw from it, one draw per array. In a streaming group it loads once the group is resident (refused before, naming the group), draws nothing while the group is away and returns under the same handle.
 
@@ -19,7 +19,7 @@ og.load.textureArray(world: World, path: string): Result<TextureArrayInfo>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the array. |
-| `path` | `string` | no | The array's asset id, such as `tiles/ground.ogt`. |
+| `path` | `string` | no | The array's canonical asset id, such as `base/tiles/ground`. |
 
 **Returns** `Result<TextureArrayInfo>`: Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
 
@@ -27,11 +27,11 @@ Binding symbol `og_load_texture_array` · publish builds: kept
 
 ```ogt
 fn textureArray {
-  doc "Load a cooked texture array (an `.ogt` of `type texture-array`: a `kind` and 1 to 256 `layer` images of one size) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture, `<path>#layer<n>`. Loading the same path again answers the same array."
+  doc "Load a cooked TS file['texture-array'] declaration as one 2D-array texture: 1..256 equally sized images, in declaration order, encoded for their kind. Each layer is also a texture, `<path>#layer<n>`. Repeated loads return the same array."
   doc "Sprites (SpriteDesc.array, og.Sprite.array) and 2D particle emitters draw from it, one draw per array. In a streaming group it loads once the group is resident (refused before, naming the group), draws nothing while the group is away and returns under the same handle."
   guide "loading §8"
   param world World "The world whose renderer owns the array."
-  param path String "The array's asset id, such as `tiles/ground.ogt`."
+  param path String "The array's canonical asset id, such as `base/tiles/ground`."
   returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
 }
 ```

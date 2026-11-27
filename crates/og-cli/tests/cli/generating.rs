@@ -1,5 +1,165 @@
 use super::*;
 
+/// The public array path retains layer order, module-local file inputs and
+/// warm-cache invalidation, and rejects removed or nonexistent author inputs.
+#[test]
+fn typed_texture_arrays_cook_module_inputs_and_real_layers() {
+    let root = TempDir::new("og-typed-arrays");
+    let write = |file: &str, text: &str| {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Arrays","engine":"0.9.0"}"#,
+    );
+    let project = "import {defineProject,ref} from '@origingame/engine/author'; export default defineProject({id:'arrays',entry:'src/main.ts',modules:[{id:'island',root:'modules/island',dependsOn:['base']}],roots:[ref('base/nested/tiles#layer1'),ref('island/nested/tiles#layer0')]});";
+    write("project.ts", project);
+    write("src/main.ts", "export default {};\n");
+    let source = "import {file} from '@origingame/engine/author'; export default file['texture-array']({kind:'color',layers:['assets/a.png','assets/b.png']});";
+    write("content/nested/tiles.ts", source);
+    write(
+        "modules/island/content/nested/tiles.ts",
+        &source.replace(",'assets/b.png'", ""),
+    );
+    let image = |file: &str, size: (u32, u32), color: [u8; 4]| {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        image::save_buffer(
+            at,
+            &color.repeat((size.0 * size.1) as usize),
+            size.0,
+            size.1,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    };
+    image("assets/a.png", (4, 2), [193, 17, 83, 255]);
+    image("assets/b.png", (4, 2), [23, 181, 59, 255]);
+    image("modules/island/assets/a.png", (3, 5), [7, 41, 211, 255]);
+    let cache = root.join("cache");
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let load = || og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let mut previous = None;
+    for (run, changed) in [false, false, true].into_iter().enumerate() {
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        if changed {
+            image("assets/b.png", (4, 2), [213, 73, 11, 255]);
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = load();
+        let array = bundle.load_texture_array("base/nested/tiles").unwrap();
+        assert_eq!(
+            (array.meta.width, array.meta.height, array.meta.layers),
+            (4, 2, 2)
+        );
+        assert_eq!(
+            array.layers,
+            ["base/nested/tiles#layer0", "base/nested/tiles#layer1"]
+        );
+        for (n, id) in ["a.png", "b.png"].into_iter().enumerate() {
+            assert_eq!(
+                bundle.load_texture(&array.layers[n]).unwrap().ktx2,
+                bundle.load_texture(id).unwrap().ktx2
+            );
+        }
+        let island = bundle.load_texture_array("island/nested/tiles").unwrap();
+        assert_eq!(
+            (island.meta.width, island.meta.height, island.meta.layers),
+            (3, 5, 1)
+        );
+        let current = (
+            bundle
+                .load_texture("base/nested/tiles#layer1")
+                .unwrap()
+                .ktx2,
+            bundle
+                .load_texture("island/nested/tiles#layer0")
+                .unwrap()
+                .ktx2,
+        );
+        if let Some((base, island)) = previous {
+            assert_eq!(current.1, island);
+            assert_eq!(current.0 == base, !changed);
+        }
+        previous = Some(current);
+        assert!(bundle.load_texture("base/nested/tiles#layer2").is_err());
+        assert!(bundle.read("nested/tiles.ogt").is_err());
+    }
+    image("assets/b.png", (2, 4), [23, 181, 59, 255]);
+    let out = cook();
+    assert!(
+        !out.status.success(),
+        "mismatched layer dimensions accepted"
+    );
+    assert!(text(&out).contains("one size"), "{}", text(&out));
+    image("assets/b.png", (4, 2), [23, 181, 59, 255]);
+    write(
+        "project.ts",
+        &project.replace("tiles#layer1", "tiles#layer2"),
+    );
+    let out = cook();
+    assert!(!out.status.success(), "invented array layer accepted");
+    assert!(
+        text(&out).contains("base/nested/tiles#layer2"),
+        "{}",
+        text(&out)
+    );
+    write("project.ts", project);
+    for path in [
+        "../a.png",
+        "/tmp/a.png",
+        "assets/missing.png",
+        "a.png",
+        "assets\\a.png",
+    ] {
+        write(
+            "content/nested/tiles.ts",
+            &source.replace("'assets/a.png'", &serde_json::to_string(path).unwrap()),
+        );
+        let out = cook();
+        assert!(
+            !out.status.success(),
+            "accepted layer {path}: {}",
+            text(&out)
+        );
+    }
+    write("content/nested/tiles.ts", source);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(root.join("assets/a.png"), root.join("assets/link.png"))
+            .unwrap();
+        write(
+            "content/nested/tiles.ts",
+            &source.replace("assets/a.png", "assets/link.png"),
+        );
+        assert!(!cook().status.success(), "symlink image accepted");
+        std::fs::remove_file(root.join("assets/link.png")).unwrap();
+        write("content/nested/tiles.ts", source);
+    }
+    write(
+        "assets/old.ogt",
+        "type texture-array\nversion 1\n---\nlayer \"a.png\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success(), "removed OGT author input accepted");
+    assert!(
+        text(&out).contains("OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+}
+
 #[test]
 fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
     let root = TempDir::new("og-typed-cook");

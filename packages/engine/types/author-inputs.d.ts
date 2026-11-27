@@ -5505,7 +5505,8 @@ readonly "kind": ("curve") & (string);
 dimensions and encoder compatibility remain texture-array domain checks. */
 export type Input_texture_array = ({
 readonly "kind"?: (Input_texture_arrayDefinitions["TextureKind"]);
-/** Paths beside this file, then under the asset root; not runtime handles. */
+/** Explicit canonical paths relative to the owning module (e.g.
+assets/tiles/grass.png), without sibling or asset-root fallback. */
 readonly "layers": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_texture_arrayDefinitions {
