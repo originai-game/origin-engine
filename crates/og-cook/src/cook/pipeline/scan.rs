@@ -536,6 +536,7 @@ pub(crate) fn scan_with(
             timeline: None,
             fields: Default::default(),
             terrains: Default::default(),
+            navmesh: None,
             conformed: None,
             fracture: None,
         });

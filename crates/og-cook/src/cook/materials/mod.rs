@@ -327,6 +327,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         timeline: None,
                         fields: Default::default(),
                         terrains: Default::default(),
+                        navmesh: None,
                         conformed: None,
                         fracture: None,
                     });

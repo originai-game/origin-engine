@@ -352,7 +352,7 @@ impl BlobKind for Palette {
 }
 
 row!(
-    /// The root of a navmesh blob (an `.ogt` of `type navmesh`): the
+    /// The root of a navmesh blob (a checked `file.navmesh` declaration): the
     /// heightfield's grid and the agent it was baked for.
     NavMeshMeta, "og.NavMesh", 2 {
         cell_size: f32,

@@ -18,6 +18,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("timeline", &timeline::TIMELINE),
     ("field", &field::FIELD),
     ("terrain", &terrain::TERRAIN),
+    ("navmesh", &navmesh::NAVMESH),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -141,6 +142,7 @@ pub(crate) fn sources(
             timeline: None,
             fields: Default::default(),
             terrains: Default::default(),
+            navmesh: None,
             conformed: None,
             fracture: None,
         };
@@ -166,6 +168,13 @@ pub(crate) fn sources(
                 let outputs = prepared.outputs();
                 source.video = Some(prepared);
                 Ok(outputs)
+            }
+            "navmesh" => {
+                source.navmesh = Some(navmesh::Prepared::new(
+                    source.input()?,
+                    source_content::diagnostic(content.source(), &entry.file, "", ""),
+                ));
+                Ok(BTreeMap::new())
             }
             "timeline" => {
                 source.timeline = Some(timeline::Prepared::new(

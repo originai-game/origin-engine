@@ -2211,7 +2211,7 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     )
     .unwrap();
     std::fs::write(assets.join("placed.ogt"), "type scatter\nversion 1\n---\nprefab \"marker.ogt\"\nproject \"base/surface\"\npoint 0 3 0\n").unwrap();
-    std::fs::write(assets.join("nav.ogt"), "type navmesh\nversion 1\n---\nterrain \"base/surface\"\ncellSize 1\ncellHeight 0.25\nagent {\nradius 0\nheight 1\nclimb 2\nslope 89\n}\n").unwrap();
+    std::fs::write(root.join("content/nav.ts"), "import {file,ref} from '@origingame/engine/author'; export default file.navmesh({terrains:[{terrain:ref('base/surface')}],cellSize:1,cellHeight:0.25,agents:[{radius:0,height:1,climb:2,slope:89}]});").unwrap();
     let mut previous_nav = None;
     for (mask, height) in [(0, 74.0), (1, 107.0)] {
         std::fs::write(root.join("content/protect.ts"), format!("import {{file}} from '@origingame/engine/author';export default file.field({{dimensions:[5,3,1],channels:1,values:Array(15).fill({mask})}});")).unwrap();
@@ -2232,7 +2232,7 @@ fn generated_fields_load_losslessly_and_feed_particles() {
             );
         }
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-        let nav = bundle.read("nav.ogt").unwrap().to_vec();
+        let nav = bundle.read("base/nav").unwrap().to_vec();
         if let Some(previous) = previous_nav.replace(nav.clone()) {
             assert_ne!(previous, nav, "navigation reused a stale preserve field");
         }

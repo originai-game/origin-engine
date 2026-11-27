@@ -84,6 +84,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "terrain" {
                 out.push_str("Output: independently compressed terrain tiles, control pages, horizon and hole data, loaded with og.terrain.load. Source is exactly one image, evaluated metre-valued heightfield or seeded noise. Image/control/hole paths are explicit owning-module paths (assets/ or sources/), with no sibling fallback. Process order remains hydraulic, thermal, terraces, shore, drainage, channels, preserve projection and biome controls, then ordered brush/stamp edits. Texture, array, model-geometry and preserve operands are canonical content refs. Writer, navmesh and projected scatter share one checked surface. There is no terrain OGT parser or generate.script wrapper. See generating and terrain.\n\n");
             }
+            if ty == "navmesh" {
+                out.push_str("Output: a baked navigation mesh loaded with og.nav.load, with one mesh per agent profile. Scene, placed model and terrain operands are canonical refs, not file paths. Cook captures imported geometry once; planning and execution do not reopen model files. Terrain uses the writer's shared checked surface. Areas explicitly select box, cylinder or convex shape and retain written overlap order. Link IDs are exact u32 values and unique; unnamed profiles take precedence, otherwise the first is default. No navigation author OGT parser remains. See world.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -204,13 +207,6 @@ pub fn markdown() -> Result<String, String> {
                     "materials.material.vary",
                     super::systems::district::parse::VARY_LINES,
                 );
-            }
-            "navmesh" => {
-                out.push_str("Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.\n\n");
-                table(&mut out, super::navmesh::LINES);
-                for (name, fields) in super::navmesh::BLOCKS {
-                    block(&mut out, &format!("navmesh.{name}"), fields);
-                }
             }
             "strings" => {
                 out.push_str("Field coverage: complete shared string-table parser line table. Messages use the existing ICU subset; locale key/argument checks still run in cook.\n\n");

@@ -14,6 +14,166 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// A public navigation bake roundtrip, including imported buffer changes,
+/// module refs, profile selection, ordered areas and full-width link IDs.
+#[test]
+fn typed_navigation_bakes_captured_geometry_and_preserves_profiles_and_links() {
+    use og_ai::nav::cooked::BundleNav;
+    use og_core::glam::Vec3;
+    let root = crate::temp::TempDir::new("typed-nav");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'nav',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("assets/platform.gltf", &serde_json::json!({
+        "asset":{"version":"2.0"}, "scene":0, "scenes":[{"nodes":[0]}],
+        "nodes":[{"mesh":0}], "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],
+        "buffers":[{"uri":"platform.bin","byteLength":72}],
+        "bufferViews":[{"buffer":0,"byteLength":72}],
+        "accessors":[{"bufferView":0,"componentType":5126,"count":6,"type":"VEC3","min":[-5,0,-3],"max":[5,3,3]}]
+    }).to_string());
+    write(
+        "assets/scene.ogt",
+        "type scene\nversion 1\n---\nentity \"east\" {\nTransform {\nposition 20 1 0\n}\nCollider {\nsize 6 2 6\n}\n}\n",
+    );
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nexport default file.navmesh({
+        scene:ref('base/scene'),models:[{model:ref('base/platform'),transform:{position:[2,0,0],scale:[2,1,1]}}],
+        boxes:[{center:[-20,0,0],size:[6,2,6]}],
+        agents:[{name:'large',radius:0.75,height:2.5},{radius:0,height:1}],
+        cellSize:0.5,cellHeight:0.25,tileSize:16,
+        bounds:{min:[-26,-2,-8],max:[26,12,8]},
+        areas:[{id:3,shape:{kind:'box',center:[0,0,0],size:[10,10,6],yaw:0.2}},
+               {id:5,shape:{kind:'cylinder',center:[0,0,0],radius:2,height:8}},
+               {id:7,shape:{kind:'convex',points:[[-1,-1],[1,-1],[1,1],[-1,1]],bottom:0,top:8}}],
+        links:[{id:16777217,start:[-2,1,0],end:[2,1,0],kind:'door',bidirectional:false,cost:2.75,duration:0.625,open:false,traverse:'game'}]
+    });";
+    write("modules/north/content/navigation.ts", declaration);
+    let options = CookOptions {
+        threads: 2,
+        ..Default::default()
+    };
+    let mut previous = None;
+    for height in [1.0f32, 3.0] {
+        let positions = [
+            [-5., height, -3.],
+            [-5., height, 3.],
+            [5., height, 3.],
+            [-5., height, -3.],
+            [5., height, 3.],
+            [5., height, -3.],
+        ];
+        std::fs::write(
+            root.join("assets/platform.bin"),
+            positions
+                .into_iter()
+                .flatten()
+                .flat_map(f32::to_le_bytes)
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+        for warm in [false, true] {
+            let report = cook_project(&root, &options).unwrap();
+            assert!(report.ok(), "{:?}", report.errors());
+            let b = Bundle::open(&root.join("cooked")).unwrap();
+            let bytes = b.read("north/navigation").unwrap();
+            assert_eq!(
+                b.navmesh_profiles("north/navigation", &bytes).unwrap(),
+                ["", "large"]
+            );
+            let (field, tiles) = b.navmesh("north/navigation", &bytes).unwrap();
+            let sample = |x: f32| {
+                let column = ((x - field.origin.x) / field.params.cell_size) as i32;
+                let row = ((0.0 - field.origin.z) / field.params.cell_size) as i32;
+                let spans: Vec<_> = field
+                    .column(column, row)
+                    .map(|i| {
+                        field.origin.y + field.spans[i].floor as f32 * field.params.cell_height
+                    })
+                    .collect();
+                assert_eq!(spans.len(), 1, "x={x}: {spans:?}");
+                spans[0]
+            };
+            assert!((sample(0.0) - height).abs() <= 0.25);
+            assert!((sample(-7.0) - height).abs() <= 0.25, "model scale missing");
+            assert!(
+                (sample(11.0) - height).abs() <= 0.25,
+                "model position missing"
+            );
+            assert!((sample(20.0) - 2.0).abs() <= 0.25, "scene geometry missing");
+            assert!((sample(-20.0) - 1.0).abs() <= 0.25, "explicit box missing");
+            let areas = b.navmesh_areas("north/navigation", &bytes).unwrap();
+            assert_eq!(
+                areas.iter().map(|(_, id)| *id).collect::<Vec<_>>(),
+                [3, 5, 7]
+            );
+            let mesh = og_ai::nav::NavMesh::from_tiles_with_areas(field, tiles, areas).unwrap();
+            let (poly, _) = mesh
+                .nearest(Vec3::new(0.0, height, 0.0), Vec3::splat(0.5))
+                .expect("walkable model surface");
+            assert_eq!(
+                mesh.poly(poly).unwrap().1.area,
+                7,
+                "last overlapping area wins"
+            );
+            let links = b.navmesh_links("north/navigation", &bytes).unwrap();
+            let (id, link) = &links[0];
+            assert_eq!(
+                (*id, link.bidirectional, link.game, link.open),
+                (16777217, false, true, false)
+            );
+            assert_eq!((link.cost, link.duration), (2.75, 0.625));
+            assert!(matches!(link.kind, og_ai::nav::LinkKind::Door));
+            let profile = b
+                .navmesh_profile("north/navigation", &bytes, "large")
+                .unwrap()
+                .unwrap();
+            let (large, _) = b.navmesh("north/navigation", profile).unwrap();
+            assert_eq!(
+                (large.params.agent_radius, large.params.agent_height),
+                (0.75, 2.5)
+            );
+            if warm {
+                assert_eq!(previous.as_ref().unwrap(), &bytes.to_vec());
+            } else if let Some(previous) = &previous {
+                assert_ne!(previous, &bytes.to_vec(), "stale external buffer");
+            }
+            previous = Some(bytes.to_vec());
+        }
+    }
+    for (suffix, expected) in [
+        ("agents:[{},{}]", "agent profile '' is used twice"),
+        ("boxes:[{quaternion:[0,0,0,0]}]", "zero length"),
+        (
+            "links:[{id:1,start:[0,0,0],end:[1,0,0]},{id:1,start:[0,0,0],end:[2,0,0]}]",
+            "link id 1 is used twice",
+        ),
+    ] {
+        write(
+            "modules/north/content/navigation.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author';\nexport default file.navmesh({{{suffix}}});"
+            ),
+        );
+        let result = cook_project(&root, &options);
+        let error = match result {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(error.contains(expected), "{error}");
+        assert!(error.contains("content/navigation.ts:2"), "{error}");
+    }
+    write("modules/north/content/navigation.ts", declaration);
+    write("assets/old.ogt", "type navmesh\nversion 1\n---\n");
+    let report = cook_project(&root, &options).unwrap();
+    assert!(!report.ok(), "old navigation author entry was accepted");
+}
+
 /// `tests/fixtures/cook-assets/assets`: what the template ships.
 fn template_assets() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cook-assets/assets")

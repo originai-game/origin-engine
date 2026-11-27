@@ -19,6 +19,7 @@ fn source(root: &Path, rel: &str) -> Source {
         timeline: None,
         fields: Default::default(),
         terrains: Default::default(),
+        navmesh: None,
         conformed: None,
         fracture: None,
     }

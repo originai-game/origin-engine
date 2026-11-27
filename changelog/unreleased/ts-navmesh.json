@@ -1,0 +1,8 @@
+{
+  "breaking": [{
+    "member": "file.navmesh / og cook / og.nav.load",
+    "change": "Navmesh author OGT and its parser field tables are removed. Checked TS declarations consume captured imported models and scenes plus the shared terrain surface, without reopening model files or using text-path fallbacks. Profiles, ordered areas, links and the native bake/blob kernels remain.",
+    "fix": "Export file.navmesh({agents:[{radius:0.4,height:1.8}],boxes:[{center:[0,-0.1,0],size:[30,0.2,30]}]}) from content/nav/yard.ts and load base/nav/yard. Use ref(module/content-id) for scene, models[].model and terrains[].terrain, transform for model placement, and discriminated areas[].shape. See og api show file:navmesh.",
+    "find": ["type navmesh", "agent <name>", "levels/arena.nav.ogt"]
+  }]
+}

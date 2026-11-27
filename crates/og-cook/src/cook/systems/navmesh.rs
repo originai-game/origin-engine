@@ -1,306 +1,161 @@
-//! Navmeshes (`type navmesh`), baked here: the level's triangles
-//! voxelised by og-ai's `nav::bake`, then the tiles built, so the runtime
-//! loads polygons ready to link.
-//!
-//! A navmesh file names its level:
-//!
-//! ```text
-//! type navmesh
-//! version 1
-//! ---
-//! scene "scenes/main.ogt"       # its entities' static colliders and models
-//! agent {
-//!   radius 0.4
-//!   height 1.8
-//!   climb 0.4
-//!   slope 45
-//! }
-//! cellSize 0.2
-//! cellHeight 0.1
-//! tileSize 32
-//! box {                         # static boxes the scene does not hold (made in code)
-//!   center 0 -0.1 0
-//!   size 30 0.2 30
-//! }
-//! model "models/crate.glb" {    # models placed by code
-//!   position 2 0 1
-//! }
-//! terrain "base/terrain/island" {  # a checked TS terrain surface, standing at
-//!   position 0 0 0                #   its og.Terrain entity's position
-//!   step 2                        #   every 2nd sample (default 1)
-//! }
-//! bounds {                      # optional: bake only inside
-//!   min -15 -1 -15
-//!   max 15 4 15
-//! }
-//! ```
-//!
-//! A scene entity counts when it has a `model`, or an `og.Collider` box,
-//! sphere, capsule or cylinder (as its bounding box) on no dynamic body.
-
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
-};
+//! Checked TS navigation declarations bake through the shared native kernels.
+//! Geometry is captured from imported models and scene snapshots; planning and
+//! execution never reopen author files. Terrain consumers share its surface.
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
+use crate::cook::{formats::geometry, source_content::Graph, source_schemas::world::bake as input};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::glam::{Mat4, Quat, Vec3};
-use og_core::ogt::{Block, Document, Entry};
-use std::path::Path;
+use og_core::ogt::{Block, Document};
+use std::collections::BTreeSet;
 
-pub(crate) const NAVMESH_TYPE: &str = "navmesh";
+pub(crate) struct Prepared {
+    input: input::NavmeshInput,
+    origin: crate::cook::generator::source::Diagnostic,
+    triangles: Vec<[Vec3; 3]>,
+    notes: Vec<String>,
+    dependencies: BTreeSet<String>,
+    hash: u64,
+}
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "scene",
-        "\"<scene asset>\"",
-        "",
-        "Static scene geometry; asset-root relative path.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "agent",
-        "[<name>] { ... }",
-        "unnamed default profile",
-        "Repeat agent profiles; names contain letters, digits, underscore or hyphen. The unnamed profile, otherwise first, is the default.",
-        "",
-    ),
-    crate::grammar::Line::new("cellSize", "<metres>", "0.2", "Horizontal voxel size.", ""),
-    crate::grammar::Line::new("cellHeight", "<metres>", "0.1", "Vertical voxel size.", ""),
-    crate::grammar::Line::new(
-        "tileSize",
-        "<number>",
-        "32",
-        "Tile side in cells; clamped to 8..256 and truncated to an integer.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "maxError",
-        "<number>",
-        "1.3",
-        "Contour simplification error.",
-        "",
-    ),
-    crate::grammar::Line::new("box", "{ ... }", "", "Repeat additional static boxes.", ""),
-    crate::grammar::Line::new(
-        "model",
-        "\"<model asset>\" { ... }",
-        "",
-        "Repeat additional placed static models; paths are asset-root relative.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "terrain",
-        "\"<terrain asset>\" { ... }",
-        "",
-        "Repeat terrain surfaces; their source and height data are cook dependencies.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "bounds",
-        "{ ... }",
-        "unbounded",
-        "Optional bake region.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "area",
-        "{ ... }",
-        "",
-        "Repeat area shapes; later shapes override earlier shapes in overlaps. Radius selects cylinder, otherwise points select prism, otherwise box.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "link",
-        "{ ... }",
-        "",
-        "Repeat explicitly authored off-mesh links.",
-        "",
-    ),
-];
-pub(crate) const BLOCKS: &[(&str, &[crate::grammar::Line])] = &[
-    (
-        "agent",
-        &[
-            crate::grammar::Line::new("radius", "<metres>", "0.4", "Agent radius.", ""),
-            crate::grammar::Line::new("height", "<metres>", "1.8", "Agent height.", ""),
-            crate::grammar::Line::new("climb", "<metres>", "0.4", "Maximum step height.", ""),
-            crate::grammar::Line::new("slope", "<degrees>", "45", "Maximum walkable slope.", ""),
-        ],
-    ),
-    (
-        "box",
-        &[
-            crate::grammar::Line::new(
-                "center",
-                "<x> <y> <z>",
-                "0 0 0",
-                "Box centre in metres.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "size",
-                "<x> <y> <z>",
-                "1 1 1",
-                "Full box dimensions in metres.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "quaternion",
-                "<x> <y> <z> <w>",
-                "0 0 0 1",
-                "Box rotation; normalized on read.",
-                "",
-            ),
-        ],
-    ),
-    (
-        "model",
-        &[
-            crate::grammar::Line::new(
-                "position",
-                "<x> <y> <z>",
-                "0 0 0",
-                "Model translation in metres.",
-                "",
-            ),
-            crate::grammar::Line::new("scale", "<x> <y> <z>", "1 1 1", "Model scale.", ""),
-            crate::grammar::Line::new(
-                "quaternion",
-                "<x> <y> <z> <w>",
-                "0 0 0 1",
-                "Model rotation; normalized on read.",
-                "",
-            ),
-        ],
-    ),
-    (
-        "terrain",
-        &[
-            crate::grammar::Line::new(
-                "position",
-                "<x> <y> <z>",
-                "0 0 0",
-                "Terrain translation in metres.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "step",
-                "<number>",
-                "1",
-                "Sampling stride; clamped to at least one and truncated to an integer.",
-                "",
-            ),
-        ],
-    ),
-    (
-        "bounds",
-        &[
-            crate::grammar::Line::new(
-                "min",
-                "<x> <y> <z>",
-                "-10 -10 -10",
-                "Bake region minimum in metres.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "max",
-                "<x> <y> <z>",
-                "10 10 10",
-                "Bake region maximum in metres.",
-                "",
-            ),
-        ],
-    ),
-    (
-        "area",
-        &[
-            crate::grammar::Line::new(
-                "id",
-                "<integer, 1..63>",
-                "required",
-                "Area id; zero is the ground.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "center",
-                "<x> <y> <z>",
-                "0 0 0",
-                "Box centre or cylinder base in metres.",
-                "",
-            ),
-            crate::grammar::Line::new("size", "<x> <y> <z>", "1 1 1", "Full box dimensions.", ""),
-            crate::grammar::Line::new("yaw", "<radians>", "0", "Box rotation about +Y.", ""),
-            crate::grammar::Line::new(
-                "radius",
-                "<metres>",
-                "",
-                "Presence selects a cylinder; negative values clamp to zero.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "height",
-                "<metres>",
-                "2",
-                "Cylinder height; negative values clamp to zero.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "point",
-                "<x> <y> <z>",
-                "",
-                "Repeat at least three points for a convex prism; only x and z are used.",
-                "",
-            ),
-            crate::grammar::Line::new("bottom", "<metres>", "-1", "Prism lower Y.", ""),
-            crate::grammar::Line::new("top", "<metres>", "2", "Prism upper Y.", ""),
-        ],
-    ),
-    (
-        "link",
-        &[
-            crate::grammar::Line::new("id", "<integer >= 1>", "required", "Unique link id.", ""),
-            crate::grammar::Line::new("start", "<x> <y> <z>", "required", "Start in metres.", ""),
-            crate::grammar::Line::new("end", "<x> <y> <z>", "required", "End in metres.", ""),
-            crate::grammar::Line::new(
-                "kind",
-                "jump | ladder | door | teleport",
-                "jump",
-                "Traversal kind chosen by the author.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "bidirectional",
-                "true | false",
-                "true",
-                "Allow reverse traversal.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "cost",
-                "<number>",
-                "0",
-                "Traversal cost; negative values clamp to zero.",
-                "",
-            ),
-            crate::grammar::Line::new(
-                "duration",
-                "<seconds>",
-                "0",
-                "Traversal duration; negative values clamp to zero.",
-                "",
-            ),
-            crate::grammar::Line::new("open", "true | false", "true", "Initial availability.", ""),
-            crate::grammar::Line::new(
-                "traverse",
-                "engine | game",
-                "engine",
-                "Who moves the agent while traversing.",
-                "",
-            ),
-        ],
-    ),
-];
+impl Prepared {
+    pub(crate) fn new(
+        input: input::NavmeshInput,
+        origin: crate::cook::generator::source::Diagnostic,
+    ) -> Self {
+        Self {
+            input,
+            origin,
+            triangles: Vec::new(),
+            notes: Vec::new(),
+            dependencies: BTreeSet::new(),
+            hash: 0,
+        }
+    }
 
+    fn error(&self, message: String) -> CookError {
+        CookError(
+            crate::cook::generator::source::Diagnostic {
+                message,
+                ..self.origin.clone()
+            }
+            .to_string(),
+        )
+    }
+}
+
+/// Capture geometry only after generated scenes and all model imports exist.
+/// The scene domain still owns its text input until its separate cutover.
+pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookError> {
+    let pending: Vec<_> = sources
+        .iter_mut()
+        .enumerate()
+        .filter_map(|(index, source)| source.navmesh.take().map(|p| (index, p)))
+        .collect();
+    for (index, mut prepared) in pending {
+        let source = &sources[index];
+        (|| {
+            let input = &prepared.input;
+            let mut dependencies = BTreeSet::new();
+            let mut triangles = Vec::new();
+            let mut notes = Vec::new();
+            let models = |id: &str, _: Option<&str>| {
+                let source = sources
+                    .iter()
+                    .find(|s| s.rel == id)
+                    .ok_or_else(|| format!("model '{id}' has not been imported"))?;
+                let gltf = source
+                    .gltf
+                    .as_ref()
+                    .ok_or_else(|| format!("model '{id}' has no checked mesh"))?;
+                super::model::operand_geometry(gltf, None)
+            };
+            if let Some(scene) = &input.scene {
+                let asset = &graph.outputs[&scene.id].asset;
+                dependencies.insert(asset.clone());
+                let scene = sources
+                    .iter()
+                    .find(|s| &s.rel == asset)
+                    .ok_or_else(|| format!("scene '{asset}' has not been captured"))?;
+                if let Some(error) = &scene.error {
+                    return Err(error.clone());
+                }
+                let doc = Document::parse(&String::from_utf8_lossy(&scene.bytes))
+                    .map_err(|e| format!("{asset}: {e}"))?;
+                scene_triangles(
+                    &doc.body,
+                    Mat4::IDENTITY,
+                    &models,
+                    &mut dependencies,
+                    &mut triangles,
+                    &mut notes,
+                )?;
+            }
+            for b in &input.boxes {
+                let m = Mat4::from_rotation_translation(
+                    rotation(b.quaternion)?,
+                    vector(b.center, Vec3::ZERO),
+                );
+                triangles.extend(
+                    og_ai::nav::bake::box_triangles(Vec3::ZERO, vector(b.size, Vec3::ONE) * 0.5)
+                        .into_iter()
+                        .map(|t| t.map(|v| m.transform_point3(v))),
+                );
+            }
+            for model in &input.models {
+                let asset = &graph.outputs[&model.model.id].asset;
+                dependencies.insert(asset.clone());
+                let placement = geometry::placement(model.transform.as_ref())?;
+                model_triangles(asset, placement.matrix().as_mat4(), &models, &mut triangles)?;
+            }
+            let mut hash = og_core::hash::StableHasher::new();
+            for value in triangles.iter().flatten().flat_map(|v| v.to_array()) {
+                hash.write_u32(value.to_bits());
+            }
+            for terrain in &input.terrains {
+                dependencies.insert(terrain.terrain.id.clone());
+                hash.write_u64(super::terrain::get(source, &terrain.terrain.id)?.hash);
+            }
+            prepared.triangles = triangles;
+            prepared.notes = notes;
+            prepared.dependencies = dependencies;
+            prepared.hash = hash.finish();
+            Ok(())
+        })()
+        .map_err(|e| prepared.error(e))?;
+        sources[index].navmesh = Some(prepared);
+    }
+    Ok(())
+}
+
+fn vector(value: Option<[f32; 3]>, default: Vec3) -> Vec3 {
+    value.map_or(default, Vec3::from_array)
+}
+
+fn rotation(value: Option<[f32; 4]>) -> Result<Quat, String> {
+    let q = value.map_or(Quat::IDENTITY, Quat::from_array).as_dquat();
+    if q.length_squared() < 1e-12 {
+        return Err("quaternion is not a rotation (zero length)".into());
+    }
+    Ok(q.normalize().as_quat())
+}
+
+fn model_triangles(
+    id: &str,
+    matrix: Mat4,
+    models: &geometry::Models<'_>,
+    out: &mut Vec<[Vec3; 3]>,
+) -> Result<(), String> {
+    let mesh = models(id, None)?;
+    out.extend(
+        mesh.indices.as_chunks::<3>().0.iter().map(|t| {
+            t.map(|i| matrix.transform_point3(Vec3::from_array(mesh.positions[i as usize])))
+        }),
+    );
+    Ok(())
+}
+
+// Only the scene reader uses internal blocks. Navmesh has no text frontend.
 fn string_of(b: &Block, key: &str) -> Option<String> {
     b.get(key)
         .and_then(|e| e.values.first())
@@ -308,165 +163,21 @@ fn string_of(b: &Block, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn vec3_of(b: Option<&Block>, key: &str, default: Vec3) -> Vec3 {
-    let Some(e) = b.and_then(|b| b.get(key)) else {
-        return default;
-    };
-    let n = |i: usize| {
-        e.values
-            .get(i)
-            .and_then(|v| v.as_number())
-            .map(|n| n.as_f32())
-    };
-    match (n(0), n(1), n(2)) {
-        (Some(x), Some(y), Some(z)) => Vec3::new(x, y, z),
-        _ => default,
-    }
-}
-
-fn quat_of(b: Option<&Block>, key: &str) -> Quat {
-    let Some(e) = b.and_then(|b| b.get(key)) else {
-        return Quat::IDENTITY;
-    };
-    let n = |i: usize| {
-        e.values
-            .get(i)
-            .and_then(|v| v.as_number())
-            .map(|n| n.as_f32())
-    };
-    match (n(0), n(1), n(2), n(3)) {
-        (Some(x), Some(y), Some(z), Some(w)) => Quat::from_xyzw(x, y, z, w).normalize(),
-        _ => Quat::IDENTITY,
-    }
-}
-
-fn f32_of(b: Option<&Block>, key: &str, default: f32) -> f32 {
-    b.and_then(|b| b.get(key))
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_number())
-        .map_or(default, |n| n.as_f32())
-}
-
-/// The files a navmesh depends on (its scene and the models it and the
-/// scene name, its terrains and their heightmaps), with their hashes, for
-/// the cook stamp.
-pub(crate) fn navmesh_dependencies(s: &Source) -> String {
-    let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return String::new();
-    };
-    let root = assets_root(s);
-    let mut files: Vec<String> = Vec::new();
-    let mut fields = Vec::new();
-    if let Some(scene) = string_of(&doc.body, "scene") {
-        files.push(scene.clone());
-        if let Ok(text) = std::fs::read_to_string(root.join(&scene))
-            && let Ok(sd) = Document::parse(&text)
-        {
-            collect_models(&sd.body, &mut files);
-        }
-    }
-    for m in doc.body.get_all("model") {
-        if let Some(p) = m.values.first().and_then(|v| v.as_str()) {
-            files.push(p.to_string());
-        }
-    }
-    for t in doc.body.get_all("terrain") {
-        if let Some(p) = t.values.first().and_then(|v| v.as_str()) {
-            fields.push(match super::terrain::get(s, p) {
-                Ok(terrain) => format!("terrain {p}={:016x}", terrain.hash),
-                Err(e) => format!("terrain {p} error={e}"),
-            });
-        }
-    }
-    files.sort();
-    files.dedup();
-    files
+fn numbers<const N: usize>(b: Option<&Block>, key: &str) -> Option<[f32; N]> {
+    let e = b?.get(key)?;
+    let values: Vec<_> = e
+        .values
         .iter()
-        .map(|f| {
-            format!(
-                "{f}={:016x}",
-                std::fs::read(root.join(f))
-                    .map(|b| super::hash_bytes(&b))
-                    .unwrap_or(0)
-            )
-        })
-        .chain(fields)
-        .collect::<Vec<_>>()
-        .join("\n")
+        .map(|v| v.as_number().map(|n| n.as_f32()))
+        .collect::<Option<_>>()?;
+    values.try_into().ok()
 }
 
-fn collect_models(b: &Block, out: &mut Vec<String>) {
-    for e in b.get_all("entity") {
-        if let Some(block) = &e.block {
-            if let Some(m) = string_of(block, "model") {
-                out.push(m);
-            }
-            collect_models(block, out);
-        }
-    }
-}
-
-/// Every triangle of a glTF's default scene, in its own space times `to_world`.
-fn gltf_triangles(path: &Path, to_world: Mat4, out: &mut Vec<[Vec3; 3]>) -> Result<(), String> {
-    let at = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
-    // A model written as text (`type model`) is read as the glb it cooks from.
-    let (doc, buffers, _) = if path.extension().is_some_and(|e| e == "ogt") {
-        let text = std::fs::read_to_string(path).map_err(|e| at(&e))?;
-        let glb = super::model_text::to_glb(&text).map_err(|e| at(&e))?;
-        gltf::import_slice(glb).map_err(|e| at(&e))?
-    } else {
-        gltf::import(path).map_err(|e| at(&e))?
-    };
-    let scene = doc
-        .default_scene()
-        .or_else(|| doc.scenes().next())
-        .ok_or_else(|| format!("{}: no scene", path.display()))?;
-    fn walk(
-        node: gltf::Node,
-        parent: Mat4,
-        buffers: &[gltf::buffer::Data],
-        out: &mut Vec<[Vec3; 3]>,
-    ) {
-        let m = parent * Mat4::from_cols_array_2d(&node.transform().matrix());
-        if let Some(mesh) = node.mesh() {
-            for prim in mesh.primitives() {
-                if prim.mode() != gltf::mesh::Mode::Triangles {
-                    continue;
-                }
-                let reader = prim.reader(|b| Some(&buffers[b.index()]));
-                let Some(pos) = reader.read_positions() else {
-                    continue;
-                };
-                let pos: Vec<Vec3> = pos
-                    .map(|p| m.transform_point3(Vec3::from_array(p)))
-                    .collect();
-                let idx: Vec<u32> = match reader.read_indices() {
-                    Some(i) => i.into_u32().collect(),
-                    None => (0..pos.len() as u32).collect(),
-                };
-                for &[a, b, c] in idx.as_chunks::<3>().0 {
-                    let (a, b, c) = (a as usize, b as usize, c as usize);
-                    if a < pos.len() && b < pos.len() && c < pos.len() {
-                        out.push([pos[a], pos[b], pos[c]]);
-                    }
-                }
-            }
-        }
-        for child in node.children() {
-            walk(child, m, buffers, out);
-        }
-    }
-    for n in scene.nodes() {
-        walk(n, to_world, &buffers, out);
-    }
-    Ok(())
-}
-
-/// A scene's static geometry: models and the bounding boxes of static colliders.
 fn scene_triangles(
-    root: &Path,
     b: &Block,
     parent: Mat4,
+    models: &geometry::Models<'_>,
+    dependencies: &mut BTreeSet<String>,
     out: &mut Vec<[Vec3; 3]>,
     notes: &mut Vec<String>,
 ) -> Result<(), String> {
@@ -475,30 +186,34 @@ fn scene_triangles(
         let t = block.get("Transform").and_then(|t| t.block.as_ref());
         let m = parent
             * Mat4::from_scale_rotation_translation(
-                vec3_of(t, "scale", Vec3::ONE),
-                quat_of(t, "quaternion"),
-                vec3_of(t, "position", Vec3::ZERO),
+                vector(numbers(t, "scale"), Vec3::ONE),
+                rotation(numbers(t, "quaternion"))?,
+                vector(numbers(t, "position"), Vec3::ZERO),
             );
         let dynamic = block
             .get("RigidBody")
             .and_then(|r| r.block.as_ref())
-            .is_some_and(|r| f32_of(Some(r), "kind", 0.0) == 0.0);
+            .is_some_and(|r| numbers::<1>(Some(r), "kind").unwrap_or([0.0])[0] == 0.0);
         if let Some(model) = string_of(block, "model")
             && !dynamic
         {
-            gltf_triangles(&root.join(&model), m, out)?;
+            dependencies.insert(model.clone());
+            model_triangles(&model, m, models, out)?;
         }
         if let Some(c) = block.get("Collider").and_then(|c| c.block.as_ref())
             && !dynamic
         {
-            let shape = f32_of(Some(c), "shape", 0.0) as u32;
-            let half = match shape {
-                0 => vec3_of(Some(c), "size", Vec3::ONE) * 0.5,
-                1 => Vec3::splat(f32_of(Some(c), "radius", 0.5)),
-                2 | 3 => {
-                    let r = f32_of(Some(c), "radius", 0.5);
-                    let h = f32_of(Some(c), "height", 1.0);
-                    Vec3::new(r, h * 0.5 + if shape == 2 { r } else { 0.0 }, r)
+            let scalar = |key, default| numbers::<1>(Some(c), key).map_or(default, |v| v[0]);
+            let half = match scalar("shape", 0.0) as u32 {
+                0 => vector(numbers(Some(c), "size"), Vec3::ONE) * 0.5,
+                1 => Vec3::splat(scalar("radius", 0.5)),
+                shape @ (2 | 3) => {
+                    let r = scalar("radius", 0.5);
+                    Vec3::new(
+                        r,
+                        scalar("height", 1.0) * 0.5 + if shape == 2 { r } else { 0.0 },
+                        r,
+                    )
                 }
                 _ => {
                     notes.push(format!(
@@ -508,33 +223,33 @@ fn scene_triangles(
                     continue;
                 }
             };
-            let offset = vec3_of(Some(c), "offset", Vec3::ZERO);
-            let local = og_ai::nav::bake::box_triangles(offset, half);
-            out.extend(local.into_iter().map(|t| t.map(|v| m.transform_point3(v))));
+            let offset = vector(numbers(Some(c), "offset"), Vec3::ZERO);
+            out.extend(
+                og_ai::nav::bake::box_triangles(offset, half)
+                    .into_iter()
+                    .map(|t| t.map(|v| m.transform_point3(v))),
+            );
         }
-        scene_triangles(root, block, m, out, notes)?;
+        scene_triangles(block, m, models, dependencies, out, notes)?;
     }
     Ok(())
 }
 
-/// A terrain's surface as triangles (every `step`th sample, each cell
-/// split along the renderer's diagonal, its holes left out), standing at `position`, only the
-/// cells reaching into `bounds` when given. Returns how many it added.
+/// Sample the renderer's diagonals and holes, without a quantized reload.
 fn terrain_triangles(
     source: &Source,
-    rel: &str,
-    position: Vec3,
-    step: usize,
+    terrain: &input::NavTerrain,
     bounds: Option<(Vec3, Vec3)>,
     out: &mut Vec<[Vec3; 3]>,
 ) -> Result<usize, String> {
-    let field = super::terrain::get(source, rel)?.surface()?;
-    let heights = &field.heights;
-    let holes = &field.holes;
+    let field = super::terrain::get(source, &terrain.terrain.id)?.surface()?;
+    let position = vector(terrain.position, Vec3::ZERO);
     let (cols, rows) = (field.columns as usize, field.rows as usize);
-    // A quad of `step` cells is cut out where most of its cells are holes.
+    // A stride beyond the grid is equivalent to its extent; cap before
+    // adding it to an index so even a finite f32::MAX cannot overflow.
+    let step = (terrain.step.unwrap_or(1.0).max(1.0) as usize).min(cols.max(rows));
     let cut = |c: usize, r: usize| {
-        let Some(h) = &holes else {
+        let Some(h) = &field.holes else {
             return false;
         };
         let (c1, r1) = ((c + step).min(cols - 1), (r + step).min(rows - 1));
@@ -546,7 +261,7 @@ fn terrain_triangles(
     };
     let size = field.size;
     let cell = (size[0] / (cols - 1) as f32, size[1] / (rows - 1) as f32);
-    let height = |c: usize, r: usize| heights[r.min(rows - 1) * cols + c.min(cols - 1)];
+    let height = |c: usize, r: usize| field.heights[r.min(rows - 1) * cols + c.min(cols - 1)];
     let at = |c: usize, r: usize| {
         let (c, r) = (c.min(cols - 1), r.min(rows - 1));
         Vec3::new(
@@ -556,17 +271,14 @@ fn terrain_triangles(
         )
     };
     let before = out.len();
-    let mut r = 0;
-    while r + 1 < rows {
-        let mut c = 0;
-        while c + 1 < cols {
+    for r in (0..rows - 1).step_by(step) {
+        for c in (0..cols - 1).step_by(step) {
             let (p00, p10) = (at(c, r), at(c + step, r));
             let (p01, p11) = (at(c, r + step), at(c + step, r + step));
             let inside = bounds.is_none_or(|(lo, hi)| {
                 p11.x >= lo.x && p00.x <= hi.x && p11.z >= lo.z && p00.z <= hi.z
             });
             if inside && !cut(c, r) {
-                // Keep the nav bake on the rendered and collided surface.
                 if og_core::math::heightfield_zigzag(
                     height(c, r),
                     height(c + step, r),
@@ -578,306 +290,144 @@ fn terrain_triangles(
                     out.extend([[p00, p01, p10], [p01, p11, p10]]);
                 }
             }
-            c += step;
         }
-        r += step;
     }
     Ok(out.len() - before)
 }
 
-fn entry_block(e: &Entry) -> Option<&Block> {
-    e.block.as_ref()
+fn areas(input: &[input::Area]) -> Vec<(og_ai::nav::Shape, u8)> {
+    input
+        .iter()
+        .map(|area| {
+            use input::AreaShape::*;
+            use og_ai::nav::Shape;
+            let shape = match &area.shape {
+                Box { center, size, yaw } => {
+                    let center = vector(*center, Vec3::ZERO);
+                    let half = vector(*size, Vec3::ONE) * 0.5;
+                    match yaw.unwrap_or(0.0) {
+                        0.0 => Shape::Box {
+                            min: center - half,
+                            max: center + half,
+                        },
+                        yaw => Shape::Oriented { center, half, yaw },
+                    }
+                }
+                Cylinder {
+                    center,
+                    radius,
+                    height,
+                } => Shape::Cylinder {
+                    base: vector(*center, Vec3::ZERO),
+                    radius: radius.max(0.0),
+                    height: height.unwrap_or(2.0).max(0.0),
+                },
+                Convex {
+                    points,
+                    bottom,
+                    top,
+                } => Shape::Convex {
+                    points: points
+                        .iter()
+                        .copied()
+                        .map(og_core::glam::Vec2::from_array)
+                        .collect(),
+                    bottom: bottom.unwrap_or(-1.0),
+                    top: top.unwrap_or(2.0),
+                },
+            };
+            (shape, area.id)
+        })
+        .collect()
+}
+
+fn links(input: &[input::Link]) -> Result<Vec<(u32, og_ai::nav::Link)>, CookError> {
+    let mut ids = BTreeSet::new();
+    input
+        .iter()
+        .map(|link| {
+            if !ids.insert(link.id) {
+                return Err(CookError(format!("link id {} is used twice", link.id)));
+            }
+            Ok((
+                link.id,
+                og_ai::nav::Link {
+                    start: Vec3::from_array(link.start),
+                    end: Vec3::from_array(link.end),
+                    kind: match link.kind {
+                        None | Some(input::LinkKind::Jump) => og_ai::nav::LinkKind::Jump,
+                        Some(input::LinkKind::Ladder) => og_ai::nav::LinkKind::Ladder,
+                        Some(input::LinkKind::Door) => og_ai::nav::LinkKind::Door,
+                        Some(input::LinkKind::Teleport) => og_ai::nav::LinkKind::Teleport,
+                    },
+                    bidirectional: link.bidirectional.unwrap_or(true),
+                    cost: link.cost.unwrap_or(0.0).max(0.0),
+                    duration: link.duration.unwrap_or(0.0).max(0.0),
+                    open: link.open.unwrap_or(true),
+                    game: matches!(link.traverse, Some(input::Traverse::Game)),
+                },
+            ))
+        })
+        .collect()
 }
 
 pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text =
-        std::str::from_utf8(&s.bytes).map_err(|_| CookError("a navmesh is text (UTF-8)".into()))?;
-    let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
-    let body = &doc.body;
-    for e in &body.entries {
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(CookError(format!(
-                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain, bounds, area or link",
-                e.line, e.key
-            )));
+    let prepared = s.navmesh.as_ref().expect("bound typed navigation");
+    let input = &prepared.input;
+    let areas = areas(&input.areas);
+    let links = links(&input.links)?;
+    let mut profiles = Vec::new();
+    let mut names = BTreeSet::new();
+    for agent in &input.agents {
+        let name = agent.name.as_deref().unwrap_or("");
+        if !names.insert(name) {
+            return Err(CookError(format!("agent profile '{name}' is used twice")));
         }
+        profiles.push((name, Some(agent)));
     }
-    /// A navmesh's `area` entries, in order (a later one wins where they
-    /// overlap): `id` (1 to 63) and a shape, a box by default (`center`,
-    /// `size`, turned by `yaw` radians about +y), a cylinder with `radius`
-    /// (standing on `center`, `height` tall), or a convex prism of three or
-    /// more `point` lines from `bottom` to `top`.
-    fn navmesh_areas(body: &Block) -> Result<Vec<(og_ai::nav::Shape, u8)>, CookError> {
-        let mut out = Vec::new();
-        for e in body.get_all("area") {
-            let b = e.block.as_ref();
-            let id = f32_of(b, "id", -1.0);
-            if !(1.0..=63.0).contains(&id) || id.fract() != 0.0 {
-                return Err(CookError(format!(
-                    "line {}: an area needs an id from 1 to 63 (0 is the ground)",
-                    e.line
-                )));
-            }
-            let center = vec3_of(b, "center", Vec3::ZERO);
-            let points: Vec<og_core::glam::Vec2> = b
-                .map(|b| b.get_all("point"))
-                .into_iter()
-                .flatten()
-                .map(|p| {
-                    let n = |i: usize| {
-                        p.values
-                            .get(i)
-                            .and_then(|v| v.as_number())
-                            .map(|n| n.as_f32())
-                    };
-                    og_core::glam::Vec2::new(n(0).unwrap_or(0.0), n(2).unwrap_or(0.0))
-                })
-                .collect();
-            let shape = if b.and_then(|b| b.get("radius")).is_some() {
-                og_ai::nav::Shape::Cylinder {
-                    base: center,
-                    radius: f32_of(b, "radius", 0.0).max(0.0),
-                    height: f32_of(b, "height", 2.0).max(0.0),
-                }
-            } else if !points.is_empty() {
-                if points.len() < 3 {
-                    return Err(CookError(format!(
-                        "line {}: a convex area needs three or more points, it has {}",
-                        e.line,
-                        points.len()
-                    )));
-                }
-                og_ai::nav::Shape::Convex {
-                    points,
-                    bottom: f32_of(b, "bottom", -1.0),
-                    top: f32_of(b, "top", 2.0),
-                }
-            } else {
-                let half = vec3_of(b, "size", Vec3::ONE) * 0.5;
-                let yaw = f32_of(b, "yaw", 0.0);
-                if yaw == 0.0 {
-                    og_ai::nav::Shape::Box {
-                        min: center - half,
-                        max: center + half,
-                    }
-                } else {
-                    og_ai::nav::Shape::Oriented { center, half, yaw }
-                }
-            };
-            out.push((shape, id as u8));
-        }
-        Ok(out)
-    }
-    /// A navmesh's `link` entries: `id` (1 or more, unique), `start`, `end`,
-    /// `kind` (jump, ladder, door or teleport), `bidirectional`, `cost`,
-    /// `duration`, `open` and `traverse game` (the game moves the agent).
-    fn navmesh_links(body: &Block) -> Result<Vec<(u32, og_ai::nav::Link)>, CookError> {
-        let mut out: Vec<(u32, og_ai::nav::Link)> = Vec::new();
-        for e in body.get_all("link") {
-            let b = e.block.as_ref();
-            let id = f32_of(b, "id", 0.0);
-            if id < 1.0 || id.fract() != 0.0 || id > u32::MAX as f32 {
-                return Err(CookError(format!(
-                    "line {}: a link needs an id, a whole number from 1",
-                    e.line
-                )));
-            }
-            let id = id as u32;
-            if out.iter().any(|(k, _)| *k == id) {
-                return Err(CookError(format!(
-                    "line {}: link id {id} is used twice",
-                    e.line
-                )));
-            }
-            let word = |key: &str| {
-                b.and_then(|b| b.get(key))
-                    .and_then(|e| e.values.first())
-                    .and_then(|v| v.as_word().or(v.as_str()))
-                    .map(str::to_string)
-            };
-            let flag = |key: &str, default: bool| {
-                b.and_then(|b| b.get(key))
-                    .and_then(|e| e.values.first())
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(default)
-            };
-            let kind = match word("kind").as_deref().unwrap_or("jump") {
-                "jump" => og_ai::nav::LinkKind::Jump,
-                "ladder" => og_ai::nav::LinkKind::Ladder,
-                "door" => og_ai::nav::LinkKind::Door,
-                "teleport" => og_ai::nav::LinkKind::Teleport,
-                k => {
-                    return Err(CookError(format!(
-                        "line {}: '{k}' is not a link kind: jump, ladder, door or teleport",
-                        e.line
-                    )));
-                }
-            };
-            let game = match word("traverse").as_deref() {
-                None | Some("engine") => false,
-                Some("game") => true,
-                Some(t) => {
-                    return Err(CookError(format!(
-                        "line {}: traverse is engine or game, not '{t}'",
-                        e.line
-                    )));
-                }
-            };
-            if b.and_then(|b| b.get("start")).is_none() || b.and_then(|b| b.get("end")).is_none() {
-                return Err(CookError(format!(
-                    "line {}: a link needs a start and an end",
-                    e.line
-                )));
-            }
-            out.push((
-                id,
-                og_ai::nav::Link {
-                    start: vec3_of(b, "start", Vec3::ZERO),
-                    end: vec3_of(b, "end", Vec3::ZERO),
-                    kind,
-                    bidirectional: flag("bidirectional", true),
-                    cost: f32_of(b, "cost", 0.0).max(0.0),
-                    open: flag("open", true),
-                    duration: f32_of(b, "duration", 0.0).max(0.0),
-                    game,
-                },
-            ));
-        }
-        Ok(out)
-    }
-    let areas = navmesh_areas(body)?;
-    let links = navmesh_links(body)?;
-    let root = assets_root(s);
-    // The agent profiles (G2-4): `agent { }` or `agent <name> { }`, one
-    // mesh each. The first is the unnamed one (else the first named): it
-    // fills the blob's tables as a navmesh of one agent always has; every
-    // other is a whole navmesh blob in a `profile.<name>` section.
-    let mut profiles: Vec<(String, Option<&Block>, usize)> = Vec::new();
-    for e in body.get_all("agent") {
-        let name = match e.values.first() {
-            None => String::new(),
-            Some(v) => v
-                .as_word()
-                .or(v.as_str())
-                .filter(|n| {
-                    !n.is_empty()
-                        && n.chars()
-                            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-                })
-                .ok_or_else(|| {
-                    CookError(format!(
-                        "line {}: an agent profile's name is letters, digits, '_' and '-'",
-                        e.line
-                    ))
-                })?
-                .to_string(),
-        };
-        if let Some((_, _, line)) = profiles.iter().find(|(n, ..)| *n == name) {
-            return Err(CookError(if name.is_empty() {
-                format!(
-                    "line {}: a second unnamed agent (the first is on line {line}); name the others: agent small {{ ... }}",
-                    e.line
-                )
-            } else {
-                format!(
-                    "line {}: agent profile '{name}' is also on line {line}",
-                    e.line
-                )
-            }));
-        }
-        profiles.push((name, e.block.as_ref(), e.line));
-    }
-    if let Some(i) = profiles.iter().position(|(n, ..)| n.is_empty()) {
+    if let Some(i) = profiles.iter().position(|(n, _)| n.is_empty()) {
         let unnamed = profiles.remove(i);
         profiles.insert(0, unnamed);
     }
     if profiles.is_empty() {
-        profiles.push((String::new(), None, 0));
+        profiles.push(("", None));
     }
-    let params_of = |agent: Option<&Block>| og_ai::nav::NavParams {
-        cell_size: f32_of(Some(body), "cellSize", 0.2),
-        cell_height: f32_of(Some(body), "cellHeight", 0.1),
-        agent_radius: f32_of(agent, "radius", 0.4),
-        agent_height: f32_of(agent, "height", 1.8),
-        agent_climb: f32_of(agent, "climb", 0.4),
-        max_slope: f32_of(agent, "slope", 45.0),
-        tile_size: f32_of(Some(body), "tileSize", 32.0).clamp(8.0, 256.0) as u32,
-        max_error: f32_of(Some(body), "maxError", 1.3),
-    };
-    let mut tris: Vec<[Vec3; 3]> = Vec::new();
-    let mut notes = Vec::new();
-    if let Some(scene) = string_of(body, "scene") {
-        let path = root.join(&scene);
-        let st = std::fs::read_to_string(&path)
-            .map_err(|_| CookError(format!("the scene '{scene}' does not exist under assets/")))?;
-        let sd = Document::parse(&st).map_err(|e| CookError(format!("{scene}: {e}")))?;
-        scene_triangles(&root, &sd.body, Mat4::IDENTITY, &mut tris, &mut notes)
-            .map_err(CookError)?;
-    }
-    for b in body.get_all("box") {
-        let bb = b.block.as_ref();
-        let size = vec3_of(bb, "size", Vec3::ONE);
-        let m = Mat4::from_rotation_translation(
-            quat_of(bb, "quaternion"),
-            vec3_of(bb, "center", Vec3::ZERO),
-        );
-        tris.extend(
-            og_ai::nav::bake::box_triangles(Vec3::ZERO, size * 0.5)
-                .into_iter()
-                .map(|t| t.map(|v| m.transform_point3(v))),
-        );
-    }
-    for e in body.get_all("model") {
-        let p = e
-            .values
-            .first()
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| CookError(format!("line {}: model takes a path", e.line)))?;
-        let mb = e.block.as_ref();
-        let m = Mat4::from_scale_rotation_translation(
-            vec3_of(mb, "scale", Vec3::ONE),
-            quat_of(mb, "quaternion"),
-            vec3_of(mb, "position", Vec3::ZERO),
-        );
-        gltf_triangles(&root.join(p), m, &mut tris).map_err(CookError)?;
-    }
-    let bounds = body.get("bounds").and_then(entry_block).map(|b| {
+    let bounds = input.bounds.as_ref().map(|b| {
         (
-            vec3_of(Some(b), "min", Vec3::splat(-10.0)),
-            vec3_of(Some(b), "max", Vec3::splat(10.0)),
+            vector(b.min, Vec3::splat(-10.0)),
+            vector(b.max, Vec3::splat(10.0)),
         )
     });
-    for e in body.get_all("terrain") {
-        let p = e
-            .values
-            .first()
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| CookError(format!("line {}: terrain takes a path", e.line)))?;
-        let tb = e.block.as_ref();
-        let step = f32_of(tb, "step", 1.0).max(1.0) as usize;
-        let n = terrain_triangles(
-            s,
-            p,
-            vec3_of(tb, "position", Vec3::ZERO),
-            step,
-            bounds,
-            &mut tris,
-        )
-        .map_err(|e| CookError(format!("terrain '{p}': {e}")))?;
-        notes.push(format!("terrain '{p}': {n} triangles"));
+    let mut tris = prepared.triangles.clone();
+    let mut notes = prepared.notes.clone();
+    for terrain in &input.terrains {
+        let n = terrain_triangles(s, terrain, bounds, &mut tris).map_err(CookError)?;
+        notes.push(format!("terrain '{}': {n} triangles", terrain.terrain.id));
+    }
+    if tris.iter().flatten().any(|v| !v.is_finite()) {
+        return Err(CookError("placed navigation geometry is not finite".into()));
     }
     let mut baked = Vec::with_capacity(profiles.len());
-    for (name, agent, _) in &profiles {
-        let params = params_of(*agent);
+    for (name, agent) in &profiles {
+        let params = og_ai::nav::NavParams {
+            cell_size: input.cell_size.unwrap_or(0.2),
+            cell_height: input.cell_height.unwrap_or(0.1),
+            agent_radius: agent.and_then(|a| a.radius).unwrap_or(0.4),
+            agent_height: agent.and_then(|a| a.height).unwrap_or(1.8),
+            agent_climb: agent.and_then(|a| a.climb).unwrap_or(0.4),
+            max_slope: agent.and_then(|a| a.slope).unwrap_or(45.0),
+            tile_size: input.tile_size.unwrap_or(32.0).clamp(8.0, 256.0) as u32,
+            max_error: input.max_error.unwrap_or(1.3),
+        };
         let field = og_ai::nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
         let mut own = Vec::new();
         let (w, polys, tiles) = navmesh_blob(&field, &params, &areas, &links, stamp, &mut own)?;
-        baked.push((name.clone(), field, w, polys, tiles, own));
+        baked.push((*name, field, w, polys, tiles, own));
     }
     let (_, field, mut w, polys, tiles, own) = baked.remove(0);
     notes.extend(own);
     if profiles.len() > 1 || !profiles[0].0.is_empty() {
-        let mut names = profiles[0].0.clone();
+        let mut names = profiles[0].0.to_string();
         for (name, _, b, polys, tiles, own) in baked {
             notes.push(format!(
                 "agent profile '{name}': {polys} polygons in {tiles} tiles"
@@ -888,7 +438,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             );
             w.raw(&format!("profile.{name}"), b.finish(), 16);
             names.push('\n');
-            names.push_str(&name);
+            names.push_str(name);
         }
         w.raw("profiles", names.into_bytes(), 1);
     }
@@ -898,14 +448,13 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             "navmesh: {} triangles into {} × {} cells, {polys} polygons in {tiles} tiles",
             tris.len(),
             field.width,
-            field.depth,
+            field.depth
         ),
     );
     Ok((w.finish(), notes))
 }
 
-/// One agent profile's navmesh blob (its tables, areas and links), and its
-/// polygon and tile counts; its notes go into `notes`.
+/// The existing native blob writer; profile, area and link layouts are unchanged.
 fn navmesh_blob(
     field: &og_ai::nav::Heightfield,
     params: &og_ai::nav::NavParams,
@@ -1005,8 +554,6 @@ fn navmesh_blob(
         .table("verts", &verts, format::row_hash::<format::NavVertRow>())
         .table("polys", &polys, format::row_hash::<format::NavPolyRow>())
         .raw("poly_verts", index_bytes, 16);
-    // G2-4's areas, only in a navmesh that has some (a blob without them
-    // loads as all ground, so earlier cooks stay as they were).
     if !areas.is_empty() {
         let poly_areas: Vec<u8> = mesh
             .tiles
@@ -1029,7 +576,6 @@ fn navmesh_blob(
                 .count()
         ));
     }
-    // G2-4's links, only in a navmesh that has some.
     if !links.is_empty() {
         let linked = og_ai::nav::NavMesh::from_tiles(field.clone(), mesh.tiles.clone())
             .map(|m| m.with_links(links.to_vec()));
@@ -1046,10 +592,7 @@ fn navmesh_blob(
             .collect();
         notes.push(format!("links: {}", links.len()));
         if !off.is_empty() {
-            notes.push(format!(
-                "warning: links {} have an end more than 1 m from the mesh; agents never cross them",
-                off.join(", ")
-            ));
+            notes.push(format!("warning: links {} have an end more than 1 m from the mesh; agents never cross them", off.join(", ")));
         }
     }
     Ok((w, mesh.poly_count(), mesh.tiles.len()))
@@ -1058,27 +601,30 @@ fn navmesh_blob(
 pub(crate) static NAVMESH: KindDef = KindDef {
     name: "navmesh",
     extensions: &[],
-    types: &[NAVMESH_TYPE],
-    by_content: false,
+    types: &[],
+    by_content: true,
     streams: false,
     plan: plan_nav_mesh,
 };
-
-/// The kinds this module cooks.
 pub(crate) static KINDS: &[&KindDef] = &[&NAVMESH];
 
 fn plan_nav_mesh<'a>(
-    _cx: &Cx<'a>,
+    _: &Cx<'a>,
     state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let PlanState { parsed_refs, .. } = state;
-    let deps = navmesh_dependencies(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    // Re-bake cached terrain surfaces with adaptive diagonals.
-    let st = stamp(&[Area::Nav], &[b"navmesh 2", &hash, deps.as_bytes()]);
+    let prepared = s.navmesh.as_ref().expect("bound typed navigation");
+    state
+        .parsed_refs
+        .entry(s.rel.clone())
+        .or_default()
+        .extend(prepared.dependencies.iter().cloned());
+    let st = stamp(
+        &[Area::Nav],
+        &[b"typed navmesh 1", &hash, &prepared.hash.to_le_bytes()],
+    );
     outs.push((
         s.rel.clone(),
         format::NavMesh::NAME,
@@ -1086,12 +632,15 @@ fn plan_nav_mesh<'a>(
         Box::new(NavMeshJob(s)),
     ));
 }
-
-/// A navmesh's one output: its bake.
 struct NavMeshJob<'a>(&'a Source);
-
 impl Job for NavMeshJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_navmesh(self.0, p.stamp)
+        cook_navmesh(self.0, p.stamp).map_err(|e| {
+            self.0
+                .navmesh
+                .as_ref()
+                .expect("bound typed navigation")
+                .error(e.0)
+        })
     }
 }

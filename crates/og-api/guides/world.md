@@ -534,6 +534,18 @@ entity "house-12" {
   for a flat procedural level, with funnel paths and box obstacles that
   rebuild only the tiles they touch.
 - Paths, grid edits, obstacles and flow targets are in snapshots.
+- Author baked navigation in `content/**/*.ts` with `file.navmesh` from
+  `@origingame/engine/author`. `scene`, `models[].model` and
+  `terrains[].terrain` take `ref('module/content-id')`, never source paths.
+  Geometry comes from captured model imports and the same terrain surface
+  that the terrain writer uses; external buffer and height changes invalidate
+  the bake. `boxes` adds explicit geometry, `agents` declares body profiles,
+  and ordered `areas` selects `shape.kind` box, cylinder or convex. `links`
+  carries exact unique u32 IDs and the game's traversal choices. Load the
+  resulting canonical content ID, such as `base/nav/yard`; select a named
+  profile with the optional profile argument. An unnamed profile is default
+  when present, otherwise the first declared profile. There is no navmesh
+  OGT author entry. `og api show file:navmesh` gives the complete TS input.
 - Agents move on the profile's plane: x and y in 2D, x and z in 3D (y
   kept on grids, from the surface on a navmesh).
 - A grid's cells (NavCell, og.nav.setCost, og.nav.cellAt) count as the

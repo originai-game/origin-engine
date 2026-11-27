@@ -146,6 +146,8 @@ pub(crate) struct Source {
     fields: std::sync::Arc<field::Fields>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.
     terrains: std::sync::Arc<terrain::Terrains>,
+    /// Captured static geometry for the typed navigation bake.
+    navmesh: Option<navmesh::Prepared>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -399,6 +401,7 @@ pub fn cook_project_with_texture_cache(
     for s in sources.iter_mut().filter(|s| s.kind == &scene::SCENE) {
         s.hash = stage::source_hash(s);
     }
+    navmesh::bind(&mut sources, &content)?;
     let boot = project
         .boot
         .as_ref()
