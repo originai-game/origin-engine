@@ -1,4 +1,4 @@
-//! Districts (`type district`): a whole area laid out from rules and a
+//! Districts (`file.district`): a whole area laid out from rules and a
 //! seed, expanded by the scan into the sources the rest of the cook
 //! already cooks, so levels of detail, colliders, instancing, streaming
 //! cells and HLOD proxies are the existing ones.
@@ -14,10 +14,10 @@
 //!   stays one brick.
 //! - The district becomes a scene. Without a `cells` block it holds
 //!   everything; with one, each cell of `size` metres that holds anything
-//!   is an og.StreamCell whose sub-scene (`<district>.cell-<i>-<j>.ogt`)
+//!   is an og.StreamCell whose sub-scene (`<district>#cell-<i>-<j>`)
 //!   is its own cell group, with the district's `hlod` block. A cell's
 //!   buildings, streets and pavements are one model per cell
-//!   (`<district>.cell-<i>-<j>.glb`, a primitive per material), or one per
+//!   (`<district>#cell-<i>-<j>#model`, a primitive per material), or one per
 //!   building with `merge false`; props and the models a grammar inserts
 //!   are entities placing their own model, so copies draw instanced.
 //!   Every building collides as the box round its lot and its height, a
@@ -37,14 +37,14 @@ mod texts;
 
 use super::*;
 
-pub(crate) use parse::{DISTRICT_TYPE, MATERIALS_TYPE};
+pub(crate) use parse::MATERIALS_TYPE;
 
 /// A district's kind: expanded by the scan into a scene, so it plans
 /// nothing of its own (an expansion that failed carries its error).
 pub(crate) static DISTRICT: KindDef = KindDef {
     name: "district",
     extensions: &[],
-    types: &[DISTRICT_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_nothing,
@@ -101,12 +101,20 @@ fn plan_check<'a>(
 /// Every district becomes a scene and the sources it places; the grammars
 /// and libraries they name are consumed.
 pub(crate) fn expand(
+    root: &Path,
     sources: &mut Vec<Source>,
     consumed: &mut BTreeSet<String>,
     grammars: &BTreeMap<String, og_shape::generators::grammar::Grammar>,
     records: &crate::cook::source_records::Records,
+    declarations: &BTreeMap<String, crate::cook::source_content::Content>,
+    scanned: &BTreeMap<String, crate::cook::source_content::Output>,
 ) -> Result<(), String> {
     let packed = std::sync::Arc::new(records.packed()?);
+    let libraries: BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| s.kind == &MATERIALS)
+        .map(|s| (s.rel.clone(), s.bytes.clone()))
+        .collect();
     let mut extra = Vec::new();
     let terrains: BTreeSet<String> = sources
         .iter()
@@ -118,33 +126,44 @@ pub(crate) fn expand(
         if s.kind != &DISTRICT || s.error.is_some() {
             continue;
         }
-        let root = crate::cook::assets_root(s);
+        let content = &declarations[&s.rel];
         let read = |id: &str| {
-            std::fs::read(root.join(id)).map_err(|_| format!("`{id}` is not a file under assets/"))
+            libraries
+                .get(id)
+                .cloned()
+                .ok_or_else(|| format!("`{id}` is not a captured material library"))
         };
-        let text = String::from_utf8_lossy(&s.bytes).into_owned();
-        let built = parse::district(&text).and_then(|d| {
-            // What it names is part of it, built or not.
-            consumed.insert(d.materials.clone());
-            consumed.extend(d.buildings.rules.iter().map(|r| r.grammar.clone()));
-            if let Some((id, _)) = &d.terrain
-                && !terrains.contains(id)
-            {
-                return Err(format!(
-                    "terrain `{id}` is not a terrain asset under assets/"
-                ));
-            }
-            build::build(&s.rel, &d, &read, grammars)
-        });
-        let out = match built {
-            Ok(o) => o,
-            Err(e) => {
-                s.error = Some(e);
-                continue;
-            }
-        };
+        let out = parse::district(s.input()?)
+            .and_then(|mut d| {
+                d.materials = scanned
+                    .get(&d.materials)
+                    .filter(|o| o.kind == "materials")
+                    .ok_or_else(|| {
+                        format!("`{}` is not a material library content ID", d.materials)
+                    })?
+                    .asset
+                    .clone();
+                // What it names is part of it, built or not.
+                consumed.insert(d.materials.clone());
+                consumed.extend(d.buildings.rules.iter().map(|r| r.grammar.clone()));
+                if let Some((id, _)) = &d.terrain
+                    && !terrains.contains(id)
+                {
+                    return Err(format!("terrain `{id}` is not a terrain content ID"));
+                }
+                build::build(&s.rel, &d, &read, grammars)
+            })
+            .map_err(|e| {
+                crate::cook::source_content::diagnostic(
+                    content.source(),
+                    &content.entry().file,
+                    "",
+                    e,
+                )
+                .to_string()
+            })?;
         let mut doc = scene::Document::scene(out.scene);
-        doc.file = s.path.to_string_lossy().into_owned();
+        doc.locate(content);
         doc.records = packed.clone();
         s.bytes = serde_json::to_vec(&doc).map_err(|e| e.to_string())?;
         s.scene = Some(std::sync::Arc::new(doc));
@@ -153,9 +172,9 @@ pub(crate) fn expand(
             carves.push(carve);
         }
         let made = |rel: String, kind: Kind, bytes: Vec<u8>| Source {
-            path: s
-                .path
-                .with_file_name(rel.rsplit('/').next().unwrap_or(&rel)),
+            // Generated glTF URIs are rooted at the captured material
+            // library's assets/. There is no authored model file to re-read.
+            path: root.join("assets").join(&rel),
             rel,
             kind,
             bytes,
@@ -190,7 +209,7 @@ pub(crate) fn expand(
         };
         for (rel, input) in out.scenes {
             let mut doc = scene::Document::scene(input);
-            doc.file = s.path.to_string_lossy().into_owned();
+            doc.locate(content);
             doc.records = packed.clone();
             let mut source = made(
                 rel,

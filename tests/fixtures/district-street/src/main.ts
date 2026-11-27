@@ -17,7 +17,7 @@ const view = defineSystem("View", { writes: [og.Camera] }, (_query, time, world)
 });
 
 export default og.game({
-  scenes: { main: "districts/town.ogt" },
+  scenes: { main: "base/districts/town" },
   systems: [view],
   start(world) {
     og.stream.setBudget(world, 512 * 1024 * 1024);

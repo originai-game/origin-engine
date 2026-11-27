@@ -1,6 +1,6 @@
 # Districts: towns from rules
 
-The `type district` asset: a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names checked TS building rules (`file.grammar`) and a material library (`type materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
+The `file.district` declaration describes a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names checked TS building rules (`file.grammar`) and a material library (`type materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
 
 The scene it becomes is placed and streamed as world §5 describes; its
 models are glTF models with levels of detail (models §1 for the material
@@ -9,11 +9,11 @@ no default building.
 
 ## 1. The three files
 
-Grammars export `file.grammar` from `content/**/*.ts`; districts and material
-libraries still live under `assets/` until their domain cutovers. Only the
-district is placed in a game; grammars and the library are cook inputs.
-District `buildings.rule` names a grammar's canonical content ID, such as
-`base/grammars/terrace`, not a physical path. No grammar OGT reader remains.
+Districts and grammars export `file.district` and `file.grammar` from
+`content/**/*.ts`; material libraries remain under `assets/` until their
+own cutover. Only the district is placed in a game; grammars and the library
+are cook inputs. References use canonical `ref("module/content-id")` tokens,
+not physical paths. No district or grammar OGT reader remains.
 
 A grammar builds one building on one lot. It starts from the lot's
 footprint and hands faces from rule to rule until each ends in a `label`
@@ -150,76 +150,55 @@ material "glass" {
 - The streets draw labels too: `road`, `pavement`, `kerb` and `ground`
   (the yard behind the lots). Cover them in the library.
 
-The district:
+The district, for example `content/districts/town.ts`:
 
-```text
-type district
-version 1
----
-seed 7
-region {
-  point 0 0
-  point 400 0
-  point 400 300
-  point 0 300
-}
-streets {
-  grid 100 80
-  turn 12
-  jitter 0.1
-  width 10
-  sidewalk 3
-  kerb 0.15
-}
-lots {
-  width 6 14
-  depth 14 24
-}
-buildings {
-  density 0.9
-  height 9 24
-  heightNoise 0.01 0.6
-  rule "base/grammars/terrace" {
-    weight 3
-  }
-  rule "base/grammars/corner-shop" {
-    street "High Street"
-  }
-}
-prop "lamp" {
-  model "models/lamp.glb"
-  every 22
-  jitter 1
-  kerb 0.5
-  corners true
-  collider capsule 0.12 4
-}
-materials "materials/london.ogt"
-cells {
-  size 64
-  load 160
-}
+```ts
+import { file, ref } from "@origingame/engine/author";
+
+export default file.district({
+  seed: 7,
+  region: { kind: "area", points: [[0, 0], [400, 0], [400, 300], [0, 300]] },
+  streets: {
+    grid: { size: [100, 80], turn: 12, jitter: 0.1, width: 10, sidewalk: 3 },
+    streets: [{ name: "High Street", points: [[0, 150], [400, 150]], width: 10, sidewalk: 3 }],
+    kerb: 0.15,
+  },
+  lots: { width: [6, 14], depth: [14, 24] },
+  buildings: {
+    density: 0.9, height: [9, 24], heightNoise: { frequency: 0.01, share: 0.6 },
+    rules: [
+      { grammar: ref("base/grammars/terrace"), weight: 3 },
+      { grammar: ref("base/grammars/corner-shop"), street: "High Street" },
+    ],
+  },
+  props: [{
+    name: "lamp", model: ref("base/models/lamp"), every: 22, jitter: 1,
+    kerb: 0.5, corners: true, collider: { kind: "capsule", radius: 0.12, height: 4 },
+  }],
+  materials: ref("base/materials/london"),
+  cells: { size: 64, load: 160 },
+});
 ```
 
-- `region` is an outline the street grid and the named streets cut; or
-  `along { point ...; width; sidewalk; depth; name }` lines both sides of
-  one street, `depth` metres deep, for a single road.
+- `region: {kind: "area", points}` is an outline the streets cut; or
+  `{kind: "along", street: {points, width, sidewalk, name?}, depth}` lines
+  both sides of one street, `depth` metres deep.
 - `streets`: the grid's spacing along its x and z, its turn in degrees,
   how far each line moves (a share of the spacing, 0 to 0.45), the
   roadway's width, the pavement on each side and the kerb's height. Named
-  streets (`street "<name>" { point ...; width; sidewalk }`) cut the
+  streets (`streets: [{name, points, width, sidewalk}]`) cut the
   blocks too, and rules and props can keep to them by name.
 - `lots`: each lot's width along its street and the depth of the ring of
   lots round a block, least and greatest. Every lot fronts a street.
 - `buildings`: the share of lots built on, the height range, and
-  `heightNoise <frequency per metre> <share>`, the share of each height
+  `heightNoise: {frequency, share}`, the share of each height
   that follows smooth noise over the town (tall streets and low ones)
-  rather than the lot's own draw. `rule` lines pick a grammar by weight,
+  rather than the lot's own draw. `rules` pick a grammar by weight,
   optionally only along one street.
-- `prop`: a model along every pavement (or one `street`), `every` metres,
+- `props`: models along every pavement (or one `street`), `every` metres,
   `kerb` metres from the kerb, moved up to `jitter`, one more at each
-  corner with `corners true`, colliding as `box <w> <h> <d>` or
-  `capsule <radius> <height>`.
+  corner with `corners: true`, colliding as `{kind: "box", size: [w,h,d]}`
+  or `{kind: "capsule", radius, height}`.
 
 ## 2. What the cook makes
 
@@ -228,18 +207,19 @@ cells {
   its collider, so copies draw instanced. Models a grammar `insert`s are
   placed the same way.
 - Without `cells`, every building, road and pavement is in one model.
-  With `cells { size; load }`, each square of `size` metres that holds
+  With `cells: {size, load}`, each square of `size` metres that holds
   anything is an og.StreamCell with its own sub-scene and cell group
-  (world §5), loaded within `load` metres; an `hlod` block in the district
+  (world §5), loaded within `load` metres; an `hlod` object in the district
   is given to every cell (world §5, Distant models as proxies).
 - A cell's buildings, roads and pavements are one model, a primitive per
-  material, so a cell draws in a handful of calls. `merge false` keeps a
+  material, so a cell draws in a handful of calls. `merge: false` keeps a
   model per building instead (to hide, swap or pick one building).
 - Each model has a level of detail per `detail` level its grammars use.
 - Every entity is named under the district's asset id, as names are
-  unique in the whole world: `districts/town.ogt/building-12`,
-  `districts/town.ogt/lamp-3` and its `/collider`, a cell's
-  `districts/town.ogt.cell-2-1` and its merged `/model`.
+  unique in the whole world: `base/districts/town/building-12`,
+  `base/districts/town/lamp-3` and its `/collider`. Cell scenes and models
+  are discovered subresources under that district's canonical ID; inspect
+  the cook output manifest instead of guessing cell membership.
 - The same district, grammars, library and seed give the same bytes on
   every host; another seed gives another town with the same rules.
 
@@ -369,10 +349,9 @@ distribution; this is not a guarantee of repetition-free distant walls.
 When a district crosses a height field, give it the terrain asset to
 carve at cook time:
 
-```text
-terrain "base/terrain/land" {
-  depth 0.25
-}
+```ts
+// A field of file.district({...}):
+terrain: { terrain: ref("base/terrain/land"), depth: 0.25 },
 ```
 
 Place the district and terrain in the same local coordinate space. Roads

@@ -40,6 +40,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("model", &model::MODEL),
     ("model-program", &model::MODEL),
     ("table", &table::TABLE),
+    ("district", &district::DISTRICT),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -84,6 +85,7 @@ fn catalogue(
         [
             &look::LOOK,
             &story::DIALOGUE,
+            &district::MATERIALS,
             &model::MODEL,
             &texture::TEXTURE,
             &font::FONT,
@@ -382,6 +384,7 @@ pub(crate) fn sources(
     let mut flipbooks = BTreeMap::new();
     let mut deferred_flipbooks = BTreeMap::new();
     let mut table_sources = BTreeMap::new();
+    let mut districts = BTreeMap::new();
     for entry in index.entries.values() {
         let content = if let Some(content) = prepared.remove(&entry.id) {
             if content.entry() != entry {
@@ -582,6 +585,8 @@ pub(crate) fn sources(
         })?;
         if flipbooks.contains_key(&entry.id) {
             deferred_flipbooks.insert(entry.id.clone(), content);
+        } else if entry.factory == "district" {
+            districts.insert(entry.id.clone(), content);
         } else {
             graph
                 .insert(&content, &derived)
@@ -611,6 +616,27 @@ pub(crate) fn sources(
             .expect("checked flipbook");
         source.flipbook = Some(sheet);
         source.conformed = Some(bytes);
+    }
+    district::expand(
+        root, sources, consumed, &grammars, &records, &districts, &scanned,
+    )
+    .map_err(CookError)?;
+    let mut district_outputs: BTreeMap<_, BTreeMap<_, _>> = BTreeMap::new();
+    for source in sources.iter() {
+        if let Some((id, suffix)) = source.rel.split_once('#')
+            && districts.contains_key(id)
+        {
+            district_outputs
+                .entry(id)
+                .or_default()
+                .insert(suffix.to_owned(), source.kind.name.to_owned());
+        }
+    }
+    for (id, content) in &districts {
+        let derived = district_outputs.remove(id.as_str()).unwrap_or_default();
+        graph
+            .insert(content, &derived)
+            .map_err(|e| CookError(e.to_string()))?;
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     table::prepare(sources, &graph, &packed, &table_sources)?;
@@ -664,17 +690,6 @@ pub(crate) fn sources(
     timeline::bind(sources, &graph)?;
     font_pack::bind(sources, &graph)?;
     field::bind(sources, fields);
-    for grammar in grammars.values_mut() {
-        for rule in grammar.rules.values_mut() {
-            for op in &mut rule.ops {
-                if let og_shape::generators::grammar::Op::Insert(id) = op {
-                    *id = graph.outputs[id.as_str()].asset.clone();
-                }
-            }
-        }
-    }
-    // Street carves address actual canonical terrain IDs, discovered above.
-    district::expand(sources, consumed, &grammars, &records).map_err(CookError)?;
     let mut prepared = terrain::Terrains::new();
     for (id, (input, captured, file)) in terrains {
         let source = sources

@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::sync::OnceLock;
 
 #[derive(Deserialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "scene"))]
 #[serde(deny_unknown_fields)]
 pub struct DistrictInput {
     pub seed: Option<u32>,

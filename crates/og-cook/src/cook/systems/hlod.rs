@@ -96,30 +96,6 @@ const IMAGE_SIDE: u32 = 512;
 /// Points asked per texel along each side by the transfer.
 const SAMPLES: u32 = 2;
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "size",
-        "<4..4096 metres>",
-        "64",
-        "Leaf cell side; doubles at each level.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "error",
-        "<metres > 0, <= size / 4>",
-        "size / 256",
-        "Maximum leaf proxy displacement; zero requests the derived default.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "texels",
-        "<64..4096>",
-        "1024",
-        "Longest texture side in pixels.",
-        "",
-    ),
-];
-
 /// A scene's `hlod` block.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Settings {

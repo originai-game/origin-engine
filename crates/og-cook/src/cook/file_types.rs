@@ -154,13 +154,6 @@ pub fn markdown() -> Result<String, String> {
                     }
                 }
             }
-            "district" => {
-                table(&mut out, super::systems::district::parse::DISTRICT_LINES);
-                for (name, fields) in super::systems::district::parse::DISTRICT_BLOCKS {
-                    block(&mut out, &format!("district.{name}"), fields);
-                }
-                block(&mut out, "district.hlod", super::hlod::LINES);
-            }
             "quest" => {
                 for scope in ["quest", "reward", "stage", "objective"] {
                     let fields: Vec<_> = og_story::asset::QUEST_LINES

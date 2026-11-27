@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "file.district / district output identities",
+    "change": "Districts consume checked TS declarations and captured material-library bytes. The district OGT reader and line tables are removed. Generated streamed scenes and models are registered as actual children of their canonical district ID before scene references are bound.",
+    "fix": "Export file.district({...}) from content/**/*.ts, use ref('module/id') for grammars, models, terrain and material libraries, and load the district by its canonical ID. Streamed children are id#cell-X-Y and id#cell-X-Y#model; unsplit geometry is id#model. Regenerate types and re-cook. Material libraries and import settings migrate in their own domain cutovers. Platforms must retire district OGT generators and physical-path scene IDs."
+  }]
+}

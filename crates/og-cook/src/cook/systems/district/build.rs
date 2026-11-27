@@ -548,15 +548,15 @@ pub(super) fn build(
     for (c, cell) in &cells {
         let base = match size {
             None => rel.to_string(),
-            Some(_) => format!("{rel}.cell-{}-{}", c.0, c.1),
+            Some(_) => format!("{rel}#cell-{}-{}", c.0, c.1),
         };
         let mut entities = Vec::new();
         let mut ids = Vec::new();
         for (suffix, acc) in &cell.models {
             let id = if suffix.is_empty() {
-                format!("{base}.glb")
+                format!("{base}#model")
             } else {
-                format!("{base}.{suffix}.glb")
+                format!("{base}#model-{suffix}")
             };
             let used: BTreeSet<&str> = acc.keys().map(|(m, _)| m.as_str()).collect();
             let mats: Vec<&Material> = materials
@@ -567,7 +567,7 @@ pub(super) fn build(
             // Named as the model is: names are unique in the whole
             // world, across cells and districts.
             entities.push(texts::placed(
-                &format!("{}/model", id.trim_end_matches(".glb")),
+                &format!("{id}/model"),
                 &id,
                 DVec3::ZERO,
                 DQuat::IDENTITY,
@@ -578,7 +578,7 @@ pub(super) fn build(
         entities.extend(cell.entities.iter().cloned());
         match (&d.cells, size) {
             (Some(cells_desc), Some(s)) => {
-                let scene_id = format!("{base}#scene");
+                let scene_id = base.clone();
                 let stream = format!("{group}-{}-{}", c.0, c.1);
                 out.scenes.push((
                     scene_id.clone(),

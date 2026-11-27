@@ -350,12 +350,13 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
     );
     write(
         "assets/materials.ogt",
-        "type materials\nversion 1\n---\nmaterial \"stone\" {\n label stone\n label road\n label pavement\n label ground\n label kerb\n color 0.2 0.4 0.7\n}\n",
+        "type materials\nversion 1\n---\nmaterial \"stone\" {\n label stone\n label road\n label pavement\n label ground\n label kerb\n color 0.2 0.4 0.7\n map \"surface.png\"\n}\n",
     );
-    write(
-        "assets/town.ogt",
-        "type district\nversion 1\n---\nseed 7\nalong {\n point 0 0\n point 0 24\n width 4\n sidewalk 1\n depth 10\n}\nlots {\n width 6 6\n depth 8 8\n}\nbuildings {\n density 1\n rule \"north/building\"\n}\nmaterials \"materials.ogt\"\n",
-    );
+    image::RgbaImage::from_pixel(2, 3, image::Rgba([17, 89, 231, 255]))
+        .save(root.join("assets/surface.png"))
+        .unwrap();
+    let district = "import {file,ref} from '@origingame/engine/author';export default file.district({seed:7,region:{kind:'along',street:{points:[[0,0],[0,24]],width:4,sidewalk:1},depth:10},lots:{width:[6,6],depth:[8,8]},buildings:{density:1,rules:[{grammar:ref('north/building')}]},materials:ref('base/materials')});";
+    write("modules/north/content/town.ts", district);
     write(
         "assets/gate.gltf",
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
@@ -377,7 +378,7 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
             let report = cook_project(&root, &options).unwrap();
             assert!(report.ok(), "{:?}", report.errors());
             let bundle = Bundle::open(&root.join("cooked")).unwrap();
-            let scene = bundle.load_scene("town.ogt").unwrap();
+            let scene = bundle.load_scene("north/town").unwrap();
             assert!(
                 scene
                     .entities
@@ -412,6 +413,67 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
             previous = Some(bytes);
         }
     }
+    // Streamed outputs must be discovered before authored scenes bind their
+    // references. A module root is not the assets root of its material maps.
+    for merge in [true, false] {
+        write(
+            "modules/north/content/town.ts",
+            &district.replace(
+                "seed:7",
+                &format!("seed:7,cells:{{size:16,load:37}},merge:{merge}"),
+            ),
+        );
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let scene = bundle.load_scene("north/town").unwrap();
+        let cells: Vec<_> = scene
+            .entities
+            .iter()
+            .filter_map(|e| e.subscene.as_deref())
+            .collect();
+        assert!(cells.len() > 1, "district did not stream across cells");
+        let mut generated = 0;
+        for id in cells {
+            assert!(id.starts_with("north/town#cell-"), "{id}");
+            let cell = bundle.load_scene(id).unwrap();
+            for model in cell
+                .entities
+                .iter()
+                .filter_map(|e| e.instance.as_deref())
+                .filter(|id| id.starts_with("north/town#"))
+            {
+                assert!(bundle.load_model(model).is_ok(), "{model}");
+                generated += 1;
+            }
+        }
+        assert!(generated > 1);
+    }
+    write("modules/north/content/town.ts", district);
+    for (from, to, expected) in [
+        ("width:[6,6]", "width:[8,4]", "width"),
+        (
+            "density:1,rules:[{grammar:ref('north/building')}]",
+            "density:1",
+            "grammar rule",
+        ),
+        (
+            "ref('base/materials')",
+            "ref('base/gate')",
+            "material library",
+        ),
+    ] {
+        write("modules/north/content/town.ts", &district.replace(from, to));
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(r) => format!("{:?}", r.errors()),
+        };
+        assert!(
+            error.contains(expected) && error.contains("content/town.ts:"),
+            "{error}"
+        );
+    }
+    write("modules/north/content/town.ts", district);
     // Unreachable rules still validate; otherwise a broken helper could hide
     // indefinitely behind a seed or a district's rule selection.
     for (from, to, expected) in [
@@ -437,14 +499,16 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
         assert!(error.contains("content/building.ts:"), "{error}");
     }
     write("modules/north/content/building.ts", source);
-    write(
-        "assets/old.ogt",
+    for old in [
         "type grammar\nversion 1\n---\nstart A\nrule A {\n drop\n}\n",
-    );
-    assert!(
-        !cook_project(&root, &options).unwrap().ok(),
-        "old grammar author input was accepted"
-    );
+        "type district\nversion 1\n---\n",
+    ] {
+        write("assets/old.ogt", old);
+        assert!(
+            !cook_project(&root, &options).unwrap().ok(),
+            "old author input was accepted"
+        );
+    }
 }
 
 /// Checked tileset data, cross-module atlas references and embedded imported

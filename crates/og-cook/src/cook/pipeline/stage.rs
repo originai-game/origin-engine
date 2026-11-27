@@ -431,22 +431,24 @@ fn import_source(
     rigs: &anim::Rigs,
 ) -> Option<Made> {
     let mut made = Made::default();
-    let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
+    let assets = assets_root(s);
     let base = s
         .rel
         .rsplit_once('/')
         .map_or(String::new(), |(p, _)| format!("{p}/"));
     let authored = s.authored_model.clone();
-    let read = |file: &str| {
-        if let Some(model) = &authored {
-            return model.read(file);
-        }
-        textures
-            .get(&normalise_rel(&format!("{base}{file}")))
-            .cloned()
-            .map(Ok)
-            .unwrap_or_else(|| std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}")))
-    };
+    let read =
+        |file: &str| {
+            if let Some(model) = &authored {
+                return model.read(file);
+            }
+            // Synthetic model directories need not exist on disk. Resolve the
+            // same logical path used by the texture index and dependency stamp.
+            let id = normalise_rel(&format!("{base}{file}"));
+            textures.get(&id).cloned().map(Ok).unwrap_or_else(|| {
+                std::fs::read(assets.join(&id)).map_err(|e| format!("{file}: {e}"))
+            })
+        };
     let imported_processing = if s.kind == &model::MODEL && authored.is_none() {
         match model::process::settings(settings_block(s, "model")) {
             Ok(v) => v,
