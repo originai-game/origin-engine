@@ -23,6 +23,7 @@ fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
         .join("og-cook-shader")
         .join(name);
     let _ = std::fs::remove_dir_all(&root);
+    crate::init_project(&root);
     for (path, text) in files {
         let p = root.join("assets").join(path);
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();

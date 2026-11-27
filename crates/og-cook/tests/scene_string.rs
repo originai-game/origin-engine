@@ -23,6 +23,7 @@ fn project(tag: &str, scene: &str) -> PathBuf {
     let root =
         std::env::temp_dir().join(format!("og-cook-scene-string-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
+    crate::init_project(&root);
     std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
     std::fs::write(root.join("assets/scenes/s.ogt"), scene).unwrap();
     root

@@ -6,6 +6,26 @@ mod gpu_tests;
 #[path = "../../../../tests/temp.rs"]
 mod temp;
 
+fn init_project(root: &std::path::Path) {
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    for (file, text) in [
+        (
+            "og-project.json",
+            include_str!("../../../../tests/fixtures/cook-assets/og-project.json"),
+        ),
+        (
+            "project.ts",
+            include_str!("../../../../tests/fixtures/cook-assets/project.ts"),
+        ),
+        (
+            "src/main.ts",
+            include_str!("../../../../tests/fixtures/cook-assets/src/main.ts"),
+        ),
+    ] {
+        std::fs::write(root.join(file), text).unwrap();
+    }
+}
+
 #[path = "../scene_string.rs"]
 mod scene_string;
 #[path = "../shader.rs"]

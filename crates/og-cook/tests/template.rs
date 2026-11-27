@@ -138,6 +138,7 @@ fn every_thread_count_cooks_the_same_bytes() {
     small_template(&source);
     let cook = |dir: &Path, threads: usize| {
         let _ = std::fs::remove_dir_all(dir);
+        crate::init_project(dir);
         copy_dir(&source.join("assets"), &dir.join("assets"));
         let options = CookOptions {
             threads,
@@ -187,6 +188,7 @@ fn every_thread_count_cooks_the_same_bytes() {
 fn sounds_fonts_and_scenes_load_as_authored() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook/template");
     let _ = std::fs::remove_dir_all(&root);
+    crate::init_project(&root);
     copy_dir(&template_assets(), &root.join("assets"));
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
@@ -249,6 +251,7 @@ fn sounds_fonts_and_scenes_load_as_authored() {
 fn skin_relax_is_explicit_local_and_deterministic() {
     use serde_json::json;
     let root = crate::temp::TempDir::new("skin-relax");
+    crate::init_project(&root);
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     let positions: [[f32; 3]; 9] = [
