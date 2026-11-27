@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Renderer",
+      "summary": "Recreating a native renderer after device loss keeps its initialization future on the heap instead of overflowing an ordinary host thread's stack."
+    }
+  ]
+}

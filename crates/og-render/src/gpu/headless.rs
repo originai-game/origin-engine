@@ -207,6 +207,8 @@ impl Renderer {
 impl Successor {
     /// [`Successor::make`] headless, blocking (native only).
     pub fn make_blocking(self) -> Result<Renderer, RenderError> {
-        pollster::block_on(self.make(None))
+        // As with restart, keep the renderer initialization future off
+        // pollster's nested executor stack during device creation.
+        pollster::block_on(Box::pin(self.make(None)))
     }
 }
