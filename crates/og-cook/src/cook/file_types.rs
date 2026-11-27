@@ -79,6 +79,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "timeline" {
                 out.push_str("Output: one native timeline. Keys are {time, ease?, value}; tracks are discriminated by kind. Reference assets with ref('module/content-id'), never physical file paths. Caption imports use canonical module assets/ or sources/ paths and are captured before cache lookup. Adjacent locale translations remain discoverable; explicit locales override them. Nested timelines reject cycles and excessive depth. Internal blob text is not an author format. See animation and flow.\n\n");
             }
+            if ty == "field" {
+                out.push_str("Output: a lossless f32 lattice loaded with og.load.field. Positive dimensions [x,y,z], 1..4 interleaved channels and exactly their product in finite values are required, at most 16,777,216 scalars. Values run x fastest, then y, then z. Origin defaults to zero, positive spacing to one. Terrain preserve and particle fields consume the same checked lattice by canonical content ID; particles require a cubic three-channel lattice. There is no field text parser or generate wrapper. See generating.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -326,12 +329,6 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");
                 table(&mut out, og_core::table::LINES);
                 block(&mut out, "table.row", og_core::table::ROW_LINES);
-            }
-            "field" => {
-                out.push_str("Field coverage: complete parser line table. Output: lossless f32 lattice, loaded with og.load.field. Authored data and generate are exclusive. No implicit normalization, resampling or image encoding.\n\n");
-                table(&mut out, og_bundle::field::LINES);
-                out.push_str("\n<a id=\"file-field-generate\"></a>\n### `file:field.generate`\n\nReturns FieldSource: dimensions [x,y,z], channels 1..4, values, optional origin [x,y,z] and positive spacing [x,y,z]. Scripts compose noiseGrid, noiseGrad, Worley or curlNoise through the shared procgen implementation.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
             }
             "particles" | "effect" | "vfx" => {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");

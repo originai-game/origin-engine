@@ -2,50 +2,56 @@
 use super::*;
 use og_blob::BlobWriter;
 use og_bundle::field::FieldData;
+use std::sync::Arc;
+
+pub(crate) struct Prepared {
+    pub data: Arc<FieldData>,
+    pub hash: u64,
+}
+
+pub(crate) type Fields = BTreeMap<String, Prepared>;
+
+impl Prepared {
+    pub fn new(data: FieldData) -> Result<Self, String> {
+        data.validate()?;
+        let mut hash = og_core::hash::StableHasher::new();
+        for value in data.dimensions.into_iter().chain([data.channels]) {
+            hash.write_u32(value);
+        }
+        for value in data.origin.iter().chain(&data.spacing).chain(&data.values) {
+            hash.write_u32(value.to_bits());
+        }
+        Ok(Self {
+            data: Arc::new(data),
+            hash: hash.finish(),
+        })
+    }
+}
+
+/// Consumers share the checked value used by the field writer, not a second
+/// evaluation or a file read during execution.
+pub(crate) fn bind(sources: &mut [Source], fields: Fields) {
+    let fields = Arc::new(fields);
+    for s in sources {
+        s.fields = fields.clone();
+    }
+}
+
+pub(crate) fn get<'a>(fields: &'a Fields, id: &str) -> Result<&'a Prepared, String> {
+    fields.get(id).ok_or_else(|| format!(
+        "field '{id}' is not a checked project field; declare file.field under content/ and use its canonical module/content ID"
+    ))
+}
 
 pub(crate) static FIELD: KindDef = KindDef {
     name: "field",
     extensions: &[],
-    types: &["field"],
+    types: &[],
     by_content: true,
     streams: false,
     plan,
 };
 pub(crate) static KINDS: &[&KindDef] = &[&FIELD];
-
-pub(crate) fn source(root: &Path, rel: &str, bytes: &[u8]) -> Result<FieldData, String> {
-    let text = std::str::from_utf8(bytes).map_err(|e| e.to_string())?;
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != "field" || doc.version != 1 {
-        return Err("a field is type field version 1".into());
-    }
-    let entries: Vec<_> = doc.body.get_all("generate").collect();
-    if entries.is_empty() {
-        return FieldData::parse(text);
-    }
-    if entries.len() != 1 || doc.body.entries.len() != 1 || !entries[0].values.is_empty() {
-        return Err("field.generate is exclusive with authored lattice data".into());
-    }
-    let spec =
-        generator::Spec::standalone(entries[0].block.as_ref().ok_or("generate is a block")?)?;
-    let data: FieldData =
-        serde_json::from_value(generator::Program::prepare(root, rel, &spec)?.run()?)
-            .map_err(|e| e.to_string())?;
-    data.validate()?;
-    Ok(data)
-}
-
-pub(crate) fn expand(sources: &mut [Source]) {
-    for s in sources {
-        if s.kind != &FIELD || s.error.is_some() {
-            continue;
-        }
-        match source(&assets_root(s), &s.rel, &s.bytes).and_then(|data| data.to_text()) {
-            Ok(text) => s.bytes = text.into_bytes(),
-            Err(e) => s.error = Some(e),
-        }
-    }
-}
 
 fn plan<'a>(_: &Cx<'a>, _: &mut PlanState, s: &'a Source, hash: [u8; 8], outs: &mut Vec<Out<'a>>) {
     let st = stamp(&[Area::Data], &[b"field", &hash]);
@@ -60,13 +66,7 @@ fn plan<'a>(_: &Cx<'a>, _: &mut PlanState, s: &'a Source, hash: [u8; 8], outs: &
 struct FieldJob<'a>(&'a Source);
 impl Job for FieldJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let data = if self.0.path.extension().is_some_and(|ext| ext == "ts") {
-            self.0.input::<FieldData>().map_err(CookError)?
-        } else {
-            let text = std::str::from_utf8(&self.0.bytes).map_err(|e| CookError(e.to_string()))?;
-            FieldData::parse(text).map_err(CookError)?
-        };
-        data.validate().map_err(CookError)?;
+        let data = &get(&self.0.fields, &self.0.rel).map_err(CookError)?.data;
         let mut w = BlobWriter::new(
             format::Field::type_hash(),
             format::Field::schema_version(),

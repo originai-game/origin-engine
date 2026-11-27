@@ -29,8 +29,8 @@ module load {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
-| [`FieldData`](load/type-FieldData.md) | struct |  | Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. |
-| [`og.load.field`](load/fn-field.md) | function | `(world: World, path: string): Result<FieldData>` | Read a cooked type field lattice without allocating world or GPU handles. |
+| [`FieldData`](load/type-FieldData.md) | struct |  | Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. |
+| [`og.load.field`](load/fn-field.md) | function | `(world: World, path: string): Result<FieldData>` | Read a cooked file.field lattice by its canonical module/content ID without allocating world or GPU handles. |
 | [`Asset`](load/type-Asset.md) | handle |  | A loaded bundle, scene or glTF asset. |
 | [`Font`](load/type-Font.md) | handle |  | A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set. |
 | [`Sound`](load/type-Sound.md) | handle |  | A cooked sound: QOA-encoded PCM the audio module plays. |

@@ -142,6 +142,8 @@ pub(crate) struct Source {
     video: Option<video::Prepared>,
     /// Native tracks and captured captions, shared by planning and execution.
     timeline: Option<timeline::Prepared>,
+    /// Checked lattices shared with terrain and particle consumers for this cook.
+    fields: std::sync::Arc<field::Fields>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -372,6 +374,12 @@ pub fn cook_project_with_texture_cache(
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");
     let content = pipeline::author::sources(root, &project.source, &mut sources)?;
+    // Projected scatter needs both resolved mesh operands and the checked
+    // TS field snapshot, just like the terrain writer and navmesh baker.
+    scene::expand(&mut sources);
+    for s in sources.iter_mut().filter(|s| s.kind == &scene::SCENE) {
+        s.hash = stage::source_hash(s);
+    }
     let boot = project
         .boot
         .as_ref()

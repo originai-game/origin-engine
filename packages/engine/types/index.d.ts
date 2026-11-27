@@ -14947,7 +14947,7 @@ export interface ShapeClass {
 // See `loading §1`.
 
 /**
- * Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling.
+ * Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. No normalization or resampling.
  */
 export interface FieldData {
   /** Positive sample counts along x, y, z. */
@@ -39598,10 +39598,10 @@ export declare namespace og {
    */
   namespace load {
     /**
-     * Read a cooked type field lattice without allocating world or GPU handles.
+     * Read a cooked file.field lattice by its canonical module/content ID without allocating world or GPU handles.
      *
      * @param world The world whose bundle holds the field.
-     * @param path The field asset path under assets/.
+     * @param path The field's canonical module/content ID, such as base/fields/wind.
      * @returns Refused if missing, not resident, not a field, stale or invalid.
      */
     function field(world: World, path: string): Result<FieldData>;

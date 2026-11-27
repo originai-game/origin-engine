@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `FieldData` (struct)
 
-Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling.
+Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. No normalization or resampling.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@ Lossless sampled scalar/vector lattice from type field; x fastest, then y, then 
 
 ```ogt
 struct FieldData {
-  doc "Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling."
+  doc "Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. No normalization or resampling."
   field dimensions Array.u32.3 "Positive sample counts along x, y, z."
   field channels u32 "One to four scalar channels per cell; units and meaning belong to the author."
   field origin Array.f32.3 "Coordinates of the first lattice sample."

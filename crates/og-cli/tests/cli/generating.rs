@@ -1929,6 +1929,8 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::create_dir_all(root.join("lib")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
         root.join("og-project.json"),
@@ -1936,16 +1938,11 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     )
     .unwrap();
     std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'field',entry:'src/main.ts'});").unwrap();
-    std::fs::write(
-        assets.join("source.ogt"),
-        "type field\nversion 1\n---\ngenerate {\nscript \"field.ts\"\n}\n",
-    )
-    .unwrap();
-    std::fs::write(assets.join("field.ts"), "import {input} from '@origingame/engine/author'; export default () => {const amplitude = input.bytes('input.bin')[0]; return {dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: Float32Array.from({length: 24}, (_, i) => amplitude + i / 32)};};").unwrap();
+    std::fs::write(root.join("content/source.ts"), "import {file,input} from '@origingame/engine/author'; import {samples} from '../lib/field.ts'; export default file.field({dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: samples(input.bytes('assets/input.bin')[0])});").unwrap();
     std::fs::write(assets.join("input.bin"), [7]).unwrap();
     std::fs::write(
         assets.join("particles.ogt"),
-        "type particles\nversion 1\n---\nfield \"source.ogt\" 0.25 9\n",
+        "type particles\nversion 1\n---\nfield \"base/source\" 0.25 9\n",
     )
     .unwrap();
     let cook = || {
@@ -1954,23 +1951,24 @@ fn generated_fields_load_losslessly_and_feed_particles() {
             .output()
             .unwrap()
     };
-    for amplitude in [7, 11] {
+    for (amplitude, divisor) in [(7, 32), (11, 32), (11, 16)] {
         std::fs::write(assets.join("input.bin"), [amplitude]).unwrap();
+        std::fs::write(root.join("lib/field.ts"), format!("export const samples = (amplitude: number) => Float32Array.from({{length: 24}}, (_, i) => amplitude + i / {divisor});")).unwrap();
         let out = cook();
         assert!(out.status.success(), "{}", text(&out));
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-        let field = bundle.load_field("source.ogt").unwrap();
+        let field = bundle.load_field("base/source").unwrap();
         assert_eq!(field.dimensions, [2, 2, 2]);
         assert_eq!(field.channels, 3);
         assert_eq!(field.origin, [-3.0, 2.0, 7.0]);
         assert_eq!(field.spacing, [0.5, 2.0, 3.0]);
         let expected: Vec<f32> = (0..24)
-            .map(|i| f32::from(amplitude) + i as f32 / 32.0)
+            .map(|i| f32::from(amplitude) + i as f32 / divisor as f32)
             .collect();
         assert_eq!(field.values, expected);
         let bytes = bundle.read("particles.ogt").unwrap();
-        let text = bundle.emitter_text("particles.ogt", &bytes).unwrap();
-        let emitter = og_cook::fx::parse_emitter(&text, &mut |_| Ok(None)).unwrap();
+        let emitter_text = bundle.emitter_text("particles.ogt", &bytes).unwrap();
+        let emitter = og_cook::fx::parse_emitter(&emitter_text, &mut |_| Ok(None)).unwrap();
         let og_render_data::VectorField::Grid {
             strength,
             size,
@@ -1988,17 +1986,73 @@ fn generated_fields_load_losslessly_and_feed_particles() {
                 .collect::<Vec<_>>(),
             expected
         );
+        let cold_field = bundle.read("base/source").unwrap().to_vec();
+        let cold_emitter = bytes.to_vec();
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let warm = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(&*warm.read("base/source").unwrap(), cold_field);
+        assert_eq!(&*warm.read("particles.ogt").unwrap(), cold_emitter);
+        std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let restored = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(&*restored.read("base/source").unwrap(), cold_field);
+        assert_eq!(&*restored.read("particles.ogt").unwrap(), cold_emitter);
     }
     // A rectangular scalar lattice is valid by itself, not a particle grid.
+    std::fs::write(root.join("content/source.ts"), "import {file} from '@origingame/engine/author';export default file.field({dimensions: [3, 2, 1], channels: 1, values: [117, -2, 0.125, 4, 9, 0]});").unwrap();
+    let out = cook();
+    assert!(!out.status.success(), "scalar particle grid accepted");
+    assert!(
+        text(&out).contains("cubic 3-channel lattice"),
+        "{}",
+        text(&out)
+    );
     std::fs::remove_file(assets.join("particles.ogt")).unwrap();
-    std::fs::write(assets.join("field.ts"), "export default () => ({dimensions: [3, 2, 1], channels: 1, values: [117, -2, 0.125, 4, 9, 0]});").unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     assert_eq!(
-        bundle.load_field("source.ogt").unwrap().values,
+        bundle.load_field("base/source").unwrap().values,
         [117.0, -2.0, 0.125, 4.0, 9.0, 0.0]
     );
+    // The same snapshot reaches terrain writing, navigation and projected
+    // scatter. A changed mask must not leave any of those on a cached surface.
+    std::fs::write(
+        assets.join("heights.ts"),
+        "export default () => ({columns:5,rows:3,heights:Array.from({length:15},(_,i)=>100+i)});",
+    )
+    .unwrap();
+    std::fs::write(assets.join("surface.ogt"), "type terrain\nversion 1\n---\nsize 8 4\ntile 16\ngenerate {\nscript \"heights.ts\"\npreserve \"base/protect\"\nchannel {\npoint -4 80 0\npoint 4 72 0\nwidth 4\ndepth 2\nriver true\n}\n}\n").unwrap();
+    std::fs::write(
+        assets.join("marker.ogt"),
+        "type prefab\nversion 1\n---\nentity \"marker\" {\n}\n",
+    )
+    .unwrap();
+    std::fs::write(assets.join("placed.ogt"), "type scatter\nversion 1\n---\nprefab \"marker.ogt\"\nproject \"surface.ogt\"\npoint 0 3 0\n").unwrap();
+    std::fs::write(assets.join("nav.ogt"), "type navmesh\nversion 1\n---\nterrain \"surface.ogt\"\ncellSize 1\ncellHeight 0.25\nagent {\nradius 0\nheight 1\nclimb 2\nslope 89\n}\n").unwrap();
+    let mut previous_nav = None;
+    for (mask, height) in [(0, 74.0), (1, 107.0)] {
+        std::fs::write(root.join("content/protect.ts"), format!("import {{file}} from '@origingame/engine/author';export default file.field({{dimensions:[5,3,1],channels:1,values:Array(15).fill({mask})}});")).unwrap();
+        std::fs::write(assets.join("expected.ogt"), format!("type scene\nversion 1\n---\nentity \"point-0\" {{\nprefab \"marker.ogt\"\nTransform {{\nposition 0 {} 0\nquaternion 0 0 0 1\nscale 1 1 1\n}}\n}}\n",height+3.0)).unwrap();
+        for _ in 0..2 {
+            let out = cook();
+            assert!(out.status.success(), "{}", text(&out));
+            let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+            let field = bundle.load_terrain("surface.ogt").unwrap().field().unwrap();
+            assert!((field.heights[7] - height).abs() < 0.001);
+            assert_eq!(
+                bundle.load_scene("placed.ogt").unwrap().components,
+                bundle.load_scene("expected.ogt").unwrap().components
+            );
+        }
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let nav = bundle.read("nav.ogt").unwrap().to_vec();
+        if let Some(previous) = previous_nav.replace(nav.clone()) {
+            assert_ne!(previous, nav, "navigation reused a stale preserve field");
+        }
+    }
     for invalid in [
         "({dimensions: [3, 2, 1], channels: 1, values: [1, 2]})",
         "({dimensions: [0, 2, 1], channels: 1, values: []})",
@@ -2006,13 +2060,26 @@ fn generated_fields_load_losslessly_and_feed_particles() {
         "({dimensions: [1, 1, 1], channels: 5, values: [1, 2, 3, 4, 5]})",
     ] {
         std::fs::write(
-            assets.join("field.ts"),
-            format!("export default () => {invalid};"),
+            root.join("content/source.ts"),
+            format!("import {{file}} from '@origingame/engine/author';export default file.field{invalid};"),
         )
         .unwrap();
         let out = cook();
         assert!(!out.status.success(), "accepted {invalid}: {}", text(&out));
     }
+    std::fs::remove_file(root.join("content/source.ts")).unwrap();
+    std::fs::write(
+        assets.join("old.ogt"),
+        "type field\nversion 1\n---\ndimensions 1 1 1\nchannels 1\nvalues 3\n",
+    )
+    .unwrap();
+    let out = cook();
+    assert!(!out.status.success(), "removed author field accepted");
+    assert!(
+        text(&out).contains("OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
 }
 
 /// The public offline executor: dependencies and parameters invalidate a

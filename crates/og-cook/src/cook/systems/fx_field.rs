@@ -3,6 +3,8 @@
 //! from the bottom) is cell (x, y, z), rgb 0..1 as -1..1, N 1 to 16), and
 //! writes the line as `fieldGrid <N> <size> <strength>` and the vectors,
 //! which the runtime reads back without the image.
+//! Canonical TS field IDs instead consume the checked lattice snapshot,
+//! preserving its float vectors without image remapping or text decoding.
 
 use super::Source;
 use og_core::ogt::{Document, Value};
@@ -30,13 +32,7 @@ fn fields(text: &str) -> Vec<(usize, String, Vec<f32>)> {
 
 fn read(s: &Source, id: &str) -> Result<Vec<u8>, String> {
     let path = crate::cook::assets_root(s).join(crate::runtime::asset_id(id));
-    let bytes = std::fs::read(&path).map_err(|e| format!("field {id}: {e}"))?;
-    if path.extension().is_some_and(|e| e == "ogt") {
-        let root = crate::cook::assets_root(s);
-        let data = super::field::source(&root, crate::runtime::asset_id(id), &bytes)?;
-        return data.to_text().map(String::into_bytes);
-    }
-    Ok(bytes)
+    std::fs::read(&path).map_err(|e| format!("field {id}: {e}"))
 }
 
 /// The bytes' hash of every field texture, for the emitter's stamp.
@@ -44,7 +40,10 @@ pub(crate) fn stamp(s: &Source, text: &str) -> String {
     fields(text)
         .iter()
         .map(|(_, id, _)| {
-            let h = read(s, id).map_or(0, |b| og_core::hash::hash_bytes(&b));
+            let h = s.fields.get(id).map_or_else(
+                || read(s, id).map_or(0, |b| og_core::hash::hash_bytes(&b)),
+                |field| field.hash,
+            );
             format!("field {id}={h:016x}")
         })
         .collect::<Vec<_>>()
@@ -67,10 +66,8 @@ pub(crate) fn bake(s: &Source, text: &str) -> Result<String, String> {
         if !(size.is_finite() && size > 0.0) {
             return Err(format!("line {line}: field size {size} (above 0)"));
         }
-        let bytes = read(s, &id)?;
-        let (n, vectors) = if id.ends_with(".ogt") {
-            let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
-            let data = og_bundle::field::FieldData::parse(text)?;
+        let (n, vectors) = if let Some(field) = s.fields.get(&id) {
+            let data = &field.data;
             let [x, y, z] = data.dimensions;
             if x != y
                 || y != z
@@ -82,8 +79,9 @@ pub(crate) fn bake(s: &Source, text: &str) -> Result<String, String> {
                     og_render_data::MAX_FIELD_CELLS
                 ));
             }
-            (x, data.values)
+            (x, data.values.clone())
         } else {
+            let bytes = read(s, &id)?;
             let img = image::load_from_memory(&bytes)
                 .map_err(|e| format!("line {line}: field {id}: {e}"))?
                 .to_rgba8();

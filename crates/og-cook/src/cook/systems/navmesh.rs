@@ -356,6 +356,7 @@ pub(crate) fn navmesh_dependencies(s: &Source) -> String {
     };
     let root = assets_root(s);
     let mut files: Vec<String> = Vec::new();
+    let mut fields = Vec::new();
     if let Some(scene) = string_of(&doc.body, "scene") {
         files.push(scene.clone());
         if let Ok(text) = std::fs::read_to_string(root.join(&scene))
@@ -374,6 +375,14 @@ pub(crate) fn navmesh_dependencies(s: &Source) -> String {
             files.push(p.to_string());
             if let Ok(text) = std::fs::read_to_string(root.join(p)) {
                 files.extend(super::terrain::terrain_files(p, &root, &text));
+                if let Ok(doc) = super::terrain::parse(p, &root, &text)
+                    && let Some(id) = doc.preserve
+                {
+                    fields.push(match super::field::get(&s.fields, &id) {
+                        Ok(field) => format!("preserve {id}={:016x}", field.hash),
+                        Err(e) => format!("preserve {id} error={e}"),
+                    });
+                }
             }
         }
     }
@@ -389,6 +398,7 @@ pub(crate) fn navmesh_dependencies(s: &Source) -> String {
                     .unwrap_or(0)
             )
         })
+        .chain(fields)
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -519,7 +529,7 @@ fn scene_triangles(
 /// split along the renderer's diagonal, its holes left out), standing at `position`, only the
 /// cells reaching into `bounds` when given. Returns how many it added.
 fn terrain_triangles(
-    settings: Option<&Document>,
+    source: &Source,
     root: &Path,
     rel: &str,
     position: Vec3,
@@ -530,8 +540,8 @@ fn terrain_triangles(
     let text = std::fs::read_to_string(root.join(rel))
         .map_err(|_| "does not exist under assets/".to_string())?;
     let doc = super::terrain::parse(rel, root, &text)?;
-    let mut field = super::terrain::field(&doc, root)?;
-    super::district::terrain::apply(settings, rel, &mut field)?;
+    let mut field = super::terrain::field(&doc, root, &source.fields)?;
+    super::district::terrain::apply(source.settings.as_ref().map(|(_, d)| d), rel, &mut field)?;
     let heights = field.heights;
     let holes = field.holes;
     let (cols, rows) = (field.columns as usize, field.rows as usize);
@@ -859,7 +869,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         let tb = e.block.as_ref();
         let step = f32_of(tb, "step", 1.0).max(1.0) as usize;
         let n = terrain_triangles(
-            s.settings.as_ref().map(|(_, d)| d),
+            s,
             &root,
             p,
             vec3_of(tb, "position", Vec3::ZERO),

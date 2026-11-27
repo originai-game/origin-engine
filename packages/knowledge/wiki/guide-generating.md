@@ -291,7 +291,7 @@ generate {
     iterations 3
     rate 0.3
   }
-  preserve "protect.ogt"
+  preserve "base/protect"
   preserveBorder 1
   channel {
     point -8 120 0
@@ -376,23 +376,14 @@ part "underside" {
 }
 ```
 
-```ogt recipe file=assets/protect.ogt
-type field
-version 1
----
-generate {
-  script "protect.ts"
-}
-```
-
-```ts recipe file=assets/protect.ts
-import type { FieldSource } from "@origingame/engine/generate";
-export default function protect() {
+```ts recipe file=content/protect.ts
+import { file } from "@origingame/engine/author";
+export default file.field((() => {
   const values = new Float32Array(13 * 7);
   values[3 * 13 + 8] = 1;
   values[3 * 13 + 6] = 0.5;
-  return { dimensions: [13,7,1], channels: 1, values } satisfies FieldSource;
-}
+  return { dimensions: [13,7,1] as const, channels: 1, values };
+})());
 ```
 
 ```ogt recipe file=assets/guided.ogt
@@ -690,7 +681,7 @@ export default og.game({
     if (!sound.ok) throw new Error(sound.reason);
     const format = og.load.soundInfo(world, sound.value);
     og.assert.always(format.ok && format.value!.rate === 22050 && format.value!.channels === 2 && format.value!.frames === 300, "generated PCM is a normal sound asset", {});
-    const field = og.load.field(world, "samples.ogt");
+    const field = og.load.field(world, "base/samples");
     if (!field.ok) throw new Error(field.reason);
     const expected = og.procgen.noiseGrid({ width: 5, height: 3, x: -2, y: 7, step: 0.25, noise: { seed: 17 } });
     if (!expected.ok) throw new Error(expected.reason);
@@ -786,34 +777,25 @@ export default file.sfx({
 <a id="guide-generating-7"></a>
 ### `generating §7` Cook sampled fields
 
-`type field` contains `dimensions x y z`, `channels` (1..4), optional `origin` (default 0 0 0), positive `spacing` (default 1 1 1), and finite float `values`. Values are interleaved channels with x fastest, then y, then z. The exact dimensions product times channels is required, at most 16,777,216 scalars. No normalization, resampling or image encoding occurs. Alternatively its sole `generate` block returns `FieldSource`; the normal parser and writer validate both forms. Load it with `og.load.field`.
+Export `file.field({...})` from a TS module under `content/`. The schema and native domain validator check the lattice before caching it. Values are interleaved channels with x fastest, then y, then z; the exact dimensions product times channels is required, at most 16,777,216 scalars. No normalization, resampling or image encoding occurs. Import helpers or sample shared procgen mechanisms directly in TS; there is no Field OGT input or `generate` wrapper. Load the canonical module/content ID with `og.load.field`.
 
 This attachment to the map recipe samples the shared noiseGrid mechanism. A module can similarly sample noiseGrad, Worley or curlNoise at explicit coordinates, choosing its own scalar/vector channels.
 
-```ogt recipe file=assets/samples.ogt
-type field
-version 1
----
-generate {
-  script "samples.ts"
-}
-```
+```ts recipe file=content/samples.ts
+import { file, procgen } from "@origingame/engine/author";
 
-```ts recipe file=assets/samples.ts
-import { procgen, type FieldSource } from "@origingame/engine/generate";
-
-export default function samples() {
+export default file.field((() => {
   const values = procgen.noiseGrid({ width: 5, height: 3, x: -2, y: 7, step: 0.25, noise: { seed: 17 } });
   if (!values.ok) throw new Error(values.reason);
   return {
-    dimensions: [5, 3, 1], channels: 1,
-    origin: [-2, 7, 0], spacing: [0.25, 0.25, 1],
+    dimensions: [5, 3, 1] as const, channels: 1,
+    origin: [-2, 7, 0] as const, spacing: [0.25, 0.25, 1] as const,
     values: values.value,
-  } satisfies FieldSource;
-}
+  };
+})());
 ```
 
-A particles file's `field "vectors.ogt" <strength> <size>` also accepts a field asset: a cubic 3-channel lattice, 1..16 samples a side. Cook embeds its float vectors in the normal emitter. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe where the generator sampled its source, not the emitter's transform. Unlike image input, no RGB remapping or quantization is applied. Changes to declared input bytes or transitive generator imports invalidate the emitter as well as the field.
+A particles file's `field "base/vectors" <strength> <size>` accepts a checked field by its canonical ID: a cubic 3-channel lattice, 1..16 samples a side. Terrain's `generate.preserve` likewise names the canonical ID of a one-channel field matching its height grid; navigation baking and projected scatter share that same checked value. Cook embeds particle vectors without RGB remapping or quantization. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe source sampling, not the emitter's transform. Changes to declared input bytes or transitive TS imports invalidate the field and any affected consumers. These consumer domains retain their current author syntax until their own cutover, but never read Field OGT or re-evaluate field TS.
 
 `type scatter` uses either repeated `point x y z` lines or a `generate` block returning `ScatterSource`: flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). It places exactly one authored `model` or `prefab`; no model or distribution is selected for the author. The first recipe composes the shared Poisson mechanism and explicitly maps its rectangle into terrain-local metres. The normal scene pipeline owns model instancing and prefab expansion. `project "terrain.ogt"` adds the terrain's height to each y; `align true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes instead of silently moving or dropping them. Scene and terrain must use the same local coordinates. Load the result with `og.load.scene` or reference it as a sub-scene.
 

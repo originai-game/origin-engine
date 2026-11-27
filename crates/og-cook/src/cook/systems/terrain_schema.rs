@@ -92,7 +92,7 @@ pub const GENERATE: &[Line] = lines! {
     "shore", "<metres 0..1000000>", "2", "Shore width; requires sea if explicitly written.";
     "rivers", "{ ... }", "", "Automatic drainage and river carving; absent means none.";
     "channel", "{ ... }", "", "Repeat explicit valley/river centre lines, carved after automatic stages using the shared parabolic section.";
-    "preserve", "\"<field.ogt>\"", "", "Single-channel field matching the height grid; finite weights 0..1 blend the final carved result toward the original base. No resampling. One preserves the original bits, zero is free.";
+    "preserve", "\"<module/content-id>\"", "", "Checked TS single-channel field matching the height grid; finite weights 0..1 blend the final carved result toward the original base. No resampling. One preserves the original bits, zero is free.";
     "preserveBorder", "<samples 0..4097>", "0", "Pin this many boundary samples to the original base, overriding preserve weights; a band covering the whole field pins every sample.";
     "moisture", "{ ... }", "", "Flow/noise mixture read by biome rules.";
     "biome", "{ ... }", "", "Repeated rule, writes an existing material layer's control channel.";

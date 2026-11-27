@@ -299,16 +299,8 @@ pub(crate) fn terrain_dependencies(
     if let Ok(doc) = Document::parse(&text) {
         if let Some(g) = doc.body.get("generate").and_then(|e| e.block.as_ref()) {
             if let Some(name) = string_of(g, "preserve") {
-                let rel = resolve(&s.rel, &root, &name);
-                let field = std::fs::read(root.join(&rel))
-                    .map_err(|e| e.to_string())
-                    .and_then(|bytes| super::field::source(&root, &rel, &bytes))
-                    .and_then(|data| data.to_text());
-                match field {
-                    Ok(text) => out.push(format!(
-                        "preserve={:016x}",
-                        super::hash_bytes(text.as_bytes())
-                    )),
+                match super::field::get(&s.fields, &name) {
+                    Ok(field) => out.push(format!("preserve={:016x}", field.hash)),
                     Err(e) => out.push(format!("preserve error={e}")),
                 }
             }
@@ -441,7 +433,7 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             if e.values.len() != 1 || e.block.is_some() {
                 return Err("preserve takes one field asset path".into());
             }
-            preserve = Some(resolve(rel, root, e.string(0).map_err(|e| e.to_string())?));
+            preserve = Some(e.string(0).map_err(|e| e.to_string())?.to_string());
         }
         let spec = super::super::generator::Spec::parse(
             g,
@@ -679,7 +671,11 @@ pub(crate) struct Field {
 }
 
 /// Reads (or makes) a terrain file's samples.
-pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
+pub(crate) fn field(
+    doc: &TerrainDoc,
+    root: &Path,
+    fields: &super::field::Fields,
+) -> Result<Field, String> {
     let read = |rel: &str, what: &str| {
         std::fs::read(root.join(rel)).map_err(|_| {
             format!("the {what} '{rel}' does not exist beside the terrain or under assets/")
@@ -764,11 +760,11 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
         }
         let size = size_of(g.columns, g.rows);
         if let Some(rel) = &doc.preserve {
-            let data = super::field::source(root, rel, &read(rel, "preserve field")?)?;
+            let data = &super::field::get(fields, rel)?.data;
             if data.dimensions != [g.columns, g.rows, 1] || data.channels != 1 {
                 return Err("preserve field must match terrain columns × rows × 1, one channel; no resampling".into());
             }
-            g.preserve = data.values;
+            g.preserve = data.values.clone();
         }
         g.check()?;
         let made = match base {
@@ -840,7 +836,7 @@ pub(crate) fn cook_terrain(
         std::str::from_utf8(&s.bytes).map_err(|_| CookError("a terrain is text (UTF-8)".into()))?;
     let root = assets_root(s);
     let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let mut source = field(&doc, &root).map_err(CookError)?;
+    let mut source = field(&doc, &root, &s.fields).map_err(CookError)?;
     super::district::terrain::apply(s.settings.as_ref().map(|(_, d)| d), &s.rel, &mut source)
         .map_err(CookError)?;
     let (columns, rows, size) = (source.columns, source.rows, source.size);

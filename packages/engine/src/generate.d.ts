@@ -9,15 +9,6 @@ export interface EffectSource {
   readonly text: string;
 }
 
-/** Lossless lattice; cook defaults origin to zero and spacing to one. */
-export interface FieldSource {
-  readonly dimensions: readonly [number, number, number];
-  readonly channels: 1 | 2 | 3 | 4;
-  readonly origin?: readonly [number, number, number];
-  readonly spacing?: readonly [number, number, number];
-  readonly values: Float32Array | readonly number[];
-}
-
 /** Scene-local transforms; optional arrays have one value per point. */
 export interface ScatterSource {
   readonly positions: Float32Array | readonly number[];

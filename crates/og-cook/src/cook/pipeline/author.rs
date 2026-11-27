@@ -16,6 +16,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("icons", &icons::ICONS),
     ("video", &video::VIDEO),
     ("timeline", &timeline::TIMELINE),
+    ("field", &field::FIELD),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -86,6 +87,7 @@ pub(crate) fn sources(
     // Only actual scan results, not guessed paths or a second project reader.
     catalogue(root, sources, &mut graph)?;
     let mut evaluator = source_content::Evaluator::default();
+    let mut fields = field::Fields::new();
     for entry in index.entries.values() {
         let content = evaluator
             .evaluate(
@@ -99,7 +101,6 @@ pub(crate) fn sources(
         // Each domain consumes the canonical IR directly. A cutover removes
         // its legacy type claim instead of serializing data back into OGT.
         let kind = match entry.factory.as_str() {
-            "field" => &field::FIELD,
             name if let Some((_, kind)) = KINDS.iter().find(|(n, _)| *n == name) => kind,
             _ => {
                 return Err(CookError(format!(
@@ -124,6 +125,7 @@ pub(crate) fn sources(
             model: Default::default(),
             video: None,
             timeline: None,
+            fields: Default::default(),
             conformed: None,
             fracture: None,
         };
@@ -131,6 +133,10 @@ pub(crate) fn sources(
             "effect-texture" => effect_texture::derived(content.data()),
             "sound" => audio::derived(content.data()),
             "texture-array" => texture_array::derived(content.data()),
+            "field" => {
+                fields.insert(entry.id.clone(), field::Prepared::new(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
             "video" => {
                 let decl = video::declaration(source.input()?)?;
                 let prepared = video::Prepared::new(&assets_root(&source), decl)?;
@@ -157,5 +163,6 @@ pub(crate) fn sources(
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     timeline::bind(sources, &graph)?;
+    field::bind(sources, fields);
     Ok(graph)
 }

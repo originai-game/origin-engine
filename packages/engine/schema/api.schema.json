@@ -6900,7 +6900,7 @@
       "functions": [
         {
           "name": "field",
-          "doc": "Read a cooked type field lattice without allocating world or GPU handles.",
+          "doc": "Read a cooked file.field lattice by its canonical module/content ID without allocating world or GPU handles.",
           "params": [
             {
               "name": "world",
@@ -6912,7 +6912,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The field asset path under assets/."
+              "doc": "The field's canonical module/content ID, such as base/fields/wind."
             }
           ],
           "returns": "Result<FieldData>",
@@ -34326,7 +34326,7 @@
     "FieldData": {
       "x-og-kind": "struct",
       "x-og-module": "load",
-      "description": "Lossless sampled scalar/vector lattice from type field; x fastest, then y, then z, channels interleaved. No normalization or resampling.",
+      "description": "Lossless sampled scalar/vector lattice from a TS file.field declaration; x fastest, then y, then z, channels interleaved. No normalization or resampling.",
       "type": "object",
       "properties": {
         "dimensions": {

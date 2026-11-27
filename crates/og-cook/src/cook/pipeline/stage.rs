@@ -135,7 +135,6 @@ pub(crate) fn scan_sources(
     crate::cook::materials::expand(&mut sources);
     // Typed script results enter the ordinary asset pipelines before planning.
     effect::expand(&mut sources);
-    field::expand(&mut sources);
     tilemap::expand(&mut sources);
     model_text::expand(&mut sources);
     // Pixel effects and flipbooks of animated sources become ordinary
@@ -333,12 +332,6 @@ pub(crate) fn import(
         }
         consumed.extend(made.consumed);
     }
-    // Projected scatter reads terrain after its mesh operands have been
-    // resolved, so it sees precisely the field the terrain cook writes.
-    scene::expand(sources);
-    for s in sources.iter_mut().filter(|s| s.kind == &scene::SCENE) {
-        s.hash = source_hash(s);
-    }
     Imported {
         model_texts,
         reused_fractures,
@@ -347,7 +340,7 @@ pub(crate) fn import(
 
 /// A source's hash: its own bytes', a byte at a time, with its settings
 /// and every file its glTF read.
-fn source_hash(s: &Source) -> u64 {
+pub(crate) fn source_hash(s: &Source) -> u64 {
     let mut h = StableHasher::new();
     h.write(&s.bytes);
     if let Some((text, _)) = &s.settings {

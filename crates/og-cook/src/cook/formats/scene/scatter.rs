@@ -176,7 +176,7 @@ pub(crate) fn expand(
             let rel = crate::runtime::asset_id(rel);
             let text = terrains(rel)?;
             let doc = terrain::parse(rel, &root, &text)?;
-            terrain::field(&doc, &root)
+            terrain::field(&doc, &root, &s.fields)
         })
         .transpose()?;
     let sampler = field

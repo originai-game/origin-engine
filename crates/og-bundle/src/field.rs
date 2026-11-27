@@ -1,46 +1,6 @@
 //! Authored scalar/vector lattices: x fastest, then y, then z, with
 //! interleaved channels. No normalization, resampling or image encoding.
-use crate::grammar::{Line, find};
-use og_core::ogt::{Document, Entry, Number};
 use serde::{Deserialize, Serialize};
-
-pub const LINES: &[Line] = &[
-    Line::new(
-        "dimensions",
-        "<x> <y> <z>",
-        "required",
-        "Positive sample counts; x varies fastest, then y, then z.",
-        "",
-    ),
-    Line::new(
-        "channels",
-        "<1..4>",
-        "required",
-        "Interleaved scalar channels per cell; the author defines their units and meaning.",
-        "",
-    ),
-    Line::new(
-        "origin",
-        "<x> <y> <z>",
-        "0 0 0",
-        "Position of the first lattice sample in authored coordinate units.",
-        "",
-    ),
-    Line::new(
-        "spacing",
-        "<x> <y> <z>",
-        "1 1 1",
-        "Positive distance between samples on each axis; no implicit resampling.",
-        "",
-    ),
-    Line::new(
-        "values",
-        "<float> ...",
-        "required",
-        "Finite f32 samples, dimensions product times channels; no normalization or quantization.",
-        "",
-    ),
-];
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(
@@ -105,81 +65,5 @@ impl FieldData {
             );
         }
         Ok(())
-    }
-
-    pub fn parse(text: &str) -> Result<Self, String> {
-        let doc = Document::parse(text).map_err(|e| e.to_string())?;
-        if doc.ty != "field" || doc.version != 1 {
-            return Err("a field is type field version 1".into());
-        }
-        let mut object = serde_json::Map::new();
-        for e in &doc.body.entries {
-            if find(LINES, &e.key, &[]).is_none()
-                || e.block.is_some()
-                || object.contains_key(&e.key)
-            {
-                return Err(format!(
-                    "line {}: unknown, duplicate or non-scalar field '{}'",
-                    e.line, e.key
-                ));
-            }
-            let values = e
-                .values
-                .iter()
-                .map(|v| {
-                    let n = v
-                        .as_number()
-                        .ok_or_else(|| format!("line {}: field values are numbers", e.line))?;
-                    if matches!(e.key.as_str(), "dimensions" | "channels") {
-                        n.as_u64()
-                            .map(serde_json::Value::from)
-                            .map_err(|e| e.to_string())
-                    } else {
-                        serde_json::to_value(n.as_f64()).map_err(|e| e.to_string())
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let value = if e.key == "channels" {
-                if values.len() != 1 {
-                    return Err("channels takes one integer".into());
-                }
-                values.into_iter().next().unwrap()
-            } else {
-                serde_json::Value::Array(values)
-            };
-            object.insert(e.key.clone(), value);
-        }
-        let data: Self =
-            serde_json::from_value(serde_json::Value::Object(object)).map_err(|e| e.to_string())?;
-        data.validate()?;
-        Ok(data)
-    }
-
-    pub fn to_text(&self) -> Result<String, String> {
-        self.validate()?;
-        let mut doc = Document::new("field", 1);
-        let mut dimensions = Entry::new("dimensions");
-        dimensions
-            .values
-            .extend(self.dimensions.map(|v| Number::from(v).into()));
-        doc.body.push(dimensions);
-        doc.body
-            .push(Entry::new("channels").with(Number::from(self.channels)));
-        for (key, values) in [
-            ("origin", self.origin.as_slice()),
-            ("spacing", self.spacing.as_slice()),
-            ("values", self.values.as_slice()),
-        ] {
-            let mut entry = Entry::new(key);
-            for &v in values {
-                entry.values.push(
-                    Number::from_f64(v as f64)
-                        .map_err(|e| e.to_string())?
-                        .into(),
-                );
-            }
-            doc.body.push(entry);
-        }
-        doc.to_text().map_err(|e| e.to_string())
     }
 }
