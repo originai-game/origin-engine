@@ -140,6 +140,7 @@ impl CompactPlanner<'_> {
         } else {
             u32::MAX
         };
+        let first_tile = self.tiles.len();
         for r in slots.iter().filter(|r| !r.is_empty()) {
             let len = r.end - r.start;
             let mut off = 0u32;
@@ -157,9 +158,17 @@ impl CompactPlanner<'_> {
                     count: len,
                     compact_idx,
                     compact_idx2,
+                    first_tile: first_tile as u32,
+                    end_tile: 0,
+                    live_count: 0,
+                    live_offset: 0,
                 });
                 off += 64;
             }
+        }
+        let end_tile = self.tiles.len() as u32;
+        for tile in &mut self.tiles[first_tile..] {
+            tile.end_tile = end_tile;
         }
         let head = CompactDraw {
             particles_offset: u64::from(dst_base) * PARTICLE_STRIDE,

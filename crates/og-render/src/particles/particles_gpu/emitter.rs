@@ -55,6 +55,10 @@ pub(super) struct CompactTileGpu {
     pub count: u32,
     pub compact_idx: u32,
     pub compact_idx2: u32,
+    pub first_tile: u32,
+    pub end_tile: u32,
+    pub live_count: u32,
+    pub live_offset: u32,
 }
 
 /// `struct EmitterDraw` in particle_draw_common.wgsl (dynamic uniform buffer).

@@ -379,7 +379,7 @@ pub(crate) struct ParticleRenderer {
     )>,
     /// Alive-particle compaction + indirect draw argument generation.
     compact_layout: wgpu::BindGroupLayout,
-    compact_pipeline: Deferred<wgpu::ComputePipeline>,
+    compact_pipeline: Deferred<[wgpu::ComputePipeline; 3]>,
     pub draw_layout: wgpu::BindGroupLayout,
     pub(crate) draw: HashMap<
         (ParticleBlend, u32, DrawKind, Look),

@@ -142,7 +142,7 @@ impl ParticleRenderer {
         let compact_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle compact"),
             entries: &[
-                storage_entry(0, true),
+                storage_entry(0, false),
                 storage_entry(1, true),
                 storage_entry(2, true),
                 storage_entry(3, false),
@@ -154,29 +154,31 @@ impl ParticleRenderer {
         let compact_pipeline = {
             let (device, compact_layout) = (device.clone(), compact_layout.clone());
             Deferred::new(move || {
-                crate::traffic::create_compute_pipeline(
+                let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("particle compact"),
+                    bind_group_layouts: &[Some(&compact_layout)],
+                    immediate_size: 0,
+                });
+                let module = crate::gpu::shader_module(
                     &device,
-                    &wgpu::ComputePipelineDescriptor {
+                    wgpu::ShaderModuleDescriptor {
                         label: Some("particle compact"),
-                        layout: Some(&device.create_pipeline_layout(
-                            &wgpu::PipelineLayoutDescriptor {
-                                label: Some("particle compact"),
-                                bind_group_layouts: &[Some(&compact_layout)],
-                                immediate_size: 0,
-                            },
-                        )),
-                        module: &crate::gpu::shader_module(
-                            &device,
-                            wgpu::ShaderModuleDescriptor {
-                                label: Some("particle compact"),
-                                source: wgpu::ShaderSource::Wgsl(compact_source().into()),
-                            },
-                        ),
-                        entry_point: Some("compact"),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                        source: wgpu::ShaderSource::Wgsl(compact_source().into()),
                     },
-                )
+                );
+                ["count", "scan", "compact"].map(|entry| {
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some("particle compact"),
+                            layout: Some(&layout),
+                            module: &module,
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
+                })
             })
         };
         let sprites_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -516,13 +518,15 @@ impl ParticleRenderer {
                     g
                 }
             };
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("particle compact"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(compact);
-            pass.set_bind_group(0, &group, &[]);
-            pass.dispatch_workgroups(frame.gpu_plan.compact_tiles, 1, 1);
+            for pipeline in compact {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("particle compact"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, &group, &[]);
+                pass.dispatch_workgroups(frame.gpu_plan.compact_tiles, 1, 1);
+            }
         }
     }
 
