@@ -342,8 +342,8 @@ export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|rig2d|bone|mesh|m
 /**
  * A wiki page never calls a UI style a "skin": og-ui's word is
  * style (`og.load.style`, `UiDesc.style`, `styles/<name>/theme.json` or `pack.json`).
- * Each sentence holding `skin` or `skins` must name one of the word's
- * other meanings (SKIN_ELSEWHERE).
+ * Require UI context rather than treating every unexplained use of skin as
+ * UI terminology. Skeletal declarations and their comments are not UI styles.
  */
 function skinWord(roots: Roots, problems: string[]): void {
   // The wiki og api reads from the package, its guide pages included.
@@ -354,7 +354,8 @@ function skinWord(roots: Roots, problems: string[]): void {
     for (const paragraph of text.split(/\n\s*\n/)) {
       // Sentences, and a table's cells, of the paragraph's joined lines.
       for (const sentence of paragraph.replace(/\s*\n\s*/g, " ").split(/(?<=[.;!?])\s+|\s\|\s/)) {
-        if (/\bskins?\b/i.test(sentence) && !SKIN_ELSEWHERE.test(sentence)) {
+        const ui = /\b(?:ui|og-ui|user interface|style|theme|panel|widget|button|menu|hud)\b/i.test(sentence);
+        if (/\bskins?\b/i.test(sentence) && ui && !SKIN_ELSEWHERE.test(sentence)) {
           problems.push(`${name}: calls a UI style a skin ("${sentence.trim().slice(0, 120)}"); og-ui's word is style (og.load.style, styles/<name>/)`);
         }
       }
@@ -362,7 +363,7 @@ function skinWord(roots: Roots, problems: string[]): void {
   }
 }
 
-/** The names the generated API answers to, read from packages/engine/schema/api.schema.json. */
+/** Runtime names from api.schema.json and author fields from author-inputs.d.ts. */
 export interface ApiNames {
   /** `og.<name>`: root functions, component, resource and event tokens, and module namespaces. */
   root: Set<string>;
@@ -370,18 +371,16 @@ export interface ApiNames {
   members: Map<string, Set<string>>;
   /** `<Type>.<field>` and `og.<Token>.<field>`: the fields of every struct, desc, component, resource and event. */
   fields: Map<string, Set<string>>;
-  /** Every field name of any of them. */
+  /** Every runtime or authoring input field name (for unqualified prose snippets). */
   anyField: Set<string>;
 }
 
 /** `og.` names a guide may write that are not API: each with why. */
 export const NOT_API: Record<string, string> = {};
 
-/** `` `key: value` `` spans a guide may write whose key is no field of the generated API: each with why. */
+/** `` `key: value` `` spans whose key is not an engine field: each with why. */
 export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
-  cook: "ProjectInput.cook (packages/engine/types/author-inputs.d.ts)",
-  publish: "ProjectInput.publish (packages/engine/types/author-inputs.d.ts)",
   container: "the CSS container shorthand (document stylesheets)",
   transition: "the CSS transition shorthand (document stylesheets)",
   gap: "the CSS gap property (document stylesheets)",
@@ -411,6 +410,13 @@ export function readApiNames(engine: string): ApiNames | undefined {
     if (def.properties) names.fields.set(name, new Set(Object.keys(def.properties)));
     for (const k of Object.keys(def.properties ?? {})) names.anyField.add(k);
   }
+  // The cook emits quoted readonly properties in its shipped author
+  // declarations. Ignore comments and union exclusions (`?: never`):
+  // neither declares an accepted input field. These are author fields, not
+  // og.* runtime members; never add them to root, members or runtime fields.
+  const author = readFileSync(join(engine, "types", "author-inputs.d.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+  for (const m of author.matchAll(/\breadonly "([a-z]\w*)"\??: (?!never\b)/g)) names.anyField.add(m[1]!);
   return names;
 }
 
@@ -443,6 +449,9 @@ function apiNames(roots: Roots, problems: string[]): void {
     // A component's generated "Pack slots:" line names pack slots (`Ability.frame`), not API fields.
     const prose = text.replace(/^Pack slots: .*$/gm, "");
     for (const x of prose.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
+      // Explicit three.js comparisons name its members, not ours (for example
+      // three.js SpotLight.map versus the engine's SpotLight.cookie).
+      if (/\bthree\.js\s+$/.test(prose.slice(0, x.index))) continue;
       const have = api.fields.get(x[1]!);
       if (have && !have.has(x[2]!)) bad.add(x[0]);
     }
@@ -460,7 +469,7 @@ function apiNames(roots: Roots, problems: string[]): void {
     for (const x of text.matchAll(/`([a-z]\w*): [^`]+`/g)) {
       if (!api.anyField.has(x[1]!) && !(x[1]! in NOT_FIELDS)) bad.add(x[1]!);
     }
-    for (const b of bad) problems.push(`${at}: names \`${b}\`, which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts`);
+    for (const b of bad) problems.push(`${at}: names \`${b}\`, which the runtime API or authoring declarations do not have; check the name with og api find or in packages/engine/types/{index,author-inputs}.d.ts`);
   }
 }
 

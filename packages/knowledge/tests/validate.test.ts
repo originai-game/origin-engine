@@ -25,6 +25,7 @@ function copy(): Roots {
   cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
   cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
   cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
+  cpSync(join(real.engine, "types/author-inputs.d.ts"), join(roots.engine, "types/author-inputs.d.ts"));
   return roots;
 }
 
@@ -46,8 +47,8 @@ test("the committed package is valid against the platform rules", () => {
 
 const guide = (r: Roots, name: string) => join(r.pkg, `wiki/guide-${name}.md`);
 
-test("skin terminology permits mesh preparation but still rejects UI skins beside probe terminology", () => {
-  const problems = added((r) => edit(guide(r, "start"), (s) => `${s}\nRelax only skin-probe stretched regions before welding and LODs.\n\nThe probe selects the UI skin for the settings panel.\n`));
+test("skin terminology requires UI context, not just an unexplained skeletal skin", () => {
+  const problems = added((r) => edit(guide(r, "start"), (s) => `${s}\nRelax only skin-probe stretched regions before welding and LODs.\n\nOpt-in probe-region skin relaxation.\n\nHumanoid motion requires a skin.\n\nreadonly "skins"?: string;\n\nThe probe selects the UI skin for the settings panel.\n`));
   expect(problems).toEqual([
     'wiki/guide-start.md: calls a UI style a skin ("The probe selects the UI skin for the settings panel."); og-ui\'s word is style (og.load.style, styles/<name>/)',
   ]);
@@ -58,13 +59,23 @@ test("every og.* name and Type.field a guide writes exists in the generated API"
     edit(
       guide(r, "start"),
       (s) =>
-        `${s}\nCall \`og.render.applyLooks(world, look)\`, set \`og.Sprite.shadowy\`, read \`og.Wobble\` and \`SpriteDesc.dropShadows\`; \`og.load.look\`, \`og.Stylise.paintCanvas\`, \`GameDesc.look\` and \`away.og.ts\` are fine.\n\n\`\`\`ts\nog.ui.textAreaz(world, {});\n\`\`\`\n`,
+        `${s}\nCall \`og.render.applyLooks(world, look)\`, set \`og.Sprite.shadowy\`, read \`og.Wobble\` and \`SpriteDesc.dropShadows\`; \`og.load.look\`, \`og.Stylise.paintCanvas\`, \`GameDesc.look\` and \`away.og.ts\` are fine. Compare three.js SpotLight.map, but engine \`SpotLight.map\` is invalid.\n\n\`\`\`ts\nog.ui.textAreaz(world, {});\n\`\`\`\n`,
     ),
   );
-  const why = "which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts";
+  const why = "which the runtime API or authoring declarations do not have; check the name with og api find or in packages/engine/types/{index,author-inputs}.d.ts";
   expect(p.sort()).toEqual(
-    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz"].map((n) => `wiki/guide-start.md: names \`${n}\`, ${why}`).sort(),
+    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz", "SpotLight.map"].map((n) => `wiki/guide-start.md: names \`${n}\`, ${why}`).sort(),
   );
+});
+
+test("guide fields follow generated author declarations without becoming runtime members", () => {
+  const p = added((r) => {
+    edit(join(r.engine, "types/author-inputs.d.ts"), s => `${s}\nexport interface GuideInput {\nreadonly "knowledgeFixture": boolean;\nreadonly "excludedFixture"?: never;\n/** readonly "commentFixture": boolean; */\n}\nexport type GuideUnion = { readonly "inlineFixture": boolean; readonly "excludedInline"?: never; };\n`);
+    edit(guide(r, "start"), s => `${s}\n\`knowledgeFixture: true\`, \`inlineFixture: true\`, \`excludedFixture: true\`, \`excludedInline: true\`, \`commentFixture: true\`, \`posterSize: 512\`, \`publish: {}\`, \`og.knowledgeFixture\`, \`og.Sprite.knowledgeFixture\`.\n`);
+  });
+  expect(p.map(s => /names `([^`]+)`/.exec(s)![1]).sort()).toEqual([
+    "commentFixture", "excludedFixture", "excludedInline", "og.Sprite.knowledgeFixture", "og.knowledgeFixture",
+  ]);
 });
 
 test("guide pointers distinguish modules from exact API and file names", () => {

@@ -3478,7 +3478,7 @@ readonly "target": (ReadonlyArray<(number)> & { readonly length: 3 });
 
 ```
 
-Output: a native model loaded with og.load.model. file.model selects ordered geometry/material/pivot/plant items or a canonical model-program ref with parameters and material overrides. file['model-program'] supplies checked kernel operations directly. Model operands and animation libraries are canonical refs; font, image and projection inputs are explicit owning-module assets/ or sources/ paths, captured before caching. Options control LODs, colliders, impostors, streaming and animation. There is no model author OGT parser, bufferGeometry.generate script or sibling program guessing. Standalone og model tools may still read kernel JSON as an exchange format. See models, model and generating.
+Output: a native model loaded with og.load.gltf. file.model selects ordered geometry/material/pivot/plant items or a canonical model-program ref with parameters and material overrides. file['model-program'] supplies checked kernel operations directly. Model operands and animation libraries are canonical refs; font, image and projection inputs are explicit owning-module assets/ or sources/ paths, captured before caching. Options control LODs, colliders, impostors, streaming and animation. There is no model author OGT parser, bufferGeometry.generate script or sibling program guessing. Standalone og model tools may still read kernel JSON as an exchange format. See models, model and generating.
 
 <a id="file-model-program"></a>
 ### `file:model-program`
@@ -4303,7 +4303,7 @@ readonly "smooth"?: ((boolean) | (null));
 
 ```
 
-Output: a native model loaded with og.load.model. file.model selects ordered geometry/material/pivot/plant items or a canonical model-program ref with parameters and material overrides. file['model-program'] supplies checked kernel operations directly. Model operands and animation libraries are canonical refs; font, image and projection inputs are explicit owning-module assets/ or sources/ paths, captured before caching. Options control LODs, colliders, impostors, streaming and animation. There is no model author OGT parser, bufferGeometry.generate script or sibling program guessing. Standalone og model tools may still read kernel JSON as an exchange format. See models, model and generating.
+Output: a native model loaded with og.load.gltf. file.model selects ordered geometry/material/pivot/plant items or a canonical model-program ref with parameters and material overrides. file['model-program'] supplies checked kernel operations directly. Model operands and animation libraries are canonical refs; font, image and projection inputs are explicit owning-module assets/ or sources/ paths, captured before caching. Options control LODs, colliders, impostors, streaming and animation. There is no model author OGT parser, bufferGeometry.generate script or sibling program guessing. Standalone og model tools may still read kernel JSON as an exchange format. See models, model and generating.
 
 <a id="file-motion-action"></a>
 ### `file:motion-action`
@@ -5343,7 +5343,7 @@ readonly "Direction": ("ltr" | "rtl") & (string);
 
 ```
 
-Output: a native locale table loaded with og.load.strings. Fonts are ordered canonical content refs, bound to actual font outputs. Locale/fallback tags are canonicalized; direction defaults to the locale. Entries preserve Unicode and compile ICU messages before cook. Importing the TS declaration in UI code registers only its cooked ID; author code never runs in the game. og i18n tables --json reads checked tables across modules; --index returns IDs/paths without content evaluation. Extraction writes direct literals only and refuses computed/shared expressions. No string-table author or runtime OGT parser remains. See localization.
+Output: a native locale table loaded with og.i18n.load. Fonts are ordered canonical content refs, bound to actual font outputs. Locale/fallback tags are canonicalized; direction defaults to the locale. Entries preserve Unicode and compile ICU messages before cook. Importing the TS declaration in UI code registers only its cooked ID; author code never runs in the game. og i18n tables --json reads checked tables across modules; --index returns IDs/paths without content evaluation. Extraction writes direct literals only and refuses computed/shared expressions. No string-table author or runtime OGT parser remains. See localization.
 
 <a id="file-table"></a>
 ### `file:table`
@@ -6720,7 +6720,7 @@ readonly "radius"?: (number);
 });
 /** A physically based metallic-roughness material with three.js
 `MeshStandardMaterial` parameter names, reflected: its schema
-(`og.StandardMaterial`) is what the inspector, Tune and the probe edit,
+is what the inspector, Tune and the probe edit,
 and its fields match `render.StandardMaterialDesc` in the IDL.
 
 The `MeshPhysicalMaterial` fields (clearcoat maps, sheen, transmission,

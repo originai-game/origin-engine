@@ -6777,7 +6777,7 @@ readonly "radius"?: (number);
 });
 /** A physically based metallic-roughness material with three.js
 `MeshStandardMaterial` parameter names, reflected: its schema
-(`og.StandardMaterial`) is what the inspector, Tune and the probe edit,
+is what the inspector, Tune and the probe edit,
 and its fields match `render.StandardMaterialDesc` in the IDL.
 
 The `MeshPhysicalMaterial` fields (clearcoat maps, sheen, transmission,

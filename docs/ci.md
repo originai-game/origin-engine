@@ -302,6 +302,14 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside the crates in `scripts/gate-exclude.txt`, generated API drift, engine TypeScript checks, non-engine package tests, and the one wasm32 check of the wasm-only crates (feature matrix and lanes variants) |
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the guides' recipes, the showcases' playtests, the browser tests of packages/engine's `test:browser` |
 
+Quick includes the knowledge repository rules: `bun-quick` preserves the
+`packages/knowledge` test script's `bun scripts/validate.ts` preparation before
+running its tests. Validation reads local generated runtime/author declarations,
+wiki, catalogue and scaffold data; it needs no native build, GPU or network.
+It runs even when the package's individual test files have unchanged inputs.
+Its nonzero exit rejects `bun-quick` and the lane. When inspecting output
+through `tail` or `tee`, use `set -o pipefail` to preserve the check's exit status.
+
 `OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
 Its standing use is `OG_GATE_SKIP=rust-gpu scripts/land.sh` for a head
 that does not change rendering (AGENTS.md §Streams and landing). It is never

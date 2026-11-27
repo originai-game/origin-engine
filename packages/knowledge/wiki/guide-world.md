@@ -312,14 +312,18 @@ from og.load.scene) is a cell.
   entities, are in snapshots, saves and the hash; an unloaded cell's
   entities come back from its sub-scene as authored (unless `persist`).
 - A sub-scene's blob is in its declaring bundle unless the sub-scene declares a
-  cell group (`streams: { region: { trigger: "cell", assets: [ref("module/model")] } }`): then it is in that
-  group's pack with the assets it names, fetched ahead of the anchors, and
+  cell streaming group: then it is in that group's pack with the assets it names,
+  fetched ahead of the anchors, and
   its models stay hidden until their textures are prepared. A tick that
   would load a cell whose blob has not landed is
   held, never skipped or reordered: frames go on drawing, the engine log
   records each hold and its length, and `dump_stream`'s `hold` says what
   the tick waits for. Natively a read completes at once, so a native run
   or replay never holds.
+- Scene declarations use project-bound author types: run `og api gen --project .`
+  for the complete streaming group and tagged trigger shapes, including the
+  project's component/resource fields. Do not copy a runtime component or an
+  old text-format trigger into a scene declaration.
 - CellEvent is sent in the tick a cell changes, and add hooks and `added`
   filters see its entities arrive. `dump_stream`'s `cells` lists every cell:
   its entity, sub-scene, state, entities and the ticks it last loaded and
