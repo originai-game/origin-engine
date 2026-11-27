@@ -4,6 +4,10 @@
 use super::*;
 use crate::cook::{source_content, source_index, source_project, source_records};
 
+/// Domains whose sole author entry is now a checked TS declaration. Keep this
+/// separate from legacy type claims; the scanner must not accept their OGT.
+pub(crate) const KINDS: &[(&str, Kind)] = &[("effect-texture", &effect_texture::TEXTURE)];
+
 /// Bind project-only canonical refs through actual scanned domain entries.
 /// Does not evaluate content or manufacture a second cooked output.
 pub fn project_assets(
@@ -82,11 +86,19 @@ pub(crate) fn sources(
                 records.contexts[&entry.module].schema(&entry.factory),
             )
             .map_err(|e| CookError(e.to_string()))?;
-        // A raw sampled field already has a native typed domain input. Other
-        // per-kind adapters land with their parser removal in P1/P2/P3, rather
-        // than serializing arbitrary objects into the author DSL here.
+        let derived = match entry.factory.as_str() {
+            "effect-texture" => effect_texture::derived(content.data()).map_err(|e| {
+                CookError(
+                    source_content::diagnostic(content.source(), &entry.file, "", e).to_string(),
+                )
+            })?,
+            _ => BTreeMap::new(),
+        };
+        // Each domain consumes the canonical IR directly. A cutover removes
+        // its legacy type claim instead of serializing data back into OGT.
         let kind = match entry.factory.as_str() {
             "field" => &field::FIELD,
+            name if let Some((_, kind)) = KINDS.iter().find(|(n, _)| *n == name) => kind,
             _ => {
                 return Err(CookError(format!(
                     "{}: {} has not completed its TS domain cutover",
@@ -95,7 +107,7 @@ pub(crate) fn sources(
             }
         };
         graph
-            .insert(&content, &BTreeMap::new())
+            .insert(&content, &derived)
             .map_err(|e| CookError(e.to_string()))?;
         let bytes = content.data().as_bytes().to_vec();
         sources.push(Source {

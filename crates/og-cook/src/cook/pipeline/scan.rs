@@ -451,6 +451,14 @@ pub(crate) fn scan_with(
                         early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory with a pack.json and load its directory with og.load.style".into()));
                         continue;
                     }
+                    Ok(doc) if super::author::KINDS.iter().any(|(name, _)| *name == doc.ty) => {
+                        early_errors.push((
+                            rel.clone(),
+                            "author",
+                            format!("{} OGT authoring is removed; write content/**/*.ts exporting file[{:?}] from @origingame/engine/author", doc.ty, doc.ty),
+                        ));
+                        continue;
+                    }
                     Ok(doc) if let Some(kind) = ogt_kind(&doc.ty) => kind,
                     Ok(doc) => {
                         early_errors.push((

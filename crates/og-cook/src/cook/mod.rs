@@ -148,6 +148,15 @@ pub(crate) struct Source {
 }
 
 impl Source {
+    /// Decode one already schema-checked TS declaration for its domain job.
+    /// This reads canonical author IR, never an intermediate author text format.
+    fn input<T: serde::de::DeserializeOwned>(&self) -> Result<T, String> {
+        let data = generator::value::Data::from_bytes(self.bytes.clone())?;
+        let file: source_schemas::File =
+            serde_json::from_value(data.root().into_json()).map_err(|e| e.to_string())?;
+        serde_json::from_value(file.value).map_err(|e| e.to_string())
+    }
+
     /// Whether it has settings of its own (its `<file>.ogt`, or the cook's
     /// for a source it made), not only its directories'.
     fn own_settings(&self) -> bool {
@@ -364,9 +373,10 @@ pub fn cook_project_with_texture_cache(
         .map(|id| content.outputs[id].asset.clone());
     laps.lap("author");
     let Resolved {
-        known,
+        mut known,
         prefab_texts,
     } = resolve(assets_dir, &mut sources, &mut ignored, consumed);
+    known.extend(content.outputs.values().map(|output| output.asset.clone()));
     laps.lap("resolve");
     let Contracted {
         contract,

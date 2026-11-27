@@ -250,9 +250,9 @@ is measured:
 
 ## 5. Cook source textures and generated declarations
 
-`type effect-texture`, `version 1` simulates and renders a source volume during cook, never in a game tick. `og api show file:effect-texture` lists every required parameter, unit and range. `smoke` and `fire` transport the authored density and heat while the source is active; neither chooses colours or emission for the author. `explosion` injects once and gives it the authored radial velocity. The solver uses semi-Lagrangian advection, a pressure projection, buoyancy, seeded curl forcing and vorticity confinement. Seeded detail modulates the source boundary; a directional Beer-Lambert sweep supplies self-shadowing from the authored light direction and ambient/direct strengths. It then integrates scattering/thermal emission through the cube along +Z. It is a coarse inviscid volume, not combustion or a compressible blast. The implementation's source and MIT licence are recorded under `third_party/stable-fluids`.
+`file["effect-texture"]({...})` in a module's `content/` simulates and renders a source volume during cook, never in a game tick. `og api show file:effect-texture` lists the reflected TS input, parameters, units and ranges; there is no OGT source path for this domain. `smoke` and `fire` transport the authored density and heat while the source is active; neither chooses colours or emission for the author. `explosion` injects once and gives it the authored radial velocity. The solver uses semi-Lagrangian advection, a pressure projection, buoyancy, seeded curl forcing and vorticity confinement. Seeded detail modulates the source boundary; a directional Beer-Lambert sweep supplies self-shadowing from the authored light direction and ambient/direct strengths. It then integrates scattering/thermal emission through the cube along +Z. It is a coarse inviscid volume, not combustion or a compressible blast. The implementation's source and MIT licence are recorded under `third_party/stable-fluids`.
 
-The asset id is its RGBA scattering sheet. `<id>#emission` is the corresponding thermal emission sheet, `<id>#array` and `<id>#emission#array` their chronological texture arrays. RGB is sRGB, alpha is straight coverage, empty cells and volume boundaries transparent. Sheet columns and rows are explicit/ceil(frames/columns); use that exact layout in `sheet` and give `frames` so unused cells never play. For example `texture "puff.ogt"` plus `sheet 2 2 3 life 1 blend`, or `array "puff.ogt#array" 3 life 1` in sprite mode. Use the emission output on an additive emitter with the same placement/timing and an authored intensity; it is not silently mixed into lit smoke. Frame interpolation is available on sheets; texture arrays retain the normal array playback semantics. No normal or motion map is needed by this camera-facing integration. Leave room in the unit cube for the whole plume: material escaping the open boundary is lost, not automatically fitted into the frame.
+The canonical asset id is its RGBA scattering sheet: `content/puff.ts` in the base module produces `base/puff`. `<id>#emission` is the corresponding thermal emission sheet, `<id>#array` and `<id>#emission#array` their chronological texture arrays. RGB is sRGB, alpha is straight coverage, empty cells and volume boundaries transparent. Sheet columns and rows are explicit/ceil(frames/columns); use that exact layout in `sheet` and give `frames` so unused cells never play. For example `texture "base/puff"` plus `sheet 2 2 3 life 1 blend`, or `array "base/puff#array" 3 life 1` in sprite mode. Use the emission output on an additive emitter with the same placement/timing and an authored intensity; it is not silently mixed into lit smoke. Frame interpolation is available on sheets; texture arrays retain the normal array playback semantics. No normal or motion map is needed by this camera-facing integration. Leave room in the unit cube for the whole plume: material escaping the open boundary is lost, not automatically fitted into the frame.
 
 `noise`, `worley` and `curl` use the same Rust kernels as `og.procgen`, not a second noise library. Their output is linear data: noise/curl map the authored -range..range to 0..1; Worley maps first-site distance 0..range to 0..1. Values outside that range clamp. Curl encodes its three vector lanes in RGB around 0.5; increase `range` when high-frequency derivatives would otherwise saturate the encoding. Use them as `noise` for erosion/dissolve or `flowMap` for UV distortion. Coordinates span the unit square; `frequency` gives cycles per cube, `turbulence` its Z travel speed. These textures are not promised tileable. Fluid-only parameters are still explicit but unused in these modes; `range` is unused for volumes. Generation and texture encoding use the cook's BLAKE3 action/content cache; source parameters, engine identity and texture options invalidate it. Nothing writes images into assets/.
 
@@ -264,9 +264,9 @@ This recipe cooks a small asymmetric three-frame volume, composes the three gene
 import { og } from "@origingame/engine";
 
 export default og.game({ start(world) {
-  const sheet = og.load.texture(world, "puff.ogt");
-  const array = og.load.textureArray(world, "puff.ogt#array");
-  const emission = og.load.texture(world, "puff.ogt#emission");
+  const sheet = og.load.texture(world, "base/puff");
+  const array = og.load.textureArray(world, "base/puff#array");
+  const emission = og.load.texture(world, "base/puff#emission");
   const material = og.load.effect(world, "surface.ogt");
   const effect = og.load.vfx(world, "composed.ogt");
   og.assert.always(sheet.ok && array.ok && emission.ok && material.ok && effect.ok, "generated source outputs and linked effect load", {});
@@ -278,39 +278,18 @@ export default og.game({ start(world) {
 } });
 ```
 
-```ogt recipe file=assets/puff.ogt
-type effect-texture
-version 1
----
-mode explosion
-size 16
-frames 3
-columns 2
-grid 12
-steps 1
-dt 0.04
-pressure 6
-detail 0.8
-vorticity 2
-light -1 2 -1
-ambient 0.2
-direct 1
-seed 17
-frequency 3
-range 1
-turbulence 0.03
-source 0.43 0.38 0.5
-radius 0.22
-inject 0
-density 12
-heat 1
-buoyancy 0.1
-expansion 0.4
-decay 0.5
-cooling 2
-absorption 8
-color 0.4 0.45 0.5
-emission 1 0.2 0.01
+```ts recipe file=content/puff.ts
+import { file } from "@origingame/engine/author";
+
+export default file["effect-texture"]({
+  mode: "explosion", size: 16, frames: 3, columns: 2,
+  grid: 12, steps: 1, dt: 0.04, pressure: 6,
+  detail: 0.8, vorticity: 2, light: [-1, 2, -1], ambient: 0.2, direct: 1,
+  seed: 17, frequency: 3, range: 1, turbulence: 0.03,
+  source: [0.43, 0.38, 0.5], radius: 0.22, inject: 0, density: 12, heat: 1,
+  buoyancy: 0.1, expansion: 0.4, decay: 0.5, cooling: 2, absorption: 8,
+  color: [0.4, 0.45, 0.5], emission: [1, 0.2, 0.01],
+});
 ```
 
 ```ogt recipe file=assets/surface.ogt
@@ -356,7 +335,7 @@ export default function effect(ctx: GeneratorContext<{kind: string}>): EffectSou
   if (ctx.params.kind === "surface") return { text: 'main\nsoftDepth 0.15\nblend alpha\n' };
   if (ctx.params.kind === "emitter") return { text: [
     'maxParticles 1', 'rate 0', 'burst 0 1', 'looping false',
-    'lifetime 0.75', 'speed 0', 'size 1.5', 'texture "puff.ogt"',
+    'lifetime 0.75', 'speed 0', 'size 1.5', 'texture "base/puff"',
     'sheet 2 2 3 life 1 blend', 'effect "surface.ogt"',
     'colorOverLife {\nkey 0 1 1 1 0\nkey 0.15 1 1 1 1\nkey 0.8 1 1 1 0.7\nkey 1 1 1 1 0\n}',
   ].join('\n') };

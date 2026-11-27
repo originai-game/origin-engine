@@ -11,218 +11,12 @@ mod volume;
 pub(crate) static TEXTURE: KindDef = KindDef {
     name: "effect-texture",
     extensions: &[],
-    types: &["effect-texture"],
+    types: &[],
     by_content: true,
     streams: false,
     plan,
 };
 pub(crate) static KINDS: &[&KindDef] = &[&TEXTURE];
-
-pub const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "mode",
-        "smoke|fire|explosion|noise|worley|curl",
-        "required",
-        "Transported density/heat volume, or shared procgen kernels. No appearance preset.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "size",
-        "<pixels>",
-        "required",
-        "Square frame resolution, 8..1024. Sheet extents at most 8192, total frame pixels at most 16777216.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "frames",
-        "<count>",
-        "required",
-        "1..256 frames, in row-major sheet order and chronological array order.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "columns",
-        "<count>",
-        "required",
-        "1..frames sheet columns; rows are ceil(frames/columns). Unused cells are transparent.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "grid",
-        "<cells>",
-        "required",
-        "Volume cells per axis, 8..96, over the unit cube. No per-frame rescaling.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "steps",
-        "<count>",
-        "required",
-        "Fixed simulation substeps between frames, 1..64; frame zero follows one interval.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "dt",
-        "<seconds>",
-        "required",
-        "Seconds per substep, >0..0.1. Noise time is (frame+1)*steps*dt.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "pressure",
-        "<iterations>",
-        "required",
-        "1..128 Jacobi pressure iterations per volume step.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "seed",
-        "<u32>",
-        "required",
-        "Seed for the same fBm/curl/Worley kernels as og.procgen.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "frequency",
-        "<cycles>",
-        "required",
-        "Positive noise cycles per unit cube; three simplex octaves, lacunarity 2 and gain 0.5.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "range",
-        "<magnitude>",
-        "required",
-        "Positive data encoding range: signed noise/curl map -range..range to 0..1; Worley maps 0..range. Values beyond it clamp. Unused for volumes.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "turbulence",
-        "<acceleration>",
-        "required",
-        "Nonnegative curl forcing, cube widths/s²; on noise textures it is z travel speed.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "source",
-        "<x> <y> <z>",
-        "required",
-        "Injection centre, each 0..1 in cube coordinates, Y up.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "detail",
-        "<strength>",
-        "required",
-        "Source boundary/density modulation by seeded fBm, 0..1; 0 is a smooth sphere, 1 exposes the noise's full signed variation.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "vorticity",
-        "<strength>",
-        "required",
-        "Nonnegative vorticity-confinement rate in 1/s; multiplied by cell width to restore rotational motion lost to advection. 0 disables it.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "radius",
-        "<fraction>",
-        "required",
-        "Source radius in cube widths, >0..0.5, smooth spherical injection.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "inject",
-        "<seconds>",
-        "required",
-        "Nonnegative source duration; explosion injects only initially.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "density",
-        "<rate>",
-        "required",
-        "Nonnegative density/second; explosion uses initial density instead.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "heat",
-        "<rate>",
-        "required",
-        "Nonnegative heat/second; explosion uses initial heat instead.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "buoyancy",
-        "<acceleration>",
-        "required",
-        "Signed Y acceleration/unit heat, in cube widths/s².",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "expansion",
-        "<speed>",
-        "required",
-        "Nonnegative radial source speed in cube widths/s.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "decay",
-        "<rate>",
-        "required",
-        "Nonnegative exponential density loss/second.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "cooling",
-        "<rate>",
-        "required",
-        "Nonnegative exponential heat loss/second.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "absorption",
-        "<coefficient>",
-        "required",
-        "Nonnegative Beer-Lambert extinction/density/cube width.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "color",
-        "<r> <g> <b>",
-        "required",
-        "Linear scattering RGB, each 0..1; ambient/direct/light supply baked volume self-shadowing.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "emission",
-        "<r> <g> <b>",
-        "required",
-        "Linear emission RGB/unit heat, each 0..1, written separately to #emission. HDR gain belongs to the effect material.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "light",
-        "<x> <y> <z>",
-        "required",
-        "Nonzero direction toward the baked scattering light in cube coordinates, normalized at cook; view rays travel +Z.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "ambient",
-        "<strength>",
-        "required",
-        "Nonnegative isotropic ambient scattering illumination. Does not change alpha or emission.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "direct",
-        "<strength>",
-        "required",
-        "Nonnegative directional scattering illumination, attenuated through density toward light (volume self-shadow). Output RGB clamps to sRGB8; use material intensity for HDR gain.",
-        "",
-    ),
-];
 
 /// Offline texture transport input; all appearance values are explicit.
 /// Atlas dimensions, total work and nonzero light direction are domain checks.
@@ -230,66 +24,90 @@ pub const LINES: &[crate::grammar::Line] = &[
 #[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-output-kind" = "texture"))]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    /// Density/heat transport, or the shared noise/Worley/curl kernels; no preset.
     #[schemars(extend("enum" = ["smoke", "fire", "explosion", "noise", "worley", "curl"]))]
     pub mode: String,
+    /// Square frame resolution, 8..1024. Sheet extents <=8192; <=16777216 frame pixels.
     #[schemars(range(min = 8, max = 1024), extend("x-og-unit" = "px"))]
     pub size: u32,
+    /// 1..256 chronological frames, in row-major sheet order.
     #[schemars(range(min = 1, max = 256))]
     pub frames: u32,
     /// Sheet columns. Domain validation also checks columns <= frames.
     #[schemars(range(min = 1, max = 256))]
     pub columns: u32,
+    /// 8..96 volume cells per axis of the unit cube; no per-frame rescaling.
     #[schemars(range(min = 8, max = 96))]
     pub grid: usize,
+    /// 1..64 fixed simulation substeps between frames; frame zero follows one interval.
     #[schemars(range(min = 1, max = 64))]
     pub steps: u32,
+    /// Seconds per substep, >0..0.1; noise time is (frame+1)*steps*dt.
     #[schemars(range(max = 0.1), extend("exclusiveMinimum" = 0, "x-og-unit" = "s"))]
     pub dt: f32,
+    /// 1..128 Jacobi pressure iterations per volume step.
     #[schemars(range(min = 1, max = 128))]
     pub pressure: u32,
+    /// Seed for the same fBm/curl/Worley kernels as og.procgen.
     pub seed: u32,
-    /// Noise cycles per unit cube.
+    /// Positive cycles per unit cube; three simplex octaves, lacunarity 2, gain 0.5.
     #[schemars(extend("exclusiveMinimum" = 0))]
     pub frequency: f32,
-    /// Signed data encoding range; unused for volume transport.
+    /// Positive encoding range: signed noise/curl -range..range maps to 0..1;
+    /// Worley 0..range maps to 0..1. Values clamp. Unused for volume transport.
     #[schemars(extend("exclusiveMinimum" = 0))]
     pub range: f32,
+    /// Nonnegative curl acceleration; on noise textures this is Z travel speed.
     #[schemars(range(min = 0), extend("x-og-unit" = "cube widths/s²"))]
     pub turbulence: f32,
     /// Injection centre in the unit cube, Y up.
     #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
     pub source: [f32; 3],
+    /// Source boundary/density fBm modulation, 0..1; zero is a smooth sphere.
     #[schemars(range(min = 0, max = 1))]
     pub detail: f32,
+    /// Nonnegative vorticity confinement in 1/s, scaled by cell width; zero disables it.
     #[schemars(range(min = 0), extend("x-og-unit" = "1/s"))]
     pub vorticity: f32,
+    /// Injection radius in cube widths, >0..0.5.
     #[schemars(range(max = 0.5), extend("exclusiveMinimum" = 0, "x-og-unit" = "cube widths"))]
     pub radius: f32,
+    /// Nonnegative source duration in seconds; explosion injects only initially.
     #[schemars(range(min = 0), extend("x-og-unit" = "s"))]
     pub inject: f32,
+    /// Density/second; explosion uses initial density. Nonnegative.
     #[schemars(range(min = 0))]
     pub density: f32,
+    /// Heat/second; explosion uses initial heat. Nonnegative.
     #[schemars(range(min = 0))]
     pub heat: f32,
     /// Signed Y acceleration per unit heat.
     #[schemars(extend("x-og-unit" = "cube widths/s²"))]
     pub buoyancy: f32,
+    /// Nonnegative radial source speed in cube widths/s.
     #[schemars(range(min = 0))]
     pub expansion: f32,
+    /// Nonnegative exponential density loss/second.
     #[schemars(range(min = 0))]
     pub decay: f32,
+    /// Nonnegative exponential heat loss/second.
     #[schemars(range(min = 0))]
     pub cooling: f32,
+    /// Nonnegative Beer-Lambert extinction/density/cube width.
     #[schemars(range(min = 0))]
     pub absorption: f32,
+    /// Linear scattering RGB, each 0..1, illuminated by ambient/direct/light.
     #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
     pub color: [f32; 3],
+    /// Linear emission RGB/unit heat, each 0..1, written separately to #emission.
     #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
     pub emission: [f32; 3],
-    /// Direction toward the light; must be nonzero (domain validation).
+    /// Nonzero direction toward the light, normalized at cook. View rays travel +Z.
     pub light: [f32; 3],
+    /// Nonnegative isotropic scattering light; does not change alpha or emission.
     #[schemars(range(min = 0))]
     pub ambient: f32,
+    /// Nonnegative directional light with volume self-shadow; RGB clamps to sRGB8.
     #[schemars(range(min = 0))]
     pub direct: f32,
 }
@@ -301,53 +119,9 @@ impl Config {
     }
 }
 
-fn parse(bytes: &[u8]) -> Result<Config, String> {
-    let doc = Document::parse(&String::from_utf8_lossy(bytes)).map_err(|e| e.to_string())?;
-    if doc.ty != "effect-texture" || doc.version != 1 {
-        return Err("effect-texture requires version 1".into());
-    }
-    let mut object = serde_json::Map::new();
-    for e in &doc.body.entries {
-        if !LINES.iter().any(|l| l.key == e.key) || e.block.is_some() {
-            return Err(format!("unknown effect-texture field '{}'", e.key));
-        }
-        let value = if e.key == "mode" {
-            if e.values.len() != 1 {
-                return Err("mode takes one word".into());
-            }
-            serde_json::json!(e.word(0).map_err(|e| e.to_string())?)
-        } else {
-            let values = e
-                .values
-                .iter()
-                .map(|v| {
-                    let n = v
-                        .as_number()
-                        .ok_or("effect-texture fields take finite numbers")?
-                        .as_f64();
-                    if !n.is_finite() {
-                        return Err("effect-texture fields take finite numbers");
-                    }
-                    Ok(if n.fract() == 0.0 && n >= 0.0 {
-                        serde_json::json!(n as u64)
-                    } else {
-                        serde_json::json!(n)
-                    })
-                })
-                .collect::<Result<Vec<_>, &str>>()?;
-            if matches!(e.key.as_str(), "source" | "color" | "emission" | "light") {
-                serde_json::json!(values)
-            } else if values.len() == 1 {
-                values[0].clone()
-            } else {
-                return Err(format!("{} takes one number", e.key));
-            }
-        };
-        if object.insert(e.key.clone(), value).is_some() {
-            return Err(format!("duplicate field '{}'", e.key));
-        }
-    }
-    let c: Config = serde_json::from_value(object.into()).map_err(|e| e.to_string())?;
+/// Domain relationships beyond the reflected structural constraints. Keep the
+/// same checks on every native entry, including a cached author IR.
+fn validate(c: &Config) -> Result<(), String> {
     if !matches!(
         c.mode.as_str(),
         "smoke" | "fire" | "explosion" | "noise" | "worley" | "curl"
@@ -411,7 +185,42 @@ fn parse(bytes: &[u8]) -> Result<Config, String> {
     {
         return Err("effect-texture parameters outside documented ranges".into());
     }
-    Ok(c)
+    Ok(())
+}
+
+/// Actual outputs of this producer, shared by planning and the content graph.
+/// A reference never invents array/layer suffixes or their runtime kinds.
+fn outputs(c: &Config) -> impl Iterator<Item = (String, Option<u32>, bool, bool)> {
+    [false, true].into_iter().flat_map(move |emission| {
+        let suffix = if emission { "emission" } else { "" };
+        let array = if emission { "emission#array" } else { "array" };
+        std::iter::once((suffix.to_string(), None, false, emission))
+            .chain(std::iter::once((array.to_string(), None, true, emission)))
+            .chain((0..c.frames).map(move |f| {
+                (
+                    texture_array::layer_id(array, f as usize),
+                    Some(f),
+                    false,
+                    emission,
+                )
+            }))
+    })
+}
+
+pub(crate) fn derived(data: &generator::value::Data) -> Result<BTreeMap<String, String>, String> {
+    let file: source_schemas::File =
+        serde_json::from_value(data.root().into_json()).map_err(|e| e.to_string())?;
+    let config: Config = serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+    validate(&config)?;
+    Ok(outputs(&config)
+        .filter(|(suffix, _, _, _)| !suffix.is_empty())
+        .map(|(suffix, _, array, _)| {
+            (
+                suffix,
+                if array { "texture-array" } else { "texture" }.into(),
+            )
+        })
+        .collect())
 }
 
 struct Frames {
@@ -485,7 +294,10 @@ fn plan<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let c = match parse(&s.bytes) {
+    let c = match s.input::<Config>().and_then(|c| {
+        validate(&c)?;
+        Ok(c)
+    }) {
         Ok(c) => c,
         Err(e) => {
             state
@@ -498,51 +310,40 @@ fn plan<'a>(
         config: c.clone(),
         data: OnceLock::new(),
     });
-    for emission in [false, true] {
-        let id = if emission {
-            format!("{}#emission", s.rel)
-        } else {
+    for (suffix, frame, array, emission) in outputs(&c) {
+        let name = if suffix.is_empty() {
             s.rel.clone()
+        } else {
+            format!("{}#{suffix}", s.rel)
         };
-        for (name, frame, array) in std::iter::once((id.clone(), None, false))
-            .chain(std::iter::once((format!("{id}#array"), None, true)))
-            .chain((0..c.frames).map(|f| {
-                (
-                    texture_array::layer_id(&format!("{id}#array"), f as usize),
-                    Some(f),
-                    false,
-                )
-            }))
-        {
-            let st = stamp(
-                &[Area::Texture, Area::Effect],
-                &[
-                    &hash,
-                    name.as_bytes(),
-                    cx.tex_desc.as_bytes(),
-                    include_bytes!("effect_texture.rs"),
-                    include_bytes!("effect_texture/volume.rs"),
-                    include_bytes!("../../../../og-core/src/noise.rs"),
-                ],
-            );
-            outs.push((
-                name,
-                if array {
-                    format::TextureArray::NAME
-                } else {
-                    format::Texture::NAME
-                },
-                st,
-                Box::new(TextureJob {
-                    source: s,
-                    frames: frames.clone(),
-                    frame,
-                    emission,
-                    array,
-                    id: format!("{id}#array"),
-                }),
-            ));
-        }
+        let st = stamp(
+            &[Area::Texture, Area::Effect],
+            &[
+                &hash,
+                name.as_bytes(),
+                cx.tex_desc.as_bytes(),
+                include_bytes!("effect_texture.rs"),
+                include_bytes!("effect_texture/volume.rs"),
+                include_bytes!("../../../../og-core/src/noise.rs"),
+            ],
+        );
+        outs.push((
+            name,
+            if array {
+                format::TextureArray::NAME
+            } else {
+                format::Texture::NAME
+            },
+            st,
+            Box::new(TextureJob {
+                source: s,
+                frames: frames.clone(),
+                frame,
+                emission,
+                array,
+                id: format!("{}#{}array", s.rel, if emission { "emission#" } else { "" }),
+            }),
+        ));
     }
 }
 struct TextureJob<'a> {

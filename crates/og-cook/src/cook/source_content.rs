@@ -482,7 +482,12 @@ fn located(source: &Source, references: &[Reference]) -> Result<Vec<PendingRefer
         .collect())
 }
 
-fn diagnostic(source: &Source, file: &str, path: &str, message: impl Into<String>) -> Diagnostic {
+pub(crate) fn diagnostic(
+    source: &Source,
+    file: &str,
+    path: &str,
+    message: impl Into<String>,
+) -> Diagnostic {
     let location = source
         .locations(&[path])
         .map_or_else(|e| e.location, |mut locations| locations.remove(0));

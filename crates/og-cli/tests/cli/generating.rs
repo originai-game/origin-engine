@@ -565,21 +565,28 @@ fn generated_effect_sources_cook_and_link() {
         r#"{"version":1,"name":"Effects","engine":"0.9.0"}"#,
     )
     .unwrap();
-    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'effects',entry:'src/main.ts'});").unwrap();
-    let volume = "type effect-texture\nversion 1\n---\nmode explosion\nsize 8\nframes 3\ncolumns 2\ngrid 8\nsteps 1\ndt 0.04\npressure 4\nseed 17\nfrequency 3\nturbulence 0.03\nsource 0.43 0.38 0.5\nradius 0.3\ninject 0\ndensity 12\nheat 1\nbuoyancy 0.1\nexpansion 0.4\ndecay 0.5\ncooling 2\nabsorption 8\ncolor 0.4 0.45 0.5\nemission 1 0.2 0.01\n";
-    let volume =
-        format!("{volume}range 1\ndetail 0.8\nvorticity 2\nlight -1 2 -1\nambient 0.2\ndirect 1\n");
-    std::fs::write(assets.join("volume.ogt"), &volume).unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject,ref} from '@origingame/engine/author'; export default defineProject({id:'effects',entry:'src/main.ts',roots:[ref('base/volume#array'),ref('base/volume#emission#array#layer2')]});").unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    let volume = r#"import {file} from '@origingame/engine/author';
+export default file['effect-texture']({
+    mode:'explosion', size:8, frames:3, columns:2, grid:8, steps:1,
+    dt:0.04, pressure:4, seed:17, frequency:3, turbulence:0.03,
+    source:[0.43,0.38,0.5], radius:0.3, inject:0, density:12, heat:1,
+    buoyancy:0.1, expansion:0.4, decay:0.5, cooling:2, absorption:8,
+    color:[0.4,0.45,0.5], emission:[1,0.2,0.01], range:1, detail:0.8,
+    vorticity:2, light:[-1,2,-1], ambient:0.2, direct:1,
+});"#;
+    std::fs::write(root.join("content/volume.ts"), volume).unwrap();
     for (name, ty, body) in [
         (
             "surface",
             "effect",
-            "main \"volume.ogt#emission\"\nblend additive\n",
+            "main \"base/volume#emission\"\nblend additive\n",
         ),
         (
             "emitter",
             "particles",
-            "maxParticles 1\nrate 0\nburst 0 1\nrender sprite\narray \"volume.ogt#array\" 3 life 1\neffect \"surface.ogt\"\n",
+            "maxParticles 1\nrate 0\nburst 0 1\nrender sprite\narray \"base/volume#array\" 3 life 1\neffect \"surface.ogt\"\n",
         ),
         (
             "composed",
@@ -615,21 +622,24 @@ fn generated_effect_sources_cook_and_link() {
     assert!(out.status.success(), "{}", text(&out));
     let load = || og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let bundle = load();
-    let sheet = bundle.load_texture("volume.ogt").unwrap();
+    let sheet = bundle.load_texture("base/volume").unwrap();
     assert_eq!((sheet.meta.width, sheet.meta.height), (16, 16));
-    let array = bundle.load_texture_array("volume.ogt#array").unwrap();
+    let array = bundle.load_texture_array("base/volume#array").unwrap();
     assert_eq!(
         (array.meta.width, array.meta.height, array.layers.len()),
         (8, 8, 3)
     );
-    assert_eq!(array.layers[2], "volume.ogt#array#layer2");
-    assert!(bundle.load_texture("volume.ogt#emission").is_ok());
+    assert_eq!(array.layers[2], "base/volume#array#layer2");
+    assert!(bundle.load_texture("base/volume#emission").is_ok());
     let bytes = bundle.read("composed.ogt").unwrap();
     let vfx = og_cook::vfx::parse_vfx(&bundle.vfx_text("composed.ogt", &bytes).unwrap()).unwrap();
     assert_eq!(vfx.duration, 0.75);
     assert_eq!(vfx.references().emitters, ["emitter.ogt"]);
-    let first = bundle.read("volume.ogt#array#layer1").unwrap().to_vec();
-    let pixels = bundle.load_texture("volume.ogt#array#layer1").unwrap().ktx2;
+    let first = bundle.read("base/volume#array#layer1").unwrap().to_vec();
+    let pixels = bundle
+        .load_texture("base/volume#array#layer1")
+        .unwrap()
+        .ktx2;
     // Remove only this test's disposable cooked output, forcing a cold
     // generation. Then exercise population and reuse of its private cache.
     for cache in [
@@ -640,18 +650,48 @@ fn generated_effect_sources_cook_and_link() {
         std::fs::remove_dir_all(root.join("cooked")).unwrap();
         let out = cook(&cache);
         assert!(out.status.success(), "{}", text(&out));
-        assert_eq!(&*load().read("volume.ogt#array#layer1").unwrap(), first);
+        assert_eq!(&*load().read("base/volume#array#layer1").unwrap(), first);
     }
     std::fs::write(
-        assets.join("volume.ogt"),
-        volume.replace("seed 17", "seed 29"),
+        root.join("content/volume.ts"),
+        volume.replace("seed:17", "seed:29"),
     )
     .unwrap();
     assert!(cook("off").status.success());
     assert_ne!(
-        load().load_texture("volume.ogt#array#layer1").unwrap().ktx2,
+        load()
+            .load_texture("base/volume#array#layer1")
+            .unwrap()
+            .ktx2,
         pixels
     );
+    // Only the producer's real outputs may be referenced, not guessed suffixes.
+    std::fs::write(
+        root.join("content/volume.ts"),
+        volume.replace("frames:3", "frames:2"),
+    )
+    .unwrap();
+    let out = cook("off");
+    assert!(!out.status.success(), "nonexistent derived layer accepted");
+    assert!(
+        text(&out).contains("base/volume#emission#array#layer2"),
+        "{}",
+        text(&out)
+    );
+    std::fs::write(root.join("content/volume.ts"), volume).unwrap();
+    std::fs::write(
+        assets.join("volume.ogt"),
+        "type effect-texture\nversion 1\n---\n",
+    )
+    .unwrap();
+    let out = cook("off");
+    assert!(!out.status.success(), "removed OGT author entry accepted");
+    assert!(
+        text(&out).contains("OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+    std::fs::remove_file(assets.join("volume.ogt")).unwrap();
     // The same ordinary target parser must reject malformed generated text.
     std::fs::write(
         assets.join("surface.ts"),

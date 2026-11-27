@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.effect-texture / og cook",
+      "change": "Effect-texture authoring now uses checked TS content declarations and the native typed volume/noise cooker. The OGT frontend and its separate field table are deleted. The actual producer reports all sheet, emission, array and layer outputs to the project reference graph; missing or wrong-kind derived references fail before cooking.",
+      "fix": "Write content/<name>.ts with import {file} from '@origingame/engine/author' and export default file['effect-texture']({...}). Keep the same explicit parameters, using TS arrays for source/color/emission/light. Load <module>/<content-relative-stem> instead of an .ogt path; retain #emission, #array, #emission#array and #layerN suffixes. Use og api show file:effect-texture for the schema-generated contract. No OGT fallback or TS-to-OGT bridge is provided.",
+      "find": ["effect-texture", "#emission#array", "file.effect-texture"]
+    }
+  ]
+}
