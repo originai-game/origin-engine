@@ -348,7 +348,13 @@ impl GlassPasses {
             })
         };
         let blit_group = group(&source_view, &self.off);
-        let filter_group = group(&source_view, &self.filter_params);
+        // Decode the stored bytes with the CPU filter's transfer curve.
+        // Hardware sRGB decode approximations are amplified by correction
+        // matrices when a corrected channel is close to black.
+        let filter_group = group(
+            source_encoded_view.as_ref().unwrap_or(&source_view),
+            &self.filter_params,
+        );
         let overlay_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("glass pyramid"),
             layout: sprite_layout,
@@ -452,7 +458,9 @@ impl GlassPasses {
             queue,
             &self.filter_params,
             0,
-            bytemuck::cast_slice(&filter.params(decode)),
+            bytemuck::cast_slice(
+                &filter.params(decode || targets.source_encoded_view.is_some(), decode),
+            ),
         );
         fullscreen_pass(
             encoder,

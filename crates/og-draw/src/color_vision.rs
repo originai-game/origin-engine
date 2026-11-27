@@ -205,12 +205,13 @@ impl ColorFilter {
     }
 
     /// Its uniform (`FilterParams` in color_filter.wgsl): `a`'s rows, `b`'s
-    /// rows, then the plane with `decode` in w (1: the frame holds
-    /// sRGB-encoded values, decoded before and encoded after).
-    pub fn params(&self, decode: bool) -> [[f32; 4]; 7] {
+    /// rows, then the plane. The first row's w requests sRGB output encoding;
+    /// the plane's w requests sRGB input decoding, independently of the
+    /// render target's hardware encoding.
+    pub fn params(&self, decode: bool, encode: bool) -> [[f32; 4]; 7] {
         let row = |r: [f32; 3]| [r[0], r[1], r[2], 0.0];
         [
-            row(self.a[0]),
+            [self.a[0][0], self.a[0][1], self.a[0][2], f32::from(encode)],
             row(self.a[1]),
             row(self.a[2]),
             row(self.b[0]),

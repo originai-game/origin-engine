@@ -5,6 +5,7 @@
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
 struct FilterParams {
+  // a0.w: 1 when the output needs explicit sRGB encoding.
   a0: vec4<f32>,
   a1: vec4<f32>,
   a2: vec4<f32>,
@@ -12,7 +13,7 @@ struct FilterParams {
   b1: vec4<f32>,
   b2: vec4<f32>,
   // xyz: the plane's normal; w: 1 when the source holds sRGB-encoded
-  // values (decoded before the matrices, encoded after).
+  // values, decoded explicitly before the matrices.
   plane: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> cvd: FilterParams;
@@ -32,7 +33,7 @@ fn fs_filter(in: VsOut) -> @location(0) vec4<f32> {
     o = vec3<f32>(dot(cvd.b0.xyz, rgb), dot(cvd.b1.xyz, rgb), dot(cvd.b2.xyz, rgb));
   }
   o = max(o, vec3<f32>(0.0));
-  if (coded) {
+  if (cvd.a0.w > 0.5) {
     o = srgb_encode(min(o, vec3<f32>(1.0)));
   }
   return vec4<f32>(o, texel.a);
