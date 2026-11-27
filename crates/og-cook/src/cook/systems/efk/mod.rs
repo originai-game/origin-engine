@@ -32,12 +32,6 @@ pub const EXTENSIONS: [&str; 2] = ["efkproj", "efkefc"];
 /// The folder of `og vfx import`'s output its effects' textures share.
 const TEXTURES: &str = "textures/";
 
-/// The import settings of every mesh the conversion writes: an effect's
-/// mesh, which no face budget of the art contract holds or simplifies
-/// (`conform::ModelRole::Effect`). `og vfx import` writes them beside the
-/// mesh as `<mesh>.ogt`; in the cook they attach to it.
-pub const MESH_SETTINGS: &str = "type import\nversion 1\n---\n# An effect's mesh (og vfx import): no face budget.\nconform effect\n";
-
 /// Whether `rel` is an Effekseer project.
 pub fn handles(rel: &str) -> bool {
     EXTENSIONS.contains(&super::ext(rel).as_str())
@@ -234,7 +228,7 @@ pub struct Imported {
 /// `og vfx import`: converts `file` and writes into `out` the effect as
 /// `<stem>.ts` and beside it `<stem>/`: its emitters and effect materials.
 /// Textures and models are copied under the project's matching `assets/`
-/// path; models retain their import-settings sidecars.
+/// path, with explicit `file.import` declarations under `content/`.
 /// Textures in `textures/` are shared by every effect imported
 /// into `out`: one copy per file, by name, a different file of the
 /// same name under its name with its content's hash (so importing again,
@@ -382,8 +376,15 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
         }
         if f.kind == OutKind::Model {
             written.push(write(
-                assets.join(format!("{rel}.glb.ogt")),
-                MESH_SETTINGS.as_bytes(),
+                out.join(format!("{rel}.ts")),
+                declaration(
+                    "import",
+                    &serde_json::json!({
+                        "kind": "model", "source": format!("assets/{prefix}{rel}.glb"),
+                        "conform": "effect"
+                    }),
+                )
+                .as_bytes(),
             )?);
         }
     }
@@ -399,6 +400,17 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
         } else {
             written.push(write(path, &b)?);
         }
+        let stem = rel.rsplit_once('.').map_or(rel.as_str(), |(stem, _)| stem);
+        written.push(write(
+            out.join(format!("{stem}.ts")),
+            declaration(
+                "import",
+                &serde_json::json!({
+                    "kind": "texture", "source": format!("assets/{prefix}{rel}")
+                }),
+            )
+            .as_bytes(),
+        )?);
     }
     Ok(Imported {
         written,

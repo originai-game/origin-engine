@@ -10807,6 +10807,468 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/7irohannten.ts",
+      "sha256": "e64641617c5a324ef7e55383ed78dcbdf72b0d0f9336da2c51dc3461e4fe0216",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/7irohannten.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Aurora.ts",
+      "sha256": "2589ddb06c7395d1bc1261ca754a8aed0e70355754e6f3ca24798daeda5ec121",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Aurora.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/AuroraRing.ts",
+      "sha256": "6507db39c49a73265787bf1b7657585f7ba15559485b94156d1ca2519864d819",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/AuroraRing.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Aurora_B.ts",
+      "sha256": "43029abb5c2e6e87ccce211602250258aec200e89fd11a13cca1e4803a206f7d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Aurora_B.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Flame01.ts",
+      "sha256": "04bf8219d3b1536bdcb25226950d172935a9a36d2627737c329377c6c042702b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Flame01.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fog3001.ts",
+      "sha256": "fbeb498b02cfdf9aaf06f2ace045077ec9b8cef979c0ada5d521bfed7e4efa29",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Fog3001.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fog3002.ts",
+      "sha256": "b9bd4110faa44c657ba4c44616b3f6317eb542623b78281fa3b4761d6d183b35",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Fog3002.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/FractalNoise_2.ts",
+      "sha256": "363df939d73d36172b9a71c438af49569bce7752a4d2806873f0ac1b9b9f6a54",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/FractalNoise_2.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Hammer1.ts",
+      "sha256": "ca2b91fa416b4ff059cc3b3433e32f3d0c3eb619c58923b2a1347f7088997f86",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Hammer1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line01.ts",
+      "sha256": "3efd6e99daf05e754b9d4a1d0366447a08340205ac58aa84e5773a0828f6425d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Line01.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line2.ts",
+      "sha256": "2449fd4bd02b7b770ede105c23c958daa9d0b203c16af41f980f41e2dc0e6b59",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Line2.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line6.ts",
+      "sha256": "f0bc151a04111b75d995680e7de1982831f234406b329db6b9b556b8cd7b595a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Line6.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "2b7b87fabaebb145e53e183aeb5393e639f0b157ed735dd60ed070a247a47c5e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle02.ts",
+      "sha256": "4114aa3b568cd3ce83cb0ed7adf0d9e14acc7e7c845558a14b8db50e6ea6dda2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Particle02.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave001.ts",
+      "sha256": "4523f061b4a199ee2e30f0b00587974754777d58ae5ac4b059f3af95b43a2040",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave001.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave004.ts",
+      "sha256": "ac99d2d0564f18068e47ce71617854b94d4d81e231007d613f592d51e284caa4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave004.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring001.ts",
+      "sha256": "d026bdbbc3c11290a0bd0fa7694c62e36d0b2aae7ac6dad30c2eafb01f1d70c9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave_ring001.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring0011.ts",
+      "sha256": "b14ceaa2af0414ddfe784cd36206ee77d29351f017d7da0fd7fa012cacb60597",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave_ring0011.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring002.ts",
+      "sha256": "a787edb8b0ddbd2aac6a98669d59b83b8c17c8e5cd7089fbff09548ea6454732",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave_ring002.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/StanBlade.ts",
+      "sha256": "aadc4c9d69da01aff0403bd5d50b5833e6ddd1c54bdfbf71290c38db925cf1f6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/StanBlade.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder1.ts",
+      "sha256": "62fc5b9dd19677ea81dce1fe8ed8d7942124823ba11cbd9507f647258514675b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Thunder1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/WaterForm1.ts",
+      "sha256": "6dbc27cd4ee2167eaacad4101b68b9759f284aaabf7445d16fad2a9e061e473d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/WaterForm1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Wind.ts",
+      "sha256": "c98b7783df71220fe1b3938c163a8c2b251a5eb7a5b740ba333a620189fc05fc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Wind.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Wind01.ts",
+      "sha256": "c77ebab3d66dd714578275b1f703593fdab8e09a4b14a49091e0a32e5225093d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Wind01.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/actionlines.ts",
+      "sha256": "2a769ada613d13e99b69d756c98f7d08f980289602a4a17635c87437d8e5e504",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/actionlines.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/aura3_type2.ts",
+      "sha256": "f9e278817cc1913f5ebf46a4343469c8b1fcde3f01e404f7662e7984b2b5a223",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/aura3_type2.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/burst02_red.ts",
+      "sha256": "b68ce13998df50ec280c88ccd058b9caca4fe7930afe8d4e6be9f31635dba2ef",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/burst02_red.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/circle4.ts",
+      "sha256": "446ab1f55e965d60b0837ad3ca7a9c8d887f6d0071e0a0fb5b99bd0218f30d45",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/circle4.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ezzi.ts",
+      "sha256": "5535a4dedc2cb025fb3d25a5ad71f3d9d7a3bc79af303c7be0184ab4bb14fed7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/ezzi.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ezziglow.ts",
+      "sha256": "feec5e2fc00596074edc0b850f902884fc337222ff992ad881ea697826d47051",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/ezziglow.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/hisigata0.ts",
+      "sha256": "1d7471ad932cb017804d59660977c8fc58be23dce5b7746fa05f294d5b251c17",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/hisigata0.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/hisigata1.ts",
+      "sha256": "94dbd8a0abc4bf2768cf42dc3b10c1374e798be821b6632216eb4187b7495903",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/hisigata1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/icicle2.ts",
+      "sha256": "bd1c12ee6c30259b1f459b837b06c2d4bd147afe47395f339d569490fed43ec5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/icicle2.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/magma.ts",
+      "sha256": "92a2cb2e7879573153a5d9fbcc33c4a40c82a8dbe30fea1fed2dc49bf674c0ba",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/magma.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/naihu.ts",
+      "sha256": "f5660353c187ff8316b68e247bdf6f2413f1dfe581511420401b2d6f83820861",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/naihu.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/rainnaka.ts",
+      "sha256": "77d7ee0092c6a1fd6f416f7f8d25691402f950a4b501b1b241f4f8dfdd0ee61f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/rainnaka.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/rainnmidori.ts",
+      "sha256": "4ef032e87157b494d55832e7d952d3ae85e88774e280af2241bd7f263aa4a699",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/rainnmidori.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/rainnmizu.ts",
+      "sha256": "409bdfad3077df3b31df5f88dce2081c368b1398ea4b41684f236219f3daa810",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/rainnmizu.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/rainntya.ts",
+      "sha256": "b07b3d7124815871ad300abb84763efbf66fad36c23d556668123ce0d7592f9c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/rainntya.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/smoke_tex.ts",
+      "sha256": "d45558c06b0a9a5e1ea1c4a90ad5d4e4a35c7b72850a3c9987e5d04b316a4520",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/smoke_tex.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/star.ts",
+      "sha256": "1eed180003556f778d4fd65c5e790bed4be900186cc5abe75521790d3c44ea70",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/star.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/wind02.ts",
+      "sha256": "f9902bb1b44d92c887121e027ab14a062c92d8440133983aec46d393438a0f1a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/wind02.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "035737b4922e362b601d916f6d3a7ea327265a7f7818e3f123947d0cf99aac5c",
       "licence": "CC0-1.0",

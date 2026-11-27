@@ -17,17 +17,6 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "BloodLance/model-ShortLance.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/BloodLance.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "README.md",
       "sha256": "bcab64d9fcaeacb1a84b395aae76fc44c69cee86d66a228147659e3432b83fa2",
       "licence": "CC0-1.0",
@@ -49,30 +38,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword_Ember/model-LongSword_Blade.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Ember.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Sword_Ember/model-LongSword_Handle.glb",
       "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Ember.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Sword_Ember/model-LongSword_Handle.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -93,30 +60,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword_Lightning/model-LongSword_Blade.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Lightning.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Sword_Lightning/model-LongSword_Handle.glb",
       "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Lightning.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Sword_Lightning/model-LongSword_Handle.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -137,30 +82,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword_Moonlight/model-LongSword_Blade.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Moonlight.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Sword_Moonlight/model-LongSword_Handle.glb",
       "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Moonlight.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Sword_Moonlight/model-LongSword_Handle.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -181,30 +104,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword_Sacredlight/model-LongSword_Blade.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Sacredlight.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Sword_Sacredlight/model-LongSword_Handle.glb",
       "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Sacredlight.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Sword_Sacredlight/model-LongSword_Handle.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -225,30 +126,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Sword_Storm/model-LongSword_Blade.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Storm.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Sword_Storm/model-LongSword_Handle.glb",
       "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
-        "file": "Pierre02/Sword_Storm.efkproj"
-      },
-      "credit": "Effekseer and Pierre02",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Sword_Storm/model-LongSword_Handle.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -777,6 +656,17 @@
     {
       "path": "content/BloodLance.ts",
       "sha256": "5c9ca54f89039d26653a2e272dc7802d4edc2c0662a0db1d44bf6dd654dce0f9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/BloodLance.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/BloodLance/model-ShortLance.ts",
+      "sha256": "b6ddad058704f98ce512d6d16e6e14c9a11b31f6a8e404214dfb5f79bc516cdc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -3657,6 +3547,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Sword_Ember/model-LongSword_Blade.ts",
+      "sha256": "c60c5e2c75a83041026dfc6d410cadddf7faf83785c96eb0278c7bd6896a0753",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Ember.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Ember/model-LongSword_Handle.ts",
+      "sha256": "ed8af2e170b9b3cdf5ddbe38098aa61fcc30dba65b156f7f43a3791a3c848367",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Ember.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Sword_Ember/n0-0-0.effect.ts",
       "sha256": "6341cabe1218c503b88225f51ebfb9c7d5e1a9708a2e482e4483d129561f2b18",
       "licence": "CC0-1.0",
@@ -5771,6 +5683,28 @@
     {
       "path": "content/Sword_Lightning.ts",
       "sha256": "10b782a82c08266995fb34ca0a43e6b339ae88aa0cf26f537c088db97acc9c55",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Lightning.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Lightning/model-LongSword_Blade.ts",
+      "sha256": "f3f48a25c91fe1eaec8df164d4baf842b1d2d712bf3503499f81e9018f990df1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Lightning.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Lightning/model-LongSword_Handle.ts",
+      "sha256": "435ab177162b2d0f8ddfb726b3b16592f26ebc9be0695eee817a8be6b0dc8e06",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -8653,6 +8587,28 @@
     {
       "path": "content/Sword_Moonlight.ts",
       "sha256": "bd009fd7b0af8f3f9e3b144a943b9c09926577c4973de58907539ff20cfe2e93",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Moonlight.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Moonlight/model-LongSword_Blade.ts",
+      "sha256": "acf8384374d119c86d493cd9da3e1faeb8eec3d9c642e390a1b7e87061f4f33a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Moonlight.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Moonlight/model-LongSword_Handle.ts",
+      "sha256": "58379b10695f3c1171d4ab5d992a063b16fde92314de82703f81b290eccd55fd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
@@ -13337,6 +13293,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Sword_Sacredlight/model-LongSword_Blade.ts",
+      "sha256": "22838001161df27c550df03ed71690a2c76fb203ada3961005adbf6f1aa62537",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Sacredlight.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Sacredlight/model-LongSword_Handle.ts",
+      "sha256": "ae0ba786b026c60a1accedbc7a1a9226b64ae304dea8bd8298c8c1ea14f90ab6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Sacredlight.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Sword_Sacredlight/n0-0-0.effect.ts",
       "sha256": "6341cabe1218c503b88225f51ebfb9c7d5e1a9708a2e482e4483d129561f2b18",
       "licence": "CC0-1.0",
@@ -14657,6 +14635,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Sword_Storm/model-LongSword_Blade.ts",
+      "sha256": "352239f967c8d492b5a2bd5d62db3a4f0da67c0283056f97f810e01260d65b8a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Storm.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Sword_Storm/model-LongSword_Handle.ts",
+      "sha256": "ef5389b095b14e0a5f95d167db34adb7c6ebcfbafe0cb112c9bf6128213a63aa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Sword_Storm.efkproj"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Sword_Storm/n0-0-0.effect.ts",
       "sha256": "6341cabe1218c503b88225f51ebfb9c7d5e1a9708a2e482e4483d129561f2b18",
       "licence": "CC0-1.0",
@@ -15876,6 +15876,270 @@
       },
       "credit": "Effekseer and Pierre02",
       "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/textures/Burst_1.ts",
+      "sha256": "c233a226e67aeaeca70caf0df219171ac1ae209f45de0a951bab8e0fde3b794b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Burst_1.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Burst_2.ts",
+      "sha256": "7a1fc2bf92c41a5451215a08410cb653f11d7487fec27428f17cbef9f342f980",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Burst_2.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ExperimentalBlur.ts",
+      "sha256": "17f4e4cc5d2b732870bcbd245320b685da762c21ed5ded80ab6185cbed410f58",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/ExperimentalBlur.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ExperimentalNoise.ts",
+      "sha256": "378dcccc8a5e593f3823bb0de5440cee3703730fa62922e2fcb5ac67eb0e29f6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/ExperimentalNoise.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Feather.ts",
+      "sha256": "f68d6d895b08218f47f8863785d157d84fb60b1d9f59ec6ad8e0b9dfe4adebe8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Feather.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire.ts",
+      "sha256": "e196a1ee0780949b23360a4234d67e6b35c9f539648247c2c862595fa101808c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Fire.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire_Blur.ts",
+      "sha256": "8c9c4daae2d18f7b688373ab21e768f9bff6bef8bc85f527607c468431179dc7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Fire_Blur.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire_Single.ts",
+      "sha256": "b172006c7cbe0d71791d516ca3f5cba331f106314af86fbd350700111b0e42a2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Fire_Single.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/FractalNoise_1.ts",
+      "sha256": "fdb344364f4f267e47ea641e286df589f7d4b681dc6ec2b10b29e1f154195f82",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/FractalNoise_1.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Glass.ts",
+      "sha256": "45baabdd967c4f2f5d4b2beab7d492d48b80b905b8004267d1b78881bf37f83b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Glass.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Halo.ts",
+      "sha256": "829a2ebb5a2bc5e38dce1721be0c85151dbfd41865de040830f386ad31764ae5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Halo.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line3.ts",
+      "sha256": "c616b57cfdcfff40df199acda69d92666ec0f5e24d0a771ebde35caedb9cbfeb",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Line3.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line5.ts",
+      "sha256": "ac568e2b828bbf8dba0e19b83b024707062731d76d06476f986f3fffc7230b0c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Line5.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line_2.ts",
+      "sha256": "b9c397424306faca65b53a06ae1c558c43c7636e2c53e533b33d4becc0b40753",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Line_2.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle_Hard.ts",
+      "sha256": "efbfb5159e604a55c3915650bcb5e62428d621b4bb6e8e7a66f93c5b2cf58ea6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Particle_Hard.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle_Soft.ts",
+      "sha256": "dfa560c7b713f4f09afd11ee8f99b8531866d34a313f859fe1ea26b93ba33ef8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Particle_Soft.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shockwave.ts",
+      "sha256": "12883962c5fddfe835ff722f75259261ac59d81a3b1868f4a50a8d7dc45deec4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Shockwave.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Smoke.ts",
+      "sha256": "047c066fa7bf2d41109361a845037723a7c0d78b5c4968bcf6eb58cd338d1141",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Smoke.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Smoke_Lighting.ts",
+      "sha256": "67961cfa335192e976713b8c10323d1e68b3fc04a45d6ec40cdc3a3062aded8f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Smoke_Lighting.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Splash.ts",
+      "sha256": "c7bfc68b03a63317ac60b1cbb4ea517398818308384ea9cea288123481dafc0a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Splash.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Star.ts",
+      "sha256": "60bd8554f90dd030aaa24ccdd5130e8491c5c8518ab0dcd973bd085cf13f7d6c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Star.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder_Thin.ts",
+      "sha256": "2d910f7a500d64ad16fc100c98c85eed8cf8139dd96f9b74de5f30c032128dbe",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Thunder_Thin.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Wind.ts",
+      "sha256": "73de5f72939530011e7702d33e0b39b2c9de618296e3ba9aa6e950bf25add724",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Wind.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Yakiniku.ts",
+      "sha256": "cf7bb8e4b3359454ec12851fb00b811bf5e9a95480ae739ddf50591c41a9f2b3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Yakiniku.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "authored"
     },
     {
       "path": "extension.json",

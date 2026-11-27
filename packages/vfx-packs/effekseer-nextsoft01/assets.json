@@ -1028,6 +1028,369 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/Aurora.ts",
+      "sha256": "501b135b204c3ebacfb5d38eb3aa884a9237618796e8d462b4ecd12c0358bb3b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Aurora.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/AuroraRing.ts",
+      "sha256": "6fa31038a091ea942f88b5eeab537dc23534750087d45d16dee16f7e8af84da0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/AuroraRing.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Burst01.ts",
+      "sha256": "85a6c6bba99795204debb319d243d4847ed727f7f74b8859ed8b05708c5622b9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Burst01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Cloud01.ts",
+      "sha256": "68410a6514ac36320b248476f4e92a24de260877df57a627faaf141fa8057dec",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Cloud01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Crystal001.ts",
+      "sha256": "6a23ae3dc1a1833d825439dba28f1504c902e64b6b57e3e9529188ed7410fa72",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Crystal001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Crystal002.ts",
+      "sha256": "3a6b31aedf6c1c10b3fab81422493d87a4ecd7520162e8064debb3de69a7d99c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Crystal002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/FlameRadiation.ts",
+      "sha256": "29852f376eaf656e843885063bece00009499fd8a7716f8dca9083327f09fbeb",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/FlameRadiation.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Foam001.ts",
+      "sha256": "e2096db7cceda8ad4a7aa27d8d3ecf5ad64cfb19c0beaa0175e172cdbf98650a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Foam002.ts",
+      "sha256": "1ecfd15714795b9ce2b81f5fa7cc8bda1a473d399c2d84b64d138b41319fd955",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Foam003.ts",
+      "sha256": "878f06fd70e8e131f976640a01b22afd5bf8f2417534503297a3a8495ed0813b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam003.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fog001.ts",
+      "sha256": "3ba4d60f5253504b6e73387095c864c16763b07f8fc3da0901c0716daee7fcf7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Fog001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fog3001.ts",
+      "sha256": "0dc7c3925b48e991726886094b482a83b7d3423d9482ff14ca1201a9d456b3fa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Fog3001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line01.ts",
+      "sha256": "330e5b419d87f04398156bb04838bf1694dbf3bb1c9cf702e078019bc5008a34",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Line01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/MagicCircle1.ts",
+      "sha256": "d21a2b9c9ce9ec6b7b341cdf0b6ab36a020cbb7bd45c1299d8290f90906554c2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/MagicCircle1.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/MagicCircle4.ts",
+      "sha256": "3af5b23f39d06bf786948ff89816f7402864a1eba70f49715b2e5932fa3113ea",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/MagicCircle4.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "31310b6a145859d779dcb1393e8b3a83dc2afab6316be6719b18919260aa8c28",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle02.ts",
+      "sha256": "39e5f977aef25a84766f22feb041cae7d612eb286f55dc7ec950a3fc8d465eaa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Particle02.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle03.ts",
+      "sha256": "7efe75cdac935bd6d3c8a6f6aa69daf2b5d3092e59879d9742538b0843e46f0e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Particle03.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Photon.ts",
+      "sha256": "173910b281de1d47e7a03e8df95c582a515c73770c8ebc3cf93f4c0658aeeaa6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Photon.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/PolkaDot.ts",
+      "sha256": "34d95cac3fd1bf62dd037ce5ad7dd7a4dfcc6be796ac2fbed4daa146a400cd2b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/PolkaDot.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/SaintArrow.ts",
+      "sha256": "1ab92a79b4f380d2d0a4c357a2e140c40d8ee292dc6338f4e30cf9c3834aeb1f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/SaintArrow.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShadowEye.ts",
+      "sha256": "623d9b441f207b83d09d7398ad1d1c1b67bc750ea65446ebcdae862d29ce77df",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/ShadowEye.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave001.ts",
+      "sha256": "ccdc42f83a7cb2a0b6fd6e35a0fed9652595581a0c45d69851f9b198e291b721",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Shock_wave001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring004.ts",
+      "sha256": "e328931ccd0b896a02de28a338642b2be6b30466136e67ad2c8aa2285c7a9bb1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Shock_wave_ring004.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/SnowCrystals_M.ts",
+      "sha256": "21042bc21f15a2f1c34865241f8f2f912a3d190264a3599434fa8576f0b099c0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/SnowCrystals_M.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/SnowCrystals_S.ts",
+      "sha256": "4bc50062442c5c6154f89418f3c700fc3ad28784186ac83d929ec6d2119942d7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/SnowCrystals_S.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/StanBlade.ts",
+      "sha256": "f96aa82d2365beeca28dc665751465dea565a1b67977c5e783a4bdfb55952482",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/StanBlade.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Sword002.ts",
+      "sha256": "59835b756bc1f17d8f5eecca51ed5a7da602efd65a6beadc101f04c8cd8b2691",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Sword002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder01.ts",
+      "sha256": "982cb6a7bf414b00fa9167d73a002dce7ccb0f5b7d7178c2c7b256326fe47736",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Thunder01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder10.ts",
+      "sha256": "0f726f26dcb7c357e89eacb69cd5861124d115c5442494d5911ffe47605b7ae4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Thunder10.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/kirakira.ts",
+      "sha256": "11001f9c2b348d86d016dbf0d0f94ef7637e775b08f5787d65149bf2b92c10b4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/kirakira.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/t0002.ts",
+      "sha256": "fe1919153d08256066e5aa98547a917a15080f8bcc3e98fb35e2f27d84b6c2c8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/t0002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/t0007.ts",
+      "sha256": "fde03f5fa0cb858955a54c80c211194103bcd7e553110d3ad30ef473cc35d046",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/t0007.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "a9e03de2f6be1fcd415946ae45b42ae3862f4b703875609b6440586f5d914c81",
       "licence": "CC0-1.0",

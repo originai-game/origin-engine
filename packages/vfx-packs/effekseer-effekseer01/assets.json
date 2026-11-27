@@ -775,6 +775,160 @@
       "sha256": "c388a1994615fc5a5f51a732d0fc1225afa4d28622127c09a21b8ff3c22ff580"
     },
     {
+      "path": "content/textures/Arrow.ts",
+      "sha256": "0528281883be8a4bebcdd6cf21e6ee247f18635d1c7d8dd4940b3f67cf163f0f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Arrow.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Burst01.ts",
+      "sha256": "591157632cabb0f129b6edf1a9e11b12c38ac8d5b4b422bef5cbb8dfcf46f2c7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Burst01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Cloud01.ts",
+      "sha256": "2804523e3ad7ea85d12cc1289e8eea7cb07b430fe1faa45941c02f277668c909",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Cloud01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Flame01.ts",
+      "sha256": "b07b94e040376b4ef760436068beb5521cd55c9f5bf63ec616abc6ac400c9101",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Flame01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/LaserMain01.ts",
+      "sha256": "044186bfb71f5fd35ea35e1af5158738e79d4f6311756e0e7564577f428d52ed",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/LaserMain01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/LaserMain02.ts",
+      "sha256": "8217ad4c168c349b910ce6c2956914d610128e0140f90b9571113fa05e1155e4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/LaserMain02.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "03a814834290c5d06d2e0e572bf8592be1aabc0d9b842bfbff18f28230aac6d3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle02.ts",
+      "sha256": "5b17cd588f0146bc212892a09e3c2e41547030cdbd5201e191b92e0874e869d4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle02.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle03.ts",
+      "sha256": "e3f3140ce13f931d43c0e27e52849c3a3de64450416ade05d5e3683d617fa160",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle03.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle04_clear_hard.ts",
+      "sha256": "0296e9cc2c84396d9e64914b27da8996db246187c94bc2994116f2bcce3d6696",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle04_clear_hard.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle04_clear_soft.ts",
+      "sha256": "d013f5e9aeb98f3a55ea58d44ed19576f93142a61f04f7bbba7bc7723bd0ed52",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle04_clear_soft.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Splash01.ts",
+      "sha256": "4097d875801f4f31208b7d35d019dd5e8c4a89133a6a67072e9e62e6c7cb70d8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Splash01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/SwordLine01.ts",
+      "sha256": "92eb04bac1d1f638808abb64a04f25eddd5038c93bebce1a0fb4373c478053ba",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/SwordLine01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder01.ts",
+      "sha256": "945db687681cb8cc4b69387a38810ad0871bac4ec2ad06e30b0aab4f632e9fc9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Thunder01.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "569ad9b416d981a753de2b8af13d9804df946bbc17355502aae2db7a5ac8c37b",
       "licence": "CC0-1.0",

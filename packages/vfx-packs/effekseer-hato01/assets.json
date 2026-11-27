@@ -412,6 +412,61 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/aoi-hane.ts",
+      "sha256": "c47923cbd6eb0b3311b208d41ce8e7a33b4915bd383e615b1c02e065cb120c84",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/texture/aoi-hane.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/hana-anime.ts",
+      "sha256": "0811d5e61fe9dd2b3ec6843bf17b5c466f24ac6e44517d81aaa8c82fd4fce506",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/texture/hana-anime.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/kiroi-hane.ts",
+      "sha256": "b61f77c17c07af8eb990c12ef531f6b6b8eb5495d1f49f3fff420e28806483c0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/texture/kiroi-hane.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/particle2.ts",
+      "sha256": "6f2a2f9788c633bd38a49bd49dc6f195a0565a9d4b0303005d960647193ebff3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/texture/particle2.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/sakura-1.ts",
+      "sha256": "aa61dfaccb26df24a02171abf55a5525f4b5c596ba0456aab0404a429e734a12",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/texture/sakura-1.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "df8991013f3e5a01917a9a333c35c6892ba5868a00e31414e914c2fca2166ee5",
       "licence": "CC0-1.0",

@@ -3525,6 +3525,237 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/Burst_1.ts",
+      "sha256": "0396a9c5267d03ac6dbc706f14554ac18afd168b08c6ebc0d5b828c4f3f8be2d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Burst_1.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Burst_2.ts",
+      "sha256": "089bfea1b2da21396b0b5107695f557487086f580ac0d8a12c8a9ea619a16fef",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Burst_2.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ExperimentalBlur.ts",
+      "sha256": "6ed3cfc599fc521aa55a7e7a40cb5919a4dd85032801ef0476ae8c37d6344f67",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/ExperimentalBlur.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ExperimentalNoise.ts",
+      "sha256": "96a7cb890e21c9819112f5893d8157568efd31bf888067b2cedc2248eef607d7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/ExperimentalNoise.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire.ts",
+      "sha256": "f80997e8c2a0a133532bc11a72eeaff258149add2d015a18782ccc1aa0db68c4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Fire.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire_Blur.ts",
+      "sha256": "a32c982404957ae5135d2bb6a284915fbcefd0d895b6ea774b99d2be62017397",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Fire_Blur.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire_Single.ts",
+      "sha256": "af1deaae2eebe4deca0e9951f669589cd020d5b109adeb0835e30cb07d13bf57",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Fire_Single.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Glass.ts",
+      "sha256": "11bd1c7523d29db9f9ea078c21cb815d93fc6bdc479c6989b2fa5ba4a8d28058",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Glass.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Halo.ts",
+      "sha256": "49e37fadb34ec9b311720375b046d4769769b1afbb67c1f601b6142291dd5398",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Halo.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/IntensiveLine.ts",
+      "sha256": "e67f115b6ab86d95219f11c81ab376687764f6896d3956aca802bcadb6bee37c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/IntensiveLine.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/NoiseAnimation.ts",
+      "sha256": "7f4a10d6f8d2e823474d23904969066d03972bd816c863fc50a24a91e82f467e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/NoiseAnimation.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle_Hard.ts",
+      "sha256": "adcd8ff251ef8f58106b26a3568475732a49ce99c1216d15f6e7077bee301fba",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Particle_Hard.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle_Soft.ts",
+      "sha256": "edc6d2b5e8c74ccfbcac38342aca3fe6824c5441b73737887915a2a3aeb532cc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Particle_Soft.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shockwave.ts",
+      "sha256": "eff079e108b5ebfd1d6854aca0698278811294249b4077eaed1802618168d6e3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Shockwave.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Smoke.ts",
+      "sha256": "39049b82922ad867f73e43d15001c2dee45ce2767ba770bb6dbf55db05947d7f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Smoke.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Splash.ts",
+      "sha256": "7ca022ffdb7d1c8d0fb927c9624c67455a7a37595cf7f035c1d9a4ca61816426",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Splash.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Star.ts",
+      "sha256": "e6db268d446febd3be085e3418ed24cccc8aab19ae85fdf33eefacc5a97171a1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Star.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Tentacle.ts",
+      "sha256": "3cb8b6a53c9f26713de2e74b95c12879905f3f41379c87aa965b8d1b82649a0d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Tentacle.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder_Bold.ts",
+      "sha256": "2871f6827a13534215cd19515fb3eccc0f307c864f19aea24de6a259f326227f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Thunder_Bold.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder_Thin.ts",
+      "sha256": "945dac87344cca2908ffb35453029c6359cb4153eb3478f955359afebf10072e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Thunder_Thin.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Wind.ts",
+      "sha256": "afb4c5b52b8295e598ad6b6c5c4fa3773a923e7eb1ffa06e5484e674a56a5ebd",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Wind.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "de7463b3e4df81be386f382642a0e1aedf88da39c0a973514a775791c3d3e5e7",
       "licence": "CC0-1.0",

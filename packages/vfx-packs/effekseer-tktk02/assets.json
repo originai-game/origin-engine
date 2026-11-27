@@ -13150,6 +13150,347 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/6Ice.ts",
+      "sha256": "00ddc72df8edf5168029ee7eced6e38e06a84b576f2df06f0d14478ff97f2d68",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/6Ice.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Aura.ts",
+      "sha256": "d0b85c49eecfeac53c833ca712351e674a75d1b451b461492539c3d61d74cecc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Aura.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Blur5.ts",
+      "sha256": "8910e69c3f7f75475ebdff33daa74c7a0cfdbd0632141fde1163d10834994e47",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Blur5.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion.ts",
+      "sha256": "6fa7f40abafae30116b4b3755f4ee672df5fb605b608b0c47303a19ea2a51c78",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion10.ts",
+      "sha256": "6cbeaffd45c2ec4cadfa6ca4b81137f523186cc84ef480daaaad8b184d1383ff",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion10.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion11.ts",
+      "sha256": "d6ea98848782c4986cf8f4fbe86aa0a66897598c963fea22ebd24813c8904ef6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion11.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion2.ts",
+      "sha256": "ea5cae3eb4f84052d411a99a3f8517e15f7d9e23633ef0985746b1483b6c9511",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion2.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion4.ts",
+      "sha256": "73520c6a6deb9d8d9230ca23817ecac35f250bec78bcbde654983da449a8853a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion4.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion5.ts",
+      "sha256": "018a018ce45ee63561e5ae215846a8c78e01b5dfe7689d3bf88f9a9fd433f923",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion5.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion6.ts",
+      "sha256": "24ab99589c1f3733be5f47b6d1c398d51aed427ab92d90b30a8ae5f5f72afa24",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Distortion9.ts",
+      "sha256": "c647c61a08888501909a9faba9e990a56d7d04d03fe0a059d7318d9ab42b5502",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion9.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire.ts",
+      "sha256": "951a11e60e9adc385d8f7706fa1666ab126c339a59f6738e442902493ee3c616",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Fire.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire5.ts",
+      "sha256": "fa9afa95f21b28a39223cb6df36012bf87751ae74eb742655ef4bafae9ec6f7a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Fire5.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire6.ts",
+      "sha256": "d7227c4faf5db5d2b0ba1c4ab691d0a63aa628c8e2ce334e41b67de977029c1f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Fire6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/FireFog.ts",
+      "sha256": "b38e0cd9788790910a7f587bc8fba8f293c4efdfe7aa16be8f12c84f16cf3215",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/FireFog.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/FireNoise.ts",
+      "sha256": "5a135ef95a3792ac627b7ea8255c8c41c263e2cfc4bf7ed260934317de1843be",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/FireNoise.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire_Blur.ts",
+      "sha256": "bdfaa41d037d1fda0311d80a5cfdac3bf10ae5b7e986f35e19f0a45197622298",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Fire_Blur.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Foam001.ts",
+      "sha256": "be4c83a634b0ea8c258770385bff24a956c1717c8b82d17d168307b60893899c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Foam001.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/GlowRGB2.ts",
+      "sha256": "34cbb57560ad353bba3768049d224ee0a4f03fe923cbde8339768ddda63c7500",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/GlowRGB2.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line01.ts",
+      "sha256": "b550492f062dd43dfefbb173f1f41f649f0533e1ccd126afb69526bad8766be5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Line01.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line6.ts",
+      "sha256": "f52674a7c9e4867296d9ce399b6e0cb60c5c540181dd32de0cb262a5f731a158",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Line6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "5211e1c6871eaa164f7ecbf1b40e4eb71d871a23f9c9751f5a54056c4aa21914",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Particle01.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle02.ts",
+      "sha256": "f9abed091832a72bccc05dd1db69bc3270850882f55eea8f52a27a6e847bd7c6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Particle02.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle_Soft.ts",
+      "sha256": "575c736ad72224263450c0d05b357a19b397367ad6e9a8430dbd842c3d9ead5a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Particle_Soft.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring0011.ts",
+      "sha256": "cd7340274c3130b33ef0df3525caf175eabe588a75924c0fa8e5d3503d7a7381",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Shock_wave_ring0011.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Sonic_wave_ring005.ts",
+      "sha256": "7f1d52ca3660cc65220317bf0ef49ffe0325c45d98199ec7c2f90ed68d87cfc7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Sonic_wave_ring005.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/fog1.ts",
+      "sha256": "05d2fcc81f3cac7a9f1306281d34b1115ac571aeeebe464fc357018c17850532",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/fog1.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/fog2.ts",
+      "sha256": "b763723545ca1d1a40213b58de5b38cb31f08b1b6aca0d92575ece0b9fba8d95",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/fog2.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/glowRGB.ts",
+      "sha256": "d0087db4b35cc857c433bbceca9a5d2a0d139c681621ff5cf21abf8ac09e12ba",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/glowRGB.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/shield1.ts",
+      "sha256": "8578c840f7d2189563106d2132fdfb7c98d0183950782bfa97d8cb8d08b9abc5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/shield1.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/star.ts",
+      "sha256": "35f36ef5dcd02a4eb8ba75ae5cd2483c3f718e9bf5625dc5b8ee49393bd2b588",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/star.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "0d1ddc261e0a5346a8647bbb073d32700e010da9725afacefcba5a926fc08730",
       "licence": "CC0-1.0",

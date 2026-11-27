@@ -22,7 +22,7 @@ fn effekseer_import_writes_checked_content_and_matching_native_fx() {
     let out = dir.join("content/fx");
     let imported = efk::import(&source, &out, None, true).unwrap();
     assert_eq!(imported.id, "base/fx/burst");
-    assert_eq!(imported.written.len(), 3);
+    assert_eq!(imported.written.len(), 4);
     assert!(
         imported
             .written
@@ -75,9 +75,22 @@ fn effekseer_import_writes_checked_content_and_matching_native_fx() {
             assert_eq!(native, Emitter::from_bytes(&generated.bytes).unwrap());
             assert_eq!(native.data.lifetime, [1.3833; 2]);
         } else {
-            panic!("unexpected declaration {kind}");
+            assert_eq!(kind, "import");
+            use og_cook::cook::source_schemas::world::import::ImportInput;
+            let ImportInput::Texture(texture) = ImportInput::schema().decode(input).unwrap() else {
+                panic!("texture declaration")
+            };
+            assert_eq!(texture.source, "assets/fx/textures/leaf.png");
         }
     }
+    let report = og_cook::cook::cook_project(&dir, &Default::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = og_bundle::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    let bytes = bundle.read(&imported.id).unwrap();
+    assert_eq!(
+        bundle.vfx(&imported.id, &bytes).unwrap().duration,
+        conversion.vfx.duration
+    );
     assert!(efk::import(&source, &dir.join("assets/wrong"), Some(&dir), false).is_err());
 }
 

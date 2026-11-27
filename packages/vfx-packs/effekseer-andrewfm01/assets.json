@@ -1072,6 +1072,270 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/LaserMain02.ts",
+      "sha256": "7e0f8f8a8d4e2a83721fa01c69fb7dcad81ac87395b4e9687a1471066ad04628",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/LaserMain02.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "102e1101e54bb0359c32c4b9bdf15a2029cba5334a3c3530895bfb40342c5c9c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave004.ts",
+      "sha256": "a6b6a87c0f8deda74ecd4994932fc5a0a44e85ff3d266677de1b0d6648d6dbb1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave004.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring001.ts",
+      "sha256": "da37a44b1449237220a69a82020935f5f472c2350b906bd0d2bc1cd8f93449c0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring001.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring001_long.ts",
+      "sha256": "ef8549406fc0ba5741c9362cf43cf185ed905ec6bbdc8d81ffb657b03149eec0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring001_long.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring002.ts",
+      "sha256": "c26d0a6f7c13c4edcb79696272ed6d1e4e55e5e6bfca3f2aea4e31a1a80f220a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Shock_wave_ring002.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder01.ts",
+      "sha256": "9a900d54fa173e927d064c3798ffd06e36ff56e8e599e4021cac00f621418fd8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Thunder01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Wind01.ts",
+      "sha256": "dd14e44fdca72f36a882935d4cfeead73a39bf3a38853d583c9c9c2c347e3fdb",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Wind01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/actionlines.ts",
+      "sha256": "dea796d281090cb47baccb93026d56eecfed5fff1a94febf36b25c1c4222bf37",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/actionlines.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/aurora01.ts",
+      "sha256": "324c78800b0ec5d55ef5b42f3646793a95f6058ba2573e32a8f25689323ac060",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/aurora01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/burst02_red.ts",
+      "sha256": "35a75d06ebd3eb8b6c9c7ddfe13b29e9afbd74e1e602d994b6b65aa89a955665",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/burst02_red.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/clockHand.ts",
+      "sha256": "f335eb3f798be9508e5597655fed5ad09e3528d29c38400c187a2060d8fb8e98",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/clockHand.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/double-shockwave.ts",
+      "sha256": "875cbc1b326abec00ca06d474d3d369b8b8c14ca54cd3cf5aaeb9265ab4e18c0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/double-shockwave.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/drillshi.ts",
+      "sha256": "e418a56fd609e83928a6c667590eca59b02f6532a86825070589d263e97606a7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/drillshi.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/eggzero.ts",
+      "sha256": "c9f3bc40a2eaf4ce7b81ff8b159c887ba61741f73598b642f3d4276cbe70c363",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/eggzero.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/fire_tex.ts",
+      "sha256": "9f738d775019e0005558b824630fca31c5b90a2bb5cd0265315e57b591515072",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/fire_tex.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/glow.ts",
+      "sha256": "600b867e21a8fbcd4be23846a1c09243bb576b52e65491b1ed73b6bd76309787",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/glow.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/orb_colored.ts",
+      "sha256": "6864d8ab6eee02fd20d8470704fdfd32198e1269812d7940a0e26b036a44cb4e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/orb_colored.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ribbon01_trans.ts",
+      "sha256": "9f4b703b54e6acf33b3d9b8a1aafa83fa53c4924858fd0626adcb97ad90ee98e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/ribbon01_trans.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/smoke_tex.ts",
+      "sha256": "e61e5a874d55f8e27ef62a4f70eff5f69211707d7c9ef14c73312ad68efdbb1f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/smoke_tex.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/squareWave.ts",
+      "sha256": "dfaaf841af4162db0f14934b6c818d3c0092b2d4b0a7252b6d5ad783c2a75c79",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/squareWave03_192.ts",
+      "sha256": "b578fd3975f304c17221a423eb8f11cfbb9f9dbd72730b5ea7537ea6b6495947",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave03_192.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/squareWave03_384.ts",
+      "sha256": "6c6c8eb6c1df6322a5e24fb1f31796c3dad4a5b4ed5bf1ccea6842700039df61",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave03_384.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/starpart_.ts",
+      "sha256": "6db6febfe34d8dd32faa20290bd8108509e73e8c1fa11660ca5cf8511e5d7996",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/starpart_.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "afc00a4a5ed8600be89793879decededb7b0d822b92328f78c403bb79f13e5a2",
       "licence": "CC0-1.0",

@@ -17,30 +17,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "A_Gohlem1/model-Hammer.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "A_Gohlem1/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "A_Gohlem1/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -61,30 +39,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "A_Gohlem1/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem1/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem1/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -105,30 +61,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Gohlem1/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem11/model-block1.glb",
       "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem11.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem11/model-block1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -149,30 +83,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Gohlem11/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem11.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem5/model-Hammer.glb",
       "sha256": "ac5e65731a11b38ca6b2a9b4a67b353302d325860310cf0bd03d056cd9fc1373",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem5/model-Hammer.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -193,30 +105,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Gohlem5/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem5/model-block3.glb",
       "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem5/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -237,30 +127,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Gohlem7/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem7/model-block3.glb",
       "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem7/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -281,30 +149,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Gohlem7/model-rock1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Gohlem_Shield2/model-gohlem_shield.glb",
       "sha256": "994255f9f3638f88e7bcb432695400ddcd90d6b73635e7ca044b517d02aa41aa",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Gohlem_Shield2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Gohlem_Shield2/model-gohlem_shield.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -325,30 +171,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Icicle1/model-icicle3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Icicle2/model-icicle1.glb",
       "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Icicle2/model-icicle1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -369,30 +193,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Icicle2/model-icicle3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Icicle3/model-icicle1.glb",
       "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle3.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Icicle3/model-icicle1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -413,17 +215,6 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Icicle3/model-icicle3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle3.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "IcicleBroken/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
       "licence": "CC0-1.0",
@@ -435,30 +226,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "IcicleBroken/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/IcicleBroken.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "IcicleBroken/model-block3.glb",
       "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/IcicleBroken.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "IcicleBroken/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -489,30 +258,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Rock2/model-block1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Rock2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Rock2/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Rock2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Rock2/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -533,30 +280,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Rock2/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Rock2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "StairBroken/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/StairBroken.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "StairBroken/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -577,17 +302,6 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "StairBroken/model-block3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/StairBroken.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Undine13/model-sphere.glb",
       "sha256": "c276e6d6ea3529ca006777abdef48b60289882138f12208ffad10df66d892ba1",
       "licence": "CC0-1.0",
@@ -599,19 +313,41 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Undine13/model-sphere.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
+      "path": "content/A_Gohlem1.ts",
+      "sha256": "736bf4f76963758db63a52eef74a6465ef4bfb58b95131c5421d2c7a460a2a8e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Undine13.efkproj"
+        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
       },
       "credit": "Effekseer and MAGICALxSPIRAL",
       "derived": "converted by og vfx import"
     },
     {
-      "path": "content/A_Gohlem1.ts",
-      "sha256": "736bf4f76963758db63a52eef74a6465ef4bfb58b95131c5421d2c7a460a2a8e",
+      "path": "content/A_Gohlem1/model-Hammer.ts",
+      "sha256": "4f0ff1d146a735f5cdd4ee5dd905ae5ec9c4808b19ed325c492ad972cd88db4b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/A_Gohlem1/model-block2.ts",
+      "sha256": "ff425d8871466e9cfc072aa68060703c0a9470ab73bbd5e6d0c0aebf25508267",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/A_Gohlem1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/A_Gohlem1/model-block3.ts",
+      "sha256": "116d4435fc6b89d16b62c4359b92107ac1bf755999874dcd2324b5a7c44f4d3c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2205,6 +1941,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Gohlem1/model-block2.ts",
+      "sha256": "d960539f1b892dbc6cb43813c33152f1da34ece6be06cb92fe382c35b1eb0c09",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem1/model-block3.ts",
+      "sha256": "d9f5d8424a9b2c992d6d53a564b5a56d608678ac07d0de7337c1ef8481fe8d6e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Gohlem1/n0-0.emitter.ts",
       "sha256": "5fa80b888cda0b9d26eabd42d1c5e00c26d07fd323762646f21a0e72122e8f62",
       "licence": "CC0-1.0",
@@ -2293,6 +2051,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Gohlem11/model-block1.ts",
+      "sha256": "c6138355700b6d590b8423f6bc0b7d598a1f44afaf6e654f7fea00c3f93df6d3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem11.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem11/model-block2.ts",
+      "sha256": "974d0658a8584cd7ac29d9147080cf6b07713175ee9ee66919c7d5f5ba0b8602",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem11.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Gohlem11/n0-0-0.effect.ts",
       "sha256": "0140391566b0d5abfb91e080a29b590d6438be8576e78789cbaf9a9f2f255ead",
       "licence": "CC0-1.0",
@@ -2350,6 +2130,39 @@
     {
       "path": "content/Gohlem5.ts",
       "sha256": "1718228799f240e97a6612a09db7acecfd07c99730797b509bd34afac0b2d681",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem5/model-Hammer.ts",
+      "sha256": "7421eb611e080b3154891259fafe97118bfbf0d42fc80ffe8c9267e9194782b6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem5/model-block2.ts",
+      "sha256": "8a09d6c71ed56e740a3495e188ecb0680e12717c4e0abc419f87f500ef8129bf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem5.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem5/model-block3.ts",
+      "sha256": "a4dd9f1d5a0634c9256a2eae864f3dd5d36239544d9e98d4f3333fbd6513a4a7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2546,6 +2359,39 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Gohlem7/model-block2.ts",
+      "sha256": "6a763f9529af2208e9bb1b7a8cdef6a11e4d950a2a7b8997c180f85d67085527",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem7/model-block3.ts",
+      "sha256": "c7796917f8e2a31aa940586fc6a27b23e7e986f00f64376079bde63944a46b3c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Gohlem7/model-rock1.ts",
+      "sha256": "6bc8ee936a4a30e2a770bf2e0b91fa11dda38078499361354ffd2f49ac1f9ab7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem7.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Gohlem7/n0.effect.ts",
       "sha256": "1fe07e77dbd6f5aa5b57714a1956d842ede98dfc82b81d5df1678528355a1331",
       "licence": "CC0-1.0",
@@ -2689,6 +2535,17 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Gohlem_Shield2/model-gohlem_shield.ts",
+      "sha256": "f297f7a63c7b34f99ca13b2c771e6ae4ae2ee43dd2a9cf2180722d3b3519a6ad",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Gohlem_Shield2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Gohlem_Shield2/n0.effect.ts",
       "sha256": "e07ab0f577660d868a775f342bbafabf4add53ab1a708f24d75f49c4d75df139",
       "licence": "CC0-1.0",
@@ -2821,6 +2678,17 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Icicle1/model-icicle3.ts",
+      "sha256": "7ebfc0217e5e9938cfbcc081e15a3c3ecc6806ccf87f2a4cbb0aa95dca285ffe",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Icicle1/n0-0-0.effect.ts",
       "sha256": "5932bb394fc08df2636b181b7b10a322b8d7cd2e6409178dff390e7ee43d5037",
       "licence": "CC0-1.0",
@@ -2845,6 +2713,28 @@
     {
       "path": "content/Icicle2.ts",
       "sha256": "31ca0671688167c533429de620c2dee7a451e6bc7558395350e9a51167adbcd1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Icicle2/model-icicle1.ts",
+      "sha256": "fbef80ba45d25df33c81ff5f8b14482b302ba90f93153fbf58859f3782cf6bdc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Icicle2/model-icicle3.ts",
+      "sha256": "95351138e01bb6048caa0809437af39480387f2f778e49e1ec24c499e5deedda",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2920,6 +2810,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Icicle3/model-icicle1.ts",
+      "sha256": "629fe425e910a38349d12028d5369d6cbe36a20ba674888c1dccb2dc30eea978",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle3.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Icicle3/model-icicle3.ts",
+      "sha256": "bfe2c98b635522d4497178b8d7297b551d3c07186391e7e2cd959a163b244981",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle3.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Icicle3/n0-0-0.effect.ts",
       "sha256": "5932bb394fc08df2636b181b7b10a322b8d7cd2e6409178dff390e7ee43d5037",
       "licence": "CC0-1.0",
@@ -2977,6 +2889,28 @@
     {
       "path": "content/IcicleBroken.ts",
       "sha256": "45861c20ad525465bb25f6e1de5e32cdac14ef567bde3ddf5bb438def902ed88",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/IcicleBroken.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/IcicleBroken/model-block2.ts",
+      "sha256": "9340681f88eb5114f0e202278d6a6d377e91bfb67ab6c280d62e41c79195918f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/IcicleBroken.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/IcicleBroken/model-block3.ts",
+      "sha256": "60c6b1f7cc576b78c8b106770899077a760151c02bc818a229c51cf60a8d8971",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -4449,6 +4383,39 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Rock2/model-block1.ts",
+      "sha256": "f2f8f9c0d16dbe10732abb66fc5a3aa1f14c1bdc96126a918518f974adc148b6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Rock2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Rock2/model-block2.ts",
+      "sha256": "8bd579b2900df6c11bc6c9a27b265c06003f737867b5b7aad3a9951df3364268",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Rock2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/Rock2/model-block3.ts",
+      "sha256": "8aa9a174b629f4cdda7c8e546b5a409872f0845a09a18e7ddd4475a7fd9ae0f9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Rock2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Rock2/n0-0.emitter.ts",
       "sha256": "5fa80b888cda0b9d26eabd42d1c5e00c26d07fd323762646f21a0e72122e8f62",
       "licence": "CC0-1.0",
@@ -5628,6 +5595,28 @@
     {
       "path": "content/StairBroken.ts",
       "sha256": "293e81244c37e0465b528088712f60f681c29c0d65cd51966f2a8f63c729d703",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/StairBroken.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/StairBroken/model-block2.ts",
+      "sha256": "0a19f63459da9effe3a94b31b4dc7bd5c664b85276f8d34f0c56d05a68669f11",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/StairBroken.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/StairBroken/model-block3.ts",
+      "sha256": "bbb8668bdbee24e3096848dd116dcea9b87d9501ef5af062f858b3977d1db076",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -7023,6 +7012,17 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/Undine13/model-sphere.ts",
+      "sha256": "4f514b5263a9677e9fc4bb54cbce3c01fc42972922205017c9b20a4cc8445c0f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Undine13.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/Undine13/n0.effect.ts",
       "sha256": "8252c172c358f3fafdb810b09a66ec78d9e04ee78c4e833e042557f9585dc9de",
       "licence": "CC0-1.0",
@@ -8090,6 +8090,28 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/meteo1/model-block1.ts",
+      "sha256": "27e81a93de00fdcadae955d4997d558ddd097a428a9201cca8219a5c7a24951b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/meteo1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/meteo1/model-block2.ts",
+      "sha256": "98c1dcf3aea94bf4bc271a444cbe7a8551922a81175db4591a5447afdac0cb22",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/meteo1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import"
+    },
+    {
       "path": "content/meteo1/n0-0-0.effect.ts",
       "sha256": "0140391566b0d5abfb91e080a29b590d6438be8576e78789cbaf9a9f2f255ead",
       "licence": "CC0-1.0",
@@ -8332,6 +8354,424 @@
       "derived": "converted by og vfx import"
     },
     {
+      "path": "content/textures/Fire1.ts",
+      "sha256": "4542085051b510448cd258b82be1f1b7b47dce13b226d69897923c2005daabb3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Fire1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire2.ts",
+      "sha256": "e054dd880c3949dc673661c7b159e4b3702367c6ea35cb84b06a71c590d553de",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Fire2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire3.ts",
+      "sha256": "56f2de8208355d7bc25766c7679574d2244a120fdfc7b332af3e385f086771aa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Fire3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Fire4.ts",
+      "sha256": "3e9177f8fb0adab5c7635d81168cfaea8b6924d71351fd290f7035e29f0260d0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Fire4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Hammer1.ts",
+      "sha256": "564068dbca41d0745589fd7a5c1c8fdf7fd60ad99264902f2e4a16ca1b8b19bc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Hammer1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line1.ts",
+      "sha256": "9dc35c7911fbe4357ae56a0a554771cec139d14c549eeec46e6cb17cb5e3194f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line2.ts",
+      "sha256": "8e8a731dfd74c09d584c2556d107ef5b8e9a5bf7bdcd8d299a6560812a2ebd68",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line3.ts",
+      "sha256": "e1ab048e702ce79fcec7da77513742169e6dde1655931bbe6d6f40284dbf7f6f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line4.ts",
+      "sha256": "9d0e19b0479bd4f2f34701fde921c79620d1134884c7538e01de61a1ea174a41",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line5.ts",
+      "sha256": "5fa1d5a44b2153233ec4563773dd14fd6249fdf925c6da0811a88e7010e971c5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line5.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Line6.ts",
+      "sha256": "df151cee5de79738cef6f0f82902b189ca82be9f98f0d5a20b3db591dc1f1a27",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line6.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave1.ts",
+      "sha256": "7881475c77a024e276b1b27b05bdb6f7bbc7fc92839d0925bd6add9f416b1bde",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave2.ts",
+      "sha256": "132dba0fbe850526cdc48cf8da85e676138110b306dc7ea994d3449fcd1456f2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave3.ts",
+      "sha256": "85b997732dd5427bd432431d4e73c5c209160e1217b342101a6793a4f57d399e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave4.ts",
+      "sha256": "0c728382ea85e527c1488d599736ddb3368e3e79a713b6f147f5346d78f23d5e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave5.ts",
+      "sha256": "b36bd312e8feafe3b65cc88764c47abcd5000b092acdc2f4a0b0b6c9d5871a19",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave5.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave6.ts",
+      "sha256": "7d7740c087a78533341e302535627a22552a44d96e87102fb3c965d38f9114b4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave6.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave7.ts",
+      "sha256": "03dd21decd8ff82517d49ddf73bd21898a0e39100af1df0edb0bfd425ab17368",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave7.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/ShockWave8.ts",
+      "sha256": "85527e5d1e1c4204d4590ca5289864eabbbe4a6065520a2f81ed952e2c819cc9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave8.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder2.ts",
+      "sha256": "1b8aa4f15508c4eb3f201282e389260882c24bf3b7b8ea1810b819adc83c9bbf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Thunder2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Thunder3.ts",
+      "sha256": "5a448b962fdd04294af2b42703247a79f6e95c25e388cec63c6409dff9d78b77",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Thunder3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/Water.ts",
+      "sha256": "182db15a445e8210880242d22d06d72a6614763ab260fdb84c4281cfd586c742",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Water.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/WaterForm1.ts",
+      "sha256": "2c2d2cdda891ed9e013bd2261612bf162e164b6cb3c33c9f9df905cda0b5d796",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/WaterForm1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/WaterForm2.ts",
+      "sha256": "b8f26f4c2acc58196ee74e39b03ff2b8dd09da894e622e5fa05f5731e151dfce",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/WaterForm2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/White.ts",
+      "sha256": "97eee099811e200567bd211902a9fc60e152ca5625336b6e721cbe5077976d52",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/White.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/circle1.ts",
+      "sha256": "39f15db5777956f2573f379dd70599d8cd2de9d72357511fba509856082bea4e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/circle1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/circle3.ts",
+      "sha256": "0e93c9caad7abc43caf65e62cf67ec180e1cc3a684f92918ab88dc548b0ae143",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/circle3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/circle4.ts",
+      "sha256": "6ba70e624cc19b909bab5f6e692a5b5e7ba954d02f92509b4409d82f3e174edf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/circle4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/fireline2.ts",
+      "sha256": "8e1c5d6aebf41f814f07d2d08ba11ff25a29d4e491f74c18ce5f7d480f62edfd",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/fireline2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/icicle.ts",
+      "sha256": "fbe5a57c010ad43dd049d47329debddb923743d8f92ca4e18cc249b74e8d2254",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/icicle.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/icicle2.ts",
+      "sha256": "2d5ed2de79c7341372eabea7ab6b066a39bd41f1b883d31d1e2ec8b2ad41cbe9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/icicle2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/particle.ts",
+      "sha256": "e74a18bb5562c2ede20638a7a83406bc1218ca1218aa34dc2e993046a950e65b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/particle2.ts",
+      "sha256": "d9c2f1467894ad3468d2be5b5d5de7283bbe72d17aa35aa14784cad0a78da535",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/particle3.ts",
+      "sha256": "42746f6eb11533d73c44e5eb7c09091023b4609e80549d82842daa83b91d3071",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/particle4.ts",
+      "sha256": "7951218d60102bc70702e722c650f4e7526b17847da8cd6f54823e23c804f2f6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/shield_color.ts",
+      "sha256": "b8a2d0968071b7f39d21655de79257bd81e84a84c5e4cf55580ee3f64e11ea7e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/shield_color.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/smoke_01.ts",
+      "sha256": "eeb146cde13bbdce2752d435c84267417959ef04e7845d2c37f02b67ffe8fdd2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/smoke_01.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
+      "path": "content/textures/star.ts",
+      "sha256": "424c91ad312e0ed0b3ccebb1fde90098b0ab0b33cb22a7dce6efbfbe38906f8a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/star.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "authored"
+    },
+    {
       "path": "extension.json",
       "sha256": "c3ca135b0cf9f049799596970f32cdf0e6ee272a72f88c942797c5d15690888d",
       "licence": "CC0-1.0",
@@ -8353,30 +8793,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "meteo1/model-block1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/meteo1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "meteo1/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/meteo1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "meteo1/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
