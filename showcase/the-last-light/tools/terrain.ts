@@ -4,7 +4,7 @@
 //
 // writes assets/terrain/coast-height.png (16-bit grey) and
 // assets/terrain/coast-control.png (RGBA: grass, cliff rock, path, shore),
-// which assets/terrain/coast.ogt names. Needs ImageMagick (`magick`).
+// which content/terrain/coast.ts names. Needs ImageMagick (`magick`).
 // The layout constants are shared with the game through src/layout.ts, so
 // the camera, the path and the buildings stand where the ground was made
 // for them.

@@ -1,4 +1,4 @@
-// The fixture terrain.test.ts cooks and loads (assets/terrain/hill.ogt).
+// The terrain fixture cooks and loads content/terrain/hill.ts.
 import { defineProject } from "@origingame/engine/author";
 
 export default defineProject({

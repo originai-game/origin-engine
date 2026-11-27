@@ -20,7 +20,7 @@ function hill(world: World) {
 
 export default og.game({
   start(world) {
-    const info = og.terrain.load(world, "terrain/hill.ogt");
+    const info = og.terrain.load(world, "base/terrain/hill");
     if (!info.ok) throw new Error(info.reason);
     const spawned = world.spawn({ name: "hill" });
     if (!spawned.ok) throw new Error(spawned.reason);

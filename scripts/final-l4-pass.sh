@@ -379,7 +379,7 @@ sec_environment() {
   sky="$root/crates/og-cook/tests/assets/environment/ai-coast.png"
   [ -f "$sky" ] || { fail environment "no $sky (bun scripts/assets.ts ensure crates/og-cook/tests/assets/environment)"; return 0; }
   p="$(mktemp -d)"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og" "$p/node_modules"
-  mkdir -p "$p/node_modules/@origingame" "$w/shots" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
+  mkdir -p "$p/assets/env" "$p/node_modules/@origingame" "$w/shots" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
   # The upper dome is the panorama's upper half: zenith to horizon.
   cp "$sky" "$p/assets/env/"
   local wh; read -r -a wh <<< "$($IM "$sky" -format '%w %h' info: 2>/dev/null)"

@@ -1,8 +1,8 @@
 // The LDR environment scene the final L4 pass shoots (scripts/final-l4-pass.sh environment): the
 // pinned AI sky lighting and behind a few shapes whose top faces catch the extracted sun.
 // `sky:<name>` sets one of
-//   full    assets/env/coast.ogt, the whole panorama as a sphere
-//   upper   assets/env/upper.ogt, its upper half as a dome over a filled ground
+//   full    content/env/coast.ts, the whole panorama as a sphere
+//   upper   content/env/upper.ts, its upper half as a dome over a filled ground
 //   blur    the full sphere with backgroundBlurriness 0.5
 //   blend   the full sphere halfway to the upper dome (blendTo, blendWeight 0.5)
 // and aims a DirectionalLight from og.load.environmentSun. `face:sun` faces the sun's azimuth (the
@@ -35,8 +35,8 @@ function aim(world: World): void {
 function view(world: World, name: string): void {
   const env = world.resource(og.Environment);
   if (!env.ok) throw new Error(env.reason);
-  const coast = load(world, "env/coast.ogt");
-  const upper = load(world, "env/upper.ogt");
+  const coast = load(world, "base/env/coast");
+  const upper = load(world, "base/env/upper");
   const map = name === "upper" ? upper : coast;
   Object.assign(env.value, {
     map,
@@ -97,7 +97,7 @@ export default og.game({
   tick: 60,
   seed: 1,
   start(world) {
-    const s = og.load.environmentSun(world, load(world, "env/coast.ogt"), 0, 1);
+    const s = og.load.environmentSun(world, load(world, "base/env/coast"), 0, 1);
     if (s.ok && s.value.intensity > 0) sunDir = s.value.direction;
     const light = world.spawn({ name: "sun" });
     if (!light.ok) throw new Error(light.reason);

@@ -1,8 +1,0 @@
-type environment
-version 1
----
-# The pinned AI sky (crates/og-cook/tests/assets/environment/ai-coast.png) as a full sphere; the
-# pass copies it in beside this file.
-source "ai-coast.png"
-size 256
-samples 256

@@ -15,7 +15,7 @@ export interface Coast {
 }
 
 export function buildCoast(world: World): Coast {
-  const terrain = must(og.terrain.load(world, "terrain/coast.ogt"));
+  const terrain = must(og.terrain.load(world, "base/terrain/coast"));
   const ground = must(world.spawn({ name: "coast" }));
   must(world.insert(ground, og.Terrain, { data: terrain.data }));
   must(world.insert(ground, og.Collider, { shape: "heightfield", mesh: terrain.geometry }));

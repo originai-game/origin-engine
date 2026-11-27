@@ -112,8 +112,8 @@ function dress(world: World, weights: readonly number[]): void {
   const year = blend(YEAR, weights);
   const ground = world.find("coast");
   if (ground !== null) must(world.set(ground, og.Grass, { tipColor: year.tip, baseColor: year.base, dryColor: year.dry, dryness: year.dryness, height: year.height }));
-  const terrain = must(og.terrain.load(world, "terrain/coast.ogt"));
-  // The turf layer as assets/terrain/coast.ogt has it, in the season's colour.
+  const terrain = must(og.terrain.load(world, "base/terrain/coast"));
+  // The turf layer as content/terrain/coast.ts has it, in the season's colour.
   must(og.terrain.setLayer(world, terrain.data, 0, { color: year.turf, roughness: 0.95, tile: 7, antiTiling: 0.7, macroVariation: 0.6 }));
   const grow = (name: string, size: number) => {
     const e = world.find(name);
