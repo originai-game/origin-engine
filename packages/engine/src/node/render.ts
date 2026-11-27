@@ -9,12 +9,12 @@
 //       a range:    --first I --count N [--audio <out.wav>]
 //       the leader: --leader --end N --audio <out.wav>
 //
-// Frame i of the render shows the world at tick T0 + i·k, where T0 is
+// Frame i of the render shows the world after T0 + i·k steps, where T0 is
 // round(from · rate) and k = rate / fps (the fps must divide the tick rate).
 // - A range sends frames I to I + N - 1, after W warm-up frames on the same
 //   grid before it (drawn, not sent: the renderer's history, TAA and the
 //   adapted exposure, is then that of a run that drew them). Ticks between
-//   frames are simulated without drawing, from tick 0: a range never starts
+//   frames are simulated without drawing, from the start: a range never starts
 //   from another process's world, which would lack what lives outside it
 //   (the terrains and assets the script loaded). With --audio the capture mixer's
 //   WAV from tick 0 to the range's end is written there.
@@ -210,29 +210,40 @@ if (commands !== undefined) {
 
 let quit = false;
 const tick = (): number => engine.probe.tick();
+// The recording's clock is not snapshot state. Restoring the world may move
+// its tick in either direction; neither recording time nor commands rewind.
+let elapsed = 0;
 
-/** Simulate to tick `t` without drawing. */
+/** Simulate to recording step `t` without drawing. */
 function simulate(t: number): void {
-  const n = t - tick();
-  if (n <= 0) return;
-  const r = engine.advance(n);
-  if (!r.ok) fail(r.reason);
-  sink.pump();
-  drain();
-  // The probe takes no tick after a `quit` step.
-  if (tick() < t) quit = true;
+  extras.og_node_capture_only(engine.id, true);
+  try {
+    while (elapsed < t && !quit) {
+      const answer = engine.frame(tickMs);
+      if (!answer.ok) fail(answer.reason ?? "the frame failed");
+      elapsed += answer.ticks ?? 0;
+      quit = answer.quit ?? false;
+      sink.pump();
+      drain();
+    }
+  } finally {
+    extras.og_node_capture_only(engine.id, false);
+  }
 }
 
-/** Bring the world to tick `t` and draw it there. */
+/** Bring the recording to step `t` and draw the world's current tick. */
 function drawAt(t: number): void {
-  if (t > tick()) simulate(t - 1);
+  if (t > elapsed) simulate(t - 1);
   if (quit) return;
-  const answer = engine.frame(t > tick() ? tickMs : 0);
-  if (!answer.ok) fail(answer.reason ?? "the frame failed");
-  sink.pump();
-  drain();
-  if (answer.quit) quit = true;
-  if (!answer.rendered) fail("the frame was not drawn");
+  do {
+    const answer = engine.frame(t > elapsed ? tickMs : 0);
+    if (!answer.ok) fail(answer.reason ?? "the frame failed");
+    elapsed += answer.ticks ?? 0;
+    sink.pump();
+    drain();
+    if (answer.quit) quit = true;
+    if (!answer.rendered) fail("the frame was not drawn");
+  } while (elapsed < t && !quit);
 }
 
 if (leader) {
@@ -240,7 +251,7 @@ if (leader) {
 } else {
   const from = tickOf(first!);
   // Warm-up frames on the frame grid before the range: drawn, not sent.
-  for (let t = Math.max(tick(), warmTick(first!)); t < from && !quit; t += step) drawAt(t);
+  for (let t = Math.max(elapsed, warmTick(first!)); t < from && !quit; t += step) drawAt(t);
   // What happened in the warm-up belongs to the frames before the range.
   if (first! > 0) engine.probe.timeline();
   let sent = 0;

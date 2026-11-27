@@ -52,6 +52,22 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
                 .unwrap();
             assert!(run.status.success(), "{}", text(&run));
             assert!(text(&run).contains("\"passed\":7"), "{}", text(&run));
+            // A local --ticks budget counts executed steps, not the restored
+            // world's clock. New game at 1s restores tick 0 in step 61;
+            // after 120 steps the world is at tick 59, not tick 120.
+            let bounded = og()
+                .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+                .env("OG_RENDERER", "none")
+                .args(["run", dir.join(command).to_str().unwrap(), "--headless", "--json", "--ticks", "120", "--commands",
+                    "0.5:intent:ShellAction:{\"action\":\"menu\"};1:intent:ShellAction:{\"action\":\"new\"};3:quit"])
+                .output()
+                .unwrap();
+            assert!(bounded.status.success(), "{}", text(&bounded));
+            let stdout = String::from_utf8_lossy(&bounded.stdout);
+            let summary: serde_json::Value =
+                serde_json::from_str(stdout.lines().last().unwrap()).unwrap();
+            assert_eq!(summary["tick"], 59, "{}", text(&bounded));
+            assert_eq!(summary["quit"], false, "{}", text(&bounded));
         }
         let refused = og()
             .current_dir(&dir)

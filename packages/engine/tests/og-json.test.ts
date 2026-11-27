@@ -3,7 +3,7 @@
 // status, and `og build --json` with where the build lands. A change to
 // any shape asserted here is a breaking change.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -432,3 +432,21 @@ test("og build --json prints check and build events; the build lands in dist/ or
   expect(events(moved).map((e) => [e.event, e.out])).toEqual([["build", elsewhere]]);
   expect(existsSync(join(elsewhere, "og-build.json"))).toBe(true);
 }, BUILD_WALL_MS);
+
+gpuTest("og render records its whole frame grid through New game's snapshot rewind", () => {
+  const project = join(root, "render-rewind");
+  const made = og("new", project, "--form", "2d", "--look", "pixel", "--no-prompt");
+  expect(made.code, made.stderr).toBe(0);
+  const out = join(root, "render-frames");
+  const r = Bun.spawnSync([ogBin(), "render", project, "--commands",
+    '0.5:intent:ShellAction:{"action":"menu","value":""};1:intent:ShellAction:{"action":"new","value":""};1.8:expect:ui:text:=Pause;3:quit',
+    "--to", "2.5", "--fps", "30", "--size", "160x90", "--frames", "png", "--out", out, "--json"],
+    { cwd: repo, env: { ...env, OG_RENDERER: process.env.OG_RENDERER ?? "hardware" } });
+  expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
+  const frames = JSON.parse(readFileSync(join(out, "frames.json"), "utf8"));
+  expect(frames.frames).toHaveLength(75);
+  expect(frames.frames.map((f: { index: number; time: number }) => [f.index, f.time])).toEqual(
+    Array.from({ length: 75 }, (_, i) => [i, i / 30]),
+  );
+  expect(existsSync(join(out, frames.frames[74].file))).toBe(true);
+}, 180_000);

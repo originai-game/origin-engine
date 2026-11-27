@@ -846,7 +846,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         // Short of --ticks, a paced frame catching up after a slow one takes at most the ticks left (the clock holds
         // less than a tick after a frame, so this is never negative): the run ends on --ticks, not past it.
         const wall = realtime ? performance.now() - last : tickMs;
-        const elapsed = ticks !== undefined && at.tick < ticks ? Math.min(wall, (ticks - at.tick) * tickMs - at.behind + 1e-6) : wall;
+        // A local run counts steps, not snapshot time. A room still targets
+        // the shared world tick that every peer must confirm.
+        const progress = room === undefined ? ticksRun : at.tick;
+        const elapsed = ticks !== undefined && progress < ticks ? Math.min(wall, (ticks - progress) * tickMs - at.behind + 1e-6) : wall;
         cancelled();
         const started = performance.now();
         last = started;
@@ -886,7 +889,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         // goes on (predicting at most maxPredictionTicks ahead) until that tick's
         // world is final and every peer acknowledged this one's inputs for it
         // (they may have been lost), so `confirmedHash` is the room's (finalHash).
-        if (ticks !== undefined && tick >= ticks && (room === undefined || rollbackDone(ticks) || tick > ticks + 600)) break;
+        if (ticks !== undefined && (room === undefined ? ticksRun >= ticks : tick >= ticks && (rollbackDone(ticks) || tick > ticks + 600))) break;
         // The script ends once its last step has run: a restore moving og.Time
         // forward or back moves the steps with it (they keep their delays), so
         // the tick its last step was scheduled for is no end (brasswick #13).
