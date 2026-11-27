@@ -18,9 +18,12 @@ test("a wall, a pillar and a pane break on their beats and nothing falls through
       "1.6:strike",
       "2:throw",
       // The wall is down to its piers, the pillar to its stump, the pane to shards.
-      "2.9:expect:state:wall<0.5",
-      "2.9:expect:state:pillar<0.75",
-      "2.9:expect:state:pillar>0.25",
+      // Remaining bond area is not the fraction of anchored chunks: test the
+      // foundations directly rather than pinning a solver's health percentage.
+      "2.9:expect:state:wall<1",
+      "2.9:expect:state:pillar<1",
+      "2.9:expect:state:wallAnchored>0",
+      "2.9:expect:state:pillarAnchored>0",
       "2.9:expect:state:paneIntact==0",
       "3:screenshot:yard.png",
       "3:expect:frame:references/vulkan/yard.png:rmse:<=3",

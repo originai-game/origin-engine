@@ -132,6 +132,8 @@ export default og.game({
       fractured: yard.ok ? yard.value.fractured : 0,
       wall: wall ? wall.health : -1,
       pillar: pillar ? pillar.health : -1,
+      wallAnchored: wall ? wall.anchored : 0,
+      pillarAnchored: pillar ? pillar.anchored : 0,
       paneIntact: pane ? pane.intact : -1,
     };
   },
