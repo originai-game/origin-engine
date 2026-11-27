@@ -316,7 +316,11 @@ pub(crate) fn cook(
     let mut sheet = sheet(s).map_err(CookError)?;
     // The art contract's motion (docs/art.md §2.3, `conform::mesh`).
     let conformed = motion.map(|m| m.flipbook(&mut sheet)).unwrap_or_default();
-    let text = sheet.to_text();
+    sheet
+        .validate_native()
+        .map_err(|e| CookError(e.to_string()))?;
+    let mut data = Vec::new();
+    sheet.encode(&mut data);
     let note = format!(
         "{} frames, {} clips ({}) over {} ({}x{})",
         sheet.frames.len(),
@@ -339,11 +343,11 @@ pub(crate) fn cook(
     w.table(
         "meta",
         &[FlipbookMeta {
-            text_bytes: text.len() as u32,
+            data_bytes: data.len() as u32,
         }],
         row_hash::<FlipbookMeta>(),
     )
-    .raw("text", text.into_bytes(), 4);
+    .raw("sheet", data, 4);
     let mut notes = vec![note];
     notes.extend(conformed);
     Ok((w.finish(), notes))

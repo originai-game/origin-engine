@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "og.Flipbook cooked payload",
+    "change": "Flipbook blobs store bounded native little-endian sheet fields instead of reparsing canonical author text at load. Playback data and behavior are unchanged.",
+    "fix": "Re-cook flipbooks and install matching engine hosts. Old cooked flipbook blobs are unsupported."
+  }]
+}

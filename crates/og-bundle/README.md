@@ -54,7 +54,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Look` | `LookMeta` (text bytes) | `text` (the canonical, flattened look) |
 | `og.Palette` | `PaletteMeta` (colour count) | `rgb` (3 bytes per colour, sRGB) |
 | `og.Lut` | `LutMeta` (side, 32) | `rgba` (size³ RGBA8, red fastest) |
-| `og.Flipbook` | `FlipbookMeta` (text bytes) | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size, `array`) |
+| `og.Flipbook` | `FlipbookMeta` (native data bytes) | `sheet` (little-endian texture ID, size, filter, array flag, frames, clips, durations and events) |
 | `og.Rig` | `RigMeta` (text bytes) | `text` (the canonical humanoid map: its scheme and the bones it names) |
 | `og.ParticleEmitter` | `EmitterMeta` (text bytes) | `text` (the validated emitter file) |
 | `og.MaterialShader`, `og.PostPass`, `og.UiMaterial` | `ShaderMeta`, `PostMeta`, `UiMaterialMeta` | `code` (WGSL), `names` (UTF-8), `params` (`ShaderParamRow` defaults, ordered) |

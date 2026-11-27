@@ -77,12 +77,11 @@ impl BundleAnim for Bundle {
     fn flipbook(&self, id: &str, bytes: &[u8]) -> Result<crate::FlipbookSheet, LoadError> {
         let blob = self.blob::<format::Flipbook>(id, bytes)?;
         let meta = one::<format::FlipbookMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        let text = text
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the sheet text is cut short or not UTF-8"))?;
-        crate::FlipbookSheet::parse(text).map_err(|e| invalid(&blob, e.reason()))
+        let data = blob.raw("sheet")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(&blob, "the native sheet length does not match"));
+        }
+        crate::FlipbookSheet::decode(data).map_err(|e| invalid(&blob, e.reason()))
     }
 
     fn rig2d(&self, id: &str, bytes: &[u8]) -> Result<crate::Rig2dAsset, LoadError> {

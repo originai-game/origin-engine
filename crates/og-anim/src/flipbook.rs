@@ -18,6 +18,8 @@ use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
 use std::sync::{Arc, Mutex, MutexGuard};
 
+mod cooked;
+
 /// The system's and the state block's name.
 pub const FLIPBOOK_SYSTEM: &str = "og.flipbook";
 

@@ -170,15 +170,14 @@ impl BlobKind for Tilemap {
 // ── flipbooks ────────────────────────────────────────────────────────────
 
 row!(
-    /// The root of a flipbook sheet blob (an `.ogt` of `type flipbook`).
-    FlipbookMeta, "og.Flipbook", 1 {
-        /// Bytes of the canonical sheet text in `text`.
-        text_bytes: u32,
+    /// The root of a native flipbook sheet blob.
+    FlipbookMeta, "og.Flipbook", 2 {
+        /// Bytes of the little-endian sheet fields in `sheet`.
+        data_bytes: u32,
     }
 );
 
-/// The flipbook sheet blob: `text` holds the canonical sheet
-/// (`og_anim::FlipbookSheet::to_text`), parsed again at load.
+/// The flipbook sheet blob: `sheet` holds validated native fields.
 pub struct Flipbook;
 impl BlobKind for Flipbook {
     const NAME: &'static str = "og.Flipbook";
