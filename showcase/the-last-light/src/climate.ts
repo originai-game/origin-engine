@@ -185,8 +185,10 @@ export const Seasons = defineSystem("Seasons", {
   const air = blend(AIR, WEATHERS.map(name => weights[name]!));
 
   const clouds = must(world.resource(og.Clouds));
-  // Rain, storm, fog and snow draw a flat overcast; fair weather heaps cumulus.
-  clouds.kind = weights.clear! < 0.5 ? "stratus" : "cumulus";
+  // Rain, storm, fog and snow draw a flat overcast; fair weather heaps
+  // cumulus. The kind turns as soon as the weather does, while the cover is
+  // still a fair-weather one, so the sheet grows out of a thin cover.
+  clouds.kind = weights.clear! < 0.92 ? "stratus" : "cumulus";
   clouds.coverage = air.cover;
   clouds.density = air.cloud;
   clouds.color = rgb(air.grey, air.grey, air.grey);
