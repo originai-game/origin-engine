@@ -143,6 +143,9 @@ pub fn markdown() -> Result<String, String> {
             if matches!(ty, "dialogue" | "quest") {
                 out.push_str("Output: native story data loaded with og.story.load by canonical content ID. Dialogues declare nodes, stable line/choice IDs, structured expressions, speakers and barks. Localization keys are independent of line identity. Quests declare ordered stages, objectives, rewards and shared globals. Resource fields are canonical content refs. An external Yarn file is imported explicitly as file.dialogue({yarn: input.text('sources/story.yarn'), assets: {...}}); every Yarn resource name maps to ref(id). Neither cook nor source tools scan Yarn automatically. No story author OGT parser or runtime text API remains. See story and flow.\n\n");
             }
+            if ty == "materials" {
+                out.push_str("Build-only material library consumed by file.district through its canonical content ID. Ordered materials hold labels, weight, tile, variation, image requests and shared native surface fields. Image inputs and generated map destinations are relative to the owning module's assets/. Generated textures have canonical #map-N outputs and never write author files. og materials brief/make read the same checked TS declaration. No material-library OGT parser remains. See districts.\n\n");
+            }
             continue;
         }
         let _ = writeln!(
@@ -150,27 +153,6 @@ pub fn markdown() -> Result<String, String> {
             "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `.ogt` under assets/.\n"
         );
         match ty {
-            "materials" => {
-                out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
-                block(
-                    &mut out,
-                    "materials.material",
-                    super::systems::district::parse::MATERIAL_LINES,
-                );
-                out.push_str(
-                    "Surface fields use MaterialInput from file:model's native material items.\n\n",
-                );
-                block(
-                    &mut out,
-                    "materials.material.generate",
-                    super::systems::district::parse::MATERIAL_GENERATE_LINES,
-                );
-                block(
-                    &mut out,
-                    "materials.material.vary",
-                    super::systems::district::parse::VARY_LINES,
-                );
-            }
             "look" => {
                 out.push_str("Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.\n\n");
                 table(&mut out, og_bundle::look::LINES);

@@ -2,7 +2,7 @@
 
 # The `districts` guide: Districts: towns from rules
 
-The `file.district` declaration describes a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names checked TS building rules (`file.grammar`) and a material library (`type materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
+The `file.district` declaration describes a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names checked TS building rules (`file.grammar`) and a material library (`file.materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
 
 The scene it becomes is placed and streamed as world §5 describes; its
 models are glTF models with levels of detail (models §1 for the material
@@ -12,11 +12,12 @@ no default building.
 <a id="guide-districts-1"></a>
 ### `districts §1` The three files
 
-Districts and grammars export `file.district` and `file.grammar` from
-`content/**/*.ts`; material libraries remain under `assets/` until their
-own cutover. Only the district is placed in a game; grammars and the library
+Districts, grammars and material libraries export `file.district`,
+`file.grammar` and `file.materials` from `content/**/*.ts`.
+Only the district is placed in a game; grammars and the library
 are cook inputs. References use canonical `ref("module/content-id")` tokens,
-not physical paths. No district or grammar OGT reader remains.
+not physical paths. Images in a library are relative to its owning module's
+`assets/` directory. No district, grammar or material-library OGT reader remains.
 
 A grammar builds one building on one lot. It starts from the lot's
 footprint and hands faces from rule to rule until each ends in a `label`
@@ -112,38 +113,20 @@ that choice on the street's front face, not every party wall.
 A material library gives each label its materials, each sharing the native
 surface fields of `file.model` materials (models §1):
 
-```text
-type materials
-version 1
----
-material "brick" {
-  label wall
-  label jamb
-  weight 3
-  tile 1.2 0.9
-  vary {
-    value 0.12
-    warmth 0.06
-  }
-  map "textures/brick.png"
-  normalMap "textures/brick-normal.png"
-  roughness 0.85
-}
-material "render" {
-  label wall
-  label jamb
-  color 0.78 0.74 0.66
-  roughness 0.9
-}
-material "glass" {
-  label glass
-  color 0.02 0.03 0.04
-  roughness 0.05
-  metalness 0.2
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.materials({materials: [
+  {name: 'brick', labels: ['wall', 'jamb'], weight: 3, tile: [1.2, 0.9],
+    vary: {value: 0.12, warmth: 0.06},
+    surface: {map: 'textures/brick.png', normalMap: 'textures/brick-normal.png', roughness: 0.85}},
+  {name: 'render', labels: ['wall', 'jamb'],
+    surface: {color: [0.78, 0.74, 0.66], roughness: 0.9}},
+  {name: 'glass', labels: ['glass'],
+    surface: {color: [0.02, 0.03, 0.04], roughness: 0.05, metalness: 0.2}},
+]});
 ```
 
-- `label`: what it covers (one or more). `weight`: how often a building
+- `labels`: what it covers (one or more). `weight`: how often a building
   draws it among the materials of a label. `tile`: the metres one repeat
   of its maps covers, across and up. `vary`: how far each building's
   brightness (`value`) and warm or cool cast (`warmth`) move, 0 to 0.5.
@@ -248,29 +231,23 @@ Keep image generation at authoring time. A library may describe what each
 surface looks like; the engine turns those descriptions into requests and
 processes the returned images, but calls no image service:
 
-```text
-material "stock-brick" {
-  label wall
-  label jamb
-  tile 2 1
-  brief "yellow London stock brick, irregular fired faces, pale lime mortar"
-  map "textures/stock.png"
-  relief -0.015
-  normalMap "textures/stock-n.png"
-  roughness 1
-  roughnessRange 0.75 0.95
-  metalnessMap "textures/stock-mr.png"
-  occlusion 0.5 3
-  aoMap "textures/stock-ao.png"
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.materials({materials: [{
+  name: 'stock-brick', labels: ['wall', 'jamb'], tile: [2, 1],
+  brief: 'yellow London stock brick, irregular fired faces, pale lime mortar',
+  relief: -0.015, roughnessRange: [0.75, 0.95], occlusion: {strength: 0.5, radius: 3},
+  surface: {map: 'textures/stock.png', normalMap: 'textures/stock-n.png', roughness: 1,
+    metalnessMap: 'textures/stock-mr.png', aoMap: 'textures/stock-ao.png'},
+}]});
 ```
 
-1. Run `og materials brief assets/materials/london.ogt --json`. Each
+1. Run `og materials brief content/materials/london.ts --json`. Each
    request has the project's look, palette and accepted style, an image
    size and tile metres, its `requestHash` and a `source` asset id. Pass
    the returned `brief` to the authoring platform's image tool, not a
    second hand-written prompt. It asks for base colour without baked
-   light or perspective. A facade module adds `facade true`: its left and
+   light or perspective. A facade module adds `facade: true`: its left and
    right edges repeat, but its ground and roof must not meet. The cook
    anchors its bottom row at the building base instead of varying its
    vertical phase. Set its tile height to the facade height: a module is
@@ -278,7 +255,7 @@ material "stock-brick" {
 2. Save each returned image at `assets/<source>`, for example
    `assets/textures/stock.source.png`. Requests are stable until the look,
    style or subject changes; record the hash with the generated asset.
-3. Run `og materials make assets/materials/london.ogt --json`. It
+3. Run `og materials make content/materials/london.ts --json`. It
    resamples each side down to a power of two (at least 8 texels), removes
    the smooth boundary discontinuity with periodic-plus-smooth
    decomposition, then writes the named PNG maps. A facade is processed
@@ -318,11 +295,8 @@ Keep the library's per-building colour and phase variation for differences
 between neighbours. For aging within a wall, add the authored surface
 fields to its material:
 
-```text
-  grime 0.4
-  grimeColor 0.07 0.05 0.025
-  grimeHeight 1.5
-  stains 0.3
+```ts
+  surface: {grime: 0.4, grimeColor: [0.07, 0.05, 0.025], grimeHeight: 1.5, stains: 0.3}
 ```
 
 Grime starts at each building's base, even when buildings merge in one
@@ -339,7 +313,7 @@ the ground-floor frames, door and plinth their own aging fields instead
 of raising the wall's dirt height to cover upper storeys. Masonry piers
 between the shop windows can use the wall material down to the plinth.
 
-For unstructured plaster, gravel or mottled stone, `stochastic 1` breaks
+For unstructured plaster, gravel or mottled stone, `stochastic: 1` breaks
 up ordinary 2D texture repetition using shared, unrotated patch offsets.
 Use matching map transforms and resolutions to keep the PBR maps aligned.
 Leave this off on bricks whose courses must line up, facade modules,

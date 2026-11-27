@@ -251,18 +251,14 @@ fn yaw_z(f: DVec2) -> DQuat {
     yaw(og_core::math::double::atan2(f.x, f.y))
 }
 
-/// Builds district `d` (at asset id `rel`), reading what it names by
-/// `read`.
+/// Builds district `d` (at content ID `rel`) with its checked material library.
 pub(super) fn build(
     rel: &str,
     d: &District,
-    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+    materials: &[Material],
     prepared: &BTreeMap<String, Grammar>,
 ) -> Result<Output, String> {
-    let text = |id: &str| read(id).map(|b| String::from_utf8_lossy(&b).into_owned());
-    let materials =
-        parse::materials(&text(&d.materials)?).map_err(|e| format!("{}: {e}", d.materials))?;
-    let library = Library::new(&materials);
+    let library = Library::new(materials);
     let mut grammars: BTreeMap<&str, &Grammar> = BTreeMap::new();
     for r in &d.buildings.rules {
         let g = prepared

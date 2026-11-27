@@ -1,17 +1,17 @@
 //! `og materials`: a material library's maps from images an image model
 //! draws (og-cook's `cook::materials`).
 //!
-//! - `og materials brief <library.ogt> [--json]` lists the images the
+//! - `og materials brief <library.ts> [--json]` lists the images the
 //!   library asks for: each material that states a `brief`, with the art
 //!   brief kind and size to request it at and where the drawn image goes
 //!   (`<map>.source.png`). It calls nothing: drawing is the platform's.
-//! - `og materials make <library.ogt> [--json]` makes each map (and normal
+//! - `og materials make <library.ts> [--json]` makes each map (and normal
 //!   map) from its drawn image, rewriting a file only when its bytes
 //!   change, and reports each seam before and after against the step
 //!   between neighbours inside. An image not drawn yet is listed; the
 //!   command exits 1 while any is.
 //!
-//! Asset ids are read from the `assets/` directory the library is in.
+//! Images are relative to the library's owning module's `assets/` directory.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -20,26 +20,45 @@ use og_cook::cook::materials::{Request, cache_key, hash, make, requests};
 use serde_json::json;
 
 const USAGE: &str =
-    "usage: og materials brief <library.ogt> [--json] | og materials make <library.ogt> [--json]";
+    "usage: og materials brief <library.ts> [--json] | og materials make <library.ts> [--json]";
 
-/// The library's requests and the `assets/` directory its ids are under.
-fn library(path: &str) -> Result<(Vec<Request>, PathBuf), String> {
-    let file = Path::new(path);
-    let text = std::fs::read_to_string(file).map_err(|e| format!("{path}: {e}"))?;
-    let abs = std::fs::canonicalize(file).map_err(|e| format!("{path}: {e}"))?;
-    let assets = abs
+/// Checked requests, module assets and project root share cook's discovery.
+fn library(path: &str) -> Result<(Vec<Request>, PathBuf, PathBuf), String> {
+    use og_cook::cook::{source_content, source_index, source_project, source_schemas};
+    let abs = std::path::absolute(path).map_err(|e| format!("{path}: {e}"))?;
+    let root = abs
         .ancestors()
-        .find(|d| d.file_name().is_some_and(|n| n == "assets"))
-        .ok_or_else(|| format!("{path} is not under a project's assets/"))?
+        .find(|d| d.join("og-project.json").is_file())
+        .ok_or_else(|| format!("{path} is not under a project"))?
         .to_path_buf();
-    let r = requests(&text).map_err(|e| format!("{path}: {e}"))?;
-    Ok((r, assets))
+    let file = abs
+        .strip_prefix(&root)
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .replace('\\', "/");
+    let project = source_project::Project::open(&root).map_err(|e| e.to_string())?;
+    let index = source_index::Index::open(&root, &project).map_err(|e| e.to_string())?;
+    let entry = index
+        .files
+        .get(&file)
+        .and_then(|id| index.entries.get(id))
+        .filter(|e| e.factory == "materials")
+        .ok_or_else(|| format!("{path} is not a file.materials declaration"))?;
+    let content = source_content::Evaluator::default()
+        .evaluate(&root, &project, entry, &Default::default(), None)
+        .map_err(|e| e.to_string())?;
+    let file: source_schemas::File =
+        serde_json::from_value(content.data().root().into_json()).map_err(|e| e.to_string())?;
+    let input = serde_json::from_value(file.value).map_err(|e| e.to_string())?;
+    let assets = root
+        .join(&project.modules[&entry.module].root)
+        .join("assets");
+    Ok((requests(input)?, assets, root))
 }
 
 fn brief(path: &str, as_json: bool) -> Result<bool, String> {
-    let (rs, assets) = library(path)?;
-    let root = assets.parent().ok_or("assets/ has no project directory")?;
-    let package = crate::project::engine_package(Some(root)).ok_or(crate::project::NO_ENGINE)?;
+    let (rs, _, root) = library(path)?;
+    let package = crate::project::engine_package(Some(&root)).ok_or(crate::project::NO_ENGINE)?;
     let script = [
         package.join("knowledge/scripts/brief.ts"),
         package.join("../knowledge/scripts/brief.ts"),
@@ -58,7 +77,7 @@ fn brief(path: &str, as_json: bool) -> Result<bool, String> {
         let output = std::process::Command::new("bun")
             .arg(&script)
             .args([r.kind, &r.subject, "--project"])
-            .arg(root)
+            .arg(&root)
             .args([
                 "--metres",
                 &r.tile[0].to_string(),
@@ -94,8 +113,8 @@ fn brief(path: &str, as_json: bool) -> Result<bool, String> {
 
 /// Walk only within assets/, never through a directory or file symlink.
 fn asset_path(assets: &Path, id: &str) -> Result<PathBuf, String> {
-    let mut path = assets.to_path_buf();
-    for part in Path::new(id).components() {
+    let mut path = assets.parent().expect("owning module assets").to_path_buf();
+    for part in Path::new("assets").join(id).components() {
         path.push(part);
         if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
             return Err(format!(
@@ -108,11 +127,8 @@ fn asset_path(assets: &Path, id: &str) -> Result<PathBuf, String> {
 }
 
 fn make_all(path: &str, as_json: bool) -> Result<bool, String> {
-    let (rs, assets) = library(path)?;
-    let cache = assets
-        .parent()
-        .ok_or("assets/ has no project directory")?
-        .join(".og/materials");
+    let (rs, assets, root) = library(path)?;
+    let cache = root.join(".og/materials");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
     let (mut done, mut missing) = (Vec::new(), Vec::new());
     for r in &rs {

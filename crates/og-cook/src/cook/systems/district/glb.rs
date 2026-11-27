@@ -80,7 +80,7 @@ pub(super) fn write(
         .into_iter()
         .flatten()
         {
-            *id = uri(crate::runtime::asset_id(id));
+            *id = uri(id);
         }
         let mut material = model_text::material(&m.name, &fields, &mut images, 0)
             .map_err(|e| format!("material `{}`: {e}", m.name))?;

@@ -910,9 +910,10 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
         "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'grammar',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
     );
     write(
-        "assets/materials.ogt",
-        "type materials\nversion 1\n---\nmaterial \"stone\" {\n label stone\n label road\n label pavement\n label ground\n label kerb\n color 0.2 0.4 0.7\n map \"surface.png\"\n}\n",
+        "content/materials.ts",
+        "import {file} from '@origingame/engine/author';export default file.materials({materials:[{name:'stone',labels:['stone','road','pavement','ground','kerb'],surface:{color:[0.2,0.4,0.7],map:'surface.png'}}]});",
     );
+    std::fs::create_dir_all(root.join("assets")).unwrap();
     image::RgbaImage::from_pixel(2, 3, image::Rgba([17, 89, 231, 255]))
         .save(root.join("assets/surface.png"))
         .unwrap();

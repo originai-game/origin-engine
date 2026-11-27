@@ -6,7 +6,7 @@
 //! - og-shape's `layout` lays out the streets, blocks, lots and prop sites;
 //!   og-shape's `grammar` builds each lot's building from the rules the
 //!   district names (checked `file.grammar`), every part with its label.
-//! - A material library (`type materials`) gives each label its
+//! - A material library (`file.materials`) gives each label its
 //!   materials: each building draws one per label by weight from its own
 //!   seed (labels covered by the same materials, a wall and its jambs,
 //!   draw the same one), with its own brightness and warmth in its vertex colours and
@@ -37,8 +37,6 @@ mod texts;
 
 use super::*;
 
-pub(crate) use parse::MATERIALS_TYPE;
-
 /// A district's kind: expanded by the scan into a scene, so it plans
 /// nothing of its own (an expansion that failed carries its error).
 pub(crate) static DISTRICT: KindDef = KindDef {
@@ -64,7 +62,7 @@ pub(crate) static GRAMMAR: KindDef = KindDef {
 pub(crate) static MATERIALS: KindDef = KindDef {
     name: "materials",
     extensions: &[],
-    types: &[MATERIALS_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_check,
@@ -91,8 +89,10 @@ fn plan_check<'a>(
     _: [u8; 8],
     _: &mut Vec<Out<'a>>,
 ) {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let checked = parse::materials(&text).map(|_| ());
+    let checked = s
+        .input()
+        .and_then(crate::cook::materials::declaration)
+        .map(|_| ());
     if let Err(e) = checked {
         state.early_errors.push((s.rel.clone(), s.kind.name, e));
     }
@@ -107,13 +107,30 @@ pub(crate) fn expand(
     grammars: &BTreeMap<String, og_shape::generators::grammar::Grammar>,
     records: &crate::cook::source_records::Records,
     declarations: &BTreeMap<String, crate::cook::source_content::Content>,
-    scanned: &BTreeMap<String, crate::cook::source_content::Output>,
 ) -> Result<(), String> {
     let packed = std::sync::Arc::new(records.packed()?);
     let libraries: BTreeMap<_, _> = sources
         .iter()
         .filter(|s| s.kind == &MATERIALS)
-        .map(|s| (s.rel.clone(), s.bytes.clone()))
+        .map(|s| {
+            Ok((
+                s.rel.clone(),
+                (
+                    crate::cook::materials::declaration(s.input()?)?,
+                    assets_root(s),
+                ),
+            ))
+        })
+        .collect::<Result<_, String>>()?;
+    let generated: BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| {
+            s.kind == &super::super::texture::TEXTURE
+                && s.rel
+                    .split_once('#')
+                    .is_some_and(|(id, _)| libraries.contains_key(id))
+        })
+        .map(|s| (s.path.clone(), s.bytes.clone()))
         .collect();
     let mut extra = Vec::new();
     let terrains: BTreeSet<String> = sources
@@ -127,22 +144,36 @@ pub(crate) fn expand(
             continue;
         }
         let content = &declarations[&s.rel];
-        let read = |id: &str| {
-            libraries
-                .get(id)
-                .cloned()
-                .ok_or_else(|| format!("`{id}` is not a captured material library"))
-        };
+        let mut images = BTreeMap::new();
         let out = parse::district(s.input()?)
-            .and_then(|mut d| {
-                d.materials = scanned
-                    .get(&d.materials)
-                    .filter(|o| o.kind == "materials")
-                    .ok_or_else(|| {
-                        format!("`{}` is not a material library content ID", d.materials)
-                    })?
-                    .asset
-                    .clone();
+            .and_then(|d| {
+                let (materials, module) = libraries.get(&d.materials).ok_or_else(|| {
+                    format!("`{}` is not a material library content ID", d.materials)
+                })?;
+                for m in materials {
+                    for path in [
+                        &m.fields.map,
+                        &m.fields.normal_map,
+                        &m.fields.metalness_map,
+                        &m.fields.ao_map,
+                    ]
+                    .into_iter()
+                    .flatten()
+                    {
+                        let asset = format!("assets/{path}");
+                        let bytes = if let Some(bytes) = generated.get(&module.join(&asset)) {
+                            bytes.clone()
+                        } else {
+                            let checked = crate::cook::source_path::checked(module, &asset)
+                                .map_err(|e| format!("{path}: {e}"))?;
+                            std::fs::read(checked).map_err(|e| format!("{path}: {e}"))?
+                        };
+                        images.insert(
+                            format!("{}{path}", "../".repeat(s.rel.matches('/').count())),
+                            bytes,
+                        );
+                    }
+                }
                 // What it names is part of it, built or not.
                 consumed.insert(d.materials.clone());
                 consumed.extend(d.buildings.rules.iter().map(|r| r.grammar.clone()));
@@ -151,7 +182,7 @@ pub(crate) fn expand(
                 {
                     return Err(format!("terrain `{id}` is not a terrain content ID"));
                 }
-                build::build(&s.rel, &d, &read, grammars)
+                build::build(&s.rel, &d, materials, grammars)
             })
             .map_err(|e| {
                 crate::cook::source_content::diagnostic(
@@ -220,7 +251,9 @@ pub(crate) fn expand(
             extra.push(source);
         }
         for (rel, glb) in out.models {
-            extra.push(made(rel, &crate::cook::model::MODEL, glb));
+            let mut source = made(rel, &crate::cook::model::MODEL, glb);
+            source.settings.files = images.clone();
+            extra.push(source);
         }
     }
     for (id, carve) in carves {

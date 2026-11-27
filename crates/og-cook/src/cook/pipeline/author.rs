@@ -47,6 +47,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("behaviour", &behaviour::BEHAVIOUR),
     ("dialogue", &story::DIALOGUE),
     ("quest", &story::QUEST),
+    ("materials", &district::MATERIALS),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -88,9 +89,7 @@ fn catalogue(
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let mut bindings = BTreeMap::new();
     for source in sources.iter().filter(|s| {
-        [&look::LOOK, &district::MATERIALS].contains(&s.kind)
-            && !s.rel.starts_with('@')
-            && s.path.starts_with(root.join("assets"))
+        s.kind == &look::LOOK && !s.rel.starts_with('@') && s.path.starts_with(root.join("assets"))
     }) {
         let file = source
             .path
@@ -183,7 +182,7 @@ pub(crate) fn rigs(
     Ok((content, rigs))
 }
 
-pub(super) fn declaration(
+pub(crate) fn declaration(
     root: &Path,
     entry: &source_index::Entry,
     kind: Kind,
@@ -439,9 +438,25 @@ pub(crate) fn sources(
             }
         };
         let bytes = content.data().as_bytes().to_vec();
-        if matches!(entry.factory.as_str(), "model" | "model-program") {
+        if matches!(
+            entry.factory.as_str(),
+            "model" | "model-program" | "materials"
+        ) {
+            let prefix = format!("{}#", entry.id);
+            let outputs = if entry.factory == "materials" {
+                sources
+                    .iter()
+                    .filter_map(|s| {
+                        s.rel
+                            .strip_prefix(&prefix)
+                            .map(|name| (name.to_string(), s.kind.name.to_string()))
+                    })
+                    .collect()
+            } else {
+                BTreeMap::new()
+            };
             graph
-                .insert(&content, &BTreeMap::new())
+                .insert(&content, &outputs)
                 .map_err(|e| CookError(e.to_string()))?;
             continue;
         }
@@ -651,10 +666,8 @@ pub(crate) fn sources(
         source.flipbook = Some(sheet);
         source.conformed = Some(bytes);
     }
-    district::expand(
-        root, sources, consumed, &grammars, &records, &districts, &scanned,
-    )
-    .map_err(CookError)?;
+    district::expand(root, sources, consumed, &grammars, &records, &districts)
+        .map_err(CookError)?;
     let mut district_outputs: BTreeMap<_, BTreeMap<_, _>> = BTreeMap::new();
     for source in sources.iter() {
         if let Some((id, suffix)) = source.rel.split_once('#')

@@ -18,45 +18,61 @@ mod periodic;
 #[cfg(test)]
 mod tests;
 
-use super::systems::district::parse;
+use super::systems::district::parse::Material;
 
-/// The remaining material-library/import text boundary decodes into the shared
-/// native surface schema. Model declarations never pass through this adapter.
-pub(crate) fn material_input(
-    b: &og_core::ogt::Block,
-) -> Result<super::source_schemas::world::materials::Material, String> {
-    use super::source_schemas::world::materials::Material;
-    let mut fields = serde_json::Map::new();
-    for e in &b.entries {
-        if e.block.is_some() || fields.contains_key(&e.key) {
-            return Err(format!(
-                "line {}: {}: expected one material value",
-                e.line, e.key
-            ));
-        }
-        let values = e
-            .values
-            .iter()
-            .map(|v| {
-                if let Some(n) = v.as_number() {
-                    serde_json::json!(n.as_f64())
-                } else if let Some(b) = v.as_bool() {
-                    serde_json::json!(b)
-                } else {
-                    serde_json::json!(v.as_str())
-                }
+/// Normalize checked author fields once, without an author text adapter.
+pub(crate) fn declaration(
+    input: super::source_schemas::world::materials::MaterialsInput,
+) -> Result<Vec<Material>, String> {
+    let mut names = std::collections::BTreeSet::new();
+    input
+        .materials
+        .into_iter()
+        .map(|m| {
+            if !names.insert(m.name.clone()) {
+                return Err(format!("material '{}' is written twice", m.name));
+            }
+            let relief = m.relief.unwrap_or(0.0);
+            let facade = m.facade.unwrap_or(false);
+            if (facade || relief != 0.0 || m.roughness_range.is_some() || m.occlusion.is_some())
+                && m.brief.is_none()
+                && m.generate.is_none()
+            {
+                return Err(format!(
+                    "material '{}': map processing requires brief or generate",
+                    m.name
+                ));
+            }
+            for path in [
+                &m.surface.map,
+                &m.surface.normal_map,
+                &m.surface.metalness_map,
+                &m.surface.ao_map,
+            ]
+            .into_iter()
+            .flatten()
+            .chain(m.generate.iter().map(|g| &g.source))
+            {
+                super::source_path::relative(path).map_err(|e| format!("{path}: {e}"))?;
+            }
+            Ok(Material {
+                name: m.name,
+                labels: m.labels,
+                weight: m.weight.unwrap_or(1.0),
+                tile: m.tile.unwrap_or([1.0; 2]),
+                metric_height: m.surface.grime.is_some_and(|g| g > 0.0),
+                value: m.vary.as_ref().and_then(|v| v.value).unwrap_or(0.0),
+                warmth: m.vary.and_then(|v| v.warmth).unwrap_or(0.0),
+                brief: m.brief,
+                generate: m.generate.map(|g| g.source),
+                facade,
+                relief,
+                roughness_range: m.roughness_range,
+                occlusion: m.occlusion.map(|o| [o.strength, o.radius.into()]),
+                fields: m.surface,
             })
-            .collect::<Vec<_>>();
-        let value = if values.len() == 1 {
-            values.into_iter().next().unwrap()
-        } else {
-            values.into()
-        };
-        fields.insert(e.key.clone(), value);
-    }
-    Material::schema()
-        .decode(fields.into())
-        .map_err(|e| e.to_string())
+        })
+        .collect()
 }
 
 /// One image a library asks for.
@@ -82,26 +98,23 @@ pub struct Request {
     pub occlusion: Option<[f64; 2]>,
 }
 
-/// The requests of a library's text.
-pub fn requests(text: &str) -> Result<Vec<Request>, String> {
+/// The requests of a checked library definition.
+pub fn requests(
+    input: super::source_schemas::world::materials::MaterialsInput,
+) -> Result<Vec<Request>, String> {
     let mut out = Vec::new();
-    for m in parse::materials(text)? {
+    for m in declaration(input)? {
         if m.brief.is_none() && m.generate.is_none() {
             continue;
         }
         let subject = m.brief.unwrap_or_default();
-        let named = |value: &Option<String>| {
-            value
-                .as_deref()
-                .map(|s| crate::runtime::asset_id(s).to_string())
-        };
-        let map = named(&m.fields.map).ok_or_else(|| {
+        let map = m.fields.map.clone().ok_or_else(|| {
             format!(
                 "material `{}` states a brief but names no `map` for it to make",
                 m.name
             )
         })?;
-        let normal_map = named(&m.fields.normal_map);
+        let normal_map = m.fields.normal_map.clone();
         if m.relief != 0.0 && normal_map.is_none() {
             return Err(format!(
                 "material `{}` states a relief but names no `normalMap` for it",
@@ -114,8 +127,8 @@ pub fn requests(text: &str) -> Result<Vec<Request>, String> {
                 m.name
             ));
         };
-        let roughness_map = named(&m.fields.metalness_map);
-        let ao_map = named(&m.fields.ao_map);
+        let roughness_map = m.fields.metalness_map.clone();
+        let ao_map = m.fields.ao_map.clone();
         if m.roughness_range.is_some() && roughness_map.is_none() {
             return Err(format!(
                 "material `{}`: roughnessRange needs a metalnessMap destination",
@@ -288,23 +301,97 @@ fn png(w: usize, h: usize, rgb: &[u8]) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
+/// Evaluate libraries before model imports, whose maps may be generated here.
+pub(crate) fn prepare(
+    root: &std::path::Path,
+    project: &super::source_project::Project,
+    sources: &mut Vec<super::Source>,
+    prepared: &mut std::collections::BTreeMap<String, super::source_content::Content>,
+) -> Result<(), super::CookError> {
+    use super::{CookError, pipeline::author, source_content, source_index, systems::district};
+    let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
+    let mut evaluator = source_content::Evaluator::default();
+    for entry in index.entries.values().filter(|e| e.factory == "materials") {
+        let mut content = evaluator
+            .evaluate(root, project, entry, &Default::default(), None)
+            .map_err(|e| CookError(e.to_string()))?;
+        let source = author::declaration(
+            root,
+            entry,
+            &district::MATERIALS,
+            content.data().as_bytes().to_vec(),
+        );
+        let input: super::source_schemas::world::materials::MaterialsInput =
+            source.input().map_err(CookError)?;
+        let maps: Vec<_> = input
+            .materials
+            .iter()
+            .flat_map(|m| {
+                [
+                    &m.surface.map,
+                    &m.surface.normal_map,
+                    &m.surface.metalness_map,
+                    &m.surface.ao_map,
+                ]
+            })
+            .flatten()
+            .cloned()
+            .collect();
+        let generated: std::collections::BTreeSet<_> = requests(input)
+            .map_err(|e| CookError(format!("{}: {e}", entry.file)))?
+            .into_iter()
+            .filter(|r| r.generate)
+            .flat_map(|r| r.destinations().cloned().collect::<Vec<_>>())
+            .collect();
+        let module = &project.modules[&entry.module].root;
+        content.inputs(
+            maps.into_iter()
+                .filter(|p| !generated.contains(p))
+                .map(|p| super::normalise_rel(&format!("{module}/assets/{p}"))),
+        );
+        sources.push(source);
+        prepared.insert(entry.id.clone(), content);
+    }
+    expand(sources);
+    for source in sources.iter().filter(|s| s.kind == &district::MATERIALS) {
+        if let Some(error) = &source.error {
+            return Err(CookError(format!("{}: {error}", source.path.display())));
+        }
+        let content = prepared
+            .get_mut(&source.rel)
+            .expect("prepared material library");
+        let module = &project.modules[&content.entry().module].root;
+        content.inputs(
+            source
+                .settings
+                .files
+                .keys()
+                .map(|path| super::normalise_rel(&format!("{module}/assets/{path}"))),
+        );
+    }
+    Ok(())
+}
+
 /// Map generation is a cook input node, never a write into the author's assets.
 pub(crate) fn expand(sources: &mut Vec<super::Source>) {
     use super::{Source, assets_root, cache, systems::district, texture};
     let mut occupied: std::collections::BTreeSet<_> =
-        sources.iter().map(|s| s.rel.clone()).collect();
+        sources.iter().map(|s| s.path.clone()).collect();
     let mut extra = Vec::new();
     for s in sources
         .iter_mut()
         .filter(|s| s.kind == &district::MATERIALS && s.error.is_none())
     {
-        let root = assets_root(s);
+        let module = assets_root(s);
+        let root = module.join("assets");
         let made = (|| {
-            let requests = requests(&String::from_utf8_lossy(&s.bytes))?;
+            let requests = requests(s.input()?)?;
             let mut files = Vec::new();
             for r in requests.into_iter().filter(|r| r.generate) {
-                let source = std::fs::read(root.join(&r.source))
+                let path = super::source_path::checked(&module, &format!("assets/{}", r.source))
                     .map_err(|e| format!("{}: {e}", r.source))?;
+                let source = std::fs::read(path).map_err(|e| format!("{}: {e}", r.source))?;
+                s.settings.files.insert(r.source.clone(), source.clone());
                 let options = serde_json::to_vec(&r).map_err(|e| e.to_string())?;
                 let key = cache::key(
                     &[crate::format::Area::Texture],
@@ -332,7 +419,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                 files.extend(maps);
             }
             for (id, _) in &files {
-                if occupied.contains(id) || root.join(id).exists() {
+                if occupied.contains(&root.join(id)) || root.join(id).exists() {
                     return Err(format!(
                         "generated material map '{id}' collides with an authored source or another output"
                     ));
@@ -343,14 +430,31 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
         match made {
             Err(error) => s.error = Some(error),
             Ok(files) => {
-                for (rel, bytes) in files {
-                    occupied.insert(rel.clone());
+                for (i, (file, bytes)) in files.into_iter().enumerate() {
+                    occupied.insert(root.join(&file));
+                    let rel = format!("{}#map-{i}", s.rel);
+                    use super::source_schemas::world::import::{ImportInput, Texture};
+                    let input = ImportInput::Texture(Texture {
+                        source: format!("assets/{file}"),
+                        usage: None,
+                        stream: None,
+                        normal: None,
+                        sway: None,
+                        conform: None,
+                    });
                     extra.push(Source {
-                        path: root.join(&rel),
+                        path: root.join(&file),
                         rel,
                         kind: &texture::TEXTURE,
+                        settings: super::imports::Settings {
+                            input: Some(std::sync::Arc::new(input)),
+                            files: std::collections::BTreeMap::from([(
+                                format!("assets/{file}"),
+                                bytes.clone(),
+                            )]),
+                            ..Default::default()
+                        },
                         bytes,
-                        settings: Default::default(),
                         hash: 0,
                         gltf: None,
                         error: None,

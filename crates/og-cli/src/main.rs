@@ -214,8 +214,8 @@ commands:
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
-  materials brief <library.ogt> [--json]
-  materials make <library.ogt> [--json]
+  materials brief <library.ts> [--json]
+  materials make <library.ts> [--json]
                       a material library's maps from images an image model draws: list the
                       images its briefed materials ask for (art brief kind, metres, where each
                       goes), or make each map periodic (a facade module across only) and its

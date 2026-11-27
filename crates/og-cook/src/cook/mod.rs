@@ -403,6 +403,7 @@ pub fn cook_project_with_texture_cache(
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
     let (mut rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
+    materials::prepare(root, &project.source, &mut sources, &mut rig_content)?;
     imports::prepare(root, &project.source, &mut sources, &mut rig_content)?;
     pipeline::author::models(root, &project.source, &mut sources, &mut rig_content)?;
     let model_bindings = pipeline::author::bindings(root, &project.source, &sources)?;

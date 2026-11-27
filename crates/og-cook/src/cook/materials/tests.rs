@@ -1,31 +1,13 @@
 use super::*;
 
-const LIBRARY: &str = "type materials
-version 1
----
-material \"brick\" {
-  label wall
-  tile 2 1
-  brief \"London stock brick, soot-darkened, lime mortar\"
-  relief 0.02
-  map \"textures/brick.png\"
-  normalMap \"textures/brick-n.png\"
-}
-material \"shopfront\" {
-  label shopfront
-  tile 4 4
-  facade true
-  brief \"a Victorian shopfront bay\"
-  map \"textures/shop.png\"
-}
-material \"glass\" {
-  label glass
-  color 0.02 0.03 0.04
-}
-";
-
 #[test]
 fn material_destinations_cannot_escape_or_overwrite_inputs() {
+    use crate::cook::source_schemas::world::materials::MaterialsInput;
+    let library = serde_json::json!({"materials":[
+        {"name":"brick","labels":["wall"],"tile":[2,1],"brief":"London stock brick, soot-darkened, lime mortar","relief":0.02,"surface":{"map":"textures/brick.png","normalMap":"textures/brick-n.png"}},
+        {"name":"shopfront","labels":["shopfront"],"tile":[4,4],"facade":true,"brief":"a Victorian shopfront bay","surface":{"map":"textures/shop.png"}},
+        {"name":"glass","labels":["glass"],"surface":{"color":[0.02,0.03,0.04]}}
+    ]});
     for path in [
         "../brick.png",
         "/brick.png",
@@ -34,9 +16,18 @@ fn material_destinations_cannot_escape_or_overwrite_inputs() {
         "textures//brick.png",
         "C:\\brick.png",
     ] {
-        let text = LIBRARY.replace("textures/brick.png", path);
-        assert!(requests(&text).is_err(), "{path}");
+        let mut value = library.clone();
+        value["materials"][0]["surface"]["map"] = path.into();
+        assert!(
+            requests(MaterialsInput::schema().decode(value).unwrap()).is_err(),
+            "{path}"
+        );
     }
-    let text = LIBRARY.replace("textures/brick-n.png", "textures/brick.source.png");
-    assert!(requests(&text).unwrap_err().contains("used twice"));
+    let mut value = library;
+    value["materials"][0]["surface"]["normalMap"] = "textures/brick.source.png".into();
+    assert!(
+        requests(MaterialsInput::schema().decode(value).unwrap())
+            .unwrap_err()
+            .contains("used twice")
+    );
 }

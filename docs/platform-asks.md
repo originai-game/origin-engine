@@ -332,7 +332,7 @@ then the Preview keeps Desktop's arrow.
 
 ## Material-library image requests
 
-**Ask 32, open.** Consume `og materials brief <library.ogt> --json` from
+**Ask 32, open.** Consume `og materials brief <library.ts> --json` from
 the released engine for authoring-time material generation. Each request
 carries `material`, `tile`, `source`, `requestHash` and the complete
 `artBrief` result, including style references and palette. New kinds
@@ -340,9 +340,11 @@ carries `material`, `tile`, `source`, `requestHash` and the complete
 lighting: the former wraps both axes, the latter only horizontally. Keep
 the facade's ground and roof distinct even though `image.tiling` is true.
 
-Generate through the platform's existing paid image tool, store the bytes
-at `assets/<source>`, and record `requestHash` as provenance. Run
-`og materials make <library.ogt> --json` to prepare periodic colour and
+Libraries are checked `file.materials` declarations under `content/`;
+there is no OGT entry. Generate through the platform's existing paid image
+tool, store the bytes at the owning module's `assets/<source>`, and record
+`requestHash` as provenance. Run
+`og materials make <library.ts> --json` to prepare periodic colour and
 the optional authored normal, packed roughness and cavity maps. Pin the
 accepted sources and maps in the platform's asset store as ordinary game
 assets. A changed brief is a new request, not permission to overwrite art

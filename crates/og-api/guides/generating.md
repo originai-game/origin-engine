@@ -192,20 +192,13 @@ export default file.model({kind:'geometry',desc:{conform:'off',items:[
 
 A material library's explicit `generate` block invokes the existing periodic/PBR map preparation during cook. Destinations must not collide with authored files or other outputs. Generated PNG inputs exist in the cook graph, not in `assets/`; model, processing and fracture consumers resolve the same bytes. The image and every processing parameter form the action key. `og materials make` remains the explicit authoring command when source files are wanted.
 
-```ogt recipe file=assets/materials.ogt
-type materials
-version 1
----
-material "surface" {
-  label surface
-  generate {
-    source "surface-source.svg"
-  }
-  tile 2 1
-  relief 0.02
-  map "surface.png"
-  normalMap "surface-normal.png"
-}
+```ts recipe file=content/materials.ts
+import {file} from '@origingame/engine/author';
+export default file.materials({materials: [{
+  name: 'surface', labels: ['surface'], generate: {source: 'surface-source.svg'},
+  tile: [2, 1], relief: 0.02,
+  surface: {map: 'surface.png', normalMap: 'surface-normal.png'},
+}]});
 ```
 
 ```text recipe file=assets/surface-source.svg

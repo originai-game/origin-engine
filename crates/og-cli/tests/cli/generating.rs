@@ -1,5 +1,210 @@
 use super::*;
 
+/// Material libraries use one checked declaration for cook and the author tools,
+/// including module-owned images, actual derived IDs and warm invalidation.
+#[test]
+fn typed_material_libraries_generate_maps_and_drive_author_tools() {
+    let root = TempDir::new("og-ts-materials");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Materials","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'materials',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "");
+    write(
+        "modules/north/lib/tile.ts",
+        "export const tile=[2,1] as const;",
+    );
+    let library = "import {file} from '@origingame/engine/author';import {tile} from '../lib/tile.ts';export default file.materials({materials:[{name:'stone',labels:['wall'],tile,brief:'stone',generate:{source:'source.svg'},relief:0.02,roughnessRange:[0.8,0.3],occlusion:{strength:0.5,radius:3},surface:{map:'stone.png',normalMap:'stone-n.png',metalnessMap:'stone-mr.png',aoMap:'stone-ao.png'}}]});";
+    write("modules/north/content/library.ts", library);
+    write(
+        "modules/north/content/panel.ts",
+        "import {file} from '@origingame/engine/author';export default file.model({kind:'geometry',desc:{conform:'off',items:[{name:'stone',input:{kind:'material',desc:{map:'assets/stone.png'}}},{name:'panel',input:{kind:'part',desc:{geometry:{kind:'planeGeometry',desc:{width:2,height:1}},material:'stone'}}}]}});",
+    );
+    write(
+        "modules/north/content/tiles.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.tileset({texture:ref('north/library#map-0'),tileWidth:4,tileHeight:4,columns:4,rows:2});",
+    );
+    // A same-named base image must not be read for the north module.
+    let image = r##"<svg xmlns="http://www.w3.org/2000/svg" width="19" height="11"><rect width="19" height="11" fill="#c84020"/></svg>"##;
+    write("assets/source.svg", &image.replace("#c84020", "#2040c8"));
+    write("modules/north/assets/source.svg", image);
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let mut previous = None;
+    for (source, channel) in [
+        (image.to_string(), 0),
+        (image.replace("#c84020", "#20c840"), 1),
+    ] {
+        write("modules/north/assets/source.svg", &source);
+        let mut cold = None;
+        for _ in 0..2 {
+            let out = cook();
+            assert!(out.status.success(), "{}", text(&out));
+            let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+            let map = bundle
+                .load_texture("north/library#map-0")
+                .unwrap()
+                .to_texture_data()
+                .unwrap();
+            assert_eq!((map.width, map.height), (16, 8));
+            assert!(
+                map.rgba[channel] > 180 && map.rgba[2] < 80,
+                "wrong module image: {:?}",
+                &map.rgba[..4]
+            );
+            if let Some(bytes) = &cold {
+                assert_eq!(bytes, &map.rgba);
+            }
+            cold = Some(map.rgba.clone());
+            for i in 1..4 {
+                assert!(
+                    bundle
+                        .load_texture(&format!("north/library#map-{i}"))
+                        .is_ok()
+                );
+            }
+            let model = bundle.load_model("north/panel").unwrap();
+            let index = model
+                .materials
+                .iter()
+                .find_map(|m| m.base_color_texture)
+                .unwrap();
+            let embedded = bundle
+                .load_texture(&model.textures[index].id)
+                .unwrap()
+                .to_texture_data()
+                .unwrap();
+            assert_eq!(
+                embedded.rgba, map.rgba,
+                "model did not capture the generated map"
+            );
+            assert!(!root.join("modules/north/assets/stone.png").exists());
+        }
+        if let Some(bytes) = previous {
+            assert_ne!(
+                bytes,
+                cold.as_ref().unwrap().clone(),
+                "source change reused stale maps"
+            );
+        }
+        previous = cold;
+    }
+    write(
+        "modules/north/lib/tile.ts",
+        "export const tile=[4,1] as const;",
+    );
+    let run = || {
+        og().args([
+            "materials",
+            "make",
+            "modules/north/content/library.ts",
+            "--json",
+        ])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+    };
+    let out = run();
+    assert!(out.status.success(), "{}", text(&out));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["made"][0]["density"], serde_json::json!([4.0, 8.0]));
+    assert_eq!(report["made"][0]["written"].as_array().unwrap().len(), 4);
+    assert!(root.join("modules/north/assets/stone.png").exists());
+    assert!(!root.join("assets/stone.png").exists());
+    let out = run();
+    assert!(out.status.success(), "{}", text(&out));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["made"][0]["cached"], true);
+    #[cfg(unix)]
+    {
+        let assets = root.join("modules/north/assets");
+        let saved = root.join("modules/north/saved-assets");
+        std::fs::rename(&assets, &saved).unwrap();
+        std::os::unix::fs::symlink(root.join("assets"), &assets).unwrap();
+        let out = run();
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "asset-root symlink followed: {}",
+            text(&out)
+        );
+        assert!(text(&out).contains("symlink"), "{}", text(&out));
+        let out = cook();
+        assert!(!out.status.success(), "cook followed an asset-root symlink");
+        assert!(text(&out).contains("symlink"), "{}", text(&out));
+        std::fs::remove_file(&assets).unwrap();
+        std::fs::rename(saved, assets).unwrap();
+    }
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Materials","engine":"0.9.0","look":"pixel"}"#,
+    );
+    let out = og()
+        .args([
+            "materials",
+            "brief",
+            "modules/north/content/library.ts",
+            "--json",
+        ])
+        .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+        .env("OG_BIN", env!("CARGO_BIN_EXE_og"))
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["requests"][0]["source"], "source.svg");
+    assert_eq!(report["requests"][0]["tile"], serde_json::json!([4.0, 1.0]));
+    assert!(
+        report["requests"][0]["brief"]["prompt"]
+            .as_str()
+            .unwrap()
+            .contains("stone")
+    );
+    let out = cook();
+    assert!(
+        !out.status.success(),
+        "generated map overwrote an author output"
+    );
+    assert!(text(&out).contains("collides"), "{}", text(&out));
+    for name in ["stone.png", "stone-n.png", "stone-mr.png", "stone-ao.png"] {
+        std::fs::remove_file(root.join("modules/north/assets").join(name)).unwrap();
+    }
+    write(
+        "modules/north/content/library.ts",
+        &library.replace("tile,brief", "tile,unknown:1,brief"),
+    );
+    let out = run();
+    assert_eq!(out.status.code(), Some(2));
+    assert!(text(&out).contains("unknown"), "{}", text(&out));
+    write("modules/north/content/library.ts", library);
+    write("assets/old.ogt", "type materials\nversion 1\n---\n");
+    let out = cook();
+    assert!(
+        !out.status.success(),
+        "OGT material libraries were accepted"
+    );
+    let out = og()
+        .args(["materials", "make", "assets/old.ogt", "--json"])
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2));
+}
+
 /// All three rig inputs share the native loader, canonical graph and cache.
 #[test]
 fn rig2d_cooks_native_fields_imports_and_captured_parts() {
