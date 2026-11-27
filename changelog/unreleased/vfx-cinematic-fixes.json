@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og vfx add cinematic-realism",
+      "change": "muzzle-auto now fires a flame tongue, side petals and a wisp of smoke on every 0.1 s cycle; before, its one-shot emitters played on the first cycle only and the loop left a bare glow ball in place. shocked and electric-sparks get brighter, wider arcs with glows, charge flecks and molten arc sparks, and electric-sparks discharges at once. impact-flesh adds a red mist and thrown droplets. drip has a larger drop, a brighter ripple and a darker wet spot, and mark-wet soaks darker.",
+      "fix": "Reinstall the pack with og vfx add cinematic-realism. Retune anything that depended on the old look of these six effects; their names, durations and loops are unchanged."
+    }
+  ]
+}

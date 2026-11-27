@@ -3,6 +3,12 @@ version 2
 ---
 duration 1.2
 impact 0
+emitter "vfx/cinematic-realism/emitters/blood-mist.ogt" {
+  offset 0 0.03 0
+}
+emitter "vfx/cinematic-realism/emitters/blood-drops.ogt" {
+  offset 0 0.03 0
+}
 emitter "vfx/cinematic-realism/emitters/cloth-dust.ogt" {
   offset 0 0.03 0
 }

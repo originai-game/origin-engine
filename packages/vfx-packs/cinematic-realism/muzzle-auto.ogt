@@ -4,12 +4,12 @@ version 2
 duration 0.1
 loop true
 impact 0
-emitter "vfx/cinematic-realism/emitters/muzzle.ogt" {
+emitter "vfx/cinematic-realism/emitters/muzzle-auto-flame.ogt" {
 }
-emitter "vfx/cinematic-realism/emitters/muzzle-petals.ogt" {
+emitter "vfx/cinematic-realism/emitters/muzzle-auto-petals.ogt" {
   offset 0 0.03 0
 }
-emitter "vfx/cinematic-realism/emitters/gunsmoke-thin.ogt" {
+emitter "vfx/cinematic-realism/emitters/gunsmoke-auto.ogt" {
   at 0.02
   offset 0 0.06 0
 }

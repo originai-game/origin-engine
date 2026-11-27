@@ -8,7 +8,7 @@ decal {
   texture "vfx/cinematic-realism/textures/wet.png"
   wet true
   size 0.9 0.4 0.9
-  color 0.7 0.7 0.71 0.85
+  color 0.28 0.29 0.3 1
   roughness 0.12
   turn 0 360
 }

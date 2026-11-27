@@ -257,7 +257,7 @@
     },
     {
       "path": "drip.ogt",
-      "sha256": "ec46f377b647e88e19a461f022527bb1ba8e6affebbd0cfddb3fd1af4bdd5043",
+      "sha256": "aa386d96f79ce7afec558fa9be6ce1b83e303454479de13de3c80bb69c687741",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -277,7 +277,7 @@
     },
     {
       "path": "electric-sparks.ogt",
-      "sha256": "f6e8b177a1d5098e90c7fdf47974056efa70b9139d7318c92b20eb038140045b",
+      "sha256": "af313b8d467b55d50fde1e0594d2a8985384e15e23cd59fcae65ca2783a87d41",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -298,6 +298,16 @@
     {
       "path": "emitters/aether.ogt",
       "sha256": "a58dc69a73f67f9aa2462d120cbb70bb660833803780cc0fb8f3ada7010cc4a2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/arc-sparks.ogt",
+      "sha256": "bb5a477e15ba0ef1daa586e9d4b0fe68679ac4a05aeb8127f82008ae51f6b491",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -328,6 +338,26 @@
     {
       "path": "emitters/beacon-motes.ogt",
       "sha256": "81d254bdd9490ba482fb75995d5b4e9c495f65db9c81a8b6f2ffa520c2dc3542",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/blood-drops.ogt",
+      "sha256": "cd145d7b294075467fff77c4be42560b8e32b6a3c93727a3b6d52e735e549424",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/blood-mist.ogt",
+      "sha256": "84d8209ec0856b48d3837a3baeecbaa2334c1824cda291cbec32b64ae457291e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -537,7 +567,7 @@
     },
     {
       "path": "emitters/drip-drop.ogt",
-      "sha256": "d5074076db872f8ee77bd6114038d0e7c14617f9c0742c348423924f3bf2c9af",
+      "sha256": "4c6c692f8394b8384025baf8751313c49b8c1ef0b4d523c9dabeb95b0bb73112",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -547,7 +577,7 @@
     },
     {
       "path": "emitters/drip-plip.ogt",
-      "sha256": "49148a4a0b7903ced09a9f33e388a70acd0c1fec37f2f5a7387ad2f7cbeabb4d",
+      "sha256": "dce3649e4e55834f616e9767378f6c79ccec4c7799643c1c0957537186d27a4c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1006,6 +1036,16 @@
       "derived": "Original native effect composition for cinematic-realism and muted looks."
     },
     {
+      "path": "emitters/gunsmoke-auto.ogt",
+      "sha256": "9111501dfa324dda1685a202844e0d2d28f9c05e6ed849d6babe0df49bdd59f2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
       "path": "emitters/gunsmoke-heavy.ogt",
       "sha256": "536ebb7eb5427586e03c83e873e29619fc076858e8bf2c641a68da093f1179af",
       "licence": "MIT",
@@ -1138,6 +1178,26 @@
     {
       "path": "emitters/motes.ogt",
       "sha256": "bfaa9b40ee34e923f6b0de8a0e65ea857cfc917f70761066a0d74b01d71035d6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/muzzle-auto-flame.ogt",
+      "sha256": "168ee2c7ffe801e092cbe20263cb4b6365f2f6604510b21f62a9c1da6843f0c3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/muzzle-auto-petals.ogt",
+      "sha256": "d3348f882e2338d29ccd0adc6be140a2edb215a5529f0577872ab990c27fd823",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1318,6 +1378,16 @@
     {
       "path": "emitters/shield-flecks.ogt",
       "sha256": "e68cd3dc5d048c61f5bbccab69e0fb3151ec4650b839ebf7c05b8edac1506766",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "emitters/shock-flecks.ogt",
+      "sha256": "e95b36b0f53652c03c4e64856a782f45a74db168961de7f234f2dbe22b4e6670",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1867,7 +1937,7 @@
     },
     {
       "path": "impact-flesh.ogt",
-      "sha256": "8e2afe556186b79c202af1703461c1589da1ced4d002dd2f6ea776a9e3fc0e39",
+      "sha256": "ad46d7349c2ddea525ae1c9b5dbbddf87dc8bcbe74c7b4a8c06067aab36aeff1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2017,7 +2087,7 @@
     },
     {
       "path": "mark-wet.ogt",
-      "sha256": "f85ae80cd018361fddfced6d3b462f95e58f4f138b57b9ac669f46e51f77e5d3",
+      "sha256": "400807fc746d89f47f3265845a7125987b0f856e11b7c545c5fd99ec40d67acf",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2027,7 +2097,7 @@
     },
     {
       "path": "muzzle-auto.ogt",
-      "sha256": "96d6e2cf584aa293f97cc74e9e664380cacd90e21207a2784ebcc858be287332",
+      "sha256": "25aa138dd728a67f8bbff874cb4bcd63948136322c3cc913c1104b28558d064f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2167,7 +2237,7 @@
     },
     {
       "path": "shocked.ogt",
-      "sha256": "dcb6d09cda33e6574ecd86edae2a1cfb98be22ebb77e8f77c756276f752aee81",
+      "sha256": "038438a3b4efaee27797be1395346d57f48726b86a5a67616f25980cdc97bb66",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2487,7 +2557,7 @@
         "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/DiscSmoke01/DiscSmoke01-flipbooks.zip",
         "file": "DiscSmoke01_16x4.tga"
       },
-      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
+      "credit": "Thomas Iché / Unity Labs Paris",
       "derived": "Archive SHA256 e749a28e436c592f35b40a1da47a761602b3323c7d34f72965e6b2b63c7a6723; Pillow RGBA Lanczos resize 2048x1024 to 1024x512, original 16x4 layout. Per-cell elliptical alpha feather: radius normalized by half-extent minus 2px; alpha times 1-smoothstep(0.65,1,r), giving a transparent 2px gutter. RGB unchanged."
     },
     {
@@ -2509,7 +2579,7 @@
         "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/Explosion02/Explosion02-flipbooks.zip",
         "file": "Explosion02_5x5.exr"
       },
-      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
+      "credit": "Thomas Iché / Unity Labs Paris",
       "derived": "Archive SHA256 1426be2dcfc9008b8b8f0c7d54a241da3f611725aa3c84fc33f919f56036f538; ImageMagick linear HDR RGB clamped nonnegative and divided by 1 + max(R,G,B), encoded sRGB PNG RGBA, resized 1024x1024 to 1000x1000 (25 integral 200x200 cells); alpha preserved."
     },
     {
@@ -2752,7 +2822,7 @@
       "type": "vfx",
       "title": "Afterburner",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -2768,7 +2838,7 @@
       "type": "vfx",
       "title": "Barrier Dome",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "shield",
       "keywords": [
@@ -2783,7 +2853,7 @@
       "type": "vfx",
       "title": "Marker Beacon",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "marker",
       "keywords": [
@@ -2798,7 +2868,7 @@
       "type": "vfx",
       "title": "Energy Bolt",
       "loop": true,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": false,
       "category": "projectile",
       "keywords": [
@@ -2860,7 +2930,7 @@
       "type": "vfx",
       "title": "Crate Break",
       "loop": false,
-      "durationSeconds": 3.0,
+      "durationSeconds": 3,
       "impact": true,
       "category": "destruction",
       "keywords": [
@@ -2889,7 +2959,7 @@
       "type": "vfx",
       "title": "Burning",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "status",
       "keywords": [
@@ -2904,7 +2974,7 @@
       "type": "vfx",
       "title": "Campfire",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "fire",
       "keywords": [
@@ -2919,7 +2989,7 @@
       "type": "vfx",
       "title": "Road Exhaust",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -2933,7 +3003,7 @@
       "type": "vfx",
       "title": "Satin Confetti",
       "loop": false,
-      "durationSeconds": 3.0,
+      "durationSeconds": 3,
       "impact": true,
       "category": "ui",
       "keywords": [
@@ -2975,7 +3045,7 @@
       "type": "vfx",
       "title": "Damage Smoke",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -2992,7 +3062,7 @@
       "type": "vfx",
       "title": "Dash",
       "loop": false,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": true,
       "category": "movement",
       "keywords": [
@@ -3036,7 +3106,7 @@
       "type": "vfx",
       "title": "Rotor Downwash",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -3080,7 +3150,7 @@
       "type": "vfx",
       "title": "Arcing Fault",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -3096,7 +3166,7 @@
       "type": "vfx",
       "title": "Drifting Embers",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -3111,7 +3181,7 @@
       "type": "vfx",
       "title": "Ion Exhaust",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -3125,7 +3195,7 @@
       "type": "vfx",
       "title": "Airburst",
       "loop": false,
-      "durationSeconds": 5.0,
+      "durationSeconds": 5,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3140,7 +3210,7 @@
       "type": "vfx",
       "title": "Energy Blast",
       "loop": false,
-      "durationSeconds": 6.0,
+      "durationSeconds": 6,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3155,7 +3225,7 @@
       "type": "vfx",
       "title": "Large Blast",
       "loop": false,
-      "durationSeconds": 18.0,
+      "durationSeconds": 18,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3172,7 +3242,7 @@
       "type": "vfx",
       "title": "Grenade Blast",
       "loop": false,
-      "durationSeconds": 12.0,
+      "durationSeconds": 12,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3188,7 +3258,7 @@
       "type": "vfx",
       "title": "Depth Blast",
       "loop": false,
-      "durationSeconds": 5.0,
+      "durationSeconds": 5,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3204,7 +3274,7 @@
       "type": "vfx",
       "title": "Cinematic Explosion",
       "loop": false,
-      "durationSeconds": 14.0,
+      "durationSeconds": 14,
       "impact": true,
       "category": "explosion",
       "keywords": [
@@ -3220,7 +3290,7 @@
       "type": "vfx",
       "title": "Large Fire",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "fire",
       "keywords": [
@@ -3236,7 +3306,7 @@
       "type": "vfx",
       "title": "Fireflies",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -3266,7 +3336,7 @@
       "type": "vfx",
       "title": "Flame Stream",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "fire",
       "keywords": [
@@ -3295,7 +3365,7 @@
       "type": "vfx",
       "title": "Footstep Dust",
       "loop": false,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": true,
       "category": "movement",
       "keywords": [
@@ -3310,7 +3380,7 @@
       "type": "vfx",
       "title": "Wading Step",
       "loop": false,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": true,
       "category": "splash",
       "keywords": [
@@ -3325,7 +3395,7 @@
       "type": "vfx",
       "title": "Fountain Jet",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "splash",
       "keywords": [
@@ -3339,7 +3409,7 @@
       "type": "vfx",
       "title": "Frozen",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "status",
       "keywords": [
@@ -3355,7 +3425,7 @@
       "type": "vfx",
       "title": "Grenade Smoke Thread",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "projectile",
       "keywords": [
@@ -3369,7 +3439,7 @@
       "type": "vfx",
       "title": "Ground Fog",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -3383,7 +3453,7 @@
       "type": "vfx",
       "title": "Mending Light",
       "loop": false,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": true,
       "category": "heal",
       "keywords": [
@@ -3397,7 +3467,7 @@
       "type": "vfx",
       "title": "Concrete Impact",
       "loop": false,
-      "durationSeconds": 10.0,
+      "durationSeconds": 10,
       "impact": true,
       "category": "hit-spark",
       "keywords": [
@@ -3415,7 +3485,7 @@
       "type": "vfx",
       "title": "Earth Impact",
       "loop": false,
-      "durationSeconds": 10.0,
+      "durationSeconds": 10,
       "impact": true,
       "category": "hit-spark",
       "keywords": [
@@ -3447,7 +3517,7 @@
       "type": "vfx",
       "title": "Glass Impact",
       "loop": false,
-      "durationSeconds": 10.0,
+      "durationSeconds": 10,
       "impact": true,
       "category": "hit-spark",
       "keywords": [
@@ -3479,7 +3549,7 @@
       "type": "vfx",
       "title": "Timber Impact",
       "loop": false,
-      "durationSeconds": 10.0,
+      "durationSeconds": 10,
       "impact": true,
       "category": "hit-spark",
       "keywords": [
@@ -3496,7 +3566,7 @@
       "type": "vfx",
       "title": "Steel Impact",
       "loop": false,
-      "durationSeconds": 10.0,
+      "durationSeconds": 10,
       "impact": true,
       "category": "hit-spark",
       "keywords": [
@@ -3527,7 +3597,7 @@
       "type": "vfx",
       "title": "Laser Beam",
       "loop": true,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": false,
       "category": "beam",
       "keywords": [
@@ -3542,7 +3612,7 @@
       "type": "vfx",
       "title": "Falling Leaves",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -3569,7 +3639,7 @@
       "type": "vfx",
       "title": "Rare Drop Glow",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "marker",
       "keywords": [
@@ -3584,7 +3654,7 @@
       "type": "vfx",
       "title": "Arcane Bolt",
       "loop": true,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": false,
       "category": "magic-projectile",
       "keywords": [
@@ -3599,7 +3669,7 @@
       "type": "vfx",
       "title": "Drawn Circle",
       "loop": false,
-      "durationSeconds": 4.0,
+      "durationSeconds": 4,
       "impact": true,
       "category": "magic-impact",
       "keywords": [
@@ -3628,7 +3698,7 @@
       "type": "vfx",
       "title": "Bullet Hole",
       "loop": false,
-      "durationSeconds": 30.0,
+      "durationSeconds": 30,
       "impact": false,
       "category": "decal",
       "keywords": [
@@ -3642,7 +3712,7 @@
       "type": "vfx",
       "title": "Burn Mark",
       "loop": false,
-      "durationSeconds": 30.0,
+      "durationSeconds": 30,
       "impact": false,
       "category": "decal",
       "keywords": [
@@ -3659,7 +3729,7 @@
       "type": "vfx",
       "title": "Wet Patch",
       "loop": false,
-      "durationSeconds": 30.0,
+      "durationSeconds": 30,
       "impact": false,
       "category": "decal",
       "keywords": [
@@ -3746,7 +3816,7 @@
       "type": "vfx",
       "title": "Poisoned",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "status",
       "keywords": [
@@ -3761,7 +3831,7 @@
       "type": "vfx",
       "title": "Portal",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "portal",
       "keywords": [
@@ -3790,7 +3860,7 @@
       "type": "vfx",
       "title": "Rocket Motor",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "projectile",
       "keywords": [
@@ -3852,7 +3922,7 @@
       "type": "vfx",
       "title": "Skid Mark",
       "loop": false,
-      "durationSeconds": 20.0,
+      "durationSeconds": 20,
       "impact": false,
       "category": "decal",
       "keywords": [
@@ -3882,7 +3952,7 @@
       "type": "vfx",
       "title": "Smoke Screen",
       "loop": false,
-      "durationSeconds": 18.0,
+      "durationSeconds": 18,
       "impact": false,
       "category": "smoke",
       "keywords": [
@@ -3896,7 +3966,7 @@
       "type": "vfx",
       "title": "Wreck Smoke Column",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "smoke",
       "keywords": [
@@ -3940,7 +4010,7 @@
       "type": "vfx",
       "title": "Steam Leak",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "smoke",
       "keywords": [
@@ -3956,7 +4026,7 @@
       "type": "vfx",
       "title": "Lit Dust",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [
@@ -4000,7 +4070,7 @@
       "type": "vfx",
       "title": "Tyre Smoke",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -4015,7 +4085,7 @@
       "type": "vfx",
       "title": "Tracer Round",
       "loop": true,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": false,
       "category": "projectile",
       "keywords": [
@@ -4030,7 +4100,7 @@
       "type": "vfx",
       "title": "Hull Wake",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [
@@ -4060,7 +4130,7 @@
       "type": "vfx",
       "title": "Waterfall Mist",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "splash",
       "keywords": [
@@ -4076,7 +4146,7 @@
       "type": "vfx",
       "title": "Wheel Dust",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "vehicle",
       "keywords": [

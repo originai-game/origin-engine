@@ -11,11 +11,11 @@ duration 1.5
 looping true
 lifetime 0.67
 speed 0
-size 0.014
+size 0.022
 align velocity 0.035
 gravity 0 -9.8 0
 blend alpha
-color 0.88 0.94 1
+color 1.1 1.15 1.2
 colorOverLife {
   key 0 1 1 1 0
   key 0.05 1 1 1 0.85
