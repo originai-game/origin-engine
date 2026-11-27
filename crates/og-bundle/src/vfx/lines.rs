@@ -207,7 +207,7 @@ pub const ELEMENT_LINES: &[Line] = &[
         "seed",
         "<u32>",
         "0",
-        "Added to the effect's seed.",
+        "Added to the effect's seed; each emitter element already draws its own stream from its place in the file, so two emitters alike but for colour scatter apart.",
         "seed 3",
     ),
     Line::of(

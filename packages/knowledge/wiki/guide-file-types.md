@@ -5491,7 +5491,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
 | `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
-| `seed <u32>` | `0` | Added to the effect's seed. |
+| `seed <u32>` | `0` | Added to the effect's seed; each emitter element already draws its own stream from its place in the file, so two emitters alike but for colour scatter apart. |
 
 <a id="file-vfx-flipbook"></a>
 ### `file:vfx.flipbook`

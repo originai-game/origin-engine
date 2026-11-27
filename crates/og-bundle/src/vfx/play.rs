@@ -340,7 +340,10 @@ impl Vfx {
                         transform: local,
                         start_tick: begin,
                         stop_tick: (el.life > 0.0).then(|| begin + ticks(el.life, rate).max(1)),
-                        seed: u64::from(seed.wrapping_add(*s)),
+                        // The element's index draws its own stream: emitters
+                        // alike but for colour would otherwise throw their
+                        // particles to the same places.
+                        seed: splitmix(u64::from(seed.wrapping_add(*s)) ^ (i as u64 + 1) << 40),
                         emission: amount.min(1.0),
                     }
                 }
