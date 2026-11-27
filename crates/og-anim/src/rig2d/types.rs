@@ -3,7 +3,7 @@
 use super::*;
 
 /// A bone's setup pose, relative to its parent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Bone2d {
     pub name: String,
     pub parent: Option<usize>,
@@ -19,7 +19,7 @@ pub struct Bone2d {
 }
 
 /// A slot: what one bone shows, in draw order.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Slot2d {
     pub name: String,
     pub bone: usize,
@@ -32,7 +32,7 @@ pub struct Slot2d {
 }
 
 /// One bone's pull on a mesh vertex: the point in that bone's space and its weight.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Influence {
     pub bone: usize,
     pub x: f32,
@@ -41,13 +41,13 @@ pub struct Influence {
 }
 
 /// A mesh vertex: its texel (pixels from the image's top left) and influences.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MeshVertex2d {
     pub uv: [f32; 2],
     pub influences: Vec<Influence>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum AttachmentKind {
     /// A rectangle of the texture (`rect`: x y w h, pixels from the top
     /// left) drawn `size` big, centred at `at` in the bone, turned by
@@ -91,7 +91,7 @@ pub enum AttachmentKind {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Attachment2d {
     pub name: String,
     pub slot: usize,
@@ -116,7 +116,7 @@ impl Attachment2d {
 /// world mode): its rotation (plus `rotation` degrees), its origin (the
 /// point `at` in the target's space), its axes' lengths (plus `scale`) and
 /// the angle between its axes (plus `shear` degrees).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TransformConstraint2d {
     pub name: String,
     pub bones: Vec<usize>,
@@ -130,7 +130,7 @@ pub struct TransformConstraint2d {
 }
 
 /// How a path constraint's `position` (and a `percent` spacing) is read.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PathUnit {
     /// A fraction of the path's length.
     #[default]
@@ -140,7 +140,7 @@ pub enum PathUnit {
 }
 
 /// How a path constraint spaces its bones.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PathSpacing {
     /// Each bone's length (as posed) plus `spacing` pixels.
     #[default]
@@ -152,7 +152,7 @@ pub enum PathSpacing {
 }
 
 /// How a path constraint turns its bones.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PathRotate {
     /// Along the path's tangent at the bone's origin.
     #[default]
@@ -168,7 +168,7 @@ pub enum PathRotate {
 /// `position` on, `spacing` apart, turned by `rotate` (plus `rotation`
 /// degrees), DragonBones' and Spine's semantics; `mix` is how much of the
 /// rotation and the translation applies.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PathConstraint2d {
     pub name: String,
     pub path: usize,
@@ -186,7 +186,7 @@ pub struct PathConstraint2d {
 /// An IK constraint: `bones` (a chain, root first, each the previous one's
 /// child) turn so the last one's tip (one bone: its direction) reaches
 /// `target`'s origin.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Ik2d {
     pub name: String,
     pub bones: Vec<usize>,
@@ -197,7 +197,7 @@ pub struct Ik2d {
 }
 
 /// How a key's value moves to the next key's.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Ease {
     /// In proportion to time.
     #[default]
@@ -210,7 +210,7 @@ pub enum Ease {
 }
 
 /// A key: a time, a value and how it eases to the next key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Key<T> {
     pub time: f32,
     pub value: T,
@@ -218,7 +218,7 @@ pub struct Key<T> {
 }
 
 /// Which way a `rotate` key turns to the next key's angle.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Turn {
     /// The shorter way round (half a turn: clockwise).
     #[default]
@@ -230,7 +230,7 @@ pub enum Turn {
 }
 
 /// A `rotate` key's value: degrees and the way to the next key.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Rotation {
     pub degrees: f32,
     pub turn: Turn,
@@ -251,7 +251,7 @@ pub fn turn_delta(a: f32, b: f32, turn: Turn) -> f32 {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BoneTimeline {
     pub bone: usize,
     pub rotate: Vec<Key<Rotation>>,
@@ -260,7 +260,7 @@ pub struct BoneTimeline {
     pub scale: Vec<Key<[f32; 2]>>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SlotTimeline {
     pub slot: usize,
     pub attachment: Vec<(f32, Option<usize>)>,
@@ -268,27 +268,27 @@ pub struct SlotTimeline {
     pub offset: Vec<Key<[f32; 4]>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DeformTimeline {
     pub attachment: usize,
     pub keys: Vec<Key<Vec<f32>>>,
 }
 
 /// An IK key's value: the constraint's weight (eased) and bend (held).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IkKey {
     pub weight: f32,
     pub counterclockwise: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IkTimeline {
     /// An index into the rig's (or armature's) constraints.
     pub ik: usize,
     pub keys: Vec<Key<IkKey>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Clip2d {
     pub name: String,
     pub duration: f32,
@@ -307,7 +307,7 @@ pub struct Clip2d {
 /// A child armature: bones, slots, attachments, constraints and clips of
 /// its own, shown by a [`AttachmentKind::Child`] and drawn with the rig's
 /// texture and unit.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Armature2d {
     pub name: String,
     pub bones: Vec<Bone2d>,
@@ -324,7 +324,7 @@ pub struct Armature2d {
 
 /// A skin: what each slot shows instead of the rig's own (the default
 /// skin's) attachments, wherever the setup pose or a clip shows them.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Skin2d {
     pub name: String,
     /// (an attachment of the default skin, what this skin shows for it: another or none).
@@ -333,7 +333,7 @@ pub struct Skin2d {
 
 /// A 2D rig: the texture, bones, slots, attachments, constraints, clips,
 /// skins and the child armatures its `child` attachments show.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Rig2dAsset {
     pub texture: String,
     pub size: [u32; 2],

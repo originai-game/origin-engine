@@ -189,16 +189,15 @@ impl BlobKind for Flipbook {
 // ── 2D rigs ──────────────────────────────────────────────────────────────
 
 row!(
-    /// The root of a 2D rig blob (an `.ogt` of `type rig2d`).
-    Rig2DMeta, "og.Rig2D", 1 {
-        /// Bytes of the canonical rig text in `text`.
-        text_bytes: u32,
+    /// The root of a native 2D rig blob.
+    Rig2DMeta, "og.Rig2D", 2 {
+        /// Bytes of the validated native rig in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The 2D rig blob: `text` holds the canonical rig
-/// (`og_anim::Rig2dAsset::to_text`, a DragonBones export already
-/// converted), parsed again at load.
+/// The 2D rig blob: `data` holds the native rig fields, including resolved
+/// indices and animation channels. No author text is kept or parsed at load.
 pub struct Rig2D;
 impl BlobKind for Rig2D {
     const NAME: &'static str = "og.Rig2D";

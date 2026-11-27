@@ -64,7 +64,17 @@ fn world() -> (World, Entity, Entity) {
     })
     .unwrap();
     let sys = install_skeleton2d(&mut w).unwrap();
-    sys.add_rig(9, Rig2dAsset::parse(RIG).unwrap()).unwrap();
+    let rig = Rig2dAsset::parse(RIG).unwrap();
+    let bytes = rig.to_bytes().unwrap();
+    let decoded = Rig2dAsset::from_bytes(&bytes).unwrap();
+    assert_eq!(decoded, rig);
+    for end in 0..bytes.len() {
+        assert!(Rig2dAsset::from_bytes(&bytes[..end]).is_err());
+    }
+    let mut trailing = bytes;
+    trailing.push(0);
+    assert!(Rig2dAsset::from_bytes(&trailing).is_err());
+    sys.add_rig(9, decoded).unwrap();
     let e = w
         .spawn((
             Transform {

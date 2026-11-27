@@ -3,7 +3,7 @@
 use super::*;
 
 impl Rig2dAsset {
-    fn body(&self) -> Body<'_> {
+    pub(super) fn body(&self) -> Body<'_> {
         Body {
             bones: &self.bones,
             slots: &self.slots,
@@ -132,7 +132,7 @@ impl Rig2dAsset {
 
     /// Each child attachment names a clip its armature has, and no
     /// armature shows itself (directly or through another).
-    fn check_children(&self) -> Result<()> {
+    pub(super) fn check_children(&self) -> Result<()> {
         let shows = |b: Body<'_>| -> Vec<(usize, Option<String>, String)> {
             b.attachments
                 .iter()

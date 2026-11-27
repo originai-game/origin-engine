@@ -188,7 +188,7 @@ pub(crate) fn cook_atlas(
 
 pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let (rig, mut notes) = rig(s).map_err(CookError)?;
-    let text = rig.to_text();
+    let data = rig.to_bytes().map_err(|e| CookError(e.reason().into()))?;
     notes.insert(
         0,
         format!(
@@ -217,11 +217,11 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     w.table(
         "meta",
         &[Rig2DMeta {
-            text_bytes: text.len() as u32,
+            data_bytes: data.len() as u32,
         }],
         row_hash::<Rig2DMeta>(),
     )
-    .raw("text", text.into_bytes(), 4);
+    .raw("data", data, 4);
     Ok((w.finish(), notes))
 }
 

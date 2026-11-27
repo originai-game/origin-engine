@@ -170,10 +170,12 @@
 
 mod asset;
 mod constraints;
+mod cooked;
 mod math;
 mod parse;
 mod text;
 mod types;
+mod validate;
 
 use constraints::{fabrik, path_constraint, sq, transform_constraint, world_of};
 pub use math::{Affine2, atan2, bezier, check_curve, sincos};

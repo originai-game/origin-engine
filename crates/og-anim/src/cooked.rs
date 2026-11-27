@@ -87,12 +87,11 @@ impl BundleAnim for Bundle {
     fn rig2d(&self, id: &str, bytes: &[u8]) -> Result<crate::Rig2dAsset, LoadError> {
         let blob = self.blob::<format::Rig2D>(id, bytes)?;
         let meta = one::<format::Rig2DMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        let text = text
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
-        crate::Rig2dAsset::parse(text).map_err(|e| invalid(&blob, e.reason()))
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(&blob, "the native rig length does not match"));
+        }
+        crate::Rig2dAsset::from_bytes(data).map_err(|e| invalid(&blob, e.reason()))
     }
 
     #[cfg(not(target_arch = "wasm32"))]

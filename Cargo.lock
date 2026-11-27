@@ -3328,6 +3328,7 @@ dependencies = [
 name = "og-anim"
 version = "0.9.0"
 dependencies = [
+ "bincode",
  "bytemuck",
  "glam 0.34.1",
  "naga",

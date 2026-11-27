@@ -35,7 +35,7 @@
 //! | material shader (`og.MaterialShader`, TS `file.shader`) | [`ShaderMeta`] | `code` (WGSL), `names` (UTF-8), `params` ([`ShaderParamRow`]) |
 //! | custom post pass (`og.PostPass`, TS `file.post`) | [`PostMeta`] | `code`, `names`, `params` ([`ShaderParamRow`]) |
 //! | UI material (`og.UiMaterialShader`, TS `file['ui-material']`) | [`UiMaterialMeta`] | `code`, `names`, `params` ([`ShaderParamRow`]) |
-//! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
+//! | 2D rig (`og.Skeleton2D`) | [`Rig2DMeta`] | `data` (validated native bones, attachments, constraints, clips, skins and child armatures) |
 //! | flipbook sheet (`og.Flipbook`) | [`FlipbookMeta`] | `sheet` (native texture ID, dimensions, frames, clips, durations and events) |
 //! | fracture (`og.Fracture`, a model's `#fracture`: a model with a `fracture` block) | [`FractureMeta`] | `asset` (`og_physics_data::fracture::FractureAsset::to_bytes`: the chunks, their hierarchy, the support graph's bonds and the anchors) |
 //! | HLOD (`og.Hlod`, a scene's `#hlod`: a scene with an `hlod` block) | [`HlodMeta`] | `nodes` [`HlodNodeRow`] (the tree, depth first; node `n`'s proxy is the model `<scene>#hlod-<n>`), `members` [`HlodMemberRow`] (the model entities the proxies stand in for, and where each stood), `cells` [`HlodCellRow`] (the cells' sub-scene roots a node over cells stands in for) |

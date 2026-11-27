@@ -318,7 +318,7 @@ impl FlipClip {
 }
 
 /// Texture filtering a sheet asks for.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SheetFilter {
     /// Pixel art: the nearest texel.
     #[default]
