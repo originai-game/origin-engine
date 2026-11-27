@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "look presets and knowledge/looks/catalogue.json",
+      "change": "The catalogue and shipped presets now contain only pixel (topdown variant), cartoon-2d, faceted-low-poly, toy-3d (paper variant), inked-comic-3d and neon-vector. Removed cinematic-realism (muted), painterly-3d (lush, luminous-layers, expressionist), minimal-geometric (layered-silhouette), low-resolution-3d (monochrome-dither), pixel-3d-hybrid and anime-cel-3d. Also removed pixel variants 8bit, monochrome, detailed, luminous and coarse; cartoon-2d variants watercolor, storybook and rubber-hose; toy-3d variants voxel, clay and diorama; inked-comic-3d variants bold-comic and heavy-ink. Their previews, authored art, art bibles and mood overrides are no longer shipped. The six base moods remain.",
+      "fix": "Refresh the platform catalogue, preset and preview payload together. Replace cinematic-realism and minimal-geometric with faceted-low-poly; painterly-3d with toy-3d or cartoon-2d; low-resolution-3d and pixel-3d-hybrid with pixel for a 2D view or faceted-low-poly for 3D; anime-cel-3d with inked-comic-3d. These are new art directions, not visual equivalents. Replace a retired variant with its retained base look, pixel:topdown or toy-3d:paper as appropriate; remove its variant field otherwise. New film creation defaults to faceted-low-poly. No aliases or fallback for removed presets."
+    },
+    {
+      "member": "og vfx add",
+      "change": "Removed cinematic-realism, cartoon-2d-watercolor, cartoon-2d-storybook and cartoon-2d-rubber-hose downloadable packs and the realistic-starter bundled pack. They are not used by the scaffold or default creation flow.",
+      "fix": "Use geometric for faceted-low-poly, cartoon-2d for flat 2D effects, pixel-scenario for pixel effects, or the retained effekseer-* packs for 3D effects. Update effect IDs and review the replacement's placement, timing and art; no compatibility packs or old IDs remain."
+    }
+  ]
+}
