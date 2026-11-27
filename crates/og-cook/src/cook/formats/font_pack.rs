@@ -246,8 +246,28 @@ pub(crate) fn cook(
         faces: faces(s),
         coverage: og_i18n::font_pack::ranges(points),
     };
-    let text = pack.to_text();
     let chars: u32 = pack.coverage.iter().map(|r| r.end() - r.start() + 1).sum();
+    let mut strings = super::model::Strings(Vec::new());
+    let (name_offset, name_len) = strings.add(&pack.name);
+    let mut rows = |values: &[String]| {
+        values
+            .iter()
+            .map(|s| {
+                let (offset, len) = strings.add(s);
+                format::FontPackStringRow { offset, len }
+            })
+            .collect::<Vec<_>>()
+    };
+    let faces = rows(&pack.faces);
+    let languages = rows(&pack.languages);
+    let coverage: Vec<_> = pack
+        .coverage
+        .iter()
+        .map(|r| format::FontPackRangeRow {
+            start: *r.start(),
+            end: *r.end(),
+        })
+        .collect();
     let mut w = BlobWriter::new(
         format::FontPack::type_hash(),
         format::FontPack::schema_version(),
@@ -256,12 +276,27 @@ pub(crate) fn cook(
     w.table(
         "meta",
         &[format::FontPackMeta {
-            text_bytes: text.len() as u32,
-            faces: pack.faces.len() as u32,
+            name_offset,
+            name_len,
         }],
         format::row_hash::<format::FontPackMeta>(),
     )
-    .raw("text", text.into_bytes(), 16);
+    .table(
+        "faces",
+        &faces,
+        format::row_hash::<format::FontPackStringRow>(),
+    )
+    .table(
+        "languages",
+        &languages,
+        format::row_hash::<format::FontPackStringRow>(),
+    )
+    .table(
+        "coverage",
+        &coverage,
+        format::row_hash::<format::FontPackRangeRow>(),
+    )
+    .raw("strings", strings.0, 16);
     for (language, file) in dictionaries {
         let bytes = std::fs::read(dir.join(file))
             .map_err(|e| CookError(format!("font pack '{}': {file}: {e}", m.name)))?;

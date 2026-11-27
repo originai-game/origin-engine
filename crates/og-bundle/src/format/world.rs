@@ -484,23 +484,32 @@ impl BlobKind for Strings {
 }
 
 row!(
-    /// The root of a font pack blob (a font pack's `extension.json`,
-    /// docs/ui.md §3.4).
-    FontPackMeta, "og.FontPack", 1 {
-        /// Bytes of the index text in `text`.
-        text_bytes: u32,
-        /// Its faces.
-        faces: u32,
+    /// Native font-pack metadata; the name is a UTF-8 range in `strings`.
+    FontPackMeta, "og.FontPack", 2 {
+        name_offset: u32,
+        name_len: u32,
     }
 );
 
-/// The font pack blob: `text` holds og-i18n's `FontPack` index the cook
-/// made from the manifest and its faces' cmaps.
+row!(
+    /// A UTF-8 range in `strings`, in the ordered `faces` or `languages` table.
+    FontPackStringRow, "og.FontPackString", 1 { offset: u32, len: u32 }
+);
+row!(
+    /// One sorted, disjoint inclusive Unicode coverage range.
+    FontPackRangeRow, "og.FontPackRange", 1 { start: u32, end: u32 }
+);
+
+/// The font pack's native languages, ordered face IDs and cmap coverage.
 pub struct FontPack;
 impl BlobKind for FontPack {
     const NAME: &'static str = "og.FontPack";
     fn schemas() -> Vec<Schema> {
-        vec![FontPackMeta::schema()]
+        vec![
+            FontPackMeta::schema(),
+            FontPackStringRow::schema(),
+            FontPackRangeRow::schema(),
+        ]
     }
 }
 

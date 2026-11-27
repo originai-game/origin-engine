@@ -6,15 +6,6 @@
 //! from the indexes in the bundle: the pack of the active locale first,
 //! then any other installed pack, loaded only when a frame draws a
 //! character only it covers.
-//!
-//! The text form, one field per line:
-//!
-//! ```text
-//! name arabic
-//! languages ar fa ur
-//! face fonts/arabic/NotoSansArabic-Regular.ttf
-//! coverage 20-7e 600-6ff
-//! ```
 
 use std::ops::RangeInclusive;
 
@@ -32,60 +23,6 @@ pub struct FontPack {
 }
 
 impl FontPack {
-    /// The index as text (the blob's `text`).
-    pub fn to_text(&self) -> String {
-        let mut out = format!(
-            "name {}\nlanguages {}\n",
-            self.name,
-            self.languages.join(" ")
-        );
-        for f in &self.faces {
-            out.push_str(&format!("face {f}\n"));
-        }
-        let ranges: Vec<String> = self
-            .coverage
-            .iter()
-            .map(|r| format!("{:x}-{:x}", r.start(), r.end()))
-            .collect();
-        out.push_str(&format!("coverage {}\n", ranges.join(" ")));
-        out
-    }
-
-    /// Reads [`FontPack::to_text`]'s form.
-    pub fn parse(text: &str) -> Result<FontPack, String> {
-        let mut p = FontPack::default();
-        for (n, line) in text.lines().enumerate() {
-            let (key, rest) = line.split_once(' ').unwrap_or((line, ""));
-            match key {
-                "name" => p.name = rest.trim().to_string(),
-                "languages" => {
-                    p.languages = rest
-                        .split_whitespace()
-                        .map(crate::locale::canonical)
-                        .collect()
-                }
-                "face" => p.faces.push(rest.trim().to_string()),
-                "coverage" => {
-                    for r in rest.split_whitespace() {
-                        let (a, b) = r
-                            .split_once('-')
-                            .ok_or(format!("line {}: range {r}", n + 1))?;
-                        let num = |s: &str| {
-                            u32::from_str_radix(s, 16).map_err(|e| format!("line {}: {e}", n + 1))
-                        };
-                        p.coverage.push(num(a)?..=num(b)?);
-                    }
-                }
-                "" => {}
-                k => return Err(format!("line {}: '{k}' is not a font pack field", n + 1)),
-            }
-        }
-        if p.name.is_empty() || p.faces.is_empty() {
-            return Err("a font pack index needs a name and a face".into());
-        }
-        Ok(p)
-    }
-
     /// Whether its faces draw `c`.
     pub fn covers(&self, c: char) -> bool {
         let c = c as u32;

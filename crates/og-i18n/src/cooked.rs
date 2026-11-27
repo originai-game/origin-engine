@@ -57,3 +57,59 @@ impl BundleStrings for Bundle {
         .map_err(|e| invalid(&blob, e))
     }
 }
+
+/// Native font-pack fields; dictionaries remain separate lazy payloads.
+pub trait BundleFontPacks {
+    fn font_pack(&self, id: &str, bytes: &[u8]) -> Result<crate::FontPack, LoadError>;
+}
+
+impl BundleFontPacks for Bundle {
+    fn font_pack(&self, id: &str, bytes: &[u8]) -> Result<crate::FontPack, LoadError> {
+        let blob = self.blob::<format::FontPack>(id, bytes)?;
+        let meta = one::<format::FontPackMeta>(&blob)?;
+        let bytes = blob.raw("strings")?;
+        let text = |offset: u32, len: u32| {
+            (offset as usize)
+                .checked_add(len as usize)
+                .and_then(|end| bytes.get(offset as usize..end))
+                .and_then(|s| std::str::from_utf8(s).ok())
+                .map(str::to_string)
+                .ok_or_else(|| invalid(&blob, "font-pack string is out of range or not UTF-8"))
+        };
+        let list = |name| {
+            table::<format::FontPackStringRow>(&blob, name)?
+                .iter()
+                .map(|row| text(row.offset, row.len))
+                .collect::<Result<Vec<_>, _>>()
+        };
+        let name = text(meta.name_offset, meta.name_len)?;
+        let faces = list("faces")?;
+        if name.trim().is_empty() || faces.is_empty() || faces.iter().any(String::is_empty) {
+            return Err(invalid(
+                &blob,
+                "font pack needs a name and nonempty face IDs",
+            ));
+        }
+        let mut coverage = Vec::new();
+        let mut previous = None;
+        for range in table::<format::FontPackRangeRow>(&blob, "coverage")? {
+            if range.start > range.end
+                || range.end > 0x10ffff
+                || previous.is_some_and(|end| range.start <= end)
+            {
+                return Err(invalid(
+                    &blob,
+                    "invalid or overlapping font-pack coverage ranges",
+                ));
+            }
+            coverage.push(range.start..=range.end);
+            previous = Some(range.end);
+        }
+        Ok(crate::FontPack {
+            name,
+            languages: list("languages")?,
+            faces,
+            coverage,
+        })
+    }
+}

@@ -1681,18 +1681,6 @@ impl Bundle {
 // ── E6: string tables ────────────────────────────────────────────────────
 
 impl Bundle {
-    /// The index text of a font pack blob (`og.FontPack`); parse it with
-    /// og-i18n's `FontPack::parse`.
-    pub fn font_pack_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
-        let blob = self.blob::<format::FontPack>(id, bytes)?;
-        let meta = one::<format::FontPackMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        text.get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .map(str::to_string)
-            .ok_or_else(|| invalid(&blob, "the font pack index is cut short or not UTF-8"))
-    }
-
     /// The dictionaries a font pack blob (`og.FontPack`) ships for the
     /// game's locales, by name, of one `kind`: `hyphenation` (by language,
     /// when the game declares `hyphens: auto`) or `segmentation` (ICU's

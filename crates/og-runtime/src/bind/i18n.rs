@@ -5,7 +5,7 @@
 use crate::engine::{Engine, engine};
 use crate::host::wire::LocaleInfo;
 use crate::parse;
-use og_i18n::{Arg, BundleStrings, Catalog, StringTable};
+use og_i18n::{Arg, BundleFontPacks, BundleStrings, Catalog, StringTable};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -380,17 +380,17 @@ pub(crate) fn ensure_packs(eng: &Engine) {
         let mut segmentation = Vec::new();
         for id in ids {
             let read = assets.blob(&id).and_then(|(bytes, bundle)| {
-                let text = bundle
-                    .font_pack_text(&id, bytes.bytes())
+                let font = bundle
+                    .font_pack(&id, bytes.bytes())
                     .map_err(|e| e.to_string())?;
                 let pack = |kind| {
                     bundle
                         .font_pack_dictionaries(&id, bytes.bytes(), kind)
                         .map_err(|e| e.to_string())
                 };
-                Ok((text, pack("hyphenation")?, pack("segmentation")?))
+                Ok((font, pack("hyphenation")?, pack("segmentation")?))
             });
-            match read.and_then(|(t, h, w)| Ok((og_i18n::FontPack::parse(&t)?, h, w))) {
+            match read {
                 Ok((p, h, w)) => {
                     packs.push(p);
                     dictionaries.extend(h);
