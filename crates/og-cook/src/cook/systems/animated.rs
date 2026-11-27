@@ -261,19 +261,26 @@ fn distance(p: &[u8], k: [u8; 3]) -> f32 {
     f32::from(d) / 255.0
 }
 
-/// Keys `colour` out of one frame: the texels within `2 tolerance` of it
-/// (the largest channel difference, 0 to 1) that the border reaches
-/// through such texels (so a white eye inside a character on white stays)
-/// lose their alpha, fully within `tolerance` and in a ramp beyond, with
-/// the background's colour taken back out of the ramp's texels. With
-/// `holes`, every texel within `tolerance` of it reaches too: pockets of
-/// background a figure encloses (between an arm and the body, inside a
-/// slash's arc) go, and a white eye on white goes with them.
+/// Keys `colour` out of one frame: texels within `tolerance` of it (the
+/// largest channel difference, 0 to 1) lose their alpha when connected
+/// to the border through such texels. With `holes`, enclosed pockets in
+/// that band go too (and a white eye on white goes with them).
+///
+/// Beyond that band, the border grows only through locally explained
+/// mixtures, not a distance-based alpha ramp that could flood through
+/// the figure. Each step takes the minimum alpha fitting a nearby kept
+/// foreground sample's colour line; opaque fits stop the growth,
+/// and its inferred alpha must satisfy Smith and Blinn's lower bound
+/// ("Blue Screen Matting", 1996, §A Lower Bound): for each channel of
+/// P = a F + (1-a) K, a >= (K-P)/K when P < K, or (P-K)/(255-K)
+/// when P > K. Thus F stays in [0,255] without clipping an impossible
+/// unmix into a new colour. A single background cannot determine a
+/// unique matte; texels without a valid local estimate stay unchanged.
 pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f32, holes: bool) {
     let (w, h) = (w as usize, h as usize);
-    let soft = tolerance * 2.0;
-    let near =
-        |rgba: &[u8], i: usize| rgba[i * 4 + 3] > 0 && distance(&rgba[i * 4..], colour) <= soft;
+    let near = |rgba: &[u8], i: usize| {
+        rgba[i * 4 + 3] > 0 && distance(&rgba[i * 4..], colour) <= tolerance
+    };
     let mut seen = vec![false; w * h];
     let mut queue = std::collections::VecDeque::new();
     for y in 0..h {
@@ -312,10 +319,11 @@ pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f3
             visit(i + w);
         }
     }
-    // The ring of kept texels beside the keyed ones mixes the figure's edge
-    // with the background (antialiasing, a GIF's dither): each is unmixed
-    // against the mean of the kept texels two in from it, its alpha the
-    // share of that colour along the line from the background to it.
+    // Fit the edge against actual kept foreground samples two texels in,
+    // not their mean: averaging steel and a red plume invents a colour
+    // that neither edge is mixed with. Take the minimum valid alpha of
+    // the local colour-line fits; a sample still mixed with background
+    // must not win just because it matches itself with alpha 1.
     let ring = |i: usize| {
         let (x, y) = (i % w, i / w);
         !seen[i]
@@ -324,14 +332,33 @@ pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f3
                 || (y > 0 && seen[i - w])
                 || (y + 1 < h && seen[i + w]))
     };
-    let edge: Vec<usize> = (0..w * h)
+    let mut edge: Vec<usize> = (0..w * h)
         .filter(|&i| ring(i) && rgba[i * 4 + 3] > 0)
         .collect();
-    let on_ring: BTreeSet<usize> = edge.iter().copied().collect();
+    let mut on_ring: BTreeSet<usize> = edge.iter().copied().collect();
     let mut unmixed = Vec::with_capacity(edge.len());
-    for &i in &edge {
+    let mut next = 0;
+    while next < edge.len() {
+        let i = edge[next];
+        next += 1;
         let (x, y) = ((i % w) as i64, (i / w) as i64);
-        let (mut sum, mut n) = ([0f32; 3], 0f32);
+        let k = colour.map(f32::from);
+        let p = [0, 1, 2].map(|c| f32::from(rgba[i * 4 + c]));
+        // Smith–Blinn's bound is independent of the foreground estimate.
+        // Reject an invalid fit rather than clamp RGB or force alpha up:
+        // neither gives evidence that this texel is background-mixed.
+        let min_alpha = (0..3)
+            .map(|c| {
+                if p[c] < k[c] {
+                    (k[c] - p[c]) / k[c]
+                } else if p[c] > k[c] {
+                    (p[c] - k[c]) / (255.0 - k[c])
+                } else {
+                    0.0
+                }
+            })
+            .fold(0.0f32, f32::max);
+        let mut best = None;
         for dy in -2i64..=2 {
             for dx in -2i64..=2 {
                 let (nx, ny) = (x + dx, y + dy);
@@ -339,40 +366,56 @@ pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f3
                     continue;
                 }
                 let j = ny as usize * w + nx as usize;
-                if seen[j] || on_ring.contains(&j) || rgba[j * 4 + 3] < 255 {
+                if seen[j] || j == i || rgba[j * 4 + 3] < 255 {
                     continue;
                 }
-                for c in 0..3 {
-                    sum[c] += f32::from(rgba[j * 4 + c]);
+                let fk = [0, 1, 2].map(|c| f32::from(rgba[j * 4 + c]) - k[c]);
+                let len = fk.iter().map(|v| v * v).sum::<f32>();
+                // A figure the background's colour cannot be told from it.
+                if len < (0.1 * 255.0) * (0.1 * 255.0) {
+                    continue;
                 }
-                n += 1.0;
+                // Fit colour differences first: brightness variation in
+                // neutral steel is not evidence of magenta contamination.
+                // For an achromatic colour line, RGB supplies the fit.
+                let pk = [0, 1, 2].map(|c| p[c] - k[c]);
+                let fm = fk.iter().sum::<f32>() / 3.0;
+                let pm = pk.iter().sum::<f32>() / 3.0;
+                let chroma_len = fk.iter().map(|v| (v - fm).powi(2)).sum::<f32>();
+                let a = if chroma_len > 0.0 {
+                    (0..3).map(|c| (pk[c] - pm) * (fk[c] - fm)).sum::<f32>() / chroma_len
+                } else {
+                    (0..3).map(|c| pk[c] * fk[c]).sum::<f32>() / len
+                }
+                .clamp(0.0, 1.0);
+                if a < min_alpha {
+                    continue;
+                }
+                let off = (0..3).map(|c| (pk[c] - a * fk[c]).powi(2)).sum::<f32>();
+                if off <= (0.12 * 255.0) * (0.12 * 255.0) && best.is_none_or(|old| a < old) {
+                    best = Some(a);
+                }
             }
         }
-        if n == 0.0 {
+        let Some(a) = best else {
+            continue;
+        };
+        if a >= 1.0 {
             continue;
         }
-        let f = sum.map(|s| s / n);
-        let k = colour.map(f32::from);
-        let p = [0, 1, 2].map(|c| f32::from(rgba[i * 4 + c]));
-        let fk = [0, 1, 2].map(|c| f[c] - k[c]);
-        let len = fk.iter().map(|v| v * v).sum::<f32>();
-        // A figure the background's colour cannot be told from it.
-        if len < (0.1 * 255.0) * (0.1 * 255.0) {
-            continue;
+        unmixed.push((i, a, p));
+        // Follow explained mixtures through multi-texel antialiasing,
+        // without admitting an opaque foreground into the flood.
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let (nx, ny) = (x + dx, y + dy);
+            if nx < 0 || ny < 0 || nx >= w as i64 || ny >= h as i64 {
+                continue;
+            }
+            let j = ny as usize * w + nx as usize;
+            if !seen[j] && rgba[j * 4 + 3] > 0 && on_ring.insert(j) {
+                edge.push(j);
+            }
         }
-        let a = (0..3).map(|c| (p[c] - k[c]) * fk[c]).sum::<f32>() / len;
-        // Only a texel on the line between the two is their mix: a thin
-        // stroke of another colour (an eye, a hilt) is left alone.
-        let off = (0..3)
-            .map(|c| {
-                let d = p[c] - (k[c] + a * fk[c]);
-                d * d
-            })
-            .sum::<f32>();
-        if off > (0.12 * 255.0) * (0.12 * 255.0) {
-            continue;
-        }
-        unmixed.push((i, a.clamp(0.0, 1.0), p));
     }
     for (i, a, p) in unmixed {
         let px = &mut rgba[i * 4..i * 4 + 4];
@@ -381,28 +424,16 @@ pub fn key_frame(rgba: &mut [u8], w: u32, h: u32, colour: [u8; 3], tolerance: f3
             continue;
         }
         for c in 0..3 {
-            let v = (p[c] - f32::from(colour[c]) * (1.0 - a)) / a;
+            let k = f32::from(colour[c]);
+            let v = k + (p[c] - k) / a;
             px[c] = v.round().clamp(0.0, 255.0) as u8;
         }
         px[3] = (f32::from(px[3]) * a).round() as u8;
     }
     for (i, reached) in seen.iter().enumerate() {
-        if !reached {
-            continue;
+        if *reached {
+            rgba[i * 4..i * 4 + 4].copy_from_slice(&[0, 0, 0, 0]);
         }
-        let p = &mut rgba[i * 4..i * 4 + 4];
-        let d = distance(p, colour);
-        if d <= tolerance || tolerance <= 0.0 {
-            p.copy_from_slice(&[0, 0, 0, 0]);
-            continue;
-        }
-        let a = ((d - tolerance) / tolerance).clamp(0.0, 1.0);
-        for c in 0..3 {
-            let k = f32::from(colour[c]);
-            let v = (f32::from(p[c]) - k * (1.0 - a)) / a;
-            p[c] = v.round().clamp(0.0, 255.0) as u8;
-        }
-        p[3] = (f32::from(p[3]) * a).round() as u8;
     }
 }
 

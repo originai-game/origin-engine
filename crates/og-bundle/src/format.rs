@@ -150,7 +150,8 @@ impl Area {
             Area::Texture => ("texture", 1),
             // Preserve authored tangent frames even without a normal map.
             Area::Model => ("model", 3),
-            Area::Anim => ("anim", 1),
+            // Bounded chroma mattes for animated-source flipbooks.
+            Area::Anim => ("anim", 2),
             Area::Fracture => ("fracture", 1),
             Area::Audio => ("audio", 1),
             Area::Font => ("font", 1),
