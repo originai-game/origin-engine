@@ -35,13 +35,13 @@ export function buildWanderer(world: World, coast: Coast): void {
   const c = math.cos(FACING), s = math.sin(FACING);
   const at = (p: { x: number; y: number; z: number }) => ({ x: feet.x + p.x * c + p.z * s, y: feet.y + p.y, z: feet.z - p.x * s + p.z * c });
 
-  const rig = must(og.load.animation(world, "models/wanderer.glb"));
-  const body = must(world.instantiate(must(og.load.gltf(world, "models/wanderer.glb")), { name: "wanderer", position: feet, quaternion: turn }));
+  const rig = must(og.load.animation(world, "base/models/wanderer"));
+  const body = must(world.instantiate(must(og.load.gltf(world, "base/models/wanderer")), { name: "wanderer", position: feet, quaternion: turn }));
   must(world.insert(body, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
   // Standing: breathing and looking about. Walking: a casual walk from the
   // same Meshy rig family (models/walk-clips.glb), retargeted onto the
   // wanderer; player.ts cross-fades between them by the speed it walks at.
-  const library = must(og.load.animation(world, "models/walk-clips.glb"));
+  const library = must(og.load.animation(world, "base/models/walk-clips"));
   const walk = must(og.anim.retarget(world, { clip: og.anim.clip(library, "Casual_Walk")!, source: library.skeleton, target: rig.skeleton }));
   const clips = must(world.resource(Clips));
   clips.idle = og.anim.clip(rig, "Long_Breathe_and_Look_Around")! as unknown as number;
@@ -71,7 +71,7 @@ export function buildWanderer(world: World, coast: Coast): void {
 
   // The lantern hangs by a cord from the staff's hook; player.ts swings it
   // as the wanderer starts, stops and turns.
-  const lantern = must(world.instantiate(must(og.load.gltf(world, "models/lantern.glb")), {
+  const lantern = must(world.instantiate(must(og.load.gltf(world, "base/models/lantern")), {
     name: "lantern", parent: body, position: { x: CARRY.hook.x, y: CARRY.hook.y - LANTERN.drop, z: CARRY.hook.z }, scale: { x: LANTERN.size, y: LANTERN.size, z: LANTERN.size },
   }));
   const line = must(world.spawn({ name: "lantern-cord", parent: body, position: CARRY.hook }));

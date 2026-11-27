@@ -10,7 +10,7 @@ pub mod cache;
 pub(super) mod delivery;
 pub(super) mod execute;
 pub mod graph;
-pub(super) mod import_defaults;
+pub(super) mod imports;
 pub(super) mod index;
 pub(super) mod kinds;
 pub(super) mod needs;

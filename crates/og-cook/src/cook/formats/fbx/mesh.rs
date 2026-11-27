@@ -225,7 +225,7 @@ impl Writer<'_> {
             let mat = match mats.get(part.index as usize) {
                 Some(mat) => Some(self.materials.material(
                     mat,
-                    self.dir,
+                    self.read_file,
                     self.what,
                     &mut self.read,
                     self.notes,

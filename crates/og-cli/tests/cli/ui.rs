@@ -112,7 +112,7 @@ fn font_pack_installs_typed_content_and_cooks() {
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
     let bytes = bundle.read("base/fonts/latin/index").unwrap();
     let pack = bundle.font_pack("base/fonts/latin/index", &bytes).unwrap();
-    assert_eq!(pack.faces, ["fonts/latin/NotoSans-Latin.ttf"]);
+    assert_eq!(pack.faces, ["base/fonts/latin/NotoSans-Latin"]);
     assert!(pack.covers('é'));
 }
 

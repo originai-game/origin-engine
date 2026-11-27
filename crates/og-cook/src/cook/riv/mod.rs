@@ -22,124 +22,13 @@ pub(crate) enum Field {
     Bytes,
 }
 
-/// The accessibility roles an artboard may take (`role`): the UI's
-/// element roles, as its accessibility tree names them.
-const ROLES: &[&str] = &[
-    "button",
-    "link",
-    "text",
-    "heading",
-    "image",
-    "checkbox",
-    "radio",
-    "switch",
-    "slider",
-    "spinbutton",
-    "textbox",
-    "combobox",
-    "listbox",
-    "option",
-    "tab",
-    "tablist",
-    "tabpanel",
-    "radiogroup",
-    "progressbar",
-    "meter",
-    "timer",
-    "status",
-    "alert",
-    "log",
-    "dialog",
-    "alertdialog",
-    "tooltip",
-    "separator",
-    "group",
-    "region",
-    "navigation",
-    "toolbar",
-    "menu",
-    "menubar",
-    "menuitem",
-    "menuitemcheckbox",
-    "menuitemradio",
-    "list",
-    "listitem",
-    "tree",
-    "treeitem",
-    "table",
-    "grid",
-    "row",
-    "rowheader",
-    "columnheader",
-    "cell",
-    "gridcell",
-    "figure",
-    "scrollbar",
-];
-
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, hash_bytes, stamp,
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
-use og_core::ogt::{Block, Entry, Value};
 use og_rive::Fit;
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "artboards",
-        "<name> ...",
-        "all",
-        "Artboards to cook, named as in the source.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "artboard",
-        "<name> { ... }",
-        "source defaults",
-        "Per-artboard settings.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "font",
-        "<name> { source \"<path.ttf>\" }",
-        "embedded font",
-        "Supply an external font relative to assets/.",
-        "",
-    ),
-];
-pub(crate) const ARTBOARD_LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "state-machine",
-        "<name>",
-        "source default",
-        "Initial state machine.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "role",
-        "<accessibility role>",
-        "none",
-        "UI accessibility role; see ui accessibility vocabulary.",
-        "",
-    ),
-    crate::grammar::Line::new("name", "<string>", "source name", "Accessible name.", ""),
-    crate::grammar::Line::new(
-        "fit",
-        "contain | cover | fill | none | scale-down | fit-width | fit-height",
-        "source default",
-        "Artboard fit.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "align",
-        "center | top | bottom | left | right | top-left | top-right | bottom-left | bottom-right",
-        "source default",
-        "Artboard alignment.",
-        "",
-    ),
-];
 
 /// One artboard's import settings (`artboard <name> { … }`).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -158,7 +47,7 @@ struct FontAssetSettings {
     source: Option<String>,
 }
 
-/// A `.riv`'s import settings (`<file>.riv.ogt`, `type import`).
+/// Native controls from a checked `file.import({kind: 'rive', ...})` entry.
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Settings {
     /// The artboards to cook (`None`: all).
@@ -167,134 +56,61 @@ struct Settings {
     fonts: Vec<(String, FontAssetSettings)>,
 }
 
-fn word_or_string(e: &Entry, i: usize) -> Result<String, String> {
-    match e.values.get(i) {
-        Some(Value::Word(w)) => Ok(w.clone()),
-        Some(Value::String(s)) => Ok(s.clone()),
-        _ => Err(format!(
-            "line {}: '{}' takes a name at position {}",
-            e.line,
-            e.key,
-            i + 1
-        )),
-    }
-}
-
-fn settings(body: &Block) -> Result<Settings, String> {
-    let mut out = Settings::default();
-    crate::grammar::check(body, LINES, "Rive import")?;
-    for e in &body.entries {
-        match e.key.as_str() {
-            "artboards" => {
-                out.artboards = Some(
-                    (0..e.values.len())
-                        .map(|i| word_or_string(e, i))
-                        .collect::<Result<_, _>>()?,
-                )
-            }
-            "artboard" => {
-                let name = word_or_string(e, 0)?;
-                let mut a = ArtboardSettings::default();
-                if let Some(b) = &e.block {
-                    crate::grammar::check(b, ARTBOARD_LINES, "Rive artboard")?;
-                }
-                for f in e.block.iter().flat_map(|b| &b.entries) {
-                    match f.key.as_str() {
-                        "state-machine" => a.machine = Some(word_or_string(f, 0)?),
-                        "role" => {
-                            let r = word_or_string(f, 0)?;
-                            if !ROLES.contains(&r.as_str()) {
-                                return Err(format!(
-                                    "line {}: role '{r}' is not a UI role ({})",
-                                    f.line,
-                                    ROLES.join(", ")
-                                ));
-                            }
-                            a.role = Some(r);
-                        }
-                        "name" => a.name = Some(word_or_string(f, 0)?),
-                        "fit" => {
-                            let w = word_or_string(f, 0)?;
-                            a.fit = Some(
-                                Fit::ALL
-                                    .iter()
-                                    .find(|x| x.1 == w)
-                                    .ok_or_else(|| {
-                                        format!(
-                                            "line {}: fit '{w}' (contain, cover, fill, none, scale-down, fit-width or fit-height)",
-                                            f.line
-                                        )
-                                    })?
-                                    .0,
-                            );
-                        }
-                        "align" => {
-                            let w = word_or_string(f, 0)?;
-                            let (x, y) = match w.as_str() {
-                                "center" => (0.5, 0.5),
-                                "top-left" => (0.0, 0.0),
-                                "top" => (0.5, 0.0),
-                                "top-right" => (1.0, 0.0),
-                                "left" => (0.0, 0.5),
-                                "right" => (1.0, 0.5),
-                                "bottom-left" => (0.0, 1.0),
-                                "bottom" => (0.5, 1.0),
-                                "bottom-right" => (1.0, 1.0),
-                                _ => {
-                                    return Err(format!(
-                                        "line {}: align '{w}' (center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right)",
-                                        f.line
-                                    ));
-                                }
-                            };
-                            a.align = Some(Vec2::new(x, y));
-                        }
-                        k => {
-                            return Err(format!(
-                                "line {}: '{k}' is not an artboard setting (state-machine, role, name, fit, align)",
-                                f.line
-                            ));
-                        }
-                    }
-                }
-                out.per.push((name, a));
-            }
-            "font" => {
-                let name = word_or_string(e, 0)?;
-                let mut f = FontAssetSettings::default();
-                for g in e.block.iter().flat_map(|b| &b.entries) {
-                    match g.key.as_str() {
-                        "source" => f.source = Some(word_or_string(g, 0)?),
-                        k => {
-                            return Err(format!(
-                                "line {}: '{k}' is not a font setting (source)",
-                                g.line
-                            ));
-                        }
-                    }
-                }
-                out.fonts.push((name, f));
-            }
-            k => {
-                return Err(format!(
-                    "line {}: '{k}' is not a Rive import setting (artboards, artboard, font)",
-                    e.line
-                ));
-            }
-        }
-    }
-    Ok(out)
-}
-
 /// The file read and its settings, each artboard the settings name checked
 /// against the file.
 fn open(s: &Source) -> Result<(read::RivFile, Vec<String>, Settings), String> {
     let file = read::read(&s.bytes)?;
     let names = convert::names(&file);
-    let set = match &s.settings {
-        Some((_, doc)) => settings(&doc.body)?,
-        None => Settings::default(),
-    };
+    let mut set = Settings::default();
+    if let Some(d) = s.settings.rive() {
+        use crate::cook::source_schemas::world::import::rive::Align;
+        set.artboards = d.artboards.clone();
+        set.fonts = d
+            .fonts
+            .iter()
+            .map(|(name, f)| {
+                (
+                    name.clone(),
+                    FontAssetSettings {
+                        source: f.source.clone(),
+                    },
+                )
+            })
+            .collect();
+        for (name, a) in &d.settings {
+            let fit = a.fit.as_ref().map(|fit| {
+                Fit::ALL
+                    .iter()
+                    .find(|(_, n)| *n == fit.to_string())
+                    .expect("Rive fit vocabulary")
+                    .0
+            });
+            let align = a.align.as_ref().map(|a| {
+                let (x, y) = match a {
+                    Align::Center => (0.5, 0.5),
+                    Align::Top => (0.5, 0.0),
+                    Align::Bottom => (0.5, 1.0),
+                    Align::Left => (0.0, 0.5),
+                    Align::Right => (1.0, 0.5),
+                    Align::TopLeft => (0.0, 0.0),
+                    Align::TopRight => (1.0, 0.0),
+                    Align::BottomLeft => (0.0, 1.0),
+                    Align::BottomRight => (1.0, 1.0),
+                };
+                Vec2::new(x, y)
+            });
+            set.per.push((
+                name.clone(),
+                ArtboardSettings {
+                    machine: a.state_machine.clone(),
+                    role: a.role.as_ref().map(ToString::to_string),
+                    name: a.name.clone(),
+                    fit,
+                    align,
+                },
+            ));
+        }
+    }
     for n in set
         .artboards
         .iter()
@@ -367,7 +183,9 @@ fn fonts(
             .map(|f| &f.1);
         let bytes = match (embedded, own.and_then(|f| f.source.as_ref())) {
             (Some(b), _) => b.to_vec(),
-            (None, Some(src)) => execute::read_sibling_bytes(s, src)
+            (None, Some(src)) => s
+                .settings
+                .read(src)
                 .map_err(|e| format!("font '{name}': source \"{src}\": {e}"))?,
             // The artboard that draws with it names it.
             (None, None) => continue,

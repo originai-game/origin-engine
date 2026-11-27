@@ -27,7 +27,7 @@ export function loadReel(world: World): void {
   const r = assets(world);
   for (const s of STYLES) r[`s_${s}`] = must(og.load.style(world, `styles/${s}`)) as unknown as number;
   for (const m of MATS) r[`m_${m}`] = must(og.load.uiMaterial(world, `base/materials/materials/${m}`)) as unknown as number;
-  ARTS.forEach((a, i) => { r[`a${i}`] = must(og.load.texture(world, `textures/art/${a}.png`)) as unknown as number; });
+  ARTS.forEach((a, i) => { r[`a${i}`] = must(og.load.texture(world, `base/textures/art/${a}`)) as unknown as number; });
 }
 
 export function mountReel(world: World): void {

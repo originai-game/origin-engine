@@ -7,6 +7,8 @@ texel two screen pixels at 960x540. Deterministic; rerun it to change them:
 
 import math
 import os
+import json
+from pathlib import Path
 import random
 
 from PIL import Image
@@ -95,6 +97,12 @@ def save(img, *path):
     p = os.path.join(ASSETS, *path)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     img.save(p, optimize=True)
+    declaration = Path(HERE, "content", *path).with_suffix(".ts")
+    declaration.parent.mkdir(parents=True, exist_ok=True)
+    settings = {"kind": "texture", "source": "assets/" + "/".join(path)}
+    if path[0] == "bg":
+        settings["usage"] = "pixel"
+    declaration.write_text("import {file} from '@origingame/engine/author';\nexport default file.import(" + json.dumps(settings, indent=2) + ");\n")
 
 
 def walls():
@@ -106,9 +114,6 @@ def walls():
     sheet.paste(far, (0, 0))
     sheet.paste(mid, (0, WALL_H))
     save(sheet, "bg", "walls.png")
-    # Pixel art: lossless, no mips, sampled nearest (not the ETC1S default).
-    with open(os.path.join(ASSETS, "bg", "walls.png.ogt"), "w") as f:
-        f.write("type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n")
     # Tileset and map declarations are authored in content/bg/*.ts.
 
 
@@ -164,8 +169,6 @@ def ground():
             f = (1 - y / GROUND_H) ** 1.5
             px[x, y] = (int(64 * f), int(46 * f), int(34 * f), 255)
     save(img, "bg", "ground.png")
-    with open(os.path.join(ASSETS, "bg", "ground.png.ogt"), "w") as f:
-        f.write("type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n")
 
 
 def draw(w, h, fn):

@@ -5,15 +5,11 @@
 //! live behind the `cook` feature and never reach the wasm runtime); the
 //! blob is the same whatever the source.
 
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, settings_block,
-    stamp,
-};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
 use crate::format::{self, *};
 use crate::runtime::asset_id;
 use og_blob::BlobWriter;
 use og_core::IdMap;
-use og_core::ogt::Block;
 use og_tilemap::{
     Collision, FLIP_DIAGONAL, FLIP_X, FLIP_Y, Filter, Layer, MapObject, Orientation, TILE_MASK,
     TileAnim, TileDef, TilemapAsset, Tileset, TilesetRef,
@@ -21,32 +17,6 @@ use og_tilemap::{
 use serde_json::Value;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-
-pub(crate) const IMPORT_LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new("unit", "<number>", "1", "World units per tile width.", ""),
-    crate::grammar::Line::new(
-        "level",
-        "<identifier>",
-        "first level",
-        "LDtk level identifier.",
-        "",
-    ),
-    crate::grammar::Line::new("solid", "<i64> ...", "1", "LDtk solid IntGrid values.", ""),
-    crate::grammar::Line::new(
-        "tileset",
-        "\"<canonical tileset id>\"",
-        "source tilesets",
-        "Replace every source tileset with this authored asset.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "bindTileset",
-        "\"<source path>\" \"<canonical tileset id>\"",
-        "",
-        "Explicit Tiled TSX/TSJ or LDtk image to checked TS tileset binding; source path as written in the map.",
-        "",
-    ),
-];
 
 /// The `tilemap { ... }` block of a map's import settings.
 #[derive(Clone, Debug, Default)]
@@ -61,63 +31,33 @@ pub struct MapSettings {
     pub tileset: Option<String>,
     /// Source path as written in an external map to a checked TS tileset ID.
     pub tilesets: BTreeMap<String, String>,
+    /// Embedded image paths as written in the map to checked texture IDs.
+    pub textures: BTreeMap<String, String>,
 }
 
 impl MapSettings {
-    pub fn parse(block: Option<&Block>) -> Result<MapSettings, String> {
-        let mut s = MapSettings::default();
-        if let Some(b) = block {
-            crate::grammar::check(b, IMPORT_LINES, "import.tilemap")?;
-        }
-        for e in block.iter().flat_map(|b| &b.entries) {
-            match e.key.as_str() {
-                "bindTileset" => {
-                    if e.values.len() != 2 {
-                        return Err(
-                            "bindTileset takes a source path and a canonical tileset ID".into()
-                        );
-                    }
-                    let source = e.string(0).map_err(|e| e.to_string())?.to_string();
-                    let id = e.string(1).map_err(|e| e.to_string())?.to_string();
-                    if s.tilesets.insert(source.clone(), id).is_some() {
-                        return Err(format!("tileset source '{source}' is bound twice"));
-                    }
-                }
-                "unit" => s.unit = Some(e.f32(0).map_err(|_| "tilemap.unit needs a number")?),
-                "level" => {
-                    s.level = Some(
-                        e.values
-                            .first()
-                            .and_then(|v| v.as_str().or(v.as_word()))
-                            .ok_or("tilemap.level needs the level's identifier")?
-                            .to_string(),
-                    )
-                }
-                "solid" => {
-                    for i in 0..e.values.len() {
-                        s.solid.push(
-                            e.number(i)
-                                .ok()
-                                .and_then(|n| n.as_i64().ok())
-                                .ok_or("tilemap.solid lists IntGrid values")?,
-                        );
-                    }
-                }
-                "tileset" => {
-                    s.tileset = Some(
-                        e.string(0)
-                            .map_err(|_| "tilemap.tileset needs a quoted asset path")?
-                            .to_string(),
-                    )
-                }
-                other => {
-                    return Err(format!(
-                        "unknown key '{other}' in the tilemap import settings"
-                    ));
-                }
-            }
-        }
-        Ok(s)
+    pub fn from_input(
+        input: Option<&crate::cook::source_schemas::world::import::Tilemap>,
+    ) -> Result<MapSettings, String> {
+        let Some(d) = input else {
+            return Ok(Self::default());
+        };
+        Ok(Self {
+            unit: d.unit,
+            level: d.level.clone(),
+            solid: d.solid.clone(),
+            tileset: d.tileset.as_ref().map(|r| r.id.clone()),
+            tilesets: d
+                .tilesets
+                .iter()
+                .map(|(k, v)| (k.clone(), v.id.clone()))
+                .collect(),
+            textures: d
+                .textures
+                .iter()
+                .map(|(k, v)| (k.clone(), v.id.clone()))
+                .collect(),
+        })
     }
 
     pub fn describe(&self) -> String {
@@ -334,8 +274,8 @@ pub fn import(
         .map(|(_, e)| e.to_ascii_lowercase())
         .unwrap_or_default();
     let mut map = match ext.as_str() {
-        "tmj" => import_tiled(rel, text, settings, known)?,
-        "ldtk" => import_ldtk(rel, text, settings, known)?,
+        "tmj" => import_tiled(text, settings, known)?,
+        "ldtk" => import_ldtk(text, settings, known)?,
         _ => {
             return Err(
                 "an external map is Tiled .tmj or LDtk .ldtk, not an engine author format".into(),
@@ -682,7 +622,7 @@ struct TiledTileset {
     count: u32,
 }
 
-fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
+fn tiled_embedded(t: &Value, name: &str, settings: &MapSettings) -> Result<Tileset, String> {
     let what = format!("embedded tileset '{name}'");
     let columns = need_u(t, "columns", &what)?.max(1);
     let count = need_u(t, "tilecount", &what)?;
@@ -694,7 +634,9 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
                     "{what} has no single image (image collections are not supported)"
                 ));
             }
-            resolve(rel, image)
+            settings.textures.get(image).cloned().ok_or_else(|| {
+                format!("{what}: image '{image}' needs an explicit textures binding")
+            })?
         },
         tile_width: need_u(t, "tilewidth", &what)?,
         tile_height: need_u(t, "tileheight", &what)?,
@@ -787,7 +729,6 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
 /// rows shifted, or hexagonal with odd rows or columns shifted and sides
 /// half a tile; finite, uncompressed layer data).
 pub fn import_tiled(
-    rel: &str,
     text: &str,
     settings: &MapSettings,
     known: &dyn Fn(&str) -> bool,
@@ -838,7 +779,7 @@ pub fn import_tiled(
             (TilesetRef::Asset(id.clone()), u32::MAX)
         } else {
             let name = st(t, "name").to_string();
-            let ts = tiled_embedded(rel, t, &name)?;
+            let ts = tiled_embedded(t, &name, settings)?;
             let c = ts.count();
             (TilesetRef::Embedded(ts), c)
         };
@@ -1228,7 +1169,6 @@ fn tiled_data(l: &Value, name: &str) -> Result<Vec<u32>, String> {
 
 /// An LDtk project (`.ldtk`): one level into a map.
 pub fn import_ldtk(
-    rel: &str,
     text: &str,
     settings: &MapSettings,
     known: &dyn Fn(&str) -> bool,
@@ -1376,7 +1316,6 @@ pub fn import_ldtk(
                         .find(|d| u(d, "uid") == Some(uid))
                         .ok_or_else(|| format!("layer '{name}' names tileset {uid}, which the project does not define"))?;
                     let tgrid = need_u(d, "tileGridSize", "a tileset")?;
-                    let image = resolve(rel, st(d, "relPath"));
                     let columns;
                     let r = if let Some(id) = settings
                         .tilesets
@@ -1389,6 +1328,10 @@ pub fn import_ldtk(
                         columns = need_u(d, "__cWid", "a tileset")?;
                         TilesetRef::Asset(id.clone())
                     } else {
+                        let path = st(d, "relPath");
+                        let image = settings.textures.get(path).cloned().ok_or_else(|| {
+                            format!("LDtk image '{path}' needs an explicit textures binding")
+                        })?;
                         columns = need_u(d, "__cWid", "a tileset")?.max(1);
                         let ts = Tileset {
                             texture: image,
@@ -1595,7 +1538,7 @@ fn plan_tilemap<'a>(
         parsed_refs,
         ..
     } = state;
-    match MapSettings::parse(settings_block(s, "tilemap")) {
+    match MapSettings::from_input(s.settings.tilemap()) {
         Ok(m) => {
             let refs = if let Some(map) = &s.tilemap {
                 map.tilesets

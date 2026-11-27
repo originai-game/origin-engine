@@ -26,6 +26,19 @@ fn init_project(root: &std::path::Path) {
     }
 }
 
+fn declare_import(root: &std::path::Path, id: &str, kind: &str, source: &str) {
+    let path = root.join(format!("content/{id}.ts"));
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(
+        path,
+        format!(
+            "import {{file}} from '@origingame/engine/author';export default file.import({});",
+            serde_json::json!({"kind":kind,"source":source})
+        ),
+    )
+    .unwrap();
+}
+
 #[path = "../fx_source.rs"]
 mod fx_source;
 #[path = "../scene_string.rs"]

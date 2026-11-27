@@ -65,15 +65,11 @@ pub(super) fn carve(d: &District, plan: &Layout, depth: f64) -> Entry {
 /// Applies the scan's street stamps before quantisation and tile/LOD
 /// construction, so terrain sampling, collisions and rendering agree.
 pub(crate) fn apply(
-    settings: Option<&og_core::ogt::Document>,
+    settings: &Block,
     rel: &str,
     field: &mut super::super::terrain::Field,
 ) -> Result<(), String> {
-    let Some(settings) = settings else {
-        return Ok(());
-    };
     for e in settings
-        .body
         .get_all("district-carve")
         .filter(|e| e.values.first().and_then(Value::as_str) == Some(rel))
     {

@@ -37,13 +37,16 @@ fn cooked(below: bool) -> Result<&'static PathBuf, String> {
         std::fs::create_dir_all(&models).map_err(|e| format!("{}: {e}", models.display()))?;
         std::fs::write(models.join("tree.glb"), crate::scenes::asset("tree.glb")?)
             .map_err(|e| format!("tree.glb: {e}"))?;
-        std::fs::write(
-            models.join("tree.glb.ogt"),
-            format!(
-                "type import\nversion 1\n---\nmodel {{\n  impostor true\n  impostorSize 256\n  impostorBelow {below}\n}}\n"
-            ),
-        )
-        .map_err(|e| format!("tree.glb.ogt: {e}"))?;
+        for (file, text) in [
+            ("og-project.json", r#"{"version":1,"name":"Impostor","engine":"0.9.0"}"#.into()),
+            ("project.ts", "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'impostor',entry:'src/main.ts'});".into()),
+            ("src/main.ts", "export default {};".into()),
+            ("content/models/tree.ts", format!("import {{file}} from '@origingame/engine/author';export default file.import({{kind:'model',source:'assets/models/tree.glb',impostor:true,impostorSize:256,impostorBelow:{below}}});")),
+        ] {
+            let path = root.join(file);
+            std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+            std::fs::write(path, text).map_err(|e| format!("{file}: {e}"))?;
+        }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
             .map_err(|e| format!("cook: {e}"))?;
         if !report.ok() {
@@ -71,7 +74,7 @@ pub fn impostor_scene(below: bool) -> Result<(RenderScene, (Vec3, Vec3)), String
     let root = cooked(below)?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let model = bundle
-        .load_model("models/tree.glb")
+        .load_model("base/models/tree")
         .map_err(|e| e.to_string())?;
     let i = model
         .impostor

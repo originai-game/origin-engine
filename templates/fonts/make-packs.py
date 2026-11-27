@@ -183,27 +183,6 @@ def regular(font: TTFont) -> TTFont:
     return instancer.instantiateVariableFont(font, axes)
 
 
-SIDECAR = """type import
-version 1
----
-# Made by templates/fonts/make-packs.py: the face ships whole and every
-# character is drawn from its outlines when first shown.
-font {{
-}}
-"""
-
-# A colour face: each glyph with a COLR paint is painted in colour from the
-# file when first shown.
-COLOR_SIDECAR = """type import
-version 1
----
-# Made by templates/fonts/make-packs.py: the face ships whole and every
-# emoji is painted in colour from its COLR table when first shown.
-font {{
-}}
-"""
-
-
 # Hyphenation dictionaries (CSS `hyphens: auto`): hypher's compiled
 # hyph-utf8 patterns, one per pack language that hyphenates with a visible
 # hyphen (hypher leaves the Indic scripts' visual hyphen out).
@@ -272,8 +251,8 @@ def main() -> None:
             sub.populate(unicodes=sorted(c for c in (wanted if wanted is not None else set(cmap)) if c in cmap))
             sub.subset(font)
             font.save(assets / file)
-            colour = "COLR" in font
-            (assets / f"{file}.ogt").write_text((COLOR_SIDECAR if colour else SIDECAR).format())
+            declaration = {"kind": "font", "source": f"assets/fonts/{name}/{file}"}
+            (content / f"{Path(file).stem}.ts").write_text("import {file} from '@origingame/engine/author';\n\n" + f"export default file.import({json.dumps(declaration, indent=2)});\n")
             ofl = f"OFL-{family(source)}.txt"
             (out / ofl).write_text(licence(args.cache, source))
             count = len(font.getBestCmap())

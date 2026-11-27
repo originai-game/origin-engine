@@ -85,16 +85,7 @@ fn catalogue(
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let mut bindings = BTreeMap::new();
     for source in sources.iter().filter(|s| {
-        [
-            &look::LOOK,
-            &story::DIALOGUE,
-            &district::MATERIALS,
-            &model::MODEL,
-            &texture::TEXTURE,
-            &font::FONT,
-            &audio::SOUND,
-        ]
-        .contains(&s.kind)
+        [&look::LOOK, &story::DIALOGUE, &district::MATERIALS].contains(&s.kind)
             && !s.rel.starts_with('@')
             && s.path.starts_with(root.join("assets"))
     }) {
@@ -189,15 +180,19 @@ pub(crate) fn rigs(
     Ok((content, rigs))
 }
 
-fn declaration(root: &Path, entry: &source_index::Entry, kind: Kind, bytes: Vec<u8>) -> Source {
+pub(super) fn declaration(
+    root: &Path,
+    entry: &source_index::Entry,
+    kind: Kind,
+    bytes: Vec<u8>,
+) -> Source {
     Source {
         rel: entry.id.clone(),
         path: root.join(&entry.file),
         kind,
         hash: hash_bytes(&bytes),
         bytes,
-        settings: None,
-        settings_files: Vec::new(),
+        settings: Default::default(),
         gltf: None,
         error: None,
         encoded: Default::default(),
@@ -390,7 +385,7 @@ pub(crate) fn sources(
     let mut table_sources = BTreeMap::new();
     let mut districts = BTreeMap::new();
     for entry in index.entries.values() {
-        let content = if let Some(content) = prepared.remove(&entry.id) {
+        let mut content = if let Some(content) = prepared.remove(&entry.id) {
             if content.entry() != entry {
                 return Err(CookError(format!(
                     "{}: source changed during cook",
@@ -411,6 +406,24 @@ pub(crate) fn sources(
         };
         // Each domain consumes the canonical IR directly. A cutover removes
         // its legacy type claim instead of serializing data back into OGT.
+        if entry.factory == "import" {
+            let source = sources
+                .iter()
+                .find(|s| s.rel == entry.id)
+                .ok_or_else(|| CookError(format!("{}: import was not prepared", entry.file)))?;
+            let module = &project.modules[&entry.module].root;
+            content.inputs(
+                source
+                    .settings
+                    .files
+                    .keys()
+                    .map(|path| normalise_rel(&format!("{module}/{path}"))),
+            );
+            graph
+                .insert(&content, &imports::outputs(source).map_err(CookError)?)
+                .map_err(|e| CookError(e.to_string()))?;
+            continue;
+        }
         let kind = match entry.factory.as_str() {
             name if let Some((_, kind)) = KINDS.iter().find(|(n, _)| *n == name) => kind,
             _ => {
@@ -501,10 +514,10 @@ pub(crate) fn sources(
                                 consumed.insert(path.to_string_lossy().replace('\\', "/"));
                             }
                         }
-                        let settings =
-                            (built.sheet.filter == og_anim::SheetFilter::Nearest).then(|| {
-                                "type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n".into()
-                            });
+                        let settings = imports::Settings {
+                            pixel: built.sheet.filter == og_anim::SheetFilter::Nearest,
+                            ..Default::default()
+                        };
                         let mut outputs = flipbook::outputs(&built.sheet);
                         outputs.insert("sheet".into(), "texture".into());
                         source.flipbook = Some(built.sheet);

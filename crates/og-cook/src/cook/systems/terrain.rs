@@ -16,7 +16,7 @@ pub(crate) struct Prepared {
     field: std::sync::OnceLock<Result<Field, String>>,
     inputs: std::collections::BTreeMap<String, Vec<u8>>,
     fields: std::sync::Arc<super::field::Fields>,
-    settings: Option<og_core::ogt::Document>,
+    settings: og_core::ogt::Block,
     id: String,
     origin: crate::cook::generator::source::Diagnostic,
 }
@@ -28,7 +28,7 @@ impl Prepared {
         self.field
             .get_or_init(|| {
                 let mut field = field(&self.doc, &self.inputs, &self.fields)?;
-                super::district::terrain::apply(self.settings.as_ref(), &self.id, &mut field)?;
+                super::district::terrain::apply(&self.settings, &self.id, &mut field)?;
                 Ok(field)
             })
             .as_ref()
@@ -95,9 +95,7 @@ pub(crate) fn prepare(
     if let Some(id) = &doc.preserve {
         hash.write_u64(super::field::get(&s.fields, id)?.hash);
     }
-    if let Some((settings, _)) = &s.settings {
-        hash.write_u64(super::hash_bytes(settings.as_bytes()));
-    }
+    hash.write_u64(s.settings.hash());
     Ok(Prepared {
         doc,
         hash: stamp(
@@ -108,7 +106,7 @@ pub(crate) fn prepare(
         field: Default::default(),
         inputs,
         fields: s.fields.clone(),
-        settings: s.settings.as_ref().map(|(_, d)| d.clone()),
+        settings: s.settings.carves.clone(),
         id: s.rel.clone(),
         origin,
     })

@@ -1,8 +1,6 @@
-type import
-version 1
----
-# The default UI face, variable (wdth 75–100, wght 400–700), so bold and
-# condensed are its own outlines, not synthesised. The face ships whole;
-# every character is drawn from its outlines at the size it is shown.
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "shared/InstrumentSans[wdth,wght].ttf"
+});

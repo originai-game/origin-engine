@@ -19,8 +19,8 @@ function start(world: World): void {
   const camera = must(world.resource(og.Camera));
   camera.position = { x: 0, y: 6, z: 14 };
   camera.quaternion = og.transform.lookAt({ x: 0, y: 6, z: 14 }, { x: 0, y: 1, z: 0 });
-  const model = must(og.load.gltf(world, "models/walker.glb"));
-  const anim = must(og.load.animation(world, "models/walker.glb"));
+  const model = must(og.load.gltf(world, "base/models/walker"));
+  const anim = must(og.load.animation(world, "base/models/walker"));
   const clips = ["walk", "run", "idle", "wave"].map((n) => anim.clips.find((c) => c.name === n)!.clip);
   for (let i = 0; i < WALKERS; i++) {
     const position = { x: ((i % 20) - 9.5) * 0.9, y: 0, z: -Math.floor(i / 20) * 0.9 };

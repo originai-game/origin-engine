@@ -25,7 +25,7 @@ function model(world: World, name: string, x: number, z: number, turn = 0) {
     must(world.insert(e, og.Sprite, { texture, width: sprite.width, height: sprite.height, anchor: { x: 0.5, y: 0 }, facing: "cameraY", dropShadow: 0.5 }));
     return;
   }
-  const path = name === "ground" ? GROUND : name === "crate" ? "models/crate.glb" : `base/models/${name}`;
+  const path = name === "ground" ? GROUND : name === "crate" ? "base/models/crate" : `base/models/${name}`;
   must(world.instantiate(must(og.load.gltf(world, path)), at));
 }
 

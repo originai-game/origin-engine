@@ -23,11 +23,10 @@ use super::{
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
 use std::path::Path;
 
 mod authored;
-pub use authored::{AuthoredClip, CHANNEL_LINES, CLIP_LINES};
+pub use authored::AuthoredClip;
 
 /// Per-vertex deltas of one morph target.
 type Deltas = Vec<[f32; 3]>;
@@ -50,28 +49,21 @@ pub(crate) struct Library {
 }
 
 fn library(
-    root: &Path,
+    _root: &Path,
     id: &str,
     captured: Option<&std::collections::BTreeMap<String, Library>>,
 ) -> Result<(GltfSource, Vec<u8>, AnimSettings), String> {
-    if let Some(libraries) = captured {
-        let lib = libraries
-            .get(id)
-            .ok_or_else(|| format!("{id}: library was not captured"))?;
-        let model = model::load_with(&lib.bytes, &|file| {
-            lib.files
-                .iter()
-                .find(|(name, _)| name == file)
-                .map(|(_, bytes)| bytes.clone())
-                .ok_or_else(|| format!("{file}: not a captured library input"))
-        })?;
-        return Ok((model, lib.bytes.clone(), lib.settings.clone()));
-    }
-    let bytes = std::fs::read(root.join(id)).map_err(|e| e.to_string())?;
-    let path = root.join(id);
-    let model = model::load(&bytes, path.parent().unwrap_or(root))?;
-    let doc = import_settings(root, id)?;
-    Ok((model, bytes, settings_of(doc.as_ref())?))
+    let lib = captured
+        .and_then(|libraries| libraries.get(id))
+        .ok_or_else(|| format!("{id}: library was not captured"))?;
+    let model = model::load_with(&lib.bytes, &|file| {
+        lib.files
+            .iter()
+            .find(|(name, _)| name == file)
+            .map(|(_, bytes)| bytes.clone())
+            .ok_or_else(|| format!("{file}: not a captured library input"))
+    })?;
+    Ok((model, lib.bytes.clone(), lib.settings.clone()))
 }
 
 /// Validates a rig and stores its native humanoid map, not author text.
@@ -224,72 +216,6 @@ pub struct AnimSettings {
 /// metres; 0.011° of rotation).
 pub const DEFAULT_TOLERANCE: f32 = 1e-4;
 
-pub const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "clip",
-        "\"<name>\" { channel ... }",
-        "",
-        "Explicit named-node keys. Names cannot collide with the source clips; same sampler and codec as glTF.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "rate",
-        "<1..120 Hz>",
-        "source key rate",
-        "Resample every clip at this rate.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "event",
-        "\"<clip>\" \"<marker>\" <seconds>",
-        "",
-        "Repeat explicit markers.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "rig",
-        "\"<asset>\"",
-        "detected",
-        "Canonical content ID of a checked humanoid rig map.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "library",
-        "\"<model>\"",
-        "",
-        "Repeat animation libraries to retarget to this skeleton; own clips win on name collisions.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "mirror",
-        "\"<clip>\" [\"<new name>\"]",
-        "",
-        "Repeat mirrored clips; default name is <clip>.mirrored.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "footIk",
-        "true | false",
-        "true",
-        "Retarget planted feet against the ground.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "compress",
-        "true | false",
-        "false",
-        "Quantize and reduce keys instead of storing f32 samples.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "tolerance",
-        "<number > 0, <= 0.1>",
-        "0.0001",
-        "Maximum compression error per channel lane in its units.",
-        "",
-    ),
-];
-
 impl Default for AnimSettings {
     fn default() -> Self {
         AnimSettings {
@@ -372,149 +298,19 @@ impl AnimSettings {
         }
         s
     }
-
-    /// The settings of an `animation { … }` block (none: the defaults).
-    pub fn parse(block: Option<&og_core::ogt::Block>) -> Result<AnimSettings, String> {
-        let mut a = AnimSettings::default();
-        let Some(b) = block else {
-            return Ok(a);
-        };
-        for e in &b.entries {
-            if crate::grammar::find(LINES, &e.key, &[]).is_none() {
-                return Err(format!(
-                    "line {}: unknown animation setting '{}'",
-                    e.line, e.key
-                ));
-            }
-            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-            match e.key.as_str() {
-                "clip" => {
-                    let clip = AuthoredClip::parse(e)?;
-                    if a.clips.iter().any(|c| c.name == clip.name) {
-                        return Err(format!("line {}: duplicate clip '{}'", e.line, clip.name));
-                    }
-                    a.clips.push(clip);
-                }
-                "rate" => {
-                    let r = e.f32(0).map_err(err)?;
-                    if !(1.0..=120.0).contains(&r) {
-                        return Err(format!(
-                            "line {}: animation rate must be 1..=120 Hz",
-                            e.line
-                        ));
-                    }
-                    a.rate = Some(r);
-                }
-                "event" => a.events.push((
-                    e.string(0).map_err(err)?.to_string(),
-                    e.string(1).map_err(err)?.to_string(),
-                    e.f32(2).map_err(err)?,
-                )),
-                "rig" => a.rig = Some(asset_path(e.string(0).map_err(err)?, e.line)?),
-                "library" => a
-                    .libraries
-                    .push(asset_path(e.string(0).map_err(err)?, e.line)?),
-                "mirror" => {
-                    if !(1..=2).contains(&e.values.len()) {
-                        return Err(format!(
-                            "line {}: mirror takes the clip and, optionally, the mirrored clip's name",
-                            e.line
-                        ));
-                    }
-                    let clip = e.string(0).map_err(err)?.to_string();
-                    let name = match e.values.len() {
-                        2 => e.string(1).map_err(err)?.to_string(),
-                        _ => format!("{clip}.mirrored"),
-                    };
-                    if a.mirrors.iter().any(|(_, n)| *n == name) || name == clip {
-                        return Err(format!(
-                            "line {}: the mirrored clip '{name}' is named twice",
-                            e.line
-                        ));
-                    }
-                    a.mirrors.push((clip, name));
-                }
-                "footIk" => {
-                    a.foot_ik = e
-                        .values
-                        .first()
-                        .and_then(|v| v.as_bool())
-                        .ok_or_else(|| format!("line {}: footIk takes true or false", e.line))?
-                }
-                "compress" => {
-                    a.compress =
-                        e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                            format!("line {}: compress takes true or false", e.line)
-                        })?
-                }
-                "tolerance" => {
-                    let t = e.f32(0).map_err(err)?;
-                    if !(t > 0.0 && t <= 0.1) {
-                        return Err(format!(
-                            "line {}: animation tolerance must be above 0 and at most 0.1",
-                            e.line
-                        ));
-                    }
-                    a.tolerance = t;
-                }
-                k => {
-                    return Err(format!(
-                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk, mirror, compress, tolerance)",
-                        e.line
-                    ));
-                }
-            }
-        }
-        Ok(a)
-    }
-}
-
-/// `rel` when it is a path under `assets/`.
-fn asset_path(rel: &str, line: usize) -> Result<String, String> {
-    if rel.is_empty() || rel.starts_with('/') || rel.split('/').any(|c| c == ".." || c.is_empty()) {
-        return Err(format!("line {line}: '{rel}' is not a path under assets/"));
-    }
-    Ok(rel.to_string())
-}
-
-/// The import settings document of `rel` under `root`, if any: its
-/// `<rel>.ogt` over its directories' `import.ogt`.
-fn import_settings(root: &Path, rel: &str) -> Result<Option<Document>, String> {
-    let own = match std::fs::read_to_string(root.join(format!("{rel}.ogt"))) {
-        Ok(text) => {
-            let doc = Document::parse(&text).map_err(|e| format!("{rel}.ogt: {e}"))?;
-            (doc.ty == "import").then_some((text, doc))
-        }
-        Err(_) => None,
-    };
-    let defaults = super::import_defaults::read(root, rel)?;
-    Ok(super::import_defaults::effective(rel, &defaults, own)
-        .0
-        .map(|(_, doc)| doc))
-}
-
-fn settings_of(doc: Option<&Document>) -> Result<AnimSettings, String> {
-    AnimSettings::parse(
-        doc.and_then(|d| d.body.get("animation"))
-            .and_then(|e| e.block.as_ref()),
-    )
 }
 
 /// What a model's retargeting reads besides the model: its captured rig, each
 /// library with its import settings and rig, as `path=hash` lines (a file
 /// that is missing is `path=missing`), for the cook stamp.
 pub(crate) fn dependencies(
-    root: &Path,
+    _root: &Path,
     settings: &AnimSettings,
     rigs: &Rigs,
     source: &Source,
 ) -> String {
-    let mut files = Vec::new();
     let mut maps: Vec<_> = settings.rig.iter().cloned().collect();
-    let captured = source
-        .authored_model
-        .as_ref()
-        .and_then(|m| m.libraries.get());
+    let captured = source.settings.libraries.get();
     let mut deps = Vec::new();
     for l in &settings.libraries {
         if let Some(libraries) = captured {
@@ -524,30 +320,8 @@ pub(crate) fn dependencies(
             }
             continue;
         }
-        files.push(l.clone());
-        files.push(format!("{l}.ogt"));
-        // A directory's settings count once they exist; a missing one is
-        // not listed, so a project with none stamps as it did.
-        files.extend(
-            super::import_defaults::candidates(l)
-                .into_iter()
-                .filter(|f| root.join(f).is_file()),
-        );
-        if let Ok(Some(d)) = import_settings(root, l)
-            && let Ok(a) = settings_of(Some(&d))
-        {
-            maps.extend(a.rig);
-        }
+        deps.push(format!("{l}=missing"));
     }
-    deps.extend(
-        files
-            .iter()
-            .map(|f| match std::fs::read(root.join(f)) {
-                Ok(b) => format!("{f}={:016x}", og_core::hash::hash_bytes(&b)),
-                Err(_) => format!("{f}=missing"),
-            })
-            .collect::<Vec<_>>(),
-    );
     deps.extend(maps.iter().map(|id| match rigs.get(id) {
         Some(rig) => format!("{id}={:016x}", rig.hash),
         None => format!("{id}=missing"),
@@ -1097,15 +871,8 @@ pub(crate) fn cook(
     for lib in &settings.libraries {
         let target_map = target_map.as_ref().expect("a library has a target map");
         let fail = |e: String| CookError(format!("library '{lib}': {e}"));
-        let (lib_src, lib_bytes, lib_settings) = library(
-            root,
-            lib,
-            source
-                .authored_model
-                .as_ref()
-                .and_then(|m| m.libraries.get()),
-        )
-        .map_err(fail)?;
+        let (lib_src, lib_bytes, lib_settings) =
+            library(root, lib, source.settings.libraries.get()).map_err(fail)?;
         if !lib_settings.libraries.is_empty() {
             return Err(fail(
                 "an animation library cannot name libraries of its own".into(),

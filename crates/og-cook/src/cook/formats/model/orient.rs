@@ -1,4 +1,4 @@
-//! A model's stated orientation (`model { front "-x" up "+y" }` in its
+//! A model's stated orientation (`front: '-x', up: '+y'` in its
 //! import settings): the file's axes that are the object's front (its
 //! nose, the way it travels) and its up, turned in the cook to the
 //! engine's +Z and +Y (the facing guide), as other engines' importers take
@@ -12,7 +12,6 @@
 //! fracture chunks all turn together and no index the file holds moves.
 //! The axes read as `og model place --front/--up` reads them.
 
-use og_core::ogt::Block;
 use og_shape::tools::Axis;
 use serde_json::{Value, json};
 
@@ -23,28 +22,24 @@ pub const NODE: &str = "og:orient";
 /// may be left out: up is +y unless the front lies along y; with only up,
 /// the front is the smallest turn's (`+z`, or `-y` for a `+z` up, `+y`
 /// for a `-z` up, as `og model place --z-up`).
-pub fn settings(block: Option<&Block>) -> Result<Option<(Axis, Axis)>, String> {
-    let Some(b) = block else {
+pub fn from_input(
+    input: Option<&crate::cook::source_schemas::world::import::Model>,
+) -> Result<Option<(Axis, Axis)>, String> {
+    let Some(d) = input else {
         return Ok(None);
     };
-    let axis = |key: &str| -> Result<Option<Axis>, String> {
-        let Some(e) = b.get(key) else {
-            return Ok(None);
-        };
-        e.values
-            .first()
-            .and_then(|v| v.as_str().or(v.as_word()))
-            .and_then(Axis::parse)
-            .map(Some)
-            .ok_or_else(|| {
-                format!(
-                    "line {}: {key} takes the file's axis that is the model's {}, as a string: \"+x\", \"-x\", \"+y\", \"-y\", \"+z\" or \"-z\" (the facing guide: the cooked model faces +Z with +Y up)",
-                    e.line,
-                    if key == "front" { "front (its nose)" } else { "up" }
-                )
-            })
+    let axis = |a: &crate::cook::source_schemas::world::import::Axis| {
+        use crate::cook::source_schemas::world::import::Axis as Input;
+        match a {
+            Input::X => Axis::PosX,
+            Input::NegX => Axis::NegX,
+            Input::Y => Axis::PosY,
+            Input::NegY => Axis::NegY,
+            Input::Z => Axis::PosZ,
+            Input::NegZ => Axis::NegZ,
+        }
     };
-    let (front, up) = (axis("front")?, axis("up")?);
+    let (front, up) = (d.front.as_ref().map(axis), d.up.as_ref().map(axis));
     let (front, up) = match (front, up) {
         (None, None) => return Ok(None),
         (Some(f), Some(u)) => (f, u),
@@ -53,7 +48,7 @@ pub fn settings(block: Option<&Block>) -> Result<Option<(Axis, Axis)>, String> {
             match f {
                 Axis::PosY | Axis::NegY => {
                     return Err(format!(
-                        "front {f} lies along y, the default up: give up too (`up \"+z\"`)"
+                        "front {f} lies along y, the default up: give up too (`up: '+z'`)"
                     ));
                 }
                 _ => Axis::PosY,

@@ -553,9 +553,6 @@ pub(crate) fn build(
                     json_values(&json, &mut values);
                 }
             }
-            if let Some((_, settings)) = &s.settings {
-                text_values(&settings.body, &mut values);
-            }
         }
         let refs: BTreeSet<_> = values
             .iter()

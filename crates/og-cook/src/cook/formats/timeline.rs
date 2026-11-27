@@ -119,6 +119,8 @@ pub fn read(root: &Path) -> Result<BTreeMap<String, Timeline>, String> {
     let mut consumed = Default::default();
     let (mut rig_content, rigs) =
         super::super::pipeline::author::rigs(root, &project.source).map_err(|e| e.to_string())?;
+    super::super::imports::prepare(root, &project.source, &mut sources, &mut rig_content)
+        .map_err(|e| e.to_string())?;
     super::super::pipeline::author::models(root, &project.source, &mut sources, &mut rig_content)
         .map_err(|e| e.to_string())?;
     let bindings = super::super::pipeline::author::bindings(root, &project.source, &sources)

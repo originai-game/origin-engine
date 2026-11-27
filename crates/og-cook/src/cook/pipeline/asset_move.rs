@@ -129,7 +129,8 @@ fn documents(dir: &Path, paths: &mut Vec<PathBuf>) -> Result<(), String> {
     Ok(())
 }
 
-/// Move one source, its import sidecar, and matching static OGT/TS literals.
+/// Move one raw source and matching static source-path literals. Content IDs
+/// remain owned by their TS declarations and do not change with a raw file.
 /// Destinations must be absent. Parsing or preflight failure writes nothing.
 pub fn move_asset(root: &Path, from: &str, to: &str) -> Result<MoveReport, String> {
     let (from, to) = (id(from)?, id(to)?);
@@ -140,19 +141,7 @@ pub fn move_asset(root: &Path, from: &str, to: &str) -> Result<MoveReport, Strin
     let assets = root.join("assets");
     let source = assets.join(from);
     let destination = assets.join(to);
-    if std::fs::symlink_metadata(assets.join(format!("{to}.ogt"))).is_ok() {
-        return Err(format!(
-            "{to}.ogt already exists; refusing to replace or adopt import settings"
-        ));
-    }
-    let mut moves = BTreeMap::from([(source.clone(), destination)]);
-    let settings = assets.join(format!("{from}.ogt"));
-    if settings.is_file() {
-        let text = std::fs::read_to_string(&settings).map_err(|e| e.to_string())?;
-        if Document::parse(&text).map_err(|e| e.to_string())?.ty == "import" {
-            moves.insert(settings, assets.join(format!("{to}.ogt")));
-        }
-    }
+    let moves = BTreeMap::from([(source.clone(), destination)]);
     for (old, new) in &moves {
         let meta = std::fs::symlink_metadata(old).map_err(|e| format!("{}: {e}", old.display()))?;
         if !meta.is_file() || meta.file_type().is_symlink() {

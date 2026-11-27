@@ -43,6 +43,14 @@ impl Content {
     pub fn data(&self) -> &Data {
         &self.data
     }
+
+    /// Domain importers discover additional raw dependencies without executing
+    /// another author entry. Retain these exact captured paths for dev watch.
+    pub(crate) fn inputs(&mut self, paths: impl IntoIterator<Item = String>) {
+        self.input_dependencies.extend(paths);
+        self.input_dependencies.sort();
+        self.input_dependencies.dedup();
+    }
 }
 
 struct Bound<'a> {

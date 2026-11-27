@@ -36,11 +36,11 @@ pub(in crate::cook) use art_layout::paint_of;
 use art_layout::{Art, Grid, Layout, grid_of, relayout};
 use process::run;
 
-use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap, ui_packs};
+use super::super::{Kind, Source, flipbook, look, rig2d, tilemap, ui_packs};
 use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
-use og_core::ogt::{Document, Value};
+use og_core::ogt::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
@@ -160,8 +160,6 @@ struct Done {
     pixel: bool,
     what: Vec<String>,
 }
-
-const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 
 /// Reads each sheet's own `conform` line and takes it out of its text
 /// (its importer does not know it), with or without a look.
@@ -293,7 +291,7 @@ pub(super) fn uses(
             }
             k if k == &tilemap::TILEMAP => {
                 if s.tilemap.is_none()
-                    && let Ok(m) = tilemap::MapSettings::parse(settings_block(s, "tilemap"))
+                    && let Ok(m) = tilemap::MapSettings::from_input(s.settings.tilemap())
                     && let Ok(map) = tilemap::import(&s.rel, &s.bytes, &m, &|id| known.contains(id))
                 {
                     for t in &map.tilesets {
@@ -324,14 +322,25 @@ pub(super) fn texture_role(
     used: &[Use],
     two_d: bool,
 ) -> Result<(TextureRole, Option<AssetConform>), String> {
-    let own = match s
+    use crate::cook::source_schemas::world::import::TextureConform;
+    let own = s
         .settings
-        .as_ref()
-        .map(|(_, d)| AssetConform::of(&d.body, &IMAGE_ROLES))
-    {
-        Some(r) => r?,
-        None => None,
-    };
+        .texture()
+        .and_then(|d| d.conform.as_ref())
+        .map(|c| {
+            let (off, role, size) = match c {
+                TextureConform::Off => (true, None, None),
+                TextureConform::Sprite { size } => (false, Some("sprite".into()), *size),
+                TextureConform::Ui { size } => (false, Some("ui".into()), *size),
+                TextureConform::Auto { size } => (false, None, *size),
+            };
+            AssetConform {
+                off,
+                role,
+                size,
+                line: 0,
+            }
+        });
     let kind = super::super::texture_kind(s).unwrap_or(crate::format::kind::COLOR);
     let role = match own.as_ref().and_then(|c| c.role.as_deref()) {
         Some("ui") => TextureRole::Fixed,
@@ -550,18 +559,17 @@ pub(in crate::cook) fn conform(
             }
         }
         // The extra outputs, as sources of their own.
-        let pixel_import = "type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n";
         let path = s.path.clone();
-        let mut push = |rel: String, kind: Kind, bytes: Vec<u8>, settings: Option<&str>| {
-            let settings =
-                settings.map(|t| (t.to_string(), Document::parse(t).expect("the import text")));
+        let mut push = |rel: String, kind: Kind, bytes: Vec<u8>, pixel: bool| {
             let mut src = Source {
                 rel,
                 path: path.clone(),
                 kind,
                 bytes,
-                settings,
-                settings_files: Vec::new(),
+                settings: crate::cook::imports::Settings {
+                    pixel,
+                    ..Default::default()
+                },
                 hash: 0,
                 gltf: None,
                 error: None,
@@ -597,7 +605,7 @@ pub(in crate::cook) fn conform(
                 format!("{base}#index"),
                 &crate::cook::texture::TEXTURE,
                 index.png(),
-                Some(pixel_import),
+                true,
             );
             what.push(format!("index texture {base}#index"));
         }
@@ -613,7 +621,7 @@ pub(in crate::cook) fn conform(
                 format!("{base}#palette"),
                 &crate::cook::look::PALETTE,
                 hex.into_bytes(),
-                None,
+                false,
             );
             what.push(format!("its own palette {base}#palette"));
         }
@@ -622,7 +630,7 @@ pub(in crate::cook) fn conform(
                 format!("{base}#rotations"),
                 &crate::cook::texture::TEXTURE,
                 rot.png(),
-                Some(pixel_import),
+                true,
             );
             let mut w = format!(
                 "{} rotations by cleanEdge in {sx}x{sy} cells: {base}#rotations",
@@ -633,7 +641,7 @@ pub(in crate::cook) fn conform(
                     format!("{base}#rotations-index"),
                     &crate::cook::texture::TEXTURE,
                     ri.png(),
-                    Some(pixel_import),
+                    true,
                 );
                 w.push_str(&format!(" (index {base}#rotations-index)"));
             }
@@ -760,22 +768,7 @@ fn sheet_role(s: &Source, used: &[Use]) -> Option<Role> {
 
 /// The import settings of `s` with `texture { kind pixel }`.
 fn set_pixel_kind(s: &mut Source) {
-    let (text, mut doc) = s
-        .settings
-        .take()
-        .unwrap_or_else(|| (String::new(), Document::new("import", 1)));
-    let kind = og_core::ogt::Entry::new("kind").with(Value::Word("pixel".into()));
-    match doc.body.entries.iter_mut().find(|e| e.key == "texture") {
-        Some(e) => {
-            let b = e.block.get_or_insert_with(og_core::ogt::Block::new);
-            b.entries.retain(|e| e.key != "kind");
-            b.entries.push(kind);
-        }
-        None => doc.body.push(
-            og_core::ogt::Entry::new("texture").with_block(og_core::ogt::Block::new().with(kind)),
-        ),
-    }
-    s.settings = Some((text, doc));
+    s.settings.pixel = true;
 }
 
 /// A source's hash as the cook takes it (its id, bytes, settings), with
@@ -794,9 +787,7 @@ fn rehash(s: &Source, more: &[&[u8]]) -> u64 {
         sheet.encode(&mut data);
         h.write(&data);
     }
-    if let Some((text, _)) = &s.settings {
-        h.write_str(text);
-    }
+    h.write_u64(s.settings.hash());
     if let Some(c) = &s.conformed {
         h.write(c);
     }

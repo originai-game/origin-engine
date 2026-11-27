@@ -63,7 +63,7 @@ function prop(world: World, name: keyof typeof PROPS, x: number, y: number, opts
  */
 function tree(world: World, kind: keyof typeof TREES, x: number, y: number): void {
   const t = TREES[kind];
-  const texture = must(og.load.texture(world, `trees/${kind}.png`));
+  const texture = must(og.load.texture(world, `base/trees/${kind}`));
   const e = must(world.spawn({ position: { x, y, z: 0 } }));
   must(world.insert(e, og.Sprite, { texture, width: t.w * TEX, height: t.h * TEX, anchor: t.anchor, sortY: true, shadow: 0.35, sway: 1 }));
   const trunk = must(world.spawn({ position: { x, y: y + 0.2, z: 0 } }));

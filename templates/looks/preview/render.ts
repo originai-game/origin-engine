@@ -157,9 +157,13 @@ for (const slot of slots) {
     const sprites: Record<string, { path: string; width: number; height: number }> = {};
     if (scene.art) cpSync(join(looks, scene.art), join(dir, "assets/art"), { recursive: true });
     for (const [beat, s] of Object.entries(scene.sprites ?? {})) {
-      sprites[beat] = { path: `art/${s.file}`, width: s.height * aspect(join(looks, scene.art!, s.file)), height: s.height };
+      const stem = s.file.replace(/\.[^.]+$/, "");
+      const entry = join(dir, `content/art/${stem}.ts`);
+      mkdirSync(join(entry, ".."), { recursive: true });
+      writeFileSync(entry, `import {file} from '@origingame/engine/author';export default file.import(${JSON.stringify({kind: "texture", source: `assets/art/${s.file}`, usage: "pixel", conform: {kind: "sprite"}})});\n`);
+      sprites[beat] = { path: `base/art/${stem}`, width: s.height * aspect(join(looks, scene.art!, s.file)), height: s.height };
     }
-    const ground = existsSync(join(dir, "content/models/field.ts")) ? "base/models/field" : "models/ground.glb";
+    const ground = existsSync(join(dir, "content/models/field.ts")) ? "base/models/field" : "base/models/ground";
     writeFileSync(join(dir, "src/sprites.ts"), `// Written by templates/looks/preview/render.ts from preview.json.\nexport const GROUND = ${JSON.stringify(ground)};\nexport const SPRITES: Record<string, { path: string; width: number; height: number }> = ${JSON.stringify(sprites)};\n`);
   } else {
     stage2d(dir, name, scene, looks, repo);

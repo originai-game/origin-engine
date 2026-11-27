@@ -1184,8 +1184,9 @@ export type Input_import = (((({
 readonly "animation"?: (((Input_importDefinitions["Animation"])) | ((null)));
 readonly "collider"?: (((Input_importDefinitions["Collider"])) | ((null)));
 readonly "conform"?: (((Input_importDefinitions["Conform"])) | ((null)));
+readonly "fracture"?: (((Input_importDefinitions["Fracture"])) | ((null)));
 /** Source forward axis rotated to +Z; must be perpendicular to up. */
-readonly "front"?: (((Input_importDefinitions["Axis"])) | ((null)));
+readonly "front"?: (((Input_importDefinitions["Axis2"])) | ((null)));
 readonly "impostor"?: ((boolean) | (null));
 readonly "impostorBelow"?: ((boolean) | (null));
 readonly "impostorGrid"?: ((number) | (null));
@@ -1203,13 +1204,13 @@ readonly "relaxSkin"?: ((boolean) | (null));
 the importer and must enter the closed input/dependency graph as well. */
 readonly "source": (string);
 readonly "streamTextures"?: ((boolean) | (null));
-readonly "up"?: (((Input_importDefinitions["Axis"])) | ((null)));
+readonly "up"?: (((Input_importDefinitions["Axis2"])) | ((null)));
 readonly "voxClips"?: (ReadonlyArray<(Input_importDefinitions["VoxClip"])> | (number extends ((Input_importDefinitions["VoxClip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "voxFps"?: ((number) | (null));
 readonly "voxOrigin"?: (((Input_importDefinitions["VoxOrigin"])) | ((null)));
 readonly "voxScale"?: ((number) | (null));
-})) & { readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "fonts"?: never; readonly "level"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "sway"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "usage"?: never; }) | ((({
-readonly "conform"?: (((Input_importDefinitions["Conform"])) | ((null)));
+})) & { readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "fonts"?: never; readonly "level"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "usage"?: never; }) | ((({
+readonly "conform"?: (((Input_importDefinitions["TextureConform"])) | ((null)));
 readonly "kind": ("texture") & (string);
 readonly "normal"?: (((Input_importDefinitions["Normal"])) | ((null)));
 readonly "source": (string);
@@ -1218,7 +1219,7 @@ readonly "stream"?: ((boolean) | (null));
 readonly "sway"?: (((Input_importDefinitions["Sway"])) | ((null)));
 /** Distinct from the root import kind discriminant. */
 readonly "usage"?: (((Input_importDefinitions["TextureUsage"])) | ((null)));
-})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 /** Rounded to whole kb/s; absent selects the mono/stereo codec default. */
 readonly "bitrate"?: ((number) | (null));
 readonly "chunk"?: ((number) | (null));
@@ -1228,32 +1229,45 @@ readonly "source": (string);
 /** QOA only. Absent selects automatic streaming above 1 MiB; Opus streams
 its own codec blocks rather than QOA chunks. */
 readonly "stream"?: ((boolean) | (null));
-})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 readonly "kind": ("font") & (string);
 /** Omitted: outline font. Pixel grid changes only this font's raster mode. */
 readonly "pixel"?: ((number) | (null));
 readonly "source": (string);
-})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 readonly "kind": ("tilemap") & (string);
 readonly "level"?: ((string) | (null));
 readonly "solid"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Explicit Tiled/LDtk exchange text; never an engine author DSL. */
 readonly "source": (string);
+/** Embedded Tiled/LDtk image paths as written in the map to texture refs. */
+readonly "textures"?: (Readonly<Record<string, (Input_importDefinitions["ContentRef"])>>);
 readonly "tileset"?: (((Input_importDefinitions["ContentRef"])) | ((null)));
 /** External TSX/TSJ or LDtk image paths as written in the map to tileset refs. */
 readonly "tilesets"?: (Readonly<Record<string, (Input_importDefinitions["ContentRef"])>>);
 /** World units per tile width. */
 readonly "unit"?: ((number) | (null));
-})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 /** Omitted: all artboards. Explicit selection retains authored order. */
 readonly "artboards"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "fonts"?: (Readonly<Record<string, (Input_importDefinitions["FontSource"])>>);
 readonly "kind": ("rive") & (string);
 readonly "settings"?: (Readonly<Record<string, (Input_importDefinitions["Artboard"])>>);
 readonly "source": (string);
-})) & { readonly "animation"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }));
+})) & { readonly "animation"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }));
 export interface Input_importDefinitions {
 readonly "Align": ("center" | "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right") & (string);
+readonly "Anchor": (((({
+readonly "kind": ("none") & (string);
+})) & { readonly "bottom"?: never; readonly "distance"?: never; readonly "ends"?: never; readonly "normal"?: never; }) | ((({
+readonly "bottom": (boolean);
+readonly "ends": (boolean);
+readonly "kind": ("supports") & (string);
+})) & { readonly "distance"?: never; readonly "normal"?: never; }) | ((({
+readonly "distance": (number);
+readonly "kind": ("plane") & (string);
+readonly "normal": (ReadonlyArray<(number)> & { readonly length: 3 });
+})) & { readonly "bottom"?: never; readonly "ends"?: never; }));
 readonly "Animation": ({
 readonly "clips"?: (ReadonlyArray<(Input_importDefinitions["Clip"])> | (number extends ((Input_importDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "compress"?: ((boolean) | (null));
@@ -1272,7 +1286,8 @@ readonly "name"?: ((string) | (null));
 readonly "role"?: (((Input_importDefinitions["Role"])) | ((null)));
 readonly "stateMachine"?: ((string) | (null));
 });
-readonly "Axis": ("+x" | "-x" | "+y" | "-y" | "+z" | "-z") & (string);
+readonly "Axis": ("x" | "y" | "z") & (string);
+readonly "Axis2": ("+x" | "-x" | "+y" | "-y" | "+z" | "-z") & (string);
 readonly "Bake": ({
 /** Zero fills all uncovered texels. */
 readonly "dilate"?: ((number) | (null));
@@ -1324,6 +1339,28 @@ readonly "FontSource": ({
 /** Omitted: use the embedded font with this source name. */
 readonly "source"?: ((string) | (null));
 });
+readonly "Fracture": ({
+readonly "anchor"?: (((Input_importDefinitions["Anchor"])) | ((null)));
+readonly "brick"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
+readonly "children"?: ((number) | (null));
+readonly "chunks"?: ((number) | (null));
+readonly "grain"?: (((Input_importDefinitions["Axis"])) | ((null)));
+readonly "impact"?: (((Input_importDefinitions["Impact"])) | ((null)));
+readonly "interior"?: (((Input_importDefinitions["Material"])) | ((null)));
+readonly "interiorScale"?: ((number) | (null));
+readonly "mortar"?: (((Input_importDefinitions["Material"])) | ((null)));
+readonly "pattern"?: (((Input_importDefinitions["Pattern"])) | ((null)));
+readonly "rings"?: ((number) | (null));
+readonly "seed"?: ((number) | (null));
+/** Explicit centres replace sampling; count 2..128, distinct, volume
+Voronoi only, exclusive with chunks/impact (domain validation). */
+readonly "sites"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "style"?: (((Input_importDefinitions["Style"])) | ((null)));
+});
+readonly "Impact": ({
+readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
+readonly "radius": (number);
+});
 readonly "Interpolation": ("step" | "linear" | "cubicSpline") & (string);
 readonly "Joint": ({
 readonly "name": (string);
@@ -1337,6 +1374,47 @@ readonly "time": (number);
 Cubic spline keys contain in-tangent, value, out-tangent (per second). */
 readonly "values": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
+/** Omitted fields remain absent until the material domain normalizes them. */
+readonly "Material": ({
+/** Alpha-mask cutoff takes precedence over opacity blending. */
+readonly "alphaTest"?: ((number) | (null));
+/** Ambient occlusion in red. */
+readonly "aoMap"?: ((string) | (null));
+readonly "autumnColor"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "autumnColor2"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "clearcoat"?: ((number) | (null));
+readonly "clearcoatRoughness"?: ((number) | (null));
+/** Linear base RGB (glTF factor); not a runtime colour handle. */
+readonly "color"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "domeNormals"?: ((number) | (null));
+readonly "doubleSided"?: ((boolean) | (null));
+/** Linear emitted RGB, multiplied by emissiveIntensity. */
+readonly "emissive"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "emissiveIntensity"?: ((number) | (null));
+readonly "grime"?: ((number) | (null));
+readonly "grimeColor"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "grimeHeight"?: ((number) | (null));
+readonly "ior"?: ((number) | (null));
+/** Source image inputs; not cooked texture references. Resolution and path
+containment are checked at the input boundary. */
+readonly "map"?: ((string) | (null));
+readonly "metalness"?: ((number) | (null));
+/** Roughness in green, metalness in blue. */
+readonly "metalnessMap"?: ((string) | (null));
+readonly "normalMap"?: ((string) | (null));
+readonly "normalScale"?: ((number) | (null));
+readonly "opacity"?: ((number) | (null));
+readonly "roughness"?: ((number) | (null));
+/** Zero evergreen; one deciduous. */
+readonly "season"?: ((number) | (null));
+readonly "seasonShift"?: ((number) | (null));
+readonly "stains"?: ((number) | (null));
+readonly "stochastic"?: ((number) | (null));
+readonly "thickness"?: ((number) | (null));
+/** Diffuse transmission through thin leaves; enables both faces. */
+readonly "translucency"?: ((number) | (null));
+readonly "transmission"?: ((number) | (null));
+});
 readonly "Mirror": ({
 readonly "clip": (string);
 readonly "name"?: ((string) | (null));
@@ -1347,6 +1425,7 @@ readonly "kind": ("auto") & (string);
 readonly "kind": ("image") & (string);
 readonly "source": (string);
 })));
+readonly "Pattern": ("auto" | "volume" | "slab") & (string);
 readonly "Process": ({
 readonly "bake"?: (((Input_importDefinitions["Bake"])) | ((null)));
 readonly "decimate"?: (((Input_importDefinitions["Decimate"])) | ((null)));
@@ -1387,11 +1466,24 @@ readonly "joints": (ReadonlyArray<(Input_importDefinitions["Joint"])> | (number 
 readonly "kind": ("joints") & (string);
 })));
 readonly "Role": ("button" | "link" | "text" | "heading" | "image" | "checkbox" | "radio" | "switch" | "slider" | "spinbutton" | "textbox" | "combobox" | "listbox" | "option" | "tab" | "tablist" | "tabpanel" | "radiogroup" | "progressbar" | "meter" | "timer" | "status" | "alert" | "log" | "dialog" | "alertdialog" | "tooltip" | "separator" | "group" | "region" | "navigation" | "toolbar" | "menu" | "menubar" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "list" | "listitem" | "tree" | "treeitem" | "table" | "grid" | "row" | "rowheader" | "columnheader" | "cell" | "gridcell" | "figure" | "scrollbar") & (string);
+readonly "Style": ("voronoi" | "concrete" | "brick" | "wood" | "glass") & (string);
 readonly "Sway": ({
 readonly "kind": (Input_importDefinitions["SwayKind"]);
 readonly "parts"?: ((string) | (null));
 });
 readonly "SwayKind": ("clumps" | "tiers") & (string);
+readonly "TextureConform": (((({
+readonly "kind": ("off") & (string);
+})) & { readonly "size"?: never; }) | (({
+readonly "kind": ("sprite") & (string);
+readonly "size"?: ((number) | (null));
+})) | (({
+readonly "kind": ("ui") & (string);
+readonly "size"?: ((number) | (null));
+})) | (({
+readonly "kind": ("auto") & (string);
+readonly "size"?: ((number) | (null));
+})));
 readonly "TextureUsage": ("color" | "normal" | "linear" | "single" | "pixel") & (string);
 readonly "Transfer": ({
 readonly "padding"?: ((number) | (null));

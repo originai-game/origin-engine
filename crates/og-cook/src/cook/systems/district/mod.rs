@@ -178,8 +178,7 @@ pub(crate) fn expand(
             rel,
             kind,
             bytes,
-            settings: None,
-            settings_files: Vec::new(),
+            settings: Default::default(),
             hash: 0,
             gltf: None,
             error: None,
@@ -228,20 +227,12 @@ pub(crate) fn expand(
         // needs the same carve and must invalidate when its streets move.
         let carve = carve.with(og_core::ogt::Value::String(id.clone()));
         for s in sources.iter_mut() {
-            let nav_uses = s.kind == &super::navmesh::NAVMESH
-                && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|doc| {
-                    doc.body
-                        .get_all("terrain")
-                        .any(|e| e.values.first().and_then(|v| v.as_str()) == Some(id.as_str()))
-                });
-            if s.rel != id && !nav_uses {
+            // Navigation consumes the terrain's shared checked surface, so
+            // only the owning terrain receives these native district stamps.
+            if s.rel != id {
                 continue;
             }
-            let (text, doc) = s
-                .settings
-                .get_or_insert_with(|| (String::new(), Document::new("import", 1)));
-            doc.body.push(carve.clone());
-            *text = doc.to_text().expect("generated terrain settings");
+            s.settings.carves.push(carve.clone());
         }
     }
     sources.extend(extra);

@@ -230,7 +230,7 @@ pub(crate) fn assemble(
             source: s.rel.clone(),
             kind: s.kind.name.to_string(),
             source_bytes: s.bytes.len() as u64
-                + s.settings.as_ref().map_or(0, |(t, _)| t.len() as u64)
+                + s.settings.stamp.len() as u64
                 + s.gltf
                     .as_ref()
                     .map_or(0, |g| g.external.iter().map(|e| e.1.len() as u64).sum()),

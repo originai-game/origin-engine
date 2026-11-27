@@ -206,10 +206,11 @@ pub(crate) fn import(
                     .and_then(model::process::transfer::source)
                     .map(str::to_string);
             }
-            model::process::settings(settings_block(s, "model"))
-                .ok()
-                .flatten()
-                .and_then(|b| model::process::transfer::source(&b).map(str::to_string))
+            s.settings
+                .model()
+                .and_then(|d| d.process.as_ref())
+                .and_then(model::process::transfer::source)
+                .map(str::to_string)
         })
         .collect();
     let dependencies: Vec<_> = operands
@@ -341,7 +342,7 @@ pub(crate) fn import(
     let libraries: Vec<_> = sources
         .iter()
         .enumerate()
-        .filter(|(_, s)| s.authored_model.is_some())
+        .filter(|(_, s)| s.kind == &model::MODEL)
         .map(|(i, source)| {
             let captured = (|| -> Result<_, String> {
                 let settings = anim_settings(source)?;
@@ -381,12 +382,7 @@ pub(crate) fn import(
     for (i, captured) in libraries {
         match captured {
             Ok(libraries) => {
-                let _ = sources[i]
-                    .authored_model
-                    .as_ref()
-                    .unwrap()
-                    .libraries
-                    .set(libraries);
+                let _ = sources[i].settings.libraries.set(libraries);
             }
             Err(error) => sources[i].error = Some(error),
         }
@@ -402,9 +398,7 @@ pub(crate) fn source_hash(s: &Source) -> u64 {
     if let Some(model) = &s.authored_model {
         h.write(&model.hash);
     }
-    if let Some((text, _)) = &s.settings {
-        h.write_str(text);
-    }
+    h.write_u64(s.settings.hash());
     if let Some(g) = &s.gltf {
         if let Some(hash) = g.skin_rig_hash {
             h.write_u64(hash);
@@ -435,36 +429,60 @@ fn import_source(
         .rsplit_once('/')
         .map_or(String::new(), |(p, _)| format!("{p}/"));
     let authored = s.authored_model.clone();
-    let read =
-        |file: &str| {
-            if let Some(model) = &authored {
-                return model.read(file);
-            }
-            // Synthetic model directories need not exist on disk. Resolve the
-            // same logical path used by the texture index and dependency stamp.
-            let id = normalise_rel(&format!("{base}{file}"));
-            textures.get(&id).cloned().map(Ok).unwrap_or_else(|| {
-                std::fs::read(assets.join(&id)).map_err(|e| format!("{file}: {e}"))
-            })
-        };
-    let imported_processing = if s.kind == &model::MODEL && authored.is_none() {
-        match model::process::settings(settings_block(s, "model")) {
-            Ok(v) => v,
-            Err(e) => {
-                s.error = Some(e);
-                return None;
-            }
+    let imported_input = s.settings.input.clone();
+    let module_root = assets_root(s);
+    let input_dir = s
+        .settings
+        .source()
+        .and_then(|p| p.rsplit_once('/').map(|(dir, _)| dir))
+        .unwrap_or("")
+        .to_string();
+    let captured = std::cell::RefCell::new(s.settings.files.clone());
+    let settings_hash = s.settings.hash().to_le_bytes();
+    let read = |file: &str| {
+        if let Some(model) = &authored {
+            return model.read(file);
         }
-    } else {
-        None
+        if let Some(bytes) = captured.borrow().get(file) {
+            return Ok(bytes.clone());
+        }
+        if imported_input.is_some() {
+            if file.starts_with('/') || file.contains(['\\', ':']) {
+                return Err(format!("{file}: expected a relative imported dependency"));
+            }
+            let path = normalise_rel(&format!("{input_dir}/{file}"));
+            if !path.starts_with("assets/") && !path.starts_with("sources/") {
+                return Err(format!(
+                    "{file}: imported dependencies belong under the owning module's assets/ or sources/"
+                ));
+            }
+            if let Some(bytes) = captured.borrow().get(&path) {
+                return Ok(bytes.clone());
+            }
+            let checked =
+                source_path::checked(&module_root, &path).map_err(|e| format!("{file}: {e}"))?;
+            let bytes = std::fs::read(checked).map_err(|e| format!("{file}: {e}"))?;
+            captured.borrow_mut().insert(path, bytes.clone());
+            return Ok(bytes);
+        }
+        let id = normalise_rel(&format!("{base}{file}"));
+        textures
+            .get(&id)
+            .cloned()
+            .map(Ok)
+            .unwrap_or_else(|| std::fs::read(assets.join(id)).map_err(|e| format!("{file}: {e}")))
+    };
+    let imported_model = match imported_input.as_deref() {
+        Some(source_schemas::world::import::ImportInput::Model(d)) => Some(&**d),
+        _ => None,
     };
     let processing = authored
         .as_ref()
         .and_then(|m| m.process())
-        .or(imported_processing.as_ref());
+        .or(imported_model.and_then(|d| d.process.as_ref()));
     let parameters = processing.as_ref().map(|_| {
         let mut bytes = s.bytes.clone();
-        bytes.extend_from_slice(s.settings.as_ref().map_or("", |(text, _)| text).as_bytes());
+        bytes.extend_from_slice(&settings_hash);
         bytes
     });
     // What a model says it is (`conform character`, `conform effect`),
@@ -483,10 +501,14 @@ fn import_source(
     // A MagicaVoxel file is a model: meshed into a glTF binary here (its
     // import settings' `model { voxScale voxOrigin }` applied), so the
     // rest of the cook sees a .glb.
-    if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "vox" {
-        match vox::VoxSettings::parse(settings_block(s, "model"))
-            .and_then(|v| vox::to_glb(&s.bytes, &v))
-        {
+    let extension = s
+        .path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if s.kind == &crate::cook::model::MODEL && extension == "vox" {
+        match vox::VoxSettings::from_input(imported_model).and_then(|v| vox::to_glb(&s.bytes, &v)) {
             Ok(glb) => s.bytes = glb,
             Err(e) => {
                 s.error = Some(e);
@@ -499,8 +521,8 @@ fn import_source(
     // files it read beside the glb's own (an OBJ's .mtl, the sources
     // of packed images) join its hash and are consumed with it.
     let mut imported = None;
-    if s.kind == &crate::cook::model::MODEL && fbx::handles(&ext(&s.rel)) {
-        match fbx::to_glb(&s.bytes, &s.path, &ext(&s.rel)) {
+    if s.kind == &crate::cook::model::MODEL && fbx::handles(&extension) {
+        match fbx::to_glb_with(&s.bytes, &s.path, &extension, &read) {
             Ok(i) => {
                 s.bytes = i.glb;
                 imported = Some((i.read, i.notes));
@@ -525,7 +547,7 @@ fn import_source(
     // to +Z and +Y before the fracture cut and the load read it
     // (`model/orient.rs`).
     if s.kind == &crate::cook::model::MODEL {
-        match model::orient::settings(settings_block(s, "model")).and_then(|o| {
+        match model::orient::from_input(imported_model).and_then(|o| {
             o.map(|(front, up)| model::orient::apply(&s.bytes, front, up))
                 .transpose()
         }) {
@@ -572,28 +594,20 @@ fn import_source(
         let parameters = authored
             .as_ref()
             .map_or(&[][..], |model| model.hash.as_slice());
-        let input_stamp = stamp(
-            &[Area::Fracture],
-            &[
-                &s.bytes,
-                parameters,
-                s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
-            ],
-        );
+        let input_stamp = stamp(&[Area::Fracture], &[&s.bytes, parameters, &settings_hash]);
         let fracture = match &authored {
             Some(model) => model.fracture(),
-            None => fracture::Settings::of(s.settings.as_ref().map(|(_, d)| d)),
+            None => imported_model
+                .and_then(|d| d.fracture.as_ref())
+                .map(fracture::Settings::from_input)
+                .transpose(),
         };
         match fracture.and_then(|f| {
             f.map(|f| {
                 let key = cache::key(
                     &[crate::format::Area::Fracture],
                     "fracture",
-                    &[
-                        &s.bytes,
-                        parameters,
-                        s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
-                    ],
+                    &[&s.bytes, parameters, &settings_hash],
                 );
                 fracture_cache::run(texture_cache, &key, input_stamp, &read, || {
                     fracture::fracture_glb(&s.bytes, &f, &read)
@@ -628,22 +642,8 @@ fn import_source(
                     let enabled = if let Some(model) = &s.authored_model {
                         model.options().and_then(|o| o.relax_skin).unwrap_or(false)
                     } else {
-                        settings_block(s, "model")
-                            .and_then(|b| b.get("relaxSkin"))
-                            .map(|e| {
-                                if e.values.len() == 1 {
-                                    e.values[0].as_bool()
-                                } else {
-                                    None
-                                }
-                                .ok_or_else(|| {
-                                    format!(
-                                        "line {}: relaxSkin takes true or false (the default)",
-                                        e.line
-                                    )
-                                })
-                            })
-                            .transpose()?
+                        imported_model
+                            .and_then(|d| d.options.relax_skin)
                             .unwrap_or(false)
                     };
                     if enabled {
@@ -670,7 +670,7 @@ fn import_source(
                     // `textures/a.png` (s59). A program reads itself, and
                     // a model is never part of itself.
                     let file = normalise_rel(&format!("{base}{p}"));
-                    if file != s.rel {
+                    if imported_input.is_none() && authored.is_none() && file != s.rel {
                         made.consumed.push(file);
                     }
                 }
@@ -679,6 +679,7 @@ fn import_source(
             Err(e) => s.error = Some(e),
         }
     }
+    s.settings.files = captured.into_inner();
     Some(made)
 }
 
@@ -698,6 +699,13 @@ pub(crate) fn resolve(
     // A terrain's heightmap and control map are part of the terrain, an
     // environment's image part of the environment.
     for s in sources.iter() {
+        let root = assets_root(s);
+        consumed.extend(s.settings.files.keys().filter_map(|file| {
+            root.join(file)
+                .strip_prefix(assets_dir)
+                .ok()
+                .map(|p| p.to_string_lossy().replace('\\', "/"))
+        }));
         if s.kind == &terrain::TERRAIN
             && let Ok(prepared) = terrain::get(s, &s.rel)
         {
@@ -725,13 +733,9 @@ pub(crate) fn resolve(
             consumed.extend(environment::environment_files(s, assets_dir));
         }
     }
-    // A file a model references stays an asset of its own as well when it
-    // has import settings of its own, not only its directory's (which only a
-    // texture cooked on its own reads) or a terrain names it as a layer (by asset id), s59.
+    // Authored content IDs are independent of raw filenames. A terrain layer
+    // remains a standalone asset even when the terrain also consumes it.
     for s in sources.iter() {
-        if s.kind == &crate::cook::texture::TEXTURE && s.own_settings() {
-            consumed.remove(&s.rel);
-        }
         if s.kind == &terrain::TERRAIN
             && let Ok(prepared) = terrain::get(s, &s.rel)
         {

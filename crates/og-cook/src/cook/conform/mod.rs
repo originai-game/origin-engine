@@ -20,7 +20,6 @@ pub(super) mod texture2d;
 /// Oklab palette extraction and pixel usage, shared with footage study.
 pub use texture2d::palette;
 
-use og_core::ogt::{Block, Entry};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -84,6 +83,8 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
     let assets = root.join("assets");
     let mut sources = super::scan(&assets).map_err(|e| e.0)?.sources;
     let project = super::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    super::imports::prepare(root, &project, &mut sources, &mut BTreeMap::new())
+        .map_err(|e| e.to_string())?;
     let two_d = matches!(
         project.input.create.as_ref().and_then(|c| c.form.as_ref()),
         Some(super::source_schemas::project::Form::TwoD)
@@ -134,6 +135,8 @@ pub enum ModelRole {
 pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     let mut sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
     let project = super::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    super::imports::prepare(root, &project, &mut sources, &mut BTreeMap::new())
+        .map_err(|e| e.to_string())?;
     super::pipeline::author::models(root, &project, &mut sources, &mut BTreeMap::new())
         .map_err(|e| e.to_string())?;
     let mut out = BTreeMap::new();
@@ -152,6 +155,9 @@ pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
 /// What a model says it is ([`ModelRole`]): its checked conform choice, or
 /// the import settings of an external glTF/VOX. `off` is also read here.
 pub(super) fn model_role(s: &super::Source) -> Result<ModelRole, String> {
+    if s.settings.effect_mesh {
+        return Ok(ModelRole::Effect);
+    }
     if let Some(model) = &s.authored_model {
         use super::source_schemas::world::model::Conform;
         return Ok(match model.conform() {
@@ -160,17 +166,12 @@ pub(super) fn model_role(s: &super::Source) -> Result<ModelRole, String> {
             _ => ModelRole::Prop,
         });
     }
-    let body = match &s.settings {
-        Some((_, d)) => &d.body,
-        None => return Ok(ModelRole::Prop),
-    };
-    Ok(
-        match AssetConform::of(body, &["character", "effect"])?.and_then(|c| c.role) {
-            Some(r) if r == "character" => ModelRole::Character,
-            Some(r) if r == "effect" => ModelRole::Effect,
-            _ => ModelRole::Prop,
-        },
-    )
+    use super::source_schemas::world::model::Conform;
+    Ok(match s.settings.model().and_then(|d| d.conform.as_ref()) {
+        Some(Conform::Character) => ModelRole::Character,
+        Some(Conform::Effect) => ModelRole::Effect,
+        _ => ModelRole::Prop,
+    })
 }
 
 /// project.ogt's `conform { off "sprites/raw/*" "ui/logo.png" }`: the
@@ -217,77 +218,4 @@ pub(super) struct AssetConform {
     pub role: Option<String>,
     pub size: Option<u32>,
     pub line: usize,
-}
-
-impl AssetConform {
-    /// Reads `conform` from a document's body, if it has one.
-    pub fn of(body: &Block, roles: &[&str]) -> Result<Option<AssetConform>, String> {
-        let Some(e) = body.get("conform") else {
-            return Ok(None);
-        };
-        Self::entry(e, roles).map(Some)
-    }
-
-    fn entry(e: &Entry, roles: &[&str]) -> Result<AssetConform, String> {
-        let mut c = AssetConform {
-            line: e.line,
-            ..AssetConform::default()
-        };
-        let words = || {
-            let mut all = vec!["off"];
-            all.extend_from_slice(roles);
-            all.join(", ")
-        };
-        match e.values.as_slice() {
-            [] if e.block.is_some() => {}
-            [v] => match v.as_word() {
-                Some("off") => c.off = true,
-                Some(w) if roles.contains(&w) => c.role = Some(w.to_string()),
-                _ => {
-                    return Err(format!(
-                        "line {}: conform takes one of {} (and a block of settings)",
-                        e.line,
-                        words()
-                    ));
-                }
-            },
-            _ => {
-                return Err(format!(
-                    "line {}: conform takes one of {} (and a block of settings)",
-                    e.line,
-                    words()
-                ));
-            }
-        }
-        if let Some(b) = &e.block {
-            if c.off {
-                return Err(format!("line {}: conform off takes no settings", e.line));
-            }
-            for s in &b.entries {
-                match s.key.as_str() {
-                    "size" => {
-                        let n = s
-                            .number(0)
-                            .ok()
-                            .and_then(|n| n.as_u64().ok())
-                            .filter(|n| (1..=4096).contains(n))
-                            .ok_or_else(|| {
-                                format!(
-                                    "line {}: conform.size is the cell's longer side in logical pixels, 1 to 4096",
-                                    s.line
-                                )
-                            })?;
-                        c.size = Some(n as u32);
-                    }
-                    k => {
-                        return Err(format!(
-                            "line {}: conform has no setting `{k}`; it takes size",
-                            s.line
-                        ));
-                    }
-                }
-            }
-        }
-        Ok(c)
-    }
 }

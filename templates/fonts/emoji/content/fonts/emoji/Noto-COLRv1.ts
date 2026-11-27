@@ -1,7 +1,6 @@
-type import
-version 1
----
-# Made by templates/fonts/make-packs.py: the face ships whole and every
-# emoji is painted in colour from its COLR table when first shown.
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "assets/fonts/emoji/Noto-COLRv1.ttf"
+});

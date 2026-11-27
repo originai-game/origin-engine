@@ -23,6 +23,11 @@ macro_rules! vocabulary {
         #[derive(Deserialize, JsonSchema)]
         #[schemars(crate = "og_core::reflect::source::schemars")]
         pub enum $name { $(#[serde(rename = $value)] $variant,)* }
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(match self { $(Self::$variant => $value,)* })
+            }
+        }
     };
 }
 
@@ -49,6 +54,7 @@ input!(Model {
     #[serde(flatten)]
     options: super::model::ModelOptions,
     process: Option<Process>,
+    fracture: Option<super::model::process::Fracture>,
     /// Source forward axis rotated to +Z; must be perpendicular to up.
     front: Option<Axis>,
     up: Option<Axis>,
@@ -89,9 +95,30 @@ input!(Texture {
     stream: Option<bool>,
     normal: Option<Normal>,
     sway: Option<Sway>,
-    conform: Option<Conform>,
+    conform: Option<TextureConform>,
 });
 vocabulary!(TextureUsage { Color => "color", Normal => "normal", Linear => "linear", Single => "single", Pixel => "pixel" });
+
+#[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum TextureConform {
+    Off,
+    Sprite {
+        #[schemars(range(min = 1, max = 4096), extend("x-og-unit" = "px"))]
+        size: Option<u32>,
+    },
+    Ui {
+        #[schemars(range(min = 1, max = 4096), extend("x-og-unit" = "px"))]
+        size: Option<u32>,
+    },
+    /// Use the role reported by consumers, with an explicit logical size.
+    Auto {
+        #[schemars(range(min = 1, max = 4096), extend("x-og-unit" = "px"))]
+        size: Option<u32>,
+    },
+}
+
 #[derive(Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
@@ -145,6 +172,10 @@ input!(Tilemap {
     #[serde(default)]
     #[schemars(extend("x-og-ref-kinds" = ["tileset"]))]
     tilesets: BTreeMap<String, ContentRef>,
+    /// Embedded Tiled/LDtk image paths as written in the map to texture refs.
+    #[serde(default)]
+    #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
+    textures: BTreeMap<String, ContentRef>,
 });
 
 impl ImportInput {

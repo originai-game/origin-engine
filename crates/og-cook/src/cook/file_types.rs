@@ -37,9 +37,19 @@ pub fn markdown() -> Result<String, String> {
                 .iter()
                 .map(|(ty, k)| (*ty, k.name)),
         )
+        .chain([("import", "import")])
         .collect();
     types.sort();
     for (ty, owner) in types {
+        if ty == "import" {
+            out.push_str("<a id=\"file-import\"></a>\n### `file:import`\n\nExport file.import({kind, source, ...settings}) from content/**/*.ts. The source is an explicit owning-module assets/ or sources/ path. Checked TS feeds native import settings directly; no OGT sidecars, directory defaults or undeclared raw-file auto-cooking remain. Raw bytes, discovered model buffers/images and explicit auxiliary inputs are captured and tracked before caching. References use canonical ref('module/content-id'), never raw filenames. See loading.\n\n```ts\n");
+            out.push_str(&og_core::reflect::source::typescript(
+                super::source_schemas::world::import::ImportInput::schema().document(),
+                "ImportInput",
+            )?);
+            out.push_str("```\n\n");
+            continue;
+        }
         if super::pipeline::author::KINDS
             .iter()
             .any(|(name, _)| *name == ty)
@@ -263,10 +273,6 @@ pub fn markdown() -> Result<String, String> {
             "og-project.json is the ordinary project marker and sole name/engine/look authority. project.ts exports defineProject({...}); it is restricted bootstrap configuration, not an asset or a game entry. Run og check to generate contextual declarations in .og/types/author/. See start and conventions.",
         ),
         (
-            "import",
-            "A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.",
-        ),
-        (
             "theme",
             "theme.json: compiles to pack.json and UI art. See themes and theme-tokens.",
         ),
@@ -329,24 +335,6 @@ pub fn markdown() -> Result<String, String> {
             table(&mut out, &fields);
             let fields: Vec<_> = og_ui_next::theme::COLOR_KEYS.iter().map(|&key| Line::new(key, "string", "inherited", "Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark.", "")).collect();
             block(&mut out, "theme.color", &fields);
-        }
-        if ty == "import" {
-            out.push_str("Directory import.ogt contains repeated `match \"<pattern>\" ... { ... }` blocks (patterns are directory-relative). Matching ancestors merge in order, then the file's own sidecar overrides by key. Root `conform off` opts out of the project art contract; a model's optional `fracture` block is below. Rive uses its own root artboard/font declarations.\n\n");
-            block(&mut out, "import.model", super::options::MODEL_LINES);
-            block(&mut out, "import.texture", super::options::TEXTURE_LINES);
-            block(&mut out, "import.font", super::options::FONT_LINES);
-            block(&mut out, "import.sound", super::audio::LINES);
-            block(&mut out, "import.tilemap", super::tilemap::IMPORT_LINES);
-            block(&mut out, "import.rive", super::riv::LINES);
-            block(&mut out, "import.rive.artboard", super::riv::ARTBOARD_LINES);
-            block(&mut out, "import.animation", super::anim::LINES);
-            block(&mut out, "import.animation.clip", super::anim::CLIP_LINES);
-            block(
-                &mut out,
-                "import.animation.clip.channel",
-                super::anim::CHANNEL_LINES,
-            );
-            block(&mut out, "import.fracture", super::systems::fracture::LINES);
         }
     }
     out.push_str("Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.\n");

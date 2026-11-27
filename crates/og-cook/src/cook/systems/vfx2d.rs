@@ -147,10 +147,12 @@ pub fn build(rel: &str, data: &Value) -> Result<Built, String> {
 /// Materialize the checked recipe and its actual #sheet texture once.
 pub(crate) fn prepare(s: &mut Source) -> Result<Source, String> {
     let built = build(&s.rel, &s.input::<Value>()?)?;
-    let settings = format!(
-        "type import\nversion 1\n---\n# vfx2d renderer {ENGINE_VERSION}\nconform off\ntexture {{\n  kind pixel\n}}\n"
-    );
+    let settings = super::imports::Settings {
+        pixel: true,
+        conform_off: true,
+        ..Default::default()
+    };
     s.flipbook = Some(built.sheet);
     s.conformed = Some(Arc::new(built.png.clone()));
-    Ok(super::flipbook::texture(s, built.png, Some(settings)))
+    Ok(super::flipbook::texture(s, built.png, settings))
 }

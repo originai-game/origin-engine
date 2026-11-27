@@ -107,7 +107,7 @@ pub(crate) fn scan_with(
         .iter()
         .filter(|(rel, _)| {
             let ext = ext(rel);
-            TEXTS.contains(&ext.as_str()) || kind_by_extension(&ext).is_some()
+            TEXTS.contains(&ext.as_str())
         })
         .map(|(_, path)| path.clone())
         .collect();
@@ -236,10 +236,9 @@ pub(crate) fn scan_with(
     // or a look. Keep its outline-only face separate and lazy like a
     // font-pack face; projects with no UI do not carry it at all.
     if code.tsx {
-        let settings = format!("{}.ogt", og_ui_next::pack::DEFAULT_FONT_ASSET);
         for f in look::styles()
             .iter()
-            .filter(|f| f.id() == og_ui_next::pack::DEFAULT_FONT_ASSET || f.id() == settings)
+            .filter(|f| f.id().strip_suffix(".ts") == Some(og_ui_next::pack::DEFAULT_FONT_ASSET))
         {
             builtins.insert(f.id().to_string(), f.bytes());
         }
@@ -318,7 +317,7 @@ pub(crate) fn scan_with(
             .collect();
         let srcs: BTreeSet<String> = wanted
             .iter()
-            .flat_map(|src| [(*src).to_owned(), format!("{src}.ogt")])
+            .flat_map(|src| [src.to_string(), format!("{src}.ts")])
             .collect();
         for f in look::styles().iter().filter(|f| srcs.contains(f.id())) {
             builtins.insert(f.id().to_string(), f.bytes());
@@ -326,7 +325,7 @@ pub(crate) fn scan_with(
         // An engine whose styles predate an image would cook without it and
         // every `nine-<name>` naming it would draw nothing at run time.
         for src in wanted {
-            if !builtins.contains_key(src) {
+            if !builtins.contains_key(src) && !builtins.contains_key(&format!("{src}.ts")) {
                 let dir = look::styles_dir().map_or_else(
                     || "no built-in styles directory was found".to_owned(),
                     |d| format!("not in the built-in styles at {}", d.display()),
@@ -392,12 +391,9 @@ pub(crate) fn scan_with(
         }
     };
 
-    // Classify; import settings attach to the file they are named after, a
-    // directory's (`import.ogt`) to the files under it that it names.
-    let names: BTreeSet<&str> = files.iter().map(|(r, _)| r.as_str()).collect();
+    // Project binaries are inputs of explicit file.import declarations, never
+    // assets merely because a directory walk found their extension.
     let mut sources: Vec<Source> = Vec::new();
-    let mut settings: BTreeMap<String, (String, Document)> = BTreeMap::new();
-    let mut defaults: Vec<import_defaults::Defaults> = Vec::new();
     let mut ignored = Vec::new();
     for (rel, path) in &files {
         if rel.starts_with('@') && !builtins.contains_key(rel) {
@@ -410,9 +406,26 @@ pub(crate) fn scan_with(
         }
         let extension = ext(rel);
         let mut author_bytes = None;
+        let mut imported_path = None;
+        let mut imported_settings = imports::Settings::default();
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
             _ if rel.starts_with("@looks/") && builtins.contains_key(rel) => &look::LOOK,
-            (Some(kind), _) => kind,
+            (Some(kind), _)
+                if (builtins.contains_key(rel)
+                    && !rel.starts_with("@styles/")
+                    && !rel.starts_with("@fonts/"))
+                    || ![
+                        &model::MODEL,
+                        &texture::TEXTURE,
+                        &font::FONT,
+                        &audio::SOUND,
+                        &riv::RIVE,
+                        &tilemap::TILEMAP,
+                    ]
+                    .contains(&kind) =>
+            {
+                kind
+            }
             // Shipped declarations use the same closed TS evaluator, schemas
             // and canonical IR as project content, never an OGT bridge. The
             // reserved @styles/ prefix names the engine's styles root.
@@ -445,18 +458,42 @@ pub(crate) fn scan_with(
                     .map_err(|e| CookError(format!("{rel}: {e}")))?;
                 file.check(None)
                     .map_err(|e| CookError(format!("{rel}: {e}")))?;
-                let kind = super::author::KINDS
-                    .iter()
-                    .find(|(name, _)| *name == file.kind)
-                    .map(|(_, kind)| *kind)
-                    .ok_or_else(|| {
-                        CookError(format!(
-                            "{rel}: {} has not completed its TS domain cutover",
-                            file.kind
-                        ))
-                    })?;
-                author_bytes = Some(data.as_bytes().to_vec());
-                kind
+                if file.kind == "import" {
+                    let input = serde_json::from_value(file.value)
+                        .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                    imported_settings =
+                        imports::Settings::new(input, data.as_bytes().to_vec(), &|file| {
+                            let path = source_path::checked(&root, file)
+                                .map_err(|e| format!("{file}: {e}"))?;
+                            std::fs::read(path).map_err(|e| format!("{file}: {e}"))
+                        })
+                        .map_err(|e| CookError(format!("{rel}: {e}")))?;
+                    let input = imported_settings.source().expect("import input");
+                    let kind = imported_settings.kind();
+                    if !kind.extensions.contains(&ext(input).as_str()) {
+                        return Err(CookError(format!(
+                            "{rel}: {input}: not a supported {} input",
+                            kind.name
+                        )));
+                    }
+                    external.extend(imported_settings.files.keys().map(|p| root.join(p)));
+                    author_bytes = Some(imported_settings.read(input).map_err(CookError)?);
+                    imported_path = Some(root.join(input));
+                    kind
+                } else {
+                    let kind = super::author::KINDS
+                        .iter()
+                        .find(|(name, _)| *name == file.kind)
+                        .map(|(_, kind)| *kind)
+                        .ok_or_else(|| {
+                            CookError(format!(
+                                "{rel}: {} has not completed its TS domain cutover",
+                                file.kind
+                            ))
+                        })?;
+                    author_bytes = Some(data.as_bytes().to_vec());
+                    kind
+                }
             }
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
             (None, "svelte") => {
@@ -476,23 +513,7 @@ pub(crate) fn scan_with(
                 };
                 match doc {
                     Ok(doc) if doc.ty == "import" => {
-                        // One suffix only: `oak.ogt.ogt` sets how the model
-                        // text `oak.ogt` is cooked.
-                        let target = rel.strip_suffix(".ogt").unwrap_or(rel);
-                        if names.contains(target) {
-                            settings.insert(target.to_string(), (text, doc));
-                        } else if import_defaults::is_defaults(rel) {
-                            match import_defaults::Defaults::parse(rel, &doc) {
-                                Ok(d) => defaults.push(d),
-                                Err(e) => early_errors.push((rel.clone(), "import", e)),
-                            }
-                        } else {
-                            early_errors.push((
-                                rel.clone(),
-                                "import",
-                                format!("import settings for '{target}', which does not exist"),
-                            ));
-                        }
+                        early_errors.push((rel.clone(), "import", "OGT import settings and directory defaults are removed; declare content/**/*.ts with file.import({ kind, source, ...settings })".into()));
                         continue;
                     }
                     Ok(doc) if doc.ty == "style" => {
@@ -535,12 +556,29 @@ pub(crate) fn scan_with(
             None => read(rel, path)?,
         };
         let mut source = Source {
-            rel: rel.clone(),
-            path: path.clone(),
+            rel: if imported_path.is_some() {
+                let id = rel
+                    .strip_suffix(".ts")
+                    .expect("import declaration")
+                    .to_string();
+                if let Some((pack, file)) =
+                    id.strip_prefix("@fonts/").and_then(|s| s.split_once('/'))
+                {
+                    format!(
+                        "@fonts/{pack}/{}",
+                        file.strip_prefix(&format!("content/fonts/{pack}/"))
+                            .unwrap_or(file)
+                    )
+                } else {
+                    id
+                }
+            } else {
+                rel.clone()
+            },
+            path: imported_path.unwrap_or_else(|| path.clone()),
             kind,
             bytes,
-            settings: None,
-            settings_files: Vec::new(),
+            settings: imported_settings,
             hash: 0,
             gltf: None,
             error: None,
@@ -580,12 +618,19 @@ pub(crate) fn scan_with(
         }
         sources.push(source);
     }
-    // The walk reads a directory's subdirectories before its `import.ogt`.
-    defaults.sort_by_key(|d| d.depth());
-    for s in sources.iter_mut() {
-        (s.settings, s.settings_files) =
-            import_defaults::effective(&s.rel, &defaults, settings.remove(&s.rel));
-    }
+    let captured: BTreeSet<_> = sources
+        .iter()
+        .flat_map(|s| {
+            let root = assets_root(s);
+            s.settings.files.keys().map(move |p| root.join(p))
+        })
+        .collect();
+    let captured: BTreeSet<_> = files
+        .iter()
+        .filter(|(_, path)| captured.contains(path))
+        .map(|(rel, _)| rel)
+        .collect();
+    ignored.retain(|rel| !captured.contains(rel));
     Ok(Scan {
         sources,
         ignored,

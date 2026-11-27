@@ -25,11 +25,13 @@ change as it is saved: §Cook times).
 
 ## Pipeline
 
-1. **Walk** `assets/` (sorted, dot-files skipped). By extension: `.glb`/`.gltf`/`.vox`/`.fbx`/`.obj`
-   models, `.tmj` (Tiled) and `.ldtk` (LDtk) maps, `.png`/`.jpg`/`.jpeg`/`.webp`/`.tga`/`.psd`/`.dds`/`.ktx2` textures, `.wav`/`.mp3`/`.ogg`/`.flac` sounds, `.ttf`/`.otf` fonts,
-   `.hex` and `.gpl` palettes. Checked `content/**/*.ts` declarations supply scenes, prefabs, scatter, tilemaps and the other migrated types. `<file>.ogt` of `type import` holds `<file>`'s import
-   settings. Files a `.gltf` references are part of that model, as are the textures an FBX or OBJ names and an OBJ's `.mtl`. Anything else
-   (licences, notes) is listed as ignored.
+1. **Discover** checked `content/**/*.ts` declarations. External models,
+   textures, sounds, fonts, Tiled/LDtk maps and Rive files use `file.import`
+   with an explicit owning-module `assets/` or `sources/` path and native
+   controls. Captured external model buffers, images and material libraries
+   are part of that import. Raw files do not become assets by extension.
+   The remaining look, materials and Yarn author formats are scanned until
+   their domain cutovers; unrelated files (licences, notes) are ignored.
 2. **Plan**: every output gets a cook stamp (below). An output whose stamp the
    manifest already holds, with its file present, its bytes' hash unchanged
    and its header holding the type hash and schema version the loader
@@ -276,52 +278,25 @@ Markdown report (`--report out.md`) tables them, `--json` and
 
 ### Import settings
 
-```text
-type import
-version 1
----
-conform off            # the art contract leaves this image as drawn; or `conform sprite` / `conform ui`
-                       # (its role when the cook would not find it), with an optional block: conform { size 32 }
-texture {
-  kind normal          # color (default) | normal | linear | pixel (sprite sheets and tilesets: RGBA8 lossless, sRGB, no mips, sampled nearest)
-  stream true          # stream the levels above 256 texels: `<id>` holds the mip tail, `<id>#mips` the whole chain (default false; refused with kind pixel)
-  sway clumps          # a 2D plant's wind parts as `<id>#sway` (og.Sprite.sway draws them): clumps (a broadleaf tree, a bush) | tiers (a conifer),
-                       # then optionally a parts map beside the texture ("oak_parts.png": its size, one flat colour per part, clear where the plant stands still)
-}
-animation {
-  rate 30                     # resampling rate for every clip; default: the source's key rate
-  event "walk" "footL" 0.26   # a marker: clip, name, seconds (also glTF extras."og.events")
-  rig "base/rigs/strider"     # checked file.rig content ID; default: detected from node names
-  library "anims/humanoid-clips.glb"  # an animation library: its clips retargeted onto this model (repeatable)
-  footIk true                 # retargeting solves the legs so planted feet stay planted (default true)
-  mirror "turnLeft" "turnRight"  # a clip (its own or a library's) written again mirrored, under that name (default "<clip>.mirrored"; repeatable)
-  compress true               # quantised samples and keyframe reduction (default false: f32)
-  tolerance 0.0001            # the most compression may move a sampled value (default 1e-4)
-}
-font {
-  pixel 12                  # a pixel font's grid, 4..=64 pixels per em: drawn snapped to whole multiples, unsmoothed (default 0: an outline font)
-}
-sound {                     # a .wav, .mp3, .ogg or .flac
-  stream true               # cook in chunks: true | false (default: when the QOA file passes 1 MiB)
-  chunk 4                   # seconds per chunk, 1..=60 (rounded up to whole 5120-sample QOA frames)
-}
-model {                     # a MagicaVoxel .vox
-  voxScale 0.1              # metres per voxel (default 1)
-  voxOrigin bottom          # center (the editor's origin, default) | bottom (the lowest voxel on y = 0)
-  voxFps 8                  # an animated .vox's frames per second, 1..=120 (default 10)
-  voxClip walk 0 3          # a clip of frames 0 to 3, both shown (repeatable; default one clip `frames` of every frame)
-}
-model {                     # any model
-  stream_textures true      # its glTF textures stream their levels above 256 texels, as `texture { stream true }` (default false)
-}
-tilemap {                   # a .tmj, .ldtk or tilemap .ogt
-  unit 1                    # world units per tile width
-  level "Level_0"           # LDtk: the level, by identifier (default the first)
-  solid 1 2                 # LDtk: the IntGrid values that are solid (default 1)
-  tileset "base/tiles/x"    # use this checked TS tileset for every tileset of the map
-  bindTileset "x.tsx" "base/tiles/x" # or bind an external source path as written in the map
-}
+```ts
+import {file, ref} from '@origingame/engine/author';
+export default file.import({
+  kind: 'model', source: 'assets/models/hero.glb',
+  front: '-x', up: '+y', streamTextures: true,
+  animation: {rate: 30, rig: ref('base/rigs/strider'),
+    libraries: [ref('base/anims/humanoid-clips')], footIk: true,
+    events: [{clip: 'walk', marker: 'footL', time: 0.26}]},
+});
 ```
+
+`og api show file:import` is the generated schema for all six native import
+variants. Texture controls include `usage`, `stream`, explicit `normal` and
+`sway` sources and `conform`; sound uses `stream` and `chunk`; font uses
+`pixel`; model carries processing, fracture, orientation, VOX and animation
+controls. Map imports use canonical `ref` bindings for `tileset`, `tilesets`
+and embedded-image `textures`, never guessed sibling paths. Content entry
+identity supplies the cooked ID. Shared settings are ordinary TS imports;
+OGT sidecars, directory defaults and their merge/parser path are removed.
 
 ### Scenes
 

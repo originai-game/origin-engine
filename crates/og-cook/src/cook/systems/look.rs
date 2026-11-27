@@ -141,10 +141,9 @@ pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])
     layer.resolve(source.rsplit_once('/').map_or("", |(dir, _)| dir));
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for r in layer.assets() {
-        let settings = format!("{r}.ogt");
         for f in styles()
             .iter()
-            .filter(|f| f.id() == r || f.id() == settings)
+            .filter(|f| f.id() == r || f.id().strip_suffix(".ts") == Some(r))
         {
             let f = f.pair();
             if !out.contains(&f) {

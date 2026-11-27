@@ -113,7 +113,7 @@ impl Materials {
     pub(super) fn material(
         &mut self,
         m: &ufbx::Material,
-        dir: &Path,
+        read_file: &Read<'_>,
         what: &str,
         read: &mut Vec<(String, Vec<u8>)>,
         notes: &mut Vec<String>,
@@ -153,8 +153,8 @@ impl Materials {
         };
         let base_index = match (base_tex, opacity_tex) {
             (Some(b), Some(o)) if !same(b, o) => {
-                let rgb_px = self.pixels(b, dir, &at, read)?;
-                let a_px = self.pixels(o, dir, &at, read)?;
+                let rgb_px = self.pixels(b, read_file, &at, read)?;
+                let a_px = self.pixels(o, read_file, &at, read)?;
                 let packed = pack(&rgb_px, |p, i| {
                     let a = sample(&a_px, p.width, p.height, i)[0];
                     let mut px = [p.rgba[i * 4], p.rgba[i * 4 + 1], p.rgba[i * 4 + 2], a];
@@ -169,11 +169,11 @@ impl Materials {
             }
             (None, Some(o)) => {
                 // Opacity alone: white with the map's red as alpha.
-                let a_px = self.pixels(o, dir, &at, read)?;
+                let a_px = self.pixels(o, read_file, &at, read)?;
                 let packed = pack(&a_px, |p, i| [255, 255, 255, p.rgba[i * 4]]);
                 Some(self.texture_packed(format!("alpha:{}", o.element.typed_id), packed, o))
             }
-            (Some(b), _) => Some(self.texture(b, dir, &at, read)?),
+            (Some(b), _) => Some(self.texture(b, read_file, &at, read)?),
             (None, None) => None,
         };
         if let Some(t) = base_index {
@@ -217,11 +217,17 @@ impl Materials {
         })
         .into();
         let mr = match (rough_tex, metal_tex) {
-            (Some(r), Some(mt)) if same(r, mt) && !gloss => Some(self.texture(r, dir, &at, read)?),
+            (Some(r), Some(mt)) if same(r, mt) && !gloss => {
+                Some(self.texture(r, read_file, &at, read)?)
+            }
             (None, None) => None,
             (r, mt) => {
-                let r_px = r.map(|t| self.pixels(t, dir, &at, read)).transpose()?;
-                let m_px = mt.map(|t| self.pixels(t, dir, &at, read)).transpose()?;
+                let r_px = r
+                    .map(|t| self.pixels(t, read_file, &at, read))
+                    .transpose()?;
+                let m_px = mt
+                    .map(|t| self.pixels(t, read_file, &at, read))
+                    .transpose()?;
                 let size = r_px.as_ref().or(m_px.as_ref()).unwrap();
                 let (w, h) = (size.width, size.height);
                 let shape = Pixels {
@@ -251,7 +257,7 @@ impl Materials {
 
         // Normal map; a bump (height) map is not one.
         if let Some(t) = file_texture(&pbr.normal_map, &at, notes) {
-            out["normalTexture"] = self.texture(t, dir, &at, read)?;
+            out["normalTexture"] = self.texture(t, read_file, &at, read)?;
         } else if m.fbx.bump.texture.is_some() {
             notes.push(format!(
                 "{at}: its bump map is a height map, which the engine does not draw; dropped (bake it to a normal map and connect that as the normal map)"
@@ -283,13 +289,13 @@ impl Materials {
                     json!({ "emissiveStrength": strength as f32 });
             }
             if let Some(t) = emission_tex {
-                out["emissiveTexture"] = self.texture(t, dir, &at, read)?;
+                out["emissiveTexture"] = self.texture(t, read_file, &at, read)?;
             }
         }
 
         // Ambient occlusion.
         if let Some(t) = file_texture(&pbr.ambient_occlusion, &at, notes) {
-            out["occlusionTexture"] = self.texture(t, dir, &at, read)?;
+            out["occlusionTexture"] = self.texture(t, read_file, &at, read)?;
         }
         if f.double_sided.enabled {
             out["doubleSided"] = true.into();
@@ -303,7 +309,11 @@ impl Materials {
     }
 
     /// A texture's image: embedded bytes, or the file beside the model.
-    fn source(t: &ufbx::Texture, dir: &Path, at: &str) -> Result<(String, Source), String> {
+    fn source(
+        t: &ufbx::Texture,
+        read_file: &Read<'_>,
+        at: &str,
+    ) -> Result<(String, Source), String> {
         if !t.content.is_empty() {
             return Ok((
                 format!(
@@ -314,29 +324,18 @@ impl Materials {
                 Source::Bytes(t.content.to_vec()),
             ));
         }
-        let norm = |s: &str| s.replace('\\', "/");
-        let rel = norm(&t.relative_filename);
-        let abs = norm(&t.filename);
-        let base = |s: &str| s.rsplit('/').next().unwrap_or("").to_string();
-        let mut tried = Vec::new();
-        for cand in [rel.clone(), base(&rel), base(&abs)] {
-            if cand.is_empty() || tried.contains(&cand) {
-                continue;
-            }
-            if dir.join(&cand).is_file() {
-                return Ok((format!("file:{cand}"), Source::Uri(cand)));
-            }
-            tried.push(cand);
-        }
-        let name = if rel.is_empty() {
-            abs.clone()
+        let name = if t.relative_filename.is_empty() {
+            &t.filename
         } else {
-            rel.clone()
-        };
-        Err(format!(
-            "{at}: texture '{name}' is neither embedded nor beside the model (looked for {}); put the image there, or export the FBX with Embed Media on",
-            tried.join(", ")
-        ))
+            &t.relative_filename
+        }
+        .replace('\\', "/");
+        read_file(&name).map_err(|e| {
+            format!(
+                "{at}: texture '{name}': {e}; export a relative texture path or embed the image"
+            )
+        })?;
+        Ok((format!("file:{name}"), Source::Uri(name)))
     }
 
     fn image(&mut self, key: String, src: Source) -> usize {
@@ -371,11 +370,11 @@ impl Materials {
     fn texture(
         &mut self,
         t: &ufbx::Texture,
-        dir: &Path,
+        read_file: &Read<'_>,
         at: &str,
         _read: &mut Vec<(String, Vec<u8>)>,
     ) -> Result<Value, String> {
-        let (key, src) = Self::source(t, dir, at)?;
+        let (key, src) = Self::source(t, read_file, at)?;
         let image = self.image(key, src);
         Ok(self.texture_json(image, t))
     }
@@ -390,14 +389,14 @@ impl Materials {
     fn pixels(
         &mut self,
         t: &ufbx::Texture,
-        dir: &Path,
+        read_file: &Read<'_>,
         at: &str,
         read: &mut Vec<(String, Vec<u8>)>,
     ) -> Result<Pixels, String> {
-        let bytes = match Self::source(t, dir, at)?.1 {
+        let bytes = match Self::source(t, read_file, at)?.1 {
             Source::Bytes(b) => b,
             Source::Uri(rel) => {
-                let b = std::fs::read(dir.join(&rel)).map_err(|e| format!("{at}: {rel}: {e}"))?;
+                let b = read_file(&rel).map_err(|e| format!("{at}: {e}"))?;
                 read.push((rel, b.clone()));
                 b
             }

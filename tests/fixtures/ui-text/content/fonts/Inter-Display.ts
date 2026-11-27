@@ -1,6 +1,6 @@
-type import
-version 1
----
-# Made by tools/make-faces.py.
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "assets/fonts/Inter-Display.ttf"
+});

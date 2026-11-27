@@ -62,7 +62,7 @@ const Check = defineSystem("Check", { reads: [og.AnimationEvent], writes: [Seen]
 });
 
 function start(world: World): void {
-  const a = must(og.load.animation(world, "models/walker.glb"));
+  const a = must(og.load.animation(world, "base/models/walker"));
   const clip = (name: string) => {
     const c = a.clips.find((c) => c.name === name);
     if (!c) throw new Error(`walker.glb has no ${name} clip`);

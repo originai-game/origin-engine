@@ -53,30 +53,17 @@ pub struct Setting {
 }
 
 /// The `sway` line of the `texture` block, if any.
-pub fn setting(block: Option<&og_core::ogt::Block>) -> Result<Option<Setting>, String> {
-    let Some(e) = block.and_then(|b| b.get("sway")) else {
-        return Ok(None);
-    };
-    let usage = || {
-        format!(
-            "line {}: sway takes clumps (a broadleaf tree, a bush) or tiers (a conifer), then a quoted parts map if it has one (sway clumps \"oak_parts.png\")",
-            e.line
-        )
-    };
-    let plant = match e.values.first().and_then(|v| v.as_word()) {
-        Some("clumps") => Plant::Clumps,
-        Some("tiers") => Plant::Tiers,
-        _ => return Err(usage()),
-    };
-    let map = match e.values.len() {
-        1 => None,
-        2 => match e.string(1) {
-            Ok(s) if !s.is_empty() => Some(s.to_string()),
-            _ => return Err(usage()),
+pub fn setting(
+    input: Option<&crate::cook::source_schemas::world::import::Texture>,
+) -> Result<Option<Setting>, String> {
+    use crate::cook::source_schemas::world::import::SwayKind;
+    Ok(input.and_then(|d| d.sway.as_ref()).map(|s| Setting {
+        plant: match s.kind {
+            SwayKind::Clumps => Plant::Clumps,
+            SwayKind::Tiers => Plant::Tiers,
         },
-        _ => return Err(usage()),
-    };
-    Ok(Some(Setting { plant, map }))
+        map: s.parts.clone(),
+    }))
 }
 
 /// The most parts a plant is cut into: past it the clumps are found

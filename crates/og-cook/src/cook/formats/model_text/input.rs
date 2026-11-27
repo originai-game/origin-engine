@@ -9,7 +9,6 @@ pub(crate) struct Prepared {
     pub operands: OnceLock<BTreeMap<(String, Option<String>), Mesh>>,
     pub images: BTreeMap<String, Vec<u8>>,
     pub hash: Vec<u8>,
-    pub libraries: OnceLock<BTreeMap<String, super::super::anim::Library>>,
 }
 
 impl Prepared {
@@ -83,7 +82,6 @@ impl Prepared {
             operands: OnceLock::new(),
             images,
             hash,
-            libraries: OnceLock::new(),
         })
     }
 

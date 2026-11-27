@@ -107,8 +107,7 @@ pub(crate) fn bind(
                     .find(|asset| {
                         asset
                             .strip_prefix(&format!("@fonts/{pack}/"))
-                            .and_then(|f| f.rsplit_once('.'))
-                            .is_some_and(|(stem, _)| id == &format!("base/fonts/{pack}/{stem}"))
+                            .is_some_and(|stem| id == &format!("base/fonts/{pack}/{stem}"))
                     })
                     .map(|asset| (*asset).to_owned())
                     .ok_or_else(|| {

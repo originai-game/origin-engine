@@ -48,7 +48,7 @@ function slab(angle: number): { position: { x: number; y: number; z: number }; q
 }
 
 function build(world: World): void {
-  const walker = must(og.load.animation(world, "models/walker.glb"));
+  const walker = must(og.load.animation(world, "base/models/walker"));
   const player = must(world.spawn({ name: "player" }));
   must(world.insert(player, og.Skeleton, { asset: walker.skeleton, rootMotion: "off" }));
   must(world.insert(player, og.AnimationPlayer, { clip: walker.clips[0]!.clip, speed: 1 }));

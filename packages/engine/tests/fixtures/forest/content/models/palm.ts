@@ -1,9 +1,9 @@
-type import
-version 1
----
-# R6: the palm's octahedral impostor, its last level far away.
-model {
-  impostor true
-  impostorGrid 8
-  impostorSize 128
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "model",
+  "source": "assets/models/palm.glb",
+  "impostor": true,
+  "impostorGrid": 8,
+  "impostorSize": 128
+});

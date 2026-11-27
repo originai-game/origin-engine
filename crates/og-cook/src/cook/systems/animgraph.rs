@@ -71,15 +71,8 @@ fn plan<'a>(
                 )
             })?;
             let settings = anim_settings(source)?;
-            let names = anim::clip_names(
-                g,
-                &settings,
-                cx.assets_dir,
-                source
-                    .authored_model
-                    .as_ref()
-                    .and_then(|m| m.libraries.get()),
-            )?;
+            let names =
+                anim::clip_names(g, &settings, cx.assets_dir, source.settings.libraries.get())?;
             if !names.contains(&b.clip) {
                 return Err(format!(
                     "bind '{}': '{}' has no clip '{}'; available: {}",

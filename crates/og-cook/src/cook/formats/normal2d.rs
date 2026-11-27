@@ -25,24 +25,14 @@ pub enum NormalSetting {
 }
 
 /// The `normal` line of the `texture` block, if any.
-pub fn setting(block: Option<&og_core::ogt::Block>) -> Result<Option<NormalSetting>, String> {
-    let Some(e) = block.and_then(|b| b.get("normal")) else {
-        return Ok(None);
-    };
-    match e.values.first() {
-        Some(v) if v.as_word() == Some("auto") => Ok(Some(NormalSetting::Auto)),
-        Some(_) => match e.string(0) {
-            Ok(s) if !s.is_empty() => Ok(Some(NormalSetting::File(s.to_string()))),
-            _ => Err(format!(
-                "line {}: normal takes auto or a quoted file name (normal \"hero_n.png\")",
-                e.line
-            )),
-        },
-        None => Err(format!(
-            "line {}: normal takes auto or a quoted file name",
-            e.line
-        )),
-    }
+pub fn setting(
+    input: Option<&crate::cook::source_schemas::world::import::Texture>,
+) -> Result<Option<NormalSetting>, String> {
+    use crate::cook::source_schemas::world::import::Normal;
+    Ok(input.and_then(|d| d.normal.as_ref()).map(|n| match n {
+        Normal::Auto {} => NormalSetting::Auto,
+        Normal::Image { source } => NormalSetting::File(source.clone()),
+    }))
 }
 
 /// The bevel's width in pixels for an image of this size.

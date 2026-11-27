@@ -1,127 +1,16 @@
 //! Registered views into prepared material UVs, using the existing CPU projection kernel.
 //! Cameras and alpha masks are explicit inputs; cook never invents or fits concept art.
-use super::{Block, Line, Scene, check, input, number, whole};
+use super::{Scene, input};
 use glam::{Vec2, Vec3};
 use og_bake::projection::{
     GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, fill_unpainted, padded, project, silhouette,
 };
 use og_shape::tools::{Image, Texture};
 
-pub(crate) const LINES: &[Line] = &[
-    Line::new(
-        "size",
-        "<1..8192>",
-        "1024",
-        "Output map side in texels per primitive.",
-        "",
-    ),
-    Line::new(
-        "padding",
-        "<0..8192>",
-        "4",
-        "Grow UV chart gutters after filling unseen texels.",
-        "",
-    ),
-    Line::new(
-        "view",
-        "\"<image>\" { ... }",
-        "required",
-        "Repeat square RGBA images registered to explicit cameras. Paths are model-relative; alpha zero leaves a pixel unpainted. No implicit silhouette fitting.",
-        "",
-    ),
-];
-pub(crate) const VIEW: &[Line] = &[
-    Line::new(
-        "position",
-        "<x> <y> <z>",
-        "required",
-        "Camera position in model-local metres, Y up.",
-        "",
-    ),
-    Line::new(
-        "target",
-        "<x> <y> <z>",
-        "required",
-        "Camera target, distinct from position. Vertical views use the kernel's fixed X right axis.",
-        "",
-    ),
-    Line::new(
-        "fov",
-        "<degrees, 0..179>",
-        "0",
-        "Positive perspective vertical field of view; exclusive with ortho.",
-        "",
-    ),
-    Line::new(
-        "ortho",
-        "<metres > 0>",
-        "0",
-        "Orthographic half-height and half-width; exclusive with positive fov. One projection size is required.",
-        "",
-    ),
-];
-
 pub(super) struct Projection {
     size: u32,
     padding: u32,
     views: Vec<(ViewSpec, Image)>,
-}
-
-pub(super) fn settings(b: &Block) -> Result<input::Project, String> {
-    let vector = |b: &Block, key: &str| -> Result<Vec3, String> {
-        let e = b
-            .get(key)
-            .ok_or_else(|| format!("projection view needs {key}"))?;
-        if e.values.len() != 3 || e.block.is_some() {
-            return Err(format!("{key} takes x y z"));
-        }
-        let v = Vec3::new(
-            e.f32(0).map_err(|e| e.to_string())?,
-            e.f32(1).map_err(|e| e.to_string())?,
-            e.f32(2).map_err(|e| e.to_string())?,
-        );
-        if !v.is_finite() {
-            return Err(format!("{key} must be finite"));
-        }
-        Ok(v)
-    };
-    let mut views = Vec::new();
-    for e in b.get_all("view") {
-        if e.values.len() != 1 {
-            return Err("view takes an image path and camera block".into());
-        }
-        let camera = e.block.as_ref().ok_or("view needs a camera block")?;
-        check(camera, VIEW)?;
-        let position = vector(camera, "position")?;
-        let target = vector(camera, "target")?;
-        if position.distance_squared(target) <= 1e-12 {
-            return Err("projection camera position and target must differ".into());
-        }
-        let fov = number(camera, "fov", 0.0, 179.0)? as f32;
-        let ortho = number(camera, "ortho", 0.0, 1e9)? as f32;
-        if (fov > 0.0) == (ortho > 0.0) {
-            return Err("projection camera needs either positive fov or positive ortho".into());
-        }
-        views.push(input::View {
-            image: e.string(0).map_err(|e| e.to_string())?.into(),
-            position: position.to_array(),
-            target: target.to_array(),
-            projection: if ortho > 0.0 {
-                input::Projection::Orthographic { ortho }
-            } else {
-                input::Projection::Perspective { fov }
-            },
-        });
-    }
-    let size = whole(b, "size", 1024, 8192)?;
-    if size == 0 || views.is_empty() {
-        return Err("project needs positive size and at least one registered view".into());
-    }
-    Ok(input::Project {
-        size: Some(size),
-        padding: Some(whole(b, "padding", 4, 8192)?),
-        views,
-    })
 }
 
 pub(super) fn read(

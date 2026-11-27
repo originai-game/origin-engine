@@ -1,46 +1,7 @@
 //! Cook's dependency and image boundary for the shared part-local transfer kernel.
-use super::{Block, Line, Part, Scene, TransferInput, input, projection, whole};
+use super::{Part, Scene, TransferInput, input, projection};
 use og_bake::projection::{Texels, Transfer, fill_unpainted, padded};
 use og_shape::tools::{self, Image, Texture};
-
-pub(crate) const LINES: &[Line] = &[
-    Line::new(
-        "source",
-        "\"<model asset>\"",
-        "required",
-        "Asset-root-relative base model, normally imported and processed before this model. Source contents, external files and parameters enter the cache key; cycles fail.",
-        "",
-    ),
-    Line::new(
-        "size",
-        "<integer, 1..8192>",
-        "1024",
-        "Destination map side. Source painted maps must be square and share one size; they are not resampled.",
-        "",
-    ),
-    Line::new(
-        "padding",
-        "<integer, 0..8192>",
-        "4",
-        "Destination chart gutters after nearest-painted-surface hole filling.",
-        "",
-    ),
-];
-
-pub(super) fn settings(b: &Block) -> Result<input::Transfer, String> {
-    let e = b.get("source").ok_or("transfer requires source")?;
-    if e.values.len() != 1 || e.block.is_some() {
-        return Err("transfer.source takes one model asset path".into());
-    }
-    let id = e.string(0).map_err(|e| e.to_string())?;
-    Ok(input::Transfer {
-        source: crate::cook::source_schemas::ContentRef {
-            id: crate::cook::normalise_rel(crate::runtime::asset_id(id)),
-        },
-        size: Some(whole(b, "size", 1024, 8192)?),
-        padding: Some(whole(b, "padding", 4, 8192)?),
-    })
-}
 
 pub(crate) fn source(process: &input::Process) -> Option<&str> {
     process.transfer.as_ref().map(|t| t.source.id.as_str())

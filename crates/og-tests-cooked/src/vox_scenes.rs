@@ -148,10 +148,16 @@ fn cooked() -> Result<&'static PathBuf, String> {
             std::fs::write(models.join(name), bytes).map_err(|e| format!("{name}: {e}"))
         };
         write("lift.vox", &keyed_vox())?;
-        write(
-            "lift.vox.ogt",
-            b"type import\nversion 1\n---\nmodel {\n  voxScale 0.25\n}\n",
-        )?;
+        for (file, text) in [
+            ("og-project.json", r#"{"version":1,"name":"Vox","engine":"0.9.0"}"#),
+            ("project.ts", "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'vox',entry:'src/main.ts'});"),
+            ("src/main.ts", "export default {};"),
+            ("content/models/lift.ts", "import {file} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/models/lift.vox',voxScale:0.25});"),
+        ] {
+            let path = root.join(file);
+            std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+            std::fs::write(path, text).map_err(|e| format!("{file}: {e}"))?;
+        }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
             .map_err(|e| format!("cook: {e}"))?;
         if !report.ok() {
@@ -168,10 +174,10 @@ pub fn keyframes_scene() -> Result<RenderScene, String> {
     let root = cooked()?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let model = bundle
-        .load_model("models/lift.vox")
+        .load_model("base/models/lift")
         .map_err(|e| e.to_string())?;
     let anim = bundle
-        .load_animation("models/lift.vox")
+        .load_animation("base/models/lift#anim")
         .map_err(|e| e.to_string())?;
     let clip = anim
         .clip("frames")

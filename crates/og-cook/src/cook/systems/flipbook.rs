@@ -310,17 +310,13 @@ pub(crate) fn declaration(
 }
 
 /// The concrete texture output shared by animated and procedural sheet producers.
-pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: Option<String>) -> Source {
+pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: super::imports::Settings) -> Source {
     Source {
         rel: super::animated::sheet_texture_id(&s.rel),
         path: s.path.clone(),
         kind: &super::texture::TEXTURE,
         bytes: png,
-        settings: settings.map(|s| {
-            let doc = og_core::ogt::Document::parse(&s).expect("internal texture import settings");
-            (s, doc)
-        }),
-        settings_files: Vec::new(),
+        settings,
         hash: 0,
         gltf: None,
         error: None,

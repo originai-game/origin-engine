@@ -1,6 +1,7 @@
-type import
-version 1
----
-texture {
-  kind pixel
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "texture",
+  "source": "assets/bg/walls.png",
+  "usage": "pixel"
+});

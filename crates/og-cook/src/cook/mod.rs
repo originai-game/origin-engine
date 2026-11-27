@@ -20,8 +20,7 @@ pub use pipeline::author::project_assets;
 pub use pipeline::delivery::PackReport;
 pub use pipeline::{asset_move, assets, cache, graph, stats, ts_refs};
 use pipeline::{
-    execute, import_defaults, index, kinds, options, output, plan, provided, report, scan, stage,
-    stream,
+    execute, imports, index, kinds, options, output, plan, provided, report, scan, stage, stream,
 };
 mod systems;
 pub use systems::effect::Prepared;
@@ -73,7 +72,7 @@ pub use graph::CodeGraph;
 pub use options::{CookOptions, FontSettings, MeshOptions, TextureOptions};
 use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
-    own_conform_off, settings_block, texture_kind, texture_stream,
+    own_conform_off, texture_kind, texture_stream,
 };
 pub use report::{AssetReport, COOK_TIMES, CookTimes, KindTotals, OutputReport, Report, StageTime};
 use report::{CONFORM_LOG, ConformLog, conform_log_text, conform_note, read_conform_log};
@@ -124,10 +123,7 @@ pub(crate) struct Source {
     path: PathBuf,
     kind: Kind,
     bytes: Vec<u8>,
-    settings: Option<(String, Document)>,
-    /// The files `settings` came from, as asset ids: the directories'
-    /// `import.ogt` from `assets/` down, then its own `<file>.ogt`.
-    settings_files: Vec<String>,
+    settings: imports::Settings,
     hash: u64,
     gltf: Option<model::GltfSource>,
     error: Option<String>,
@@ -196,24 +192,14 @@ impl Source {
         serde_json::from_value(file.value).map_err(|e| e.to_string())
     }
 
-    /// Whether it has settings of its own (its `<file>.ogt`, or the cook's
-    /// for a source it made), not only its directories'.
-    fn own_settings(&self) -> bool {
-        self.settings.is_some()
-            && self
-                .settings_files
-                .last()
-                .is_none_or(|f| f.strip_suffix(".ogt") == Some(&self.rel))
-    }
-
     fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
         self.encoded
             .get_or_init(|| {
-                let settings = audio::SoundSettings::parse(settings_block(self, "sound"))?;
+                let settings = audio::SoundSettings::from_input(self.settings.sound())?;
                 let pcm = if self.path.extension().is_some_and(|ext| ext == "ts") {
                     self.input::<audio::PcmInput>()?.into_pcm()
                 } else {
-                    audio::decode(&self.rel, &self.bytes)
+                    audio::decode(&self.path.to_string_lossy(), &self.bytes)
                 };
                 pcm.and_then(|pcm| match settings.codec {
                     audio::Codec::Opus => audio::encode_opus_chunked(
@@ -319,15 +305,16 @@ fn normalise_rel(path: &str) -> String {
 /// shipped roots; project content IDs are relative to their module root.
 pub(crate) fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
-    let file = s
-        .rel
-        .strip_prefix("@styles/")
-        .or_else(|| {
-            s.rel
-                .strip_prefix("@fonts/")
-                .and_then(|s| s.split_once('/').map(|(_, file)| file))
-        })
-        .unwrap_or(&s.rel);
+    let file = s.settings.source().unwrap_or_else(|| {
+        s.rel
+            .strip_prefix("@styles/")
+            .or_else(|| {
+                s.rel
+                    .strip_prefix("@fonts/")
+                    .and_then(|s| s.split_once('/').map(|(_, file)| file))
+            })
+            .unwrap_or(&s.rel)
+    });
     for _ in file.split('/') {
         root.pop();
     }
@@ -414,6 +401,7 @@ pub fn cook_project_with_texture_cache(
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
     let (mut rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
+    imports::prepare(root, &project.source, &mut sources, &mut rig_content)?;
     pipeline::author::models(root, &project.source, &mut sources, &mut rig_content)?;
     let model_bindings = pipeline::author::bindings(root, &project.source, &sources)?;
     let mut imported = import(

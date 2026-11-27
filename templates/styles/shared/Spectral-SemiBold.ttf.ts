@@ -1,7 +1,6 @@
-type import
-version 1
----
-# The face ships whole; every character is drawn from its outlines at the
-# size it is shown.
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "shared/Spectral-SemiBold.ttf"
+});

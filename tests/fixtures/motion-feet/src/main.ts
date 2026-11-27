@@ -64,15 +64,15 @@ function build(world: World): void {
     block(world, `scale-${k}`, { x: 4, y: k * 0.25, z: -3.2 }, { x: 8, y: 0.01, z: 0.02 }, { r: 0.6, g: 0.6, b: 0.62 });
   }
 
-  const s = must(world.instantiate(must(og.load.gltf(world, "models/strider.glb")), { name: "strider", position: { x: 0, y: 0, z: 0 } }));
-  world.insert(s, og.Skeleton, { asset: must(og.load.animation(world, "models/strider.glb")).skeleton, rootMotion: "off" });
+  const s = must(world.instantiate(must(og.load.gltf(world, "base/models/strider")), { name: "strider", position: { x: 0, y: 0, z: 0 } }));
+  world.insert(s, og.Skeleton, { asset: must(og.load.animation(world, "base/models/strider")).skeleton, rootMotion: "off" });
   world.insert(s, og.MotionAgent, { rig: must(og.load.rig(world, "base/rigs/strider")), drive: true });
   world.insert(s, og.Collider, { shape: "capsule", radius: 0.3, height: 1.2, offset: { x: 0, y: 0.9, z: 0 } });
   world.insert(s, og.CharacterController, {});
   strider(world, s);
 
-  const t = must(world.instantiate(must(og.load.gltf(world, "models/stout.glb")), { name: "stout", position: { x: 0, y: 0, z: -1.8 } }));
-  world.insert(t, og.Skeleton, { asset: must(og.load.animation(world, "models/stout.glb")).skeleton, rootMotion: "off" });
+  const t = must(world.instantiate(must(og.load.gltf(world, "base/models/stout")), { name: "stout", position: { x: 0, y: 0, z: -1.8 } }));
+  world.insert(t, og.Skeleton, { asset: must(og.load.animation(world, "base/models/stout")).skeleton, rootMotion: "off" });
   world.insert(t, og.MotionAgent, { drive: true });
   stout(world, t);
 

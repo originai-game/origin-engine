@@ -23,10 +23,7 @@ mod generate;
 pub use generate::Pcm as PcmInput;
 pub(crate) use generate::derived;
 
-use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, settings_block,
-    stamp,
-};
+use super::{Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use crate::qoa;
 use og_blob::BlobWriter;
@@ -34,37 +31,6 @@ use og_blob::BlobWriter;
 /// A QOA file above this many bytes is cooked in chunks unless its import
 /// settings say `stream false` (1 MiB: 27 s of 48 kHz stereo).
 pub const STREAM_BYTES: u64 = 1 << 20;
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "stream",
-        "true | false",
-        "auto above 1 MiB",
-        "QOA chunk streaming; Opus streams codec blocks instead.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "chunk",
-        "<seconds 1..60>",
-        "4",
-        "QOA chunk duration rounded up to full codec frames.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "codec",
-        "qoa | opus",
-        "qoa",
-        "Opus resamples to 48kHz and uses at most the first two channels.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "bitrate",
-        "<16..256>",
-        "96 stereo / 64 mono",
-        "Opus kb/s, rounded to nearest whole number.",
-        "",
-    ),
-];
 
 /// Samples per channel in a full QOA frame.
 const QOA_FRAME: u64 = 5120;
@@ -106,52 +72,18 @@ impl Default for SoundSettings {
 }
 
 impl SoundSettings {
-    pub fn parse(block: Option<&og_core::ogt::Block>) -> Result<SoundSettings, String> {
+    pub fn from_input(
+        input: Option<&crate::cook::source_schemas::world::import::Sound>,
+    ) -> Result<SoundSettings, String> {
         let mut s = SoundSettings::default();
-        let Some(b) = block else { return Ok(s) };
-        crate::grammar::check(b, LINES, "import.sound")?;
-        for e in &b.entries {
-            match e.key.as_str() {
-                "stream" => {
-                    s.stream =
-                        Some(e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                            format!("line {}: stream takes true or false", e.line)
-                        })?)
-                }
-                "chunk" => {
-                    let c = e.f32(0).map_err(|x| format!("line {}: {x}", e.line))?;
-                    if !(1.0..=60.0).contains(&c) {
-                        return Err(format!("line {}: chunk must be 1..=60 seconds", e.line));
-                    }
-                    s.chunk = c;
-                }
-                "codec" => {
-                    s.codec = match e.values.first().and_then(|v| v.as_word().or(v.as_str())) {
-                        Some("qoa") => Codec::Qoa,
-                        Some("opus") => Codec::Opus,
-                        _ => {
-                            return Err(format!(
-                                "line {}: codec takes qoa (sound effects, the default) or opus (music and long sounds)",
-                                e.line
-                            ));
-                        }
-                    }
-                }
-                "bitrate" => {
-                    let b = e.f32(0).map_err(|x| format!("line {}: {x}", e.line))?;
-                    if !(16.0..=256.0).contains(&b) {
-                        return Err(format!("line {}: bitrate must be 16..=256 kb/s", e.line));
-                    }
-                    s.bitrate = b.round() as u32;
-                }
-                k => {
-                    return Err(format!(
-                        "line {}: unknown sound setting '{k}' (stream, chunk, codec, bitrate)",
-                        e.line
-                    ));
-                }
-            }
-        }
+        let Some(d) = input else { return Ok(s) };
+        s.stream = d.stream;
+        s.chunk = d.chunk.unwrap_or(s.chunk);
+        s.codec = match d.codec {
+            Some(crate::cook::source_schemas::world::import::Codec::Opus) => Codec::Opus,
+            _ => Codec::Qoa,
+        };
+        s.bitrate = d.bitrate.map_or(0, |v| v.round() as u32);
         Ok(s)
     }
 
@@ -826,7 +758,7 @@ fn plan_sound<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let PlanState { early_errors, .. } = state;
-    let settings = match SoundSettings::parse(settings_block(s, "sound")) {
+    let settings = match SoundSettings::from_input(s.settings.sound()) {
         Ok(x) => x,
         Err(e) => {
             early_errors.push((s.rel.clone(), "sound", e));
@@ -837,7 +769,7 @@ fn plan_sound<'a>(
     let source_shape = if s.path.extension().is_some_and(|ext| ext == "ts") {
         s.input::<PcmInput>().and_then(|pcm| pcm.shape())
     } else {
-        shape(&s.rel, &s.bytes)
+        shape(&s.path.to_string_lossy(), &s.bytes)
     };
     let chunking = source_shape
         .ok()

@@ -1,7 +1,6 @@
-type import
-version 1
----
-# The characters the UI kit's string tables use (tools/make-locale-
-# fonts.py).
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "assets/fonts/NotoSansArabic-subset.ttf"
+});

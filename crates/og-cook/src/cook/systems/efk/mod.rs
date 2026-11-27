@@ -135,11 +135,10 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                     OutKind::Effect => &crate::cook::effect::EFFECT,
                     OutKind::Model => &crate::cook::model::MODEL,
                 },
-                settings_files: Vec::new(),
-                settings: (f.kind == OutKind::Model).then(|| {
-                    let d = og_core::ogt::Document::parse(MESH_SETTINGS).expect("settings parse");
-                    (MESH_SETTINGS.to_string(), d)
-                }),
+                settings: crate::cook::imports::Settings {
+                    effect_mesh: f.kind == OutKind::Model,
+                    ..Default::default()
+                },
                 bytes: f.bytes,
                 hash: 0,
                 gltf: None,

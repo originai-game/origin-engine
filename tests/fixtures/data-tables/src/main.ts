@@ -54,7 +54,7 @@ const Check = defineSystem("Check", { reads: [Holds], writes: [Facts] }, (q, _ti
   const iron = must(og.table.get(world, must(og.table.row(world, "base/materials", "iron")), Material));
   f.swordDamage = sword.damage;
   f.ironMakes = must(og.table.get(world, iron.makes, Item)).damage;
-  f.iconOk = sword.icon === "icons/sword.svg" && sword.rarity === "rare" ? 1 : 0;
+  f.iconOk = sword.icon === "base/icons/sword" && sword.rarity === "rare" ? 1 : 0;
   og.assert.reachable("the tables were read", {});
 });
 
@@ -62,7 +62,7 @@ function edited(world: World, dropArrow = false) {
   const row = (table: string, id: string) => must(og.table.row(world, table, id));
   return { rows: [
     ...(!dropArrow ? [{ id: "arrow", values: { damage: 4, name: "items.arrow" } }] : []),
-    { id: "sword", values: { damage: 15, name: "items.sword", icon: "icons/sword.svg", rarity: "rare", salvage: [row("base/materials", "iron")] } },
+    { id: "sword", values: { damage: 15, name: "items.sword", icon: "base/icons/sword", rarity: "rare", salvage: [row("base/materials", "iron")] } },
     { id: "bow", values: { damage: 7, name: "items.bow", ammo: dropArrow ? 0 : row("base/items", "arrow"), salvage: [row("base/materials", "wood")] } },
   ] };
 }

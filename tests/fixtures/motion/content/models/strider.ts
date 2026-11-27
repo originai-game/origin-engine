@@ -1,9 +1,12 @@
-type import
-version 1
----
-# The strider has no clips of its own: the cook retargets the animation
-# library's onto its skeleton (its rig file says how its bones are named).
-animation {
-  rig "base/rigs/strider"
-  library "anims/humanoid-clips.glb"
-}
+import {file, ref} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "model",
+  "source": "assets/models/strider.glb",
+  "animation": {
+    "rig": ref("base/rigs/strider"),
+    "libraries": [
+      ref("base/anims/humanoid-clips")
+    ]
+  }
+});

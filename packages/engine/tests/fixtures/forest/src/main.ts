@@ -12,7 +12,7 @@ import { og } from "@origingame/engine";
 
 export default og.game({
   start(world) {
-    const palm = og.load.gltf(world, "models/palm.glb", { castShadow: true });
+    const palm = og.load.gltf(world, "base/models/palm", { castShadow: true });
     if (!palm.ok) throw new Error(palm.reason);
     // Rows across the view, each farther than the last by a growing step.
     let z = -6;

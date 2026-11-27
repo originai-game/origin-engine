@@ -1,164 +1,5 @@
 use super::*;
 
-pub(crate) const MODEL_LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "lods",
-        "<fraction> ...",
-        "1 0.5 0.25",
-        "At most eight strictly decreasing positive fractions, first 1.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "lodError",
-        "<0..1, >0>",
-        "0.05",
-        "Largest simplification error relative to mesh extent.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "raycast",
-        "true | false",
-        "true",
-        "Bake raycast BVH; false builds it on first use.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "collider",
-        "true | false | convex | vhacd",
-        "false",
-        "Bake triangle, convex or decomposed collision.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "impostor",
-        "true | false",
-        "false",
-        "Bake octahedral impostor.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "impostorGrid",
-        "<integer 2..32>",
-        "8",
-        "Impostor view grid.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "impostorSize",
-        "<integer 16..512>",
-        "128",
-        "Impostor frame pixels; total atlas width cannot exceed 4096.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "impostorBelow",
-        "true | false",
-        "false",
-        "Include lower hemisphere.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "stream_textures",
-        "true | false",
-        "false",
-        "Stream high mip levels, keeping the shared mip tail resident.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "process",
-        "{ ... }",
-        "off",
-        "Shared static-mesh preparation; see file:model.process.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "relaxSkin",
-        "true | false",
-        "false",
-        "Relax only skin-probe stretched regions before welding and LODs. Position seams share weights; at most 12 passes, with changed vertices and remaining stretch reported.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "front",
-        "\"+x\" | \"-x\" | \"+y\" | \"-y\" | \"+z\" | \"-z\"",
-        "source orientation",
-        "Source forward axis, rotated to engine +Z. Must be perpendicular to up.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "up",
-        "\"+x\" | \"-x\" | \"+y\" | \"-y\" | \"+z\" | \"-z\"",
-        "+y when front is given",
-        "Source up axis, rotated to engine +Y.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "voxScale",
-        "<metres per voxel > 0>",
-        "1",
-        "VOX sources only.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "voxOrigin",
-        "center | bottom",
-        "center",
-        "VOX origin; bottom places the lowest voxel at y=0.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "voxFps",
-        "<1..120>",
-        "10",
-        "VOX animation frames per second.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "voxClip",
-        "<name> <first u32> <last u32>",
-        "source clips",
-        "VOX frame range, both ends inclusive; repeated unique names.",
-        "",
-    ),
-];
-pub(crate) const TEXTURE_LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "kind",
-        "color | normal | linear | single | pixel",
-        "color",
-        "Image data interpretation and encoding.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "stream",
-        "true | false",
-        "false",
-        "Stream high mip levels.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "normal",
-        "auto | \"<image path>\"",
-        "none",
-        "2D normal map generated from silhouette/luminance, or an authored tangent-space map beside the texture.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "sway",
-        "clumps | tiers [\"<parts map>\"]",
-        "none",
-        "2D plant part segmentation; optional same-size colour-labelled map keeps authored parts.",
-        "",
-    ),
-];
-pub(crate) const FONT_LINES: &[crate::grammar::Line] = &[crate::grammar::Line::new(
-    "pixel",
-    "<integer 4..64>",
-    "outline font",
-    "Pixel grid per em. Does not change other fonts' charset or mode.",
-    "",
-)];
-
 /// Mesh processing (meshoptimizer).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MeshOptions {
@@ -296,152 +137,6 @@ impl MeshOptions {
                 .map(|k| self.lod_ratio.powi(k as i32))
                 .collect(),
         }
-    }
-
-    /// These options with a model's import settings (`model { lods 1 0.5
-    /// 0.25 lodError 0.05 }`) over them: `lods` the levels' triangle
-    /// fractions (the first 1, each below the one before; `lods 1` keeps the
-    /// full mesh alone), `lodError` the largest simplification error
-    /// relative to the mesh's extent.
-    pub fn for_model(&self, block: Option<&og_core::ogt::Block>) -> Result<MeshOptions, String> {
-        let mut o = self.clone();
-        let Some(b) = block else {
-            return Ok(o);
-        };
-        crate::grammar::check(b, MODEL_LINES, "import.model")?;
-        if let Some(e) = b.get("lods") {
-            let mut f = Vec::new();
-            for i in 0..e.values.len() {
-                f.push(
-                    e.f32(i)
-                        .map_err(|x| format!("line {}: lods: {x}", e.line))?,
-                );
-            }
-            let ok = f.first() == Some(&1.0)
-                && f.windows(2).all(|w| w[1] < w[0] && w[1] > 0.0)
-                && f.len() <= 8;
-            if !ok {
-                return Err(format!(
-                    "line {}: lods takes each level's fraction of the full mesh's triangles, the first 1 and each below the one before, at most 8 (`lods 1 0.5 0.25`)",
-                    e.line
-                ));
-            }
-            o.lods = Some(f);
-        }
-        if let Some(e) = b.get("lodError") {
-            let v = e
-                .f32(0)
-                .map_err(|x| format!("line {}: lodError: {x}", e.line))?;
-            if !(v > 0.0 && v <= 1.0) {
-                return Err(format!(
-                    "line {}: lodError is the largest error relative to the mesh's extent, above 0 and at most 1 (default 0.05)",
-                    e.line
-                ));
-            }
-            o.lod_max_error = v;
-        }
-        if let Some(e) = b.get("raycast") {
-            o.raycast = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                format!(
-                    "line {}: raycast takes true (cook the raycast BVH, the default) or false (build it at the first og.render.raycast that reaches the model)",
-                    e.line
-                )
-            })?;
-        }
-        if let Some(e) = b.get("impostor") {
-            let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                format!(
-                    "line {}: impostor takes true (bake the model's octahedral impostor, drawn as its last level far away) or false (the default)",
-                    e.line
-                )
-            })?;
-            o.impostor = on.then(model::ImpostorBake::default);
-        }
-        for (key, lo, hi) in [
-            ("impostorGrid", 2u32, og_render_data::MAX_IMPOSTOR_GRID),
-            ("impostorSize", 16, 512),
-        ] {
-            let Some(e) = b.get(key) else { continue };
-            let v = e
-                .number(0)
-                .and_then(|n| n.as_u64())
-                .map_err(|x| format!("line {}: {key}: {x}", e.line))?;
-            let Some(bake) = o.impostor.as_mut() else {
-                return Err(format!(
-                    "line {}: {key} sizes the impostor; add `impostor true`",
-                    e.line
-                ));
-            };
-            if !(u64::from(lo)..=u64::from(hi)).contains(&v) {
-                return Err(format!(
-                    "line {}: {key} is {} from {lo} to {hi}",
-                    e.line,
-                    if key == "impostorGrid" {
-                        "the frames per side of the atlas"
-                    } else {
-                        "the pixels per frame"
-                    }
-                ));
-            }
-            match key {
-                "impostorGrid" => bake.grid = v as u32,
-                _ => bake.frame = v as u32,
-            }
-        }
-        if let Some(e) = b.get("impostorBelow") {
-            let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                format!(
-                    "line {}: impostorBelow takes true (bake the impostor's frames from below the horizon too, for a model seen from under it: the atlases twice as wide) or false (the default)",
-                    e.line
-                )
-            })?;
-            let Some(bake) = o.impostor.as_mut() else {
-                return Err(format!(
-                    "line {}: impostorBelow shapes the impostor; add `impostor true`",
-                    e.line
-                ));
-            };
-            bake.below = on;
-        }
-        if let Some(bake) = o.impostor
-            && bake.columns() * bake.frame > 4096
-        {
-            return Err(format!(
-                "impostorGrid {} × impostorSize {}{} makes an atlas {} pixels wide, past 4096",
-                bake.grid,
-                bake.frame,
-                if bake.below {
-                    " with impostorBelow (twice the frames across)"
-                } else {
-                    ""
-                },
-                bake.columns() * bake.frame
-            ));
-        }
-        if let Some(e) = b.get("collider") {
-            use og_physics_data::trimesh::BakeKind;
-            match e.values.first() {
-                Some(v) if v.as_bool().is_some() => {
-                    o.collider = v.as_bool().expect("matched boolean");
-                    o.collider_kind = BakeKind::Trimesh;
-                }
-                Some(v) if v.as_word() == Some("convex") => {
-                    o.collider = true;
-                    o.collider_kind = BakeKind::Convex;
-                }
-                Some(v) if v.as_word() == Some("vhacd") => {
-                    o.collider = true;
-                    o.collider_kind = BakeKind::Vhacd;
-                }
-                _ => {
-                    return Err(format!(
-                        "line {}: collider takes true, false, convex or vhacd",
-                        e.line
-                    ));
-                }
-            }
-        }
-        Ok(o)
     }
 
     /// These options as a model's stamp holds them: every one its blob
@@ -599,10 +294,6 @@ pub struct CookOptions {
     pub code: CodeGraph,
 }
 
-pub(crate) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {
-    s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
-}
-
 /// An asset's own conform opt-out (docs/art.md §2.3), in its checked model
 /// declaration or its import settings: why it
 /// keeps its source as made. Read before the 2D pass takes the line out
@@ -615,24 +306,15 @@ pub(crate) fn own_conform_off(s: &Source) -> Option<String> {
         )
         .then(|| format!("conform off ({})", s.path.display()));
     }
-    let off = |b: &og_core::ogt::Block| {
-        b.get("conform")
-            .and_then(|e| e.values.first())
-            .and_then(|v| v.as_word())
-            == Some("off")
-    };
-    if s.settings.as_ref().is_some_and(|(_, d)| off(&d.body)) {
-        match s.settings_files.as_slice() {
-            [] => Some(format!("conform off (assets/{}.ogt)", s.rel)),
-            files => Some(format!("conform off (assets/{})", files.join(", assets/"))),
-        }
-    } else if s.rel.ends_with(".ogt")
-        && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body))
-    {
-        Some(format!("conform off (assets/{})", s.rel))
-    } else {
-        None
-    }
+    use super::super::source_schemas::world::{import::TextureConform, model::Conform};
+    let off = s.settings.conform_off
+        || s.settings
+            .model()
+            .is_some_and(|d| matches!(d.conform, Some(Conform::Off)))
+        || s.settings
+            .texture()
+            .is_some_and(|d| matches!(d.conform, Some(TextureConform::Off)));
+    off.then(|| format!("conform off ({})", s.rel))
 }
 
 /// Whether the 3D pass keeps `s` as made: its own `conform off` or
@@ -671,7 +353,9 @@ pub(crate) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform:
 pub(crate) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
     let mut m = match &s.authored_model {
         Some(model) => options.mesh.for_input(model.options()),
-        None => options.mesh.for_model(settings_block(s, "model")),
+        None => options
+            .mesh
+            .for_input(s.settings.model().map(|d| &d.options)),
     }
     .map_err(CookError)?;
     if conform_off(s, options) {
@@ -681,23 +365,17 @@ pub(crate) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions,
 }
 
 pub(crate) fn texture_kind(s: &Source) -> Result<u32, String> {
-    if let Some(b) = settings_block(s, "texture") {
-        crate::grammar::check(b, TEXTURE_LINES, "import.texture")?;
+    use super::super::source_schemas::world::import::TextureUsage;
+    if s.settings.pixel {
+        return Ok(format::kind::PIXEL);
     }
-    match settings_block(s, "texture").and_then(|b| b.get("kind")) {
-        None => Ok(format::kind::COLOR),
-        Some(e) => match e.word(0).map_err(|x| x.to_string())? {
-            "color" => Ok(format::kind::COLOR),
-            "normal" => Ok(format::kind::NORMAL),
-            "linear" => Ok(format::kind::LINEAR),
-            "single" => Ok(format::kind::SINGLE),
-            "pixel" => Ok(format::kind::PIXEL),
-            w => Err(format!(
-                "line {}: texture kind '{w}' (expected color, normal, linear, single or pixel)",
-                e.line
-            )),
-        },
-    }
+    Ok(match s.settings.texture().and_then(|d| d.usage.as_ref()) {
+        None | Some(TextureUsage::Color) => format::kind::COLOR,
+        Some(TextureUsage::Normal) => format::kind::NORMAL,
+        Some(TextureUsage::Linear) => format::kind::LINEAR,
+        Some(TextureUsage::Single) => format::kind::SINGLE,
+        Some(TextureUsage::Pixel) => format::kind::PIXEL,
+    })
 }
 
 /// A texture file's `texture { stream true }` (G3-3): its levels above
@@ -705,21 +383,9 @@ pub(crate) fn texture_kind(s: &Source) -> Result<u32, String> {
 /// chain). False or absent: one output, as ever. A `kind pixel` texture
 /// has no mips to stream and is refused.
 pub(crate) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
-    let Some(e) = settings_block(s, "texture").and_then(|b| b.get("stream")) else {
-        return Ok(false);
-    };
-    let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-        format!(
-            "line {}: stream takes true (the levels above {} texels are read when the texture is big on screen) or false (every level loads with it, the default)",
-            e.line,
-            crate::runtime::MIP_TAIL
-        )
-    })?;
+    let on = s.settings.texture().and_then(|d| d.stream).unwrap_or(false);
     if on && k == format::kind::PIXEL {
-        return Err(format!(
-            "line {}: stream true streams a texture's mip levels, and a kind pixel texture has none (RGBA8, one level); leave stream out",
-            e.line
-        ));
+        return Err("stream: true needs mip levels; a pixel texture has none".into());
     }
     Ok(on)
 }
@@ -734,46 +400,27 @@ pub(crate) fn model_stream_textures(s: &Source) -> Result<bool, String> {
             .and_then(|o| o.stream_textures)
             .unwrap_or(false));
     }
-    let Some(e) = settings_block(s, "model").and_then(|b| b.get("stream_textures")) else {
-        return Ok(false);
-    };
-    e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-        format!(
-            "line {}: stream_textures takes true (the model's textures stream their levels above {} texels) or false (the default)",
-            e.line,
-            crate::runtime::MIP_TAIL
-        )
-    })
+    Ok(s.settings
+        .model()
+        .and_then(|d| d.options.stream_textures)
+        .unwrap_or(false))
 }
 
 pub(crate) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
     if let Some(model) = &s.authored_model {
         return anim::AnimSettings::from_input(model.options().and_then(|o| o.animation.as_ref()));
     }
-    anim::AnimSettings::parse(settings_block(s, "animation"))
+    anim::AnimSettings::from_input(
+        s.settings
+            .model()
+            .and_then(|d| d.options.animation.as_ref()),
+    )
 }
 
 pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
     let mut f = base.clone();
-    if let Some(b) = settings_block(s, "font") {
-        crate::grammar::check(b, FONT_LINES, "import.font")?;
-        for e in &b.entries {
-            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-            match e.key.as_str() {
-                "pixel" => {
-                    f.pixel = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32;
-                    if !(4..=64).contains(&f.pixel) {
-                        return Err(format!("line {}: pixel takes a grid of 4 to 64", e.line));
-                    }
-                }
-                k => {
-                    return Err(format!(
-                        "line {}: unknown font setting '{k}' (pixel; og upgrade drops the atlas settings and chars)",
-                        e.line
-                    ));
-                }
-            }
-        }
+    if let Some(pixel) = s.settings.font().and_then(|d| d.pixel) {
+        f.pixel = pixel;
     }
     Ok(f)
 }

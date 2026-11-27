@@ -83,8 +83,8 @@ export function build(world: World): void {
   }
 
   // The characters: a ring in front of the grid, each on its own clip and phase.
-  const model = must(og.load.gltf(world, "models/walker.glb"));
-  const anim = must(og.load.animation(world, "models/walker.glb"));
+  const model = must(og.load.gltf(world, "base/models/walker"));
+  const anim = must(og.load.animation(world, "base/models/walker"));
   const clips = ["walk", "run", "idle", "wave"].map((n) => anim.clips.find((c) => c.name === n)!.clip);
   for (let i = 0; i < CHARACTERS; i++) {
     const a = (i / CHARACTERS) * Math.PI * 2;

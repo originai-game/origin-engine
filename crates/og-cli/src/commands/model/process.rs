@@ -38,11 +38,11 @@
 //! coverage, overlap, texel density). Without `--bake` nothing changes.
 //!
 //! `--out <folder>` (a folder, or a path without an extension) writes a
-//! prop named after the folder instead of one file: `<name>.glb`, standing
+//! prop named after the folder instead of one file: `sources/<name>.glb`, standing
 //! on its base unless
-//! `--pivot` says otherwise, its import settings `<name>.glb.ogt` (the
+//! `--pivot` says otherwise, `content/<name>.ts` import settings (the
 //! cook's levels of detail and baked triangle-mesh collider) and its
-//! convex hulls `<name>.collider.glb`. `--height 1.2` scales it to that
+//! convex hulls `sources/<name>.collider.glb`. `--height 1.2` scales it to that
 //! height, `--size x,y,z` (GLB axes, metres, 0 for a free axis) to the
 //! one scale nearest every axis given. The report then adds the facts of
 //! `og model measure` (`size` in metres, `triangles`, the look's facts)
@@ -129,7 +129,7 @@ pub struct ProcessDesc {
     /// Where to write the result, if anywhere.
     pub out: Option<PathBuf>,
     /// Write the result as a prop into this folder instead of `out`:
-    /// `<name>.glb`, its import settings `<name>.glb.ogt` (the cook's
+    /// `sources/<name>.glb`, its import settings `content/<name>.ts` (the cook's
     /// levels of detail and baked collider) and its convex hulls
     /// `<name>.collider.glb`. The pivot is then the base unless placed
     /// otherwise.
@@ -359,7 +359,7 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         },
     );
     let out = match &d.prop {
-        Some(dir) => Some(dir.join(format!("{}.glb", prop_name(dir, &mesh.name)))),
+        Some(dir) => Some(dir.join(format!("sources/{}.glb", prop_name(dir, &mesh.name)))),
         None => d.out.clone(),
     };
     let output = if baked.is_some() {
@@ -542,17 +542,24 @@ fn prop(
         .enumerate()
         .map(|(k, h)| (format!("{stem}.collider.{k}"), h))
         .collect();
-    let hull_path = dir.join(format!("{stem}.collider.glb"));
+    let hull_path = dir.join(format!("sources/{stem}.collider.glb"));
     let bytes =
         og_shape_formats::gltf::write::glb(&super::source::scene(&stem, &named)).map_err(failed)?;
     files.write(&hull_path, &bytes)?;
-    let settings_path = dir.join(format!("{stem}.glb.ogt"));
-    let lods: Vec<String> = PROP_LODS.iter().map(|r| r.to_string()).collect();
+    let settings_path = dir.join(format!("content/{stem}.ts"));
     let settings = format!(
-        "type import\nversion 1\n---\n# Written by og model process: the cook builds these levels of detail\n# and bakes the triangle-mesh collider (static bodies). {stem}.collider.glb\n# holds the convex hulls, for a dynamic body's og.Collider convex shapes.\nmodel {{\n  lods {}\n  collider true\n}}\n",
-        lods.join(" ")
+        "import {{file}} from '@origingame/engine/author';\n\nexport default file.import({});\n",
+        json!({"kind":"model","source":format!("sources/{stem}.glb"),"lods":PROP_LODS,"collider":true})
     );
     files.write(&settings_path, settings.as_bytes())?;
+    files.write(
+        &dir.join(format!("content/{stem}-collider.ts")),
+        format!(
+            "import {{file}} from '@origingame/engine/author';export default file.import({});\n",
+            json!({"kind":"model","source":format!("sources/{stem}.collider.glb")})
+        )
+        .as_bytes(),
+    )?;
     let part = og_shape::tools::Part {
         material: material.clone(),
         ..og_shape::tools::Part::new(&stem, low)
@@ -731,8 +738,11 @@ pub fn run(a: &Args) -> Result<String, Failure> {
     let input = a.input()?;
     let out = a.out_opt()?;
     if let Some(dir) = out.as_ref().filter(|o| is_folder(o)) {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| Failure::Failed(format!("{}: {e}", dir.display())))?;
+        for folder in ["sources", "content"] {
+            let path = dir.join(folder);
+            std::fs::create_dir_all(&path)
+                .map_err(|e| Failure::Failed(format!("{}: {e}", path.display())))?;
+        }
     }
     process(
         &Local,

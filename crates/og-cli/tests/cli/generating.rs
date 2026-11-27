@@ -26,6 +26,10 @@ fn rig2d_cooks_native_fields_imports_and_captured_parts() {
     image::RgbaImage::from_pixel(13, 9, image::Rgba([83, 119, 211, 255]))
         .save(root.join("assets/atlas.png"))
         .unwrap();
+    write(
+        "content/atlas.ts",
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'texture',source:'assets/atlas.png'});",
+    );
     let body = json!({
         "bones":[{"name":"root","at":[3,7]}, {"name":"tip","parent":"root","at":[5,2],"length":4}],
         "slots":[{"name":"back","bone":"tip","attachment":"z-region"},{"name":"front","bone":"root","attachment":"a-box"}],
@@ -89,7 +93,7 @@ fn rig2d_cooks_native_fields_imports_and_captured_parts() {
     let hero = bundle.load_rig2d("base/hero").unwrap();
     assert_eq!(
         (&hero.texture, hero.size, hero.unit),
-        (&"atlas.png".to_string(), [13, 9], 7.0)
+        (&"base/atlas".to_string(), [13, 9], 7.0)
     );
     assert_eq!(hero.bones[1].parent, Some(0));
     assert_eq!((hero.bones[0].x, hero.bones[0].y), (3.0, 7.0));
@@ -1556,6 +1560,14 @@ fn typed_texture_arrays_cook_module_inputs_and_real_layers() {
     image("assets/a.png", (4, 2), [193, 17, 83, 255]);
     image("assets/b.png", (4, 2), [23, 181, 59, 255]);
     image("modules/island/assets/a.png", (3, 5), [7, 41, 211, 255]);
+    for name in ["a", "b"] {
+        write(
+            &format!("content/{name}.ts"),
+            &format!(
+                "import {{file}} from '@origingame/engine/author';export default file.import({{kind:'texture',source:'assets/{name}.png'}});"
+            ),
+        );
+    }
     let cache = root.join("cache");
     let cook = || {
         og().args(["cook", ".", "--json"])
@@ -1585,7 +1597,7 @@ fn typed_texture_arrays_cook_module_inputs_and_real_layers() {
             array.layers,
             ["base/nested/tiles#layer0", "base/nested/tiles#layer1"]
         );
-        for (n, id) in ["a.png", "b.png"].into_iter().enumerate() {
+        for (n, id) in ["base/a", "base/b"].into_iter().enumerate() {
             assert_eq!(
                 bundle.load_texture(&array.layers[n]).unwrap().ktx2,
                 bundle.load_texture(id).unwrap().ktx2
@@ -2395,9 +2407,10 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
     let model =
         std::fs::read(repo().join("tests/fixtures/anim-markers/assets/models/walker.glb")).unwrap();
     std::fs::write(assets.join("walker.glb"), &model).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
     std::fs::write(
-        assets.join("walker.glb.ogt"),
-        "type import\nversion 1\n---\nconform off\n",
+        root.join("content/walker.ts"),
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/walker.glb',conform:'off'});",
     )
     .unwrap();
     std::fs::create_dir_all(root.join("content")).unwrap();
@@ -2425,7 +2438,7 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         ),
         ("stride", "walk")
     );
-    assert_eq!(source.bindings[0].source, "walker.glb");
+    assert_eq!(source.bindings[0].source, "base/walker");
     assert_eq!(source.asset.params, ["x", "y"]);
     assert_eq!(source.asset.sync_groups, ["gait"]);
     assert_eq!(source.asset.layers[0].states[0].speed, 0.5);
@@ -2484,8 +2497,8 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         changed.asset.nodes[1].motion,
         og_anim::Motion::Clip { speed: 1.125, .. }
     ));
-    let authored = "type import\nversion 1\n---\nconform off\nanimation {\nrate 4\ncompress true\nclip \"designed\" {\nchannel \"hips\" translation {\ninterpolation cubicSpline\nkey 0 0 0 0 2 3 5 8 0 0\nkey 1 0 0 0 6 7 9 0 0 0\n}\nchannel \"body\" visibility {\ninterpolation step\nkey 0 1\nkey 0.5 0\nkey 1 1\n}\n}\nevent \"designed\" \"half\" 0.5\n}\n";
-    std::fs::write(assets.join("walker.glb.ogt"), authored).unwrap();
+    let authored = r#"import {file} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/walker.glb',conform:'off',animation:{rate:4,compress:true,clips:[{name:'designed',channels:[{node:"hips",path:'translation',interpolation:'cubicSpline',keys:[{time:0,values:[0,0,0,2,3,5,8,0,0]},{time:1,values:[0,0,0,6,7,9,0,0,0]}]},{node:'body',path:'visibility',interpolation:'step',keys:[{time:0,values:[1]},{time:0.5,values:[0]},{time:1,values:[1]}]}]}],events:[{clip:'designed',marker:'half',time:0.5}]}});"#;
+    std::fs::write(root.join("content/walker.ts"), authored).unwrap();
     std::fs::write(
         root.join("content/graph.ts"),
         graph.replace("'walk'", "'designed'"),
@@ -2494,7 +2507,7 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let animation = bundle.load_animation("walker.glb").unwrap();
+    let animation = bundle.load_animation("base/walker").unwrap();
     let clip = animation.clip("designed").unwrap();
     let position = &clip.channels[0];
     // Hermite at t=0.5: midpoint plus 1/8 of the first out-tangent.
@@ -2507,36 +2520,36 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         (clip.events[0].name.as_str(), clip.events[0].time),
         ("half", 0.5)
     );
-    let cold = bundle.read("walker.glb#anim").unwrap();
+    let cold = bundle.read("base/walker#anim").unwrap();
     assert!(cook().status.success());
     assert_eq!(
         &*og_cook::runtime::Bundle::open(&root.join("cooked"))
             .unwrap()
-            .read("walker.glb#anim")
+            .read("base/walker#anim")
             .unwrap(),
         &*cold
     );
     // Reject unknown nodes, then prove changing only authored keys invalidates output.
     std::fs::write(
-        assets.join("walker.glb.ogt"),
+        root.join("content/walker.ts"),
         authored.replace("\"hips\"", "\"absent\""),
     )
     .unwrap();
     assert!(!cook().status.success());
     std::fs::write(
-        assets.join("walker.glb.ogt"),
-        authored.replace("6 7 9", "10 7 9"),
+        root.join("content/walker.ts"),
+        authored.replace("6,7,9", "10,7,9"),
     )
     .unwrap();
     assert!(cook().status.success());
     let changed = og_cook::runtime::Bundle::open(&root.join("cooked"))
         .unwrap()
-        .load_animation("walker.glb")
+        .load_animation("base/walker")
         .unwrap();
     assert!((changed.clip("designed").unwrap().channels[0].lane(2, 0) - 7.0).abs() < 0.001);
     std::fs::write(
-        assets.join("walker.glb.ogt"),
-        "type import\nversion 1\n---\nconform off\n",
+        root.join("content/walker.ts"),
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/walker.glb',conform:'off'});",
     )
     .unwrap();
     std::fs::write(root.join("content/graph.ts"), graph).unwrap();
@@ -3460,6 +3473,7 @@ fn generated_pcm_cooks_as_an_authored_sound() {
         }
     }
     writer.finalize().unwrap();
+    std::fs::write(root.join("content/authored.ts"), "import {file} from '@origingame/engine/author';export default file.import({kind:'sound',source:'assets/authored.wav'});").unwrap();
     let cook = || {
         og().args(["cook", ".", "--json"])
             .current_dir(&root)
@@ -3470,7 +3484,11 @@ fn generated_pcm_cooks_as_an_authored_sound() {
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let made = bundle.load_sound("base/made").unwrap().decode().unwrap();
-    let authored = bundle.load_sound("authored.wav").unwrap().decode().unwrap();
+    let authored = bundle
+        .load_sound("base/authored")
+        .unwrap()
+        .decode()
+        .unwrap();
     assert_eq!(
         (made.sample_rate, made.channels, made.samples.len()),
         (22050, 2, 600)
@@ -3592,6 +3610,7 @@ fn generated_pcm_cooks_as_an_authored_sound() {
             .unwrap();
         assert!(generated.status.success(), "{}", text(&generated));
     }
+    std::fs::write(root.join("content/recording.ts"), "import {file} from '@origingame/engine/author';export default file.import({kind:'sound',source:'assets/listening-preset.wav'});").unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
@@ -3603,7 +3622,7 @@ fn generated_pcm_cooks_as_an_authored_sound() {
             .unwrap()
             .samples,
         bundle
-            .load_sound("listening-preset.wav")
+            .load_sound("base/recording")
             .unwrap()
             .decode()
             .unwrap()

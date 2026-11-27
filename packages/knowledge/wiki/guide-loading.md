@@ -58,45 +58,29 @@ Asset queries, publish pruning and the cook cache are in assets.
 
 ### Import settings
 
-A file's import settings are a `type import` document named after it
-(`theme.mp3.ogt` beside `theme.mp3`). When many files in a directory
-take the same settings, the directory's `import.ogt` says them once:
+Each external asset has one checked `content/**/*.ts` declaration:
 
-```text
-type import
-version 1
----
-match "*.png" {
-  texture {
-    kind pixel
-  }
-}
-match "music/*.ogg" "ambience/*.ogg" {
-  sound {
-    stream true
-  }
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.import({
+  kind: 'texture', source: 'assets/sprites/hero.png', usage: 'pixel',
+});
 ```
 
-- A `match` block holds what a file's own settings hold, for every file
-  under the directory that one of its patterns names. A pattern is a
-  path from the directory, read as `project.ts`'s `conform` patterns
-  are: `*` is any run of characters within a name, `**` any run across
-  directories, a trailing `/` everything under that folder; case counts.
-  `*.png` is the directory's own files, `**.png` those at any depth.
-- A file takes the matching blocks of every `import.ogt` from `assets/`
-  down to its own directory, in that order and in each file's order, then
-  its own `<file>.ogt`. A later entry replaces an earlier one of the same
-  key; two blocks of one key (`texture { … }` twice) join the same way.
-- A file's own settings need only say what differs. Editing a block
-  recooks the files whose settings it changes and no others.
-- An error in a block is reported on each file it reaches, with its line
-  in the `import.ogt`.
-- A texture a model references is cooked with the model. It also cooks
-  on its own only when it has a `<file>.ogt`, never for a directory's
-  block alone.
-- `import.ogt` holds `match` blocks only. The engine's built-in assets
-  (`@…`) do not read it.
+The entry `content/sprites/hero.ts` produces `base/sprites/hero` in the
+base module. Load that canonical content ID, never its raw source path.
+`og api show file:import` lists the model, texture, sound, font, tilemap
+and Rive input shapes. Other domains use their own `file.<kind>` entry.
+
+Sources are exact paths under the owning module's `assets/` or `sources/`.
+The importer captures external model buffers, images and material libraries
+under that same module boundary. A model's embedded textures stay with it;
+declare a separate texture import only when it also needs a standalone ID.
+Raw files without a declaration do not become assets. There are no sidecars,
+directory defaults, filename-derived settings or sibling-file lookup. Share
+ordinary TS constants through explicit imports when settings repeat. Editing
+a helper or captured input invalidates its consumers; old OGT import settings
+are rejected rather than merged.
 
 <a id="guide-loading-2"></a>
 ### `loading §2` Models
@@ -123,25 +107,22 @@ match "music/*.ogg" "ambience/*.ogg" {
 A `.vox` cooks to a glTF: greedy-meshed and flat-shaded, with its
 palette as vertex colours. Z-up is turned to y-up, and each model sits
 about its centre (MagicaVoxel's pivot, with or without a scene graph).
-Size and place it in its import settings (`models/hut.vox.ogt`):
+Size and place it in its import declaration:
 
-```text
-type import
-version 1
----
-model {
-  voxScale 0.1
-  voxOrigin bottom
-  voxFps 8
-  voxClip walk 0 3
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.import({
+  kind: 'model', source: 'assets/models/hut.vox',
+  voxScale: 0.1, voxOrigin: 'bottom', voxFps: 8,
+  voxClips: [{name: 'walk', first: 0, last: 3}],
+});
 ```
 
-- `voxScale` is metres per voxel (default 1). `voxOrigin bottom` puts
+- `voxScale` is metres per voxel (default 1). `voxOrigin: 'bottom'` puts
   the lowest voxel on y = 0; the default `center` is the editor's origin.
 - A `.vox` with frames cooks to clips that swap the frames' models,
   played by og.AnimationPlayer as any skinned clip. `voxFps` defaults to
-  10. Without `voxClip` there is one clip, `frames`, over the file's
+  10. Without `voxClips` there is one clip, `frames`, over the file's
   playback range, else over every frame. A node's `_loop` repeats its
   keys as the editor plays them.
 
@@ -152,14 +133,13 @@ generator or a store often faces another way: state its axes in the
 import settings and the cook turns it, so the game places it with no turn
 of its own:
 
-```text
-type import
-version 1
----
-model {
-  front "-x"   # the file's axis its nose points along
-  up "+y"      # the file's axis that is up
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.import({
+  kind: 'model', source: 'assets/models/car.glb',
+  front: '-x', // the file's axis its nose points along
+  up: '+y',   // the file's axis that is up
+});
 ```
 
 Either may be left out: `up` is +y unless `front` lies along y, and with
@@ -173,7 +153,7 @@ settings state, or the cooked result).
 ### Level of detail
 
 The cook simplifies every mesh into levels. The default is
-`model { lods 1 0.5 0.25 }` in the import settings, each number a
+`lods: [1, 0.5, 0.25]` in the import declaration, each number a
 level's triangle fraction; a glTF with MSFT_lod keeps its own levels.
 The cook measures each level's error against the full mesh. The
 renderer draws the coarsest level whose error covers less than a pixel
@@ -213,26 +193,22 @@ cook (HLOD): the world guide, §5.
 ### `loading §3` Sounds
 
 `.wav`, `.mp3`, `.ogg` (Vorbis) and `.flac` cook to 16-bit PCM encoded as
-QOA, so every format plays, streams and loops the same. The asset id
-keeps the source's extension (`audio/theme.mp3`). Procedural `.ogt`
-presets load the same way.
+QOA, so every format plays, streams and loops the same. The asset ID
+comes from the declaration (`base/audio/theme`). Procedural `file.sfx`
+declarations load the same way.
 
 A long sound (music, ambience) cooks in chunks of whole QOA frames:
 
-```text
-type import
-version 1
----
-sound {
-  stream true
-  chunk 4
-}
+```ts
+import {file} from '@origingame/engine/author';
+export default file.import({
+  kind: 'sound', source: 'assets/audio/theme.mp3', stream: true, chunk: 4,
+});
 ```
 
-- The import settings file is `<file>.ogt` (`theme.mp3.ogt`). `chunk` is
-  in seconds, 1 to 60, default 4.
+- `chunk` is in seconds, 1 to 60, default 4.
 - A sound whose QOA file would pass 1 MiB is chunked unless it says
-  `stream false`.
+  `stream: false`.
 - The first chunk loads with the sound. The engine then reads chunks
   from about half a second behind each playhead to four seconds ahead,
   and drops the rest. On the web they are fetched like a streaming

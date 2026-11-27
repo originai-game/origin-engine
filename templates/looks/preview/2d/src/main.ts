@@ -51,7 +51,7 @@ function sprite(world: World, beat: string, x: number, y: number, extra: Extra =
   const width = extra.width ?? art.width;
   const height = extra.height ?? art.height;
   const anchor = extra.anchor ?? { x: 0.5, y: 0 };
-  const texture = must(og.load.texture(world, `art/${art.file}`));
+  const texture = must(og.load.texture(world, art.file));
   const position = { x: snap(x - width * anchor.x) + width * anchor.x, y: snap(y - height * anchor.y) + height * anchor.y, z: 0 };
   const e = must(world.spawn({ name: `${beat}@${x},${y}`, position }));
   must(world.insert(e, og.Sprite, { texture, width, height, anchor, layer: extra.layer ?? 0, flipX: extra.flipX ?? false, sortY: extra.sortY ?? false, shadow: extra.shadow ?? 0, glow: extra.glow ?? 0, opacity: extra.opacity ?? 1 }));
@@ -174,7 +174,7 @@ const Hud = defineSystem("Hud", { reads: [og.Camera] }, (_q, _time, world) => {
   if (!at || !up) return;
   // CSS pixels a metre.
   const scale = at.y - up.y;
-  const font = must(og.load.font(world, "fonts/NotoSans-Latin.ttf"));
+  const font = must(og.load.font(world, "base/fonts/NotoSans-Latin"));
   const size = Math.round(count * scale);
   const rim = Math.max(1, Math.round(size / 14));
   const text = { font, text: "× 07", size, screen: true };

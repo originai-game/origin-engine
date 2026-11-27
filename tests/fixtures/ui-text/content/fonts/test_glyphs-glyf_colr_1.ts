@@ -1,6 +1,6 @@
-type import
-version 1
----
-# COLR tests: U+F0100, F0200, F0503, F0600, F0B00 and F0B06.
-font {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "font",
+  "source": "assets/fonts/test_glyphs-glyf_colr_1.ttf"
+});

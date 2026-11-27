@@ -1,6 +1,6 @@
-type import
-version 1
----
-# Colour art: sRGB.
-texture {
-}
+import {file} from '@origingame/engine/author';
+
+export default file.import({
+  "kind": "texture",
+  "source": "shared/art/socket.png"
+});

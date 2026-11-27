@@ -231,7 +231,11 @@ are the game's.
 - `process mesh.glb --out DIR [--height 1.2 | --size x,y,z]`: repair (only
   what `--weld`, `--non-manifold` and `--holes` ask), decimation, scaling,
   a base pivot, import settings with levels of detail and a collider, and
-  convex hulls. It reports the edges and texture memory before and after. Its `issues` lists every problem left with the
+  convex hulls. The folder holds `sources/<name>.glb`,
+  `sources/<name>.collider.glb` and explicit `content/<name>.ts` and
+  `content/<name>-collider.ts` imports; copy those directories into the owning
+  project module and load its canonical content IDs.
+  It reports the edges and texture memory before and after. Its `issues` lists every problem left with the
   option that fixes it, and `next` gives the command to run next.
 - `bake model --project front=a.png --project left=b.png`: the base colour
   painted from concept images onto the UVs, one texture per material

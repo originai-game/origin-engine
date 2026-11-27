@@ -18,7 +18,7 @@ export const Quest = defineResource("Quest", {
 });
 
 export function buildQuest(world: World): void {
-  og.ui.configure(world, { font: must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf")) });
+  og.ui.configure(world, { font: must(og.load.font(world, "base/fonts/latin/NotoSans-Latin")) });
 }
 
 export const Play = defineSystem("Play", { reads: [og.Transform], writes: [Quest], after: ["Walk"] }, (_q, _time, world) => {

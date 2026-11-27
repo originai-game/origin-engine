@@ -122,7 +122,7 @@ function build(world: World): void {
   // over the terrain's solid cells (the blasts stay above it). The floor's
   // edge shadows it from the torches, so a faint cool fill of its own light
   // layer (BODY) keeps its stones legible, as Hollow Knight's floors are.
-  const body = must(og.load.texture(world, "bg/ground.png"));
+  const body = must(og.load.texture(world, "base/bg/ground"));
   for (const x of [-24, -8, 8, 24]) {
     const e = must(world.spawn({ name: `ground@${x}`, position: { x, y: FLOOR - 0.45, z: 0 } }));
     must(world.insert(e, og.Sprite, { texture: body, width: 512 * CELL, height: 96 * CELL, anchor: { x: 0.5, y: 1 }, layer: 6 }));

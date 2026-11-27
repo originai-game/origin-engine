@@ -126,23 +126,26 @@ export function stage2d(dir: string, name: string, scene: Scene2d, looks: string
   for (const file of readdirSync(art).filter((n) => /\.(png|jpe?g)$/.test(n))) {
     const beat = file.replace(/\.[a-z]+$/, "");
     const [w, h] = size2(join(art, file));
+    const at = beatSize(scene, beat, w, h);
+    const settings = { kind: "texture", source: `assets/art/${file}`, ...(unit && at ? { conform: {kind: "auto", size: Math.max(at.pw, at.ph)} } : {}) };
+    writeFileSync(join(content, `${beat}.ts`), `import {file} from '@origingame/engine/author';\nexport default file.import(${JSON.stringify(settings)});\n`);
     if ((TILESETS[plan] as readonly string[]).includes(beat)) {
       tile ||= w / 4;
       // The cook brings a tile set's tiles to the look's pixel unit by itself.
       writeFileSync(join(content, `${beat}-set.ts`), `import {file,ref} from '@origingame/engine/author';\n// Written by templates/looks/preview/2d/stage.ts: 4 x 4 tiles.\nexport default file.tileset({texture:ref(${JSON.stringify(`base/art/${beat}`)}),tileWidth:${w / 4},tileHeight:${h / 4},columns:4,rows:4,filter:'nearest'});\n`);
       continue;
     }
-    const at = beatSize(scene, beat, w, h);
     if (!at) continue;
-    beats[beat] = { file, width: at.width, height: at.height };
+    beats[beat] = { file: `base/art/${beat}`, width: at.width, height: at.height };
     if (!unit) continue;
-    writeFileSync(join(out, `${file}.ogt`), `type import\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: ${at.pw} x ${at.ph} logical pixels.\nconform {\n  size ${Math.max(at.pw, at.ph)}\n}\n`);
     if (LAYERS.includes(beat)) writeFileSync(join(content, `${beat}-set.ts`), `import {file,ref} from '@origingame/engine/author';\n// Written by templates/looks/preview/2d/stage.ts: one tile, so the cook lines no edge of the layer.\nexport default file.tileset({texture:ref(${JSON.stringify(`base/art/${beat}`)}),tileWidth:${w},tileHeight:${h},columns:1,rows:1,filter:'nearest'});\n`);
   }
   mkdirSync(join(dir, "content/level"), { recursive: true });
   writeFileSync(join(dir, "content/level/level.ts"), plan === "top" ? topMap(tile) : sideMap(tile));
   mkdirSync(join(dir, "assets/fonts"), { recursive: true });
-  for (const f of ["NotoSans-Latin.ttf", "NotoSans-Latin.ttf.ogt"]) copyFileSync(join(repo, "templates/fonts/latin/assets/fonts/latin", f), join(dir, "assets/fonts", f));
+  copyFileSync(join(repo, "templates/fonts/latin/assets/fonts/latin/NotoSans-Latin.ttf"), join(dir, "assets/fonts/NotoSans-Latin.ttf"));
+  mkdirSync(join(dir, "content/fonts"), { recursive: true });
+  writeFileSync(join(dir, "content/fonts/NotoSans-Latin.ts"), "import {file} from '@origingame/engine/author';export default file.import({kind:'font',source:'assets/fonts/NotoSans-Latin.ttf'});\n");
   writeFileSync(
     join(dir, "src/art.ts"),
     `// Written by templates/looks/preview/2d/stage.ts from preview.json.\nexport const PLAN: "side" | "top" = ${JSON.stringify(plan)};\nexport const VIEW_HEIGHT = ${scene.view};\n/** Logical pixels a metre; 0 without a pixel grid. */\nexport const UNIT = ${unit};\nexport const LIGHT: "day" | "night" | "none" = ${JSON.stringify(scene.light ?? "day")};\nexport const HAZE = ${scene.haze ?? 1};\n/** The HUD count's linear colour and its rim's. */\nexport const TEXT = ${JSON.stringify({ color: linear(scene.text ?? "#ffffff"), rim: linear(scene.rim ?? "#0b0b12") })};\nexport const ART: Record<string, { file: string; width: number; height: number }> = ${JSON.stringify(beats)};\n`,

@@ -57,8 +57,8 @@
 //! base colour's is packed into its alpha, both at cook time. A texture
 //! embedded in the FBX is packed into the glb; one beside the file is
 //! named by its relative path, so it is read, hashed and consumed as a
-//! `.gltf`'s textures are (found by its relative path, else by its file
-//! name beside the model). A texture's UV transform becomes
+//! `.gltf`'s textures are (the declared relative path, never a basename
+//! fallback). A texture's UV transform becomes
 //! `KHR_texture_transform`, its wrap modes the sampler.
 //!
 //! **Lights** become `KHR_lights_punctual` (point, spot, directional; the
@@ -134,7 +134,7 @@ fn f32s(v: &[f32]) -> Vec<u8> {
 }
 
 /// The `mtllib` lines of an OBJ: each named file, read beside it.
-fn mtl_files(obj: &[u8], dir: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
+fn mtl_files(obj: &[u8], read_file: &Read<'_>) -> Result<Vec<(String, Vec<u8>)>, String> {
     let text = String::from_utf8_lossy(obj);
     let mut out = Vec::new();
     for line in text.lines() {
@@ -147,14 +147,13 @@ fn mtl_files(obj: &[u8], dir: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
         let rest = rest.trim();
         // A name may hold spaces: the whole rest of the line first, then
         // each word (the format's list of names).
-        let names: Vec<&str> = if dir.join(rest).is_file() {
-            vec![rest]
-        } else {
-            rest.split_whitespace().collect()
-        };
+        if let Ok(bytes) = read_file(rest) {
+            out.push((rest.replace('\\', "/"), bytes));
+            continue;
+        }
+        let names = rest.split_whitespace();
         for name in names {
-            let path = dir.join(name);
-            let bytes = std::fs::read(&path).map_err(|_| {
+            let bytes = read_file(name).map_err(|_| {
                 format!(
                     "OBJ: `mtllib {name}`: {name} is not beside the file; put it there, or remove the line to cook the model with a plain material"
                 )
@@ -194,6 +193,20 @@ struct MorphSlot {
 /// `path` is the source file, whose folder holds what it names.
 pub fn to_glb(bytes: &[u8], path: &Path, ext: &str) -> Result<Imported, String> {
     let dir = path.parent().unwrap_or(Path::new("."));
+    to_glb_with(bytes, path, ext, &|file| {
+        std::fs::read(dir.join(file)).map_err(|e| format!("{file}: {e}"))
+    })
+}
+
+type Read<'a> = dyn Fn(&str) -> Result<Vec<u8>, String> + 'a;
+
+/// Import through the same captured reader as glTF and explicit process maps.
+pub(crate) fn to_glb_with(
+    bytes: &[u8],
+    path: &Path,
+    ext: &str,
+    read_file: &Read<'_>,
+) -> Result<Imported, String> {
     let what = if ext == "obj" { "OBJ" } else { "FBX" };
     let mut read = Vec::new();
     let mut opts = ufbx::LoadOpts {
@@ -216,7 +229,7 @@ pub fn to_glb(bytes: &[u8], path: &Path, ext: &str) -> Result<Imported, String> 
         ..Default::default()
     };
     if ext == "obj" {
-        let mtl = mtl_files(bytes, dir)?;
+        let mtl = mtl_files(bytes, read_file)?;
         let mut data = Vec::new();
         for (_, b) in &mtl {
             data.extend_from_slice(b);
@@ -242,7 +255,7 @@ pub fn to_glb(bytes: &[u8], path: &Path, ext: &str) -> Result<Imported, String> 
     }
     let mut out = Writer {
         bin: Bin::default(),
-        dir,
+        read_file,
         what,
         nodes: Vec::new(),
         node_of: HashMap::new(),
@@ -337,7 +350,7 @@ pub fn to_glb(bytes: &[u8], path: &Path, ext: &str) -> Result<Imported, String> 
 /// The glTF being written.
 struct Writer<'a> {
     bin: Bin,
-    dir: &'a Path,
+    read_file: &'a Read<'a>,
     what: &'static str,
     nodes: Vec<Value>,
     /// A ufbx node's typed id → its glTF node.

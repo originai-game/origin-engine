@@ -106,10 +106,10 @@ web service worker's SHA256 hashes.
 ### `assets §5` Move source assets
 
 `og assets mv <from> <to> [--project DIR] [--json]` moves one file under
-`assets/` and its `type import` sidecar. Paths accept the `assets/` prefix.
-The destination and its import sidecar must not exist.
+`assets/`. Paths accept the `assets/` prefix. The destination must not exist.
+Import declarations stay in `content/`: their canonical content IDs do not change.
 
-The command rewrites exact matching string literals in asset OGT documents,
+The command rewrites exact matching source-path string literals in asset OGT documents,
 project/content and game TypeScript, including `#subasset` suffixes. It preserves
 comments, regular expressions, and partial filename matches. All matching
 literals are rewritten, including strings outside asset fields.

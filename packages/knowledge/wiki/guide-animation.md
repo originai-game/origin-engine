@@ -254,8 +254,9 @@ are not retroactive on seek unless authored that way.
   both arms forward and a stride; other rigs: topology-derived branches).
   A `skin stretch` warning names source triangle IDs whose longest edge
   exceeds both 2.5 times its bind length and 0.08 model units. To explicitly
-  repair those regions, set `model { relaxSkin true }` in the model's import
-  sidecar (`<model>.glb.ogt`, `type import`, version 1). It defaults to false.
+  repair those regions, set `relaxSkin: true` in the model's checked
+  `file.import({kind: 'model', source: 'assets/models/hero.glb', ...})`
+  declaration. It defaults to false.
   Probes and position welding use model units after the skin bind transform,
   including quantised meshes' dequantisation. The cook welds positions to
   five decimal places for weight averaging, blends each flagged region with

@@ -18,10 +18,6 @@ use std::path::{Path, PathBuf};
 /// A theme's recipe file name.
 pub const RECIPE: &str = "theme.json";
 
-/// The import settings each piece of drawn art cooks with: colour art.
-const ART_SETTINGS: &str =
-    "type import\nversion 1\n---\n# Generated theme art: sRGB colour.\ntexture {\n}\n";
-
 /// Whether `rel` is a game theme's recipe (`styles/<name>/theme.json`).
 pub fn is_recipe(rel: &str) -> bool {
     rel.strip_prefix("styles/")
@@ -129,7 +125,6 @@ pub fn cook(text: &str, at: &str, cache: &Path) -> Result<(Files, Vec<String>), 
             }
             let file = format!("art/{name}.png");
             out.push((file.clone(), read(dir.join(&file))?));
-            out.push((format!("{file}.ogt"), ART_SETTINGS.as_bytes().to_vec()));
             images.insert(name, entry);
         }
     }

@@ -7,9 +7,9 @@
 //! a texture is never passed through uncompressed.
 
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, Path, PlanState, Planned, Source, Split,
-    TextureOptions, conform, ktx2_source, mesh_texture, normal2d, not_split, settings_block, stamp,
-    sway2d, texture_kind, texture_stream,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Split,
+    TextureOptions, conform, ktx2_source, mesh_texture, normal2d, not_split, stamp, sway2d,
+    texture_kind, texture_stream,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -838,17 +838,16 @@ fn plan_texture<'a>(
                 )),
             }
             // Its normal map for 2D lighting (`normal auto` or a file).
-            match normal2d::setting(settings_block(s, "texture")) {
+            match normal2d::setting(s.settings.texture()) {
                 Ok(None) => {}
                 Ok(Some(setting)) => {
                     let file = match &setting {
                         normal2d::NormalSetting::Auto => Ok(None),
-                        normal2d::NormalSetting::File(name) => {
-                            let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
-                            std::fs::read(&path)
-                                .map(Some)
-                                .map_err(|e| format!("normal \"{name}\": {e}"))
-                        }
+                        normal2d::NormalSetting::File(name) => s
+                            .settings
+                            .read(name)
+                            .map(Some)
+                            .map_err(|e| format!("normal \"{name}\": {e}")),
                     };
                     match file {
                         Ok(file) => {
@@ -874,12 +873,12 @@ fn plan_texture<'a>(
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             }
             // Its parts for og.Wind (`sway clumps`, `sway tiers`, a map).
-            match sway2d::setting(settings_block(s, "texture")) {
+            match sway2d::setting(s.settings.texture()) {
                 Ok(None) => {}
                 Ok(Some(setting)) => {
                     let map = setting.map.as_ref().map_or(Ok(None), |name| {
-                        let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
-                        std::fs::read(&path)
+                        s.settings
+                            .read(name)
                             .map(Some)
                             .map_err(|e| format!("sway \"{name}\": {e}"))
                     });
@@ -920,9 +919,14 @@ impl Job for TextureJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let TextureJob(s, k, split) = self;
         let Exec { options, .. } = ex;
-        if s.rel.ends_with(".ktx2") {
-            let explicit = settings_block(s, "texture")
-                .and_then(|b| b.get("kind"))
+        if s.path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("ktx2"))
+        {
+            let explicit = s
+                .settings
+                .texture()
+                .and_then(|d| d.usage.as_ref())
                 .map(|_| *k);
             return split_texture(s, 0, split, p, |stamp| {
                 ktx2_source::cook(&s.bytes, explicit, &options.texture, stamp)
@@ -968,7 +972,10 @@ impl Job for TextureJob<'_> {
     fn cost(&self, options: &super::CookOptions) -> u64 {
         let TextureJob(s, k, _) = self;
         // A `.ktx2` taken as it is encodes nothing.
-        if s.rel.ends_with(".ktx2") {
+        if s.path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("ktx2"))
+        {
             return 0;
         }
         let bytes = s.conformed.as_deref().unwrap_or(&s.bytes);

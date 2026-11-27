@@ -31,16 +31,16 @@ export function buildCoast(world: World): Coast {
     must(world.insert(e, og.Model, { asset: must(og.load.gltf(world, path)) }));
     return y;
   };
-  const base = place("lighthouse", "models/lighthouse.glb", LIGHTHOUSE.x, LIGHTHOUSE.z, LIGHTHOUSE.height, 0.95, 0.4);
-  place("cottage", "models/cottage.glb", COTTAGE.x, COTTAGE.z, COTTAGE.length, 0.43, 0.2, 0.5);
-  place("ruin", "models/ruin.glb", RUIN.x, RUIN.z, RUIN.length, 0.55, -0.3, 0.5);
-  place("crag", "models/rock-cliff.glb", -8.5, -5.5, 9, 0.6, 2.2, 1.2);
-  place("boulder", "models/boulder.glb", 2.6, -2.4, 2.4, 0.27, 0.6, 0.15);
+  const base = place("lighthouse", "base/models/lighthouse", LIGHTHOUSE.x, LIGHTHOUSE.z, LIGHTHOUSE.height, 0.95, 0.4);
+  place("cottage", "base/models/cottage", COTTAGE.x, COTTAGE.z, COTTAGE.length, 0.43, 0.2, 0.5);
+  place("ruin", "base/models/ruin", RUIN.x, RUIN.z, RUIN.length, 0.55, -0.3, 0.5);
+  place("crag", "base/models/rock-cliff", -8.5, -5.5, 9, 0.6, 2.2, 1.2);
+  place("boulder", "base/models/boulder", 2.6, -2.4, 2.4, 0.27, 0.6, 0.15);
   // Stacks and skerries off the point and under the cliffs, where the swell breaks.
-  place("stack-point", "models/sea-stack.glb", 58, -80, 15, 0.33, 0.3, 2.2);
-  place("stack-near", "models/sea-stack.glb", 29, -28, 11, 0.33, 2.4, 2.0);
-  place("stack-cove", "models/sea-stack.glb", 40, -50, 14, 0.33, 4.1, 2.2);
-  place("crag-point", "models/rock-cliff.glb", 43, -84, 11, 0.6, 3.6, 2.5);
+  place("stack-point", "base/models/sea-stack", 58, -80, 15, 0.33, 0.3, 2.2);
+  place("stack-near", "base/models/sea-stack", 29, -28, 11, 0.33, 2.4, 2.0);
+  place("stack-cove", "base/models/sea-stack", 40, -50, 14, 0.33, 4.1, 2.2);
+  place("crag-point", "base/models/rock-cliff", 43, -84, 11, 0.6, 3.6, 2.5);
 
   // The hawthorn on the crag, its crown combed inland over the path.
   const tree = must(world.spawn({ name: "hawthorn", position: { x: -6.2, y: heightAt(-6.2, -1.6) + 1.2, z: -1.6 }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 2.6) }));

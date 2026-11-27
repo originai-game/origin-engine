@@ -91,7 +91,7 @@ const Showcase = defineSystem("Showcase", { reads: [og.Input], writes: [Show, og
   } else if (entry.pack === "geometric" && entry.e.name === "trail") {
     must(world.set(s.shown, og.Transform, { position: { x: math.sin(t * 2) * 0.8, y: 0.5, z: 0 } }));
   }
-  const font = must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf"));
+  const font = must(og.load.font(world, "@fonts/latin/NotoSans-Latin"));
   const white = { r: 0.92, g: 0.93, b: 0.95 };
   must(og.render.text(world, { font, screen: true, position: { x: 32, y: 52, z: 0 }, size: 28, color: white, outline: 2,
     text: `${entry.en}  ·  ${entry.e.name}` }));

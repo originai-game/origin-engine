@@ -192,6 +192,73 @@ fn delivery_packs_partition_loadable_assets_and_keep_partial_cooks_scoped() {
     }
 }
 
+/// Explicit imports own identity and controls; external model inputs invalidate
+/// the same native asset without depending on filename aliases or sidecars.
+#[test]
+fn typed_imports_capture_external_inputs_and_keep_canonical_identity() {
+    let root = crate::temp::TempDir::new("typed-imports");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "content/props/gate.ts",
+        "import {file} from '@origingame/engine/author';import {lods} from '../../lib/options.ts';export default file.import({kind:'model',source:'sources/raw/mesh.gltf',lods,conform:'off'});",
+    );
+    write("lib/options.ts", "export const lods=[1];");
+    write(
+        "sources/raw/mesh.gltf",
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],"meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],"buffers":[{"uri":"mesh.bin","byteLength":36}],"bufferViews":[{"buffer":0,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[-2,0,0],"max":[3,4,0]}]}"#,
+    );
+    let mut prior = None;
+    for (threads, top) in [(1, 4.0_f32), (3, 4.0), (2, 7.0)] {
+        let positions = [[-2.0_f32, 0.0, 0.0], [3.0, 0.0, 0.0], [1.0, top, 0.0]];
+        std::fs::write(
+            root.join("sources/raw/mesh.bin"),
+            bytemuck::cast_slice(&positions),
+        )
+        .unwrap();
+        let options = CookOptions {
+            threads,
+            ..Default::default()
+        };
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        let model = b.load_model("base/props/gate").unwrap();
+        assert_eq!(model.primitives[0].max.y, top);
+        assert!(b.load_model("raw/mesh.gltf").is_err());
+        let bytes = b.read("base/props/gate").unwrap().to_vec();
+        if let Some(previous) = &prior {
+            if top == 4.0 {
+                assert_eq!(&bytes, previous);
+            } else {
+                assert_ne!(&bytes, previous);
+            }
+        }
+        prior = Some(bytes);
+    }
+    write("lib/options.ts", "export const lods=[0.5,1];");
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(!report.ok(), "changed imported settings were not checked");
+    write("lib/options.ts", "export const lods=[1];");
+    write(
+        "assets/import.ogt",
+        "type import\nversion 1\n---\nmatch \"*.png\" {texture {kind pixel}}\n",
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(!report.ok(), "removed directory defaults were accepted");
+    std::fs::remove_file(root.join("assets/import.ogt")).unwrap();
+    write(
+        "sources/raw/mesh.gltf",
+        r#"{"asset":{"version":"2.0"},"buffers":[{"uri":"../../../outside.bin","byteLength":36}]}"#,
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(!report.ok(), "external buffer escaped its owning module");
+}
+
 /// Table data is packed, not author text; cyclic row identities, defaults and
 /// localized strings survive both cold and warm cooks and schema edits.
 #[test]
@@ -213,6 +280,7 @@ fn typed_tables_pack_rows_and_validate_cross_table_identities() {
     image::RgbaImage::from_pixel(2, 2, image::Rgba([17, 89, 231, 255]))
         .save(root.join("assets/icon.png"))
         .unwrap();
+    crate::declare_import(&root, "icon", "texture", "assets/icon.png");
     let table = "import {file,ref} from '@origingame/engine/author';\nexport default file.table({record:'Item',rows:[\n{id:'bow',values:{label:{text:{key:'items.bow',base:'Bow'}},icon:{asset:ref('base/icon')},image:ref('base/icon'),next:{table:ref('base/materials'),row:'wood'},links:[{row:'arrow'}]}},\n{id:'arrow',values:{power:3}}]});";
     write("content/items.ts", table);
     write(
@@ -256,8 +324,8 @@ fn typed_tables_pack_rows_and_validate_cross_table_identities() {
         assert_eq!(og_core::unpack_str(field(1, "label")), "北");
         assert_eq!(og_core::unpack_str(field(0, "label")), "items.bow");
         assert_eq!(native.strings["items.bow"], "Bow");
-        assert_eq!(og_core::unpack_str(field(0, "icon")), "icon.png");
-        assert_eq!(native.bindings[&0]["image"]["$ogRef"], "icon.png");
+        assert_eq!(og_core::unpack_str(field(0, "icon")), "base/icon");
+        assert_eq!(native.bindings[&0]["image"]["$ogRef"], "base/icon");
         assert_eq!(
             u64::from_le_bytes(field(0, "next").try_into().unwrap()),
             og_core::table::row_handle("base/materials", "wood")
@@ -332,8 +400,8 @@ fn typed_flipbooks_cook_native_sheets_and_arrays() {
     };
     animation([100, 300]);
     write(
-        "assets/sheet.png.ogt",
-        "type import\nversion 1\n---\nconform off\ntexture {\nkind pixel\n}\n",
+        "content/sheet.ts",
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'texture',source:'assets/sheet.png',conform:{kind:'off'},usage:'pixel'});",
     );
     let grid = "import {file,ref} from '@origingame/engine/author';export default file.flipbook({texture:ref('base/sheet'),conform:{kind:'off'},array:true,grid:{size:[3,2],columns:3,rows:2},margin:1,spacing:1,pivot:[0.25,0.75],clips:[{name:'stride',frames:['4','1','5'],durations:[0.125,0.25,0.5],mode:'pingPong',events:[[1,'step']]}]});";
     write("content/grid.ts", grid);
@@ -359,7 +427,7 @@ fn typed_flipbooks_cook_native_sheets_and_arrays() {
         assert!(report.ok(), "{:?}", report.errors());
         let b = Bundle::open(&root.join("cooked")).unwrap();
         let sheet = b.load_flipbook("base/grid").unwrap();
-        assert_eq!(sheet.texture, "sheet.png");
+        assert_eq!(sheet.texture, "base/sheet");
         assert_eq!(sheet.size, [13, 9]);
         assert_eq!(sheet.frames[4].rect, [5, 4, 3, 2]);
         assert_eq!(sheet.frames[4].pivot, [0.25, 0.75]);
@@ -539,6 +607,7 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
         "assets/gate.gltf",
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
     );
+    crate::declare_import(&root, "gate", "model", "assets/gate.gltf");
     let source = "import {file,ref} from '@origingame/engine/author';\nimport {height} from '../lib/height.ts';\nexport default file.grammar({params:{height},start:'Lot',rules:{\nLot:[{op:'detail',level:0},{op:'extrude',depth:'height',faces:{sides:'Wall',top:'Gate'}}],\nWall:[{op:'label',label:'stone'}],\nGate:[{op:'insert',model:ref('base/gate')}],\nUnused:[{op:'insert',model:ref('base/gate')}]}});";
     write("modules/north/content/building.ts", source);
     let mut options = CookOptions {
@@ -561,7 +630,7 @@ fn typed_grammars_build_districts_and_reject_invalid_rules() {
                 scene
                     .entities
                     .iter()
-                    .any(|e| e.instance.as_deref() == Some("gate.gltf")),
+                    .any(|e| e.instance.as_deref() == Some("base/gate")),
                 "grammar insert did not bind the actual imported model output"
             );
             let id = scene
@@ -727,16 +796,17 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
     image::RgbaImage::from_pixel(53, 31, image::Rgba([17, 83, 149, 255]))
         .save(root.join("assets/atlas.png"))
         .unwrap();
+    crate::declare_import(&root, "atlas", "texture", "assets/atlas.png");
     write("modules/north/lib/timing.ts", "export const hold=0.375;");
     let declaration = "import {file,ref} from '@origingame/engine/author';\nimport {hold} from '../lib/timing.ts';\nexport default file.tileset({texture:ref('base/atlas'),tileWidth:7,tileHeight:11,columns:3,rows:2,margin:2,spacing:1,filter:'linear',conform:{kind:'off'},tiles:{0:{collision:{kind:'rect',x:-1,y:0,w:9,h:11}},2:{collision:{kind:'rect',x:1,y:3,w:4,h:5},polygons:[[[-2,1],[3,2],[1,9]]],animation:{frames:[4,1],durations:[0.125,hold]}}},terrains:[{name:'泥😀',mode:'blob47',default:5,edgeFilled:false,rules:{0:1,7:4}},{name:'edges',mode:'bitmask16',default:2,rules:{9:3}}]});";
     write("modules/north/content/tiles.ts", declaration);
     write(
-        "assets/map.tmj",
+        "modules/north/assets/map.tmj",
         r#"{"type":"map","orientation":"orthogonal","width":2,"height":1,"tilewidth":7,"tileheight":11,"tilesets":[{"firstgid":1,"source":"external.tsx"},{"firstgid":10,"name":"内蔵","image":"atlas.png","tilewidth":7,"tileheight":11,"columns":3,"tilecount":6,"margin":2,"spacing":1,"tiles":[{"id":1,"properties":[{"name":"solid","type":"bool","value":true}],"animation":[{"tileid":4,"duration":125},{"tileid":2,"duration":375}]}]}],"layers":[{"type":"tilelayer","name":"outside","width":2,"height":1,"data":[1,3]},{"type":"tilelayer","name":"inside","width":2,"height":1,"data":[11,10]}]}"#,
     );
     write(
-        "assets/map.tmj.ogt",
-        "type import\nversion 1\n---\ntilemap {\n bindTileset \"external.tsx\" \"north/tiles\"\n}\n",
+        "modules/north/content/map.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.import({kind:'tilemap',source:'assets/map.tmj',tilesets:{'external.tsx':ref('north/tiles')},textures:{'atlas.png':ref('base/atlas')}});",
     );
     let options = CookOptions::default();
     let mut previous = None;
@@ -756,7 +826,7 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
         let t = b.tileset("north/tiles", &bytes).unwrap();
         assert_eq!(
             (t.texture.as_str(), t.filter),
-            ("atlas.png", Filter::Linear)
+            ("base/atlas", Filter::Linear)
         );
         assert_eq!(
             (
@@ -807,14 +877,14 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
         }
         native.push(0);
         assert!(Tileset::decode(&native).is_err());
-        let map = b.load_tilemap("map.tmj").unwrap();
+        let map = b.load_tilemap("north/map").unwrap();
         assert!(matches!(&map.tilesets[0], TilesetRef::Asset(id) if id=="north/tiles"));
         let TilesetRef::Embedded(embedded) = &map.tilesets[1] else {
             panic!("missing embedded tileset")
         };
         assert_eq!(
             (embedded.texture.as_str(), embedded.columns, embedded.rows),
-            ("atlas.png", 3, 2)
+            ("base/atlas", 3, 2)
         );
         assert_eq!(embedded.collision(1), Some(Collision::Full));
         assert_eq!(embedded.tiles[&1].anim.as_ref().unwrap().frames, [4, 2]);
@@ -860,11 +930,16 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
         assert!(error.contains("content/tiles.ts:3"), "{error}");
     }
     write("modules/north/content/tiles.ts", declaration);
-    std::fs::remove_file(root.join("assets/map.tmj.ogt")).unwrap();
-    let report = cook_project(&root, &options).unwrap();
-    assert!(!report.ok(), "unbound external tileset accepted");
-    assert!(format!("{:?}", report.errors()).contains("external.tsx"));
-    std::fs::remove_file(root.join("assets/map.tmj")).unwrap();
+    crate::declare_import(
+        &root.join("modules/north"),
+        "map",
+        "tilemap",
+        "assets/map.tmj",
+    );
+    let error = cook_project(&root, &options).err().unwrap().to_string();
+    assert!(error.contains("external.tsx"), "{error}");
+    std::fs::remove_file(root.join("modules/north/content/map.ts")).unwrap();
+    std::fs::remove_file(root.join("modules/north/assets/map.tmj")).unwrap();
     write("assets/old.ogt", "type tileset\nversion 1\n---\n");
     assert!(
         !cook_project(&root, &options).unwrap().ok(),
@@ -896,7 +971,7 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
                 assert!(
                     Bundle::open(&root.join("cooked"))
                         .unwrap()
-                        .read("atlas.png#index")
+                        .read("base/atlas#index")
                         .is_ok(),
                     "palette conformance must retain the derived index texture"
                 );
@@ -934,6 +1009,7 @@ fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
         "assets/mesh.gltf",
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
     );
+    crate::declare_import(&root, "mesh", "model", "assets/mesh.gltf");
     write(
         "modules/north/lib/irradiance.ts",
         "export const ambient=0.375;",
@@ -974,7 +1050,7 @@ fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
         assert_eq!(lm.file.models[0].entity, "北😀");
         assert_eq!(
             (lm.file.models[0].asset.as_str(), lm.file.models[0].hash),
-            ("mesh.gltf", u64::MAX)
+            ("base/mesh", u64::MAX)
         );
         assert_eq!(lm.file.models[0].parts[0].xref, [4, 1, 3]);
         assert_eq!(lm.file.models[0].parts[0].indices, [2, 0, 1]);
@@ -1061,12 +1137,18 @@ fn typed_font_packs_preserve_membership_and_dictionary_dependencies() {
             root.join(format!("assets/fonts/{name}.ttf")),
         )
         .unwrap();
+        crate::declare_import(
+            &root,
+            &format!("fonts/{name}"),
+            "font",
+            &format!("assets/fonts/{name}.ttf"),
+        );
     }
     let mut options = CookOptions::default();
     assert!(cook_project(&root, &options).unwrap().ok());
     let unrelated = Bundle::open(&root.join("cooked"))
         .unwrap()
-        .read("fonts/unrelated.ttf")
+        .read("base/fonts/unrelated")
         .unwrap()
         .to_vec();
     std::fs::write(
@@ -1091,7 +1173,7 @@ fn typed_font_packs_preserve_membership_and_dictionary_dependencies() {
         let pack = bundle.font_pack("base/fonts/body", &bytes).unwrap();
         assert_eq!(pack.name, "Body");
         assert_eq!(pack.languages, ["en-US"]);
-        assert_eq!(pack.faces, ["fonts/second.ttf", "fonts/first.ttf"]);
+        assert_eq!(pack.faces, ["base/fonts/second", "base/fonts/first"]);
         assert!(pack.covers('A') && !pack.covers('😀'));
         let blob = bundle
             .blob::<og_cook::format::FontPack>("base/fonts/body", &bytes)
@@ -1102,7 +1184,7 @@ fn typed_font_packs_preserve_membership_and_dictionary_dependencies() {
         );
         assert!(blob.raw("hyphenation:fr").is_err());
         assert_eq!(
-            bundle.read("fonts/unrelated.ttf").unwrap().as_ref(),
+            bundle.read("base/fonts/unrelated").unwrap().as_ref(),
             unrelated
         );
         if let Some(previous) = &previous {
@@ -1169,6 +1251,12 @@ fn typed_locales_preserve_messages_and_resolve_font_chains() {
             root.join(format!("assets/fonts/{name}.ttf")),
         )
         .unwrap();
+        crate::declare_import(
+            &root,
+            &format!("fonts/{name}"),
+            "font",
+            &format!("assets/fonts/{name}.ttf"),
+        );
     }
     write(
         "lib/messages.ts",
@@ -1193,7 +1281,7 @@ fn typed_locales_preserve_messages_and_resolve_font_chains() {
             ),
             ("ar-EG", Some("en-US"), true, Direction::Rtl)
         );
-        assert_eq!(table.fonts, ["fonts/second.ttf", "fonts/first.ttf"]);
+        assert_eq!(table.fonts, ["base/fonts/second", "base/fonts/first"]);
         assert_eq!(table.entries["hello"].0, "北の{name} — مرحبًا");
         assert_eq!(
             table.entries["coins"]
@@ -1258,7 +1346,7 @@ fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
     };
     write(
         "project.ts",
-        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'rigs',entry:'src/main.ts',modules:[{id:'cast',root:'modules/cast',dependsOn:['base']}]});",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'rigs',entry:'src/main.ts',dependsOn:['cast'],modules:[{id:'cast',root:'modules/cast'}]});",
     );
     let fixture =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/motion/assets");
@@ -1267,9 +1355,15 @@ fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
     for path in ["models/strider.glb", "anims/humanoid-clips.glb"] {
         std::fs::copy(fixture.join(path), root.join("assets").join(path)).unwrap();
     }
+    crate::declare_import(
+        &root,
+        "anims/humanoid-clips",
+        "model",
+        "assets/anims/humanoid-clips.glb",
+    );
     write(
-        "assets/models/strider.glb.ogt",
-        "type import\nversion 1\n---\nmodel {\nrelaxSkin true\n}\nanimation {\nrig \"cast/rigs/hero\"\nlibrary \"anims/humanoid-clips.glb\"\n}\n",
+        "content/models/strider.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/models/strider.glb',relaxSkin:true,animation:{rig:ref('cast/rigs/hero'),libraries:[ref('base/anims/humanoid-clips')]}});",
     );
     write(
         "modules/cast/lib/feet.ts",
@@ -1297,7 +1391,7 @@ fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
         assert_eq!(rig.scheme.as_deref(), Some("mixamo"));
         assert_eq!(rig.foot_height, Some([0.0625, 0.1875]));
         assert_eq!(rig.bones.len(), 2);
-        let animation = bundle.load_animation("models/strider.glb").unwrap();
+        let animation = bundle.load_animation("base/models/strider").unwrap();
         let map = rig.map(&animation.skeleton).unwrap();
         assert_eq!(
             map.nodes[og_anim::human_bone("hips").unwrap()],
@@ -1319,8 +1413,8 @@ fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
         assert_eq!(unicode.bones[0].1.as_deref(), Some("骨盤"));
         let outputs = [
             bytes.to_vec(),
-            bundle.read("models/strider.glb").unwrap().to_vec(),
-            bundle.read("models/strider.glb#anim").unwrap().to_vec(),
+            bundle.read("base/models/strider").unwrap().to_vec(),
+            bundle.read("base/models/strider#anim").unwrap().to_vec(),
         ];
         if let Some(previous) = &previous {
             assert_eq!(previous, &outputs);
@@ -1340,12 +1434,12 @@ fn typed_rigs_load_native_maps_and_refresh_model_consumers() {
     assert_eq!(changed.foot_height, Some([0.3125, 0.4375]));
     assert_ne!(
         original_clips.unwrap(),
-        bundle.load_animation("models/strider.glb").unwrap().clips,
+        bundle.load_animation("base/models/strider").unwrap().clips,
         "retargeting reused the old map"
     );
     assert_ne!(
         previous.unwrap()[1],
-        bundle.read("models/strider.glb").unwrap().to_vec(),
+        bundle.read("base/models/strider").unwrap().to_vec(),
         "skin preparation did not include its rig dependency"
     );
     for (from, to, expected) in [
@@ -1390,6 +1484,7 @@ fn typed_motion_actions_resolve_refs_and_load_native_fields() {
         "assets/brace.gltf",
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
     );
+    crate::declare_import(&root, "brace", "model", "assets/brace.gltf");
     write(
         "content/human.ts",
         "import {file} from '@origingame/engine/author';export default file.rig({scheme:'auto'});",
@@ -1414,7 +1509,7 @@ fn typed_motion_actions_resolve_refs_and_load_native_fields() {
                 action.rig.as_str(),
                 action.clip.as_str()
             ),
-            ("brace.gltf", "base/human", "brace-右")
+            ("base/brace", "base/human", "brace-右")
         );
         assert_eq!((action.hold_start, action.hold_end), (0.375, 1.625));
         assert_eq!(action.hand, "right");
@@ -1475,6 +1570,7 @@ fn typed_navigation_bakes_captured_geometry_and_preserves_profiles_and_links() {
         "bufferViews":[{"buffer":0,"byteLength":72}],
         "accessors":[{"bufferView":0,"componentType":5126,"count":6,"type":"VEC3","min":[-5,0,-3],"max":[5,3,3]}]
     }).to_string());
+    crate::declare_import(&root, "platform", "model", "assets/platform.gltf");
     write(
         "content/scene.ts",
         "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'east',components:{'og.Transform':{position:[20,1,0]},'og.Collider':{size:[6,2,6]}}}]});",
@@ -1748,7 +1844,6 @@ fn every_thread_count_cooks_the_same_bytes() {
         };
         let report = cook_project(dir, &options).unwrap();
         assert!(report.ok(), "{threads} threads: {:?}", report.errors());
-        assert_eq!(report.ignored, ["fonts/OFL.txt"], "{threads} threads");
         files(&dir.join("cooked"))
     };
     let reference = cook(&base.join("reference"), 1);
@@ -1796,11 +1891,12 @@ fn sounds_fonts_and_scenes_load_as_authored() {
         &template_assets().with_file_name("content"),
         &root.join("content"),
     );
+    crate::declare_import(&root, "audio/recording", "sound", "assets/audio/blip.wav");
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let b = Bundle::open(&root.join("cooked")).expect("the manifest loads");
     // Sound: QOA decodes to the WAV's length and stays close to it.
-    let s = b.load_sound("audio/blip.wav").unwrap();
+    let s = b.load_sound("base/audio/recording").unwrap();
     let pcm = s.decode().unwrap();
     let mut wav = hound::WavReader::open(template_assets().join("audio/blip.wav")).unwrap();
     let src: Vec<i16> = wav.samples::<i16>().map(Result::unwrap).collect();
@@ -1815,7 +1911,7 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert!(snr > 20.0, "QOA SNR {snr:.1} dB");
 
     // Font: the file, whole, with its metrics; no atlas.
-    let f = b.load_font("fonts/NotoSansSC-Regular-subset.ttf").unwrap();
+    let f = b.load_font("base/fonts/NotoSansSC-Regular-subset").unwrap();
     let source =
         std::fs::read(template_assets().join("fonts/NotoSansSC-Regular-subset.ttf")).unwrap();
     assert_eq!(f.file.as_deref(), Some(source.as_slice()));
@@ -1840,7 +1936,7 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert_eq!(scene.entities[3].parent, Some(2));
     assert_eq!(
         scene.entities[1].instance.as_deref(),
-        Some("models/dropship.glb")
+        Some("base/models/dropship")
     );
     let t = scene
         .components
@@ -1909,10 +2005,11 @@ fn skin_relax_is_explicit_local_and_deterministic() {
     });
     std::fs::write(assets.join("mesh.bin"), &bytes).unwrap();
     std::fs::write(assets.join("mesh.gltf"), source.to_string()).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
     let cook = |setting: &str, threads| {
         std::fs::write(
-            assets.join("mesh.gltf.ogt"),
-            format!("type import\nversion 1\n---\nmodel {{\n lods 1\n {setting}\n}}\n"),
+            root.join("content/mesh.ts"),
+            format!("import {{file}} from '@origingame/engine/author';export default file.import({{kind:'model',source:'assets/mesh.gltf',lods:[1],{setting}}});"),
         )
         .unwrap();
         let report = cook_project(
@@ -1928,11 +2025,11 @@ fn skin_relax_is_explicit_local_and_deterministic() {
             .assets
             .iter()
             .flat_map(|a| &a.outputs)
-            .find(|o| o.id == "mesh.gltf#anim")
+            .find(|o| o.id == "base/mesh#anim")
             .unwrap();
         let bytes = std::fs::read(root.join("cooked").join(&output.file)).unwrap();
         let animation =
-            og_anim::cooked::CookedAnimation::from_bytes("mesh.gltf#anim", &bytes).unwrap();
+            og_anim::cooked::CookedAnimation::from_bytes("base/mesh#anim", &bytes).unwrap();
         (report, animation.skin_streams, bytes)
     };
     let (off, authored, _) = cook("", 1);
@@ -1941,9 +2038,9 @@ fn skin_relax_is_explicit_local_and_deterministic() {
             .iter()
             .any(|w| w.contains("skin stretch") && w.contains("relaxSkin"))
     );
-    let (_, explicit_off, _) = cook("relaxSkin false", 1);
+    let (_, explicit_off, _) = cook("relaxSkin:false", 1);
     assert_eq!(authored, explicit_off);
-    let (on, repaired, first) = cook("relaxSkin true", 1);
+    let (on, repaired, first) = cook("relaxSkin:true", 1);
     assert!(!on.warnings.iter().any(|w| w.contains("skin stretch")));
     assert!(
         on.assets
@@ -1968,10 +2065,10 @@ fn skin_relax_is_explicit_local_and_deterministic() {
         assert!((ws.iter().sum::<f32>() - 1.0).abs() < 1e-5);
     }
     std::fs::remove_dir_all(root.join("cooked")).unwrap();
-    let (again, _, second) = cook("relaxSkin true", 8);
+    let (again, _, second) = cook("relaxSkin:true", 8);
     assert_eq!(first, second, "fresh parallel cook must be byte-identical");
     assert!(!again.warnings.iter().any(|w| w.contains("skin stretch")));
-    let (cached, _, _) = cook("relaxSkin true", 8);
+    let (cached, _, _) = cook("relaxSkin:true", 8);
     assert!(
         cached
             .assets
@@ -2007,7 +2104,7 @@ fn skin_relax_is_explicit_local_and_deterministic() {
     std::fs::write(assets.join("mesh.gltf"), source.to_string()).unwrap();
     let (_, scaled_authored, _) = cook("", 1);
     assert_eq!(authored, scaled_authored);
-    let (scaled_on, scaled_repaired, _) = cook("relaxSkin true", 1);
+    let (scaled_on, scaled_repaired, _) = cook("relaxSkin:true", 1);
     assert!(
         !scaled_on
             .warnings

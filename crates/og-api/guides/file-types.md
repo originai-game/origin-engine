@@ -871,6 +871,347 @@ readonly "Join": ((("miter") & (string)) | (("round") & (string)) | (("bevel") &
 
 Output: a named distance-field font loaded with og.load.font. SVG directory source is canonical relative to the owning module (default assets/icons), never relative to the declaration. icons is an ordered list of [name, SVG stem] pairs; names are unique single lines, and stems stay beneath source. Exact SVG bytes are captured before cache lookup. Native SVG stroke joins, fill, tone runs, sticker outline/shadow and atlas layout are unchanged. See theme-tokens for the shared set.
 
+<a id="file-import"></a>
+### `file:import`
+
+Export file.import({kind, source, ...settings}) from content/**/*.ts. The source is an explicit owning-module assets/ or sources/ path. Checked TS feeds native import settings directly; no OGT sidecars, directory defaults or undeclared raw-file auto-cooking remain. Raw bytes, discovered model buffers/images and explicit auxiliary inputs are captured and tracked before caching. References use canonical ref('module/content-id'), never raw filenames. See loading.
+
+```ts
+export type ImportInput = (((({
+readonly "animation"?: (((ImportInputDefinitions["Animation"])) | ((null)));
+readonly "collider"?: (((ImportInputDefinitions["Collider"])) | ((null)));
+readonly "conform"?: (((ImportInputDefinitions["Conform"])) | ((null)));
+readonly "fracture"?: (((ImportInputDefinitions["Fracture"])) | ((null)));
+/** Source forward axis rotated to +Z; must be perpendicular to up. */
+readonly "front"?: (((ImportInputDefinitions["Axis2"])) | ((null)));
+readonly "impostor"?: ((boolean) | (null));
+readonly "impostorBelow"?: ((boolean) | (null));
+readonly "impostorGrid"?: ((number) | (null));
+/** Atlas width (grid × frame size) must not exceed 4096 pixels. */
+readonly "impostorSize"?: ((number) | (null));
+readonly "kind": ("model") & (string);
+readonly "lodError"?: ((number) | (null));
+/** At most eight strictly decreasing fractions beginning at one. */
+readonly "lods"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "process"?: (((ImportInputDefinitions["Process"])) | ((null)));
+readonly "raycast"?: ((boolean) | (null));
+/** Opt-in probe-region skin relaxation (12 passes); absent means off. */
+readonly "relaxSkin"?: ((boolean) | (null));
+/** GLB/glTF/OBJ/FBX/VOX input. External buffers and images are discovered by
+the importer and must enter the closed input/dependency graph as well. */
+readonly "source": (string);
+readonly "streamTextures"?: ((boolean) | (null));
+readonly "up"?: (((ImportInputDefinitions["Axis2"])) | ((null)));
+readonly "voxClips"?: (ReadonlyArray<(ImportInputDefinitions["VoxClip"])> | (number extends ((ImportInputDefinitions["VoxClip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "voxFps"?: ((number) | (null));
+readonly "voxOrigin"?: (((ImportInputDefinitions["VoxOrigin"])) | ((null)));
+readonly "voxScale"?: ((number) | (null));
+})) & { readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "fonts"?: never; readonly "level"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "usage"?: never; }) | ((({
+readonly "conform"?: (((ImportInputDefinitions["TextureConform"])) | ((null)));
+readonly "kind": ("texture") & (string);
+readonly "normal"?: (((ImportInputDefinitions["Normal"])) | ((null)));
+readonly "source": (string);
+/** Pixel textures have no mip chain and cannot stream (domain validation). */
+readonly "stream"?: ((boolean) | (null));
+readonly "sway"?: (((ImportInputDefinitions["Sway"])) | ((null)));
+/** Distinct from the root import kind discriminant. */
+readonly "usage"?: (((ImportInputDefinitions["TextureUsage"])) | ((null)));
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+/** Rounded to whole kb/s; absent selects the mono/stereo codec default. */
+readonly "bitrate"?: ((number) | (null));
+readonly "chunk"?: ((number) | (null));
+readonly "codec"?: (((ImportInputDefinitions["Codec"])) | ((null)));
+readonly "kind": ("sound") & (string);
+readonly "source": (string);
+/** QOA only. Absent selects automatic streaming above 1 MiB; Opus streams
+its own codec blocks rather than QOA chunks. */
+readonly "stream"?: ((boolean) | (null));
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+readonly "kind": ("font") & (string);
+/** Omitted: outline font. Pixel grid changes only this font's raster mode. */
+readonly "pixel"?: ((number) | (null));
+readonly "source": (string);
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+readonly "kind": ("tilemap") & (string);
+readonly "level"?: ((string) | (null));
+readonly "solid"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Explicit Tiled/LDtk exchange text; never an engine author DSL. */
+readonly "source": (string);
+/** Embedded Tiled/LDtk image paths as written in the map to texture refs. */
+readonly "textures"?: (Readonly<Record<string, (ImportInputDefinitions["ContentRef"])>>);
+readonly "tileset"?: (((ImportInputDefinitions["ContentRef"])) | ((null)));
+/** External TSX/TSJ or LDtk image paths as written in the map to tileset refs. */
+readonly "tilesets"?: (Readonly<Record<string, (ImportInputDefinitions["ContentRef"])>>);
+/** World units per tile width. */
+readonly "unit"?: ((number) | (null));
+})) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
+/** Omitted: all artboards. Explicit selection retains authored order. */
+readonly "artboards"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "fonts"?: (Readonly<Record<string, (ImportInputDefinitions["FontSource"])>>);
+readonly "kind": ("rive") & (string);
+readonly "settings"?: (Readonly<Record<string, (ImportInputDefinitions["Artboard"])>>);
+readonly "source": (string);
+})) & { readonly "animation"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fracture"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "textures"?: never; readonly "tileset"?: never; readonly "tilesets"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }));
+export interface ImportInputDefinitions {
+readonly "Align": ("center" | "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right") & (string);
+readonly "Anchor": (((({
+readonly "kind": ("none") & (string);
+})) & { readonly "bottom"?: never; readonly "distance"?: never; readonly "ends"?: never; readonly "normal"?: never; }) | ((({
+readonly "bottom": (boolean);
+readonly "ends": (boolean);
+readonly "kind": ("supports") & (string);
+})) & { readonly "distance"?: never; readonly "normal"?: never; }) | ((({
+readonly "distance": (number);
+readonly "kind": ("plane") & (string);
+readonly "normal": (ReadonlyArray<(number)> & { readonly length: 3 });
+})) & { readonly "bottom"?: never; readonly "ends"?: never; }));
+readonly "Animation": ({
+readonly "clips"?: (ReadonlyArray<(ImportInputDefinitions["Clip"])> | (number extends ((ImportInputDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "compress"?: ((boolean) | (null));
+readonly "events"?: (ReadonlyArray<(ImportInputDefinitions["Event"])> | (number extends ((ImportInputDefinitions["Event"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "footIk"?: ((boolean) | (null));
+readonly "libraries"?: (ReadonlyArray<(ImportInputDefinitions["ContentRef"])> | (number extends ((ImportInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "mirrors"?: (ReadonlyArray<(ImportInputDefinitions["Mirror"])> | (number extends ((ImportInputDefinitions["Mirror"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "rate"?: ((number) | (null));
+readonly "rig"?: (((ImportInputDefinitions["ContentRef"])) | ((null)));
+readonly "tolerance"?: ((number) | (null));
+});
+readonly "Artboard": ({
+readonly "align"?: (((ImportInputDefinitions["Align"])) | ((null)));
+readonly "fit"?: (((ImportInputDefinitions["Fit"])) | ((null)));
+readonly "name"?: ((string) | (null));
+readonly "role"?: (((ImportInputDefinitions["Role"])) | ((null)));
+readonly "stateMachine"?: ((string) | (null));
+});
+readonly "Axis": ("x" | "y" | "z") & (string);
+readonly "Axis2": ("+x" | "-x" | "+y" | "-y" | "+z" | "-z") & (string);
+readonly "Bake": ({
+/** Zero fills all uncovered texels. */
+readonly "dilate"?: ((number) | (null));
+readonly "distance"?: ((number) | (null));
+readonly "normals"?: ((boolean) | (null));
+readonly "padding"?: ((number) | (null));
+readonly "size"?: ((number) | (null));
+});
+readonly "Channel": ({
+readonly "interpolation"?: (((ImportInputDefinitions["Interpolation"])) | ((null)));
+readonly "keys": (ReadonlyArray<(ImportInputDefinitions["Key"])> | (number extends ((ImportInputDefinitions["Key"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "node": (string);
+readonly "path": (ImportInputDefinitions["ChannelPath"]);
+});
+readonly "ChannelPath": ("translation" | "rotation" | "scale" | "weights" | "visibility") & (string);
+readonly "Clip": ({
+readonly "channels": (ReadonlyArray<(ImportInputDefinitions["Channel"])> | (number extends ((ImportInputDefinitions["Channel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "name": (string);
+});
+readonly "Codec": ("qoa" | "opus") & (string);
+readonly "Collider": (((boolean)) | ((ImportInputDefinitions["ColliderMethod"])));
+readonly "ColliderMethod": ("convex" | "vhacd") & (string);
+readonly "Conform": ("off" | "character" | "effect") & (string);
+/** A content identity, never a runtime handle or an instruction to evaluate
+another entry. The project graph validates names, existence, subresources,
+module access and target kinds. A field declares its allowed kinds with
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
+readonly "ContentRef": ({
+readonly "$ogRef": (string);
+});
+readonly "Decimate": ({
+readonly "crossColorBorders"?: ((boolean) | (null));
+readonly "lockBorder"?: ((boolean) | (null));
+readonly "maxError"?: ((number) | (null));
+readonly "mergeCharts"?: ((number) | (null));
+readonly "ratio"?: ((number) | (null));
+/** Zero leaves the triangle-count budget unset. */
+readonly "target"?: ((number) | (null));
+});
+readonly "Event": ({
+readonly "clip": (string);
+readonly "marker": (string);
+readonly "time": (number);
+});
+readonly "Fit": ("contain" | "cover" | "fill" | "none" | "scale-down" | "fit-width" | "fit-height") & (string);
+readonly "FontSource": ({
+/** Omitted: use the embedded font with this source name. */
+readonly "source"?: ((string) | (null));
+});
+readonly "Fracture": ({
+readonly "anchor"?: (((ImportInputDefinitions["Anchor"])) | ((null)));
+readonly "brick"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
+readonly "children"?: ((number) | (null));
+readonly "chunks"?: ((number) | (null));
+readonly "grain"?: (((ImportInputDefinitions["Axis"])) | ((null)));
+readonly "impact"?: (((ImportInputDefinitions["Impact"])) | ((null)));
+readonly "interior"?: (((ImportInputDefinitions["Material"])) | ((null)));
+readonly "interiorScale"?: ((number) | (null));
+readonly "mortar"?: (((ImportInputDefinitions["Material"])) | ((null)));
+readonly "pattern"?: (((ImportInputDefinitions["Pattern"])) | ((null)));
+readonly "rings"?: ((number) | (null));
+readonly "seed"?: ((number) | (null));
+/** Explicit centres replace sampling; count 2..128, distinct, volume
+Voronoi only, exclusive with chunks/impact (domain validation). */
+readonly "sites"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "style"?: (((ImportInputDefinitions["Style"])) | ((null)));
+});
+readonly "Impact": ({
+readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
+readonly "radius": (number);
+});
+readonly "Interpolation": ("step" | "linear" | "cubicSpline") & (string);
+readonly "Joint": ({
+readonly "name": (string);
+/** Empty string denotes root; all other parents must precede the child. */
+readonly "parent": (string);
+readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
+});
+readonly "Key": ({
+readonly "time": (number);
+/** Metres, xyzw unit quaternion, scale factors, morph weights or 0/1.
+Cubic spline keys contain in-tangent, value, out-tangent (per second). */
+readonly "values": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+/** Omitted fields remain absent until the material domain normalizes them. */
+readonly "Material": ({
+/** Alpha-mask cutoff takes precedence over opacity blending. */
+readonly "alphaTest"?: ((number) | (null));
+/** Ambient occlusion in red. */
+readonly "aoMap"?: ((string) | (null));
+readonly "autumnColor"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "autumnColor2"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "clearcoat"?: ((number) | (null));
+readonly "clearcoatRoughness"?: ((number) | (null));
+/** Linear base RGB (glTF factor); not a runtime colour handle. */
+readonly "color"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "domeNormals"?: ((number) | (null));
+readonly "doubleSided"?: ((boolean) | (null));
+/** Linear emitted RGB, multiplied by emissiveIntensity. */
+readonly "emissive"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "emissiveIntensity"?: ((number) | (null));
+readonly "grime"?: ((number) | (null));
+readonly "grimeColor"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
+readonly "grimeHeight"?: ((number) | (null));
+readonly "ior"?: ((number) | (null));
+/** Source image inputs; not cooked texture references. Resolution and path
+containment are checked at the input boundary. */
+readonly "map"?: ((string) | (null));
+readonly "metalness"?: ((number) | (null));
+/** Roughness in green, metalness in blue. */
+readonly "metalnessMap"?: ((string) | (null));
+readonly "normalMap"?: ((string) | (null));
+readonly "normalScale"?: ((number) | (null));
+readonly "opacity"?: ((number) | (null));
+readonly "roughness"?: ((number) | (null));
+/** Zero evergreen; one deciduous. */
+readonly "season"?: ((number) | (null));
+readonly "seasonShift"?: ((number) | (null));
+readonly "stains"?: ((number) | (null));
+readonly "stochastic"?: ((number) | (null));
+readonly "thickness"?: ((number) | (null));
+/** Diffuse transmission through thin leaves; enables both faces. */
+readonly "translucency"?: ((number) | (null));
+readonly "transmission"?: ((number) | (null));
+});
+readonly "Mirror": ({
+readonly "clip": (string);
+readonly "name"?: ((string) | (null));
+});
+readonly "Normal": (((({
+readonly "kind": ("auto") & (string);
+})) & { readonly "source"?: never; }) | (({
+readonly "kind": ("image") & (string);
+readonly "source": (string);
+})));
+readonly "Pattern": ("auto" | "volume" | "slab") & (string);
+readonly "Process": ({
+readonly "bake"?: (((ImportInputDefinitions["Bake"])) | ((null)));
+readonly "decimate"?: (((ImportInputDefinitions["Decimate"])) | ((null)));
+readonly "project"?: (((ImportInputDefinitions["Project"])) | ((null)));
+readonly "repair"?: (((ImportInputDefinitions["Repair"])) | ((null)));
+readonly "rig"?: (((ImportInputDefinitions["Rig"])) | ((null)));
+readonly "transfer"?: (((ImportInputDefinitions["Transfer"])) | ((null)));
+readonly "unwrap"?: (((ImportInputDefinitions["Unwrap"])) | ((null)));
+});
+readonly "Project": ({
+readonly "padding"?: ((number) | (null));
+readonly "size"?: ((number) | (null));
+readonly "views": (ReadonlyArray<(ImportInputDefinitions["View"])> | (number extends ((ImportInputDefinitions["View"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+readonly "Projection": (((({
+readonly "fov": (number);
+readonly "kind": ("perspective") & (string);
+})) & { readonly "ortho"?: never; }) | ((({
+readonly "kind": ("orthographic") & (string);
+readonly "ortho": (number);
+})) & { readonly "fov"?: never; }));
+readonly "Repair": ({
+readonly "floaterFraction"?: ((number) | (null));
+readonly "floaters"?: ((number) | (null));
+readonly "fuse"?: ((boolean) | (null));
+readonly "holeEdges"?: ((number) | (null));
+readonly "holesThrough"?: ((boolean) | (null));
+readonly "minEdge"?: ((number) | (null));
+readonly "nonManifold"?: ((boolean) | (null));
+readonly "thicken"?: ((number) | (null));
+readonly "weld"?: ((number) | (null));
+readonly "weldAll"?: ((boolean) | (null));
+});
+readonly "Rig": (((({
+readonly "kind": ("auto") & (string);
+})) & { readonly "joints"?: never; }) | (({
+readonly "joints": (ReadonlyArray<(ImportInputDefinitions["Joint"])> | (number extends ((ImportInputDefinitions["Joint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "kind": ("joints") & (string);
+})));
+readonly "Role": ("button" | "link" | "text" | "heading" | "image" | "checkbox" | "radio" | "switch" | "slider" | "spinbutton" | "textbox" | "combobox" | "listbox" | "option" | "tab" | "tablist" | "tabpanel" | "radiogroup" | "progressbar" | "meter" | "timer" | "status" | "alert" | "log" | "dialog" | "alertdialog" | "tooltip" | "separator" | "group" | "region" | "navigation" | "toolbar" | "menu" | "menubar" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "list" | "listitem" | "tree" | "treeitem" | "table" | "grid" | "row" | "rowheader" | "columnheader" | "cell" | "gridcell" | "figure" | "scrollbar") & (string);
+readonly "Style": ("voronoi" | "concrete" | "brick" | "wood" | "glass") & (string);
+readonly "Sway": ({
+readonly "kind": (ImportInputDefinitions["SwayKind"]);
+readonly "parts"?: ((string) | (null));
+});
+readonly "SwayKind": ("clumps" | "tiers") & (string);
+readonly "TextureConform": (((({
+readonly "kind": ("off") & (string);
+})) & { readonly "size"?: never; }) | (({
+readonly "kind": ("sprite") & (string);
+readonly "size"?: ((number) | (null));
+})) | (({
+readonly "kind": ("ui") & (string);
+readonly "size"?: ((number) | (null));
+})) | (({
+readonly "kind": ("auto") & (string);
+readonly "size"?: ((number) | (null));
+})));
+readonly "TextureUsage": ("color" | "normal" | "linear" | "single" | "pixel") & (string);
+readonly "Transfer": ({
+readonly "padding"?: ((number) | (null));
+readonly "size"?: ((number) | (null));
+readonly "source": (ImportInputDefinitions["ContentRef"]);
+});
+readonly "Unwrap": ({
+readonly "angle"?: ((number) | (null));
+readonly "conformal"?: ((boolean) | (null));
+readonly "padding"?: ((number) | (null));
+readonly "resolution"?: ((number) | (null));
+readonly "seams"?: ((boolean) | (null));
+readonly "shared"?: ((boolean) | (null));
+});
+readonly "View": ({
+/** Square RGBA source; actual dimensions/decoding are input-domain checks. */
+readonly "image": (string);
+readonly "position": (ReadonlyArray<(number)> & { readonly length: 3 });
+readonly "projection": (ImportInputDefinitions["Projection"]);
+readonly "target": (ReadonlyArray<(number)> & { readonly length: 3 });
+});
+readonly "VoxClip": ({
+/** Inclusive frame indices; first <= last and source bounds are domain checks. */
+readonly "first": (number);
+readonly "last": (number);
+readonly "name": (string);
+});
+readonly "VoxOrigin": ("center" | "bottom") & (string);
+}
+```
+
 <a id="file-lightmap"></a>
 ### `file:lightmap`
 
@@ -7441,144 +7782,6 @@ readonly "StoryType": ("number" | "string" | "bool") & (string);
 readonly "Telemetry": ("on" | "off") & (string);
 }
 ```
-<a id="file-import"></a>
-### `file:import`
-
-A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.
-
-Directory import.ogt contains repeated `match "<pattern>" ... { ... }` blocks (patterns are directory-relative). Matching ancestors merge in order, then the file's own sidecar overrides by key. Root `conform off` opts out of the project art contract; a model's optional `fracture` block is below. Rive uses its own root artboard/font declarations.
-
-
-<a id="file-import-model"></a>
-### `file:import.model`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `lods <fraction> ...` | `1 0.5 0.25` | At most eight strictly decreasing positive fractions, first 1. |
-| `lodError <0..1, >0>` | `0.05` | Largest simplification error relative to mesh extent. |
-| `raycast true \| false` | `true` | Bake raycast BVH; false builds it on first use. |
-| `collider true \| false \| convex \| vhacd` | `false` | Bake triangle, convex or decomposed collision. |
-| `impostor true \| false` | `false` | Bake octahedral impostor. |
-| `impostorGrid <integer 2..32>` | `8` | Impostor view grid. |
-| `impostorSize <integer 16..512>` | `128` | Impostor frame pixels; total atlas width cannot exceed 4096. |
-| `impostorBelow true \| false` | `false` | Include lower hemisphere. |
-| `stream_textures true \| false` | `false` | Stream high mip levels, keeping the shared mip tail resident. |
-| `process { ... }` | `off` | Shared static-mesh preparation; see file:model.process. |
-| `relaxSkin true \| false` | `false` | Relax only skin-probe stretched regions before welding and LODs. Position seams share weights; at most 12 passes, with changed vertices and remaining stretch reported. |
-| `front "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `source orientation` | Source forward axis, rotated to engine +Z. Must be perpendicular to up. |
-| `up "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `+y when front is given` | Source up axis, rotated to engine +Y. |
-| `voxScale <metres per voxel > 0>` | `1` | VOX sources only. |
-| `voxOrigin center \| bottom` | `center` | VOX origin; bottom places the lowest voxel at y=0. |
-| `voxFps <1..120>` | `10` | VOX animation frames per second. |
-| `voxClip <name> <first u32> <last u32>` | `source clips` | VOX frame range, both ends inclusive; repeated unique names. |
-
-<a id="file-import-texture"></a>
-### `file:import.texture`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `kind color \| normal \| linear \| single \| pixel` | `color` | Image data interpretation and encoding. |
-| `stream true \| false` | `false` | Stream high mip levels. |
-| `normal auto \| "<image path>"` | `none` | 2D normal map generated from silhouette/luminance, or an authored tangent-space map beside the texture. |
-| `sway clumps \| tiers ["<parts map>"]` | `none` | 2D plant part segmentation; optional same-size colour-labelled map keeps authored parts. |
-
-<a id="file-import-font"></a>
-### `file:import.font`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `pixel <integer 4..64>` | `outline font` | Pixel grid per em. Does not change other fonts' charset or mode. |
-
-<a id="file-import-sound"></a>
-### `file:import.sound`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `stream true \| false` | `auto above 1 MiB` | QOA chunk streaming; Opus streams codec blocks instead. |
-| `chunk <seconds 1..60>` | `4` | QOA chunk duration rounded up to full codec frames. |
-| `codec qoa \| opus` | `qoa` | Opus resamples to 48kHz and uses at most the first two channels. |
-| `bitrate <16..256>` | `96 stereo / 64 mono` | Opus kb/s, rounded to nearest whole number. |
-
-<a id="file-import-tilemap"></a>
-### `file:import.tilemap`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `unit <number>` | `1` | World units per tile width. |
-| `level <identifier>` | `first level` | LDtk level identifier. |
-| `solid <i64> ...` | `1` | LDtk solid IntGrid values. |
-| `tileset "<canonical tileset id>"` | `source tilesets` | Replace every source tileset with this authored asset. |
-| `bindTileset "<source path>" "<canonical tileset id>"` | `` | Explicit Tiled TSX/TSJ or LDtk image to checked TS tileset binding; source path as written in the map. |
-
-<a id="file-import-rive"></a>
-### `file:import.rive`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `artboards <name> ...` | `all` | Artboards to cook, named as in the source. |
-| `artboard <name> { ... }` | `source defaults` | Per-artboard settings. |
-| `font <name> { source "<path.ttf>" }` | `embedded font` | Supply an external font relative to assets/. |
-
-<a id="file-import-rive-artboard"></a>
-### `file:import.rive.artboard`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `state-machine <name>` | `source default` | Initial state machine. |
-| `role <accessibility role>` | `none` | UI accessibility role; see ui accessibility vocabulary. |
-| `name <string>` | `source name` | Accessible name. |
-| `fit contain \| cover \| fill \| none \| scale-down \| fit-width \| fit-height` | `source default` | Artboard fit. |
-| `align center \| top \| bottom \| left \| right \| top-left \| top-right \| bottom-left \| bottom-right` | `source default` | Artboard alignment. |
-
-<a id="file-import-animation"></a>
-### `file:import.animation`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `clip "<name>" { channel ... }` | `` | Explicit named-node keys. Names cannot collide with the source clips; same sampler and codec as glTF. |
-| `rate <1..120 Hz>` | `source key rate` | Resample every clip at this rate. |
-| `event "<clip>" "<marker>" <seconds>` | `` | Repeat explicit markers. |
-| `rig "<asset>"` | `detected` | Canonical content ID of a checked humanoid rig map. |
-| `library "<model>"` | `` | Repeat animation libraries to retarget to this skeleton; own clips win on name collisions. |
-| `mirror "<clip>" ["<new name>"]` | `` | Repeat mirrored clips; default name is <clip>.mirrored. |
-| `footIk true \| false` | `true` | Retarget planted feet against the ground. |
-| `compress true \| false` | `false` | Quantize and reduce keys instead of storing f32 samples. |
-| `tolerance <number > 0, <= 0.1>` | `0.0001` | Maximum compression error per channel lane in its units. |
-
-<a id="file-import-animation-clip"></a>
-### `file:import.animation.clip`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `channel "<node>" translation \| rotation \| scale \| weights \| visibility { ... }` | `required` | Repeated channels; node names must resolve uniquely. Metres, xyzw unit quaternions, scale factors, morph weights or 0/1 visibility. |
-
-<a id="file-import-animation-clip-channel"></a>
-### `file:import.animation.clip.channel`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `interpolation step \| linear \| cubicSpline` | `linear` | glTF interpolation; visibility requires step. Cubic keys contain in-tangent, value, out-tangent; tangents are per second. |
-| `key <seconds >= 0> <values...>` | `required` | Strictly increasing times. Translation/scale have 3 lanes, rotation 4, weights one per morph target, visibility 1; cubic keys have three times as many values. |
-
-<a id="file-import-fracture"></a>
-### `file:import.fracture`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `style voronoi \| concrete \| brick \| wood \| glass` | `voronoi` | Fracture mechanism, not a gameplay rule. |
-| `chunks <2..256>` | `16` | Support chunk count. |
-| `seed <u32>` | `1` | Deterministic cut pattern. |
-| `site <x> <y> <z>` | `` | Repeat 2..128 explicit Voronoi centres in model metres; requires style voronoi and pattern volume, replaces automatic support-cell sampling. Site order fixes cell ids. Children retain their declared generator. |
-| `children <0..32>` | `0` | Child pieces per support chunk. |
-| `pattern auto \| volume \| slab` | `auto` | 3D cells or shards through the thinnest axis; auto detects thin input. |
-| `brick <length> <height>` | `0.25 0.1` | Brick dimensions, each at least 0.01 metres. |
-| `grain x \| y \| z` | `longest axis` | Wood grain axis. |
-| `rings <1..8>` | `2` | Glass concentric cracks. |
-| `impact <x> <y> <z> <radius>` | `` | Gather the pattern around an authored model-space impact; radius positive. |
-| `anchor bottom [ends] \| ends \| none \| plane <nx> <ny> <nz> <distance>` | `bottom` | Support surfaces; plane normal must be nonzero. |
-| `interiorScale <number > 0>` | `1` | Cut-face UV repeats per metre. |
-| `interior { ... }` | `darkened main material` | Cut-face material using model.material fields. |
-| `mortar { ... }` | `` | Debris material using model.material fields. |
 <a id="file-theme"></a>
 ### `file:theme`
 
