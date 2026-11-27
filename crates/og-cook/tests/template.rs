@@ -14,6 +14,120 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Grammars cross the author/native boundary once, including unreferenced
+/// validation, imported parameters and warm-cache district dependencies.
+#[test]
+fn typed_grammars_build_districts_and_reject_invalid_rules() {
+    let root = crate::temp::TempDir::new("typed-grammar");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'grammar',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write(
+        "assets/materials.ogt",
+        "type materials\nversion 1\n---\nmaterial \"stone\" {\n label stone\n label road\n label pavement\n label ground\n label kerb\n color 0.2 0.4 0.7\n}\n",
+    );
+    write(
+        "assets/town.ogt",
+        "type district\nversion 1\n---\nseed 7\nalong {\n point 0 0\n point 0 24\n width 4\n sidewalk 1\n depth 10\n}\nlots {\n width 6 6\n depth 8 8\n}\nbuildings {\n density 1\n rule \"north/building\"\n}\nmaterials \"materials.ogt\"\n",
+    );
+    write(
+        "assets/gate.gltf",
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
+    );
+    let source = "import {file,ref} from '@origingame/engine/author';\nimport {height} from '../lib/height.ts';\nexport default file.grammar({params:{height},start:'Lot',rules:{\nLot:[{op:'detail',level:0},{op:'extrude',depth:'height',faces:{sides:'Wall',top:'Gate'}}],\nWall:[{op:'label',label:'stone'}],\nGate:[{op:'insert',model:ref('base/gate')}],\nUnused:[{op:'insert',model:ref('base/gate')}]}});";
+    write("modules/north/content/building.ts", source);
+    let mut options = CookOptions {
+        schemas: og_cook::cook::engine_schemas(),
+        ..Default::default()
+    };
+    let mut previous = None;
+    for height in [7, 11] {
+        write(
+            "modules/north/lib/height.ts",
+            &format!("export const height={height};"),
+        );
+        for threads in [1, 3] {
+            options.threads = threads;
+            let report = cook_project(&root, &options).unwrap();
+            assert!(report.ok(), "{:?}", report.errors());
+            let bundle = Bundle::open(&root.join("cooked")).unwrap();
+            let scene = bundle.load_scene("town.ogt").unwrap();
+            assert!(
+                scene
+                    .entities
+                    .iter()
+                    .any(|e| e.instance.as_deref() == Some("gate.gltf")),
+                "grammar insert did not bind the actual imported model output"
+            );
+            let id = scene
+                .entities
+                .iter()
+                .filter(|e| e.instance.as_deref() != Some("gate.gltf"))
+                .find_map(|e| e.instance.as_ref())
+                .expect("generated district model");
+            let model = bundle.load_model(id).unwrap();
+            assert_eq!(model.min.y, 0.0);
+            assert_eq!(
+                model.max.y, height as f32,
+                "imported grammar parameter was stale"
+            );
+            assert!(!model.primitives.is_empty());
+            assert!(model.primitives.iter().all(|p| !p.indices.is_empty()));
+            let bytes = bundle.read(id).unwrap().to_vec();
+            if threads == 3 {
+                assert_eq!(
+                    previous.as_ref().unwrap(),
+                    &bytes,
+                    "warm or parallel cook changed geometry"
+                );
+            } else if let Some(old) = &previous {
+                assert_ne!(old, &bytes, "changed parameter reused old model bytes");
+            }
+            previous = Some(bytes);
+        }
+    }
+    // Unreachable rules still validate; otherwise a broken helper could hide
+    // indefinitely behind a seed or a district's rule selection.
+    for (from, to, expected) in [
+        ("depth:'height'", "depth:'missing'", "param `missing`"),
+        ("sides:'Wall'", "sides:'Absent'", "rule `Absent`"),
+        ("op:'detail',level:0", "op:'drop'", "exactly one"),
+        (
+            "Unused:[{op:'insert',model:ref('base/gate')}]",
+            "Unused:[{op:'recess',depth:1}]",
+            "exactly one",
+        ),
+        ("ref('base/gate')", "ref('base/absent')", "base/absent"),
+    ] {
+        write(
+            "modules/north/content/building.ts",
+            &source.replace(from, to),
+        );
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(error.contains(expected), "{error}");
+        assert!(error.contains("content/building.ts:"), "{error}");
+    }
+    write("modules/north/content/building.ts", source);
+    write(
+        "assets/old.ogt",
+        "type grammar\nversion 1\n---\nstart A\nrule A {\n drop\n}\n",
+    );
+    assert!(
+        !cook_project(&root, &options).unwrap().ok(),
+        "old grammar author input was accepted"
+    );
+}
+
 /// Checked tileset data, cross-module atlas references and embedded imported
 /// tilesets retain their meaning through bundle loading and world snapshots.
 #[test]

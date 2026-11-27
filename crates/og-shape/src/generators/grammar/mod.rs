@@ -34,21 +34,18 @@
 
 mod eval;
 mod face;
-mod parse;
 mod roof;
 mod split;
+mod validate;
 
 pub use eval::build;
-pub use parse::{BLOCKS, LINES, parse};
+pub use validate::validate;
 
 use std::collections::BTreeMap;
 
 use glam::{DVec2, DVec3};
 
 use crate::generators::Mesh;
-
-/// The `.ogt` type of a grammar.
-pub const GRAMMAR_TYPE: &str = "grammar";
 
 /// The most shapes one lot may make before it is refused.
 pub const MAX_SHAPES: usize = 1_000_000;

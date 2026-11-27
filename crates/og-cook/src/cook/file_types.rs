@@ -96,6 +96,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "tilemap" {
                 out.push_str("Output: a native layered map loaded with og.load.tilemap. Tilesets are ordered canonical refs; layer.tileset indexes this list. Cells are row-major top-first u32: zero empty, otherwise tile id + 1 with optional flip X (0x80000000) and Y (0x40000000); diagonal flips are refused. Terrain cells are 0/1 occupancy. Map dimensions allow at most 16,777,216 cells; every layer has exactly width * height cells and a unique name. Unit is world units per tile width; object positions/dimensions and layer offsets are map-local world units with y up. Compute cells directly in TS, using rng(seed), procgen and input.bytes as needed; no generate wrapper or author OGT parser remains. Tiled/LDtk remain external import formats. See world and generating.\n\n");
             }
+            if ty == "grammar" {
+                out.push_str("Output: checked native building rules consumed by districts, not a runtime blob. Numbers are literals or declared parameter names; dimensions are metres and roof angles degrees. Each ordered rule has exactly one terminal operation, last; recess and detail precede it. All rule/parameter references are checked, including unreachable rules. Insert models are canonical content refs bound through their actual outputs. District building rules name the grammar's canonical content ID. Seeded choices, shrinking recursion, detail levels and shape budgets remain the native builder's. No grammar author text parser or TS-to-OGT stage remains. See districts.\n\n");
+            }
             if matches!(ty, "shader" | "post" | "ui-material") {
                 out.push_str("Output: checked WGSL and ordered typed uniforms, loaded with og.load.shader, og.load.post or og.load.uiMaterial. Use code: input.text('sources/example.wgsl') for an external WGSL file; imports and exact input bytes enter the shared evaluator/cache key. Shader mode explicitly selects hooks, sprite or full with lit. Parameters select float/vec2/vec3/vec4/color; defaults are zero and colors are linear RGB. Native checks and naga validate the existing WGSL contracts for SPIR-V, MSL and HLSL before writing the binary payload. No shader-family author OGT or runtime text parser remains. See render and ui-materials.\n\n");
             }
@@ -157,13 +160,6 @@ pub fn markdown() -> Result<String, String> {
                     block(&mut out, &format!("district.{name}"), fields);
                 }
                 block(&mut out, "district.hlod", super::hlod::LINES);
-            }
-            "grammar" => {
-                out.push_str("Numbers may name declared parameters. Dimensions are metres and roof angles degrees. A rule ends in label/insert/drop or dispatch; no building composition is inferred.\n\n");
-                table(&mut out, og_shape::generators::grammar::LINES);
-                for (name, fields) in og_shape::generators::grammar::BLOCKS {
-                    block(&mut out, &format!("grammar.{name}"), fields);
-                }
             }
             "flipbook" => {
                 table(&mut out, og_anim::FLIPBOOK_LINES);

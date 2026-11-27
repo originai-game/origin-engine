@@ -254,14 +254,17 @@ pub(super) fn build(
     rel: &str,
     d: &District,
     read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+    prepared: &BTreeMap<String, Grammar>,
 ) -> Result<Output, String> {
     let text = |id: &str| read(id).map(|b| String::from_utf8_lossy(&b).into_owned());
     let materials =
         parse::materials(&text(&d.materials)?).map_err(|e| format!("{}: {e}", d.materials))?;
     let library = Library::new(&materials);
-    let mut grammars: BTreeMap<&str, Grammar> = BTreeMap::new();
+    let mut grammars: BTreeMap<&str, &Grammar> = BTreeMap::new();
     for r in &d.buildings.rules {
-        let g = grammar::parse(&text(&r.grammar)?).map_err(|e| format!("{}: {e}", r.grammar))?;
+        let g = prepared
+            .get(&r.grammar)
+            .ok_or_else(|| format!("{}: not a checked grammar content ID", r.grammar))?;
         grammars.insert(&r.grammar, g);
     }
     let plan = layout::layout(&LayoutDesc {

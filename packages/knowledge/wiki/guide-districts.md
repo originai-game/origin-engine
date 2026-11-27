@@ -2,7 +2,7 @@
 
 # The `districts` guide: Districts: towns from rules
 
-The `type district` asset: a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names building rules (`type grammar`) and a material library (`type materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
+The `type district` asset: a whole area (streets, pavements, buildings and roadside props) laid out by the cook from rules and a seed, instead of placing models one at a time. A district names checked TS building rules (`file.grammar`) and a material library (`type materials`); the cook turns it into a scene of ordinary models, colliders and streaming cells, so it loads, streams and draws like any scene. Nothing is generated at runtime.
 
 The scene it becomes is placed and streamed as world §5 describes; its
 models are glTF models with levels of detail (models §1 for the material
@@ -12,135 +12,90 @@ no default building.
 <a id="guide-districts-1"></a>
 ### `districts §1` The three files
 
-All three live under `assets/`. Only the district is placed in a game; the
-grammars and the library it names are part of it.
+Grammars export `file.grammar` from `content/**/*.ts`; districts and material
+libraries still live under `assets/` until their domain cutovers. Only the
+district is placed in a game; grammars and the library are cook inputs.
+District `buildings.rule` names a grammar's canonical content ID, such as
+`base/grammars/terrace`, not a physical path. No grammar OGT reader remains.
 
 A grammar builds one building on one lot. It starts from the lot's
 footprint and hands faces from rule to rule until each ends in a `label`
 (the part is made and labelled), an `insert` (a model is fitted to the
 face) or `drop`:
 
-```text
-type grammar
-version 1
----
-param height 12
-param floor 3.2
-start Lot
-rule Lot {
-  extrude height {
-    sides Facade
-    top Roof
-  }
-}
-rule Facade {
-  split y {
-    part 4 Ground
-    repeat floor Floor
-    part 0.4 Cornice
-  }
-}
-rule Floor {
-  split x {
-    part 0.5 Wall
-    repeat 2.8 Bay
-    part 0.5 Wall
-  }
-}
-rule Bay {
-  split x {
-    fill 1 Wall
-    part 1.2 Window
-    fill 1 Wall
-  }
-}
-rule Window {
-  split y {
-    part 0.9 Wall
-    part 1.6 Glass
-    fill 1 Wall
-  }
-}
-rule Glass {
-  recess 0.12
-  label glass
-}
-rule Ground {
-  split x {
-    part 0.4 Wall
-    fill 1 Shop
-    part 1.35 Entrance
-    part 0.4 Wall
-  }
-}
-rule Shop {
-  split y {
-    part 0.45 Plinth
-    fill 1 ShopWindow
-    part 0.45 ShopFrame
-  }
-}
-rule ShopWindow {
-  inset 0.1 ShopFrame ShopGlass
-}
-rule ShopGlass {
-  recess 0.16 ShopFrame
-  label shopglass
-}
-rule Entrance {
-  split y {
-    part 0.12 Plinth
-    part 2.6 DoorFrame
-    fill 1 ShopFrame
-  }
-}
-rule DoorFrame {
-  inset 0.1 ShopFrame Door
-}
-rule Door {
-  recess 0.2 ShopFrame
-  label door
-}
-rule ShopFrame {
-  label shopfront
-}
-rule Plinth {
-  extrude 0.06 {
-    top PlinthEdge
-    sides PlinthEdge
-  }
-}
-rule PlinthEdge {
-  label plinth
-}
-rule Cornice {
-  label trim
-}
-rule Wall {
-  label wall
-}
-rule Roof {
-  roof hip 35 {
-    overhang 0.3
-    slope Slate
-  }
-}
-rule Slate {
-  label roof
-}
+```ts
+import { file } from "@origingame/engine/author";
+
+export default file.grammar({
+  params: { height: 12, floor: 3.2 },
+  start: "Lot",
+  rules: {
+    Lot: [{ op: "extrude", depth: "height", faces: { sides: "Facade", top: "Roof" } }],
+    Facade: [{ op: "split", axis: "y", parts: [
+      { size: "abs", length: 4, rule: "Ground" },
+      { size: "repeat", length: "floor", rule: "Floor" },
+      { size: "abs", length: 0.4, rule: "Cornice" },
+    ] }],
+    Floor: [{ op: "split", axis: "x", parts: [
+      { size: "abs", length: 0.5, rule: "Wall" },
+      { size: "repeat", length: 2.8, rule: "Bay" },
+      { size: "abs", length: 0.5, rule: "Wall" },
+    ] }],
+    Bay: [{ op: "split", axis: "x", parts: [
+      { size: "fill", length: 1, rule: "Wall" },
+      { size: "abs", length: 1.2, rule: "Window" },
+      { size: "fill", length: 1, rule: "Wall" },
+    ] }],
+    Window: [{ op: "split", axis: "y", parts: [
+      { size: "abs", length: 0.9, rule: "Wall" },
+      { size: "abs", length: 1.6, rule: "Glass" },
+      { size: "fill", length: 1, rule: "Wall" },
+    ] }],
+    Glass: [{ op: "recess", depth: 0.12 }, { op: "label", label: "glass" }],
+    Ground: [{ op: "split", axis: "x", parts: [
+      { size: "abs", length: 0.4, rule: "Wall" },
+      { size: "fill", length: 1, rule: "Shop" },
+      { size: "abs", length: 1.35, rule: "Entrance" },
+      { size: "abs", length: 0.4, rule: "Wall" },
+    ] }],
+    Shop: [{ op: "split", axis: "y", parts: [
+      { size: "abs", length: 0.45, rule: "Plinth" },
+      { size: "fill", length: 1, rule: "ShopWindow" },
+      { size: "abs", length: 0.45, rule: "ShopFrame" },
+    ] }],
+    ShopWindow: [{ op: "inset", width: 0.1, border: "ShopFrame", inner: "ShopGlass" }],
+    ShopGlass: [{ op: "recess", depth: 0.16, jamb: "ShopFrame" }, { op: "label", label: "shopglass" }],
+    Entrance: [{ op: "split", axis: "y", parts: [
+      { size: "abs", length: 0.12, rule: "Plinth" },
+      { size: "abs", length: 2.6, rule: "DoorFrame" },
+      { size: "fill", length: 1, rule: "ShopFrame" },
+    ] }],
+    DoorFrame: [{ op: "inset", width: 0.1, border: "ShopFrame", inner: "Door" }],
+    Door: [{ op: "recess", depth: 0.2, jamb: "ShopFrame" }, { op: "label", label: "door" }],
+    ShopFrame: [{ op: "label", label: "shopfront" }],
+    Plinth: [{ op: "extrude", depth: 0.06, faces: { top: "PlinthEdge", sides: "PlinthEdge" } }],
+    PlinthEdge: [{ op: "label", label: "plinth" }],
+    Cornice: [{ op: "label", label: "trim" }],
+    Wall: [{ op: "label", label: "wall" }],
+    Roof: [{ op: "roof", roof: { kind: "hip", angle: 35 }, overhang: 0.3, slope: "Slate" }],
+    Slate: [{ op: "label", label: "roof" }],
+  },
+});
 ```
 
 - `extrude` names the prism's faces: `front` (the lot's street edge),
   `back`, `side`, `sides` (every side not named), `top`, `bottom`.
-- `split x` cuts across a face, `split y` up it: `part` is exactly its
+- A split's `axis: "x"` cuts across a face, `"y"` up it: `size: "abs"` is exactly its
   size, `fill` stretches to what the parts leave, `repeat` fits as many
   copies as fit, stretched to fill.
-- `inset <width> <border> <inner>`, `pick { option <weight> <rule> }` and
-  `case { wider|taller <n> <rule>; param <name> <n> <rule>; otherwise
-  <rule> }` choose and cut; `recess <depth> [<jamb rule>]` pushes a face
-  in and makes its jambs (labelled `jamb` without a rule); `roof flat`,
-  `roof gable <deg>` and `roof hip <deg>` build roofs.
-- `detail <n>` leaves what the rule reaches out of the model's levels of
+- `inset` names `width`, `border`, `inner`; `pick` has ordered
+  `options: [{weight, rule}]`; `case` has ordered
+  `arms: [{condition, rule}]` and optional `otherwise`. Conditions select
+  `kind: "wider" | "taller" | "param"` with a `value` (and `name` for param).
+  `recess` names `depth` and optional `jamb` (labelled `jamb` without a rule).
+  A roof selects `roof: {kind: "flat"}` or gable/hip with `angle` in degrees.
+  Inserted models use `model: ref("module/content-id")`.
+- `detail` with `level: n` leaves what the rule reaches out of the model's levels of
   detail from level n on: added sills and mouldings at 1 or 2,
   the walls and roof at 0.
 - A param named `height` takes the height the district draws for the lot.
@@ -227,10 +182,10 @@ buildings {
   density 0.9
   height 9 24
   heightNoise 0.01 0.6
-  rule "grammars/terrace.ogt" {
+  rule "base/grammars/terrace" {
     weight 3
   }
-  rule "grammars/corner-shop.ogt" {
+  rule "base/grammars/corner-shop" {
     street "High Street"
   }
 }

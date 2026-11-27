@@ -29,6 +29,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("lightmap", &lightmap::LIGHTMAP),
     ("tileset", &tilemap::TILESET),
     ("tilemap", &tilemap::TILEMAP),
+    ("grammar", &district::GRAMMAR),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -76,9 +77,9 @@ fn catalogue(
             .map_err(|e| CookError(e.to_string()))?
             .to_string_lossy()
             .replace('\\', "/");
-        // A derived output can retain its producer's physical path. Only
-        // original scan entries define this temporary source catalogue.
-        if source.rel != file {
+        // Derived outputs can retain their producer's path or a synthetic
+        // sibling path. Only real original scan entries define this catalogue.
+        if source.rel != file || !source.path.is_file() {
             continue;
         }
         let stem = file
@@ -178,6 +179,7 @@ pub(crate) fn sources(
     let mut evaluator = source_content::Evaluator::default();
     let mut fields = field::Fields::new();
     let mut terrains = BTreeMap::new();
+    let mut grammars = BTreeMap::new();
     for entry in index.entries.values() {
         let content = if let Some(content) = prepared.remove(&entry.id) {
             if content.entry() != entry {
@@ -238,6 +240,21 @@ pub(crate) fn sources(
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "grammar" => {
+                let grammar = district::grammar::declaration(source.input()?, |name| {
+                    let escaped = name.replace('~', "~0").replace('/', "~1");
+                    source_content::diagnostic(
+                        content.source(),
+                        &entry.file,
+                        &format!("/rules/{escaped}"),
+                        "",
+                    )
+                    .location
+                    .line
+                })?;
+                grammars.insert(entry.id.clone(), grammar);
+                Ok(BTreeMap::new())
+            }
             "tilemap" => {
                 source.tilemap = Some(tilemap::map_declaration(source.input()?)?);
                 Ok(BTreeMap::new())
@@ -360,8 +377,17 @@ pub(crate) fn sources(
     timeline::bind(sources, &graph)?;
     font_pack::bind(sources, &graph)?;
     field::bind(sources, fields);
+    for grammar in grammars.values_mut() {
+        for rule in grammar.rules.values_mut() {
+            for op in &mut rule.ops {
+                if let og_shape::generators::grammar::Op::Insert(id) = op {
+                    *id = graph.outputs[id.as_str()].asset.clone();
+                }
+            }
+        }
+    }
     // Street carves address actual canonical terrain IDs, discovered above.
-    district::expand(sources, consumed);
+    district::expand(sources, consumed, &grammars);
     let mut prepared = terrain::Terrains::new();
     for (id, (input, captured, file)) in terrains {
         let source = sources

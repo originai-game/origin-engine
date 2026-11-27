@@ -22,7 +22,7 @@ buildings {
   density 0.9
   height 9 24
   heightNoise 0.01 0.6
-  rule "grammars/terrace.ogt"
+  rule "base/grammars/terrace"
 }
 prop "lamp" {
   model "models/lamp.ogt"

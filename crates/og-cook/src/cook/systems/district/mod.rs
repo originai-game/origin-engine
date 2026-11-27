@@ -5,7 +5,7 @@
 //!
 //! - og-shape's `layout` lays out the streets, blocks, lots and prop sites;
 //!   og-shape's `grammar` builds each lot's building from the rules the
-//!   district names (`type grammar`), every part with its label.
+//!   district names (checked `file.grammar`), every part with its label.
 //! - A material library (`type materials`) gives each label its
 //!   materials: each building draws one per label by weight from its own
 //!   seed (labels covered by the same materials, a wall and its jambs,
@@ -30,6 +30,7 @@
 
 mod build;
 mod glb;
+pub(crate) mod grammar;
 pub(crate) mod parse;
 pub(super) mod terrain;
 mod texts;
@@ -53,10 +54,10 @@ pub(crate) static DISTRICT: KindDef = KindDef {
 pub(crate) static GRAMMAR: KindDef = KindDef {
     name: "grammar",
     extensions: &[],
-    types: &[og_shape::generators::grammar::GRAMMAR_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
-    plan: plan_check,
+    plan: plan_nothing,
 };
 
 /// A material library: part of the districts that name it.
@@ -81,8 +82,8 @@ fn plan_nothing<'a>(
 ) {
 }
 
-/// A grammar or a library no district names cooks nothing, but a mistake
-/// in it is still reported.
+/// A library no district names cooks nothing, but a mistake in it is still
+/// reported. Grammars are checked when their TS declarations enter the cook.
 fn plan_check<'a>(
     _: &Cx<'a>,
     state: &mut PlanState,
@@ -91,11 +92,7 @@ fn plan_check<'a>(
     _: &mut Vec<Out<'a>>,
 ) {
     let text = String::from_utf8_lossy(&s.bytes);
-    let checked = if s.kind == &GRAMMAR {
-        og_shape::generators::grammar::parse(&text).map(|_| ())
-    } else {
-        parse::materials(&text).map(|_| ())
-    };
+    let checked = parse::materials(&text).map(|_| ());
     if let Err(e) = checked {
         state.early_errors.push((s.rel.clone(), s.kind.name, e));
     }
@@ -103,7 +100,11 @@ fn plan_check<'a>(
 
 /// Every district becomes a scene and the sources it places; the grammars
 /// and libraries they name are consumed.
-pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
+pub(crate) fn expand(
+    sources: &mut Vec<Source>,
+    consumed: &mut BTreeSet<String>,
+    grammars: &BTreeMap<String, og_shape::generators::grammar::Grammar>,
+) {
     let mut extra = Vec::new();
     let terrains: BTreeSet<String> = sources
         .iter()
@@ -131,7 +132,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                     "terrain `{id}` is not a terrain asset under assets/"
                 ));
             }
-            build::build(&s.rel, &d, &read)
+            build::build(&s.rel, &d, &read, grammars)
         });
         let out = match built {
             Ok(o) => o,
