@@ -3066,12 +3066,9 @@ fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     )
     .unwrap();
     std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'map',entry:'src/main.ts'});").unwrap();
-    std::fs::write(
-        assets.join("tiles.ogt"),
-        "type tileset\nversion 1\n---\ntexture \"\"\ngrid 8 8 3 1\n",
-    )
-    .unwrap();
-    let map = "type tilemap\nversion 1\n---\ntile 8 16\nunit 3\ntileset \"tiles.ogt\"\ngenerate {\nscript \"grid.ts\"\ninput \"source\" \"cell.bin\"\n}\nlayer \"cells\" {\nz 4\nparallax 0.6 0.8\n}\nlayer \"manual\" {\nrow 2 -1 0\nrow 1 2 -1\n}\n";
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::write(root.join("content/tiles.ts"), "import {file} from '@origingame/engine/author';export default file.tileset({tileWidth:8,tileHeight:8,columns:3,rows:1});").unwrap();
+    let map = "type tilemap\nversion 1\n---\ntile 8 16\nunit 3\ntileset \"base/tiles\"\ngenerate {\nscript \"grid.ts\"\ninput \"source\" \"cell.bin\"\n}\nlayer \"cells\" {\nz 4\nparallax 0.6 0.8\n}\nlayer \"manual\" {\nrow 2 -1 0\nrow 1 2 -1\n}\n";
     std::fs::write(assets.join("map.ogt"), map).unwrap();
     std::fs::write(assets.join("cell.bin"), [0]).unwrap();
     std::fs::write(assets.join("grid.ts"), "export default ({inputs}) => ({width: 3, height: 2, layers: [{name: 'cells', tiles: new Int32Array([inputs.source[0], -1, 2, 1, 0, 2])}]});").unwrap();

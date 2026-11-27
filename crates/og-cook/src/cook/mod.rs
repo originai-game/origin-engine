@@ -157,6 +157,8 @@ pub(crate) struct Source {
     navmesh: Option<navmesh::Prepared>,
     /// Native bake bindings and captured irradiance pages.
     lightmap: Option<lightmap::Prepared>,
+    /// Checked atlas grid, bound to the actual texture output.
+    tileset: Option<og_tilemap::Tileset>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

@@ -650,7 +650,7 @@ type tilemap
 version 1
 ---
 tile 8 8
-tileset "tiles.ogt"
+tileset "base/tiles"
 generate {
   script "grid.ts"
   seed 9
@@ -689,15 +689,14 @@ export default function grid(ctx: GeneratorContext<{ width: number; height: numb
 }
 ```
 
-```ogt recipe file=assets/tiles.ogt
-type tileset
-version 1
----
-texture "tiles.svg"
-grid 8 8 3 1
+```ts recipe file=content/tiles.ts
+import { file, ref } from "@origingame/engine/author";
+export default file.tileset({
+  texture: ref("base/atlas"), tileWidth: 8, tileHeight: 8, columns: 3, rows: 1,
+});
 ```
 
-```text recipe file=assets/tiles.svg
+```text recipe file=assets/atlas.svg
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="8"><path fill="#285c9b" d="M0 0h8v8H0z"/><path fill="#dbb755" d="M8 0h8v8H8z"/><path fill="#a8493f" d="M16 0h8v8h-8z"/></svg>
 ```
 

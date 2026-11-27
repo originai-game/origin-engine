@@ -30,10 +30,29 @@ pub fn tilemap_256() -> RenderScene {
         mips: Mips::None,
     });
     scene.set_texture_filter(texture, og_render::TextureFilter::Nearest);
-    let tileset = Tileset::parse(
-        "type tileset\nversion 1\n---\ntexture \"t.png\"\ngrid 32 32 4 4\ntile 15 {\n  frames 15 14 13\n  fps 4\n}\n",
-    )
-    .expect("tileset");
+    let tileset = Tileset {
+        texture: "t.png".into(),
+        tile_width: 32,
+        tile_height: 32,
+        columns: 4,
+        rows: 4,
+        margin: 0,
+        spacing: 0,
+        filter: og_tilemap::Filter::Nearest,
+        tiles: [(
+            15,
+            og_tilemap::TileDef {
+                anim: Some(og_tilemap::TileAnim {
+                    frames: vec![15, 14, 13],
+                    durations: vec![0.25; 3],
+                }),
+                ..Default::default()
+            },
+        )]
+        .into_iter()
+        .collect(),
+        terrains: Vec::new(),
+    };
     let n = 256u32;
     let mut layers = Vec::new();
     for l in 0..4u32 {

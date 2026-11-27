@@ -1364,13 +1364,11 @@ impl Bundle {
 
 fn decode_tileset(blob: &Blob) -> Result<og_tilemap::Tileset, LoadError> {
     let meta = one::<format::TilesetMeta>(blob)?;
-    let text = blob.raw("text")?;
-    let text = text
-        .get(..meta.text_bytes as usize)
-        .ok_or_else(|| invalid(blob, "the tileset text is cut short"))?;
-    let text =
-        std::str::from_utf8(text).map_err(|_| invalid(blob, "the tileset text is not UTF-8"))?;
-    og_tilemap::Tileset::parse(text).map_err(|e| invalid(blob, e.to_string()))
+    let bytes = blob.raw("data")?;
+    let bytes = bytes
+        .get(..meta.data_bytes as usize)
+        .ok_or_else(|| invalid(blob, "the native tileset is cut short"))?;
+    og_tilemap::Tileset::decode(bytes).map_err(|e| invalid(blob, e.to_string()))
 }
 
 fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
@@ -1410,13 +1408,22 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
         objects: Vec::new(),
     };
     for t in &tilesets {
-        let text = s(t.offset, t.len)?;
-        map.tilesets.push(if t.embedded == 1 {
-            og_tilemap::TilesetRef::Embedded(
-                og_tilemap::Tileset::parse(&text).map_err(|e| invalid(blob, e.to_string()))?,
-            )
-        } else {
-            og_tilemap::TilesetRef::Asset(text)
+        map.tilesets.push(match t.embedded {
+            0 => og_tilemap::TilesetRef::Asset(s(t.offset, t.len)?),
+            1 => {
+                let first = t.offset as usize;
+                let end = first
+                    .checked_add(t.len as usize)
+                    .ok_or_else(|| invalid(blob, "embedded tileset range overflows"))?;
+                let bytes = blob
+                    .raw("embedded")?
+                    .get(first..end)
+                    .ok_or_else(|| invalid(blob, "embedded tileset range is out of bounds"))?;
+                og_tilemap::TilesetRef::Embedded(
+                    og_tilemap::Tileset::decode(bytes).map_err(|e| invalid(blob, e.to_string()))?,
+                )
+            }
+            _ => return Err(invalid(blob, "unknown tileset reference tag")),
         });
     }
     for l in &layers {

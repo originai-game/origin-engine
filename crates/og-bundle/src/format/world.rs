@@ -39,15 +39,14 @@ impl BlobKind for Field {
 // ── tilemaps ─────────────────────────────────────────────────────────────
 
 row!(
-    /// The root of a tileset blob (an `.ogt` of `type tileset`).
-    TilesetMeta, "og.Tileset", 1 {
-        /// Bytes of the canonical tileset text in `text`.
-        text_bytes: u32,
+    /// Native tileset from a checked TS declaration or an external map import.
+    TilesetMeta, "og.Tileset", 2 {
+        /// Bytes of the native tileset in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The tileset blob: `text` holds the canonical tileset text
-/// (`og_tilemap::Tileset::to_text`), parsed again at load.
+/// The tileset blob: `data` holds checked native fields, not author text.
 pub struct Tileset;
 impl BlobKind for Tileset {
     const NAME: &'static str = "og.Tileset";
@@ -143,16 +142,17 @@ row!(
 );
 
 row!(
-    /// A map's tileset: `embedded` 0, the asset id of a tileset blob in
-    /// `strings`; 1, the canonical text of a tileset an importer made.
-    MapTilesetRow, "og.TilemapTileset", 1 {
+    /// A map's tileset: `embedded` 0 indexes its ID in `strings`;
+    /// 1 indexes native tileset bytes in `embedded`.
+    MapTilesetRow, "og.TilemapTileset", 2 {
         embedded: u32,
         offset: u32,
         len: u32,
     }
 );
 
-/// The tilemap blob.
+/// The tilemap blob: external tileset IDs live in `strings`; embedded native
+/// tilesets live in `embedded`, addressed by `MapTilesetRow` byte ranges.
 pub struct Tilemap;
 impl BlobKind for Tilemap {
     const NAME: &'static str = "og.Tilemap";

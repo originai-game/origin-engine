@@ -4,8 +4,8 @@ A farm at dusk in the manner of Stardew Valley: a farmer walks down the path
 between fenced plots of crops while the lamps come on. It exercises the 2D
 stack together on the real engine:
 
-- **A tilemap.** `assets/tiles/farm.ogt` is a generated tileset (`type
-  tileset`, 16 texels a tile: grass, flowers, soil, watered soil, path),
+- **A tilemap.** `content/tiles/farm-set.ts` is a checked TS tileset
+  (16 texels a tile: grass, flowers, soil, watered soil, path),
   its texture cooked as pixel art (`farm.png.ogt`, `kind pixel`); the map
   `farm-map.ogt` is 48×30 cells. `till` waters a cell with
   og.tilemap.setTile.

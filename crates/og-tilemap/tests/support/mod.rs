@@ -12,24 +12,83 @@ pub fn blob_masks() -> Vec<u8> {
     m
 }
 
-pub fn blob_tileset(edge: &str) -> String {
-    let mut t = String::from(
-        "type tileset\nversion 1\n---\ntexture \"tiles/t.png\"\ngrid 16 16 8 8\nsolid 60\ntile 61 {\n  collide 0 8 16 8\n}\ntile 62 {\n  collide 2 0 4 4\n}\ntile 50 {\n  frames 50 51 52\n  fps 4\n}\nterrain wall {\n  mode blob47\n",
-    );
-    for (i, m) in blob_masks().into_iter().enumerate() {
-        t.push_str(&format!("  rule {m} {i}\n"));
-    }
-    t.push_str(&format!("  default 47\n  edge {edge}\n}}\n"));
-    t.push_str("terrain path {\n  mode bitmask16\n");
-    for m in 0..16 {
-        t.push_str(&format!("  rule {m} {}\n", 48 + m));
-    }
-    t.push_str("  default 63\n}\n");
-    t
-}
-
 pub fn tileset(edge: &str) -> Arc<Tileset> {
-    Arc::new(Tileset::parse(&blob_tileset(edge)).expect("the fixture tileset parses"))
+    use og_tilemap::{Collision, Filter, Terrain, TerrainMode, TileAnim, TileDef};
+    Arc::new(Tileset {
+        texture: "tiles/t.png".into(),
+        tile_width: 16,
+        tile_height: 16,
+        columns: 8,
+        rows: 8,
+        margin: 0,
+        spacing: 0,
+        filter: Filter::Nearest,
+        tiles: [
+            (
+                60,
+                TileDef {
+                    collision: Some(Collision::Full),
+                    ..Default::default()
+                },
+            ),
+            (
+                61,
+                TileDef {
+                    collision: Some(Collision::Rect {
+                        x: 0.0,
+                        y: 8.0,
+                        w: 16.0,
+                        h: 8.0,
+                    }),
+                    ..Default::default()
+                },
+            ),
+            (
+                62,
+                TileDef {
+                    collision: Some(Collision::Rect {
+                        x: 2.0,
+                        y: 0.0,
+                        w: 4.0,
+                        h: 4.0,
+                    }),
+                    ..Default::default()
+                },
+            ),
+            (
+                50,
+                TileDef {
+                    anim: Some(TileAnim {
+                        frames: vec![50, 51, 52],
+                        durations: vec![0.25; 3],
+                    }),
+                    ..Default::default()
+                },
+            ),
+        ]
+        .into_iter()
+        .collect(),
+        terrains: vec![
+            Terrain {
+                name: "wall".into(),
+                mode: TerrainMode::Blob47,
+                rules: blob_masks()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, m)| (m, i as u32))
+                    .collect(),
+                default: 47,
+                edge_filled: edge == "filled",
+            },
+            Terrain {
+                name: "path".into(),
+                mode: TerrainMode::Bitmask16,
+                rules: (0..16).map(|m| (m, 48 + u32::from(m))).collect(),
+                default: 63,
+                edge_filled: true,
+            },
+        ],
+    })
 }
 
 /// A `w × h` map with one empty tile layer and one empty terrain layer `wall`.

@@ -16,7 +16,7 @@ pub const FLIP_DIAGONAL: u32 = 1 << 29;
 /// The tile id + 1 of a cell.
 pub const TILE_MASK: u32 = FLIP_DIAGONAL - 1;
 
-/// A map's tileset: an asset id of a tileset `.ogt`, or one made by an
+/// A map's tileset: a cooked ID from a checked TS declaration, or one made by an
 /// importer (from a Tiled or LDtk file).
 #[derive(Clone, Debug, PartialEq)]
 pub enum TilesetRef {
@@ -386,7 +386,9 @@ impl TilemapAsset {
                 }
                 TilesetRef::Embedded(t) => {
                     w.u32(1);
-                    w.str(&t.to_text());
+                    let mut bytes = Vec::new();
+                    t.encode(&mut bytes);
+                    w.sized(&bytes);
                 }
             }
         }
@@ -461,11 +463,10 @@ impl TilemapAsset {
         }
         for _ in 0..r.u32()? {
             let embedded = r.u32()? == 1;
-            let text = r.string()?;
             m.tilesets.push(if embedded {
-                TilesetRef::Embedded(Tileset::parse(&text)?)
+                TilesetRef::Embedded(Tileset::decode(r.sized()?)?)
             } else {
-                TilesetRef::Asset(text)
+                TilesetRef::Asset(r.string()?)
             });
         }
         for _ in 0..r.u32()? {

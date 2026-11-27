@@ -6,7 +6,7 @@ version 1
 size 16 5
 tile 32 32
 unit 2
-tileset "bg/walls.ogt"
+tileset "base/bg/walls-set"
 layer far {
   z -30
   parallax 0.3 0.6

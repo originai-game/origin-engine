@@ -1,4 +1,4 @@
-//! Tilesets and tilemaps: `.ogt` tilesets and maps, Tiled `.tmj` maps and
+//! Tilesets and tilemaps: checked TS tilesets, `.ogt` maps, Tiled `.tmj` maps and
 //! LDtk `.ldtk` projects into the `og.Tileset` and `og.Tilemap` blobs.
 //!
 //! The importers make an [`og_tilemap::TilemapAsset`] (native only: they
@@ -37,9 +37,16 @@ pub(crate) const IMPORT_LINES: &[crate::grammar::Line] = &[
     crate::grammar::Line::new("solid", "<i64> ...", "1", "LDtk solid IntGrid values.", ""),
     crate::grammar::Line::new(
         "tileset",
-        "\"<asset.ogt>\"",
+        "\"<canonical tileset id>\"",
         "source tilesets",
         "Replace every source tileset with this authored asset.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "bindTileset",
+        "\"<source path>\" \"<canonical tileset id>\"",
+        "",
+        "Explicit Tiled TSX/TSJ or LDtk image to checked TS tileset binding; source path as written in the map.",
         "",
     ),
 ];
@@ -53,8 +60,10 @@ pub struct MapSettings {
     pub level: Option<String>,
     /// LDtk: the IntGrid values that are solid (default 1).
     pub solid: Vec<i64>,
-    /// Every tileset of the map replaced by this tileset `.ogt`.
+    /// Every tileset of the map replaced by this cooked tileset ID.
     pub tileset: Option<String>,
+    /// Source path as written in an external map to a checked TS tileset ID.
+    pub tilesets: BTreeMap<String, String>,
 }
 
 impl MapSettings {
@@ -65,6 +74,18 @@ impl MapSettings {
         }
         for e in block.iter().flat_map(|b| &b.entries) {
             match e.key.as_str() {
+                "bindTileset" => {
+                    if e.values.len() != 2 {
+                        return Err(
+                            "bindTileset takes a source path and a canonical tileset ID".into()
+                        );
+                    }
+                    let source = e.string(0).map_err(|e| e.to_string())?.to_string();
+                    let id = e.string(1).map_err(|e| e.to_string())?.to_string();
+                    if s.tilesets.insert(source.clone(), id).is_some() {
+                        return Err(format!("tileset source '{source}' is bound twice"));
+                    }
+                }
                 "unit" => s.unit = Some(e.f32(0).map_err(|_| "tilemap.unit needs a number")?),
                 "level" => {
                     s.level = Some(
@@ -129,30 +150,90 @@ pub fn resolve(base: &str, rel: &str) -> String {
     asset_id(&parts.join("/")).to_string()
 }
 
-/// `path` with its extension replaced by `.ogt`.
-fn sibling_ogt(path: &str) -> String {
-    match path.rsplit_once('.') {
-        Some((stem, ext)) if !ext.contains('/') => format!("{stem}.ogt"),
-        _ => format!("{path}.ogt"),
-    }
-}
-
 // ── cooking ──────────────────────────────────────────────────────────────
 
-/// A tileset `.ogt` into its blob; the texture must be an asset.
+/// A checked declaration becomes native fields, never generated OGT.
+pub(crate) fn declaration(
+    input: super::source_schemas::media::tiles::Tileset,
+) -> Result<Tileset, String> {
+    use super::source_schemas::media::{clips::Filter as F, tiles as a};
+    let mut t = Tileset {
+        texture: input.texture.map_or_else(String::new, |r| r.id),
+        tile_width: input.tile_width,
+        tile_height: input.tile_height,
+        columns: input.columns,
+        rows: input.rows,
+        margin: input.margin,
+        spacing: input.spacing,
+        filter: match input.filter {
+            None | Some(F::Nearest) => Filter::Nearest,
+            Some(F::Linear) => Filter::Linear,
+        },
+        tiles: input
+            .tiles
+            .into_iter()
+            .map(|(id, tile)| {
+                (
+                    id,
+                    TileDef {
+                        collision: tile.collision.map(|c| match c {
+                            a::Collision::Full => Collision::Full,
+                            a::Collision::Rect { x, y, w, h } => Collision::Rect { x, y, w, h },
+                        }),
+                        polygons: tile.polygons,
+                        anim: tile.animation.map(|a| TileAnim {
+                            frames: a.frames,
+                            durations: a.durations,
+                        }),
+                    },
+                )
+            })
+            .collect(),
+        terrains: input
+            .terrains
+            .into_iter()
+            .map(|tr| og_tilemap::Terrain {
+                name: tr.name,
+                mode: match tr.mode {
+                    a::TerrainMode::Blob47 => og_tilemap::TerrainMode::Blob47,
+                    a::TerrainMode::Bitmask16 => og_tilemap::TerrainMode::Bitmask16,
+                },
+                rules: tr.rules,
+                default: tr.default,
+                edge_filled: tr.edge_filled.unwrap_or(true),
+            })
+            .collect(),
+    };
+    t.validate().map_err(|e| e.to_string())?;
+    // Preserve full-tile rectangle normalization used by merged collision runs.
+    for d in t.tiles.values_mut() {
+        if let Some(Collision::Rect { x, y, w, h }) = d.collision
+            && x <= 0.0
+            && y <= 0.0
+            && x + w >= t.tile_width as f32
+            && y + h >= t.tile_height as f32
+        {
+            d.collision = Some(Collision::Full);
+        }
+    }
+    Ok(t)
+}
+
+/// A tileset into its blob; the texture must be an asset.
 pub fn cook_tileset(
-    text: &str,
+    t: &Tileset,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let t = Tileset::parse(text).map_err(|e| CookError(e.to_string()))?;
+    t.validate().map_err(|e| CookError(e.to_string()))?;
     if !t.texture.is_empty() && !known(asset_id(&t.texture)) {
         return Err(CookError(format!(
             "the tileset's texture '{}' is not under assets/",
             t.texture
         )));
     }
-    let canonical = t.to_text();
+    let mut data = Vec::new();
+    t.encode(&mut data);
     let mut w = BlobWriter::new(
         format::Tileset::type_hash(),
         format::Tileset::schema_version(),
@@ -161,11 +242,11 @@ pub fn cook_tileset(
     w.table(
         "meta",
         &[TilesetMeta {
-            text_bytes: canonical.len() as u32,
+            data_bytes: data.len() as u32,
         }],
         row_hash::<TilesetMeta>(),
     )
-    .raw("text", canonical.into_bytes(), 16);
+    .raw("data", data, 16);
     let note = format!(
         "{}x{} tiles of {}x{} px, {} terrain(s), {} animated",
         t.columns,
@@ -210,7 +291,7 @@ pub fn import(
             TilesetRef::Asset(id) => {
                 if !known(asset_id(id)) {
                     return Err(format!(
-                        "the map's tileset '{id}' is not under assets/ (a tileset .ogt)"
+                        "the map's tileset '{id}' is not a known cooked tileset ID"
                     ));
                 }
             }
@@ -348,6 +429,7 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
             prop_count: o.properties.len() as u32,
         });
     }
+    let mut embedded = Vec::new();
     let tilesets: Vec<MapTilesetRow> = map
         .tilesets
         .iter()
@@ -361,7 +443,9 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
                 }
             }
             TilesetRef::Embedded(t) => {
-                let (o, l) = s(&t.to_text());
+                let o = embedded.len() as u32;
+                t.encode(&mut embedded);
+                let l = embedded.len() as u32 - o;
                 MapTilesetRow {
                     embedded: 1,
                     offset: o,
@@ -392,6 +476,7 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
         .table("objects", &objects, row_hash::<MapObjectRow>())
         .table("props", &props, row_hash::<MapPropRow>())
         .table("tilesets", &tilesets, row_hash::<MapTilesetRow>())
+        .raw("embedded", embedded, 4)
         .raw("strings", strings, 4);
     // G2-6: an optional section, so an orthogonal map cooks as before and
     // the type hash is unchanged.
@@ -687,13 +772,15 @@ pub fn import_tiled(
         let firstgid = need_u(t, "firstgid", "a tileset")?;
         let source = st(t, "source");
         let (r, count) = if !source.is_empty() {
-            let id = sibling_ogt(&resolve(rel, source));
-            if !known(&id) {
+            let id = settings.tilesets.get(source).or(settings.tileset.as_ref()).ok_or_else(|| format!(
+                "the map's tileset '{source}' needs an explicit bindTileset to a checked TS tileset ID"
+            ))?;
+            if !known(id) {
                 return Err(format!(
-                    "the map's tileset '{source}' needs a tileset .ogt at assets/{id} (collision, animation and terrains live there)"
+                    "the map's tileset '{source}' names missing tileset '{id}'"
                 ));
             }
-            (TilesetRef::Asset(id), u32::MAX)
+            (TilesetRef::Asset(id.clone()), u32::MAX)
         } else {
             let name = st(t, "name").to_string();
             let ts = tiled_embedded(rel, t, &name)?;
@@ -1235,11 +1322,17 @@ pub fn import_ldtk(
                         .ok_or_else(|| format!("layer '{name}' names tileset {uid}, which the project does not define"))?;
                     let tgrid = need_u(d, "tileGridSize", "a tileset")?;
                     let image = resolve(rel, st(d, "relPath"));
-                    let sibling = sibling_ogt(&image);
                     let columns;
-                    let r = if known(&sibling) {
+                    let r = if let Some(id) = settings
+                        .tilesets
+                        .get(st(d, "relPath"))
+                        .or(settings.tileset.as_ref())
+                    {
+                        if !known(id) {
+                            return Err(format!("LDtk tileset names missing tileset '{id}'"));
+                        }
                         columns = need_u(d, "__cWid", "a tileset")?;
-                        TilesetRef::Asset(sibling)
+                        TilesetRef::Asset(id.clone())
                     } else {
                         columns = need_u(d, "__cWid", "a tileset")?.max(1);
                         let ts = Tileset {
@@ -1374,20 +1467,11 @@ pub fn import_ldtk(
     Ok(map)
 }
 
-/// What a tileset's stamp covers beyond its bytes: whether its texture exists.
-pub fn references_of_tileset(bytes: &[u8], known: &dyn Fn(&str) -> bool) -> String {
-    std::str::from_utf8(bytes)
-        .ok()
-        .and_then(|t| Tileset::parse(t).ok())
-        .map(|t| format!("{}={}", t.texture, known(asset_id(&t.texture))))
-        .unwrap_or_default()
-}
-
 pub(crate) static TILESET: KindDef = KindDef {
     name: "tileset",
     extensions: &[],
-    types: &["tileset"],
-    by_content: true,
+    types: &[],
+    by_content: false,
     streams: false,
     plan: plan_tileset,
 };
@@ -1399,29 +1483,38 @@ fn plan_tileset<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { known, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = references_of_tileset(&s.bytes, &|id| known.contains(id));
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[Area::Data], &[b"tileset", &hash, deps.as_bytes()]);
+    let t = s.tileset.as_ref().expect("checked tileset");
+    if !t.texture.is_empty() {
+        if !cx.known.contains(t.texture.as_str()) {
+            state.early_errors.push((
+                s.rel.clone(),
+                "tileset",
+                format!("tileset texture '{}' is missing", t.texture),
+            ));
+            return;
+        }
+        state
+            .parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(t.texture.clone());
+    }
+    let st = stamp(&[Area::Data], &[b"tileset", &hash, t.texture.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Tileset::NAME,
         st,
-        Box::new(TilesetJob(s)),
+        Box::new(TilesetJob(t)),
     ));
 }
 
 /// A tile set's one output.
-struct TilesetJob<'a>(&'a Source);
+struct TilesetJob<'a>(&'a Tileset);
 
 impl Job for TilesetJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let TilesetJob(s) = self;
         let Exec { known, .. } = ex;
-        let text = std::str::from_utf8(&s.bytes)
-            .map_err(|_| CookError("a tileset is text (UTF-8)".into()))?;
-        cook_tileset(text, &|id| known.contains(id), p.stamp)
+        cook_tileset(self.0, &|id| known.contains(id), p.stamp)
     }
 }
 

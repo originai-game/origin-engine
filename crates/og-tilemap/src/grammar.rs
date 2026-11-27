@@ -40,31 +40,6 @@ pub const OBJECT: &[Line] = lines! {
     "at", "<x> <y>", "0 0", "Position in cells, y down; does not change rect size.";
     "prop", "<key> <value>", "", "Repeat string-valued game properties; values may be numbers, words or strings.";
 };
-pub const TILESET: &[Line] = lines! {
-    "texture", "\"<image>\"", "required", "Atlas texture asset.";
-    "grid", "<tile width> <tile height> <columns> <rows>", "required", "Positive pixel and grid dimensions.";
-    "margin", "<pixels>", "0", "Outer atlas margin.";
-    "spacing", "<pixels>", "0", "Spacing between tiles.";
-    "filter", "nearest | linear", "nearest", "Atlas sampler.";
-    "solid", "<tile id> ...", "", "Mark complete tile rectangles as solid.";
-    "tile", "<id> { ... }", "", "Per-tile collision and animation.";
-    "terrain", "<name> { ... }", "", "Uniquely named explicit autotile rule set.";
-};
-pub const TILE: &[Line] = lines! {
-    "polygon", "<x> <y> ...", "", "Repeat collision polygons, at least three pixel-coordinate pairs.";
-    "collide", "<x> <y> <width> <height>", "", "Collision rectangle in pixels; positive size.";
-    "solid", "", "", "The full tile collides.";
-    "frames", "<tile id> ...", "", "Nonempty animation frame ids in playback order.";
-    "fps", "<number > 0>", "", "Uniform frame rate; requires frames.";
-    "durations", "<seconds > 0> ...", "", "One duration per frame, overrides fps; requires frames.";
-};
-pub const TERRAIN: &[Line] = lines! {
-    "mode", "blob47 | bitmask16", "required", "Neighbour mask encoding.";
-    "rule", "<mask> <tile id>", "", "Repeat explicit mask-to-tile mappings, each mask only once.";
-    "default", "<tile id>", "required", "Tile used where no explicit rule matches.";
-    "edge", "filled | empty", "filled", "Occupancy outside the map.";
-};
-
 pub(crate) fn check(block: &Block, lines: &[Line]) -> Result<()> {
     for e in &block.entries {
         if !lines.iter().any(|line| line.key == e.key) {

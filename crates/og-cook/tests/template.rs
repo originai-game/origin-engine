@@ -14,6 +14,200 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Checked tileset data, cross-module atlas references and embedded imported
+/// tilesets retain their meaning through bundle loading and world snapshots.
+#[test]
+fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
+    use og_tilemap::{Collision, Filter, TilemapAsset, Tileset, TilesetRef};
+    let root = crate::temp::TempDir::new("typed-tileset");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'tiles',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    image::RgbaImage::from_pixel(53, 31, image::Rgba([17, 83, 149, 255]))
+        .save(root.join("assets/atlas.png"))
+        .unwrap();
+    write("modules/north/lib/timing.ts", "export const hold=0.375;");
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nimport {hold} from '../lib/timing.ts';\nexport default file.tileset({texture:ref('base/atlas'),tileWidth:7,tileHeight:11,columns:3,rows:2,margin:2,spacing:1,filter:'linear',conform:{kind:'off'},tiles:{0:{collision:{kind:'rect',x:-1,y:0,w:9,h:11}},2:{collision:{kind:'rect',x:1,y:3,w:4,h:5},polygons:[[[-2,1],[3,2],[1,9]]],animation:{frames:[4,1],durations:[0.125,hold]}}},terrains:[{name:'泥😀',mode:'blob47',default:5,edgeFilled:false,rules:{0:1,7:4}},{name:'edges',mode:'bitmask16',default:2,rules:{9:3}}]});";
+    write("modules/north/content/tiles.ts", declaration);
+    write(
+        "assets/map.tmj",
+        r#"{"type":"map","orientation":"orthogonal","width":2,"height":1,"tilewidth":7,"tileheight":11,"tilesets":[{"firstgid":1,"source":"external.tsx"},{"firstgid":10,"name":"内蔵","image":"atlas.png","tilewidth":7,"tileheight":11,"columns":3,"tilecount":6,"margin":2,"spacing":1,"tiles":[{"id":1,"properties":[{"name":"solid","type":"bool","value":true}],"animation":[{"tileid":4,"duration":125},{"tileid":2,"duration":375}]}]}],"layers":[{"type":"tilelayer","name":"outside","width":2,"height":1,"data":[1,3]},{"type":"tilelayer","name":"inside","width":2,"height":1,"data":[11,10]}]}"#,
+    );
+    write(
+        "assets/map.tmj.ogt",
+        "type import\nversion 1\n---\ntilemap {\n bindTileset \"external.tsx\" \"north/tiles\"\n}\n",
+    );
+    let options = CookOptions::default();
+    let mut previous = None;
+    for _ in 0..2 {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = b.read("north/tiles").unwrap();
+        if let Some(old) = previous {
+            assert_eq!(
+                old,
+                bytes.to_vec(),
+                "a warm cook changed native tileset bytes"
+            );
+        }
+        previous = Some(bytes.to_vec());
+        let t = b.tileset("north/tiles", &bytes).unwrap();
+        assert_eq!(
+            (t.texture.as_str(), t.filter),
+            ("atlas.png", Filter::Linear)
+        );
+        assert_eq!(
+            (
+                t.tile_width,
+                t.tile_height,
+                t.columns,
+                t.rows,
+                t.margin,
+                t.spacing
+            ),
+            (7, 11, 3, 2, 2, 1)
+        );
+        assert_eq!(t.collision(0), Some(Collision::Full));
+        assert_eq!(
+            t.collision(2),
+            Some(Collision::Rect {
+                x: 1.0,
+                y: 3.0,
+                w: 4.0,
+                h: 5.0
+            })
+        );
+        assert_eq!(
+            t.tiles[&2].polygons,
+            [[[-2.0, 1.0], [3.0, 2.0], [1.0, 9.0]]]
+        );
+        let anim = t.tiles[&2].anim.as_ref().unwrap();
+        assert_eq!(anim.frames, [4, 1]);
+        assert_eq!(anim.durations, [0.125, 0.375]);
+        assert_eq!(
+            (
+                t.terrains[0].name.as_str(),
+                t.terrains[0].default,
+                t.terrains[0].edge_filled
+            ),
+            ("泥😀", 5, false)
+        );
+        assert_eq!(t.terrains[0].rules, BTreeMap::from([(0, 1), (7, 4)]));
+        assert_eq!(t.terrains[1].rules, BTreeMap::from([(9, 3)]));
+        let mut native = Vec::new();
+        t.encode(&mut native);
+        assert_eq!(Tileset::decode(&native).unwrap(), t);
+        for end in 0..native.len() {
+            assert!(
+                Tileset::decode(&native[..end]).is_err(),
+                "accepted truncated tileset at {end}"
+            );
+        }
+        native.push(0);
+        assert!(Tileset::decode(&native).is_err());
+        let map = b.load_tilemap("map.tmj").unwrap();
+        assert!(matches!(&map.tilesets[0], TilesetRef::Asset(id) if id=="north/tiles"));
+        let TilesetRef::Embedded(embedded) = &map.tilesets[1] else {
+            panic!("missing embedded tileset")
+        };
+        assert_eq!(
+            (embedded.texture.as_str(), embedded.columns, embedded.rows),
+            ("atlas.png", 3, 2)
+        );
+        assert_eq!(embedded.collision(1), Some(Collision::Full));
+        assert_eq!(embedded.tiles[&1].anim.as_ref().unwrap().frames, [4, 2]);
+        assert_eq!(
+            embedded.tiles[&1].anim.as_ref().unwrap().durations,
+            [0.125, 0.375]
+        );
+        assert_eq!(map.layers[0].cells, [1, 3]);
+        assert_eq!(map.layers[1].cells, [2, 1]);
+        let mut snapshot = Vec::new();
+        map.encode(&mut snapshot);
+        assert_eq!(TilemapAsset::decode(&snapshot).unwrap(), map);
+    }
+    write("modules/north/lib/timing.ts", "export const hold=0.625;");
+    assert!(cook_project(&root, &options).unwrap().ok());
+    assert_eq!(
+        Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_tileset("north/tiles")
+            .unwrap()
+            .tiles[&2]
+            .anim
+            .as_ref()
+            .unwrap()
+            .durations,
+        [0.125, 0.625]
+    );
+    for (from, to, expected) in [
+        ("frames:[4,1]", "frames:[6,1]", "names tile 6"),
+        ("durations:[0.125,hold]", "durations:[hold]", "duration"),
+        ("0:1,7:4", "0:1,2:4", "mask"),
+        ("base/atlas", "base/missing", "base/missing"),
+    ] {
+        write(
+            "modules/north/content/tiles.ts",
+            &declaration.replace(from, to),
+        );
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(error.contains(expected), "{error}");
+        assert!(error.contains("content/tiles.ts:3"), "{error}");
+    }
+    write("modules/north/content/tiles.ts", declaration);
+    std::fs::remove_file(root.join("assets/map.tmj.ogt")).unwrap();
+    let report = cook_project(&root, &options).unwrap();
+    assert!(!report.ok(), "unbound external tileset accepted");
+    assert!(format!("{:?}", report.errors()).contains("external.tsx"));
+    std::fs::remove_file(root.join("assets/map.tmj")).unwrap();
+    write("assets/old.ogt", "type tileset\nversion 1\n---\n");
+    assert!(
+        !cook_project(&root, &options).unwrap().ok(),
+        "old tileset author parser accepted input"
+    );
+    std::fs::remove_file(root.join("assets/old.ogt")).unwrap();
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Tiles","engine":"0.9.0","look":{"$ogRef":"base/look"}}"#,
+    );
+    write(
+        "assets/look.ogt",
+        "type look\nversion 1\n---\nArtPixels {\n unit 2\n}\n",
+    );
+    for (conform, expected) in [("kind:'off'", (7, 11)), ("kind:'size',size:4", (3, 4))] {
+        let source = declaration.replace("kind:'off'", conform);
+        write("modules/north/content/tiles.ts", &source);
+        for _ in 0..2 {
+            let report = cook_project(&root, &options).unwrap();
+            assert!(report.ok(), "{:?}", report.errors());
+            let t = Bundle::open(&root.join("cooked"))
+                .unwrap()
+                .load_tileset("north/tiles")
+                .unwrap();
+            assert_eq!((t.tile_width, t.tile_height), expected);
+            assert_eq!(t.collision(0), Some(Collision::Full));
+            assert_eq!(t.tiles[&2].anim.as_ref().unwrap().durations, [0.125, 0.625]);
+            assert_eq!(
+                std::fs::read_to_string(root.join("modules/north/content/tiles.ts")).unwrap(),
+                source,
+                "conformance changed author source"
+            );
+        }
+    }
+}
+
 /// Lighting's public cook/load contract retains scene associations, full-width
 /// hashes, remaps, multiple layers and volumes across module and warm-cache use.
 #[test]

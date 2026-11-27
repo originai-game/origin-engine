@@ -168,7 +168,27 @@ const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
-        let sheets = [&flipbook::FLIPBOOK, &tilemap::TILESET, &rig2d::RIG2D];
+        if s.kind == &tilemap::TILESET {
+            use crate::cook::source_schemas::media::tiles::{Tileset, TilesetConform};
+            let input: Tileset = s.input().expect("checked tileset input");
+            if let Some(c) = input.conform {
+                sheet_conform.insert(
+                    i,
+                    match c {
+                        TilesetConform::Off => AssetConform {
+                            off: true,
+                            ..Default::default()
+                        },
+                        TilesetConform::Size { size } => AssetConform {
+                            size: Some(size),
+                            ..Default::default()
+                        },
+                    },
+                );
+            }
+            continue;
+        }
+        let sheets = [&flipbook::FLIPBOOK, &rig2d::RIG2D];
         if !sheets.contains(&s.kind) {
             continue;
         }
@@ -215,12 +235,12 @@ pub(super) fn uses(
                 }
             }
             k if k == &tilemap::TILESET => {
-                if let Ok(t) = og_tilemap::Tileset::parse(&String::from_utf8_lossy(&s.bytes))
+                if let Some(t) = &s.tileset
                     && !t.texture.is_empty()
                 {
                     add(
                         crate::runtime::asset_id(&t.texture).to_string(),
-                        UseKind::Tileset(Box::new(t)),
+                        UseKind::Tileset(Box::new(t.clone())),
                     );
                 }
             }
@@ -353,6 +373,7 @@ pub(in crate::cook) fn conform(
     let mut extra: Vec<Source> = Vec::new();
     // A sheet's new text, the conformed image it reads, the look's hash.
     let mut sheet_texts: Vec<SheetText> = Vec::new();
+    let mut tilesets = Vec::new();
     for i in 0..sources.len() {
         let s = &sources[i];
         if s.kind != &crate::cook::texture::TEXTURE
@@ -462,7 +483,16 @@ pub(in crate::cook) fn conform(
                             t.tile_height = g.h;
                             t.margin = g.mx;
                             t.spacing = g.sx;
-                            t.to_text().into_bytes()
+                            entries.push(ConformEntry {
+                                source: sources[u.by].rel.clone(),
+                                action: ConformAction::Changed,
+                                what: format!(
+                                    "its cells follow {base}'s conformed layout ({}x{} texels)",
+                                    done.layout.size.0, done.layout.size.1
+                                ),
+                            });
+                            tilesets.push((u.by, t));
+                            sources[u.by].bytes.clone()
                         }
                         _ => sources[u.by].bytes.clone(),
                     },
@@ -509,6 +539,7 @@ pub(in crate::cook) fn conform(
                 terrains: Default::default(),
                 navmesh: None,
                 lightmap: None,
+                tileset: None,
                 conformed: None,
                 fracture: None,
             };
@@ -590,6 +621,9 @@ pub(in crate::cook) fn conform(
                 "meets the contract as it is".into()
             },
         });
+    }
+    for (i, t) in tilesets {
+        sources[i].tileset = Some(t);
     }
     for (i, text, png, look_hash) in sheet_texts {
         let s = &mut sources[i];
@@ -701,6 +735,11 @@ fn rehash(s: &Source, more: &[&[u8]]) -> u64 {
     let mut h = StableHasher::new();
     h.write_str(&s.rel);
     h.write(&s.bytes);
+    if let Some(t) = &s.tileset {
+        let mut data = Vec::new();
+        t.encode(&mut data);
+        h.write(&data);
+    }
     if let Some((text, _)) = &s.settings {
         h.write_str(text);
     }

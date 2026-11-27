@@ -87,7 +87,7 @@ function sideMap(unit: number): string {
     }
     rows.push(`  row ${row.join(" ")}`);
   }
-  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the level's ground and its ledge.\nsize 40 8\ntile ${unit} ${unit}\nunit 1\ntileset "art/tiles.ogt"\nlayer ground {\n${rows.join("\n")}\n}\n`;
+  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the level's ground and its ledge.\nsize 40 8\ntile ${unit} ${unit}\nunit 1\ntileset "base/art/tiles-set"\nlayer ground {\n${rows.join("\n")}\n}\n`;
 }
 
 /**
@@ -111,7 +111,7 @@ function topMap(unit: number): string {
   const path = (x: number, y: number) => ((y === 0 || y === -1) && x < 4) || ((x === 2 || x === 3) && y < 0);
   // The cliff's rows: its top, then its lowest (the darkest) at its foot; the rim up the plateau's west side takes the two between.
   const face = (c: number, r: number) => (r === 4 ? 0 : r === 5 ? 12 : 4 + (r % 2) * 4) + (c % 4);
-  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the meadow, its path and the plateau's face.\nsize 28 16\ntile ${unit} ${unit}\nunit 1\ntileset "art/grass.ogt"\ntileset "art/path.ogt"\ntileset "art/wall.ogt"\n${layer("grass", 0, 0, () => true, any)}\n${layer("path", 1, 1, path, any)}\n${layer("cliff", 2, 2, cliff, face)}\n`;
+  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the meadow, its path and the plateau's face.\nsize 28 16\ntile ${unit} ${unit}\nunit 1\ntileset "base/art/grass-set"\ntileset "base/art/path-set"\ntileset "base/art/wall-set"\n${layer("grass", 0, 0, () => true, any)}\n${layer("path", 1, 1, path, any)}\n${layer("cliff", 2, 2, cliff, face)}\n`;
 }
 
 /** Stages the scene in `dir` for the look `name`, whose art preview.json's `scene` names under `looks`. */
@@ -120,6 +120,8 @@ export function stage2d(dir: string, name: string, scene: Scene2d, looks: string
   const unit = scene.unit ?? 0;
   const art = join(looks, scene.art!);
   const out = join(dir, "assets/art");
+  const content = join(dir, "content/art");
+  mkdirSync(content, { recursive: true });
   cpSync(art, out, { recursive: true });
   const beats: Record<string, { file: string; width: number; height: number }> = {};
   // A tile's side in the map: the pixel unit, or a quarter of a tile set's image.
@@ -130,7 +132,7 @@ export function stage2d(dir: string, name: string, scene: Scene2d, looks: string
     if ((TILESETS[plan] as readonly string[]).includes(beat)) {
       tile ||= w / 4;
       // The cook brings a tile set's tiles to the look's pixel unit by itself.
-      writeFileSync(join(out, `${beat}.ogt`), `type tileset\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: 4 x 4 tiles.\ntexture "art/${file}"\ngrid ${w / 4} ${h / 4} 4 4\n${unit ? "filter nearest\n" : ""}`);
+      writeFileSync(join(content, `${beat}-set.ts`), `import {file,ref} from '@origingame/engine/author';\n// Written by templates/looks/preview/2d/stage.ts: 4 x 4 tiles.\nexport default file.tileset({texture:ref(${JSON.stringify(`base/art/${beat}`)}),tileWidth:${w / 4},tileHeight:${h / 4},columns:4,rows:4,filter:'nearest'});\n`);
       continue;
     }
     const at = beatSize(scene, beat, w, h);
@@ -138,12 +140,12 @@ export function stage2d(dir: string, name: string, scene: Scene2d, looks: string
     beats[beat] = { file, width: at.width, height: at.height };
     if (!unit) continue;
     writeFileSync(join(out, `${file}.ogt`), `type import\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: ${at.pw} x ${at.ph} logical pixels.\nconform {\n  size ${Math.max(at.pw, at.ph)}\n}\n`);
-    if (LAYERS.includes(beat)) writeFileSync(join(out, `${beat}.ogt`), `type tileset\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: one tile, so the cook lines no edge of the layer.\ntexture "art/${file}"\ngrid ${w} ${h} 1 1\nfilter nearest\n`);
+    if (LAYERS.includes(beat)) writeFileSync(join(content, `${beat}-set.ts`), `import {file,ref} from '@origingame/engine/author';\n// Written by templates/looks/preview/2d/stage.ts: one tile, so the cook lines no edge of the layer.\nexport default file.tileset({texture:ref(${JSON.stringify(`base/art/${beat}`)}),tileWidth:${w},tileHeight:${h},columns:1,rows:1,filter:'nearest'});\n`);
   }
   mkdirSync(join(dir, "assets/level"), { recursive: true });
   writeFileSync(join(dir, "assets/level/level.ogt"), plan === "top" ? topMap(tile) : sideMap(tile));
   mkdirSync(join(dir, "assets/fonts"), { recursive: true });
-  for (const f of ["NotoSans-Latin.ttf", "NotoSans-Latin.ttf.ogt"]) copyFileSync(join(repo, "templates/fonts/latin", f), join(dir, "assets/fonts", f));
+  for (const f of ["NotoSans-Latin.ttf", "NotoSans-Latin.ttf.ogt"]) copyFileSync(join(repo, "templates/fonts/latin/assets/fonts/latin", f), join(dir, "assets/fonts", f));
   writeFileSync(
     join(dir, "src/art.ts"),
     `// Written by templates/looks/preview/2d/stage.ts from preview.json.\nexport const PLAN: "side" | "top" = ${JSON.stringify(plan)};\nexport const VIEW_HEIGHT = ${scene.view};\n/** Logical pixels a metre; 0 without a pixel grid. */\nexport const UNIT = ${unit};\nexport const LIGHT: "day" | "night" | "none" = ${JSON.stringify(scene.light ?? "day")};\nexport const HAZE = ${scene.haze ?? 1};\n/** The HUD count's linear colour and its rim's. */\nexport const TEXT = ${JSON.stringify({ color: linear(scene.text ?? "#ffffff"), rim: linear(scene.rim ?? "#0b0b12") })};\nexport const ART: Record<string, { file: string; width: number; height: number }> = ${JSON.stringify(beats)};\n`,

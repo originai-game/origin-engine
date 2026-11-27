@@ -23977,7 +23977,7 @@ export interface FlashDesc {
 
 
 // ── tilemap ─────────────────────────────────────────────────────
-// Tilemaps: layers of tiles from a tileset atlas (a `type tileset` `.ogt`), loaded from a cooked map (a `type tilemap` `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component; og.tilemap.create and og.tilemap.resize make and change maps in game code.
+// Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (a type tilemap file, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
 // Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
 // See `world §6`.
 
@@ -40841,7 +40841,7 @@ export declare namespace og {
    */
   const Tilemap: ComponentType<{ readonly map: FieldSpec<"TilemapAsset">; readonly layer: FieldSpec<"i32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly collision: FieldSpec<"bool">; readonly colliderLayers: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32"> }, Tilemap>;
   /**
-   * Tilemaps: layers of tiles from a tileset atlas (a `type tileset` `.ogt`), loaded from a cooked map (a `type tilemap` `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component; og.tilemap.create and og.tilemap.resize make and change maps in game code.
+   * Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (a type tilemap file, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
    * Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
    * See `world §6`.
    */

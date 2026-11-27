@@ -8,7 +8,7 @@ changed, collision rectangles merged into runs and 16×16 chunks of quads
 for og-render's sprite batch.
 
 ```rust
-let tileset = Arc::new(Tileset::parse(&text)?);                   // or og_bundle: bundle.load_tileset(id)
+let tileset = Arc::new(bundle.load_tileset("base/tiles/dungeon-set")?);
 let asset = TilemapAsset::parse(&map_text)?;                      // or bundle.load_tilemap("maps/room.tmj")
 let mut state = MapState::new(&asset, &[tileset.clone()])?;       // tilesets in asset.tilesets order
 state.set(walls, 4, 7, 1)?;                                       // fill a terrain cell; its 3×3 neighbourhood re-resolves
@@ -38,11 +38,11 @@ top-left corner in the same coordinates (y ≤ 0 inside the map).
 
 | Item | What it is |
 |---|---|
-| `Tileset { texture, tile_width, tile_height, columns, rows, margin, spacing, filter, tiles: BTreeMap<u32, TileDef>, terrains }` | `parse(text)`, `to_text()` (canonical; parses back equal), `validate()`, `count()`, `terrain(name)`, `collision(tile)`, `uv(tile, texture_w, texture_h) -> [u0, v0, u1, v1]` (v down, inset 1/512 texel) |
+| `Tileset { texture, tile_width, tile_height, columns, rows, margin, spacing, filter, tiles: BTreeMap<u32, TileDef>, terrains }` | `encode(out)`, `decode(bytes)`, `validate()`, `count()`, `terrain(name)`, `collision(tile)`, `uv(tile, texture_w, texture_h) -> [u0, v0, u1, v1]` (v down, inset 1/512 texel) |
 | `TileDef { collision: Option<Collision>, anim: Option<TileAnim { frames, durations }> }`, `Collision::{Full, Rect { x, y, w, h }}` (px from the tile's top-left), `Filter::{Nearest, Linear}` | per-tile data |
 | `Terrain { name, mode: TerrainMode::{Blob47, Bitmask16}, rules: BTreeMap<u8, u32>, default, edge_filled }`, `resolve(neighbours)`, `reduce_blob(mask)`, `mask::{N, NE, E, SE, S, SW, W, NW}` | auto-tiling |
 | `TilemapAsset { width, height, tile_width_px, tile_height_px, unit, tilesets: Vec<TilesetRef>, layers, objects }` | `parse(text)`, `validate()`, `tile_size()`, `world_size()`, `layer(name)` |
-| `TilesetRef::{Asset(id), Embedded(Tileset)}` | an asset id of a tileset `.ogt`, or one an importer made |
+| `TilesetRef::{Asset(id), Embedded(Tileset)}` | a cooked tileset ID, or one an importer made |
 | `Layer { name, tileset, cells, terrain: Option<String>, parallax, offset, opacity, visible, collision, collider_layers, collider_mask, repeat_x, repeat_y, z, lit }`, `Layer::new(name, w, h, z)` | cells: tile layers 0 empty else `(tile + 1) | FLIP_X | FLIP_Y`; terrain layers 0/1 |
 | `FLIP_X` (bit 31), `FLIP_Y` (bit 30), `FLIP_DIAGONAL` (bit 29, refused), `TILE_MASK` | the cell encoding (Tiled's gid flip bits) |
 | `MapObject { name, kind, x, y, width, height, properties }` | spawns, doors, triggers |
@@ -51,36 +51,34 @@ top-left corner in the same coordinates (y ≤ 0 inside the map).
 | `chunk_quads(&state, layer, cx, cy, texture_w, texture_h) -> ChunkQuads { quads: Vec<TileQuad { min, size, uv }>, animated: Vec<AnimatedQuad { quad, frames, durations }> }`, `chunks_in(&state, layer, view_min, view_max)`, `animated_frame(durations, seconds)`, `CHUNK` = 16 | drawing |
 | `world_to_cell(asset, local) -> Option<(x, y)>`, `cell_center(asset, x, y)` | coordinates |
 
-## `.ogt` of `type tileset`
+## Checked TypeScript tilesets
 
-```text
-type tileset
-version 1
----
-texture "tiles/dungeon.png"   # asset id of the atlas image
-grid 16 16 8 8                # tile width, height (px), columns, rows
-margin 0                      # optional, px around the grid
-spacing 0                     # optional, px between tiles
-filter nearest                # nearest (default) | linear
-solid 1 2 3 4                 # full-tile colliders (any number of lines)
-tile 9 {
-  collide 0 8 16 8            # a rect in px from the tile's top-left (one covering the tile is full)
-  frames 9 10 11 10           # animated: these tile ids in turn
-  fps 6                       # or `durations 0.1 0.2 ...`, seconds per frame
-}
-terrain wall {
-  mode blob47                 # blob47 | bitmask16
-  rule 255 12                 # neighbour mask -> tile id
-  default 12                  # tile for a mask no rule lists
-  edge filled                 # filled (default): off-map neighbours count as filled | empty
-}
+`content/tiles/dungeon-set.ts` is the sole author entry. The cook checks
+canonical references, then writes native fields used by the bundle loader,
+embedded Tiled/LDtk tilesets and world snapshots. No text parser remains.
+
+```ts
+import { file, ref } from "@origingame/engine/author";
+export default file.tileset({
+  texture: ref("base/tiles/dungeon"), // omit for collision-only grids
+  tileWidth: 16, tileHeight: 16, columns: 8, rows: 8,
+  margin: 0, spacing: 0, filter: "nearest",
+  tiles: {
+    1: { collision: { kind: "full" } },
+    9: {
+      collision: { kind: "rect", x: 0, y: 8, w: 16, h: 8 },
+      animation: { frames: [9, 10, 11, 10], durations: [1/6, 1/6, 1/6, 1/6] },
+    },
+  },
+  terrains: [{ name: "wall", mode: "blob47", rules: { 255: 12 }, default: 12, edgeFilled: true }],
+});
 ```
 
 **Masks.** bitmask16: N = 1, E = 2, S = 4, W = 8 — the edge neighbours
 filled with the same terrain (16 masks). blob47: N = 1, NE = 2, E = 4,
 SE = 8, S = 16, SW = 32, W = 64, NW = 128, with a corner bit kept only when
 both of its edge bits are set (`reduce_blob`), so 47 distinct masks occur; a
-`rule` naming any other mask is refused with its line. Filled cells resolve
+rule naming any other mask is refused at the TS declaration. Filled cells resolve
 to `rules[mask]` or `default`; empty cells draw nothing.
 
 ## `.ogt` of `type tilemap`
@@ -92,7 +90,7 @@ version 1
 size 32 18                 # cells
 tile 16 16                 # px
 unit 1                     # world units per tile width (optional)
-tileset "tiles/dungeon.ogt"
+tileset "base/tiles/dungeon-set"
 layer floor {
   tileset 0                # optional, default 0
   z -10                    # sprite layer offset (default: the layer's index)

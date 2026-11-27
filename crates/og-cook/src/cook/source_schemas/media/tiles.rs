@@ -22,10 +22,23 @@ pub struct Tileset {
     #[serde(default)]
     pub spacing: u32,
     pub filter: Option<Filter>,
+    /// Per-tileset art conformance; omission uses the project's art contract.
+    pub conform: Option<TilesetConform>,
     #[serde(default)]
     pub tiles: BTreeMap<u32, Tile>,
     #[serde(default)]
     pub terrains: Vec<Terrain>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+pub enum TilesetConform {
+    Off,
+    Size {
+        #[schemars(range(min = 1, max = 4096))]
+        size: u32,
+    },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

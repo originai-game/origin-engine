@@ -24,6 +24,7 @@ fn source(root: &Path, rel: &str) -> Source {
         terrains: Default::default(),
         navmesh: None,
         lightmap: None,
+        tileset: None,
         conformed: None,
         fracture: None,
     }

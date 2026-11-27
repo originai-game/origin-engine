@@ -27,6 +27,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("font-extension", &font_pack::FONT_PACK),
     ("rig", &anim::RIG),
     ("lightmap", &lightmap::LIGHTMAP),
+    ("tileset", &tilemap::TILESET),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -225,10 +226,15 @@ pub(crate) fn sources(
             terrains: Default::default(),
             navmesh: None,
             lightmap: None,
+            tileset: None,
             conformed: None,
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "tileset" => {
+                source.tileset = Some(tilemap::declaration(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
             "lightmap" => {
                 let prepared = lightmap::Prepared::new(
                     source.input()?,
@@ -306,6 +312,11 @@ pub(crate) fn sources(
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if let Some(t) = &mut source.tileset
+            && !t.texture.is_empty()
+        {
+            t.texture = graph.outputs[&t.texture].asset.clone();
+        }
         if let Some(lightmap) = &mut source.lightmap {
             lightmap.bind(&graph.outputs);
             if !lightmap_scenes.insert(lightmap.file.scene.clone()) {

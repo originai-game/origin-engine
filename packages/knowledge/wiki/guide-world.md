@@ -475,13 +475,19 @@ entity "house-12" {
 <a id="guide-world-6"></a>
 ### `world §6` Tilemaps
 
-- A tileset (`type tileset`) gives the grid, solid tiles and collision
+- A TS `file.tileset` declaration under `content/` gives the grid, solid tiles and collision
   rects, animated tiles and 47-blob or 16-bitmask auto-tiling terrains. A
   map is a hand-written `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`,
   loaded with og.load.tilemap and placed by og.Tilemap; og.tilemap.create
   and og.tilemap.resize make and change maps in game code, saved whole by
   the og.tilemap state block (tilesets by asset id), so a save restores a
   map a session never made.
+- A tileset's optional texture is a canonical content ref; omit it for
+  collision-only grids. Use separate IDs for the texture and tileset.
+  Animations give frame IDs and matching positive durations in seconds;
+  build equal durations with `frames.map(() => 1 / fps)`. Collision polygons
+  retain top-left pixel coordinates, y down. Tiled and LDtk imports still
+  work and their embedded tilesets use the same native codec.
 - Layers draw through the sprite batch in 16x16-tile chunks culled to the
   view, each at the map's sprite layer plus its z, scrolled by its
   parallax. Solid tiles become static colliders merged into rectangles;

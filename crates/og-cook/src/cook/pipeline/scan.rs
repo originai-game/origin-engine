@@ -557,6 +557,7 @@ pub(crate) fn scan_with(
             terrains: Default::default(),
             navmesh: None,
             lightmap: None,
+            tileset: None,
             conformed: None,
             fracture: None,
         };

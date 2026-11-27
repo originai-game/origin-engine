@@ -157,6 +157,10 @@ input!(Tilemap {
     solid: Vec<i64>,
     #[schemars(extend("x-og-ref-kinds" = ["tileset"]))]
     tileset: Option<ContentRef>,
+    /// External TSX/TSJ or LDtk image paths as written in the map to tileset refs.
+    #[serde(default)]
+    #[schemars(extend("x-og-ref-kinds" = ["tileset"]))]
+    tilesets: BTreeMap<String, ContentRef>,
 });
 
 impl ImportInput {

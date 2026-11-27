@@ -67,8 +67,9 @@ fn collision_unions_keep_slopes_and_remove_chunk_seams() {
     let mut ts = (*tileset("filled")).clone();
     ts.tiles.get_mut(&62).unwrap().collision = None;
     ts.tiles.get_mut(&62).unwrap().polygons = vec![vec![[0.0, 16.0], [16.0, 16.0], [16.0, 0.0]]];
-    let text = ts.to_text();
-    let ts = std::sync::Arc::new(og_tilemap::Tileset::parse(&text).unwrap());
+    let mut bytes = Vec::new();
+    ts.encode(&mut bytes);
+    let ts = std::sync::Arc::new(og_tilemap::Tileset::decode(&bytes).unwrap());
     let mut slope = MapState::new(&a, &[ts]).unwrap();
     slope.set(0, 2, 0, 62).unwrap();
     let o = og_tilemap::chunk_outline(&slope, 0, 0, 0, 1);
