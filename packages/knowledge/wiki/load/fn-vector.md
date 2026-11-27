@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.vector`
 
-A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path.
+A cooked vector from a TS file.vector declaration: source is a module-relative SVG path, or svg supplies inline XML, with optional positive tolerance in view-box units. Paths, basic shapes, groups, transforms, colours and linear/radial gradients become antialiased triangles; unsupported SVG elements are refused by name. Loaded once per path.
 
 ```ts
 og.load.vector(world: World, path: string): Result<VectorArt>
@@ -15,7 +15,7 @@ og.load.vector(world: World, path: string): Result<VectorArt>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns it. |
-| `path` | `string` | no | The asset id, such as `ui/emblem.ogt`. |
+| `path` | `string` | no | The canonical asset id, such as `base/ui/emblem`. |
 
 **Returns** `Result<VectorArt>`: Refused for a path not in the bundle or not a vector.
 
@@ -23,9 +23,9 @@ Binding symbol `og_load_vector` · publish builds: kept
 
 ```ogt
 fn vector {
-  doc "A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path."
+  doc "A cooked vector from a TS file.vector declaration: source is a module-relative SVG path, or svg supplies inline XML, with optional positive tolerance in view-box units. Paths, basic shapes, groups, transforms, colours and linear/radial gradients become antialiased triangles; unsupported SVG elements are refused by name. Loaded once per path."
   param world World "The world whose renderer owns it."
-  param path String "The asset id, such as `ui/emblem.ogt`."
+  param path String "The canonical asset id, such as `base/ui/emblem`."
   returns Result.VectorArt "Refused for a path not in the bundle or not a vector."
 }
 ```

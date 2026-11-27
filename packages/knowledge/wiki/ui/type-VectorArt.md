@@ -6,12 +6,12 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `VectorArt` (handle)
 
-A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector.
+A cooked SVG subset from a TS file.vector declaration, loaded by og.load.vector.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle VectorArt "A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector."
+handle VectorArt "A cooked SVG subset from a TS file.vector declaration, loaded by og.load.vector."
 ```
 
 <sub>Module `ui` line 457</sub>

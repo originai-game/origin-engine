@@ -1,6 +1,6 @@
   # ── element draws (docs/ui.md §3.3): vector art and UI material handles ──
 
-  handle VectorArt "A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector."
+  handle VectorArt "A cooked SVG subset from a TS file.vector declaration, loaded by og.load.vector."
   handle UiMaterial "A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial."
 
   column VectorArt {

@@ -1,5 +1,135 @@
 use super::*;
 
+#[test]
+fn typed_vectors_cook_explicit_svg_inputs_and_inline_geometry() {
+    let root = TempDir::new("og-typed-vectors");
+    let write = |file: &str, text: &str| {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Vectors","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'vectors',entry:'src/main.ts',modules:[{id:'island',root:'modules/island',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "export default {};\n");
+    let file = "import {file} from '@origingame/engine/author'; export default file.vector({source:'assets/emblem.svg',tolerance:0.05});";
+    let svg = "<svg viewBox='-3 2 17 11'><path d='M -1 3 L 12 3 L 4 10 Z' fill='#c11153'/><circle cx='7' cy='6' r='2' fill='#17b53b'/></svg>";
+    write("content/nested/from-file.ts", file);
+    write("modules/island/content/nested/from-file.ts", file);
+    write(
+        "modules/island/assets/emblem.svg",
+        &svg.replace("17 11", "23 7"),
+    );
+    let cache = root.join("cache");
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let mut previous = None;
+    for (run, width) in [17, 17, 31].into_iter().enumerate() {
+        let svg = svg.replace("17 11", &format!("{width} 11"));
+        write("assets/emblem.svg", &svg);
+        write(
+            "content/inline.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.vector({{svg:{},tolerance:0.05}});",
+                serde_json::to_string(&svg).unwrap()
+            ),
+        );
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let read = |id| bundle.vector(id, &bundle.read(id).unwrap()).unwrap();
+        let external = read("base/nested/from-file");
+        assert_eq!(external, read("base/inline"));
+        assert_eq!(external.view_box, [-3.0, 2.0, width as f32, 11.0]);
+        assert!(!external.indices.is_empty());
+        let island = read("island/nested/from-file");
+        assert_eq!(island.view_box, [-3.0, 2.0, 23.0, 7.0]);
+        if let Some((base, other)) = previous {
+            assert_eq!(external == base, run == 1);
+            assert_eq!(island, other);
+        }
+        previous = Some((external, island));
+        assert!(bundle.read("nested/from-file.ogt").is_err());
+    }
+    for invalid in [
+        "{source:'assets/emblem.svg',svg:'<svg/>'}",
+        "{source:'assets/emblem.svg',tolerance:0}",
+        "{}",
+    ] {
+        write(
+            "content/nested/from-file.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.vector({invalid});"
+            ),
+        );
+        let out = cook();
+        assert!(
+            !out.status.success(),
+            "invalid TS vector accepted: {invalid}"
+        );
+        assert!(
+            text(&out).contains("content/nested/from-file.ts:"),
+            "{}",
+            text(&out)
+        );
+    }
+    for path in ["../emblem.svg", "emblem.svg", "assets/missing.svg"] {
+        write(
+            "content/nested/from-file.ts",
+            &file.replace("assets/emblem.svg", path),
+        );
+        assert!(
+            !cook().status.success(),
+            "invalid SVG input accepted: {path}"
+        );
+    }
+    write("content/nested/from-file.ts", file);
+    write(
+        "assets/emblem.svg",
+        "<svg viewBox='0 0 17 11'><text>unsupported</text></svg>",
+    );
+    let out = cook();
+    assert!(!out.status.success(), "unsupported SVG accepted");
+    assert!(text(&out).contains("<text>"), "{}", text(&out));
+    write("assets/emblem.svg", svg);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(root.join("assets/emblem.svg"), root.join("assets/link.svg"))
+            .unwrap();
+        write(
+            "content/nested/from-file.ts",
+            &file.replace("emblem.svg", "link.svg"),
+        );
+        assert!(!cook().status.success(), "symlink SVG accepted");
+        std::fs::remove_file(root.join("assets/link.svg")).unwrap();
+        write("content/nested/from-file.ts", file);
+    }
+    write(
+        "assets/old.ogt",
+        "type vector\nversion 1\n---\nsource \"emblem.svg\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success(), "removed OGT vector accepted");
+    assert!(
+        text(&out).contains("OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+}
+
 /// The public array path retains layer order, module-local file inputs and
 /// warm-cache invalidation, and rejects removed or nonexistent author inputs.
 #[test]

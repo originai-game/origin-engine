@@ -64,7 +64,7 @@ module ui {
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
-| [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector. |
+| [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked SVG subset from a TS file.vector declaration, loaded by og.load.vector. |
 | [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial. |
 | [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector handle og.load.vector answered. |
 | [`UiMaterial()`](#column-UiMaterial) | column kind |  | A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered. |

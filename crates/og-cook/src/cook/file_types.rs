@@ -61,6 +61,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "texture-array" {
                 out.push_str("Outputs: one texture array at the primary ID, plus exactly #layer0 through #layerN-1 as ordinary textures. Give 1..256 equally sized images in layer order. Each layer is an explicit canonical path relative to the owning module, such as assets/tiles/grass.png; there is no sibling/assets fallback. Image bytes participate in cook stamps, including warm-cache rebuilds. Encoding kinds are color, normal, linear, single and pixel.\n\n");
             }
+            if ty == "vector" {
+                out.push_str("Output: vector triangles loaded with og.load.vector. Exactly one source (an explicit canonical module-relative SVG path, such as assets/ui/emblem.svg) or inline svg string is required. The SVG subset and curve flattening remain the native tessellator's; tolerance is positive view-box units, omitted uses the longer view-box side / 2000. External SVG bytes participate in cook stamps; no sibling/assets fallback is used.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -231,14 +234,13 @@ pub fn markdown() -> Result<String, String> {
                     super::systems::district::parse::VARY_LINES,
                 );
             }
-            "environment" | "icons" | "vector" => {
+            "environment" | "icons" => {
                 out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
                 table(
                     &mut out,
                     match ty {
                         "environment" => super::environment::LINES,
-                        "icons" => super::icons::LINES,
-                        _ => super::vector::LINES,
+                        _ => super::icons::LINES,
                     },
                 );
             }

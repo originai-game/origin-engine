@@ -1,14 +1,10 @@
-//! Vectors (`.ogt` of `type vector`, `docs/ui.md` §3.3): an SVG subset
+//! Typed vector declarations (`docs/ui.md` §3.3): an SVG subset
 //! cooked to triangles that og-render's UI pass draws with an analytic
 //! antialiased edge (`og_draw::ui::UiVectorData`).
 //!
-//! ```text
-//! type vector
-//! version 1
-//! ---
-//! source "ui/emblem.svg"   # the SVG, an asset path (or: svg "<svg …>")
-//! tolerance 0.05           # curves flattened to within this many view-box
-//!                          # units (default: the view box's longer side / 2000)
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file.vector({source: 'assets/ui/emblem.svg', tolerance: 0.05});
 //! ```
 //!
 //! The SVG subset: `<svg>` with a `viewBox` (or `width` and `height`);
@@ -38,11 +34,11 @@
 //! to nothing over the pixel that straddles it: the edge's antialiasing is
 //! exact at any size the vector is drawn, with nothing cooked per size.
 
+use super::source_schemas::world::source_data::VectorInput;
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
-use og_core::ogt::{Document, Number, Value};
 use og_draw::kurbo;
 use og_draw::ui::{
     UiGradient, UiGradientKind, UiSpread, UiStop, UiVectorData, UiVectorPaint, UiVectorVertex,
@@ -53,123 +49,31 @@ mod tessellation;
 
 use tessellation::*;
 
-/// The `.ogt` type of a vector.
-pub const VECTOR_TYPE: &str = "vector";
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "source",
-        "\"<SVG asset path>\"",
-        "",
-        "One SVG file; exclusive with svg.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "svg",
-        "\"<SVG text>\"",
-        "",
-        "Inline SVG string; exclusive with source. One input is required.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "tolerance",
-        "<number > 0>",
-        "SVG tessellator default",
-        "Curve flattening tolerance.",
-        "",
-    ),
-];
-
 /// The most triangles a vector cooks to.
 const MAX_TRIANGLES: usize = 400_000;
 
-/// A parsed vector file.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct VectorFile {
-    /// The SVG's asset path (`source`).
-    pub source: Option<String>,
-    /// The SVG inline (`svg`).
-    pub svg: Option<String>,
-    pub tolerance: Option<f32>,
-}
-
-/// Parses a vector file.
-pub fn parse(text: &str) -> Result<VectorFile, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != VECTOR_TYPE {
-        return Err(format!("a vector is `type vector`, not `type {}`", doc.ty));
-    }
-    if doc.version != 1 {
-        return Err(format!(
-            "vector version {} (this engine reads 1)",
-            doc.version
-        ));
-    }
-    let mut out = VectorFile::default();
-    for e in &doc.body.entries {
-        let line = e.line;
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(format!("line {line}: unknown vector entry `{}`", e.key));
+/// Capture the explicit module-local input before planning/cache lookup.
+fn source(s: &Source) -> Result<(String, Option<f32>), String> {
+    match s.input::<VectorInput>()? {
+        VectorInput::File { source, tolerance } => {
+            let root = super::assets_root(s);
+            let path = super::source_path::checked(&root, &source)
+                .map_err(|e| format!("source '{source}': {e}"))?;
+            let svg =
+                std::fs::read_to_string(path).map_err(|e| format!("source '{source}': {e}"))?;
+            Ok((svg, tolerance))
         }
-        match e.key.as_str() {
-            "source" | "svg" => {
-                if out.source.is_some() || out.svg.is_some() {
-                    return Err(format!("line {line}: one `source` or `svg` per vector"));
-                }
-                let s = e
-                    .values
-                    .first()
-                    .and_then(Value::as_str)
-                    .ok_or_else(|| format!("line {line}: `{}` takes a string", e.key))?
-                    .to_string();
-                if e.key == "source" {
-                    out.source = Some(s);
-                } else {
-                    out.svg = Some(s);
-                }
-            }
-            "tolerance" => {
-                let t = e
-                    .values
-                    .first()
-                    .and_then(Value::as_number)
-                    .map(Number::as_f32)
-                    .filter(|t| t.is_finite() && *t > 0.0)
-                    .ok_or_else(|| format!("line {line}: `tolerance` takes a positive number"))?;
-                out.tolerance = Some(t);
-            }
-            other => return Err(format!("line {line}: unknown vector entry `{other}`")),
-        }
+        VectorInput::Inline { svg, tolerance } => Ok((svg, tolerance)),
     }
-    if out.source.is_none() && out.svg.is_none() {
-        return Err("a vector needs `source` (an SVG's asset path) or `svg`".into());
-    }
-    Ok(out)
-}
-
-/// What the cook stamp covers besides the file: the SVG's bytes.
-pub(super) fn dependencies(s: &Source) -> String {
-    let Ok(file) = parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return String::new();
-    };
-    file.source
-        .map(|src| super::read_sibling(s, &src).unwrap_or_default())
-        .unwrap_or_default()
 }
 
 /// Cooks a vector into an `og.Vector` blob.
-pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text =
-        std::str::from_utf8(&s.bytes).map_err(|_| CookError("a vector is text (UTF-8)".into()))?;
-    let file = parse(text).map_err(CookError)?;
-    let svg = match (&file.source, &file.svg) {
-        (Some(src), _) => {
-            super::read_sibling(s, src).map_err(|e| CookError(format!("source \"{src}\": {e}")))?
-        }
-        (None, Some(svg)) => svg.clone(),
-        (None, None) => unreachable!("parse requires one"),
-    };
-    let data = tessellate(&svg, file.tolerance).map_err(CookError)?;
+fn cook(
+    svg: &str,
+    tolerance: Option<f32>,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let data = tessellate(svg, tolerance).map_err(CookError)?;
     let triangles = data.indices.len() / 3;
     Ok((
         write(&data, stamp),
@@ -465,7 +369,7 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
 pub(crate) static VECTOR: KindDef = KindDef {
     name: "vector",
     extensions: &[],
-    types: &[VECTOR_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_vector,
@@ -476,28 +380,30 @@ pub(crate) static KINDS: &[&KindDef] = &[&VECTOR];
 
 fn plan_vector<'a>(
     _cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    // The stamp covers the SVG the vector names.
-    let svg = dependencies(s);
-    let st = stamp(&[Area::Vector], &[b"vector", &hash, svg.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Vector::NAME,
-        st,
-        Box::new(VectorJob(s)),
-    ));
+    match source(s) {
+        Ok((svg, tolerance)) => {
+            let st = stamp(&[Area::Vector], &[b"vector", &hash, svg.as_bytes()]);
+            outs.push((
+                s.rel.clone(),
+                format::Vector::NAME,
+                st,
+                Box::new(VectorJob(svg, tolerance)),
+            ));
+        }
+        Err(e) => state.early_errors.push((s.rel.clone(), "vector", e)),
+    }
 }
 
 /// A vector drawing's one output.
-struct VectorJob<'a>(&'a Source);
+struct VectorJob(String, Option<f32>);
 
-impl Job for VectorJob<'_> {
+impl Job for VectorJob {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let VectorJob(s) = self;
-        cook(s, p.stamp)
+        cook(&self.0, self.1, p.stamp)
     }
 }

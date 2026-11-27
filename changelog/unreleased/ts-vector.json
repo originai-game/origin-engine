@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.vector / og cook",
+      "change": "Vector authoring now consumes checked TS declarations directly. The OGT vector parser, intermediate VectorFile and sibling-path lookup are deleted. SVG tessellation and the cooked/runtime vector representation are unchanged; explicit source bytes are captured before cook cache lookup.",
+      "fix": "Export file.vector({source:'assets/ui/emblem.svg',tolerance:0.05}) or file.vector({svg:'<svg ...>...</svg>'}) from content/<name>.ts, importing file from @origingame/engine/author. Source paths are canonical and relative to the owning module. Load <module>/<content-relative-stem> with og.load.vector instead of an .ogt path. See og api show file:vector.",
+      "find": ["type vector", "emblem.ogt", "VectorFile"]
+    }
+  ]
+}

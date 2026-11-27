@@ -43,7 +43,8 @@ pub enum TextureKind {
 #[serde(untagged, deny_unknown_fields)]
 pub enum VectorInput {
     File {
-        /// External SVG path, resolved beside this source file.
+        /// Explicit canonical SVG path relative to the owning module
+        /// (e.g. assets/ui/emblem.svg), without sibling/assets fallback.
         #[schemars(length(min = 1), extend("x-og-input" = "text"))]
         source: String,
         /// Positive flattening error in SVG view-box units; omitted uses the

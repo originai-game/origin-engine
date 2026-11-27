@@ -10,6 +10,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("effect-texture", &effect_texture::TEXTURE),
     ("sound", &audio::SOUND),
     ("texture-array", &texture_array::TEXTURE_ARRAY),
+    ("vector", &vector::VECTOR),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.

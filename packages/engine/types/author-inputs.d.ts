@@ -6725,7 +6725,8 @@ readonly "name": (string);
 /** Exactly one SVG source. SVG syntax/element support belongs to the vector
 domain validator. No embedded OGT or untyped configuration is accepted. */
 export type Input_vector = (((({
-/** External SVG path, resolved beside this source file. */
+/** Explicit canonical SVG path relative to the owning module
+(e.g. assets/ui/emblem.svg), without sibling/assets fallback. */
 readonly "source": (string);
 /** Positive flattening error in SVG view-box units; omitted uses the
 longer view-box side divided by 2000. */
