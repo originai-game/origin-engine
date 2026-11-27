@@ -55,6 +55,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "effect-texture" {
                 out.push_str("Outputs: RGBA scattering sheet at the primary ID, thermal emission at #emission, arrays at #array and #emission#array, and their chronological #layerN textures. All parameters are required; sheet size, work budget and nonzero light direction are domain checks. Volume output is straight-alpha sRGB; noise/Worley/curl output is linear data. See effect-files for sampling and attribution.\n\n");
             }
+            if ty == "sound" {
+                out.push_str("Output: an ordinary sound loaded with og.load.sound. Explicit rate 8000..192000 Hz, channels 1 or 2, and at least one complete interleaved frame of finite samples are required. Float samples share the WAV importer's clamping and quantization, then the normal sound encoder and automatic streaming. Actual #chunkN outputs are reported by the producer. Oscillator synthesis remains the separate sfx domain.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -422,10 +425,6 @@ pub fn markdown() -> Result<String, String> {
                 block(&mut out, "scene.hlod", super::hlod::LINES);
                 block(&mut out, "scene.path", og_timeline::PATH_LINES);
                 out.push_str("\n<a id=\"file-scene-generate\"></a>\n### `file:scene.generate`\n\nReturns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
-            }
-            "sound" => {
-                out.push_str("Field coverage: complete. Version 1 contains one generate block, which returns {rate, channels, samples}: rate 8000..192000 Hz, one or two interleaved channels, finite float samples and at least one complete frame. Samples clamp to -1..1 through the normal sound importer. Output: the normal QOA/Opus sound, with streaming configured by import settings, loaded with og.load.sound. Oscillator synthesis remains type sfx.\n\n<a id=\"file-sound-generate\"></a>\n### `file:sound.generate`\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
             "model" => {

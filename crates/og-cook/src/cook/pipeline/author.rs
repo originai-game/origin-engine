@@ -6,7 +6,10 @@ use crate::cook::{source_content, source_index, source_project, source_records};
 
 /// Domains whose sole author entry is now a checked TS declaration. Keep this
 /// separate from legacy type claims; the scanner must not accept their OGT.
-pub(crate) const KINDS: &[(&str, Kind)] = &[("effect-texture", &effect_texture::TEXTURE)];
+pub(crate) const KINDS: &[(&str, Kind)] = &[
+    ("effect-texture", &effect_texture::TEXTURE),
+    ("sound", &audio::SOUND),
+];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
 /// Does not evaluate content or manufacture a second cooked output.
@@ -87,13 +90,13 @@ pub(crate) fn sources(
             )
             .map_err(|e| CookError(e.to_string()))?;
         let derived = match entry.factory.as_str() {
-            "effect-texture" => effect_texture::derived(content.data()).map_err(|e| {
-                CookError(
-                    source_content::diagnostic(content.source(), &entry.file, "", e).to_string(),
-                )
-            })?,
-            _ => BTreeMap::new(),
-        };
+            "effect-texture" => effect_texture::derived(content.data()),
+            "sound" => audio::derived(content.data()),
+            _ => Ok(BTreeMap::new()),
+        }
+        .map_err(|e| {
+            CookError(source_content::diagnostic(content.source(), &entry.file, "", e).to_string())
+        })?;
         // Each domain consumes the canonical IR directly. A cutover removes
         // its legacy type claim instead of serializing data back into OGT.
         let kind = match entry.factory.as_str() {

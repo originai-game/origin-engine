@@ -1573,12 +1573,8 @@ fn generated_pcm_cooks_as_an_authored_sound() {
     )
     .unwrap();
     std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'pcm',entry:'src/main.ts'});").unwrap();
-    std::fs::write(
-        assets.join("made.ogt"),
-        "type sound\nversion 1\n---\ngenerate {\nscript \"samples.ts\"\n}\n",
-    )
-    .unwrap();
-    std::fs::write(assets.join("samples.ts"), "export default () => ({rate: 22050, channels: 2, samples: Float32Array.from({length: 600}, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6])});").unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::write(root.join("content/made.ts"), "import {file} from '@origingame/engine/author'; export default file.sound({rate: 22050, channels: 2, samples: Float32Array.from({length: 600}, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6])});").unwrap();
     let mut writer = hound::WavWriter::create(
         assets.join("authored.wav"),
         hound::WavSpec {
@@ -1604,13 +1600,35 @@ fn generated_pcm_cooks_as_an_authored_sound() {
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let made = bundle.load_sound("made.ogt").unwrap().decode().unwrap();
+    let made = bundle.load_sound("base/made").unwrap().decode().unwrap();
     let authored = bundle.load_sound("authored.wav").unwrap().decode().unwrap();
     assert_eq!(
         (made.sample_rate, made.channels, made.samples.len()),
         (22050, 2, 600)
     );
     assert_eq!(made.samples, authored.samples);
+    assert!(cook().status.success());
+    assert_eq!(
+        og_cook::runtime::Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_sound("base/made")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .samples,
+        authored.samples,
+    );
+    // Cross the automatic QOA streaming boundary with a compact typed buffer.
+    // The graph and planner must agree about the real last chunk.
+    std::fs::write(root.join("content/long.ts"), "import {file} from '@origingame/engine/author'; export default file.sound({rate:192000,channels:1,samples:new Float32Array(2600000).fill(0.25)});").unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject,ref} from '@origingame/engine/author'; export default defineProject({id:'pcm',entry:'src/main.ts',roots:[ref('base/long#chunk3')]});").unwrap();
+    let streamed = cook();
+    assert!(streamed.status.success(), "{}", text(&streamed));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.read("base/long#chunk3").is_ok());
+    assert!(bundle.read("base/long#chunk4").is_err());
+    std::fs::remove_file(root.join("content/long.ts")).unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'pcm',entry:'src/main.ts'});").unwrap();
     for source in [
         "({rate: 22050, channels: 2, samples: [0, 0.5, 1]})",
         "({rate: 7999, channels: 1, samples: [0]})",
@@ -1618,8 +1636,8 @@ fn generated_pcm_cooks_as_an_authored_sound() {
         "({rate: 22050, channels: 1, samples: []})",
     ] {
         std::fs::write(
-            assets.join("samples.ts"),
-            format!("export default () => {source};"),
+            root.join("content/made.ts"),
+            format!("import {{file}} from '@origingame/engine/author'; export default file.sound({source});"),
         )
         .unwrap();
         let out = cook();
@@ -1629,6 +1647,15 @@ fn generated_pcm_cooks_as_an_authored_sound() {
             text(&out)
         );
     }
+    std::fs::remove_file(root.join("content/made.ts")).unwrap();
+    std::fs::write(assets.join("made.ogt"), "type sound\nversion 1\n---\n").unwrap();
+    let old = cook();
+    assert!(!old.status.success());
+    assert!(
+        text(&old).contains("OGT authoring is removed"),
+        "{}",
+        text(&old)
+    );
     std::fs::remove_file(assets.join("made.ogt")).unwrap();
     std::fs::write(assets.join("sampled.ogt"), "type sfx\nversion 1\n---\nlayer {\nsample {\nsource \"authored.wav\"\nloop true\n}\nattack 0\nsustain 0.01\ndecay 0\ngain 1\n}\n").unwrap();
     let out = cook();

@@ -137,7 +137,6 @@ pub(crate) fn scan_sources(
     effect::expand(&mut sources);
     field::expand(&mut sources);
     tilemap::expand(&mut sources);
-    audio::expand(&mut sources);
     model_text::expand(&mut sources);
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).

@@ -10,7 +10,7 @@ For random source data, import `rng` from the same author module and supply a u3
 
 The author module also exposes schema-derived `file.<kind>(value)` factories and `ref(id)` content identities. A factory returns a descriptor, not a cooked asset or runtime handle; constructing a reference never runs another content module. Hyphenated kinds use brackets, such as `file["texture-array"](...)`. `og api gen/check` generate and drift-check the engine's `types/author-inputs.d.ts` from its Rust input schemas. Contextual scene, prefab and table types require project-specific record binding rather than accepting arbitrary fields. These are author frontend primitives; the asset declarations and generation blocks below still use their existing cook consumers until each format is cut over.
 
-Content discovery keeps the source `factory` separate from its primary reference `kind`. The domain schema's `x-og-output-kind` declares a different primary kind: `model-program` produces `model`, `effect-texture` produces `texture`, `sfx` produces `sound`, `vfx2d` produces `flipbook`, `theme` produces `pack` and `font-extension` produces `font-pack`. Otherwise the primary kind equals the factory name; import entries use their literal schema-defined discriminant. `x-og-ref-kinds` accepts output kinds only, without source-name aliases. Model `program` and theme `extends` instead use `x-og-ref-factories` to require the original program/recipe declaration: an imported model, an ordinary pack or a derived output is not its source. Derived suffixes and their kinds come from actual domain producers; discovery never guesses them. TS field and effect-texture declarations have native cooker adapters. Other domains keep their existing author entry until their complete cutover; a schema or factory being listed does not mean its native adapter has shipped.
+Content discovery keeps the source `factory` separate from its primary reference `kind`. The domain schema's `x-og-output-kind` declares a different primary kind: `model-program` produces `model`, `effect-texture` produces `texture`, `sfx` produces `sound`, `vfx2d` produces `flipbook`, `theme` produces `pack` and `font-extension` produces `font-pack`. Otherwise the primary kind equals the factory name; import entries use their literal schema-defined discriminant. `x-og-ref-kinds` accepts output kinds only, without source-name aliases. Model `program` and theme `extends` instead use `x-og-ref-factories` to require the original program/recipe declaration: an imported model, an ordinary pack or a derived output is not its source. Derived suffixes and their kinds come from actual domain producers; discovery never guesses them. TS field, sound and effect-texture declarations have native cooker adapters. Other domains keep their existing author entry until their complete cutover; a schema or factory being listed does not mean its native adapter has shipped.
 
 Cook transfers and caches source data as canonical binary author IR. Numeric typed arrays keep their element type and only their selected view's bytes; JSON expansion happens only for consumers that request it. Each entry has a 64 MiB encoded-output budget, one million structural nodes and 128 nested containers. Typed array samples do not count as separate structural nodes. Split a larger world into independently cooked tiles or content entries instead of increasing a single entry's budget. Non-finite numbers, sparse arrays, extra typed-array properties, getters, class instances, promises and cyclic objects remain errors.
 
@@ -670,7 +670,7 @@ export default og.game({
     const entity = world.spawn({ name: "grid" });
     if (!entity.ok) throw new Error(entity.reason);
     world.insert(entity.value, og.Tilemap, { map: loaded.value.map });
-    const sound = og.load.sound(world, "signal.ogt");
+    const sound = og.load.sound(world, "base/signal");
     const sampled = og.load.sound(world, "sampled.ogt");
     og.assert.always(sampled.ok, "sample-based synthesis cooks as a normal sound", {});
     const source = { samples: [0.25], rate: 8000, reference: 440, loop: true };
@@ -752,24 +752,13 @@ grid 8 8 3 1
 
 ## 6. Cook custom PCM
 
-Use `type sound` with one `generate` block when a module produces custom samples. The default export returns `SoundSource`: an explicit `rate` in 8000..192000 Hz, `channels` 1 or 2 and interleaved float `samples`, with at least one whole frame. Normal sound import clamps samples to -1..1 and owns PCM conversion, QOA/Opus encoding and streaming; no script writes or encodes a WAV. The map recipe above also loads this short, asymmetric stereo signal and checks its format. Existing oscillator synthesis stays in `type sfx`.
+Use a TS `file.sound({...})` declaration under `content/` for custom samples. Specify `rate` in 8000..192000 Hz, `channels` 1 or 2 and interleaved float `samples`, with at least one whole frame. There is no OGT `sound` author entry or generator text wrapper. The native sound importer shares float clamping and quantization with WAV import, then the normal encoder and automatic streaming; no script writes or encodes a WAV. The map recipe above loads this short, asymmetric stereo signal at its canonical ID and checks its format. Existing oscillator synthesis stays in the separate `sfx` domain.
 
-```ogt recipe file=assets/signal.ogt
-type sound
-version 1
----
-generate {
-  script "signal.ts"
-}
-```
+```ts recipe file=content/signal.ts
+import { file } from "@origingame/engine/author";
 
-```ts recipe file=assets/signal.ts
-import type { SoundSource } from "@origingame/engine/generate";
-
-export default function signal() {
-  const samples = Float32Array.from({ length: 600 }, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6]!);
-  return { rate: 22050, channels: 2, samples } satisfies SoundSource;
-}
+const samples = Float32Array.from({ length: 600 }, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6]!);
+export default file.sound({ rate: 22050, channels: 2, samples });
 ```
 
 SFX layers can also use a recording instead of an oscillator. A `sample` block accepts either `source "recording.wav"` relative to the SFX file, or explicit mono `samples` and `rate`. Stereo files average to mono. `reference` gives the layer frequency for original-speed playback, and `loop` wraps only the source, not the explicit envelope. Slide, vibrato, filters and drive use the same synth as oscillators; FM is oscillator-only. The file's content participates in the cook cache key even when the SFX text did not change.

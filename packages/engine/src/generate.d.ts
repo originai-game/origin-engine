@@ -49,13 +49,6 @@ export interface TilemapSource {
   }[];
 }
 
-/** Finite interleaved float PCM; the normal sound cook owns clamping/codecs. */
-export interface SoundSource {
-  readonly rate: number;
-  readonly channels: 1 | 2;
-  readonly samples: Float32Array | readonly number[];
-}
-
 /** Static geometry attributes; materials and placements stay in the model file. */
 export interface MeshSource {
   readonly positions: Float32Array | readonly number[];

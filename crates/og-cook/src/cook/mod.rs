@@ -171,16 +171,20 @@ impl Source {
         self.encoded
             .get_or_init(|| {
                 let settings = audio::SoundSettings::parse(settings_block(self, "sound"))?;
-                audio::decode(&self.rel, &self.bytes)
-                    .and_then(|pcm| match settings.codec {
-                        audio::Codec::Opus => audio::encode_opus_chunked(
-                            &pcm,
-                            settings.opus_bitrate(pcm.channels),
-                            per_chunk,
-                        ),
-                        audio::Codec::Qoa => audio::encode(&pcm, per_chunk),
-                    })
-                    .map(std::sync::Arc::new)
+                let pcm = if self.path.extension().is_some_and(|ext| ext == "ts") {
+                    self.input::<audio::PcmInput>()?.into_pcm()
+                } else {
+                    audio::decode(&self.rel, &self.bytes)
+                };
+                pcm.and_then(|pcm| match settings.codec {
+                    audio::Codec::Opus => audio::encode_opus_chunked(
+                        &pcm,
+                        settings.opus_bitrate(pcm.channels),
+                        per_chunk,
+                    ),
+                    audio::Codec::Qoa => audio::encode(&pcm, per_chunk),
+                })
+                .map(std::sync::Arc::new)
             })
             .clone()
             .map_err(CookError)

@@ -21,7 +21,7 @@
 
 mod generate;
 pub use generate::Pcm as PcmInput;
-pub(crate) use generate::expand;
+pub(crate) use generate::derived;
 
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, settings_block,
@@ -324,7 +324,7 @@ pub fn wav(name: &str, bytes: &[u8]) -> Result<Pcm, String> {
     let samples: Vec<i16> = match (spec.sample_format, spec.bits_per_sample) {
         (hound::SampleFormat::Float, 32) => reader
             .into_samples::<f32>()
-            .map(|s| s.map(|v| (v.clamp(-1.0, 1.0) * 32767.0).round() as i16))
+            .map(|s| s.map(quantize))
             .collect::<Result<_, _>>(),
         (hound::SampleFormat::Int, bits @ 1..=16) => reader
             .into_samples::<i32>()
@@ -347,6 +347,10 @@ pub fn wav(name: &str, bytes: &[u8]) -> Result<Pcm, String> {
         channels: u32::from(spec.channels),
         from: format!("{}-bit PCM", spec.bits_per_sample),
     })
+}
+
+fn quantize(value: f32) -> i16 {
+    (value.clamp(-1.0, 1.0) * 32767.0).round() as i16
 }
 
 /// An MP3, Ogg Vorbis or FLAC file (symphonia) as 16-bit PCM: its first
@@ -805,7 +809,7 @@ pub fn cook_chunk(e: &Encoded, n: u32, stamp: u64) -> Result<Vec<u8>, CookError>
 pub(crate) static SOUND: KindDef = KindDef {
     name: "sound",
     extensions: EXTENSIONS,
-    types: &["sound"],
+    types: &[],
     by_content: true,
     streams: true,
     plan: plan_sound,
@@ -830,7 +834,12 @@ fn plan_sound<'a>(
         }
     };
     // An unreadable file fails in the cook, with its reason.
-    let chunking = shape(&s.rel, &s.bytes)
+    let source_shape = if s.path.extension().is_some_and(|ext| ext == "ts") {
+        s.input::<PcmInput>().and_then(|pcm| pcm.shape())
+    } else {
+        shape(&s.rel, &s.bytes)
+    };
+    let chunking = source_shape
         .ok()
         .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
     let shape = chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
