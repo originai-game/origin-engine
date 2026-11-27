@@ -26,14 +26,13 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     let options = parse(Some(options))?;
     let engine_id = ENGINES.with(|e| e.borrow().len() as u32);
     let seed = options["seed"].as_u64().map(|s| s as u32);
-    // project.ogt's tick, seed, scenes and scene: what GameDesc leaves unset.
-    let project = match options["project"].as_str() {
-        Some(text) => Some(project_game(text)?),
-        None => None,
-    };
+    let project = options.get("project").map(project_game).transpose()?;
     // The profile is the project's creation form's; an engine without a
     // project is 3D.
-    let profile = if project.as_ref().is_some_and(|p| p.two_d) {
+    let profile = if project
+        .as_ref()
+        .is_some_and(|p| p.profile == Some(og_api::wire::ProjectProfile::V2d))
+    {
         og_physics::PROFILE_2D
     } else {
         og_physics::PROFILE_3D
@@ -234,16 +233,20 @@ pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result
     if callback.is_none() && hooks().is_none() {
         return Ok(());
     }
+    // Boot scenes queue their names just like GameDesc.start does. Commit
+    // gameplay setup before the UI read-only guard: the host's probe hello
+    // flushes those names and must not look like a write by UI registration.
+    crate::author::probe::flush_names(eng);
     let before = eng.world()?.world_hash();
     // `flow`: the TypeScript runtime mounts the built-in FlowScreen first,
-    // unless project.ogt's `flow` block says the game draws it.
+    // unless project.ts's `flow.screen` says the game draws it.
     let screen = eng
         .state
         .borrow()
         .project
         .as_ref()
         .and_then(|p| p.flow.as_ref())
-        .is_some_and(|f| !f.game_screen);
+        .is_some_and(|f| f.screen != Some(og_api::wire::ProjectFlowScreen::Game));
     // An absent callback on reload is still a registration pass: it disposes
     // the presentation IDs removed with the old GameDesc.ui.
     let result = call(

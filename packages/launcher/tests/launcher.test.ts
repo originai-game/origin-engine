@@ -196,10 +196,10 @@ describe.if(unix)("install events", () => {
     ch.publish("3.4.0");
     ch.publish("3.4.1");
     const game = scratch("og-game-");
-    writeFileSync(join(game, "project.ogt"), 'type project\nversion 1\n---\nengine "3.4.0"\n');
+    writeFileSync(join(game, "og-project.json"), JSON.stringify({version: 1, name: "Game", engine: "3.4.0"}));
     const pinned = await run(ch, ch.dir, ["engine", "install", "--json"], game);
     expect(pinned.events.at(-1)).toMatchObject({ event: "installed", version: "3.4.0", cached: false });
-    writeFileSync(join(game, "project.ogt"), 'engine "3.4.1"\n');
+    writeFileSync(join(game, "og-project.json"), JSON.stringify({version: 1, name: "Game", engine: "3.4.1"}));
     const quiet = await run(ch, ch.dir, ["test", "."], game);
     expect(quiet.stdout.trim()).toStartWith("engine 3.4.1 ");
     expect(quiet.stderr.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l).event)).toEqual(["resolve", "download", "verify", "unpack", "installed"]);
@@ -210,5 +210,41 @@ describe.if(unix)("install events", () => {
     expect(lines.slice(0, -1).map((l) => JSON.parse(l).event)).toEqual(["resolve", "download", "verify", "unpack", "installed"]);
     expect(lines.at(-1)).toStartWith("engine 3.4.1 ");
     expect(json.stderr).not.toContain("{");
+  });
+
+  test("only JSON marks projects; invalid identity never resolves latest and explicit install is independent", async () => {
+    const ch = channel();
+    ch.publish("3.5.0");
+    ch.latest("3.5.0");
+    const game = scratch("og-identity-");
+    const child = join(game, "src");
+    mkdirSync(child);
+    writeFileSync(join(game, "project.ts"), "throw new Error('must not execute');");
+    writeFileSync(join(game, "project.ogt"), 'engine "0.0.1"');
+    const outside = await run(ch, ch.dir, ["test", ".", "--json"], child);
+    expect(outside.code).toBe(0);
+    expect(outside.stdout).toContain("engine 3.5.0 ");
+    const metadata = join(game, "og-project.json");
+    const text = JSON.stringify({version: 1, name: "Game", engine: "3.5.0", look: {$ogRef: "base/look/night"}});
+    writeFileSync(metadata, text);
+    const pinned = await run(ch, ch.dir, ["test", ".", "--json"], child);
+    expect(pinned.code).toBe(0);
+    expect(readFileSync(metadata, "utf8")).toBe(text);
+    for (const [body, code] of [
+      ["{", "project_metadata_invalid"],
+      [JSON.stringify({version: 1, name: "Game"}), "no_pin"],
+      [JSON.stringify({version: 1, name: "Game", engine: "latest"}), "no_pin"],
+      [JSON.stringify({version: 2, name: "Game", engine: "3.5.0"}), "project_metadata_invalid"],
+    ]) {
+      writeFileSync(metadata, body!);
+      for (const args of [["test", ".", "--json"], ["upgrade", ".", "--json"]]) {
+        const invalid = await run(ch, ch.dir, args, child, {OG_ENGINE_VERSION: "3.5.0"});
+        expect(invalid.code).toBe(1);
+        expect(invalid.events).toEqual([{event: "error", code, message: expect.any(String), retryable: false}]);
+      }
+    }
+    const explicit = await run(ch, ch.dir, ["engine", "install", "3.5.0", "--json"], child);
+    expect(explicit.code).toBe(0);
+    expect(explicit.events.at(-1)).toMatchObject({event: "installed", version: "3.5.0"});
   });
 });

@@ -9,13 +9,13 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     let dir = scratch_root();
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
     std::fs::create_dir_all(dir.join("src")).unwrap();
+    let source = "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'upgrade',entry:'src/main.ts'});\n";
+    std::fs::write(dir.join("project.ts"), source).unwrap();
     let manifest = |engine: &str| {
-        format!(
-            "type project\nversion 1\n---\nname \"u\"\nid \"u\"\nengine \"{engine}\"\nentry \"src/main.ts\"\n"
-        )
+        format!("{}\n", serde_json::to_string_pretty(&serde_json::json!({"version":1,"name":"u","engine":engine,"look":{"$ogRef":"base/looks/main"}})).unwrap())
     };
     let write = |engine: &str| {
-        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        std::fs::write(dir.join("og-project.json"), manifest(engine)).unwrap();
         std::fs::write(
             dir.join("package.json"),
             format!("{{\n  \"dependencies\": {{ \"@origingame/engine\": \"^{engine}\" }}\n}}\n"),
@@ -44,15 +44,19 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
         (Some("done"), Some("patch")),
         "{r}"
     );
-    let pinned = std::fs::read_to_string(dir.join("project.ogt")).unwrap();
+    let pinned = std::fs::read_to_string(dir.join("og-project.json")).unwrap();
     assert_eq!(pinned, manifest("0.6.1"));
-    // project.ogt is the one pin: a package.json is left as it is.
+    assert_eq!(
+        std::fs::read_to_string(dir.join("project.ts")).unwrap(),
+        source
+    );
+    // og-project.json is the one pin: a package.json is left as it is.
     let pkg = std::fs::read_to_string(dir.join("package.json")).unwrap();
     assert!(pkg.contains("\"@origingame/engine\": \"^0.6.0\""), "{pkg}");
     // doctor's pin: an older patch of the installed minor is compatible, an
     // older minor is not.
     let pin = |engine: &str| {
-        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        std::fs::write(dir.join("og-project.json"), manifest(engine)).unwrap();
         let out = og()
             .args(["doctor", "--json"])
             .current_dir(&dir)
@@ -91,7 +95,7 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     std::fs::write(fake.join("changelog.json"), log.to_string()).unwrap();
     let cache = dir.join("engine-cache");
     let doctor = |engine: &str, json: bool| {
-        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        std::fs::write(dir.join("og-project.json"), manifest(engine)).unwrap();
         og().arg("doctor")
             .args(json.then_some("--json"))
             .current_dir(&dir)
@@ -125,7 +129,7 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     assert_eq!(compatible("dev.20261119.1"), true);
     std::fs::remove_dir_all(&cache).unwrap();
     std::fs::remove_dir_all(&fake).unwrap();
-    std::fs::write(dir.join("project.ogt"), manifest("0.6.1")).unwrap();
+    std::fs::write(dir.join("og-project.json"), manifest("0.6.1")).unwrap();
 
     write("0.2.0");
     let main = "const s = og.load.skin(\"ui/a.ogt\");\nconst c: ThemeColor = \"accent\";\n";
@@ -138,7 +142,7 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
         main
     );
     assert_eq!(
-        std::fs::read_to_string(dir.join("project.ogt")).unwrap(),
+        std::fs::read_to_string(dir.join("og-project.json")).unwrap(),
         manifest("0.2.0")
     );
     let out = upgrade(&["--to", "0.6.1", "--json"]);
@@ -171,7 +175,7 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(text(&out).contains("never downgrades"), "{}", text(&out));
     assert_eq!(
-        std::fs::read_to_string(dir.join("project.ogt")).unwrap(),
+        std::fs::read_to_string(dir.join("og-project.json")).unwrap(),
         manifest("0.6.1")
     );
     let _ = std::fs::remove_dir_all(&dir);

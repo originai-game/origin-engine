@@ -65,7 +65,7 @@ function world3d(world: World): void {
 }
 
 /** A project of the creation form `form` (a 2D one is a 2D engine). */
-const formed = (form: "2d" | "3d"): CreateOptions => ({ project: `type project\nversion 1\n---\ncreate {\n  form "${form}"\n}\n` });
+const formed = (form: "2d" | "3d"): CreateOptions => ({ project: { profile: form } });
 
 /** A 2D world with a platformer, a fluid and a water line. */
 function world2d(world: World): void {

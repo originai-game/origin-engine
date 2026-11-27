@@ -811,6 +811,206 @@ pub use self::system::*;
 pub mod game {
     use super::*;
 
+    /// `ProjectProfile`: packages/knowledge/wiki/game.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum ProjectProfile {
+        #[default]
+        V3d,
+        V2d,
+    }
+
+    impl ProjectProfile {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["3d", "2d"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::V3d, Self::V2d];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("ProjectProfile", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for ProjectProfile {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "ProjectProfile", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for ProjectProfile {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `ProjectFlowScreen`: packages/knowledge/wiki/game.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum ProjectFlowScreen {
+        #[default]
+        Engine,
+        Game,
+    }
+
+    impl ProjectFlowScreen {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["engine", "game"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::Engine, Self::Game];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("ProjectFlowScreen", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for ProjectFlowScreen {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "ProjectFlowScreen", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for ProjectFlowScreen {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `ProjectStartupFlow`: packages/knowledge/wiki/game.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ProjectStartupFlow {
+        pub dialogue: String,
+        pub screen: Option<ProjectFlowScreen>,
+    }
+
+    impl Default for ProjectStartupFlow {
+        fn default() -> Self {
+            Self {
+                dialogue: Default::default(),
+                screen: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ProjectStartupFlow {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                dialogue: field(o, "dialogue", d.dialogue)?,
+                screen: field(o, "screen", d.screen)?,
+            })
+        }
+    }
+
+    impl ToJson for ProjectStartupFlow {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("dialogue".into(), self.dialogue.to_json());
+            if let Some(x) = &self.screen {
+                o.insert("screen".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
+    /// `ProjectStartup`: packages/knowledge/wiki/game.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ProjectStartup {
+        pub tick: Option<u32>,
+        pub seed: Option<u32>,
+        pub scenes: Option<BTreeMap<String, String>>,
+        pub scene: Option<String>,
+        pub look: Option<String>,
+        pub save_version: Option<u32>,
+        pub loading: Option<LoadingScreen>,
+        pub flow: Option<ProjectStartupFlow>,
+        pub profile: Option<ProjectProfile>,
+    }
+
+    impl Default for ProjectStartup {
+        fn default() -> Self {
+            Self {
+                tick: Default::default(),
+                seed: Default::default(),
+                scenes: Default::default(),
+                scene: Default::default(),
+                look: Default::default(),
+                save_version: Default::default(),
+                loading: Default::default(),
+                flow: Default::default(),
+                profile: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ProjectStartup {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tick: field(o, "tick", d.tick)?,
+                seed: field(o, "seed", d.seed)?,
+                scenes: field(o, "scenes", d.scenes)?,
+                scene: field(o, "scene", d.scene)?,
+                look: field(o, "look", d.look)?,
+                save_version: field(o, "saveVersion", d.save_version)?,
+                loading: field(o, "loading", d.loading)?,
+                flow: field(o, "flow", d.flow)?,
+                profile: field(o, "profile", d.profile)?,
+            })
+        }
+    }
+
+    impl ToJson for ProjectStartup {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            if let Some(x) = &self.tick {
+                o.insert("tick".into(), x.to_json());
+            }
+            if let Some(x) = &self.seed {
+                o.insert("seed".into(), x.to_json());
+            }
+            if let Some(x) = &self.scenes {
+                o.insert("scenes".into(), x.to_json());
+            }
+            if let Some(x) = &self.scene {
+                o.insert("scene".into(), x.to_json());
+            }
+            if let Some(x) = &self.look {
+                o.insert("look".into(), x.to_json());
+            }
+            if let Some(x) = &self.save_version {
+                o.insert("saveVersion".into(), x.to_json());
+            }
+            if let Some(x) = &self.loading {
+                o.insert("loading".into(), x.to_json());
+            }
+            if let Some(x) = &self.flow {
+                o.insert("flow".into(), x.to_json());
+            }
+            if let Some(x) = &self.profile {
+                o.insert("profile".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
     /// `GameDesc`: packages/knowledge/wiki/game.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct GameDesc {

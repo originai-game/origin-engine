@@ -83,19 +83,13 @@ pub enum TextureRole {
 pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, String> {
     let assets = root.join("assets");
     let mut sources = super::scan(&assets).map_err(|e| e.0)?.sources;
-    let project = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok());
-    let project_off = match &project {
-        Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
-        None => ProjectConform::default(),
-    };
-    let two_d = match &project {
-        Some(d) => {
-            crate::look::project_profile(&d.body).map_err(|e| format!("project.ogt:{e}"))?
-                == crate::look::Profile::TwoD
-        }
-        None => false,
+    let project = super::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let two_d = matches!(
+        project.input.create.as_ref().and_then(|c| c.form.as_ref()),
+        Some(super::source_schemas::project::Form::TwoD)
+    );
+    let project_off = ProjectConform {
+        off: project.input.conform.map_or_else(Vec::new, |c| c.off),
     };
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let sheets = texture2d::strip_sheets(&mut sources);
@@ -185,48 +179,6 @@ pub(super) struct ProjectConform {
 }
 
 impl ProjectConform {
-    /// Reads the block from project.ogt's body; none is an empty list.
-    pub fn parse(body: &Block) -> Result<ProjectConform, String> {
-        let mut out = ProjectConform::default();
-        let Some(e) = body.get("conform") else {
-            return Ok(out);
-        };
-        let Some(block) = &e.block else {
-            return Err(format!(
-                "{}: conform is a block: conform {{ off \"<asset or pattern>\" ... }}",
-                e.line
-            ));
-        };
-        for e in &block.entries {
-            match e.key.as_str() {
-                "off" => {
-                    if e.values.is_empty() {
-                        return Err(format!(
-                            "{}: conform.off names assets by id or pattern, as strings",
-                            e.line
-                        ));
-                    }
-                    for v in &e.values {
-                        let s = v.as_str().ok_or_else(|| {
-                            format!(
-                                "{}: conform.off names assets by id or pattern, as strings",
-                                e.line
-                            )
-                        })?;
-                        out.off.push(crate::runtime::asset_id(s).to_string());
-                    }
-                }
-                k => {
-                    return Err(format!(
-                        "{}: conform has no `{k}`; it takes off \"<asset or pattern>\"",
-                        e.line
-                    ));
-                }
-            }
-        }
-        Ok(out)
-    }
-
     /// The pattern that turns `id` off, if one does.
     pub fn off_by(&self, id: &str) -> Option<&str> {
         self.off.iter().find(|p| matches(p, id)).map(String::as_str)

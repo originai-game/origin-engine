@@ -128,10 +128,13 @@ impl<'a> Evaluator<'a> {
 }
 
 /// A primary or actual domain-reported subresource; never a suffix heuristic.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Output {
     pub entry: String,
     pub kind: String,
+    /// The domain's one cooked output ID. Unmigrated domain bindings are
+    /// removed with that domain's parser, not added to runtime lookup.
+    pub asset: String,
 }
 
 /// One resolved schema-position edge, with its original entry expression span.
@@ -192,6 +195,7 @@ impl PendingReference {
 pub struct GraphBuilder<'a> {
     project: &'a Project,
     index: &'a Index,
+    existing: BTreeMap<String, Entry>,
     nodes: BTreeMap<String, (Node, Vec<PendingReference>)>,
     outputs: BTreeMap<String, Output>,
 }
@@ -201,9 +205,44 @@ impl<'a> GraphBuilder<'a> {
         Self {
             project,
             index,
+            existing: BTreeMap::new(),
             nodes: BTreeMap::new(),
             outputs: BTreeMap::new(),
         }
+    }
+
+    /// Actual scanner results until their P1/P2/P3 kind cutovers. These are
+    /// not TS declarations and cannot pretend to supply generated subresources.
+    pub(crate) fn insert_scanned(&mut self, entry: Entry, asset: String) -> Result<Output, String> {
+        if !matches!(
+            entry.factory.as_str(),
+            "scene" | "prefab" | "look" | "dialogue"
+        ) {
+            return Err(format!(
+                "{}: kind is outside the temporary scaffold catalogue",
+                entry.file
+            ));
+        }
+        if self
+            .index
+            .entries
+            .keys()
+            .chain(self.existing.keys())
+            .any(|id| id.eq_ignore_ascii_case(&entry.id))
+        {
+            return Err(format!(
+                "{}: duplicate content identity {}",
+                entry.file, entry.id
+            ));
+        }
+        let output = Output {
+            entry: entry.id.clone(),
+            kind: entry.kind.clone(),
+            asset,
+        };
+        self.outputs.insert(entry.id.clone(), output.clone());
+        self.existing.insert(entry.id.clone(), entry);
+        Ok(output)
     }
 
     /// `derived` maps suffix (without the first '#') to actual output kind.
@@ -230,6 +269,7 @@ impl<'a> GraphBuilder<'a> {
             Output {
                 entry: entry.id.clone(),
                 kind: entry.kind.clone(),
+                asset: entry.id.clone(),
             },
         )]);
         let mut folded = BTreeSet::new();
@@ -247,6 +287,7 @@ impl<'a> GraphBuilder<'a> {
                 Output {
                     entry: entry.id.clone(),
                     kind: kind.clone(),
+                    asset: format!("{}#{suffix}", entry.id),
                 },
             );
         }
@@ -287,12 +328,43 @@ impl<'a> GraphBuilder<'a> {
             .map_err(|e| diagnostic(&self.project.source, "project.ts", "", e))?
             .collect(&self.project.data.root().into_json())
             .map_err(|e| diagnostic(&self.project.source, "project.ts", &e.path, e.message))?;
-        let resolve =
-            |file, module, r| resolve(self.project, self.index, &self.outputs, file, module, r);
-        let roots = located(&self.project.source, &root_refs)?
+        let resolve = |file, module, r| {
+            resolve(
+                self.project,
+                self.index,
+                &self.existing,
+                &self.outputs,
+                file,
+                module,
+                r,
+            )
+        };
+        let mut roots: Vec<_> = located(&self.project.source, &root_refs)?
             .into_iter()
             .map(|r| resolve("project.ts", None, r))
             .collect::<Result<_, _>>()?;
+        if let Some(super::source_schemas::procedural::LookBase::Asset(look)) =
+            &self.project.metadata.look
+        {
+            roots.push(resolve(
+                super::source_metadata::FILE,
+                None,
+                PendingReference {
+                    reference: Reference {
+                        path: "/look".into(),
+                        id: look.id.clone(),
+                        kinds: Some(BTreeSet::from(["look".into()])),
+                        factories: None,
+                    },
+                    location: Location {
+                        start: 0,
+                        end: 0,
+                        line: 1,
+                        column: 1,
+                    },
+                },
+            )?);
+        }
         let mut dependents: BTreeMap<_, BTreeSet<_>> = self
             .index
             .entries
@@ -328,6 +400,7 @@ impl<'a> GraphBuilder<'a> {
 fn resolve(
     project: &Project,
     index: &Index,
+    existing: &BTreeMap<String, Entry>,
     outputs: &BTreeMap<String, Output>,
     file: &str,
     module: Option<&str>,
@@ -343,7 +416,11 @@ fn resolve(
             ),
         )
     })?;
-    let owner = &index.entries[&target.entry];
+    let owner = index
+        .entries
+        .get(&target.entry)
+        .or_else(|| existing.get(&target.entry))
+        .expect("outputs have a registered producer");
     if let Some(module) = module
         && module != owner.module
         && !project.modules[module].depends_on.contains(&owner.module)

@@ -17,11 +17,15 @@ fn content_index_discovers_namespaces_and_types_without_evaluation() {
     let manifest = |root: &str| {
         format!(
             "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
-            json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+            json!({"id":"world","entry":"src/main.ts",
             "modules":[{"id":"north","root":root,"dependsOn":["base"]},{"id":"empty","root":"modules/empty"}]})
         )
     };
     write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"World","engine":"0.9.0"}"#,
+    );
     std::fs::create_dir_all(dir.join("modules/north")).unwrap();
     std::fs::create_dir_all(dir.join("modules/empty")).unwrap();
     write("project.ts", &manifest("modules/north"));
@@ -225,12 +229,16 @@ fn content_preparation_tracks_scoped_sources_and_captured_inputs() {
             "project.ts",
             &format!(
                 "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
-                json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+                json!({"id":"world","entry":"src/main.ts",
                 "modules":[{"id":"north","root":"modules/north","dependsOn":north},
                 {"id":"east","root":"modules/east","dependsOn":east}]})
             ),
         );
     };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"World","engine":"0.9.0"}"#,
+    );
     write(
         "src/main.ts",
         "export type Token = string; throw new Error('GAME_EXECUTED');",
@@ -730,23 +738,23 @@ data.value.entries.gate = 'Other';
 // @ts-expect-error Ref identity is immutable.
 id.$ogRef = 'north/model/other';
 const north = og.defineModule({id:'north',root:'modules/north',dependsOn:['base']});
-const project = og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',
+const project = og.defineProject({id:'world',entry:'src/main.ts',
   modules:[north],scenes:{main:og.ref('base/scene/main')},
   packs:[{id:'north',include:['north/**'],dependsOn:['base'],optional:true}],
   publish:{fit:'letterbox',aspect:'16:9',dprCap:2,loadingLabels:{fetch:'Loading'}},
 });
 // @ts-expect-error Project fields are derived, not an arbitrary option bag.
-og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',typo:1});
+og.defineProject({id:'world',entry:'src/main.ts',typo:1});
 // @ts-expect-error Project scene paths use the shared reference wire.
-og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',scenes:{main:'scene/main'}});
+og.defineProject({id:'world',entry:'src/main.ts',scenes:{main:'scene/main'}});
 // @ts-expect-error Bootstrap output remains readonly.
 project.modules = [];
 // @ts-expect-error Modules cannot declare delivery options.
 og.defineModule({id:'north',root:'modules/north',optional:true});
-// @ts-expect-error A required project pin may not be omitted.
-og.defineProject({name:'World',id:'world',entry:'src/main.ts'});
+// @ts-expect-error Identity fields belong only to og-project.json.
+og.defineProject({id:'world',engine:'0.9.0',entry:'src/main.ts'});
 // @ts-expect-error The settings vocabulary is closed and typed.
-og.defineProject({name:'World',id:'world',engine:'0.9.0',entry:'src/main.ts',publish:{fit:'stretch'}});
+og.defineProject({id:'world',entry:'src/main.ts',publish:{fit:'stretch'}});
 "#,
     )
     .unwrap();
@@ -801,14 +809,17 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
         "content/field/wind.ts",
         "throw new Error('CONTENT_EXECUTED');",
     );
-    let small =
-        json!({"name":"Room","id":"room","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts"});
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Room","engine":"0.9.0"}"#,
+    );
+    let small = json!({"id":"room","entry":"src/main.ts"});
     write("project.ts", &manifest(&small));
     let minimal = Project::open(&dir).unwrap();
     assert_eq!(minimal.module_order, ["base"]);
     assert_eq!(minimal.pack_order, ["base"]);
     assert_eq!(minimal.module_for("content/field/wind.ts").id, "base");
-    assert_eq!(minimal.dependencies, ["project.ts"]);
+    assert_eq!(minimal.dependencies, ["og-project.json", "project.ts"]);
     assert_eq!(minimal.data, Project::open(&dir).unwrap().data);
 
     write(
@@ -824,8 +835,8 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
         "modules/north/src/schema/records.ts",
         "throw new Error('MODULE_SCHEMA_EXECUTED');",
     );
-    write("lib/title.ts", "export const title = 'World';");
-    let large = json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+    write("lib/title.ts", "export const title = 'world';");
+    let large = json!({"id":"world","entry":"src/main.ts",
         "schemas":["src/schema/records.ts","modules/north/src/schema/records.ts"],
         "modules":[{"id":"nested","root":"modules/north/extra","dependsOn":["north"]},
                    {"id":"north","root":"modules/north","dependsOn":["base"],"inputs":["sources/**/*.csv"]}],
@@ -839,7 +850,7 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
     let imported = manifest(&large)
         .replace("export default", "import north from './modules/north/module.ts'; import {title} from './lib/title.ts';\nexport default")
         .replace(&large["modules"][1].to_string(), "north")
-        .replace("\"name\":\"World\"", "\"name\":title");
+        .replace("\"id\":\"world\"", "\"id\":title");
     write("project.ts", &imported);
     let world = Project::open(&dir).unwrap();
     assert_eq!(world.module_order, ["base", "north", "nested"]);
@@ -864,18 +875,23 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
     assert_eq!(world.input.seed, Some(u32::MAX));
     assert_eq!(
         world.dependencies,
-        ["lib/title.ts", "modules/north/module.ts", "project.ts"]
+        [
+            "lib/title.ts",
+            "modules/north/module.ts",
+            "og-project.json",
+            "project.ts"
+        ]
     );
     let overlay = BTreeMap::from([(
         "lib/title.ts".into(),
-        "export const title = 'Candidate';".into(),
+        "export const title = 'candidate';".into(),
     )]);
     let candidate = Project::open_with_overlay(&dir, &overlay).unwrap();
-    assert_eq!(candidate.input.name, "Candidate");
+    assert_eq!(candidate.input.id, "candidate");
     assert_ne!(candidate.evaluation_key, world.evaluation_key);
     assert_eq!(
         std::fs::read_to_string(dir.join("lib/title.ts")).unwrap(),
-        "export const title = 'World';"
+        "export const title = 'world';"
     );
 
     // Each rejected alternative differs at a boundary relevant to discovery,
@@ -884,8 +900,8 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
         (
             "engine",
             json!("not-installed"),
-            "/engine",
-            "does not match",
+            "",
+            "Additional properties",
         ),
         ("entry", json!("../src/main.ts"), "/entry", "canonical"),
         (
@@ -1002,10 +1018,7 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
     );
 
     // Source diagnostics and edits unwrap only the real imported helpers.
-    let invalid = format!(
-        "import {{defineProject as project}} from '@origingame/engine/author';\nexport default project({{\nname:'Room',id:'room',engine:'{}',entry:'src/main.ts',\ntick:241\n}});",
-        env!("CARGO_PKG_VERSION")
-    );
+    let invalid = "import {defineProject as project} from '@origingame/engine/author';\nexport default project({\nid:'room',entry:'src/main.ts',\ntick:241\n});".to_string();
     write("project.ts", &invalid);
     let error = Project::open(&dir).err().unwrap();
     assert_eq!(error.path, "/tick");

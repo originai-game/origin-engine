@@ -34,6 +34,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
     `knowledge/presets/`, `knowledge/scaffold/` (`origin-engine.json`,
     `distribution.json`, `template/`) and `knowledge/wiki/` paths
     (`docs/release.md` §2, `packages/knowledge/knowledge.json`).
+  - Scaffold `og-project.json` (`version: 1`, concrete `engine`, `name`, optional
+    preset or content-ref `look`) and `project.ts` (`defineProject`), plus the
+    checked JSON from `og project --json`; the platform never evaluates TS.
   - `og test --json`, `og probe`, `og build --json` and where outputs land
     (`dist/` and `og-out/`) (testing guide §9); `og new --look --premise
     --no-prompt` (start guide §1); the launcher's install events
@@ -54,7 +57,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   decides an outcome the game did not state.
 - **No gameplay templates; mechanisms by name.** `og create` writes one
   project structure with a connected menu/navigation shell configured by
-  project.ogt's `create` choices (platform, input, languages and look/UI
+  project.ts's `create` choices (platform, input, languages and look/UI
   pack). Interactive films use the same shell over the engine's FlowScreen.
   The shell supplies no gameplay, levels, rules or balance. The engine
   ships mechanisms, never games: primitives report facts
@@ -107,7 +110,13 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Observable from the first frame.** The command channel, the probe, the
   dumps and frame capture exist in every build except `publish`.
 - **Reflection is the single schema** for the inspector, Tune, the probe,
-  scene text and the wiki. `.ogt` text cooks into `.ogb` blobs.
+  scene text and the wiki. Author configuration is `project.ts`, with ordinary
+  `og-project.json` as the sole project marker and name/engine/look authority.
+  Content TS evaluates to schema-checked IR and cooks into `.ogb`; it never
+  serializes through OGT. The foundation's scanned scene/prefab, look and Yarn
+  catalogue exists only until their P3, P1 and P2 domain cutovers respectively;
+  remove each author parser with its cutover. OGT then remains internal text
+  (IDL, dumps and probe transport), not another author path.
 - **The API is for a reader who has never seen it.** Zero-value desc structs,
   no hidden state, errors as values, the three.js vocabulary where it fits.
 - **Structure rules** (`docs/design.md` §2.1): a runtime module is built

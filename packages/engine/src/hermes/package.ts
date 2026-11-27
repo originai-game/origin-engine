@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { engineFile } from "../node/build.ts";
+import { readProject } from "../node/project.ts";
 
 declare const Bun: {
   build(o: {
@@ -135,7 +136,9 @@ export async function packageGame(o: PackageOptions): Promise<string> {
   await bundle(join(project, "src/main.ts"), join(here, "shell.ts"), "hermes", js, o.provider);
   run([hermesc!, "-O", "-Xes6-block-scoping", "-emit-binary", "-out", join(data, "game.hbc"), js]);
   rmSync(work, { recursive: true, force: true });
-  cpSync(join(project, "project.ogt"), join(data, "project.ogt"));
+  const checked = readProject(project);
+  if (!checked) throw new Error(`${project}: no og-project.json project`);
+  writeFileSync(join(data, "project-startup.json"), JSON.stringify(checked.startup));
   cpSync(join(project, "cooked"), join(data, "cooked"), { recursive: true });
   const providerLib = o.providerLib ? resolve(o.providerLib) : undefined;
   if (providerLib && !o.provider) throw new Error("--provider-lib needs --provider, the module that calls it");

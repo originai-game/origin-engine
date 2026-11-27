@@ -1,12 +1,12 @@
 type timeline
 version 1
 ---
-# A live segment: no footage. Its scene track places scenes/ending.ogt
+# A live segment: no footage. Its scene track places base/scenes/ending
 # (warmed on a deck before the cut) and its camera track pushes in.
 duration 4
 track scene {
   key 0 {
-    scene "scenes/ending.ogt"
+    scene "base/scenes/ending"
   }
 }
 track camera {

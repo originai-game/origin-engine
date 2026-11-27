@@ -101,7 +101,7 @@ pub(crate) fn assemble(
     seed: Option<u32>,
     mount: super::Mount<'_>,
     profile: u32,
-    project: Option<&ProjectGame>,
+    project: Option<&ProjectStartup>,
     previous: Option<og_audio::AudioLink>,
 ) -> Result<Assembled, String> {
     let engine_id = mount.id;

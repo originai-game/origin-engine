@@ -4,24 +4,15 @@
 use super::*;
 
 pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
-    let Some(doc) = std::fs::read_to_string(p.root.join("project.ogt"))
-        .ok()
-        .and_then(|text| og_core::ogt::parse(&text).ok())
-    else {
+    let Ok(project) = og_cook::cook::source_project::Project::open(&p.root) else {
         return;
     };
-    let Some(lang) = doc
-        .body
-        .get("create")
-        .and_then(|e| e.block.as_ref())
-        .and_then(|b| b.get("lang"))
-    else {
+    let Some(lang) = project.input.create.and_then(|c| c.lang) else {
         return;
     };
     let mut missing: Vec<_> = lang
-        .values
         .iter()
-        .filter_map(|v| v.as_str())
+        .map(String::as_str)
         .filter(|tag| {
             // Scripts a style's face does not draw: each needs a pack or
             // a table's own fonts.
@@ -109,7 +100,7 @@ pub(super) fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
         serde_json::json!({"event": "locale-fonts", "locales": missing, "message": message})
             .to_string()
     } else {
-        format!("project.ogt: warning: {message}")
+        format!("project.ts: warning: {message}")
     };
     if to_stderr && !json {
         eprintln!("{text}");

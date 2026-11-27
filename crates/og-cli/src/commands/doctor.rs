@@ -525,14 +525,14 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                     out.check(
                         "ok",
                         "pin",
-                        &format!("project.ogt pins engine \"{pinned}\""),
+                        &format!("og-project.json pins engine \"{pinned}\""),
                         None,
                     );
                 } else if compatible {
                     out.check(
                         "ok",
                         "pin",
-                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: compatible (same minor, newer, no breaking change between); `og upgrade` moves the pin"),
+                        &format!("og-project.json pins engine \"{pinned}\", installed {inst}: compatible (same minor, newer, no breaking change between); `og upgrade` moves the pin"),
                         None,
                     );
                 } else {
@@ -540,7 +540,7 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                     out.check(
                         "differs",
                         "pin",
-                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: not compatible ({why})"),
+                        &format!("og-project.json pins engine \"{pinned}\", installed {inst}: not compatible ({why})"),
                         Some(format!("`og upgrade --to {inst}` moves the game to {inst}, applies the changelog's codemods and lists what to edit by hand; otherwise run og through its launcher, which runs the pinned {pinned}")),
                     );
                 }
@@ -551,7 +551,7 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                 out.check(
                     "ok",
                     "pin",
-                    &format!("project.ogt pins engine \"{pinned}\""),
+                    &format!("og-project.json pins engine \"{pinned}\""),
                     None,
                 );
             }
@@ -560,9 +560,9 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                 out.check(
                     "missing",
                     "pin",
-                    "project.ogt has no `engine \"<version>\"` line",
+                    "og-project.json has no engine version",
                     Some(format!(
-                        "add `engine \"{}\"` to project.ogt (the version this game is written against)",
+                        "set engine to \"{}\" in og-project.json (the version this game is written against)",
                         installed.as_deref().unwrap_or("?")
                     )),
                 );

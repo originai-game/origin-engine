@@ -5,14 +5,47 @@ use super::generator::{
     source::{Diagnostic, Source},
     value::Data,
 };
+use super::source_metadata::{self, Metadata};
 use super::source_path::{checked, relative};
 use super::source_schemas::project::{DeliveryPack, ModuleInput, ProjectInput};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+/// Source files watched by cook and dev, including module/helper additions.
+/// Outputs and installs never become inputs; directory symlinks are not walked.
+/// This remains usable while a project edit temporarily fails validation.
+pub fn files(root: &Path) -> std::io::Result<Vec<std::path::PathBuf>> {
+    let mut files = Vec::new();
+    let mut directories = vec![root.to_path_buf()];
+    while let Some(directory) = directories.pop() {
+        for child in std::fs::read_dir(directory)? {
+            let child = child?;
+            let name = child.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with('.')
+                || matches!(
+                    name.as_ref(),
+                    "node_modules" | "target" | "cooked" | "og-out" | "dist"
+                )
+            {
+                continue;
+            }
+            let ty = child.file_type()?;
+            if ty.is_dir() {
+                directories.push(child.path());
+            } else if ty.is_file() && child.path() != root.join("project.ogt") {
+                files.push(child.path());
+            }
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
 /// Checked bootstrap data. Source namespaces and output delivery units have
 /// independent dependency orders. Neither is a scene streaming partition.
 pub struct Project {
+    pub metadata: Metadata,
     pub input: ProjectInput,
     pub modules: BTreeMap<String, ModuleInput>,
     pub packs: BTreeMap<String, DeliveryPack>,
@@ -37,6 +70,10 @@ impl Project {
         root: &Path,
         overlay: &BTreeMap<String, String>,
     ) -> Result<Self, Diagnostic> {
+        let metadata_bytes = std::fs::read(root.join(source_metadata::FILE))
+            .map_err(|e| metadata_error("project_metadata_invalid", e.to_string()))?;
+        let metadata =
+            Metadata::parse(&metadata_bytes).map_err(|e| metadata_error(e.code, e.message))?;
         let program = Program::prepare_value_with_overlay(root, "project.ts", overlay)
             .map_err(|e| diagnostic(&Source::new("project.ts", ""), "", e))?;
         let source = &program.source;
@@ -44,7 +81,7 @@ impl Project {
         // import must not execute even if it would throw or loop forever.
         for file in &program.dependencies {
             relative(file).map_err(|e| diagnostic(source, "", e.to_string()))?;
-            if !metadata(file) {
+            if !bootstrap_source(file) {
                 return Err(diagnostic(
                     source,
                     "",
@@ -58,24 +95,13 @@ impl Project {
         let input = ProjectInput::schema()
             .decode(data.root().into_json())
             .map_err(|e| diagnostic(source, &e.path, e.message))?;
-        if input.engine != env!("CARGO_PKG_VERSION") {
-            return Err(diagnostic(
-                source,
-                "/engine",
-                format!(
-                    "engine pin {} does not match installed engine {}",
-                    input.engine,
-                    env!("CARGO_PKG_VERSION")
-                ),
-            ));
-        }
         source_file(root, source, "/entry", &input.entry)?;
         if input.entry.split('/').any(|s| {
             matches!(
                 s.to_ascii_lowercase().as_str(),
                 "content" | "assets" | "sources"
             )
-        }) || metadata(&input.entry)
+        }) || bootstrap_source(&input.entry)
         {
             return Err(diagnostic(
                 source,
@@ -191,7 +217,14 @@ impl Project {
                 "initial scene is absent from scenes",
             ));
         }
+        let mut identity = blake3::Hasher::new();
+        identity.update(program.key.as_bytes());
+        identity.update(&metadata_bytes);
+        let mut dependencies = program.dependencies.clone();
+        dependencies.push(source_metadata::FILE.into());
+        dependencies.sort();
         let project = Self {
+            metadata,
             input,
             modules,
             packs,
@@ -199,8 +232,8 @@ impl Project {
             pack_order,
             data,
             source: program.source,
-            evaluation_key: program.key,
-            dependencies: program.dependencies,
+            evaluation_key: identity.finalize().to_hex().to_string(),
+            dependencies,
             roots,
         };
         for (i, file) in project.input.schemas.iter().enumerate() {
@@ -222,7 +255,7 @@ impl Project {
         }
         // A path may look like metadata but still belong to an undeclared
         // module. Ownership is decided by the longest explicit module root.
-        for file in &project.dependencies {
+        for file in &program.dependencies {
             let module = project.module_for(file);
             let local = if module.root.is_empty() {
                 file.as_str()
@@ -276,7 +309,7 @@ fn reserved(part: &str) -> bool {
     )
 }
 
-fn metadata(file: &str) -> bool {
+fn bootstrap_source(file: &str) -> bool {
     if !file.ends_with(".ts") {
         return false;
     }
@@ -302,7 +335,7 @@ fn metadata(file: &str) -> bool {
 
 fn source_file(root: &Path, source: &Source, path: &str, file: &str) -> Result<(), Diagnostic> {
     let at = checked(root, file).map_err(|e| diagnostic(source, path, e.to_string()))?;
-    if !file.ends_with(".ts")
+    if !(file.ends_with(".ts") || path == "/entry" && file.ends_with(".tsx"))
         || !at.is_file()
         || file.split('/').any(|p| {
             matches!(
@@ -379,6 +412,21 @@ fn order(
         ));
     }
     Ok(result)
+}
+
+fn metadata_error(code: &'static str, message: String) -> Diagnostic {
+    Diagnostic {
+        code,
+        file: source_metadata::FILE.into(),
+        path: String::new(),
+        location: super::generator::source::Location {
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 1,
+        },
+        message,
+    }
 }
 
 fn diagnostic(source: &Source, path: &str, message: impl Into<String>) -> Diagnostic {

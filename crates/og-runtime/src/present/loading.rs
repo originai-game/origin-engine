@@ -26,15 +26,9 @@ struct Reported {
 
 /// project.ogt's choice (`engine` without one).
 fn screen(eng: &Engine) -> LoadingScreen {
-    match eng
-        .state
-        .borrow()
-        .project
-        .as_ref()
-        .and_then(|p| p.loading.as_deref())
-    {
-        Some("game") => LoadingScreen::Game,
-        Some("page") => LoadingScreen::Page,
+    match eng.state.borrow().project.as_ref().and_then(|p| p.loading) {
+        Some(LoadingScreen::Game) => LoadingScreen::Game,
+        Some(LoadingScreen::Page) => LoadingScreen::Page,
         _ => LoadingScreen::Engine,
     }
 }

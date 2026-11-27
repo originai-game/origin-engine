@@ -18,8 +18,8 @@
 
 pub use og_anim::cooked::anim_codec;
 pub use og_bundle::{
-    effect, format, fx, grammar, hlod, ktx2, lightmap, look, meshopt_codec, opus, project, qoa,
-    runtime, scene_text, shader, vfx,
+    effect, format, fx, grammar, hlod, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime,
+    scene_text, shader, vfx,
 };
 
 #[cfg(feature = "cook")]

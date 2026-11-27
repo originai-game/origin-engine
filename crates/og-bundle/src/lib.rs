@@ -33,7 +33,6 @@ pub mod look;
 pub mod meshopt_codec;
 pub mod motion_action;
 pub mod opus;
-pub mod project;
 pub mod qoa;
 pub mod runtime;
 pub mod scene_text;

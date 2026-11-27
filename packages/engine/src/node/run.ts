@@ -87,6 +87,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { setImmediate } from "node:timers/promises";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
+import { readProject } from "./project.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { decodePng } from "./png.ts";
 import { nativePlatform, readFake } from "./platform.ts";
@@ -296,12 +297,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       return mod.default!;
     }
 
-    /** project.ogt's text, which the engine reads tick, seed, scenes and scene from (CreateOptions.project). */
-    function projectText(dir: string | undefined): string | undefined {
-      if (!dir || !existsSync(join(dir, "project.ogt"))) return undefined;
-      return readFileSync(join(dir, "project.ogt"), "utf8");
-    }
-
     const importStart = unixMs();
     beginBundle();
     const game = await importGame(entry);
@@ -313,7 +308,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       abi.og_engine_trace(BEFORE_ENGINE, true);
       cleanup.push(() => abi.og_engine_trace(BEFORE_ENGINE, false));
     }
-    const project = projectFile === undefined ? projectText(control.inputRoot ?? root) : readFileSync(projectFile, "utf8");
+    const project = readProject(projectFile ?? control.inputRoot ?? root)?.startup;
     if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
     // A traced run that renders takes its --ticks one frame each: a trace is of the frames, and ticks advanced at once
     // draw none.

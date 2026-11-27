@@ -159,7 +159,7 @@ menu the player had open.
 <a id="guide-saves-5"></a>
 ### `saves §5` Save versions and migrations
 
-Every save carries GameDesc.saveVersion (else project.ogt's `saveVersion`,
+Every save carries GameDesc.saveVersion (else project.ts's `saveVersion`,
 else 1). Raise it when a release changes a saved type, and add the step
 from the old version to GameDesc.migrations.
 

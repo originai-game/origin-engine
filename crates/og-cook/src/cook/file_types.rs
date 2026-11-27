@@ -489,7 +489,7 @@ pub fn markdown() -> Result<String, String> {
     for (ty, doc) in [
         (
             "project",
-            "project.ogt: project configuration, not an asset. See start and conventions.",
+            "og-project.json is the ordinary project marker and sole name/engine/look authority. project.ts exports defineProject({...}); it is restricted bootstrap configuration, not an asset or a game entry. Run og check to generate contextual declarations in .og/types/author/. See start and conventions.",
         ),
         (
             "import",
@@ -519,12 +519,12 @@ pub fn markdown() -> Result<String, String> {
     ] {
         let _ = writeln!(out, "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\n{doc}\n");
         if ty == "project" {
-            table(&mut out, og_bundle::project::LINES);
-            block(&mut out, "project.cook", og_bundle::project::COOK);
-            block(&mut out, "project.publish", og_bundle::project::PUBLISH);
-            let fields: Vec<_> = super::stats::KEYS.iter().map(|&key| Line::new(key, "<u64>", "cook budget default", "Content limit; use og doctor --project for observed values and budget reports.", "")).collect();
-            block(&mut out, "project.budgets", &fields);
-            out.push_str("\nCreation data (form, genre, view, look, variant, ui, platform, input, players, lang, music) comes from `og create --creation`; it is retained as hints, not interpreted as gameplay rules. Apart from form, it does not configure the runtime. Arbitrary creation notes do not generate content.\n");
+            out.push_str("```ts\n");
+            out.push_str(&og_core::reflect::source::typescript(
+                super::source_schemas::project::ProjectInput::schema().document(),
+                "ProjectInput",
+            )?);
+            out.push_str("```\n");
         }
         if ty == "probe-record" {
             table(&mut out, super::probes::LINES);

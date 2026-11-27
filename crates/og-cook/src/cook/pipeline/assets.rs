@@ -68,41 +68,6 @@ pub struct Omitted {
     pub bytes: u64,
 }
 
-/// Uses the same path patterns as project.conform: *, ** and folder/.
-pub fn publish_keep(doc: &Document) -> Result<Vec<String>, String> {
-    let mut patterns = Vec::new();
-    if let Some(block) = doc.body.get("publish").and_then(|e| e.block.as_ref()) {
-        for entry in block.get_all("keep") {
-            if entry.values.is_empty() || entry.block.is_some() {
-                return Err(format!(
-                    "project.ogt:{}: publish.keep takes quoted path patterns",
-                    entry.line
-                ));
-            }
-            for value in &entry.values {
-                let pattern = value.as_str().filter(|s| !s.is_empty()).ok_or_else(|| {
-                    format!(
-                        "project.ogt:{}: publish.keep takes quoted path patterns",
-                        entry.line
-                    )
-                })?;
-                let pattern = asset_id(pattern);
-                if pattern.starts_with('/')
-                    || pattern.contains('\\')
-                    || pattern.split('/').any(|p| p == "..")
-                {
-                    return Err(format!(
-                        "project.ogt:{}: publish.keep paths must stay under assets/",
-                        entry.line
-                    ));
-                }
-                patterns.push(pattern.to_string());
-            }
-        }
-    }
-    Ok(patterns)
-}
-
 impl Index {
     pub fn read(root: &Path) -> Result<Self, String> {
         let path = root.join("cooked").join(SIDECAR);
@@ -394,7 +359,7 @@ pub fn game_typescript(root: &Path) -> Result<Vec<PathBuf>, String> {
             let ty = entry.file_type().map_err(|e| e.to_string())?;
             let path = entry.path();
             if ty.is_dir() {
-                if path != root && path.join("project.ogt").exists() {
+                if path != root && path.join("og-project.json").exists() {
                     continue;
                 }
                 walk(root, &path, out)?;
@@ -662,9 +627,14 @@ pub(crate) fn build(
             });
         }
     }
-    if let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) {
-        let doc = Document::parse(&text).map_err(|e| CookError(e.to_string()))?;
-        let keep = publish_keep(&doc).map_err(CookError)?;
+    {
+        let project = crate::cook::source_project::Project::open(root)
+            .map_err(|e| CookError(e.to_string()))?;
+        let keep = project
+            .input
+            .publish
+            .as_ref()
+            .map_or(&[][..], |p| p.keep.as_slice());
         index.roots.extend(
             index
                 .assets
@@ -677,10 +647,21 @@ pub(crate) fn build(
                 .map(|a| a.id.clone()),
         );
         let mut values = Vec::new();
-        text_values(&doc.body, &mut values);
+        json_values(&project.data.root().into_json(), &mut values);
+        if let Some(crate::cook::source_schemas::procedural::LookBase::Asset(reference)) =
+            &project.metadata.look
+        {
+            values.push(reference.id.clone());
+        }
+        let bindings = super::author::bindings(root, &project, sources)?;
+        for value in &mut values {
+            if let Some(output) = bindings.get(value) {
+                *value = output.asset.clone();
+            }
+        }
         let refs: BTreeSet<_> = values.iter().flat_map(|v| resolve(v, "", &known)).collect();
         index.roots.extend(refs.iter().cloned());
-        index.users.insert("project.ogt".into(), refs);
+        index.users.insert("project.ts".into(), refs);
     }
     index.assets.sort_by(|a, b| a.id.cmp(&b.id));
     Ok(index)

@@ -13,8 +13,13 @@ blocks); `og api show <Resource>` gives each field with its range.
 <a id="guide-looks-1"></a>
 ### `looks §1` The look
 
-A game's look is one file, `assets/looks/<id>.ogt`, which project.ogt's
-`look` names. It `extends` a built-in preset by slug (the presets are the
+A game's look is one file, `assets/looks/<id>.ogt`, which og-project.json's
+`look: { $ogRef: "base/looks/<id>" }` names until the P1 look-domain cutover.
+`og project --json` binds that ref through the scanned catalogue and emits
+`startup.look: "looks/<id>.ogt"`. Game code still loads the physical cooked
+ID; no second output or runtime lookup alias exists. The look-domain cutover
+will move its output to the canonical ID and remove this binding together.
+It `extends` a built-in preset by slug (the presets are the
 engine's `templates/looks/<slug>.ogt`; the creation step picked one) and
 overrides it field by field:
 

@@ -312,33 +312,21 @@ type SheetText = (usize, Vec<u8>, Arc<Vec<u8>>, u64);
 /// `cook_project` before planning; returns the report's lines and the
 /// textures whose role is the mesh pass's ([`TextureRole::Mesh`]).
 pub(in crate::cook) fn conform(
-    root: &Path,
+    project_off: &ProjectConform,
+    profile: crate::look::Profile,
     assets: &Path,
     sources: &mut Vec<Source>,
     known: &BTreeSet<String>,
     contract: Option<&(String, LookFile)>,
 ) -> Result<(Vec<ConformEntry>, BTreeSet<String>), String> {
-    let project = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok());
-    let project_off = match &project {
-        Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
-        None => ProjectConform::default(),
-    };
-    let two_d = match &project {
-        Some(d) => {
-            crate::look::project_profile(&d.body).map_err(|e| format!("project.ogt:{e}"))?
-                == crate::look::Profile::TwoD
-        }
-        None => false,
-    };
+    let two_d = profile == crate::look::Profile::TwoD;
     let sheet_conform = strip_sheets(sources);
     let mut entries = Vec::new();
 
     let Some((look_id, contract)) = contract else {
         return Ok((entries, BTreeSet::new()));
     };
-    let uses = uses(sources, known, &sheet_conform, &project_off);
+    let uses = uses(sources, known, &sheet_conform, project_off);
     // The mesh pass's textures, whatever the 2D blocks say.
     let mesh: BTreeSet<String> = sources
         .iter()

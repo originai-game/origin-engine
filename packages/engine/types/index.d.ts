@@ -2278,6 +2278,62 @@ export declare function defineSystem(name: string, desc: SystemDesc, run: System
 // The game entry: what the bundle's default export declares.
 
 /**
+ * The normalized startup profile. A 2.5d creation uses 3d.
+ * - `"3d"`: Three-dimensional simulation and rendering.
+ * - `"2d"`: Two-dimensional simulation and rendering.
+ */
+export type ProjectProfile = "3d" | "2d";
+
+/**
+ * Who draws the project's startup dialogue.
+ * - `"engine"`: The built-in FlowScreen.
+ * - `"game"`: The game's own UI.
+ */
+export type ProjectFlowScreen = "engine" | "game";
+
+/** The dialogue started before GameDesc.start; no source code or pack metadata. */
+export interface ProjectStartupFlow {
+  /** The dialogue's physical cooked ID, resolved by og project from its checked project ref. */
+  readonly dialogue: string;
+  /** Who draws the flow; omitted means engine. */
+  readonly screen?: ProjectFlowScreen;
+}
+
+/**
+ * Checked project.ts startup data for CreateOptions.project on both hosts. Not project source text or the full manifest. Omitted simulation fields retain GameDesc defaults; conflicting explicit values refuse creation.
+ */
+export interface ProjectStartup {
+  /**
+   * Fixed ticks per second, 1 to 240.
+   *
+   * @range 1..240
+   */
+  readonly tick?: number;
+  /** The project's deterministic seed; CreateOptions.seed is a separate replay override. */
+  readonly seed?: number;
+  /**
+   * Startup scene names to physical cooked IDs, resolved by og project from checked project refs; no scene contents or pack assembly.
+   */
+  readonly scenes?: Readonly<Record<string, string>>;
+  /** Initial scene name. */
+  readonly scene?: string;
+  /** The look's physical cooked ID, resolved by og project from its checked project ref. */
+  readonly look?: string;
+  /**
+   * The game's save version, at least 1.
+   *
+   * @range 1..
+   */
+  readonly saveVersion?: number;
+  /** Who draws the loader; omitted means engine. */
+  readonly loading?: LoadingScreen;
+  /** Dialogue to start before GameDesc.start. */
+  readonly flow?: ProjectStartupFlow;
+  /** Normalized profile; omitted means 3d. Tools always emit this field. */
+  readonly profile?: ProjectProfile;
+}
+
+/**
  * The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it.
  *
  * @param world The world, read only.
@@ -2305,7 +2361,7 @@ export type UiSetupFn = (world: World) => void;
  */
 export interface GameDesc {
   /**
-   * The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both.
+   * The fixed tick rate. Left unset, checked project.ts startup data applies (else 60); conflicting explicit values in GameDesc and startup data refuse the engine, naming both.
    *
    * @default 60
    * @range 1..240
@@ -2313,19 +2369,19 @@ export interface GameDesc {
    */
   readonly tick?: number;
   /**
-   * The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it.
+   * The seed every Rng stream derives from; left unset, checked project.ts startup seed (else 0). CreateOptions.seed overrides it for a replay.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block.
+   * Scene names to cooked asset IDs, as `{ harbor: "scenes/harbor.ogt" }`; left unset, checked project.ts startup scenes.
    *
    * @default {}
    */
   readonly scenes?: Readonly<Record<string, string>>;
   /**
-   * The scene loaded first; left unset, project.ogt's `scene` (else main).
+   * The scene loaded first; left unset, checked project.ts startup scene (else main).
    *
    * @default "main"
    */
@@ -2399,7 +2455,7 @@ export interface GameDesc {
    */
   readonly render?: RenderOptions;
   /**
-   * The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine.
+   * The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, checked project.ts startup saveVersion (else 1); conflicting explicit values refuse the engine.
    *
    * @default 1
    * @range 1..
@@ -2419,7 +2475,7 @@ export interface GameDesc {
    */
   readonly explore?: ExploreDesc;
   /**
-   * A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused.
+   * A cooked asset ID (og.load.look), applied after the first scene spawned, before start; its antialias applies when render leaves it out. Left unset, checked startup look from og-project.json (whose art contract the cook reads), else none; conflicting explicit values refuse the engine.
    *
    * @default ""
    */
@@ -2484,7 +2540,7 @@ export interface ExploreIntent {
 /** A declared game, the bundle's default export. */
 export interface Game {
   /**
-   * GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do).
+   * GameDesc.tick, or 60 when unset. The engine uses the checked project.ts startup tick when supplied by the host, as og run and og build do.
    */
   readonly tick: number;
   /** The systems in declaration order. */
@@ -7646,7 +7702,7 @@ export interface RenderCaps {
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
  * See `render §2`.
- * - `"tier"`: The engine's default method, on every backend (WebGPU, Metal, Vulkan, DX12): 4x MSAA in a 2D project (project.ogt's `create { form "2d" }`), where TAA's jitter and history blend would soften nearest-sampled pixel art; TAA in a 3D one.
+ * - `"tier"`: The engine's default method, on every backend (WebGPU, Metal, Vulkan, DX12): 4x MSAA in a 2D project (project.ts's create.form is 2d), where TAA's jitter and history blend would soften nearest-sampled pixel art; TAA in a 3D one.
  * - `"off"`: One sample per pixel.
  * - `"msaa4"`: 4x MSAA (what tier resolves to in a 2D project): sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled.
  * - `"taa"`: Temporal antialiasing (what tier resolves to in a 3D project): a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it.
@@ -16031,7 +16087,7 @@ export interface Velocity {
  */
 export interface Physics {
   /**
-   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again.
+   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again.
    * See `physics §2`.
    *
    * @default 3
@@ -34185,7 +34241,7 @@ export interface SharedStatus {
 
 // ── art ─────────────────────────────────────────────────────────
 // A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame.
-// Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of project.ogt's `look`.
+// Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of og-project.json's `look`.
 // See `art-review §6`.
 
 /**
@@ -36893,11 +36949,11 @@ export interface ScenePreload {
 
 
 // ── loading ─────────────────────────────────────────────────────
-// The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
+// The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
 // See `loading §13`.
 
 /**
- * Who draws the loading screen (project.ogt `publish.loading`).
+ * Who draws the loading screen (project.ts `publish.loading`).
  * - `"engine"`: The engine's splash: the brand mark with the boot's progress and the stage labels, until the first frame.
  * - `"game"`: The game: the splash covers only the engine's own boot, then the game's first frames are its loading screen, the clock running, until og.loading.done.
  * - `"page"`: The page hosting the game: no splash, the canvas hidden with the clock running until og.loading.done, and the page draws its loader from the window events.
@@ -36934,7 +36990,7 @@ export interface LoadingStageDesc {
 /** Where loading is. */
 export interface LoadingStatus {
   /**
-   * Who draws the loading screen on this host (natively: project.ogt's choice, as the web page would).
+   * Who draws the loading screen on this host (natively: checked project startup's choice, as the web page would).
    */
   readonly screen: LoadingScreen;
   /** The last stage the game reported (empty: none). */
@@ -39611,7 +39667,7 @@ export declare namespace og {
      */
     function prefab(world: World, path: string): Result<Asset>;
     /**
-     * Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ogt publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
+     * Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ts publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
      *
      * @param world The world that owns the font.
      * @param path The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`.
@@ -43279,7 +43335,7 @@ export declare namespace og {
      */
     function start(world: World, desc?: FlowStartDesc): Result<Entity>;
     /**
-     * The flow project.ogt's `flow` line started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless the line's block says `screen game`): what a playable segment's game passes to og.flow.advance.
+     * The flow project.ts's `flow` object started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless flow.screen is game): what a playable segment's game passes to og.flow.advance.
      *
      * @param world The world.
      * @returns Null without a `flow` line, or once og.flow.stop ended it.
@@ -43479,7 +43535,7 @@ export declare namespace og {
     function current(world: World): string | null;
   }
   /**
-   * The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
+   * The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
    * See `loading §13`.
    */
   namespace loading {

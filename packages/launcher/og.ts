@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // `og`, the launcher (docs/release.md §1): the command an author installs
 // once (install.sh, install.ps1: ~/.origin/bin/og) and runs for every
-// engine version. It reads the version a project pins (project.ogt's
-// `engine "<v>"`), makes sure that version is in the cache, and runs that
+// engine version. It reads the version a project pins (og-project.json's
+// engine), makes sure that version is in the cache, and runs that
 // version's own og with OG_ENGINE_PACKAGE set to it, so two games pinned to
 // two versions each run theirs, and a version never changes under a game.
 //
@@ -11,7 +11,7 @@
 //   og new <dir> [--engine <v>] [...] scaffold a game with that version's create (default: the latest release)
 //   og upgrade [project] [--to <v>] [...]
 //                                    move a game to <v> (default: the latest release): that version's og upgrade,
-//                                    which edits project.ogt's pin and lists what to change
+//                                    which edits og-project.json's pin and lists what to change
 //   og engine install <v|latest>     download, verify and unpack a version
 //   og engine list                   the installed versions
 //   og engine prune [--keep <v>]... [--dry-run]
@@ -29,7 +29,7 @@
 // archive's modes rather than being made read-only: every version's own
 // tools copy files out of it (create's template, og build's wasm, snippets
 // and basis/) and keep the modes they copy, so read-only files would make a
-// new game's project.ogt unwritable and a second build fail. `$ORIGIN_ENGINE_DOWNLOADS`
+// new game's sources unwritable and a second build fail. `$ORIGIN_ENGINE_DOWNLOADS`
 // (default https://origingame.ai/downloads/engine) may be a URL or a local
 // directory; `$ORIGIN_ENGINE_PUBKEY` replaces the key for a test channel.
 // `$OG_ENGINE_VERSION` runs a version whatever the project pins.
@@ -54,8 +54,9 @@ import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, rea
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { DOWNLOADS, ENGINE_PUBKEY, MinisignError, verifyMinisign } from "../engine/src/node/minisign.ts";
+import { METADATA, ProjectMetadataError, readProjectMetadata, type ProjectErrorCode } from "../engine/src/node/project-metadata.ts";
 
-export const LAUNCHER_VERSION = "2";
+export const LAUNCHER_VERSION = "3";
 /**
  * An engine version: a release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>`
  * (the n-th of that UTC day, its own number unrelated to the release it is
@@ -93,6 +94,7 @@ export function config(env = process.env): Config {
  * says whether running the same command again may succeed.
  */
 export type ErrorCode =
+  | ProjectErrorCode
   | "network" // the channel did not answer, or answered an HTTP error other than 404
   | "not_found" // no such version (or no archive for this target)
   | "checksum" // the archive does not match the signed SHA256SUMS
@@ -176,6 +178,7 @@ function httpError(url: string, r: Response): LauncherError {
 /** A thrown value as the launcher's error: a refused connection or a reset stream is a retryable network error, a full disk disk_full. */
 function asLauncherError(e: unknown): LauncherError {
   if (e instanceof LauncherError) return e;
+  if (e instanceof ProjectMetadataError) return new LauncherError(e.message, e.code, false);
   if (e instanceof MinisignError) return new LauncherError(e.message, "signature");
   const err = e as { code?: string; name?: string; message?: string };
   if (err?.code === "ENOSPC" || err?.code === "EDQUOT") return new LauncherError(`no space left in the engine cache: ${err.message}`, "disk_full");
@@ -475,21 +478,22 @@ export function compareVersions(a: string, b: string, base: (v: string) => strin
 
 // ---------------------------------------------------------------- projects
 
-/** The project root (the directory holding project.ogt) at or above `from`. */
+/** The sole project marker, at or above `from`. */
 export function projectRoot(from: string): string | undefined {
   let dir = resolve(from);
   if (existsSync(dir) && statSync(dir).isFile()) dir = dirname(dir);
   for (;;) {
-    if (existsSync(join(dir, "project.ogt"))) return dir;
+    try { lstatSync(join(dir, METADATA)); return dir; }
+    catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
     const up = dirname(dir);
     if (up === dir) return undefined;
     dir = up;
   }
 }
 
-/** project.ogt's `engine "<v>"`. */
-export function pinOf(root: string): string | undefined {
-  return /^engine\s+"([^"]+)"\s*$/m.exec(readFileSync(join(root, "project.ogt"), "utf8"))?.[1];
+/** The only project pin. No old-format detection or fallback. */
+export function pinOf(root: string): string {
+  return readProjectMetadata(root).engine;
 }
 
 /** The project a command is about: the first argument naming a path inside one, else the working directory's. */
@@ -547,14 +551,11 @@ async function resolveVersion(c: Config, v: string, report: Report = silent): Pr
 
 /** The version a command runs: OG_ENGINE_VERSION, the project's pin, the newest installed release, the latest published. */
 async function versionFor(c: Config, root: string | undefined, report: Report = silent): Promise<string> {
+  // A forced version must not hide a broken/unsupported project.
+  const pin = root ? pinOf(root) : undefined;
   const forced = process.env.OG_ENGINE_VERSION;
   if (forced) return forced;
-  if (root) {
-    const pin = pinOf(root);
-    if (!pin) fail(`${join(root, "project.ogt")} pins no engine (an \`engine "<version>"\` line)`, "no_pin");
-    if (!VERSION_RE.test(pin)) fail(`${join(root, "project.ogt")} pins engine "${pin}", which is not a version (x.y.z, or a dev build dev.YYYYMMDD.n)`, "no_pin");
-    return pin;
-  }
+  if (pin) return pin;
   const releases = installed(c).filter((v) => !isDev(v));
   return releases[0] ?? (await latest(c, report));
 }
@@ -652,10 +653,11 @@ async function command(argv: string[], out: { report: Report; stdout: boolean })
   }
   if (cmd === "upgrade") {
     // The target version's og does the upgrade: its changelog knows every version up to it.
+    const root = projectOf(rest);
+    if (root) pinOf(root);
     const v = await resolveVersion(c, optValue(rest, "--to") ?? "latest", out.report);
     const dist = await install(c, v, out.report);
     const status = exec(dist, ["upgrade", ...without(rest, "--to"), "--to", v]);
-    const root = projectOf(rest);
     if ((status === 0 || status === 3) && root && pinOf(root) === v) linkEngine(root, dist);
     return status;
   }

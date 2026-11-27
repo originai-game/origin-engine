@@ -13,16 +13,18 @@ og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 
 The agent chooses the form, genre, view, look and variant, UI style,
 platform, input, players, languages, and music. These choices are recorded in
-`project.ogt`'s `create` block. Creation also writes `assets/looks/<id>.ogt`
-with the chosen preset, variant and UI pack, named by the manifest's top-level
-`look`. It generates no gameplay or art, and changes no publish settings.
+`project.ts`'s `create` object. `og-project.json` is the sole project marker
+and authority for name, engine pin and look. Creation also writes `assets/looks/<id>.ogt`
+with the chosen preset, variant and UI pack, named by the metadata's canonical
+`base/looks/<id>` reference. This scanned look entry is removed in P1's domain migration.
+It generates no gameplay or art, and changes no publish settings.
 The agent customizes shell copy and art, then builds gameplay inside its
 `session` / `playing` state. Phone/touch defaults keep touch scale; built-in
 screens adapt layout and focus to the actual viewport/input (Escape and pad
 Start pause, a visible Pause control works on touch). Shell configuration is
 authored in `src/shell-config.ts`, not reread from the create block at runtime.
 The block's `form` is also the game's profile:
-`form "2d"` is a 2D game (rapier2d physics, sprites in the art brief, the
+`form: "2d"` is a 2D game (rapier2d physics, sprites in the art brief, the
 cook's 2D conformance); `2.5d` and `3d` are 3D (`profileOf(form)`). Each requested language installs its
 script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
 §3.4), which og.i18n chains with no generated code. Creation writes and
@@ -50,8 +52,8 @@ and its view may be left out, and creation writes the same skeleton plus
 `assets/segments/opening.ogt` and `ending.ogt` and a placeholder
 `assets/clips/opening.ogt` stream (from `templates/film`, packed as
 `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
-runs `bun scripts/assets.ts ensure templates` first), and project.ogt's
-`flow "story/film.yarn"`, which the engine starts and draws with its
+runs `bun scripts/assets.ts ensure templates` first), and project.ts's
+`flow: { source: { $ogRef: "base/story/film" } }`, which the engine starts and draws with its
 FlowScreen under the same shell, held at the opening frame until play and
 paused in menus. The look must draw the form (its catalogue `views`), and `--variant` must be one of the look's. Mood is not a
 creation choice: the look draws in its preset's or variant's own mood, and
@@ -76,8 +78,9 @@ and `archetype` options and `Created.look`, `Created.profile`, and
 `CREATION_CHOICES`, `CreationChoices`, `CreationInput`,
 `creationSchema(lookSlugs)`, `creationLooks(styles?)`, `parseCreationInput(value)`,
 `inferCreationChoices(premise, input?, defaults?)`,
-`resolveCreationChoices(premise, input?, catalogue?)`, and
-`creationBlock(choices)` expose the selection contract.
+`resolveCreationChoices(premise, input?, catalogue?)` expose the selection contract.
+`creationBlock` is removed: pass the resulting object as `defineProject({ create: choices })`
+or use `og new` instead of serializing OGT.
 
 `creationSchema` returns JSON Schema 2020-12 with stable enum IDs. Its
 `x-labels` map supplies English and Simplified Chinese labels and
@@ -130,10 +133,10 @@ packed package (the release archive's `engine/`, or `@origingame/engine` in
 `node_modules`), so nothing is copied or generated first.
 
 - `presetLook(slug)` reads a preset before a game has art.
-- `readLook(dir)` reads the project's configured look file.
+- `readLook(dir)` reads the project's configured look through `og project --json`.
 - `artBrief(look, kind, subject)` describes an asset's art requirements.
 - `audioBrief({ music, mood, genre, premise? })` describes music and effects.
-- `readAudioChoices(dir)` reads the `create` block, and the look's mood.
+- `readAudioChoices(dir)` reads the checked `create` object and the look's mood.
 - `rigParts(template)` describes the auto-rig's layered-art contract.
 
 UI packs, look presets, font packs, and design tokens ship once inside
@@ -141,6 +144,10 @@ UI packs, look presets, font packs, and design tokens ship once inside
 `engine/knowledge`). The cook resolves the look's preset and UI pack; locale
 fonts still need installation and loading as the `screens` guide describes
 (`og api show screens`).
+
+`readLook` and `readAudioChoices` require the matching installed `og` on PATH
+(or `OG_BIN`). They use the restricted TS bootstrap, never evaluate project
+code in Bun, and keep their existing signatures and result shapes.
 
 The release archive carries this package in `create/`. It ships one tracked
 `template/` and `film/` without duplicating `engine/`'s styles, fonts, or look

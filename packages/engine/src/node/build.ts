@@ -30,6 +30,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
 import { addonPath } from "./addon.ts";
+import { projectRoot, readProject } from "./project.ts";
 
 type Compiled = { ok: true; code: string; map: string; warnings: string[] } | { ok: false; reason: string };
 let jsxAddon: { og_node_jsx(path: string, source: string): string } | undefined;
@@ -143,20 +144,6 @@ export function renameSources(sources: readonly (string | null)[], dir: string, 
   });
 }
 
-/** The project an entry belongs to: the nearest directory above it with a project.ogt, else the entry's own. */
-/** A project's project.ogt text; empty without one. */
-function projectText(root: string): string {
-  const file = join(root, "project.ogt");
-  return existsSync(file) ? readFileSync(file, "utf8") : "";
-}
-
-function projectRoot(entry: string): string {
-  for (let dir = dirname(entry); ; dir = dirname(dir)) {
-    if (existsSync(join(dir, "project.ogt"))) return dir;
-    if (dirname(dir) === dir) return dirname(entry);
-  }
-}
-
 /**
  * Gives the bundle's game (`game`, its entry's default export) the og.assert
  * sites its files listed (src/node/assert-sites.ts) under this module's URL,
@@ -196,23 +183,6 @@ export function reached(meta: Metafile, roots: readonly string[]): { engine: str
   return { engine: ENGINE_ROOT, files: [...seen].filter((f) => isAbsolute(f)).sort() };
 }
 
-/** Whether `project.ogt` declares a top-level `flow "..."` field (ignoring comments and nested blocks). */
-function hasProjectFlow(text: string): boolean {
-  const sep = text.indexOf("\n---");
-  const body = sep >= 0 ? text.slice(sep + 4) : text;
-  let depth = 0;
-  for (const raw of body.split("\n")) {
-    const line = raw.replace(/\/\/.*$/, "").trim();
-    if (!line || line.startsWith("#")) continue;
-    if (depth === 0 && /^flow\s+"[^"]+"/.test(line)) return true;
-    for (const ch of line) {
-      if (ch === "{") depth++;
-      else if (ch === "}") depth = Math.max(0, depth - 1);
-    }
-  }
-  return false;
-}
-
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" | "web-live" | "web-code" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
@@ -231,8 +201,8 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       if (typeof config !== "object" || config === null || "extends" in config) cacheable = false;
     } catch { cacheable = false; }
   }
-  const gameRoot = projectRoot(absEntry);
-  const flowScreen = hasProjectFlow(projectText(gameRoot)) ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
+  const gameRoot = projectRoot(absEntry) ?? dirname(absEntry);
+  const flowScreen = readProject(gameRoot)?.startup.flow ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
   const engine = {
     name: "origin-engine",
     setup(build: {
@@ -295,7 +265,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         });
       }
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
-      const project = projectRoot(absEntry);
+      const project = projectRoot(absEntry) ?? dirname(absEntry);
       // A component's strings (`import "./x.en.ogt"`) are the cook's: the
       // bundle records only the table's id, which the UI renderer sends the
       // host to register. An engine table's id is `@ui/<path under src/ui>`

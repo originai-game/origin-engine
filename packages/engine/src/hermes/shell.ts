@@ -38,7 +38,7 @@ export function main(game: GameToken, provider?: ShellProviderFactory): void {
 
   const created = createEngine(game, {
     ...(env.OG_ROOT === undefined ? {} : { root: env.OG_ROOT }),
-    ...(env.OG_PROJECT === undefined ? {} : { project: env.OG_PROJECT }),
+    ...(env.OG_PROJECT === undefined ? {} : { project: JSON.parse(env.OG_PROJECT) }),
     ...(env.OG_LOCALE ? { locale: env.OG_LOCALE } : {}),
     deferStart: true,
   });

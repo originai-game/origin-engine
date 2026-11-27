@@ -8,7 +8,7 @@ Start here for any Origin Engine game: its connected menu shell and create block
 ### `start §1` The skeleton and the create block
 
 Creation (`og create`, from `@origingame/create-game`) writes a project
-with a connected UI shell for every genre and view: `project.ogt`,
+with a connected UI shell for every genre and view: `og-project.json`, `project.ts`,
 `src/main.ts`, `src/shell.tsx`, `src/shell-state.ts`, `src/shell-config.ts`,
 `src/shell-locales.ts`, string tables, `tests/smoke.og.ts`, `package.json`
 and `tsconfig.json`. Title, main menu, loading, pause (with a Quit to menu
@@ -38,9 +38,12 @@ either), with `--force` to write into a nonempty directory and `--id` when
 the directory's name is not a game id. `--look` takes one of the
 catalogue's styles with a preset (an unknown slug exits 1 and lists them);
 the other choices are inferred from the premise unless given. It exits 0
-having written project.ogt with `engine "<this version>"`, `look
-"looks/<id>.ogt"` and the `create` block, and `assets/looks/<id>.ogt`
-extending the chosen look.
+having written ordinary `og-project.json` with `version: 1`, a concrete `engine`,
+`name` and `look: { $ogRef: "base/looks/<id>" }`, and `project.ts` exporting
+`defineProject({...})` with `entry`, `id` and `create`. Metadata is not generated
+from TS and check/cook/dev never rewrite it. `project.ogt` is not read and is
+not a project marker. During the P1 look cutover, the scaffold's
+`assets/looks/<id>.ogt` still extends the selected preset and retains variant/UI.
 
 The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
 
@@ -52,7 +55,7 @@ The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
 - `--genre interactive-film` writes the same skeleton plus a flow to
   replace: the story in `assets/story/film.yarn`, a segment per flow node
   in `assets/segments/` and a placeholder stream in `assets/clips/`, run
-  by project.ogt's `flow "story/film.yarn"` line, which the engine starts
+  by project.ts's `flow: { source: ref("base/story/film") }`, which the engine starts
   and draws with its FlowScreen underneath the same shell. The shell holds
   the flow at the opening frame until New game or Continue, and pauses it
   in menus. Its form is 3d
@@ -67,7 +70,7 @@ The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
 `og new --creation` prints every choice, its labels and the rules between
 them as JSON, and writes nothing.
 
-The choices made at creation sit in project.ogt's `create` block: `form`,
+The choices made at creation sit in project.ts's `create` object: `form`,
 `genre`, `view`, `look`, `variant`, `ui`, `platform`, `input`,
 `players`, `lang`, `music` (a film's genre is `interactive-film`, and it
 has no `view` or `players`).
@@ -87,7 +90,7 @@ Creation turns some choices into configuration; the rest remain the brief:
 - When the user's request contradicts the block, the request wins: edit
   the block so it stays the record of the brief.
 - `look`, `variant` and `ui` are also written into `assets/looks/<id>.ogt`,
-  which project.ogt's `look` names; that file is real configuration
+  which og-project.json's `look` names; that file is real configuration
   (looks §1). `lang` installs each language's font pack, which og.i18n
   chains with no code. Creation writes and imports each requested locale's
   shell table and selects the first language; available engine translations
@@ -95,6 +98,14 @@ Creation turns some choices into configuration; the rest remain the brief:
   Complete those translations and add the game's own strings before release.
   Changing the block later does not regenerate authored files: update
   `src/shell-config.ts`, locale imports and the look file with it.
+
+The same project grows by adding `content/<kind>/*.ts`, pure helpers in `lib/`,
+record declarations in `src/schema/`, and source modules under `modules/<id>/`
+declared by `project.ts.modules`. A module is an ID namespace, not a world cell
+or a delivery pack. Small games use only `project.ts`, `src/` and a few content
+files. `og check` generates isolated contextual types under `.og/types/author/`
+and checks configuration and author files without executing the game.
+`og api show file:project` reports the schema-derived configuration type.
 
 <a id="guide-start-2"></a>
 ### `start §2` The order of work

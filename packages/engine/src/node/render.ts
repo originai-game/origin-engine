@@ -33,6 +33,7 @@ import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
+import { readProject } from "./project.ts";
 import { openAudio } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
@@ -129,17 +130,11 @@ loadNativeHost();
 const extras = native();
 const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };
 if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
-const projectText = root ? (() => {
-  try {
-    return readFileSync(join(root, "project.ogt"), "utf8");
-  } catch {
-    return undefined;
-  }
-})() : undefined;
+const project = readProject(root)?.startup;
 const created = createEngine(mod.default!, {
   ...(seed === undefined ? {} : { seed }),
   ...(root ? { root } : {}),
-  ...(projectText === undefined ? {} : { project: projectText }),
+  ...(project === undefined ? {} : { project }),
   ...(locale ? { locale } : {}),
   deferStart: true,
 });

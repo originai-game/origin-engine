@@ -33,7 +33,7 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
         Ok(p) if p.manifest => p,
         Ok(p) => {
             eprintln!(
-                "og run --device: {} is not a project (no project.ogt); the device plays the exported page of a project",
+                "og run --device: {} is not a project (no og-project.json); the device plays the exported page of a project",
                 p.root.display()
             );
             return ExitCode::FAILURE;
@@ -43,7 +43,7 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
             return ExitCode::FAILURE;
         }
     };
-    let settings = match crate::publish::settings(&p.root.join("project.ogt")) {
+    let settings = match crate::publish::settings(&p.root) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("og run --device: {e}");

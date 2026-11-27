@@ -22,7 +22,8 @@
   },
   "files": [
     "bin",
-    "template/project.ogt",
+    "template/og-project.json",
+    "template/project.ts",
     "template/src/main.ts",
     "template/src/shell.tsx",
     "template/src/shell-state.ts",

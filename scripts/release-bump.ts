@@ -16,9 +16,9 @@
 // What carries the version: the three package.json of packages/ (and
 // @origingame/engine's optionalDependencies on its platform packages), the
 // scaffold's origin-engine.json (engine.version and template.version), every
-// project's `engine "<v>"` line and `"@origingame/engine": "<v>"` dependency
+// project's og-project.json engine and `"@origingame/engine": "<v>"` dependency
 // (templates/, the former test sample tests/fixtures/ and the benches),
-// the inline project.ogt texts of the tests and scripts, and the workspace
+// and the workspace
 // crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
 // follows through `cargo update --workspace --offline`, run by release.sh.
 // Cargo takes only semver, so a dev build's crates carry it as build
@@ -74,17 +74,13 @@ function sites(): Site[] {
   s.push({ path: "packages/engine/package.json", re: /("@origingame\/engine-(?:darwin-arm64|linux-x64|win32-x64)":\s*")([^"]+)(")/g });
   s.push({ path: "packages/engine/package.json", re: /("@origingame\/create-game":\s*")([^"]+)(")/g });
   s.push({ path: "packages/knowledge/scaffold/origin-engine.json", re: /("version":\s*")([^"]+)(")/g });
-  // Projects: project.ogt's engine line and package.json's dependency.
+  // Projects: the authoritative JSON pin and package.json's dependency.
   const projectDirs = ["packages/create/template", "packages/engine/sheets", "templates", "tests/fixtures", "crates/og-tests/reference-scene", "packages/engine/tests/fixtures", "showcase"];
   for (const d of projectDirs) {
-    for (const p of walk(d, (n) => n === "project.ogt")) s.push({ path: p, re: /(^engine\s+")([^"]+)(")/gm });
+    for (const p of walk(d, (n) => n === "og-project.json")) s.push({ path: p, re: /("engine":\s*")([^"]+)(")/g });
     for (const p of walk(d, (n) => n === "package.json")) {
       if (read(p).includes('"@origingame/engine"')) s.push({ path: p, re: /("@origingame\/engine":\s*")([^"]+)(")/g });
     }
-  }
-  // Inline project.ogt texts in tests, benches and scripts.
-  for (const p of [...walk("packages/engine/tests", (n) => n.endsWith(".ts")), ...walk("packages/engine/bench", (n) => n.endsWith(".ts")), "scripts/sound-presets.sh"]) {
-    if (read(p).includes('engine "')) s.push({ path: p, re: /(engine \\?")((?:\d+\.\d+\.\d+|dev\.\d{8}\.\d+)[^"\\]*)(\\?")/g });
   }
   // The workspace crates.
   for (const p of walk("crates", (n) => n === "Cargo.toml")) {

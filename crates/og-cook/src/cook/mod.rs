@@ -16,6 +16,7 @@
 //! used back here, so a module is named `cook::<module>` wherever it lives.
 
 mod pipeline;
+pub use pipeline::author::project_assets;
 pub use pipeline::{asset_move, assets, cache, graph, stats, ts_refs};
 use pipeline::{
     execute, import_defaults, index, kinds, options, output, plan, provided, report, scan, stage,
@@ -45,6 +46,7 @@ pub mod generator;
 pub mod materials;
 pub mod source_content;
 pub mod source_index;
+pub mod source_metadata;
 mod source_path;
 pub mod source_project;
 pub mod source_records;
@@ -60,7 +62,6 @@ pub use schemas::engine_schemas;
 mod test_dir;
 pub mod ui_art;
 mod ui_packs;
-pub mod ui_screens;
 pub mod ui_themes;
 pub mod vector;
 
@@ -348,10 +349,20 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
         mut consumed,
         warnings: scan_warnings,
-    } = scan_sources(assets_dir, &cook_index, threads, &options.code)?;
+    } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");
+    let content = pipeline::author::sources(root, &project.source, &mut sources)?;
+    let boot = project
+        .boot
+        .as_ref()
+        .map(|id| content.outputs[id].asset.clone());
+    let flow = project
+        .flow
+        .as_ref()
+        .map(|id| content.outputs[id].asset.clone());
+    laps.lap("author");
     let Resolved {
         known,
         prefab_texts,
@@ -363,6 +374,7 @@ pub fn cook_project_with_texture_cache(
         options,
     } = contract(
         &project,
+        &content,
         &mut sources,
         &known,
         &imported.model_texts,
@@ -423,8 +435,8 @@ pub fn cook_project_with_texture_cache(
         story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
         profile: project.profile,
-        boot: project.boot.as_deref(),
-        flow: project.flow.as_deref(),
+        boot: boot.as_deref(),
+        flow: flow.as_deref(),
         provided: &project.provided,
         texture_cache,
         project_key: project_key.as_deref(),
@@ -437,6 +449,13 @@ pub fn cook_project_with_texture_cache(
             ..
         },
     ) = plan(&cx, early_errors, threads);
+    for (id, node) in &content.nodes {
+        parsed_refs.entry(id.clone()).or_default().extend(
+            node.references
+                .iter()
+                .map(|edge| content.outputs[&edge.target].asset.clone()),
+        );
+    }
     laps.lap("plan");
     let results = execute(
         &cx,

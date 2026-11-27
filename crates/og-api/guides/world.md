@@ -27,7 +27,7 @@ range. See `generating` for a complete multi-file cook recipe and
   to eight and are the only way past four layers; the control map is then
   one image per four layers.
 - Many terrain packs can share one material pack: in each terrain
-  project's project.ogt, `cook { uses "../materials/cooked" }` names
+  project's project.ts, `cook: { uses: ["../materials/cooked"] }` names
   another cooked bundle (its `cooked/` directory, or a project cooked
   first). Its textures and texture arrays may then be named as layer maps
   by asset id. The cook checks that the bundle has them with the right type

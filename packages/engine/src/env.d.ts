@@ -6,6 +6,15 @@ declare module "node:module" {
   export function createRequire(url: string): ((id: string) => unknown) & { resolve(id: string): string };
 }
 
+declare module "node:child_process" {
+  export function spawnSync(command: string, args: string[], options: { encoding: "utf8" }): {
+    status: number | null;
+    error?: Error;
+    stdout: string;
+    stderr: string;
+  };
+}
+
 declare module "node:url" {
   export function pathToFileURL(path: string): URL;
   export function fileURLToPath(url: string | URL): string;

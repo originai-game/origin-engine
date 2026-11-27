@@ -6,9 +6,10 @@
 // snap to cells that are not powers of two.
 
 import { afterAll, expect, test } from "bun:test";
-import { readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, presetLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, presetLook, readAudioChoices, readLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -35,3 +36,26 @@ test("every kind for every preset makes a complete brief", () => {
   expect(() => artBrief(presetLook("pixel"), "sprite", "  ")).toThrow(/subject/);
 });
 
+test.skipIf(!process.env.OG_BIN)("project briefs use the restricted JSON/TS bootstrap and refresh imported choices", () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-brief-ts-"));
+  temps.push(dir);
+  mkdirSync(join(dir, "src"));
+  mkdirSync(join(dir, "lib"));
+  mkdirSync(join(dir, "assets/looks"), { recursive: true });
+  writeFileSync(join(dir, "og-project.json"), JSON.stringify({ version: 1, engine: "0.9.0", name: "Brief", look: { $ogRef: "base/looks/brief" } }));
+  writeFileSync(join(dir, "project.ts"), `import { defineProject } from "@origingame/engine/author";
+import { choices } from "./lib/choices.ts";
+export default defineProject({ id: "brief", entry: "src/main.ts", create: choices });`);
+  writeFileSync(join(dir, "src/main.ts"), "throw new Error('GAME_MUST_NOT_EXECUTE');");
+  writeFileSync(join(dir, "assets/looks/brief.ogt"), 'type look\nversion 1\n---\nextends "pixel"\nmood "cold"\n');
+  const choices = join(dir, "lib/choices.ts");
+  writeFileSync(choices, 'export const choices = { form: "2d", music: "ambient", genre: "adventure" };');
+  const look = readLook(dir);
+  expect([look.profile, look.style?.slug, look.mood]).toEqual(["2d", "pixel", "cold"]);
+  expect(readAudioChoices(dir)).toEqual({ music: "ambient", genre: "adventure", mood: "cold" });
+  writeFileSync(choices, 'export const choices = { form: "3d", music: "orchestral", genre: "strategy" };');
+  expect(readLook(dir).profile).toBe("3d");
+  expect(readAudioChoices(dir)).toEqual({ music: "orchestral", genre: "strategy", mood: "cold" });
+  writeFileSync(choices, 'export const choices = { form: "3d", music: String(Date.now()), genre: "strategy" };');
+  expect(() => readLook(dir)).toThrow();
+});

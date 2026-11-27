@@ -167,7 +167,7 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Cov
         s.push_str(&format!("  {a}: {w}\n"));
     }
     if frames.is_empty() && frame_errors.is_empty() {
-        s.push_str("frames: none: name the screens in project.ogt (screens { title \"<commands>\" play \"...\" results \"...\" }) or pass --title, --play, --results\n");
+        s.push_str("frames: none: name the screens in project.ts (screens: { title: \"<commands>\", play: \"...\", results: \"...\" }) or pass --title, --play, --results\n");
     } else {
         s.push_str("frames:\n");
     }
@@ -200,7 +200,7 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Cov
     }
     if !cov.uncovered.is_empty() {
         s.push_str(&format!(
-            "coverage: no capture script for the scene(s) {}: add <name> \"<commands>\" to project.ogt's screens {{}} for each\n",
+            "coverage: no capture script for the scene(s) {}: add <name>: \"<commands>\" to project.ts's screens map for each\n",
             cov.uncovered.join(", ")
         ));
     }

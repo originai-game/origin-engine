@@ -213,22 +213,11 @@ fn catalogue_styles() -> Vec<Value> {
         .unwrap_or_default()
 }
 
-/// project.ogt's body, parsed.
-pub(super) fn project_body(root: &Path) -> Result<og_core::ogt::Block, String> {
-    let path = root.join("project.ogt");
-    let text = std::fs::read_to_string(&path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-    og_core::ogt::parse(&text)
-        .map(|d| d.body)
-        .map_err(|e| format!("{}: {}", path.display(), e.reason()))
-}
-
-/// Resolve a declaration from project.ogt, then the game's evaluated GameDesc.
+/// Resolve ordinary project metadata, then the game's evaluated GameDesc.
 /// Importing the bundle records declarations only: no world or start callback.
 pub(super) fn declared_look(root: &Path) -> Result<Option<String>, String> {
-    let body = project_body(root)?;
-    if let Some(id) = og_cook::look::project_look(&body).map_err(|e| format!("project.ogt:{e}"))? {
-        return Ok(Some(id));
+    if let Some(look) = crate::project::snapshot(root)?["startup"]["look"].as_str() {
+        return Ok(Some(look.into()));
     }
     let p = crate::project::Project::open(root)?;
     let package = crate::project::engine_package(Some(root)).ok_or(crate::project::NO_ENGINE)?;

@@ -1,6 +1,6 @@
 //! Project/module inputs are bootstrap data, never content factories or games.
 //! Their consumers switch together in the project frontend cutover.
-use super::{ContentRef, procedural::LookBase};
+use super::ContentRef;
 use og_core::reflect::source::{InputSchema, schemars::JsonSchema};
 use serde::Deserialize;
 use std::{collections::BTreeMap, sync::OnceLock};
@@ -32,12 +32,8 @@ input!(
     /// One root manifest for small and large projects. Omitted simulation
     /// settings remain the game's responsibility, not inferred cook choices.
     ProjectInput {
-        #[schemars(length(min = 1))]
-        name: String,
         #[schemars(regex(pattern = "^[a-z0-9]+(-[a-z0-9]+)*$"))]
         id: String,
-        #[schemars(length(min = 1))]
-        engine: String,
         /// Project-relative TypeScript game entry; bootstrap never executes it.
         #[schemars(length(min = 1))]
         entry: String,
@@ -65,7 +61,6 @@ input!(
         #[schemars(extend("additionalProperties" = {"$ref":"#/$defs/ContentRef","x-og-ref-kinds":["scene"]}))]
         scenes: BTreeMap<String, ContentRef>,
         scene: Option<String>,
-        look: Option<LookBase>,
         flow: Option<ProjectFlow>,
         create: Option<Creation>,
         cook: Option<ProjectCook>,
@@ -76,8 +71,28 @@ input!(
         perf: BTreeMap<String, f64>,
         budgets: Option<Budgets>,
         conform: Option<Conform>,
+        /// Named command scripts used by UI and style capture tools.
+        #[serde(default)]
+        #[schemars(extend("additionalProperties" = {"type":"string","minLength":1}))]
+        screens: BTreeMap<String, String>,
+        /// Pure Yarn expression functions, checked before dialogue compilation.
+        #[serde(default)]
+        story_functions: BTreeMap<String, StoryFunction>,
     }
 );
+
+input!(StoryFunction {
+    returns: StoryType,
+    /// Declaration order is the function's argument order.
+    #[serde(default)]
+    parameters: Vec<StoryParameter>,
+    body: String,
+});
+input!(StoryParameter {
+    name: String,
+    kind: StoryType
+});
+words!(StoryType { Number => "number", String => "string", Bool => "bool" });
 
 input!(
     /// A namespace and source root, independent of delivery and streaming.

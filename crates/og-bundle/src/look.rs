@@ -511,26 +511,6 @@ impl LookFile {
     }
 }
 
-/// project.ogt's `look "looks/<id>.ogt"` (the project's `body`): the asset
-/// id of the look whose art contract the cook reads (docs/art.md §2.1),
-/// the look GameDesc.look applies when it names none; `None` without the
-/// line. A value that is not one quoted `.ogt` path is refused as
-/// `<line>: ...`.
-pub fn project_look(body: &Block) -> Result<Option<String>, String> {
-    let Some(e) = body.get("look") else {
-        return Ok(None);
-    };
-    match e.values.as_slice() {
-        [Value::String(s)] if s.ends_with(".ogt") && e.block.is_none() => {
-            Ok(Some(crate::runtime::asset_id(s).to_string()))
-        }
-        _ => Err(format!(
-            "{}: `look` names the game's look by its asset id, such as `look \"looks/main.ogt\"`",
-            e.line
-        )),
-    }
-}
-
 /// The profile a project draws and simulates in: its creation form's
 /// (`project_profile`). The cook records it in its manifest, which the
 /// build, publish and the play page read; a new profile is a value here.
@@ -557,79 +537,6 @@ impl Profile {
     pub fn from_name(name: &str) -> Option<Profile> {
         Profile::ALL.into_iter().find(|p| p.name() == name)
     }
-}
-
-/// The project's profile (project.ogt's `body`): its creation form,
-/// `create { form "..." }`, the one field the profile follows. A top-level
-/// `profile` line is refused with its fix.
-pub fn project_profile(body: &Block) -> Result<Profile, String> {
-    if let Some(e) = body.get("profile") {
-        return Err(format!(
-            "{}: `profile` was removed; the creation form sets it: `create {{ form \"2d\" }}` for a 2D game, none (or form \"3d\") for a 3D one",
-            e.line
-        ));
-    }
-    let form = body
-        .get("create")
-        .and_then(|c| c.block.as_ref())
-        .and_then(|b| b.get("form"));
-    Ok(
-        match form.and_then(|f| f.string(0).ok().map(|v| (f.line, v))) {
-            Some((_, "2d")) => Profile::TwoD,
-            Some((line, "film")) => {
-                return Err(format!(
-                    "{line}: form \"film\" was removed: an interactive film is `genre \"interactive-film\"` in the form its live scenes draw in (form \"3d\"), its flow started by project.ogt's `flow \"story/<name>.yarn\"`; og upgrade rewrites the form"
-                ));
-            }
-            _ => Profile::ThreeD,
-        },
-    )
-}
-
-/// project.ogt's `flow "story/<name>.yarn"`: the dialogue the engine runs
-/// as the game's flow (og.flow) from the first tick, and who draws it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProjectFlow {
-    /// The dialogue's asset id (`story/game.yarn`).
-    pub dialogue: String,
-    /// `screen game`: the game draws the flow itself, so the engine mounts
-    /// no FlowScreen; the default, `screen engine`, mounts it.
-    pub game_screen: bool,
-}
-
-/// project.ogt's `flow` line (the project's `body`), `None` without one. A
-/// value that is not one quoted `.yarn` path, or a block with anything but
-/// `screen engine|game`, is refused as `<line>: ...`.
-pub fn project_flow(body: &Block) -> Result<Option<ProjectFlow>, String> {
-    let Some(e) = body.get("flow") else {
-        return Ok(None);
-    };
-    let dialogue = match e.values.as_slice() {
-        [Value::String(s)] if s.ends_with(".yarn") => crate::runtime::asset_id(s).to_string(),
-        _ => {
-            return Err(format!(
-                "{}: `flow` names the game's flow by its Yarn dialogue, such as `flow \"story/game.yarn\"`",
-                e.line
-            ));
-        }
-    };
-    let mut game_screen = false;
-    for s in e.block.iter().flat_map(|b| &b.entries) {
-        match (s.key.as_str(), s.word(0).ok()) {
-            ("screen", Some("engine")) => game_screen = false,
-            ("screen", Some("game")) => game_screen = true,
-            _ => {
-                return Err(format!(
-                    "{}: a `flow` block takes `screen engine` (the built-in FlowScreen draws the flow, the default) or `screen game` (the game draws it)",
-                    s.line
-                ));
-            }
-        }
-    }
-    Ok(Some(ProjectFlow {
-        dialogue,
-        game_screen,
-    }))
 }
 
 /// An sRGB `#rrggbb` (or `rrggbb`) colour as linear RGB, as three.js

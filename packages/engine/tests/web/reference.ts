@@ -77,6 +77,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
+import { readProject } from "../../src/node/project.ts";
 import { recordReference } from "../../src/playtest.ts";
 import { collectPlaytests } from "../../src/node/playtest-files.ts";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
@@ -229,7 +230,7 @@ let tab: Awaited<ReturnType<typeof browser.open>> | undefined;
 try {
   tab = await browser.open("about:blank", log);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
-  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}${opt("--tier") === "compat" ? "&tier=compat" : ""}` });
+  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?project=${encodeURIComponent(JSON.stringify(readProject(project)?.startup ?? {}))}${opt("--tier") === "compat" ? "&tier=compat" : ""}` });
   await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);

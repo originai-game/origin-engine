@@ -1,4 +1,4 @@
-// Creation choices configure the shell here; changing project.ogt alone does not regenerate code.
+// Creation choices configure the shell here; changing project.ts alone does not regenerate code.
 export const shellConfig = {
   name: "Origin Game",
   platform: "desktop",

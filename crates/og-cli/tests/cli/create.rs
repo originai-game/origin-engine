@@ -30,9 +30,15 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
             .output()
             .unwrap();
         assert!(out.status.success(), "{}", text(&out));
-        let manifest = std::fs::read_to_string(dir.join(command).join("project.ogt")).unwrap();
-        assert!(manifest.contains("name \"Installed Game\""), "{manifest}");
-        assert!(manifest.contains("view \"side-2d\""), "{manifest}");
+        let snapshot = og()
+            .args(["project", dir.join(command).to_str().unwrap(), "--json"])
+            .output()
+            .unwrap();
+        assert!(snapshot.status.success(), "{}", text(&snapshot));
+        let manifest: serde_json::Value = serde_json::from_slice(&snapshot.stdout).unwrap();
+        assert_eq!(manifest["name"], "Installed Game");
+        assert_eq!(manifest["input"]["create"]["view"], "side-2d");
+        assert!(!dir.join(command).join("project.ogt").exists());
         assert!(dir.join(command).join("src/main.ts").is_file());
         // One public creation path exercises the connected shell, including
         // repeated New game restores and the first pause after the rewind.
@@ -99,19 +105,20 @@ fn create_without_a_terminal_writes_the_chosen_look() {
     ]);
     assert!(out.status.success(), "{}", text(&out));
     let game = dir.join("Game Dir");
-    let manifest = std::fs::read_to_string(game.join("project.ogt")).unwrap();
+    let snapshot = og()
+        .args(["project", game.to_str().unwrap(), "--json"])
+        .output()
+        .unwrap();
+    assert!(snapshot.status.success(), "{}", text(&snapshot));
+    let manifest: serde_json::Value = serde_json::from_slice(&snapshot.stdout).unwrap();
     let package: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(repo().join("packages/engine/package.json")).unwrap(),
     )
     .unwrap();
-    for line in [
-        format!("engine \"{}\"", package["version"].as_str().unwrap()),
-        "id \"neon-run\"".into(),
-        "look \"looks/neon-run.ogt\"".into(),
-        "look \"neon-vector\"".into(),
-    ] {
-        assert!(manifest.contains(&line), "{line}: {manifest}");
-    }
+    assert_eq!(manifest["engine"], package["version"]);
+    assert_eq!(manifest["id"], "neon-run");
+    assert_eq!(manifest["startup"]["look"], "looks/neon-run.ogt");
+    assert_eq!(manifest["input"]["create"]["look"], "neon-vector");
     let look = std::fs::read_to_string(game.join("assets/looks/neon-run.ogt")).unwrap();
     assert!(look.contains("extends \"neon-vector\""), "{look}");
     assert_eq!(
@@ -126,5 +133,5 @@ fn create_without_a_terminal_writes_the_chosen_look() {
         t.contains("no look preset 'no-such-look'") && t.contains("neon-vector"),
         "{t}"
     );
-    assert!(!dir.join("other/project.ogt").exists(), "{t}");
+    assert!(!dir.join("other/og-project.json").exists(), "{t}");
 }

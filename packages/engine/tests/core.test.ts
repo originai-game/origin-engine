@@ -34,6 +34,31 @@ function run<T = Record<string, unknown>>(host: string, which: string): T {
 
 type Rng = { advanced: { ok: boolean }; repro: Record<string, number>; rng: { seed: number; state: number }; hash: string };
 
+test("checked startup data sets the clock, seed and save contract; replay seed remains independent", () => {
+  type Startup = {
+    time: { ok: boolean; value: { rate: number; tick: number; elapsed: number } };
+    rng: { ok: boolean; value: { seed: number } };
+    defaults: { ok: boolean; value: { rate: number } };
+    override: { ok: boolean; value: { seed: number } };
+    oldSave: { ok: boolean; reason: string };
+    conflicts: string[];
+    invalid: string[];
+  };
+  const node = run<Startup>("node", "startup");
+  expect(node.time).toMatchObject({ ok: true, value: { rate: 30, tick: 15, elapsed: 0.5 } });
+  expect(node.rng).toMatchObject({ ok: true, value: { seed: 83 } });
+  expect(node.defaults).toMatchObject({ ok: true, value: { rate: 60 } });
+  expect(node.override).toMatchObject({ ok: true, value: { seed: 197 } });
+  expect(node.oldSave.ok).toBeFalse();
+  expect(node.oldSave.reason).toContain("4");
+  for (const [i, field] of ["tick", "seed", "saveVersion"].entries()) expect(node.conflicts[i]).toContain(`GameDesc.${field}`);
+  expect(node.invalid.length).toBe(11);
+  if (!STALE_WASM) {
+    const web = run<Startup>("web", "startup");
+    for (const field of ["time", "rng", "defaults", "override", "oldSave", "conflicts", "invalid"] as const) expect(web[field]).toEqual(node[field]);
+  }
+}, 120_000);
+
 test.skipIf(STALE_WASM)("og.Rng in reads forks a deterministic stream without moving the main one, alike on both hosts", () => {
   const node = run<Rng>("node", "rng");
   const web = run<Rng>("web", "rng");

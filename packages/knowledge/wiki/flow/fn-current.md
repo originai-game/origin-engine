@@ -6,7 +6,7 @@ Module [`flow`](../flow.md) · [index](../index.md)
 
 ### `og.flow.current`
 
-The flow project.ogt's `flow` line started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless the line's block says `screen game`): what a playable segment's game passes to og.flow.advance.
+The flow project.ts's `flow` object started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless flow.screen is game): what a playable segment's game passes to og.flow.advance.
 
 Also known as: the game's flow, main flow, declared flow, story flow entity
 
@@ -24,7 +24,7 @@ Binding symbol `og_flow_current` · publish builds: kept
 
 ```ogt
 fn current {
-  doc "The flow project.ogt's `flow` line started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless the line's block says `screen game`): what a playable segment's game passes to og.flow.advance."
+  doc "The flow project.ts's `flow` object started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless flow.screen is game): what a playable segment's game passes to og.flow.advance."
   aliases "the game's flow, main flow, declared flow, story flow entity"
   param world World "The world."
   returns Option.Entity "Null without a `flow` line, or once og.flow.stop ended it."

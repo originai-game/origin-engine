@@ -1,0 +1,9 @@
+type scene
+version 1
+---
+name "Inland"
+entity "inland-marker" {
+  Transform {
+    position -5 2 19
+  }
+}

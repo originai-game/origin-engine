@@ -1,6 +1,202 @@
 use super::*;
 
 #[test]
+fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
+    let root = TempDir::new("og-typed-cook");
+    for file in [
+        "og-project.json",
+        "project.ts",
+        "src/main.ts",
+        "lib/timing.ts",
+        "lib/depth.ts",
+        "content/fields/depth.ts",
+        "modules/island/content/fields/slope.ts",
+        "assets/scenes/harbor.ogt",
+        "assets/scenes/inland.ogt",
+    ] {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::copy(repo().join("tests/fixtures/ts-startup").join(file), at).unwrap();
+    }
+    let metadata = std::fs::read(root.join("og-project.json")).unwrap();
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .current_dir(&root)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    for samples in [[3.0, 11.0, -2.0, 17.0], [19.0, -7.0, 5.0, 23.0]] {
+        std::fs::write(
+            root.join("lib/depth.ts"),
+            format!("export const samples = {samples:?};"),
+        )
+        .unwrap();
+        let result = cook();
+        assert!(result.status.success(), "{}", text(&result));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(
+            bundle.load_field("base/fields/depth").unwrap().values,
+            samples
+        );
+        assert_eq!(
+            bundle.load_field("island/fields/slope").unwrap().values,
+            [5.0, 19.0]
+        );
+        assert!(bundle.read("scenes/harbor.ogt").is_ok());
+        assert!(
+            bundle.read("base/scenes/harbor").is_err(),
+            "no second output or lookup alias"
+        );
+        assert_eq!(
+            std::fs::read(root.join("og-project.json")).unwrap(),
+            metadata
+        );
+        // A no-change cook must retain the same observable data.
+        assert!(cook().status.success());
+        assert_eq!(
+            og_cook::runtime::Bundle::open(&root.join("cooked"))
+                .unwrap()
+                .load_field("base/fields/depth")
+                .unwrap()
+                .values,
+            samples
+        );
+    }
+    std::fs::create_dir_all(root.join("content/scenes")).unwrap();
+    std::fs::write(
+        root.join("content/scenes/harbor.ts"),
+        "import {file} from '@origingame/engine/author'; export default file.scene({entities:[]});",
+    )
+    .unwrap();
+    let collision = cook();
+    assert!(
+        !collision.status.success(),
+        "catalogue silently preferred a source"
+    );
+    assert!(
+        text(&collision).contains("base/scenes/harbor"),
+        "{}",
+        text(&collision)
+    );
+    assert!(
+        text(&collision).contains("duplicate content identity"),
+        "{}",
+        text(&collision)
+    );
+}
+
+#[test]
+fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
+    use serde_json::json;
+    let root = TempDir::new("og-project-startup");
+    let write = |file: &str, text: &str| {
+        let at = root.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    let metadata = "{\n  \"version\": 1, \"name\": \"港口\", \"engine\": \"dev.20261126.3\",\n  \"look\": {\"$ogRef\":\"base/looks/harbor\"}\n}\n";
+    write("og-project.json", metadata);
+    write("project.ogt", "THIS MUST NOT BE PARSED");
+    write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write("lib/timing.ts", "export const timing = {tick:30, seed:83};");
+    write("assets/scenes/harbor.ogt", "type scene\nversion 1\n---\n");
+    write("assets/scenes/inland.ogt", "type scene\nversion 1\n---\n");
+    write("assets/looks/harbor.ogt", "type look\nversion 1\n---\n");
+    write(
+        "assets/dialogue/arrival.yarn",
+        "title: Start\n---\nWelcome\n===\n",
+    );
+    let source = "import {defineProject,ref} from '@origingame/engine/author';\nimport {timing} from './lib/timing.ts';\nexport default defineProject({id:'startup',entry:'src/main.ts',...timing,saveVersion:4,scene:'harbor',scenes:{harbor:ref('base/scenes/harbor'),inland:ref('base/scenes/inland')},create:{form:'2.5d'},publish:{out:'export',fit:'letterbox',aspect:'4:3',dprCap:1.5,loading:'game'},flow:{source:ref('base/dialogue/arrival'),screen:'game'}});\n";
+    write("project.ts", source);
+    let snapshot = || {
+        og().args(["project", "src", "--json"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let first = snapshot();
+    assert!(first.status.success(), "{}", text(&first));
+    let value: serde_json::Value = serde_json::from_slice(&first.stdout).unwrap();
+    assert_eq!(value["name"], "港口");
+    assert_eq!(value["engine"], "dev.20261126.3");
+    assert_eq!(value["id"], "startup");
+    assert_eq!(
+        value["startup"],
+        json!({
+            "tick":30,"seed":83,"saveVersion":4,"scene":"harbor",
+            "scenes":{"harbor":"scenes/harbor.ogt","inland":"scenes/inland.ogt"},
+            "profile":"3d","loading":"game","look":"looks/harbor.ogt",
+            "flow":{"dialogue":"dialogue/arrival.yarn","screen":"game"}
+        })
+    );
+    assert_eq!(
+        value["publish"],
+        json!({"fit":"letterbox","aspect":"4:3","dprCap":1.5,"loading":"game"})
+    );
+    let dependencies = value["dependencies"].as_array().unwrap();
+    for file in ["og-project.json", "project.ts", "lib/timing.ts"] {
+        assert!(dependencies.contains(&json!(file)), "{value}");
+    }
+    assert!(value["input"].get("name").is_none());
+    assert!(value["input"].get("engine").is_none());
+    assert!(value["input"].get("look").is_none());
+    assert_eq!(
+        std::fs::read_to_string(root.join("og-project.json")).unwrap(),
+        metadata
+    );
+    write("lib/timing.ts", "export const timing = {tick:24, seed:0};");
+    let changed = snapshot();
+    assert!(changed.status.success(), "{}", text(&changed));
+    let changed: serde_json::Value = serde_json::from_slice(&changed.stdout).unwrap();
+    assert_eq!(changed["startup"]["tick"], 24);
+    assert_eq!(changed["startup"]["seed"], 0);
+    write("assets/scenes/harbor.ogt", "type prefab\nversion 1\n---\n");
+    let wrong_kind = snapshot();
+    assert!(!wrong_kind.status.success());
+    assert!(
+        text(&wrong_kind).contains("expected scene, got prefab"),
+        "{}",
+        text(&wrong_kind)
+    );
+    std::fs::remove_file(root.join("assets/scenes/harbor.ogt")).unwrap();
+    let missing = snapshot();
+    assert!(!missing.status.success());
+    assert!(
+        text(&missing).contains("no scanned scene output"),
+        "{}",
+        text(&missing)
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'startup',entry:'src/main.ts'});",
+    );
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Minimal","engine":"0.9.0"}"#,
+    );
+    let minimal = snapshot();
+    assert!(minimal.status.success(), "{}", text(&minimal));
+    let minimal: serde_json::Value = serde_json::from_slice(&minimal.stdout).unwrap();
+    assert_eq!(minimal["startup"], json!({"profile":"3d"}));
+    write(
+        "project.ts",
+        &source.replace("entry:'src/main.ts'", "entry:'src/main.ts',engine:'0.9.0'"),
+    );
+    let duplicate = snapshot();
+    assert!(!duplicate.status.success());
+    assert!(text(&duplicate).contains("engine"), "{}", text(&duplicate));
+    write("og-project.json", "{invalid");
+    let malformed = snapshot();
+    assert!(!malformed.status.success());
+    assert!(
+        text(&malformed).contains("project_metadata_invalid"),
+        "{}",
+        text(&malformed)
+    );
+}
+
+#[test]
 fn project_types_refresh_without_merging_module_roles() {
     let root = TempDir::new("og-project-types");
     let write = |file: &str, text: &str| {
@@ -9,10 +205,14 @@ fn project_types_refresh_without_merging_module_roles() {
         std::fs::write(at, text).unwrap();
     };
     write(
+        "og-project.json",
+        r#"{"version":1,"name":"Types","engine":"0.9.0"}"#,
+    );
+    write(
         "project.ts",
         &format!(
             "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
-            serde_json::json!({"name":"Types","id":"types","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+            serde_json::json!({"id":"types","entry":"src/main.ts",
         "schemas":["src/schema/base.ts","modules/north/src/schema/local.ts"],
         "modules":[{"id":"north","root":"modules/north","dependsOn":["base"]}]})
         ),
@@ -29,7 +229,7 @@ fn project_types_refresh_without_merging_module_roles() {
     let north = "import {file} from '@origingame/engine/author'; export default file.scene({entities:[{name:'north',components:{'game.Base':{hp:3},'north.Local':{power:13}}}]});";
     write("modules/north/content/main.ts", north);
     // A deliberately broad user include must not combine both generated
-    // augmentations. Each generated module config overrides files/include.
+    // augmentations. Each generated module config isolates its declarations.
     write(
         "tsconfig.json",
         r#"{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["**/*.ts",".og/types/**/*.d.ts"]}"#,
@@ -43,6 +243,16 @@ fn project_types_refresh_without_merging_module_roles() {
     };
     let positive = check();
     assert!(positive.status.success(), "{}", text(&positive));
+    write(
+        "tools/archive.ts",
+        "const separateTool: number = 'not game code';",
+    );
+    write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["src/**/*.ts",".og/types/**/*.d.ts"]}"#,
+    );
+    let scoped = check();
+    assert!(scoped.status.success(), "{}", text(&scoped));
     for module in ["base", "north"] {
         assert!(
             root.join(format!(".og/types/author/{module}/index.d.ts"))

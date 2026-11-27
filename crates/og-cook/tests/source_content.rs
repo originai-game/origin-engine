@@ -21,10 +21,14 @@ fn project_records_bind_module_scoped_world_inputs() {
     };
     write("src/main.ts", "throw new Error('GAME_EXECUTED');");
     write(
+        "og-project.json",
+        r#"{"version":1,"name":"Records","engine":"0.9.0"}"#,
+    );
+    write(
         "project.ts",
         &format!(
             "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
-            json!({"name":"Records","id":"records","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+            json!({"id":"records","entry":"src/main.ts",
         "schemas":["src/schema/base.ts","modules/north/src/schema/local.ts"],
         "modules":[{"id":"north","root":"modules/north","dependsOn":["base"]}]})
         ),
@@ -173,7 +177,7 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
     let manifest = |north: &[&str], boot: &str| {
         format!(
             "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
-            serde_json::json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+            serde_json::json!({"id":"world","entry":"src/main.ts",
                 "inputs":["sources/*.txt"], "scenes":{"Boot":{"$ogRef":boot}},
                 "modules":[{"id":"north","root":"modules/north","dependsOn":north},
                     {"id":"east","root":"modules/east","dependsOn":["base"]}],
@@ -181,6 +185,10 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
         )
     };
     write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"World","engine":"0.9.0"}"#,
+    );
     write("project.ts", &manifest(&["base", "east"], "north/main"));
     write("sources/title.txt", "北😀");
     write(

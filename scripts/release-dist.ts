@@ -195,7 +195,9 @@ async function writeOverlay(engine: string, to: string) {
     writeFileSync(out, f.bytes);
     n++;
   }
-  if (!existsSync(join(to, "project.ogt"))) die(`the engine's knowledge has no ${OVERLAY}/project.ogt (${n} files under it)`);
+  for (const file of ["og-project.json", "project.ts"]) {
+    if (!existsSync(join(to, file))) die(`the engine's knowledge has no ${OVERLAY}/${file} (${n} files under it)`);
+  }
 }
 
 /** Copies a directory tree as it is, without .DS_Store. */
@@ -235,7 +237,8 @@ export function checkLayout(dir: string, t: Target): void {
   const need = [
     `bin/${exe}`,
     "origin-engine.json",
-    "overlay/project.ogt",
+    "overlay/og-project.json",
+    "overlay/project.ts",
     "engine/package.json",
     "engine/src/node/run.ts",
     "engine/knowledge/knowledge.json",
@@ -251,7 +254,8 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/dist/web-publish/origin-engine-lanes.js",
     `engine/native/origin-engine.${platform}.node`,
     "create/bin/create.ts",
-    "create/template/project.ogt",
+    "create/template/og-project.json",
+    "create/template/project.ts",
     ...(tsrs ? [`node_modules/@tsrs/${tsrs}/${exe === "og.exe" ? "tsrs.exe" : "tsrs"}`] : []),
   ];
   const missing = need.filter((p) => !existsSync(join(dir, p)));

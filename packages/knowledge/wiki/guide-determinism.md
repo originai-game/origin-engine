@@ -18,7 +18,7 @@ Everything else rests on this: saves, replays, hot reload, playtests and
 lockstep. A game keeps it by keeping these rules:
 
 - Time comes from og.Time (tick, dt, elapsed), never `Date.now()`,
-  `performance.now()` or timers. The tick is fixed (project.ogt's `tick`,
+  `performance.now()` or timers. The tick is fixed (project.ts's `tick`,
   60 by default); `dt` is constant. Never scale movement by a measured
   frame time.
 - Randomness comes from the engine's seeded og.Rng, never `Math.random()`.

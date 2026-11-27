@@ -53,6 +53,7 @@
 // frame. The keyboard layout's printed keys reach og.input's glyphs
 // (keyboard-layout.ts).
 
+import type { ProjectStartup } from "../../types/index.d.ts";
 import { writeRing, type InjectedInput } from "./input.ts";
 import type { CursorImage } from "../runtime.ts";
 import type { TextEntry, TextTarget } from "./text-input.ts";
@@ -121,8 +122,8 @@ export interface ShellOptions {
   readonly av1?: string;
   /** The decoder Workers' scripts on the page's origin (StartMessage `decoders`); each absent starts from a `blob:` copy. */
   readonly decoders?: { readonly audio?: string; readonly av1?: string };
-  /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */
-  readonly project?: string;
+  /** Checked normalized startup data, shared with CreateOptions.project. */
+  readonly project?: ProjectStartup;
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
   /** `count`: with `present`, the first frame's pipelines ready of those requested. */
   readonly onProgress?: (value: number, stage: string, fraction?: number, count?: readonly [number, number]) => void;
@@ -556,4 +557,3 @@ export class Shell {
     this.worker.terminate();
   }
 }
-

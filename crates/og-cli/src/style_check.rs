@@ -221,13 +221,7 @@ pub fn measure(
     opt_outs: Vec<(String, String)>,
 ) -> Result<Measured, String> {
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
-    let profile_2d = match project_body(root) {
-        Ok(b) => {
-            og_cook::look::project_profile(&b).map_err(|e| format!("project.ogt:{e}"))?
-                == og_cook::look::Profile::TwoD
-        }
-        Err(_) => false,
-    };
+    let profile_2d = bundle.manifest().profile == og_cook::look::Profile::TwoD;
     let roles = og_cook::cook::conform::texture_roles(root)?;
     let model_roles = og_cook::cook::conform::model_roles(root)?;
     let fixed = fixed_layouts(root, &bundle);
@@ -439,36 +433,13 @@ pub fn screens(
     root: &Path,
     flags: &BTreeMap<String, String>,
 ) -> Result<Vec<(String, String)>, String> {
-    let body = project_body(root)?;
+    let project = og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
     let mut out: Vec<(String, String)> = Vec::new();
-    let block = body.get("screens").and_then(|e| e.block.clone());
-    let mut declared: Vec<(String, String)> = Vec::new();
-    if let Some(b) = &block {
-        for e in &b.entries {
-            let script = e.string(0).map_err(|_| {
-                format!(
-                    "project.ogt:{}: screens takes <name> \"<commands>\" (e.g. play \"0:key:Enter\"); `{}` has no commands",
-                    e.line, e.key
-                )
-            })?;
-            if declared.iter().any(|(n, _)| n == &e.key) {
-                return Err(format!(
-                    "project.ogt:{}: screens names `{}` twice",
-                    e.line, e.key
-                ));
-            }
-            declared.push((e.key.clone(), script.to_string()));
-        }
-    }
+    let declared = project.input.screens;
     for s in SCREENS {
-        let script = flags.get(s).cloned().or_else(|| {
-            declared
-                .iter()
-                .find(|(n, _)| n == s)
-                .map(|(_, c)| c.clone())
-        });
+        let script = flags.get(s).or_else(|| declared.get(s));
         if let Some(script) = script {
-            out.push((s.to_string(), with_screenshot(&script)));
+            out.push((s.to_string(), with_screenshot(script)));
         }
     }
     for (name, script) in declared
@@ -477,12 +448,6 @@ pub fn screens(
     {
         out.push((name, with_screenshot(&script)));
     }
-    let ui = og_cook::cook::ui_screens::screens(&body).map_err(|e| format!("project.ogt:{e}"))?;
-    for s in ui {
-        if !out.iter().any(|(n, _)| n == &s.name) {
-            out.push((s.name, with_screenshot(&s.commands)));
-        }
-    }
     Ok(out)
 }
 
@@ -490,18 +455,13 @@ pub fn screens(
 /// capture script reaches: no screen of their name, and for the start
 /// scene (`scene <name>`) no `play` either.
 pub fn uncovered_scenes(root: &Path, captured: &[String]) -> Result<Vec<String>, String> {
-    let body = project_body(root)?;
-    let start = body
-        .get("scene")
-        .and_then(|e| e.word(0).or_else(|_| e.string(0)).ok())
-        .map(str::to_string);
+    let project = og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let start = project.input.scene;
     let has = |n: &str| captured.iter().any(|c| c == n);
-    Ok(body
-        .get("scenes")
-        .and_then(|e| e.block.as_ref())
-        .map(|b| b.entries.iter().map(|e| e.key.clone()).collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
+    Ok(project
+        .input
+        .scenes
+        .into_keys()
         .filter(|s| !has(s) && !(start.as_deref() == Some(s.as_str()) && has("play")))
         .collect())
 }
@@ -543,13 +503,15 @@ pub fn viewports(spec: &str, portrait: bool) -> Result<Vec<(String, String)>, St
 
 /// Whether the game is designed portrait (`publish { orientation portrait }`).
 fn portrait(root: &Path) -> bool {
-    project_body(root).ok().is_some_and(|b| {
-        b.get("publish")
-            .and_then(|e| e.block.as_ref())
-            .and_then(|p| p.get("orientation"))
-            .and_then(|e| e.word(0).ok())
-            == Some("portrait")
-    })
+    og_cook::cook::source_project::Project::open(root)
+        .ok()
+        .and_then(|p| p.input.publish)
+        .is_some_and(|p| {
+            matches!(
+                p.orientation,
+                Some(og_cook::cook::source_schemas::project::Orientation::Portrait)
+            )
+        })
 }
 
 /// `script` with a `screenshot` at its last step's time when it takes none.
@@ -717,9 +679,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
     };
     let root = PathBuf::from(&a.project);
-    if !root.join("project.ogt").is_file() {
+    if !root.join("og-project.json").is_file() {
         eprintln!(
-            "og style check-project: {} is not a project (no project.ogt)",
+            "og style check-project: {} is not a project (no og-project.json)",
             root.display()
         );
         return ExitCode::FAILURE;
@@ -846,8 +808,8 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
 }
 
-/// What the check says of a project whose project.ogt names no look.
-pub const NO_CONTRACT: &str = "neither project.ogt nor GameDesc declares a look, so there is no art contract to check against";
+/// What the check says of a project whose metadata names no look.
+pub const NO_CONTRACT: &str = "neither og-project.json nor GameDesc declares a look, so there is no art contract to check against";
 
 /// `og doctor --project`'s line: the asset part of the check, read from
 /// `cooked/` as it is (no cook) with the opt-outs of the last cook report.
@@ -859,7 +821,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
             return line(
                 "info",
                 format!("style: {NO_CONTRACT}"),
-                "name the game's look in project.ogt to hold its assets to the style",
+                "name the game's look in og-project.json to hold its assets to the style",
             );
         }
         Err(e) => {

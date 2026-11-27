@@ -127,7 +127,7 @@ function scene(world: World): void {
 }
 
 const game = og.game({ tick: 60, seed: 11, resources: [Tally], systems: [Paddle, Count], start: scene }) as unknown as GameToken;
-const created = createEngine(game, profile === "2d" ? { project: 'type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n' } : {});
+const created = createEngine(game, profile === "2d" ? { project: { profile: "2d" } } : {});
 if (!created.ok) {
   // The refusal itself is the answer when the module lacks the profile.
   console.log(JSON.stringify({ host: which, profile, refused: created.reason }));

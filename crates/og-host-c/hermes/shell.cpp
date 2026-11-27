@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
       if (!line.empty() && line[0] != '#') pairs.push_back(line);
     pairs.push_back("OG_ROOT=" + dir.string());
     pairs.push_back("OG_BIN=" + selfPath(argv[0]).parent_path().string());
-    pairs.push_back("OG_PROJECT=@" + (dir / "project.ogt").string());
+    pairs.push_back("OG_PROJECT=@" + (dir / "project-startup.json").string());
   }
   for (const char *key : {"OG_SHELL_CAPTURE", "OG_SIZE"})
     if (const char *v = std::getenv(key)) pairs.push_back(std::string(key) + "=" + v);

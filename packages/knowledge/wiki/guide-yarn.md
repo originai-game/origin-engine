@@ -204,16 +204,16 @@ For compatibility, v3.2.2's `random_range_float` draws an integer displacement
 and adds the floating minimum. Numeric `format` uses invariant .NET-compatible
 standard and custom numeric formats. It does not depend on the host locale.
 
-Register pure typed functions in `project.ogt` before cooking:
+Register pure typed functions in `project.ts`'s `defineProject` before cooking:
 
-```text
-storyFunctions {
-	function scaled number {
-		param value number
-		param factor number
-		body "$value * $factor + 2"
-	}
-}
+```ts
+storyFunctions: {
+  scaled: {
+    returns: "number",
+    parameters: [{ name: "value", kind: "number" }, { name: "factor", kind: "number" }],
+    body: "$value * $factor + 2",
+  },
+},
 ```
 
 Then use `{scaled(3, 7)}` in Yarn. The cook type-checks calls and stores checked

@@ -5,6 +5,7 @@ use super::*;
 pub(super) mod action_cache;
 pub mod asset_move;
 pub mod assets;
+pub(super) mod author;
 pub mod cache;
 pub(super) mod execute;
 pub mod graph;

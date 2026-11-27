@@ -1,4 +1,4 @@
-//! project.ogt's `cook { uses "<cooked dir>" }`: other cooked bundles whose
+//! project.ts's `cook.uses`: other cooked bundles whose
 //! assets this project's assets may name by asset id, where a kind allows it
 //! (a terrain's layer textures and layer arrays). The cook reads each
 //! bundle's manifest, checks a name against its outputs and their types, and
@@ -15,48 +15,30 @@ pub(crate) struct Provided {
 }
 
 impl Provided {
-    /// The bundles `cook { uses }` names in project.ogt (`body`), read
+    /// The bundles `cook.uses` names, read
     /// relative to the project `root`: each a cooked directory (one with
     /// `.cook.ogt`) or a project whose `cooked/` has one. The first bundle
     /// naming an id provides it.
-    pub(crate) fn read(
-        root: &Path,
-        body: Option<&og_core::ogt::Block>,
-    ) -> Result<Provided, String> {
+    pub(crate) fn read(root: &Path, uses: &[String]) -> Result<Provided, String> {
         let mut by_id = BTreeMap::new();
-        let Some(cook) = body
-            .and_then(|b| b.get("cook"))
-            .and_then(|e| e.block.as_ref())
-        else {
-            return Ok(Provided { by_id });
-        };
-        for e in cook.get_all("uses") {
-            for v in &e.values {
-                let Some(name) = v.as_str() else {
-                    return Err(format!(
-                        "project.ogt:{}: cook.uses takes paths in quotes: uses \"../materials/cooked\"",
-                        e.line
-                    ));
-                };
-                let dir = root.join(name);
-                let manifest = [dir.join(MANIFEST), dir.join("cooked").join(MANIFEST)]
+        for name in uses {
+            let dir = root.join(name);
+            let manifest = [dir.join(MANIFEST), dir.join("cooked").join(MANIFEST)]
                     .into_iter()
                     .find(|p| p.is_file())
                     .ok_or_else(|| {
                         format!(
-                            "project.ogt:{}: cook.uses \"{name}\" has no {MANIFEST} (name a cooked directory, or a project cooked first)",
-                            e.line
+                            "project.ts: cook.uses \"{name}\" has no {MANIFEST} (name a cooked directory, or a project cooked first)"
                         )
                     })?;
-                let text = std::fs::read_to_string(&manifest)
-                    .map_err(|err| format!("{}: {err}", manifest.display()))?;
-                let parsed = Manifest::parse(&text)
-                    .map_err(|err| format!("{}: {err}", manifest.display()))?;
-                for o in parsed.outputs() {
-                    by_id
-                        .entry(o.id.clone())
-                        .or_insert_with(|| (o.ty.clone(), name.to_string()));
-                }
+            let text = std::fs::read_to_string(&manifest)
+                .map_err(|err| format!("{}: {err}", manifest.display()))?;
+            let parsed =
+                Manifest::parse(&text).map_err(|err| format!("{}: {err}", manifest.display()))?;
+            for o in parsed.outputs() {
+                by_id
+                    .entry(o.id.clone())
+                    .or_insert_with(|| (o.ty.clone(), name.to_string()));
             }
         }
         Ok(Provided { by_id })

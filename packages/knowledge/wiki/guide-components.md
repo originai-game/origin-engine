@@ -5538,13 +5538,13 @@ Functions beside it, imported by name from `@origingame/engine/ui/components`:
 <a id="guide-components-235"></a>
 ### `components §235` FlowScreen
 
-A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with dissolve, subtitles lifted clear of active choices, aspect-accurate hotspots (choice & inspect), swipe/drag touch gestures, rich QTEs, and a subtle buffering badge while waiting on network chunks. It sits over a picture, so it resolves in the dark scheme in both schemes.
+A flow as the player sees it, what the engine mounts for project.ts's `flow`: its picture with dissolve, subtitles lifted clear of active choices, aspect-accurate hotspots (choice & inspect), swipe/drag touch gestures, rich QTEs, and a subtle buffering badge while waiting on network chunks. It sits over a picture, so it resolves in the dark scheme in both schemes.
 
 `import { FlowScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/flow-screen.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
-| `flow?` | `Entity \| undefined` | The flow it draws; left out, og.flow.current's (project.ogt's `flow`). |
+| `flow?` | `Entity \| undefined` | The flow it draws; left out, og.flow.current's (project.ts's `flow`). |
 | `fit?` | `"cover" \| "contain" \| undefined` | How the footage fits the play surface (`"cover"` default, or `"contain"`). |
 | `onSkip?` | `((e: UiEvent) => void) \| undefined` | Optional skip handler shown at the top corner. |
 

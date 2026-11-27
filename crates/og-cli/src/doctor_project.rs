@@ -33,7 +33,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
                 "error",
                 "budgets",
                 e,
-                "fix the budgets block in project.ogt",
+                "fix the budgets object in project.ts",
             ));
             Budgets::default()
         }
@@ -109,7 +109,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
                 "warning",
                 "bvh-share",
                 w["message"].as_str().unwrap_or("").to_string(),
-                "write `model { raycast false }` in the model's .ogt if nothing raycasts against it, or raise budgets.bvhShare in project.ogt",
+                "write `model { raycast false }` in the model's .ogt if nothing raycasts against it, or raise budgets.bvhShare in project.ts",
             );
             f["asset"] = json!(source);
             for k in ["budget", "limit", "value"] {
@@ -183,7 +183,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
 fn fix_for(budget: &str) -> &'static str {
     match budget {
         "triangles" | "vertices" => {
-            "decimate the model in its source, or raise budgets.triangles/vertices in project.ogt"
+            "decimate the model in its source, or raise budgets.triangles/vertices in project.ts"
         }
         "textureSize" => "resize the image in its source, or raise budgets.textureSize",
         "bones" => "reduce the skin's joints in its source, or raise budgets.bones",

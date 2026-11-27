@@ -56,6 +56,8 @@ commands:
   new [dir] [options]  alias for og create
   script <file.ts> [--root DIR] [--params JSON] [--seed N] [--input name=path] [--out FILE] [--json]
                       execute a deterministic cook generator; no network, arbitrary files, processes or clock
+  project [project] --json
+                      read checked TS bootstrap and normalized host startup data, without executing game/content code
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>]
@@ -144,7 +146,7 @@ commands:
                       serve the development web build on http://H:P/ (default 127.0.0.1:47810;
                       the inspector, Tune, Pause and Step, the probe) with every edit pushed to
                       the open page: assets and UI applied in place, code swapped with the world
-                      kept, a reload only when project.ogt changes (the testing guide §1)
+                      kept, a reload when project.ts or og-project.json changes (the testing guide §1)
   check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints NDJSON (`check` plus optional `ui-check`/`style-check` events);
@@ -178,7 +180,7 @@ commands:
                       move a source and its import settings, rewrite static OGT/TS asset references
   fmt [path…] [--check] [--json]
                       rewrite .ogt files in the canonical layout, comments kept: a file, a directory,
-                      or a project's project.ogt and assets/ (the default, here); entries keep their
+                      or a project's assets/ (the default, here); entries keep their
                       order; --check writes nothing, lists what would change and exits 1 if any does
   cache gc [--max-bytes N] [--json]
                       trim the shared cook action/content cache (default cap 10 GiB)
@@ -276,9 +278,9 @@ commands:
   style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look
-                      project.ogt names (palette hit rate, colours, pixel grid, texel density,
+                      og-project.json names (palette hit rate, colours, pixel grid, texel density,
                       faces against the budget, flat normals, the line) and list every opt-out;
-                      capture the title, play and results screens (project.ogt's screens block or
+                      capture the title, play and results screens (project.ts's screens map or
                       the flags) and measure their colours, palette and edges; exit 0 within the
                       game's own contract or with no look, 3 off it
   ui list [project] [--json]
@@ -290,7 +292,7 @@ commands:
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]
       [--out DIR] [--json] [--require-checked]
                       lay each screen (its commands, or show:<name>; without --screen every screen
-                      project.ogt's ui { screen \"<name>\" \"<commands>\" } and screens blocks declare,
+                      project.ts's screens map declares,
                       else the values the game's show usage lists, else the playtests' screenshots)
                       out per style, breakpoint and
                       locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and report facts:
@@ -343,7 +345,7 @@ commands:
                       --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned, and
                       no version after the pin up to the installed one has breaking entries)
   upgrade [project] [--to <version>] [--dry-run] [--json]
-                      move project.ogt's engine pin and package.json's dependency to the installed
+                      move og-project.json's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
   api find <words> [--kind module|fn|record|type|member|const|value|column|guide|file] [--limit N] [--json]
@@ -497,6 +499,7 @@ fn main() -> ExitCode {
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["script", rest @ ..] => script::run(rest),
+        ["project", rest @ ..] => project::run(rest),
         ["export", rest @ ..] => export::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
         ["fmt", rest @ ..] => fmt::run(rest),

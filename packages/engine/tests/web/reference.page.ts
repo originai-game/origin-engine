@@ -21,8 +21,8 @@ try {
     basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
     autoplay: false,
     prime: false,
-    // ?project=: project.ogt's text, as the export's config passes it.
-    ...(params.has("project") ? { project: params.get("project")! } : {}),
+    // ?project=: checked startup data, as the export's config passes it.
+    ...(params.has("project") ? { project: JSON.parse(params.get("project")!) } : {}),
     // ?tier=compat: the renderer made for its compatibility tier on any adapter (reference.ts --tier).
     ...(params.get("tier") === "compat" ? { renderTier: "compat" as const } : {}),
     dprCap: 1,

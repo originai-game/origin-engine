@@ -70,7 +70,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
           runPresentationMounts(engine, () => {
             if (payload === "flow") {
               const Screen = flowScreen.component;
-              if (!Screen) throw new Error("project.ogt's `flow`: this bundle holds no FlowScreen; bundle the game with og (og run, og build), which adds it for a project with a flow line");
+              if (!Screen) throw new Error("project.ts's `flow`: this bundle holds no FlowScreen; bundle the game with og (og run, og build), which adds it for a project with a flow object");
               mount(world as unknown as Api.World, Screen as (props: Record<string, never>) => UiChild, {});
             }
             fn?.(world);
@@ -165,12 +165,12 @@ export interface CreateOptions {
   /** The host names the content base after the engine starts (og_engine_set_content: a page waiting for its Player's hello); og.load.data loads wait for it. */
   readonly contentLater?: boolean;
   /**
-   * project.ogt's text (`og run`, `og test`, `og dev` and `og build` pass
-   * it): its `tick`, `seed`, `scenes` and `scene` fill the
+   * Normalized startup data from the checked project (`og run`, `og test`,
+   * `og dev` and `og build` pass it): `tick`, `seed`, `scenes` and `scene` fill the
    * GameDesc fields the game leaves unset, and one set in both places to
    * different values refuses the engine.
    */
-  readonly project?: string;
+  readonly project?: Api.ProjectStartup;
   /** Run GameDesc.start at the first tick boundary instead of now, so a host can attach its renderer and report the viewport first (the web Worker does). */
   readonly deferStart?: boolean;
   /** The locale the host asks og.i18n for: the browser's language, `og run --locale`. */

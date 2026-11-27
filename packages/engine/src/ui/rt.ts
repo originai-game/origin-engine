@@ -598,7 +598,7 @@ export const inspector: { panel: ((props: never) => unknown) | null } = { panel:
 
 /**
  * @internal The built-in FlowScreen (src/ui/screens/flow-screen.tsx), set
- * by the entry of a bundle whose project.ogt declares a `flow`
+ * by the entry of a bundle whose project.ts declares a `flow`
  * (node/build.ts); the UI registration pass mounts it for that flow.
  */
 export const flowScreen: { component: ((props: Record<string, never>) => unknown) | null } = { component: null };

@@ -4,12 +4,12 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
-import { CREATION_CHOICES, creationBlock, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput, profileOf } from "./knowledge.ts";
+import { CREATION_CHOICES, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput, profileOf } from "./knowledge.ts";
 import type { CreationChoices, CreationInput, View } from "./knowledge.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
-export { CREATION_CHOICES, CREATION_FIELDS, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./knowledge.ts";
+export { CREATION_CHOICES, CREATION_FIELDS, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./knowledge.ts";
 export type { CreationChoices, CreationInput, Form, Genre, View } from "./knowledge.ts";
 export { creationCompat, creationDocument, lookForms, previewSlots } from "./creation.ts";
 export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from "./creation.ts";
@@ -248,11 +248,11 @@ export function create(options: CreateOptions): Created {
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
     copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
   }
-  // An interactive film adds its story, segments and placeholder clip, run by project.ogt's `flow` (og api show flow).
+  // An interactive film adds its story, segments and placeholder clip, run by project.ts's `flow` (og api show flow).
   if (film) copy(filmDir(), dir);
   // One shell for every genre: only its identity, device defaults and locale tables differ.
   const config = "src/shell-config.ts";
-  writeFileSync(join(dir, config), `// Creation choices configure the shell here; changing project.ogt alone does not regenerate code.\nexport const shellConfig = ${JSON.stringify({ name, platform: choices.platform, input: choices.input, lang: choices.lang, genre: choices.genre, languageNames: Object.fromEntries(choices.lang.map((l) => [l, new Intl.DisplayNames([l], { type: "language" }).of(l) ?? l])) }, null, 2)};\n`);
+  writeFileSync(join(dir, config), `// Creation choices configure the shell here; changing project.ts alone does not regenerate code.\nexport const shellConfig = ${JSON.stringify({ name, platform: choices.platform, input: choices.input, lang: choices.lang, genre: choices.genre, languageNames: Object.fromEntries(choices.lang.map((l) => [l, new Intl.DisplayNames([l], { type: "language" }).of(l) ?? l])) }, null, 2)};\n`);
   const locales = [...new Set(["en", ...choices.lang])];
   const english = readFileSync(join(template, "assets/strings/shell.en.ogt"), "utf8");
   const chinese: Record<string, string> = {
@@ -291,10 +291,14 @@ export function create(options: CreateOptions): Created {
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);
   written.push(`assets/${look}`);
-  const manifest = join(dir, "project.ogt");
-  writeFileSync(manifest, readFileSync(manifest, "utf8")
-    .replace(/^name ".*"$/m, () => `name ${JSON.stringify(name)}`)
-    .replace(/^id ".*"$/m, () => `id ${JSON.stringify(id)}`) + `\nlook ${JSON.stringify(look)}\n${film ? 'flow "story/film.yarn"\n' : ""}\n${creationBlock(choices)}`);
+  const manifest = join(dir, "og-project.json");
+  const metadata = JSON.parse(readFileSync(manifest, "utf8"));
+  writeFileSync(manifest, `${JSON.stringify({ ...metadata, name, look: { $ogRef: `base/looks/${id}` } }, null, 2)}\n`);
+  writeFileSync(join(dir, "project.ts"), `import { defineProject } from "@origingame/engine/author";\n\nexport default defineProject(${JSON.stringify({
+    id, entry: "src/main.ts", tick: 60, seed: 1,
+    publish: { probe: "player", out: "dist" }, create: choices,
+    ...(film ? { flow: { source: { $ogRef: "base/story/film" } } } : {}),
+  }, null, 2)});\n`);
   const pkg = join(dir, "package.json");
   const data = JSON.parse(readFileSync(pkg, "utf8"));
   data.name = id;
@@ -310,7 +314,7 @@ The create block configures the shell's platform, input and languages.
 The look, variant and UI configure its look file; no gameplay is generated.
   --form      2d, 2.5d or 3d: the world's form, the view one of the form's
   --genre     interactive-film adds a flow (og.flow): a Yarn story, two segments and a
-              placeholder clip, run by project.ogt's \`flow\` and drawn by the engine's
+              placeholder clip, run by project.ts's \`flow\` and drawn by the engine's
               FlowScreen; its form is 3d unless named and its view may be left out
   --genre --view --look --variant --ui --platform --input --players --lang --music
               creation choices; --lang en,zh accepts comma-separated tags. A look must
@@ -384,7 +388,7 @@ function main(argv: string[]): number {
     }
   }
   const made = create({ dir: dir ?? id ?? (name ? slug(name) : "origin-game"), ...(name === undefined ? {} : { name }), ...(id === undefined ? {} : { id }), ...(premise === undefined ? {} : { premise }), choices: parseCreationInput(choices), force });
-  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.genre === FILM_GENRE ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
+  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nIdentity and engine pin are in og-project.json; creation choices are in project.ts. ${made.choices.genre === FILM_GENRE ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
   return 0;
 }
 

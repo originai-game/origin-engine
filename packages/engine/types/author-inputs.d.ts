@@ -8,16 +8,13 @@ readonly "cook"?: (((ProjectInputDefinitions["ProjectCook"])) | ((null)));
 readonly "create"?: (((ProjectInputDefinitions["Creation"])) | ((null)));
 /** Direct dependencies of the implicit base source module. */
 readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "engine": (string);
 /** Project-relative TypeScript game entry; bootstrap never executes it. */
 readonly "entry": (string);
 readonly "flow"?: (((ProjectInputDefinitions["ProjectFlow"])) | ((null)));
 readonly "id": (string);
 /** Explicit input globs for the base module, relative to its root. */
 readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "look"?: (((ProjectInputDefinitions["LookBase"])) | ((null)));
 readonly "modules"?: (ReadonlyArray<(ProjectInputDefinitions["ModuleInput"])> | (number extends ((ProjectInputDefinitions["ModuleInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "name": (string);
 readonly "packs"?: (ReadonlyArray<(ProjectInputDefinitions["DeliveryPack"])> | (number extends ((ProjectInputDefinitions["DeliveryPack"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Named median-time limits in milliseconds, not cook quality choices. */
 readonly "perf"?: (Readonly<Record<string, (number)>>);
@@ -28,7 +25,11 @@ readonly "scene"?: ((string) | (null));
 readonly "scenes"?: (Readonly<Record<string, (ProjectInputDefinitions["ContentRef"])>>);
 /** Pure record declaration files, never a running game entry. */
 readonly "schemas"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Named command scripts used by UI and style capture tools. */
+readonly "screens"?: (Readonly<Record<string, (string)>>);
 readonly "seed"?: ((number) | (null));
+/** Pure Yarn expression functions, checked before dialogue compilation. */
+readonly "storyFunctions"?: (Readonly<Record<string, (ProjectInputDefinitions["StoryFunction"])>>);
 readonly "tick"?: ((number) | (null));
 });
 export interface ProjectInputDefinitions {
@@ -101,7 +102,6 @@ readonly "present"?: ((string) | (null));
 readonly "prime"?: ((string) | (null));
 readonly "transcode"?: ((string) | (null));
 });
-readonly "LookBase": (((string)) | ((ProjectInputDefinitions["ContentRef"])));
 /** A namespace and source root, independent of delivery and streaming. */
 readonly "ModuleInput": ({
 readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
@@ -149,6 +149,17 @@ readonly "probe"?: (((ProjectInputDefinitions["Probe"])) | ((null)));
 readonly "shortName"?: ((string) | (null));
 readonly "telemetry"?: (((ProjectInputDefinitions["Telemetry"])) | ((null)));
 });
+readonly "StoryFunction": ({
+readonly "body": (string);
+/** Declaration order is the function's argument order. */
+readonly "parameters"?: (ReadonlyArray<(ProjectInputDefinitions["StoryParameter"])> | (number extends ((ProjectInputDefinitions["StoryParameter"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "returns": (ProjectInputDefinitions["StoryType"]);
+});
+readonly "StoryParameter": ({
+readonly "kind": (ProjectInputDefinitions["StoryType"]);
+readonly "name": (string);
+});
+readonly "StoryType": ("number" | "string" | "bool") & (string);
 readonly "Telemetry": ("on" | "off") & (string);
 }
 /** A namespace and source root, independent of delivery and streaming. */

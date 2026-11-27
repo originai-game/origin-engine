@@ -78,7 +78,7 @@ export function FlowPicture(props: FlowPictureProps) {
 }
 
 export interface FlowScreenProps {
-  /** The flow it draws; left out, og.flow.current's (project.ogt's `flow`). */
+  /** The flow it draws; left out, og.flow.current's (project.ts's `flow`). */
   flow?: Entity | undefined;
   /** How the footage fits the play surface (`"cover"` default, or `"contain"`). */
   fit?: "cover" | "contain" | undefined;
@@ -87,7 +87,7 @@ export interface FlowScreenProps {
 }
 
 /**
- * A flow as the player sees it, what the engine mounts for project.ogt's
+ * A flow as the player sees it, what the engine mounts for project.ts's
  * `flow`: its picture with dissolve, subtitles lifted clear of active choices,
  * aspect-accurate hotspots (choice & inspect), swipe/drag touch gestures,
  * rich QTEs, and a subtle buffering badge while waiting on network chunks.

@@ -75,7 +75,7 @@ fn print_list(facts: &Value) {
     }
     for f in flows {
         let declared = if f["declared"] == true {
-            " (project.ogt flow)"
+            " (project.ts flow)"
         } else {
             ""
         };

@@ -5129,86 +5129,173 @@ Field coverage: complete video parser field table. Sources require ffmpeg/ffprob
 <a id="file-project"></a>
 ### `file:project`
 
-project.ogt: project configuration, not an asset. See start and conventions.
+og-project.json is the ordinary project marker and sole name/engine/look authority. project.ts exports defineProject({...}); it is restricted bootstrap configuration, not an asset or a game entry. Run og check to generate contextual declarations in .og/types/author/. See start and conventions.
 
-| Field | Default | Meaning |
-|---|---|---|
-| `name "<name>"` | `Origin Engine game` | Display name. |
-| `id "<id>"` | `game` | Project identifier. |
-| `engine "<version>"` | `installed engine` | Pinned released engine version. |
-| `entry "<path.ts>"` | `src/main.ts` | Game entry relative to project. |
-| `tick <integer 1..240>` | `GameDesc` | Fixed ticks per second; duplicate conflicting GameDesc values fail. |
-| `seed <u32>` | `GameDesc` | Simulation seed. |
-| `saveVersion <u32 >= 1>` | `GameDesc` | Save contract version. |
-| `scene <name>` | `GameDesc` | Initial scene from scenes. |
-| `scenes { <name> "<asset path>" ... }` | `GameDesc` | Named scene assets. |
-| `look "<asset path>"` | `none` | Look and cook art contract; see file:look. |
-| `create { ... }` | `none` | Creation choices retained as project data; form 2d selects the 2D profile, otherwise 3D. |
-| `flow "<dialogue.yarn>" { screen engine \| game }` | `none` | Dialogue started before GameDesc.start; screen defaults to engine. |
-| `cook { ... }` | `defaults` | Cook options. |
-| `publish { ... }` | `defaults` | Web export options, not an instruction to publish. |
-| `perf { budget "<line>" <milliseconds> ... }` | `none` | Per-line median time limits for perf reporting. |
-| `budgets { ... }` | `cook budget defaults` | Content limits, not generation decisions. |
-| `conform { off "<pattern>" ... }` | `none` | Explicit art-contract exemptions; * matches within a path segment, ** across segments, trailing / a directory. |
-
-<a id="file-project-cook"></a>
-### `file:project.cook`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `color_textures etc1s \| uastc` | `etc1s` | Colour texture encoding; publish can override. |
-| `clusters true \| false` | `true` | Bake meshlet clusters. |
-| `uses "<bundle>" ...` | `none` | Explicit additional bundles the project can reference. |
-
-<a id="file-project-publish"></a>
-### `file:project.publish`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `out "<directory>"` | `dist` | Export destination. |
-| `keep "<asset pattern>" ...` | `none` | Additional asset roots beyond reachable references. |
-| `color_textures etc1s \| uastc` | `cook setting` | Export texture encoding. |
-| `probe player \| all` | `export default` | Probe visibility. |
-| `isolation required \| preferred \| off` | `export default` | Cross-origin isolation policy. |
-| `fit fill \| letterbox` | `export default` | Canvas fit. |
-| `aspect "<width:height>"` | `none` | Required for letterbox. |
-| `aspect_min "<width:height>"` | `none` | Minimum fill aspect ratio. |
-| `aspect_max "<width:height>"` | `none` | Maximum fill aspect ratio. |
-| `orientation any \| landscape \| portrait` | `export default` | Screen orientation. |
-| `dpr_cap <0.5..4>` | `export default` | Maximum device pixel ratio. |
-| `fullscreen off \| gesture` | `export default` | Request fullscreen after gesture. |
-| `gate tap \| none` | `export default` | Ready-to-interact gate. |
-| `made_with true \| false` | `export default` | Engine badge. |
-| `icon "<path.png>"` | `brand tile` | Square icon at least 192 pixels. |
-| `short_name "<name>"` | `export default` | Installed application name. |
-| `telemetry on \| off` | `export default` | Field telemetry. |
-| `pipelines auto \| sync \| async \| prewarm` | `export default` | Web pipeline creation mode. |
-| `loading engine \| game \| page` | `export default` | Loading-screen owner. |
-| `loading_labels { fetch\|transcode\|prime\|present "<caption>" ... }` | `engine captions` | Per-stage loading captions. |
-| `assets "<https base URL>"` | `export directory` | Cooked asset base; localhost HTTP also accepted. No credentials, query or fragment. |
-| `content "<https base URL>"` | `export default` | Content base; same URL contract as assets. |
-
-<a id="file-project-budgets"></a>
-### `file:project.budgets`
-
-| Field | Default | Meaning |
-|---|---|---|
-| `triangles <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `vertices <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `textureSize <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `bones <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `clips <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `assetBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `totalBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `soundSeconds <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `videoSeconds <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `navPolygons <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `sceneEntities <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `emitterParticles <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `bvhShare <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-| `gpuBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
-
-Creation data (form, genre, view, look, variant, ui, platform, input, players, lang, music) comes from `og create --creation`; it is retained as hints, not interpreted as gameplay rules. Apart from form, it does not configure the runtime. Arbitrary creation notes do not generate content.
+```ts
+/** One root manifest for small and large projects. Omitted simulation
+settings remain the game's responsibility, not inferred cook choices. */
+export type ProjectInput = ({
+readonly "budgets"?: (((ProjectInputDefinitions["Budgets"])) | ((null)));
+readonly "conform"?: (((ProjectInputDefinitions["Conform"])) | ((null)));
+readonly "cook"?: (((ProjectInputDefinitions["ProjectCook"])) | ((null)));
+readonly "create"?: (((ProjectInputDefinitions["Creation"])) | ((null)));
+/** Direct dependencies of the implicit base source module. */
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Project-relative TypeScript game entry; bootstrap never executes it. */
+readonly "entry": (string);
+readonly "flow"?: (((ProjectInputDefinitions["ProjectFlow"])) | ((null)));
+readonly "id": (string);
+/** Explicit input globs for the base module, relative to its root. */
+readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "modules"?: (ReadonlyArray<(ProjectInputDefinitions["ModuleInput"])> | (number extends ((ProjectInputDefinitions["ModuleInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "packs"?: (ReadonlyArray<(ProjectInputDefinitions["DeliveryPack"])> | (number extends ((ProjectInputDefinitions["DeliveryPack"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Named median-time limits in milliseconds, not cook quality choices. */
+readonly "perf"?: (Readonly<Record<string, (number)>>);
+readonly "publish"?: (((ProjectInputDefinitions["Publish"])) | ((null)));
+readonly "roots"?: (ReadonlyArray<(ProjectInputDefinitions["ContentRef"])> | (number extends ((ProjectInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "saveVersion"?: ((number) | (null));
+readonly "scene"?: ((string) | (null));
+readonly "scenes"?: (Readonly<Record<string, (ProjectInputDefinitions["ContentRef"])>>);
+/** Pure record declaration files, never a running game entry. */
+readonly "schemas"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Named command scripts used by UI and style capture tools. */
+readonly "screens"?: (Readonly<Record<string, (string)>>);
+readonly "seed"?: ((number) | (null));
+/** Pure Yarn expression functions, checked before dialogue compilation. */
+readonly "storyFunctions"?: (Readonly<Record<string, (ProjectInputDefinitions["StoryFunction"])>>);
+readonly "tick"?: ((number) | (null));
+});
+export interface ProjectInputDefinitions {
+/** Explicit overrides of the existing content-report limits. Absence leaves
+that limit's interpretation with the report, not the author evaluator. */
+readonly "Budgets": ({
+readonly "assetBytes"?: ((number) | (null));
+readonly "bones"?: ((number) | (null));
+readonly "bvhShare"?: ((number) | (null));
+readonly "clips"?: ((number) | (null));
+readonly "emitterParticles"?: ((number) | (null));
+readonly "gpuBytes"?: ((number) | (null));
+readonly "navPolygons"?: ((number) | (null));
+readonly "sceneEntities"?: ((number) | (null));
+readonly "soundSeconds"?: ((number) | (null));
+readonly "textureSize"?: ((number) | (null));
+readonly "totalBytes"?: ((number) | (null));
+readonly "triangles"?: ((number) | (null));
+readonly "vertices"?: ((number) | (null));
+readonly "videoSeconds"?: ((number) | (null));
+});
+readonly "ColorEncoding": ("etc1s" | "uastc") & (string);
+readonly "Conform": ({
+readonly "off"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+/** A content identity, never a runtime handle or an instruction to evaluate
+another entry. The project graph validates names, existence, subresources,
+module access and target kinds. A field declares its allowed kinds with
+`x-og-ref-kinds` schema metadata, not a second kind inside this token.
+`x-og-ref-factories` instead requires an original declaration (no suffix),
+for source consumers such as parameterized model programs or theme recipes. */
+readonly "ContentRef": ({
+readonly "$ogRef": (string);
+});
+readonly "Controls": ("touch" | "keyboard-mouse" | "gamepad") & (string);
+/** Creation metadata describes the chosen shell. No genre composition or
+balancing is selected by bootstrap; open catalogue IDs remain strings. */
+readonly "Creation": ({
+readonly "form"?: (((ProjectInputDefinitions["Form"])) | ((null)));
+readonly "genre"?: ((string) | (null));
+readonly "input"?: (((ProjectInputDefinitions["Controls"])) | ((null)));
+readonly "lang"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "look"?: ((string) | (null));
+readonly "music"?: ((string) | (null));
+readonly "platform"?: (((ProjectInputDefinitions["Platform"])) | ((null)));
+readonly "players"?: (((ProjectInputDefinitions["Players"])) | ((null)));
+readonly "ui"?: ((string) | (null));
+readonly "variant"?: ((string) | (null));
+readonly "view"?: ((string) | (null));
+});
+/** An output delivery unit, not a module, stream group or world cell. */
+readonly "DeliveryPack": ({
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "id": (string);
+/** Namespaced content patterns. Overlap is an error, never first-wins. */
+readonly "include"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "optional"?: (boolean);
+readonly "roots"?: (ReadonlyArray<(ProjectInputDefinitions["ContentRef"])> | (number extends ((ProjectInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+readonly "Fit": ("fill" | "letterbox") & (string);
+readonly "FlowScreen": ("engine" | "game") & (string);
+readonly "Form": ("2d" | "2.5d" | "3d") & (string);
+readonly "Fullscreen": ("off" | "gesture") & (string);
+readonly "Gate": ("tap" | "none") & (string);
+readonly "Isolation": ("required" | "preferred" | "off") & (string);
+readonly "Loading": ("engine" | "game" | "page") & (string);
+readonly "LoadingLabels": ({
+readonly "fetch"?: ((string) | (null));
+readonly "present"?: ((string) | (null));
+readonly "prime"?: ((string) | (null));
+readonly "transcode"?: ((string) | (null));
+});
+/** A namespace and source root, independent of delivery and streaming. */
+readonly "ModuleInput": ({
+readonly "dependsOn"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "id": (string);
+readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** Canonical project-relative directory. Moving it preserves IDs. */
+readonly "root": (string);
+});
+readonly "Orientation": ("any" | "landscape" | "portrait") & (string);
+readonly "Pipelines": ("auto" | "sync" | "async" | "prewarm") & (string);
+readonly "Platform": ("phone-portrait" | "phone-landscape" | "desktop" | "multi") & (string);
+readonly "Players": ("single" | "local-multiplayer" | "online-lockstep") & (string);
+readonly "Probe": ("player" | "all") & (string);
+readonly "ProjectCook": ({
+readonly "clusters"?: ((boolean) | (null));
+readonly "colorTextures"?: (((ProjectInputDefinitions["ColorEncoding"])) | ((null)));
+/** Explicit prebuilt bundle inputs. Names must remain globally unique. */
+readonly "uses"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+});
+readonly "ProjectFlow": ({
+readonly "screen"?: (((ProjectInputDefinitions["FlowScreen"])) | ((null)));
+readonly "source": (ProjectInputDefinitions["ContentRef"]);
+});
+readonly "Publish": ({
+readonly "aspect"?: ((string) | (null));
+readonly "aspectMax"?: ((string) | (null));
+readonly "aspectMin"?: ((string) | (null));
+readonly "assets"?: ((string) | (null));
+readonly "colorTextures"?: (((ProjectInputDefinitions["ColorEncoding"])) | ((null)));
+readonly "content"?: ((string) | (null));
+readonly "dprCap"?: ((number) | (null));
+readonly "fit"?: (((ProjectInputDefinitions["Fit"])) | ((null)));
+readonly "fullscreen"?: (((ProjectInputDefinitions["Fullscreen"])) | ((null)));
+readonly "gate"?: (((ProjectInputDefinitions["Gate"])) | ((null)));
+readonly "icon"?: ((string) | (null));
+readonly "isolation"?: (((ProjectInputDefinitions["Isolation"])) | ((null)));
+readonly "keep"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "loading"?: (((ProjectInputDefinitions["Loading"])) | ((null)));
+readonly "loadingLabels"?: (((ProjectInputDefinitions["LoadingLabels"])) | ((null)));
+readonly "madeWith"?: ((boolean) | (null));
+readonly "orientation"?: (((ProjectInputDefinitions["Orientation"])) | ((null)));
+readonly "out"?: ((string) | (null));
+readonly "pipelines"?: (((ProjectInputDefinitions["Pipelines"])) | ((null)));
+readonly "probe"?: (((ProjectInputDefinitions["Probe"])) | ((null)));
+readonly "shortName"?: ((string) | (null));
+readonly "telemetry"?: (((ProjectInputDefinitions["Telemetry"])) | ((null)));
+});
+readonly "StoryFunction": ({
+readonly "body": (string);
+/** Declaration order is the function's argument order. */
+readonly "parameters"?: (ReadonlyArray<(ProjectInputDefinitions["StoryParameter"])> | (number extends ((ProjectInputDefinitions["StoryParameter"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "returns": (ProjectInputDefinitions["StoryType"]);
+});
+readonly "StoryParameter": ({
+readonly "kind": (ProjectInputDefinitions["StoryType"]);
+readonly "name": (string);
+});
+readonly "StoryType": ("number" | "string" | "bool") & (string);
+readonly "Telemetry": ("on" | "off") & (string);
+}
+```
 <a id="file-import"></a>
 ### `file:import`
 

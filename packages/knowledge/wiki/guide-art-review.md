@@ -220,7 +220,7 @@ the frame, these say what the assets themselves must be.
   made before them, cooks and draws as before.
 - The built-in presets (templates/looks/<slug>.ogt) carry each catalogue
   style's values; a game's look overrides them field by field, and
-  project.ogt's `look` names the look whose contract the cook reads.
+  og-project.json's `look` names the look whose contract the cook reads.
 - Game code reads the contract too: a sprite snapping to ArtPixels.unit, a
   spawner picking colours from ArtPalette.
 - Writing them changes neither the frame nor the simulation. The cook's

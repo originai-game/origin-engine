@@ -143,8 +143,8 @@ modes.
 
 **The launcher.** An author installs `og` once (`curl -fsSL
 https://origingame.ai/downloads/engine/install.sh | sh`, or `irm
-…/install.ps1 | iex`: `~/.origin/bin/og`). It reads `project.ogt`'s
-`engine "<v>"`, installs that version into the cache when it is missing,
+…/install.ps1 | iex`: `~/.origin/bin/og`). It reads only `og-project.json`'s
+`engine`, installs that version into the cache when it is missing,
 and runs that version's `og` with `OG_ENGINE_PACKAGE` set; `og new`
 scaffolds a game (the latest release, or `--engine <v>`), `og upgrade`
 moves the pin, and `og engine install <v> | list | path | prune` manages
@@ -154,6 +154,29 @@ it runs with, so TypeScript (`moduleResolution "bundler"`), the bundler and
 an editor resolve `@origingame/engine` and its subpaths as a package, by
 its `exports`: the engine's package.json is the one map from specifier to
 file, and the templates' `tsconfig.json` names no engine path.
+
+**Project identity.** `og-project.json` is an ordinary authored JSON file:
+`{version: 1, engine, name, look?}`. These fields live only here, never in
+`project.ts`. `og new` writes it; authors and tools edit it; `upgrade`
+changes the pin. `check/cook/dev` only read it and never rewrite it. `look`
+is a preset string or `{$ogRef: "<module>/<content-id>"}`; name and look
+cannot be empty. Unknown fields, invalid types and version other than 1
+are ordinary project errors. There are no size or length limits, source
+lists, hashes, projection, staleness checks or source-path/symlink rules.
+The cook's own dependency tracking and source sandbox remain independent.
+
+The pin is a concrete release `x.y.z` or `dev.YYYYMMDD.n` (n positive),
+not latest, a range or a download path. Historical version names remain
+installable with explicit `og engine install <v>`. No `projectFormat`
+field or pin-to-format mapping is added to the public release manifest.
+
+The sole project marker is `og-project.json`, found at the target directory
+or an ancestor. Without one the directory is not a project and `og new`
+can create a game. Neither `project.ts` nor `project.ogt` is a marker;
+`project.ogt` is ignored even beside new files. A found JSON file with
+malformed content or missing fields reports an error, never latest. Missing
+TS source is diagnosed only when the engine needs that source; selecting
+or installing the JSON pin does not require executing or reading TS.
 
 **The launcher's events.** An install reports its progress, and a tool
 (a sandbox that installs the pinned engine on first use) reads it:
@@ -176,7 +199,8 @@ stderr is not a terminal, and prose on a terminal. In order:
 `code` is one of `network` (no answer, or an HTTP error other than 404),
 `not_found` (no such version, or no archive for this target),
 `checksum`, `signature`, `disk_full`, `unpack`, `no_pin` (the project
-pins no version), `usage`, `unsupported_target` and `internal`;
+pins no valid version), `usage`, `unsupported_target`, `internal`, and the
+project errors below;
 `retryable` is true for `network` and `checksum`. A network failure,
 an HTTP 408, 429 or 5xx, a connection idle for 30 s
 (`ORIGIN_ENGINE_IDLE_MS`) and a checksum mismatch are retried, 5 attempts
@@ -186,7 +210,20 @@ in all (`ORIGIN_ENGINE_RETRIES`), waiting 1, 2, 4 and 8 s
 Range request; a mismatching part is deleted, and nothing reaches
 `engines/` before its sha256 verifies. Launcher 2 (`og
 --launcher-version`) has the events; launcher 1 reports only an exit
-status and prose on stderr.
+status and prose on stderr. Launcher 3 keeps the event envelope and reads
+only the new project metadata.
+
+Project errors are non-retryable and exit 1, without install events or a
+latest lookup. `project_metadata_invalid` covers malformed JSON, invalid
+types, unknown fields, missing version/name, version other than 1 and
+invalid look; `no_pin` covers a missing or invalid engine version.
+`OG_ENGINE_VERSION` does not bypass project validation. Explicit
+`og engine install <v>` is independent of the current project's files.
+There are no special errors or detection for old source formats. Example:
+
+```json
+{"event":"error","code":"no_pin","message":"og-project.json: engine must name a concrete engine version","retryable":false}
+```
 
 **Symbols.** Each version's symbols archive in the asset store (private,
 `<store>/api/engine-assets/sha256/<sha256>`):
@@ -273,7 +310,7 @@ Dev builds are `dev.<YYYYMMDD>.<n>` (§1a). `scripts/release.sh bump` writes
 every occurrence of the version and `scripts/release.sh check` holds them
 equal.
 
-A game's `project.ogt` pins its own version, and `og` reports a mismatch
+A game's `og-project.json` pins its own version, and `og` reports a mismatch
 with the installed package (`og doctor` as a line and in `--json` as
 `pin`, `og run`/`test`/`build` as a warning); an upgrade is an explicit
 edit. A pin is **compatible**, and no mismatch is reported, when both are
@@ -306,7 +343,7 @@ the version's entry into `dist/release/<version>/NOTES.md` by `pack`,
 never written by hand.
 
 **`og upgrade`** moves a game to the installed engine (or `--to`, a
-version in its changelog): it rewrites `project.ogt`'s `engine` pin,
+version in its changelog): it rewrites `og-project.json`'s `engine` pin,
 applies the `codemod` of every breaking entry crossed to `src/` and
 `assets/` text, and lists every line where another breaking entry's `find`
 identifiers appear (`manual`) and the entries with no identifiers
@@ -461,7 +498,7 @@ hold a merge or a release.
 
 ```sh
 curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh   # the og launcher, once
-og new my-game && cd my-game     # the latest release, or --engine <v>; choices go in project.ogt
+og new my-game && cd my-game     # the latest release, or --engine <v>; JSON identity/pin, TS configuration
 og doctor                        # the engine, the addon, the wasm, tsrs, the renderer
 og dev .                         # watch, rebuild, re-cook, hot reload through the probe
 og test . && og ui check .       # the playtests; the screens measured

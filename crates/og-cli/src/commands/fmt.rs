@@ -45,8 +45,7 @@ fn files(paths: &[&str]) -> Result<Vec<PathBuf>, String> {
         let io = |e: std::io::Error| format!("{}: {e}", path.display());
         if path.is_file() {
             out.push(path.to_path_buf());
-        } else if path.join("project.ogt").is_file() {
-            out.push(path.join("project.ogt"));
+        } else if path.join("og-project.json").is_file() {
             if path.join("assets").is_dir() {
                 walk(&path.join("assets"), &mut out).map_err(io)?;
             }

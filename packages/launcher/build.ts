@@ -25,6 +25,7 @@ export function pinnedKey(): string | undefined {
 export function installers(): { sh: string; ps1: string } {
   const launcher = readFileSync(join(here, "og.ts"), "utf8");
   const minisign = readFileSync(join(here, "..", "engine", "src", "node", "minisign.ts"), "utf8");
+  const project = readFileSync(join(here, "..", "engine", "src", "node", "project-metadata.ts"), "utf8");
   if (pinnedKey() !== ENGINE_PUBKEY) throw new Error(`og.ts pins ${ENGINE_PUBKEY}; docs/release.md states ${pinnedKey()}`);
   const forBoth = (text: string, what: string) => {
     const lines = text.split("\n");
@@ -34,10 +35,12 @@ export function installers(): { sh: string; ps1: string } {
   };
   const launcherBody = forBoth(launcher, "LAUNCHER");
   const minisignBody = forBoth(minisign, "MINISIGN");
+  const projectBody = forBoth(project, "PROJECT");
   const fill = (file: string) =>
     readFileSync(join(here, file), "utf8")
       .replace("__OG_LAUNCHER__\n", () => launcherBody)
-      .replace("__OG_MINISIGN__\n", () => minisignBody);
+      .replace("__OG_MINISIGN__\n", () => minisignBody)
+      .replace("__OG_PROJECT__\n", () => projectBody);
   return { sh: fill("install.sh"), ps1: fill("install.ps1") };
 }
 

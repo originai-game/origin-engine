@@ -54,9 +54,9 @@ fn init(args: &[&str]) -> Result<(), String> {
         ));
     }
     let project = PathBuf::from(rest.first().copied().unwrap_or("."));
-    if !project.join("project.ogt").is_file() {
+    if !project.join("og-project.json").is_file() {
         return Err(format!(
-            "{}: no project.ogt; run it in a game's directory or pass the project",
+            "{}: no og-project.json; run it in a game's directory or pass the project",
             project.display()
         ));
     }

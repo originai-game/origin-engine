@@ -14,7 +14,7 @@ transitions and sound are the timeline's, saves are the world's.
 ### `flow §1` Lay out the files
 
 ```text
-project.ogt                   # flow "story/film.yarn"
+project.ts                    # flow: { source: { $ogRef: "base/story/film" } }
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
 assets/segments/kitchen.ogt   # a segment: type timeline with one video track
 assets/clips/kitchen.ogt      # footage: type video, stream true
@@ -27,10 +27,10 @@ placeholder footage (its clip says `placeholder true` until the game's own
 footage replaces it), and two endings, one on footage and one live, a set
 of built-in geometry the camera track pushes in on.
 
-One line in project.ogt makes the dialogue the game's flow:
+The `flow` object in project.ts's `defineProject` makes the dialogue the game's flow:
 
-```text
-flow "story/film.yarn"
+```ts
+flow: { source: { $ogRef: "base/story/film" } },
 ```
 
 The engine loads the dialogue, prepares it (og.flow.load) and starts it
@@ -244,7 +244,7 @@ or UI image, and while `window` is set offer `choices` with the time left
 footage plays on to the cut, and a later pick replaces it until the window
 locks.
 
-The engine mounts the built-in `FlowScreen` for project.ogt's `flow`,
+The engine mounts the built-in `FlowScreen` for project.ts's `flow`,
 under the game's own UI: the picture filling the surface with its
 dissolve (a segment with no footage leaves the live scene showing), the
 captions its timelines say (`Subtitles`), and the window (`FlowChoices`:
@@ -369,7 +369,7 @@ consistent and two tools verify them:
 ### `flow §8` Test every route
 
 `og flow list --json` is the flow as the cook reads it, without running
-it: per flow dialogue (the project.ogt one first) each node with its
+it: per flow dialogue (the project.ts one first) each node with its
 segment (footage, live or both, its length, window, loop region and hold),
 its footage (missing, streamed, placeholder, audio locales), its scenes,
 choices, outcomes, hotspots, the nodes each leads to and the `problems`

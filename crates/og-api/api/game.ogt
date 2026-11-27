@@ -3,6 +3,60 @@ module game {
   place root
   core game GameDesc
 
+  enum ProjectProfile {
+    doc "The normalized startup profile. A 2.5d creation uses 3d."
+    variant "3d" "Three-dimensional simulation and rendering."
+    variant "2d" "Two-dimensional simulation and rendering."
+  }
+
+  enum ProjectFlowScreen {
+    doc "Who draws the project's startup dialogue."
+    variant engine "The built-in FlowScreen."
+    variant game "The game's own UI."
+  }
+
+  struct ProjectStartupFlow {
+    doc "The dialogue started before GameDesc.start; no source code or pack metadata."
+    field dialogue String "The dialogue's physical cooked ID, resolved by og project from its checked project ref."
+    field screen ProjectFlowScreen "Who draws the flow; omitted means engine." {
+      optional true
+    }
+  }
+
+  struct ProjectStartup {
+    doc "Checked project.ts startup data for CreateOptions.project on both hosts. Not project source text or the full manifest. Omitted simulation fields retain GameDesc defaults; conflicting explicit values refuse creation."
+    field tick u32 "Fixed ticks per second, 1 to 240." {
+      optional true
+      min 1
+      max 240
+    }
+    field seed u32 "The project's deterministic seed; CreateOptions.seed is a separate replay override." {
+      optional true
+    }
+    field scenes Map.String "Startup scene names to physical cooked IDs, resolved by og project from checked project refs; no scene contents or pack assembly." {
+      optional true
+    }
+    field scene String "Initial scene name." {
+      optional true
+    }
+    field look String "The look's physical cooked ID, resolved by og project from its checked project ref." {
+      optional true
+    }
+    field saveVersion u32 "The game's save version, at least 1." {
+      optional true
+      min 1
+    }
+    field loading LoadingScreen "Who draws the loader; omitted means engine." {
+      optional true
+    }
+    field flow ProjectStartupFlow "Dialogue to start before GameDesc.start." {
+      optional true
+    }
+    field profile ProjectProfile "Normalized profile; omitted means 3d. Tools always emit this field." {
+      optional true
+    }
+  }
+
   callback FactsFn {
     doc "The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it."
     param world World "The world, read only."
@@ -22,15 +76,15 @@ module game {
   struct GameDesc {
     doc "A game: its tick, scenes, systems and commands."
     desc true
-    field tick u32 "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both." {
+    field tick u32 "The fixed tick rate. Left unset, checked project.ts startup data applies (else 60); conflicting explicit values in GameDesc and startup data refuse the engine, naming both." {
       default 60
       min 1
       max 240
       unit hz
     }
-    field seed u32 "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it."
-    field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block."
-    field scene String "The scene loaded first; left unset, project.ogt's `scene` (else main)." {
+    field seed u32 "The seed every Rng stream derives from; left unset, checked project.ts startup seed (else 0). CreateOptions.seed overrides it for a replay."
+    field scenes Map.String "Scene names to cooked asset IDs, as `{ harbor: \"scenes/harbor.ogt\" }`; left unset, checked project.ts startup scenes."
+    field scene String "The scene loaded first; left unset, checked project.ts startup scene (else main)." {
       default "main"
     }
     field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
@@ -49,7 +103,7 @@ module game {
     field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
     field ui Option.UiSetupFn "Register retained UI after start and after a hot-reload restore; never reruns start. The engine checks world_hash before and after: duplicate IDs, incompatible store types and gameplay writes fail registration. A fresh-process restore runs start, then ui, then restores named presentation values."
     field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
-    field saveVersion u32 "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine." {
+    field saveVersion u32 "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, checked project.ts startup saveVersion (else 1); conflicting explicit values refuse the engine." {
       default 1
       min 1
     }
@@ -57,7 +111,7 @@ module game {
       guide "saves §5"
     }
     field explore ExploreDesc "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it."
-    field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused."
+    field look String "A cooked asset ID (og.load.look), applied after the first scene spawned, before start; its antialias applies when render leaves it out. Left unset, checked startup look from og-project.json (whose art contract the cook reads), else none; conflicting explicit values refuse the engine."
   }
 
   struct ExploreDesc {
@@ -83,7 +137,7 @@ module game {
   interface Game {
     custom true
     doc "A declared game, the bundle's default export."
-    prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
+    prop tick u32 "GameDesc.tick, or 60 when unset. The engine uses the checked project.ts startup tick when supplied by the host, as og run and og build do."
     prop systems List.System "The systems in declaration order."
   }
 

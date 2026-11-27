@@ -1,0 +1,9 @@
+type scene
+version 1
+---
+name "Harbor"
+entity "harbor-marker" {
+  Transform {
+    position 3 7 11
+  }
+}

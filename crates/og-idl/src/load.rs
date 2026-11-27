@@ -386,7 +386,13 @@ impl Loader {
                             }
                         }
                     } else {
-                        self.name(child, "variant")
+                        child.values.first()
+                            .and_then(|value| value.as_word().or_else(|| value.as_str()))
+                            .map(str::to_owned)
+                            .or_else(|| {
+                                self.error(child.line, "variant needs a string name");
+                                None
+                            })
                     };
                     if let Some(name) = name {
                         let doc = self.doc(child, 1);

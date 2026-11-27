@@ -19,7 +19,7 @@ Asset queries, publish pruning and the cook cache are in assets.
   This is the publish-pruning reference graph, not a second analyser:
   string literals in the TypeScript/JavaScript the bundle reaches outside
   the engine, and resolved asset dependencies, are roots, as are
-  project.ogt's publish.keep patterns. An unimported scratch script is not.
+  project.ts's publish.keep patterns. An unimported scratch script is not.
   `og.load.font(world, data.path)` includes all candidates;
   `og.load.font(world, "fonts/latin/" + name)` includes that prefix.
   Aliased og.load functions/namespaces also include all candidates. There
@@ -77,7 +77,7 @@ match "music/*.ogg" "ambience/*.ogg" {
 
 - A `match` block holds what a file's own settings hold, for every file
   under the directory that one of its patterns names. A pattern is a
-  path from the directory, read as `project.ogt`'s `conform` patterns
+  path from the directory, read as `project.ts`'s `conform` patterns
   are: `*` is any run of characters within a name, `**` any run across
   directories, a trailing `/` everything under that folder; case counts.
   `*.png` is the directory's own files, `**.png` those at any depth.
@@ -721,18 +721,18 @@ if (og.loading.idle(world)) og.loading.done(world);
 
 ## 13. Loading screens
 
-project.ogt picks who draws the loading screen:
+project.ts's `defineProject` picks who draws the loading screen:
 
-```text
-publish {
-  loading game          # engine (the default) | game | page
-  loading_labels {
-    fetch "下载中"
-    transcode "准备纹理"
-    prime "准备场景"
-    present "准备画面"
-  }
-}
+```ts
+publish: {
+  loading: "game", // engine (the default) | game | page
+  loadingLabels: {
+    fetch: "下载中",
+    transcode: "准备纹理",
+    prime: "准备场景",
+    present: "准备画面",
+  },
+},
 ```
 
 | `loading` | Before the first frame | After it |
@@ -772,7 +772,7 @@ og.load.data reads one file of one version of it.
 | Host | Content base |
 |---|---|
 | `og run`, `og replay`, a playtest | `--content <dir>` (PlaytestDesc.content, relative to the project), a directory |
-| a page `og build` wrote | the Player's or the page's provider's, else `og build --content <url>`, else project.ogt `publish { content "<url>" }` |
+| a page `og build` wrote | the Player's or the page's provider's, else `og build --content <url>`, else project.ts `publish: { content: "<url>" }` |
 
 - Its layout, the same on disk and over https:
 

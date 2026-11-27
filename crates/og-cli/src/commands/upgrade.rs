@@ -2,9 +2,9 @@
 //! game to another engine version (docs/release.md §3).
 //!
 //! The installed engine package's `changelog.json` says what each version
-//! between the pin (`project.ogt`'s `engine`) and the target (`--to`, else
+//! between the pin (`og-project.json`'s `engine`) and the target (`--to`, else
 //! the installed version) changed: `og upgrade` writes the target into
-//! project.ogt's `engine` line (the one pin: a game has no package.json
+//! og-project.json's `engine` field (the one pin: a game has no package.json
 //! dependency on the engine since 0.7.8, docs/release.md §1), applies the
 //! mechanical rewrites (`codemod`) of the breaking entries it crosses to the
 //! game's sources (`src/`, `assets/` text), and lists every place the other
@@ -81,15 +81,12 @@ fn failed(reason: String, extra: Value) -> Value {
 fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     let p = match Project::open(dir) {
         Ok(p) if p.manifest => p,
-        Ok(_) => return failed(format!("{}: no project.ogt", dir.display()), json!({})),
+        Ok(_) => return failed(format!("{}: no og-project.json", dir.display()), json!({})),
         Err(e) => return failed(e, json!({})),
     };
     let base = json!({ "project": p.root.display().to_string() });
     let Some(from) = p.engine.clone() else {
-        return failed(
-            "project.ogt has no `engine \"<version>\"` line: add the version the game is written against first".into(),
-            base,
-        );
+        return failed("og-project.json has no engine pin".into(), base);
     };
     let Some(package) = project::engine_package(Some(&p.root)) else {
         return failed(project::NO_ENGINE.into(), base);
@@ -119,6 +116,12 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         );
     }
     let to = to.map(str::to_string).unwrap_or_else(|| installed.clone());
+    if !og_cook::cook::source_metadata::version(&to) {
+        return failed(
+            format!("{to} is not a concrete project engine version"),
+            base,
+        );
+    }
     let at = |v: &str| project::order(v, project::base_of(v, &package).as_deref());
     let (Some(f), Some(t)) = (at(&from), at(&to)) else {
         return failed(
@@ -192,12 +195,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
             .replace('\\', "/")
     };
     let (mut codemods, mut manual, mut review) = (Vec::new(), Vec::new(), Vec::new());
-    // The new UI core has no `uiCore` switch: its line leaves project.ogt.
-    let mut drop_ui_core = false;
-    // project.ogt's `profile` line becomes the creation form.
-    let mut profile_form: Option<(&str, &Value)> = None;
-    // The creation form `film` becomes `3d` (its genre stays).
-    let mut film_form: Option<(&str, &Value)> = None;
     // The game's tsconfig.json, when a codemod rewrote it.
     let mut tsconfig: Option<(PathBuf, String)> = None;
     for e in &crossed {
@@ -244,7 +241,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 continue;
             }
             if b["codemod"]["kind"] == "ui-core" {
-                drop_ui_core = true;
                 for (file, text, touched) in &mut texts {
                     if !file.extension().is_some_and(|e| e == "svelte") {
                         continue;
@@ -290,14 +286,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                     *touched |= upgraded != *text;
                     *text = upgraded;
                 }
-                continue;
-            }
-            if b["codemod"]["kind"] == "film-form" {
-                film_form = Some((version, b));
-                continue;
-            }
-            if b["codemod"]["kind"] == "profile-form" {
-                profile_form = Some((version, b));
                 continue;
             }
             if b["codemod"]["kind"] == "engine-package" {
@@ -398,44 +386,22 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     let mut edited = Vec::new();
     let mut writes: Vec<(PathBuf, String)> = Vec::new();
     if kind != "none" {
-        let manifest = p.root.join("project.ogt");
-        match std::fs::read_to_string(&manifest) {
-            Ok(text) => match set_engine_line(&text, &to)
-                .map(|t| if drop_ui_core { without_ui_core(&t) } else { t })
-                .map(|t| {
-                    if profile_form.is_some() {
-                        form_of_profile(&t)
-                    } else {
-                        t
-                    }
-                }) {
-                Some(t) => {
-                    let t = match film_form.and_then(|f| film_to_3d(&t).map(|u| (f, u))) {
-                        Some(((version, b), upgraded)) => {
-                            codemods.push(json!({ "version": version, "member": b["member"], "file": "project.ogt", "from": "form \"film\"", "to": "form \"3d\"", "count": 1 }));
-                            upgraded
-                        }
-                        None => t,
-                    };
-                    if let Some((version, b)) = profile_form
-                        && let Some(line) = t.lines().position(|l| l.starts_with("profile "))
-                    {
-                        manual.push(json!({
-                            "version": version, "member": b["member"], "change": b["change"], "fix": b["fix"],
-                            "file": "project.ogt", "line": line + 1, "text": t.lines().nth(line).unwrap_or("").trim(),
-                        }));
-                    }
-                    writes.push((manifest, t))
-                }
-                None => {
-                    return failed(
-                        "project.ogt: the engine line could not be rewritten".into(),
-                        base,
-                    );
-                }
-            },
-            Err(e) => return failed(format!("project.ogt: {e}"), base),
-        }
+        let manifest = p.root.join(og_cook::cook::source_metadata::FILE);
+        let mut metadata: Value = match std::fs::read(&manifest)
+            .map_err(|e| e.to_string())
+            .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|e| e.to_string()))
+        {
+            Ok(value) => value,
+            Err(e) => return failed(format!("og-project.json: {e}"), base),
+        };
+        metadata["engine"] = json!(to);
+        writes.push((
+            manifest,
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&metadata).expect("JSON metadata")
+            ),
+        ));
     }
     writes.extend(tsconfig);
     writes.extend(
@@ -1260,109 +1226,6 @@ fn engine_package_tsconfig(text: &str) -> Option<Result<String, usize>> {
         return Some(Err(1));
     }
     Some(Ok(out))
-}
-
-/// project.ogt without its `uiCore` line.
-fn without_ui_core(text: &str) -> String {
-    text.split_inclusive('\n')
-        .filter(|l| {
-            !l.trim_start()
-                .strip_prefix("uiCore")
-                .is_some_and(|r| r.starts_with(char::is_whitespace))
-        })
-        .collect()
-}
-
-/// project.ogt with its top-level `profile` line moved to the creation
-/// form (`changelog/unreleased/profile-is-creation-form.json`): `profile
-/// "2d"` becomes `create { form "2d" }` (a line of the create block when
-/// the project has one without a form), `profile "3d"` goes (no form is
-/// 3D, and a create block's form other than 2d already is). A line that
-/// cannot move so (a 2d profile beside another form) is left for the
-/// author.
-fn form_of_profile(text: &str) -> String {
-    let lines: Vec<&str> = text.split_inclusive('\n').collect();
-    let Some(at) = lines.iter().position(|l| {
-        l.strip_prefix("profile")
-            .is_some_and(|r| r.starts_with(char::is_whitespace))
-    }) else {
-        return text.to_string();
-    };
-    let value = lines[at]["profile".len()..]
-        .trim()
-        .trim_matches('"')
-        .to_string();
-    let create = lines
-        .iter()
-        .position(|l| l.trim_end() == "create {" || l.trim_end() == "create{");
-    let form = create.and_then(|c| {
-        lines[c + 1..]
-            .iter()
-            .take_while(|l| !l.starts_with('}'))
-            .find_map(|l| {
-                l.trim()
-                    .strip_prefix("form")
-                    .map(|r| r.trim().trim_matches('"').to_string())
-            })
-    });
-    let mut out: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
-    match (value.as_str(), create, form.as_deref()) {
-        ("3d", _, None | Some("2.5d" | "3d" | "film")) | ("2d", _, Some("2d")) => {
-            out.remove(at);
-        }
-        ("2d", Some(c), None) => {
-            out.insert(c + 1, "  form \"2d\"\n".into());
-            out.remove(at);
-        }
-        ("2d", None, _) => out[at] = "create {\n  form \"2d\"\n}\n".into(),
-        _ => {}
-    }
-    out.concat()
-}
-
-/// project.ogt with its create block's `form "film"` as `form "3d"`, the
-/// form an interactive film's live scenes draw in; `None` without one.
-fn film_to_3d(text: &str) -> Option<String> {
-    let mut inside = false;
-    let mut hit = false;
-    let out: Vec<String> = text
-        .split_inclusive('\n')
-        .map(|l| {
-            let t = l.trim();
-            if t == "create {" || t == "create{" {
-                inside = true;
-            } else if inside && t.starts_with('}') {
-                inside = false;
-            } else if inside && !hit && t == "form \"film\"" {
-                hit = true;
-                return l.replacen("\"film\"", "\"3d\"", 1);
-            }
-            l.to_string()
-        })
-        .collect();
-    hit.then(|| out.concat())
-}
-
-/// project.ogt with its `engine "<v>"` line set to `to`.
-fn set_engine_line(text: &str, to: &str) -> Option<String> {
-    let mut hit = false;
-    let lines: Vec<String> = text
-        .split('\n')
-        .map(|l| {
-            let t = l.trim_start();
-            if !hit
-                && t.strip_prefix("engine")
-                    .is_some_and(|r| r.starts_with(char::is_whitespace))
-            {
-                hit = true;
-                let indent = &l[..l.len() - t.len()];
-                format!("{indent}engine \"{to}\"")
-            } else {
-                l.to_string()
-            }
-        })
-        .collect();
-    hit.then(|| lines.join("\n"))
 }
 
 fn print_text(r: &Value, dry: bool) {

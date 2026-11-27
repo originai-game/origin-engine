@@ -74,7 +74,8 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 /// Reads every `.ogt` under `<project>/assets`: the keys of its dialogues
 /// and quests, and each string table checked against them.
 pub fn extract(project: &Path) -> Result<Extract, String> {
-    let functions = super::story_functions::read(project)?;
+    let source = crate::cook::source_project::Project::open(project).map_err(|e| e.to_string())?;
+    let functions = super::story_functions::read(&source.input.story_functions)?;
     let assets = project.join("assets");
     if !assets.is_dir() {
         return Err(format!("{}: no assets/ directory", project.display()));

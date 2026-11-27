@@ -25,6 +25,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
+import { readProject } from "./project.ts";
 import { nativePlatform } from "./platform.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
 import { collectPlaytests } from "./playtest-files.ts";
@@ -115,8 +116,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const outDir = resolve(out!);
   mkdirSync(join(outDir, "cells"), { recursive: true });
   const inputRoot = control.inputRoot ?? root!;
-  const projectFile = join(inputRoot, "project.ogt");
-  const project = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
+  const project = readProject(inputRoot)?.startup;
   const show = opt("--show") ?? "show:{screen}";
   /** A screen of the matrix: its name, the commands that reach it, and when it is captured (default the settle time). */
   const screens: Array<{ name: string; commands: string; at?: number }> = opts("--screen").map((s) => {
@@ -388,7 +388,7 @@ async function defaultScreens(help: () => string, show: string, playtests: reado
     }
   }
   if (out.length > 0) return { screens: out, from: `the screenshots of ${playtests.length} playtest(s)` };
-  return { screens: [{ name: "start", commands: "" }], from: "the start screen (no screen declared: project.ogt's ui { screen \"<name>\" \"<commands>\" }, or a show command whose usage lists its screens)" };
+  return { screens: [{ name: "start", commands: "" }], from: "the start screen (no screen declared in project.ts's screens map, or a show command whose usage lists its screens)" };
 }
 
 declare function atob(data: string): string;

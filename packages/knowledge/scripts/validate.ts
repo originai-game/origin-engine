@@ -13,7 +13,6 @@ import { join, posix, relative } from "node:path";
 import {
   defaultRoots,
   isText,
-  ogtTopLevel,
   packName,
   packs,
   payload,
@@ -56,10 +55,7 @@ export const GUIDE_PREFIX = "guide-";
 export const GUIDE_CITERS = ["crates/og-cli/src/commands/migrate.rs"] as const;
 
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
-export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;
-
-/** The keys project.ogt must set (scaffold/README.md). */
-export const PROJECT_KEYS = ["name", "id", "engine", "entry", "tick", "seed", "publish"] as const;
+export const TEMPLATE_FILES = ["og-project.json", "project.ts", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;
 
 const GENERATED = "<!-- Generated from crates/og-api/api.ogt";
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -266,15 +262,18 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
   const engineVersion = (JSON.parse(readFileSync(join(roots.engine, "package.json"), "utf8")) as { version: string }).version;
   if (pinFile && pin.engine?.version !== engineVersion) problems.push(`${prefix}${rules.scaffold.pinFile}: pins engine ${pin.engine?.version}, packages/engine is ${engineVersion}`);
 
-  // project.ogt.
-  const project = byPath.get(`${prefix}project.ogt`);
-  if (project && isText(project.bytes)) {
-    const { type, entries } = ogtTopLevel(decoder.decode(project.bytes));
-    if (type !== "project") problems.push(`${prefix}project.ogt: type ${type}, expected project`);
-    for (const k of PROJECT_KEYS) if (!entries.has(k)) problems.push(`${prefix}project.ogt: no \`${k}\``);
-    if (entries.has("engine") && entries.get("engine") !== engineVersion) problems.push(`${prefix}project.ogt: engine "${entries.get("engine")}", packages/engine is ${engineVersion}`);
-    const entry = entries.get("entry");
-    if (entry && !byPath.has(prefix + entry)) problems.push(`${prefix}project.ogt: entry ${entry} does not exist in the template`);
+  // Identity is ordinary data. TS configuration is checked by og, never
+  // interpreted with a second project parser in the packaging tools.
+  const metadata = byPath.get(`${prefix}og-project.json`);
+  if (metadata && isText(metadata.bytes)) {
+    try {
+      const value = JSON.parse(decoder.decode(metadata.bytes));
+      if (value?.version !== 1 || typeof value.name !== "string" || !value.name) problems.push(`${prefix}og-project.json: requires version 1 and a nonempty name`);
+      if (value?.engine !== engineVersion) problems.push(`${prefix}og-project.json: engine ${JSON.stringify(value?.engine)}, packages/engine is ${engineVersion}`);
+      if (value && Object.keys(value).some(key => !["version", "engine", "name", "look"].includes(key))) problems.push(`${prefix}og-project.json: unknown identity field`);
+    } catch (e) {
+      problems.push(`${prefix}og-project.json: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   // Binaries: never in the text payload; each named in distribution.json with its digest.
@@ -380,6 +379,8 @@ export const NOT_API: Record<string, string> = {};
 /** `` `key: value` `` spans a guide may write whose key is no field of the generated API: each with why. */
 export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
+  cook: "ProjectInput.cook (packages/engine/types/author-inputs.d.ts)",
+  publish: "ProjectInput.publish (packages/engine/types/author-inputs.d.ts)",
   container: "the CSS container shorthand (document stylesheets)",
   transition: "the CSS transition shorthand (document stylesheets)",
   gap: "the CSS gap property (document stylesheets)",

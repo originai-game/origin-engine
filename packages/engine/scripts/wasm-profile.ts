@@ -25,7 +25,7 @@ const instantiate = WebAssembly.instantiate;
 const glue = await import(glueFile);
 // A lanes module (wasm atomics) runs on the engine thread alone here.
 await loadWebHost(glue, readFileSync(wasmFile));
-for (const project of [undefined, 'type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n']) {
+for (const project of [undefined, { profile: "2d" as const }]) {
   const created = createEngine(og.game({ tick: 60, seed: 1, start: (w) => void w.spawn({ name: "a", position: { x: 1, y: 2, z: 3 } }) }) as unknown as GameToken, project ? { project } : {});
   if (!created.ok) throw new Error(created.reason);
   const engine = created.value;

@@ -64,7 +64,7 @@ fn screaming(s: &str) -> bool {
 /// words (`vulkan-cpu`, `power1.out`).
 fn variant_name(s: &str) -> bool {
     let mut c = s.chars();
-    matches!(c.next(), Some(ch) if ch.is_ascii_lowercase())
+    matches!(c.next(), Some(ch) if ch.is_ascii_lowercase() || ch.is_ascii_digit())
         && c.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '.')
         && !s.ends_with(['-', '.'])
         && !s.contains("--")
@@ -462,7 +462,7 @@ impl<'a> Validator<'a, '_> {
                 &v.name,
                 v.line,
                 "variant",
-                "lowercase first, then letters, digits, `_` or single `-` between them",
+                "lowercase or digit first, then letters, digits, `_` or single `-` between them",
             );
             if !seen.insert(v.name.as_str()) {
                 self.error(

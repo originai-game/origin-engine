@@ -102,7 +102,6 @@ pub(crate) fn changed(
 /// change it checks; a newer one kills the older one's process.
 struct Checks {
     checker: Checker,
-    target: crate::check::Target,
     checkers: usize,
     /// The number of the newest check started.
     latest: Arc<AtomicUsize>,
@@ -115,7 +114,7 @@ struct Checks {
 }
 
 impl Checks {
-    fn start(&mut self, n: usize) {
+    fn start(&mut self, n: usize, project: &Project) {
         self.latest.store(n, Ordering::SeqCst);
         if let Some(pid) = self
             .running
@@ -125,34 +124,37 @@ impl Checks {
         {
             kill(pid);
         }
-        let (checker, target, checkers) =
-            (self.checker.clone(), self.target.clone(), self.checkers);
+        let (checker, project, checkers) = (self.checker.clone(), project.clone(), self.checkers);
         let (latest, running, tx) = (self.latest.clone(), self.running.clone(), self.tx.clone());
         std::thread::spawn(move || {
-            let t0 = Instant::now();
-            let child = match checker.command_for(&target, checkers, None).spawn() {
-                Ok(c) => c,
-                Err(e) => {
-                    let _ = tx.send((n, Err(checker.spawn_error(e))));
-                    return;
-                }
-            };
-            let pid = child.id();
-            *running.lock().unwrap_or_else(|p| p.into_inner()) = Some(pid);
-            // A newer change came while this one spawned.
-            if latest.load(Ordering::SeqCst) != n {
-                kill(pid);
-            }
-            let out = child.wait_with_output();
-            {
-                let mut r = running.lock().unwrap_or_else(|p| p.into_inner());
-                if *r == Some(pid) {
-                    *r = None;
-                }
-            }
-            let result = out
-                .map_err(|e| checker.spawn_error(e))
-                .and_then(|o| checker.report(&target, o, t0.elapsed().as_secs_f64() * 1000.0));
+            let result = (|| {
+                let targets = crate::check::Target::all(&project)?;
+                Report::combine(targets.iter().map(|target| {
+                    if latest.load(Ordering::SeqCst) != n {
+                        return Err("superseded check".into());
+                    }
+                    let t0 = Instant::now();
+                    let child = checker
+                        .command_for(target, checkers, None)
+                        .spawn()
+                        .map_err(|e| checker.spawn_error(e))?;
+                    let pid = child.id();
+                    *running.lock().unwrap_or_else(|p| p.into_inner()) = Some(pid);
+                    // A newer change came while this one spawned.
+                    if latest.load(Ordering::SeqCst) != n {
+                        kill(pid);
+                    }
+                    let out = child.wait_with_output();
+                    {
+                        let mut r = running.lock().unwrap_or_else(|p| p.into_inner());
+                        if *r == Some(pid) {
+                            *r = None;
+                        }
+                    }
+                    let out = out.map_err(|e| checker.spawn_error(e))?;
+                    checker.report(target, out, t0.elapsed().as_secs_f64() * 1000.0)
+                }))
+            })();
             let _ = tx.send((n, result));
         });
     }
@@ -433,13 +435,6 @@ fn stop_group(group: Target) {
 /// an exit. Signals reach the server's whole process group, as the native
 /// loop's do.
 fn web_dev(p: &Project, package: &Path, port: &str, host: &str) -> ExitCode {
-    let settings = match crate::publish::settings(&p.root.join("project.ogt")) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("og dev --web: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
     let og = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("og"));
     let mut cmd = project::bun(package, "src/node/dev-web.ts");
     #[cfg(unix)]
@@ -454,8 +449,7 @@ fn web_dev(p: &Project, package: &Path, port: &str, host: &str) -> ExitCode {
         .arg(host)
         .arg("--og")
         .arg(&og)
-        .arg("--settings")
-        .arg(settings.to_string())
+        .env("OG_BIN", &og)
         .env("OG_ENGINE_PACKAGE", package);
     let mut child = match cmd.spawn() {
         Ok(c) => c,
@@ -533,7 +527,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         Ok(p) if p.manifest => p,
         Ok(p) => {
             eprintln!(
-                "og dev: {} has no project.ogt; og dev watches a project",
+                "og dev: {} has no og-project.json; og dev watches a project",
                 p.root.display()
             );
             return ExitCode::FAILURE;
@@ -569,17 +563,14 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let mut checks = match Checker::find(Some(&package), None)
-        .and_then(|(c, note)| Ok((c, note, crate::check::Target::of(&p)?)))
-    {
-        Ok((checker, note, target)) => {
+    let mut checks = match Checker::find(Some(&package), None) {
+        Ok((checker, note)) => {
             if let Some(n) = note {
                 eprintln!("og check: {n}");
             }
             let (tx, rx) = mpsc::channel();
             Some(Checks {
                 checker,
-                target,
                 checkers: crate::check::default_checkers(),
                 latest: Arc::new(AtomicUsize::new(0)),
                 running: Arc::new(Mutex::new(None)),
@@ -596,7 +587,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     // The first bundle's source, checked while the game starts.
     let mut source = 0usize;
     if let Some(c) = &mut checks {
-        c.start(source);
+        c.start(source, &p);
     }
     let mut engine = if engine_mode {
         match EngineLoop::open(&p, &package) {
@@ -664,17 +655,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     relay::start(group);
     let (tx, rx) = mpsc::channel::<String>();
     pipe(&mut child, tx.clone());
-    let project_file = p.root.join("project.ogt");
-    let watched = [p.root.join("src"), p.root.join("assets")];
+    let project_file = p.root.join("project.ts");
+    let watch_root = p.root.clone();
     let take = || {
         let mut m = BTreeMap::new();
-        for d in &watched {
-            snapshot(d, &mut m);
-        }
-        if let Ok(meta) = std::fs::metadata(&project_file)
-            && let Ok(t) = meta.modified()
-        {
-            m.insert(project_file.clone(), t);
+        for file in og_cook::cook::source_project::files(&watch_root).unwrap_or_default() {
+            if let Ok(time) = std::fs::metadata(&file).and_then(|m| m.modified()) {
+                m.insert(file, time);
+            }
         }
         m
     };
@@ -692,7 +680,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut stopping: Option<Instant> = None;
     if !json {
         println!(
-            "og dev: watching src/, assets/ and project.ogt of {}; reloads print below (budget {BUDGET_MS} ms)",
+            "og dev: watching project metadata, configuration, content, modules and sources of {}; reloads print below (budget {BUDGET_MS} ms)",
             p.root.display()
         );
     }
@@ -913,11 +901,18 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         seen = now;
         let saved = Instant::now();
-        let project_changed = changes.iter().any(|c| c == &project_file);
+        // Non-game TS/data inputs may affect bootstrap, module membership or
+        // author evaluation. Restart through the checked project, never reuse
+        // a stale bootstrap or merely hot-reload an author helper as game code.
+        let project_changed = changes.iter().any(|c| {
+            c == &project_file
+                || (!c.starts_with(p.root.join("src")) && !c.starts_with(p.root.join("assets")))
+                || c.starts_with(p.root.join("src/schema"))
+        });
         let assets = changes.iter().any(|c| c.starts_with(p.root.join("assets")));
         let src_changed = changes.iter().any(|c| c.starts_with(p.root.join("src")));
         if project_changed {
-            eprintln!("og dev: project.ogt changed; re-cooking and restarting");
+            eprintln!("og dev: project author inputs changed; re-cooking and restarting");
             match Project::open(&p.root) {
                 Ok(reopened) => p = reopened,
                 Err(e) => {
@@ -928,6 +923,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             if let Err(e) = crate::cook::cook(&p.root, 0, false) {
                 eprintln!("{e}");
                 continue;
+            }
+            if let Some(c) = &mut checks {
+                source += 1;
+                c.start(source, &p);
             }
             if let Err(e) = project::bundle_native_to(&p, &package, &bundle) {
                 eprintln!("og dev: {e}; the game keeps running");
@@ -953,13 +952,13 @@ pub fn run(args: &[&str]) -> ExitCode {
                         println!(
                             "{}",
                             serde_json::json!({
-                                "event": "restart", "n": restarts, "reason": "project.ogt",
+                                "event": "restart", "n": restarts, "reason": "author-inputs",
                                 "ms": (saved.elapsed().as_secs_f64() * 10000.0).round() / 10.0,
                             })
                         );
                     } else {
                         println!(
-                            "restart {restarts}: project.ogt reloaded in {:.0} ms",
+                            "restart {restarts}: project author inputs reloaded in {:.0} ms",
                             saved.elapsed().as_secs_f64() * 1000.0
                         );
                     }
@@ -1003,7 +1002,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         // A source change is checked beside the rebuild; other assets are not.
         if src_changed && let Some(c) = &mut checks {
             source += 1;
-            c.start(source);
+            c.start(source, &p);
         }
         match project::bundle_native_to(&p, &package, &bundle) {
             Ok(_) => pending.push((saved, saved.elapsed().as_secs_f64() * 1000.0, source)),

@@ -103,7 +103,7 @@ web service worker's SHA256 hashes.
 The destination and its import sidecar must not exist.
 
 The command rewrites exact matching string literals in asset OGT documents,
-`project.ogt`, and game TypeScript, including `#subasset` suffixes. It preserves
+project/content and game TypeScript, including `#subasset` suffixes. It preserves
 comments, regular expressions, and partial filename matches. All matching
 literals are rewritten, including strings outside asset fields.
 Computed loads remain unchanged and produce warnings when their prefix covers
@@ -127,7 +127,7 @@ the start or end of a block are removed. Entries keep their order, because
 order is data.
 
 A path is a file, a directory, or a project. For a project the command
-formats `project.ogt` and every `.ogt` under `assets/`; with no path it uses
+formats every `.ogt` under `assets/`; with no path it uses
 the current directory. It skips styles, UI screens and components, and 2D
 effects, whose bodies are not OGT lines, and installed packs (a directory
 with an `extension.json`). A file named outright is always formatted.

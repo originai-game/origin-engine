@@ -6,7 +6,8 @@ genre and view. The platform mounts its text as
 
 | Path | Role |
 |---|---|
-| `project.ogt` | Name, id, engine pin, entry, tick rate, seed, and publish settings |
+| `og-project.json` | Sole project marker and authority for name, engine pin and optional look |
+| `project.ts` | `defineProject`: id, entry, tick rate, seed, modules and publish settings |
 | `src/main.ts` | An empty `export default og.game({})` |
 | `package.json` | Commands that call the installed `og` |
 | `tsconfig.json` | Strict TypeScript over source and tests |
@@ -15,12 +16,12 @@ genre and view. The platform mounts its text as
 | `.gitignore` | Excludes cooked assets, build output, and local installs |
 | `.gitattributes` | Routes future media through Git LFS |
 
-`og create` fills the name and id and appends the agent's choices in a
-`create` block. Genre, view, look and variant, UI style, platform, input, players,
+`og create` fills the name and id and writes the agent's choices in
+`project.ts`'s `create` object. Genre, view, look and variant, UI style, platform, input, players,
 languages, and music are constraints and hints. Create also writes
 `assets/looks/<id>.ogt` with the preset, variant and UI (it draws in the
-preset's own mood), and names it in
-project.ogt. Mounting the raw payload alone does not perform this step.
+preset's own mood), and names its canonical `base/looks/<id>` reference in
+og-project.json. Look-domain TS migration follows in P1. Mounting the raw payload alone does not perform this step.
 No gameplay or art is generated.
 
 `origin-engine.json` pins the engine and probe protocol. `distribution.json`

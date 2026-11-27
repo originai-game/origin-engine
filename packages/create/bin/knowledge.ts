@@ -20,5 +20,5 @@ const creation: typeof import("../../knowledge/scripts/creation.ts") = await imp
 export const { ART_KINDS, ART_RESOURCES, artBrief, audioBrief, authoredArt, colourName, MOODS, MUSIC_STYLES, parseLook, parsePalette, presetLook, profileOf, readAudioChoices, readLook, RIG_TEMPLATES, rigParts, SFX_PRESETS, styleArtBriefs } = brief;
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AudioBrief, AudioBriefInput, AudioFormat, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, MusicCueBrief, MusicRole, MusicStyle, PaletteColour, ReadLookOptions, RigJoint, RigPart, RigTemplate, SfxBrief, SfxPreset, SfxPresetBrief, StyleArtBrief, StyleArtRequests } from "../../knowledge/scripts/brief.ts";
 
-export const { CHOICE_LABELS, CREATION_CHOICES, CREATION_FIELDS, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, localized, LOOK_ZH, parseCreationInput, VARIANT_ZH } = creation;
+export const { CHOICE_LABELS, CREATION_CHOICES, CREATION_FIELDS, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, localized, LOOK_ZH, parseCreationInput, VARIANT_ZH } = creation;
 export type { CreationChoices, CreationInput, Form, Genre, View } from "../../knowledge/scripts/creation.ts";

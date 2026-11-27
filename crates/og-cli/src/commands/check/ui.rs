@@ -136,11 +136,10 @@ fn project_style_layers(project_root: &Path) -> Result<Vec<og_ui_next::pack::Lay
     use og_ui_next::pack::Layer;
     let mut layers = vec![Layer::default_pack()];
     let assets = project_root.join("assets");
-    let look_style = std::fs::read_to_string(project_root.join("project.ogt"))
-        .ok()
-        .and_then(|text| og_core::ogt::parse(&text).ok())
-        .and_then(|doc| og_cook::look::project_look(&doc.body).ok().flatten())
-        .and_then(|rel| og_cook::cook::look::look_ui_style(&assets, &rel));
+    let snapshot = crate::project::snapshot(project_root).map_err(|_| ())?;
+    let look_style = snapshot["startup"]["look"]
+        .as_str()
+        .and_then(|look| og_cook::cook::look::look_ui_style(&assets, look));
     if let Some(style_id) = look_style.as_deref() {
         if let Some(theme_name) = style_id.strip_prefix("@themes/") {
             if let Some(recipe_path) = og_cook::cook::ui_themes::builtin_recipe(theme_name)

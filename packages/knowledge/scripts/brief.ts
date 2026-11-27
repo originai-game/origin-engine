@@ -7,7 +7,7 @@
 // style's preview, then the game's accepted assets the caller passes) and
 // the generator's parameters (transparent and size for an image; the face
 // budget and texture size for a model). `readLook(projectDir)` reads a
-// project's look from disk (project.ogt's `look` line, its `extends` chain
+// project's checked JSON/TS configuration and look from disk (its `extends` chain
 // down to the preset, and the variant and mood it asks of the preset) and
 // `presetLook(slug)` a preset's alone, for a game not written yet (in its own
 // mood, or the variant and mood `options` ask). A variant's catalogue text
@@ -28,7 +28,8 @@
 //                        [--premise "<line>"] [--json]
 
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -901,18 +902,23 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG = join(HERE, "..");
 
 /**
- * The profile a creation form draws in (project.ogt's `create { form }`, the
- * one field it follows, as og-bundle's `look::project_profile` reads it):
+ * The profile a creation form draws in (project.ts's `create.form`):
  * `2d` is the 2D profile; `2.5d`, `3d` or no form the 3D one.
  */
 export function profileOf(form: string | undefined): "2d" | "3d" {
   return form === "2d" ? "2d" : "3d";
 }
 
-/** project.ogt's `create` block (its text `project`) as a reader of its quoted fields; undefined without one. */
-function createBlock(project: string): ((key: string) => string | undefined) | undefined {
-  const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(project)?.[1];
-  return block === undefined ? undefined : (key) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(block)?.[1];
+/** Use the same restricted bootstrap as cook. This script also runs mounted
+ * on its own, so only the installed og executable (or OG_BIN) is required. */
+function checkedProject(dir: string): {
+  startup: { look?: string; profile: "2d" | "3d" };
+  input: { create?: { music?: string; genre?: string } };
+} {
+  const result = spawnSync(process.env.OG_BIN || "og", ["project", resolve(dir), "--json"], { encoding: "utf8" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr.trim() || `og project exited ${result.status}`);
+  return JSON.parse(result.stdout);
 }
 
 /** The first of `candidates` that exists. */
@@ -1155,29 +1161,28 @@ export interface ReadLookOptions {
 }
 
 /**
- * A project's look, flattened: project.ogt's `look "looks/<id>.ogt"` (the
+ * A project's look, flattened: og-project.json's `look` (the
  * look whose art contract the cook reads), its `extends` chain through the
  * game's own looks, laid over the preset as og-cook flattened it in the
  * variant and mood the look asks (`presetsDir`), the palette it names, the
- * catalogue entry and preview of its preset, and the profile of project.ogt's
- * creation form (`profileOf`).
- * Throws with the fix when project.ogt names no look.
+ * catalogue entry and preview of its preset, and the checked project.ts profile.
+ * Requires og (or OG_BIN); throws when the project is invalid or names no look.
  */
 export function readLook(projectDir: string, options: ReadLookOptions = {}): BriefLook {
   const dir = resolve(projectDir);
-  const manifest = join(dir, "project.ogt");
-  if (!existsSync(manifest)) throw new Error(`${dir}: no project.ogt`);
-  const project = readFileSync(manifest, "utf8");
-  const look = /^look[ \t]+"([^"]+)"/m.exec(project)?.[1];
-  if (!look) throw new Error(`${manifest}: no \`look "looks/<id>.ogt"\` line; name the game's look there, as create writes it`);
-  const form = createBlock(project)?.("form");
+  const project = checkedProject(dir);
+  const { look, profile } = project.startup;
+  const manifest = join(dir, "og-project.json");
+  if (!look) throw new Error(`${manifest}: no look; name a preset or {$ogRef: "base/looks/<id>"}, as og new writes it`);
+  if (look.startsWith("@looks/")) return { ...presetLook(look.slice("@looks/".length), options), profile };
+  if (isAbsolute(look) || look.includes("\\") || look.split("/").some((part) => !part || part === "." || part === "..")) throw new Error(`${manifest}: ${look} is not a project-relative scanned look output`);
   const assets = join(dir, "assets");
-  const id = assetId(look);
+  const id = look;
   const path = join(assets, id);
   if (!existsSync(path)) throw new Error(`${manifest}: look "${look}": there is no assets/${id}`);
   const presets = options.presets ?? presetsDir();
   const { blocks, preset, variant, mood } = flatten(id, readFileSync(path, "utf8"), assets, presets);
-  return briefLook(blocks, preset, variant, mood, assets, presets, options.catalogue ?? catalogueFile(), profileOf(form));
+  return briefLook(blocks, preset, variant, mood, assets, presets, options.catalogue ?? catalogueFile(), profile);
 }
 
 /** A preset's look alone (`presetLook("pixel")`), for a game not written yet, in its own mood or the one `options.mood` asks, as the preset or the variant `options.variant` asks; its profile is the style's only one, else unset. */
@@ -1210,7 +1215,7 @@ const USAGE = `usage: bun brief.ts <kind> "<subject>" [--project <dir> | --look 
 Prints the request for one asset in the game's style (docs/art.md §2.2): the
 prompt, then the references and the generator's parameters.
   kind         ${ART_KINDS.join(", ")}
-  --project    the game whose project.ogt names its look (default: .)
+  --project    the game whose og-project.json names its look (default: .; requires og or OG_BIN)
   --look       a catalogue preset instead of a project
   --variant    with --look, the variant of the preset a game would ask for
   --mood       with --look, the mood a game would ask of it (${MOODS.join(", ")})
@@ -1564,7 +1569,7 @@ export function rigParts(template: string): RigPart[] {
 // ------------------------------------------------------- the audio brief
 
 // The audio counterpart of artBrief (docs/art.md §2.9): from a game's music
-// style, mood and genre (project.ogt's create block, or the platform's
+// style, mood and genre (project.ts's create choices, or the platform's
 // creation form) and its premise, the request for each music cue and each
 // sound effect the game needs, plus the procedural presets `og cook`
 // synthesises instead (`type sfx`), so a game is never silent
@@ -1919,12 +1924,12 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
   stinger: "short stinger that plays over the loop at a highlight",
 };
 
-/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`. */
+/** Checked project.ts creation music/genre and the game's look mood. */
 export function readAudioChoices(projectDir: string): AudioBriefInput {
-  const field = createBlock(readFileSync(join(projectDir, "project.ogt"), "utf8"));
-  if (!field) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (brief audio --music --mood --genre)`);
-  // The mood: a create block's from before 2026-11-20, else the game's look's own.
-  const music = field("music"), mood = field("mood") ?? readLook(projectDir).mood ?? undefined, genre = field("genre");
+  const choices = checkedProject(projectDir).input.create;
+  if (!choices) throw new Error(`${join(projectDir, "project.ts")} has no create: pass music, mood and genre (brief audio --music --mood --genre)`);
+  const { music, genre } = choices;
+  const mood = readLook(projectDir).mood ?? undefined;
   if (!music || !mood || !genre) throw new Error("the create block lacks music or genre, or the look names no mood");
   return { music, mood, genre };
 }

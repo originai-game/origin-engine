@@ -6,7 +6,7 @@ Module [`loading`](../loading.md) · [index](../index.md)
 
 ### `LoadingScreen` (enum)
 
-Who draws the loading screen (project.ogt `publish.loading`).
+Who draws the loading screen (project.ts `publish.loading`).
 
 A string: one of the variants below. The zero value is `"engine"`.
 
@@ -18,7 +18,7 @@ A string: one of the variants below. The zero value is `"engine"`.
 
 ```ogt
 enum LoadingScreen {
-  doc "Who draws the loading screen (project.ogt `publish.loading`)."
+  doc "Who draws the loading screen (project.ts `publish.loading`)."
   variant engine "The engine's splash: the brand mark with the boot's progress and the stage labels, until the first frame."
   variant game "The game: the splash covers only the engine's own boot, then the game's first frames are its loading screen, the clock running, until og.loading.done."
   variant page "The page hosting the game: no splash, the canvas hidden with the clock running until og.loading.done, and the page draws its loader from the window events."

@@ -12,10 +12,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both. |
-| `seed` | `number` | `0` | — | — | — | The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it. |
-| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block. |
-| `scene` | `string` | `"main"` | — | — | — | The scene loaded first; left unset, project.ogt's `scene` (else main). |
+| `tick` | `number` | `60` | 1 … 240 | `hz` | — | The fixed tick rate. Left unset, checked project.ts startup data applies (else 60); conflicting explicit values in GameDesc and startup data refuse the engine, naming both. |
+| `seed` | `number` | `0` | — | — | — | The seed every Rng stream derives from; left unset, checked project.ts startup seed (else 0). CreateOptions.seed overrides it for a replay. |
+| `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to cooked asset IDs, as `{ harbor: "scenes/harbor.ogt" }`; left unset, checked project.ts startup scenes. |
+| `scene` | `string` | `"main"` | — | — | — | The scene loaded first; left unset, checked project.ts startup scene (else main). |
 | `systems` | `readonly System[]` | `[]` | — | — | — | The systems, in declaration order before `after`/`before` constraints apply. |
 | `hooks` | `readonly Hook[]` | `[]` | — | — | — | The hooks (og.defineHook), in the order they run. |
 | `states` | `readonly StateDesc[]` | `[]` | — | — | — | The state machines systems bind to (SystemDesc.state). |
@@ -27,24 +27,24 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it. |
 | `ui` | `UiSetupFn \| null` | `null` | — | — | — | Register retained UI after start and after a hot-reload restore; never reruns start. The engine checks world_hash before and after: duplicate IDs, incompatible store types and gameplay writes fail registration. A fresh-process restore runs start, then ui, then restores named presentation values. |
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
-| `saveVersion` | `number` | `1` | ≥ 1 | — | — | The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine. |
+| `saveVersion` | `number` | `1` | ≥ 1 | — | — | The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, checked project.ts startup saveVersion (else 1); conflicting explicit values refuse the engine. |
 | `migrations` | `readonly SaveMigration[]` | `[]` | — | — | — | The game's explicit save edits: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save must have the current engine version and og-save:4 envelope; other versions are refused, never converted. Engine records and state are never upgraded. See `saves §5`. |
 | `explore` | `ExploreDesc` | `{}` | — | — | — | How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it. |
-| `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused. |
+| `look` | `string` | `""` | — | — | — | A cooked asset ID (og.load.look), applied after the first scene spawned, before start; its antialias applies when render leaves it out. Left unset, checked startup look from og-project.json (whose art contract the cook reads), else none; conflicting explicit values refuse the engine. |
 
 ```ogt
 struct GameDesc {
   doc "A game: its tick, scenes, systems and commands."
   desc true
-  field tick u32 "The fixed tick rate. Left unset, project.ogt's `tick` applies (else 60); tick, seed, scenes and scene set both here and in project.ogt to different values refuse the engine, naming both." {
+  field tick u32 "The fixed tick rate. Left unset, checked project.ts startup data applies (else 60); conflicting explicit values in GameDesc and startup data refuse the engine, naming both." {
     default 60
     min 1
     max 240
     unit hz
   }
-  field seed u32 "The project seed every Rng stream derives from; left unset, project.ogt's `seed` (else 0). A replay overrides it."
-  field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`; left unset, project.ogt's `scenes` block."
-  field scene String "The scene loaded first; left unset, project.ogt's `scene` (else main)." {
+  field seed u32 "The seed every Rng stream derives from; left unset, checked project.ts startup seed (else 0). CreateOptions.seed overrides it for a replay."
+  field scenes Map.String "Scene names to cooked asset IDs, as `{ harbor: \"scenes/harbor.ogt\" }`; left unset, checked project.ts startup scenes."
+  field scene String "The scene loaded first; left unset, checked project.ts startup scene (else main)." {
     default "main"
   }
   field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
@@ -63,7 +63,7 @@ struct GameDesc {
   field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
   field ui Option.UiSetupFn "Register retained UI after start and after a hot-reload restore; never reruns start. The engine checks world_hash before and after: duplicate IDs, incompatible store types and gameplay writes fail registration. A fresh-process restore runs start, then ui, then restores named presentation values."
   field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
-  field saveVersion u32 "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine." {
+  field saveVersion u32 "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, checked project.ts startup saveVersion (else 1); conflicting explicit values refuse the engine." {
     default 1
     min 1
   }
@@ -71,8 +71,8 @@ struct GameDesc {
     guide "saves §5"
   }
   field explore ExploreDesc "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it."
-  field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused."
+  field look String "A cooked asset ID (og.load.look), applied after the first scene spawned, before start; its antialias applies when render leaves it out. Left unset, checked startup look from og-project.json (whose art contract the cook reads), else none; conflicting explicit values refuse the engine."
 }
 ```
 
-<sub>Module `game` line 22</sub>
+<sub>Module `game` line 76</sub>

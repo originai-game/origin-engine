@@ -60,8 +60,17 @@ fn plan<'a>(_: &Cx<'a>, _: &mut PlanState, s: &'a Source, hash: [u8; 8], outs: &
 struct FieldJob<'a>(&'a Source);
 impl Job for FieldJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let text = std::str::from_utf8(&self.0.bytes).map_err(|e| CookError(e.to_string()))?;
-        let data = FieldData::parse(text).map_err(CookError)?;
+        let data = if self.0.path.extension().is_some_and(|ext| ext == "ts") {
+            let data =
+                generator::value::Data::from_bytes(self.0.bytes.clone()).map_err(CookError)?;
+            let mut envelope = data.root().into_json();
+            serde_json::from_value::<FieldData>(envelope["value"].take())
+                .map_err(|e| CookError(e.to_string()))?
+        } else {
+            let text = std::str::from_utf8(&self.0.bytes).map_err(|e| CookError(e.to_string()))?;
+            FieldData::parse(text).map_err(CookError)?
+        };
+        data.validate().map_err(CookError)?;
         let mut w = BlobWriter::new(
             format::Field::type_hash(),
             format::Field::schema_version(),

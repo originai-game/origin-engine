@@ -304,8 +304,8 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
 }
 
 pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, String> {
-    if !project.join("project.ogt").is_file() {
-        return Err(format!("{}: no project.ogt", project.display()));
+    if !project.join("og-project.json").is_file() {
+        return Err(format!("{}: no og-project.json", project.display()));
     }
     let family = match extension.manifest.kind.as_str() {
         "materials" => "materials",
@@ -382,8 +382,8 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
         // downloaded from this engine's release, then installed as a local
         // directory is; the download is removed whatever happens.
         if found.is_none() && kind == "vfx" && !Path::new(name).exists() {
-            if !project.join("project.ogt").is_file() {
-                return Err(format!("{}: no project.ogt", project.display()));
+            if !project.join("og-project.json").is_file() {
+                return Err(format!("{}: no og-project.json", project.display()));
             }
             let download = fetch_vfx(name, project)?;
             let result = read(&download.join(name), false)

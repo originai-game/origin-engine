@@ -45,6 +45,7 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bundleGame } from "../../src/node/build.ts";
+import { readProject } from "../../src/node/project.ts";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -80,8 +81,8 @@ const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T =
   if (!r.ok) throw new Error(r.reason);
   return r.value;
 };
-const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : undefined;
-const engine = must(createEngine(game, { root: project, ...(text ? { project: text } : {}), deferStart: true }));
+const startup = readProject(project)?.startup;
+const engine = must(createEngine(game, { root: project, ...(startup ? { project: startup } : {}), deferStart: true }));
 native().og_node_frame_kind(engine.id, "scripted");
 const attached = attachRenderer(engine.id, width, height);
 if (!attached.ok) throw new Error(attached.reason);

@@ -27,6 +27,11 @@ __OG_MINISIGN__
 __OG_MINISIGN_END__
 mv "$dir/lib/engine/src/node/minisign.ts.new" "$dir/lib/engine/src/node/minisign.ts"
 
+cat > "$dir/lib/engine/src/node/project-metadata.ts.new" <<'__OG_PROJECT_END__'
+__OG_PROJECT__
+__OG_PROJECT_END__
+mv "$dir/lib/engine/src/node/project-metadata.ts.new" "$dir/lib/engine/src/node/project-metadata.ts"
+
 cat > "$dir/bin/og.new" <<__OG_SHIM_END__
 #!/bin/sh
 # og, Origin Engine's launcher: $dir/lib/launcher/og.ts on bun.

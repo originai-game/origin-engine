@@ -72,12 +72,12 @@ test("--check names an edited, a missing and a stray file and writes nothing; a 
   const prod = join(p, PROD);
   const overlay = "game-scaffold/origin-engine-ts";
   writeFileSync(join(prod, overlay, "package.json"), "edited by hand\n");
-  rmSync(join(prod, overlay, "project.ogt"));
+  rmSync(join(prod, overlay, "og-project.json"));
   writeFileSync(join(prod, overlay, "retired.md"), "a file the package no longer has\n");
   const check = mount(p, "--check");
   expect(check.code).toBe(1);
   expect(check.out).toContain(`changed ${overlay}/package.json`);
-  expect(check.out).toContain(`added   ${overlay}/project.ogt`);
+  expect(check.out).toContain(`added   ${overlay}/og-project.json`);
   expect(check.out).toContain(`removed ${overlay}/retired.md`);
   expect(readFileSync(join(prod, overlay, "package.json"), "utf8")).toBe("edited by hand\n");
   expect(mount(p).code).toBe(0);
@@ -94,8 +94,8 @@ test("an invalid package mounts nothing", () => {
   cpSync(roots.template, join(dir, "packages/create/template"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
   mkdirSync(join(dir, "packages/engine"), { recursive: true });
   cpSync(join(roots.engine, "package.json"), join(dir, "packages/engine/package.json"));
-  const project = join(dir, "packages/create/template/project.ogt");
-  writeFileSync(project, readFileSync(project, "utf8").replace(/^seed .*$/m, ""));
+  const project = join(dir, "packages/create/template/og-project.json");
+  writeFileSync(project, JSON.stringify({version: 1, engine: "0.9.0"}));
   const p = platform();
   const r = spawnSync("bun", [join(dir, "packages/knowledge/scripts/mount.ts"), p], { encoding: "utf8" });
   expect(r.status).toBe(1);

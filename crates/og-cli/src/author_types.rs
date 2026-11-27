@@ -21,7 +21,7 @@ pub fn root(path: &Path) -> Option<PathBuf> {
     };
     directory
         .ancestors()
-        .find(|root| root.join("project.ts").is_file())
+        .find(|root| root.join("og-project.json").exists())
         .map(Path::to_path_buf)
 }
 
@@ -72,13 +72,30 @@ pub fn ensure(root: &Path) -> Result<Vec<Target>, String> {
                 exclude.push(path(&other));
             }
         }
+        let mut files = vec!["index.d.ts".to_string()];
+        if module == "base" {
+            files.push(path(&root.join("project.ts")));
+        }
+        files.extend(
+            index
+                .entries
+                .values()
+                .filter(|entry| entry.module == *module)
+                .map(|entry| path(&root.join(&entry.file))),
+        );
         let mut config = json!({
-            "files": ["index.d.ts"],
+            "files": files,
             "include": [format!("{}/**/*.ts",path(&source)),format!("{}/**/*.tsx",path(&source))],
             "exclude": exclude,
         });
         if root.join("tsconfig.json").is_file() {
             config["extends"] = json!(path(&root.join("tsconfig.json")));
+            if module == "base" {
+                // Keep the game's chosen roots instead of admitting tooling
+                // scripts. Explicit author files remain checked above, while
+                // exclude still isolates modules and generated augmentations.
+                config.as_object_mut().unwrap().remove("include");
+            }
         } else {
             let template: serde_json::Value = serde_json::from_str(include_str!(
                 "../../../packages/create/template/tsconfig.json"

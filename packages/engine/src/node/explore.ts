@@ -59,6 +59,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createEngine, declaredGameExplore, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 import { localPlatform } from "../platform-local.ts";
+import { readProject } from "./project.ts";
 import { PLAYTEST_CLOCK } from "../playtest.ts";
 import { og } from "../index.ts";
 
@@ -102,7 +103,7 @@ const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 async function boot(): Promise<{ engine: Engine; game: GameToken }> {
   const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };
   if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
-  const project = root && existsSync(join(root, "project.ogt")) ? readFileSync(join(root, "project.ogt"), "utf8") : undefined;
+  const project = readProject(root)?.startup;
   const created = createEngine(mod.default!, { ...(root ? { root } : {}), ...(project === undefined ? {} : { project }) });
   if (!created.ok) fail(`${entry}: ${created.reason}`);
   const engine = created.value;

@@ -1,10 +1,10 @@
 module loading {
-  doc "The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
+  doc "The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
   guide "loading §13"
   core stage done idle
 
   enum LoadingScreen {
-    doc "Who draws the loading screen (project.ogt `publish.loading`)."
+    doc "Who draws the loading screen (project.ts `publish.loading`)."
     variant engine "The engine's splash: the brand mark with the boot's progress and the stage labels, until the first frame."
     variant game "The game: the splash covers only the engine's own boot, then the game's first frames are its loading screen, the clock running, until og.loading.done."
     variant page "The page hosting the game: no splash, the canvas hidden with the clock running until og.loading.done, and the page draws its loader from the window events."
@@ -23,7 +23,7 @@ module loading {
 
   struct LoadingStatus {
     doc "Where loading is."
-    field screen LoadingScreen "Who draws the loading screen on this host (natively: project.ogt's choice, as the web page would)."
+    field screen LoadingScreen "Who draws the loading screen on this host (natively: checked project startup's choice, as the web page would)."
     field stage String "The last stage the game reported (empty: none)."
     field fraction f32 "Its fraction."
     field label String "Its label."

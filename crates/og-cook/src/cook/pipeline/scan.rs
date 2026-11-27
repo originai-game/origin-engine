@@ -55,6 +55,7 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         &|path| std::fs::read(path),
         1,
         &CodeGraph::default(),
+        None,
     )
 }
 
@@ -92,10 +93,13 @@ pub(crate) fn scan_with(
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
     code: &CodeGraph,
+    project_look: Option<&crate::cook::source_schemas::procedural::LookBase>,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
-    walk(assets_dir, "", &mut files)
-        .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
+    if assets_dir.exists() {
+        walk(assets_dir, "", &mut files)
+            .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
+    }
     // Every file the scan reads is read here, all at once. What follows
     // takes them from `ahead` (a text as often as it is read, any other
     // file once) and reads for itself what is not there, with its error.
@@ -128,6 +132,18 @@ pub(crate) fn scan_with(
     // their reserved ids (`@canvas/paper.png`, every file of
     // `@styles/pixel/`), once each, read from the cook itself.
     let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
+    if let Some(crate::cook::source_schemas::procedural::LookBase::Preset(name)) = project_look {
+        let text = look::PRESETS
+            .iter()
+            .find(|(id, _)| *id == name)
+            .map(|(_, text)| *text)
+            .ok_or_else(|| CookError(format!("og-project.json: unknown look preset {name}")))?;
+        let id = format!("@looks/{name}");
+        builtins.insert(id.clone(), text.as_bytes());
+        for (id, bytes) in look::builtin_files(&id, text, assets_dir) {
+            builtins.insert(id.to_string(), bytes);
+        }
+    }
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     // A game's theme recipe (`styles/<name>/theme.json`) cooks as the
     // pack.json it compiles to, with its drawn art, in its place.
@@ -390,6 +406,7 @@ pub(crate) fn scan_with(
         }
         let extension = ext(rel);
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
+            _ if rel.starts_with("@looks/") && builtins.contains_key(rel) => &look::LOOK,
             (Some(kind), _) => kind,
             (None, "json") if model_program::is_program(rel) => &crate::cook::model::MODEL,
             (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,

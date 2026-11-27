@@ -39,7 +39,7 @@ export function defaultRoots(pkg = PACKAGE_ROOT): Roots {
   const parent = join(pkg, "..");
   return {
     pkg,
-    template: existsSync(join(repoTemplate, "project.ogt")) ? repoTemplate : join(pkg, "scaffold", "template"),
+    template: existsSync(join(repoTemplate, "og-project.json")) ? repoTemplate : join(pkg, "scaffold", "template"),
     engine: isEnginePackage(parent) ? parent : join(parent, "engine"),
   };
 }
@@ -164,27 +164,4 @@ export function packs(files: readonly PayloadFile[]): Record<string, string> {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, g]) => [name, sha256(Object.keys(g).sort().map((p) => `${p}\0${sha256(g[p]!)}`).join("\n")).slice(0, 16)]),
   );
-}
-
-/** The top-level `key value` entries of an `.ogt` document (values as written, quotes removed). */
-export function ogtTopLevel(text: string): { type: string; entries: Map<string, string> } {
-  const lines = text.split(/\r?\n/);
-  const sep = lines.findIndex((l) => l.trim() === "---");
-  const header = lines.slice(0, sep < 0 ? 0 : sep).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
-  const type = header.find((l) => l.startsWith("type "))?.slice(5).trim() ?? "";
-  const entries = new Map<string, string>();
-  let depth = 0;
-  for (const raw of lines.slice(sep + 1)) {
-    const line = raw.replace(/(^|\s)#.*$/, "").trim();
-    if (!line) continue;
-    if (line === "}") {
-      depth--;
-      continue;
-    }
-    const [key, ...rest] = line.split(/\s+/);
-    const opens = line.endsWith("{");
-    if (depth === 0) entries.set(key!, (opens ? rest.slice(0, -1) : rest).join(" ").replace(/^"|"$/g, ""));
-    if (opens) depth++;
-  }
-  return { type, entries };
 }

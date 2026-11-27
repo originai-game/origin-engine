@@ -1,25 +1,8 @@
-//! A game project as `og` sees it: `project.ogt`, the engine package that
-//! runs it, and the bun scripts of that package.
-//!
-//! `project.ogt` (type `project`) carries `name`, `id`, `engine` (the pinned
-//! engine version), `entry`, `tick`, `seed`, `create { form }` (the
-//! creation form, which sets the profile: og-bundle's
-//! `look::project_profile`), a
-//! `scenes { name "path" }` block, `scene`, `look "looks/<id>.ogt"` (the
-//! look whose art contract the cook reads, og-cook's `look::project_look`),
-//! `cook { color_textures uastc; clusters false }`
-//! (etc1s or uastc colour textures, models without meshlet clusters,
-//! `cook.rs`), `budgets { }` (og-cook's
-//! `stats::Budgets`) and `publish { probe player; out "dist"; color_textures
-//! etc1s }`; `og` reads `entry` and `publish.out` here, `publish` in
-//! `publish.rs`, `cook` and `publish.color_textures` in `cook.rs`, and hands the whole text to the engine (CreateOptions.project:
-//! `packages/engine/src/node/run.ts`, the play page's config),
-//! which takes `tick`, `seed`, `scenes`, `scene` and `look` for the GameDesc fields a
-//! game leaves unset and refuses one set in both to different values
-//! (og-runtime `engine::with_project`). A bare entry file (`game.ts`) is also
-//! accepted where a project is: it runs without a cooked bundle.
+//! The CLI's checked TS project, its pinned engine package and host scripts.
+//! Only og-project.json marks a project. Bootstrap configuration is evaluated
+//! by og-cook's restricted reader, never by importing the game's entry.
 
-use og_core::ogt::Entry;
+use og_cook::cook::{source_metadata, source_project};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -28,21 +11,14 @@ use std::process::Command;
 pub struct Project {
     /// The project directory (the entry's directory for a bare entry).
     pub root: PathBuf,
-    /// Whether a `project.ogt` was found.
+    /// Whether the entry belongs to an og-project.json project.
     pub manifest: bool,
     pub entry: PathBuf,
     pub out: String,
-    /// `engine "<version>"` of project.ogt: the engine version the game was
-    /// written against (design §9: an upgrade is an explicit edit). `None`
-    /// for a bare entry or a manifest without the line.
+    /// The ordinary JSON project's exact engine pin; absent for a bare entry.
     pub engine: Option<String>,
-    /// `perf { budget "<line>" <ms> }` of project.ogt: the most milliseconds
-    /// each line of the perf report's may take at its median (guide perf).
+    /// project.ts's named median-time limits in milliseconds (guide perf).
     pub budgets: Vec<(String, f64)>,
-}
-
-fn string(v: Option<&Entry>) -> Option<String> {
-    v.and_then(|v| v.string(0).ok().map(str::to_string))
 }
 
 // Bun imports and TypeScript do not understand canonicalize's Win32 verbatim
@@ -62,97 +38,68 @@ pub(crate) fn typescript_path(path: &Path) -> String {
 }
 
 impl Project {
-    /// `path` is a project directory, a `project.ogt`, or an entry file.
+    /// A project directory/config, a nested directory, or a bare game entry.
     pub fn open(path: &Path) -> Result<Project, String> {
-        let (root, manifest) = if path.is_dir() {
-            (path.to_path_buf(), path.join("project.ogt"))
-        } else if path.file_name().is_some_and(|f| f == "project.ogt") {
-            (
-                path.parent().unwrap_or(Path::new(".")).to_path_buf(),
-                path.to_path_buf(),
-            )
-        } else if path.is_file() {
-            // Walked up from the absolute path: a relative one's last ancestor is the empty path,
-            // so `og run src/main.ts` in the project found its project.ogt at "", which then
-            // opened as nothing ("og run:  is neither a game entry…", M7 run 13).
-            let abs = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-            let dir = abs.parent().unwrap_or(Path::new(".")).to_path_buf();
-            let root = dir
-                .ancestors()
-                .find(|d| d.join("project.ogt").is_file())
-                .map(Path::to_path_buf);
-            return Ok(match root {
-                Some(r) => Project {
-                    entry: PathBuf::from(typescript_path(&abs)),
-                    ..Project::open(&r)?
-                },
-                None => Project {
-                    root: PathBuf::from(typescript_path(&dir)),
-                    manifest: false,
-                    entry: PathBuf::from(typescript_path(path)),
-                    out: "dist".into(),
-                    engine: None,
-                    budgets: Vec::new(),
-                },
-            });
+        let absolute = path
+            .canonicalize()
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        let directory = if absolute.is_dir() {
+            absolute.as_path()
         } else {
+            absolute.parent().unwrap_or(Path::new("."))
+        };
+        let config = absolute
+            .file_name()
+            .is_some_and(|f| f == source_metadata::FILE || f == "project.ts");
+        let entry = absolute.is_file()
+            && !config
+            && absolute
+                .extension()
+                .is_some_and(|e| matches!(e.to_str(), Some("ts" | "tsx" | "js" | "jsx")));
+        if !absolute.is_dir() && !config && !entry {
             return Err(format!(
                 "{} is neither a game entry nor a project directory",
                 path.display()
             ));
-        };
-        let root = PathBuf::from(typescript_path(&root.canonicalize().unwrap_or(root)));
-        if !manifest.is_file() {
-            return Err(format!(
-                "{}: no project.ogt; scaffold a project with `og new <dir>` or pass a game entry file",
-                root.display()
-            ));
         }
-        let text = std::fs::read_to_string(&manifest)
-            .map_err(|e| format!("cannot read {}: {e}", manifest.display()))?;
-        let doc = og_core::ogt::parse(&text)
-            .map_err(|e| format!("{}: {}", manifest.display(), e.reason()))?;
-        if doc.ty != "project" {
-            return Err(format!(
-                "{}: a `{}` document; project.ogt is `type project`",
-                manifest.display(),
-                doc.ty
-            ));
-        }
-        let b = &doc.body;
-        let entry = string(b.get("entry")).unwrap_or_else(|| "src/main.ts".into());
-        let publish = b.get("publish").and_then(|p| p.block.as_ref());
-        let out = publish
-            .and_then(|p| string(p.get("out")))
-            .unwrap_or_else(|| "dist".into());
-        let entry = root.join(&entry);
-        if !entry.is_file() {
-            return Err(format!(
-                "{}: the game entry {} does not exist",
-                manifest.display(),
-                entry.display()
-            ));
-        }
-        let engine = string(b.get("engine"));
-        let mut budgets = Vec::new();
-        if let Some(perf) = b.get("perf").and_then(|p| p.block.as_ref()) {
-            for e in perf.get_all("budget") {
-                let (Ok(line), Ok(ms)) = (e.string(0), e.number(1)) else {
-                    return Err(format!(
-                        "{}: perf's `budget` takes a line's name and its milliseconds, such as `budget \"gpu frame\" 16.6`",
-                        manifest.display()
-                    ));
-                };
-                budgets.push((line.to_string(), ms.as_f64()));
+        let root = directory
+            .ancestors()
+            .find(|root| root.join(source_metadata::FILE).exists());
+        let Some(root) = root else {
+            if entry {
+                return Ok(Project {
+                    root: PathBuf::from(typescript_path(directory)),
+                    manifest: false,
+                    entry: PathBuf::from(typescript_path(&absolute)),
+                    out: "dist".into(),
+                    engine: None,
+                    budgets: Vec::new(),
+                });
             }
-        }
+            return Err(format!(
+                "{}: no og-project.json; scaffold a project with `og new <dir>` or pass a game entry file",
+                directory.display()
+            ));
+        };
+        let root = PathBuf::from(typescript_path(root));
+        let checked = source_project::Project::open(&root).map_err(|e| e.to_string())?;
+        let out = checked
+            .input
+            .publish
+            .as_ref()
+            .and_then(|p| p.out.clone())
+            .unwrap_or_else(|| "dist".into());
         Ok(Project {
-            entry,
+            entry: if entry {
+                PathBuf::from(typescript_path(&absolute))
+            } else {
+                root.join(&checked.input.entry)
+            },
             root,
             manifest: true,
             out,
-            engine,
-            budgets,
+            engine: Some(checked.metadata.engine),
+            budgets: checked.input.perf.into_iter().collect(),
         })
     }
 
@@ -161,9 +108,107 @@ impl Project {
         self.root.join(".og")
     }
 
-    /// Whether the project has an `assets/` directory to cook.
+    /// A TS project cooks its declared content even without binary assets.
     pub fn has_assets(&self) -> bool {
-        self.manifest && self.root.join("assets").is_dir()
+        self.manifest
+    }
+}
+
+/// Checked bootstrap data for host tools. No game or content entry executes,
+/// and nothing is written back to the ordinary JSON project file.
+pub fn snapshot(root: &Path) -> Result<serde_json::Value, String> {
+    use og_api::wire::{ProjectStartup, ToJson};
+    use og_cook::cook::source_schemas::procedural::LookBase;
+    use serde_json::{Value, json};
+
+    let project = source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let assets = og_cook::cook::project_assets(root, &project).map_err(|e| e.to_string())?;
+    let asset = |id: &str, kind: &str| -> Result<String, String> {
+        let output = assets
+            .get(id)
+            .ok_or_else(|| format!("project ref {id}: no scanned {kind} output"))?;
+        if output.kind != kind {
+            return Err(format!(
+                "project ref {id}: expected {kind}, got {}",
+                output.kind
+            ));
+        }
+        Ok(output.asset.clone())
+    };
+    let input = project.data.root().into_json();
+    let mut startup = json!({"profile": if input.pointer("/create/form").and_then(Value::as_str) == Some("2d") {"2d"} else {"3d"}});
+    for field in ["tick", "seed", "scene", "saveVersion"] {
+        if let Some(value) = input.get(field).filter(|value| !value.is_null()) {
+            startup[field] = value.clone();
+        }
+    }
+    if !project.input.scenes.is_empty() {
+        startup["scenes"] = json!(
+            project
+                .input
+                .scenes
+                .iter()
+                .map(|(name, reference)| Ok((name, asset(&reference.id, "scene")?)))
+                .collect::<Result<std::collections::BTreeMap<_, _>, String>>()?
+        );
+    }
+    if let Some(look) = &project.metadata.look {
+        startup["look"] = json!(match look {
+            LookBase::Asset(reference) => asset(&reference.id, "look")?,
+            LookBase::Preset(name) => format!("@looks/{name}"),
+        });
+    }
+    if let Some(value) = input
+        .pointer("/publish/loading")
+        .filter(|value| !value.is_null())
+    {
+        startup["loading"] = value.clone();
+    }
+    if let Some(flow) = &project.input.flow {
+        let mut value = json!({"dialogue": asset(&flow.source.id, "dialogue")?});
+        if let Some(screen) = input
+            .pointer("/flow/screen")
+            .filter(|value| !value.is_null())
+        {
+            value["screen"] = screen.clone();
+        }
+        startup["flow"] = value;
+    }
+    // The generated host type is the startup contract, not a second handwritten
+    // wire struct. Its writer also omits unset fields on both hosts.
+    let startup: ProjectStartup = og_api::wire::value(&startup, "project startup")?;
+    Ok(json!({
+        "name": project.metadata.name,
+        "engine": project.metadata.engine,
+        "id": project.input.id,
+        "input": input,
+        "startup": startup.to_json(),
+        "publish": crate::publish::normalize(&input["publish"])?,
+        "dependencies": project.dependencies,
+    }))
+}
+
+pub fn run(args: &[&str]) -> std::process::ExitCode {
+    let path = match args {
+        ["--json"] => Path::new("."),
+        [path, "--json"] | ["--json", path] => Path::new(path),
+        _ => {
+            eprintln!("usage: og project [project] --json");
+            return std::process::ExitCode::from(2);
+        }
+    };
+    let result = crate::author_types::root(path)
+        .ok_or_else(|| format!("{}: no og-project.json project", path.display()))
+        .and_then(|root| snapshot(&root));
+    match result {
+        Ok(value) => {
+            println!("{value}");
+            std::process::ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("og project: {error}");
+            std::process::ExitCode::FAILURE
+        }
     }
 }
 
@@ -229,13 +274,13 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
 pub const LINK: &str = "node_modules/@origingame/engine";
 
 /// Points `<root>/node_modules/@origingame/engine` at `package` when `root`
-/// is a game (`project.ogt`), no `node_modules` above it resolves that
+/// is a game (`og-project.json`), no `node_modules` above it resolves that
 /// package, and the link is missing or points elsewhere: a symlink,
 /// a junction on Windows. A directory there (not a link) is left alone.
 /// Best effort: a game without the link still runs (the bundler resolves
 /// the engine from inside the package); its type check needs it.
 pub fn link_engine(root: &Path, package: &Path) {
-    if !root.join("project.ogt").is_file() {
+    if !root.join(source_metadata::FILE).is_file() {
         return;
     }
     let link = root.join(LINK);
@@ -499,16 +544,19 @@ pub fn pin_notice(project: &Project, package: &Path) -> Option<String> {
     }
     let why = compatible(pinned, &installed, package).err()?;
     Some(format!(
-        "project.ogt pins engine \"{pinned}\" and og runs engine {installed}, not compatible ({why}): {installed} runs; `og upgrade --to {installed}` moves the game to it, applies the changelog's codemods and lists what to edit, or run the pinned version through the og launcher (docs/release.md §1)"
+        "og-project.json pins engine \"{pinned}\" and og runs engine {installed}, not compatible ({why}): {installed} runs; `og upgrade --to {installed}` moves the game to it, applies the changelog's codemods and lists what to edit, or run the pinned version through the og launcher (docs/release.md §1)"
     ))
 }
 
-pub const NO_ENGINE: &str = "no engine package: run og through its launcher (curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh), which runs the version project.ogt pins, set OG_ENGINE_PACKAGE to an engine (a dist's engine/, or packages/engine of an origin-engine checkout), or run inside a checkout";
+pub const NO_ENGINE: &str = "no engine package: run og through its launcher (curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh), which runs the version og-project.json pins, set OG_ENGINE_PACKAGE to an engine (a dist's engine/, or packages/engine of an origin-engine checkout), or run inside a checkout";
 
 /// `bun <script> <args>` with the script resolved in the engine package.
 pub fn bun(package: &Path, script: &str) -> Command {
     let mut c = Command::new("bun");
     c.env(COOK_FORMATS, cook_formats());
+    if let Ok(binary) = std::env::current_exe() {
+        c.env("OG_BIN", binary);
+    }
     c.arg(package.join(script));
     c
 }

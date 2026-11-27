@@ -13,13 +13,12 @@
 //! an error naming the directory and the fix, found before tsgo runs
 //! (`tsgo_install`) or read from tsgo's panic, never a Go stack trace.
 //!
-//! The project's `tsconfig.json` is the configuration. A project without
-//! one (a project.ogt project that never wrote one) is checked with the
-//! template's options, written to `.og/tsconfig.check.json`. The engine
+//! Projects check isolated module configurations under `.og/types/author/`,
+//! extending their own `tsconfig.json` or using the template's options. The engine
 //! resolves as a package either way: through the link `og` keeps in the
 //! project's `node_modules` (project::LINK), by the package's `exports`
 //! (`moduleResolution "bundler"`), so no configuration names an engine
-//! file. A bare entry (no project.ogt) is checked alone with the same
+//! file. A bare entry (no og-project.json) is checked alone with the same
 //! options where a `node_modules` above it resolves the engine (an engine
 //! checkout's own link), and refused elsewhere.
 //!
@@ -106,6 +105,16 @@ impl Target {
         typescript_path(self.config.strip_prefix(&self.root).unwrap_or(&self.config))
     }
 
+    /// Refresh module-local declarations before any project check, including
+    /// run/build gates and dev reloads. Bare entries keep their single target.
+    pub fn all(p: &Project) -> Result<Vec<Target>, String> {
+        if p.manifest {
+            crate::author_types::ensure(&p.root)
+        } else {
+            Ok(vec![Self::of(p)?])
+        }
+    }
+
     /// A tsconfig file, or a directory holding `tsconfig.json`, as is.
     pub fn config(path: &Path) -> Result<Target, String> {
         let config = if path.is_dir() {
@@ -136,7 +145,7 @@ impl Target {
         // checkout's own). A bare entry has no link of its own.
         if !p.manifest && !root.ancestors().any(|d| d.join(project::LINK).exists()) {
             return Err(format!(
-                "{} is in no project (no project.ogt above it): the engine resolves for a type check through a project's {}; check it in a project (og new), or pass --no-check",
+                "{} is in no project (no og-project.json above it): the engine resolves for a type check through a project's {}; check it in a project (og new), or pass --no-check",
                 p.entry.display(),
                 project::LINK
             ));
@@ -171,6 +180,21 @@ impl Target {
 }
 
 impl Report {
+    pub fn combine(
+        reports: impl IntoIterator<Item = Result<Self, String>>,
+    ) -> Result<Self, String> {
+        let mut reports = reports.into_iter();
+        let mut report = reports.next().expect("a check has at least one target")?;
+        for other in reports {
+            let other = other?;
+            report.config = "project.ts (isolated module configurations)".into();
+            report.ms += other.ms;
+            report.diagnostics.extend(other.diagnostics);
+            report.raw.push_str(&other.raw);
+        }
+        Ok(report)
+    }
+
     pub fn ok(&self) -> bool {
         self.diagnostics.is_empty()
     }
@@ -230,8 +254,8 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     if let Some(n) = note {
         eprintln!("og check: {n}");
     }
-    let target = Target::of(p)?;
-    let mut report = checker.check(&target, default_checkers())?;
+    let targets = Target::all(p)?;
+    let mut report = Report::combine(targets.iter().map(|t| checker.check(t, default_checkers())))?;
     module_state(p, &mut report);
     unknown_classes(p, &mut report);
     pack_grounds(p, &mut report);
@@ -324,69 +348,39 @@ pub fn run(args: &[&str]) -> ExitCode {
         ExitCode::FAILURE
     };
     let path = Path::new(&path);
-    if let Some(root) = crate::author_types::root(path) {
-        let package = project::engine_package(Some(&root));
-        let result = (|| -> Result<Report, String> {
-            let targets = crate::author_types::ensure(&root)?;
-            let (checker, note) = Checker::find(package.as_deref(), tool)?;
-            if let Some(note) = note {
-                eprintln!("og check: {note}");
-            }
-            let mut reports = targets
-                .iter()
-                .map(|target| checker.check(target, checkers.unwrap_or_else(default_checkers)));
-            let mut report = reports.next().expect("every project has a base module")?;
-            for other in reports {
-                let other = other?;
-                report.ms += other.ms;
-                report.diagnostics.extend(other.diagnostics);
-                report.raw.push_str(&other.raw);
-            }
-            report.config = "project.ts (isolated module configurations)".into();
-            Ok(report)
-        })();
-        let report = match result {
-            Ok(report) => report,
-            Err(e) => return fail(e),
-        };
-        if json {
-            println!("{}", report.json());
-        } else {
-            print!("{}", report.raw);
-            println!("{}", report.summary());
-        }
-        return if report.ok() {
-            ExitCode::SUCCESS
-        } else {
-            ExitCode::FAILURE
-        };
-    }
-    // A tsconfig, or a directory with one and no project.ogt (packages/engine):
-    // the configuration as is. Otherwise a project or an entry.
-    let as_config = path.extension().is_some_and(|e| e == "json")
-        || (path.is_dir()
-            && !path.join("project.ogt").is_file()
-            && path.join("tsconfig.json").is_file());
+    let author_root = crate::author_types::root(path);
+    // Standalone configurations stay as is; projects use all isolated modules
+    // and still run the same game diagnostics as bare entries.
+    let as_config = author_root.is_none()
+        && (path.extension().is_some_and(|e| e == "json")
+            || (path.is_dir()
+                && !path.join("og-project.json").is_file()
+                && path.join("tsconfig.json").is_file()));
     let mut project = None;
-    let (target, package) = if as_config {
+    let (targets, package) = if as_config {
         let target = match Target::config(path) {
             Ok(t) => t,
             Err(e) => return fail(e),
         };
         let package = project::engine_package(Some(&target.root));
-        (target, package)
+        (vec![target], package)
     } else {
+        let path = if path.extension().is_some_and(|e| e == "json") {
+            author_root.as_deref().unwrap_or(path)
+        } else {
+            path
+        };
         let p = match Project::open(path) {
             Ok(p) => p,
             Err(e) => return fail(e),
         };
         let package = project::engine_package(Some(&p.root));
-        let target = match Target::of(&p) {
+        let targets = match Target::all(&p) {
             Ok(t) => t,
             Err(e) => return fail(e),
         };
         project = Some(p);
-        (target, package)
+        (targets, package)
     };
     let (checker, note) = match Checker::find(package.as_deref(), tool) {
         Ok(c) => c,
@@ -395,7 +389,11 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(n) = note {
         eprintln!("og check: {n}");
     }
-    let mut report = match checker.check(&target, checkers.unwrap_or_else(default_checkers)) {
+    let mut report = match Report::combine(
+        targets
+            .iter()
+            .map(|target| checker.check(target, checkers.unwrap_or_else(default_checkers))),
+    ) {
         Ok(r) => r,
         Err(e) => return fail(e),
     };
@@ -408,6 +406,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     } else {
         // A configuration (packages/engine): every source under it, so an
         // engine component's bad import fails the engine's own typecheck.
+        let target = &targets[0];
         missing_tables(
             &target.root,
             std::slice::from_ref(&target.root),
@@ -435,6 +434,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         crate::ui_styles::lint(&p.root, &dirs, json);
         screens::lint(p, json);
     } else {
+        let target = &targets[0];
         ui_grounds_lint(&target.root, &[&target.root], None, json);
         crate::ui_data::lint(&target.root, &[&target.root], json);
         crate::ui_styles::lint(&target.root, &[&target.root], json);

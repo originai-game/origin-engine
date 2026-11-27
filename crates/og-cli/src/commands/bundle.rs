@@ -113,7 +113,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         Ok(p) if p.manifest => p,
         Ok(p) => {
             eprintln!(
-                "og build: {} is not a project (no project.ogt); og build makes a play page from a project",
+                "og build: {} is not a project (no og-project.json); og build makes a play page from a project",
                 p.root.display()
             );
             return ExitCode::FAILURE;
@@ -123,7 +123,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let mut settings = match crate::publish::settings(&p.root.join("project.ogt")) {
+    let mut settings = match crate::publish::settings(&p.root) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("og build: {e}");

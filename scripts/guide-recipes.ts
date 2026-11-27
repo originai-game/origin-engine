@@ -45,7 +45,7 @@ export function extract(guide: string, text: string): Recipe[] {
       if (isAbsolute(file) || file.split(/[\\/]/).includes("..") || file.includes("\\")) throw new Error(`${guide}:${i + 1}: recipe file must stay inside its project`);
       const previous = out[out.length - 1];
       if (!previous) throw new Error(`${guide}:${i + 1}: an attached recipe file follows its main.ts block`);
-      if (file === "src/main.ts" || file === "project.ogt" || file === "tsconfig.json" || previous.files?.some((f) => f.path === file)) throw new Error(`${guide}:${i + 1}: duplicate or reserved recipe path ${file}`);
+      if (file === "src/main.ts" || file === "og-project.json" || file === "project.ts" || file === "tsconfig.json" || previous.files?.some((f) => f.path === file)) throw new Error(`${guide}:${i + 1}: duplicate or reserved recipe path ${file}`);
       out[out.length - 1] = { ...previous, files: [...previous.files ?? [], { path: file, source, line: i + 2 }] };
     } else {
       if (open[1] !== "ts") throw new Error(`${guide}:${i + 1}: only a TS main.ts recipe may omit file=`);
@@ -61,16 +61,8 @@ export function at(recipe: Recipe, n: number | null | undefined): string {
   return `${recipe.guide}:${n ? recipe.line + n - 1 : recipe.line - 1}`;
 }
 
-const PROJECT = `type project
-version 1
----
-# A guide recipe's project, written by scripts/guide-recipes.ts.
-name "Recipe"
-id "recipe"
-engine "0.9.0"
-entry "src/main.ts"
-tick 60
-seed 1
+const PROJECT = `import { defineProject } from "@origingame/engine/author";
+export default defineProject({ id: "recipe", entry: "src/main.ts", tick: 60, seed: 1 });
 `;
 
 const TSCONFIG = {
@@ -119,7 +111,8 @@ function place(recipe: Recipe, location: string): string {
 export function check(recipe: Recipe, dir: string, og: string): string[] {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(join(dir, "src"), { recursive: true });
-  writeFileSync(join(dir, "project.ogt"), PROJECT);
+  writeFileSync(join(dir, "og-project.json"), `${JSON.stringify({ version: 1, name: "Recipe", engine: JSON.parse(readFileSync(join(import.meta.dir, "../packages/engine/package.json"), "utf8")).version })}\n`);
+  writeFileSync(join(dir, "project.ts"), PROJECT);
   writeFileSync(join(dir, "tsconfig.json"), `${JSON.stringify(TSCONFIG, null, 2)}\n`);
   writeFileSync(join(dir, "src", "main.ts"), recipe.source);
   for (const file of recipe.files ?? []) {

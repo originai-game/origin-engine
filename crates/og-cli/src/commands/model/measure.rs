@@ -346,7 +346,7 @@ pub fn project_of(a: &Args, input: &super::Input) -> Result<Option<PathBuf>, Fai
     .or_else(|| std::env::current_dir().ok());
     Ok(start.and_then(|s| {
         s.ancestors()
-            .find(|d| d.join("project.ogt").is_file())
+            .find(|d| d.join("og-project.json").is_file())
             .map(Path::to_path_buf)
     }))
 }

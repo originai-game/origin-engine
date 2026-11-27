@@ -6,7 +6,7 @@ The game entry: what the bundle's default export declares.
 
 - **TypeScript**: functions are members of the root object `og` (`og.<fn>`); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `GameDesc`, `og.game`; 6 more are advanced (`og api show game --all`).
+- **Core** (what most games use): `GameDesc`, `og.game`; 10 more are advanced (`og api show game --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -22,6 +22,10 @@ module game {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
+| [`ProjectProfile`](game/type-ProjectProfile.md) | enum |  | The normalized startup profile. |
+| [`ProjectFlowScreen`](game/type-ProjectFlowScreen.md) | enum |  | Who draws the project's startup dialogue. |
+| [`ProjectStartupFlow`](game/type-ProjectStartupFlow.md) | struct |  | The dialogue started before GameDesc.start; no source code or pack metadata. |
+| [`ProjectStartup`](game/type-ProjectStartup.md) | struct |  | Checked project.ts startup data for CreateOptions.project on both hosts. |
 | [`FactsFn`](game/type-FactsFn.md) | callback |  | The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it. |
 | [`StartFn`](game/type-StartFn.md) | callback |  | The game's setup: called once before the first tick, after GameDesc.scene has spawned. |
 | [`UiSetupFn`](game/type-UiSetupFn.md) | callback |  | Register named presentation stores and mount TSX screens (`mount` from `@origingame/engine/ui`). |

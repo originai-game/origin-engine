@@ -239,14 +239,17 @@ pub fn write_probe(
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?,
         Err(_) => Manifest {
             cooker: COOKER.to_string(),
-            profile: match std::fs::read_to_string(root.join("project.ogt")) {
-                Ok(t) => crate::look::project_profile(
-                    &og_core::ogt::parse(&t)
-                        .map_err(|e| CookError(format!("project.ogt: {}", e.reason())))?
-                        .body,
-                )
-                .map_err(|e| CookError(format!("project.ogt:{e}")))?,
-                Err(_) => Default::default(),
+            profile: if matches!(
+                super::super::source_project::Project::open(root)
+                    .map_err(|e| CookError(e.to_string()))?
+                    .input
+                    .create
+                    .and_then(|c| c.form),
+                Some(super::super::source_schemas::project::Form::TwoD)
+            ) {
+                crate::look::Profile::TwoD
+            } else {
+                crate::look::Profile::ThreeD
             },
             ..Default::default()
         },

@@ -2,7 +2,7 @@
 
 # The `loading` module
 
-The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
+The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader.
 
 See `loading §13`.
 
@@ -13,7 +13,7 @@ See `loading §13`.
 
 ```ogt
 module loading {
-  doc "The loading screen: who draws it (project.ogt `publish { loading engine | game | page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
+  doc "The loading screen: who draws it (project.ts `publish.loading`: engine, game or page), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader."
   # declarations follow, each on its own page
 ```
 
@@ -23,7 +23,7 @@ module loading {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
-| [`LoadingScreen`](loading/type-LoadingScreen.md) | enum |  | Who draws the loading screen (project.ogt `publish.loading`). |
+| [`LoadingScreen`](loading/type-LoadingScreen.md) | enum |  | Who draws the loading screen (project.ts `publish.loading`). |
 | [`LoadingStageDesc`](loading/type-LoadingStageDesc.md) | desc struct |  | A stage of the game's own loading (og.loading.stage). |
 | [`LoadingStatus`](loading/type-LoadingStatus.md) | struct |  | Where loading is. |
 | [`og.loading.stage`](loading/fn-stage.md) | function | `(world: World, desc?: LoadingStageDesc): Result<void>` | Report a stage of the game's loading: the web page sends it to the page as `og:stage` (and to the framing page), and the engine's splash shows its label and fraction. |

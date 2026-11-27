@@ -153,7 +153,7 @@ pub(crate) struct State {
     /// project.ogt's game values (CreateOptions.project), for a reload's
     /// assembly, and its `look`, which turns the art contract's runtime
     /// defaults on (`super::art`).
-    pub project: Option<ProjectGame>,
+    pub project: Option<ProjectStartup>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
     /// project.ogt's `flow` dialogue, until it has been started (just

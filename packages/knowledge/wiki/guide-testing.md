@@ -30,7 +30,8 @@ gives each command's flags.
   edit is cooked alone and applied in place, a `src/` edit bundles the
   game's own code and swaps it in with the world kept (snapshot, swap,
   restore), so a store's initial value or a `start` change shows only
-  after a restart; only a `project.ogt` change reloads the page. A cook,
+  after a restart; a project metadata, bootstrap or content-module change
+  rebuilds and reloads the page. A cook,
   bundle or type error stays on the page's console and in
   `_dev/status` (`{ready, build, error, last}`) until fixed; the server
   keeps running. `window.__og_dev_reloads__` lists each change applied
@@ -441,8 +442,8 @@ about 30% above -q 11 for the engine module), `gzip-9` where the brotli
 CLI is missing. Judge download size on a publish build. A failed build prints its event with `ok: false` and a
 `reason`, and exits 1. The play page is `<out>/<manifest.entry>`.
 
-**Where outputs land.** A build is written to `--out`, else project.ogt's
-`publish { out }`, else `<project>/dist/`. Everything else a command writes
+**Where outputs land.** A build is written to `--out`, else project.ts's
+`publish.out`, else `<project>/dist/`. Everything else a command writes
 goes under `<project>/og-out/`, which a build never reads: `og run`'s
 screenshots and dumps (`--out`, default `og-out/`), a playtest's runs
 (`og-out/test/<playtest>/run-<n>/`), `og render` (`og-out/render/`),

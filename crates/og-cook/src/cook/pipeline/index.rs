@@ -177,10 +177,8 @@ fn tree(dir: &Path, out: &mut BTreeMap<PathBuf, Stat>) -> std::io::Result<()> {
 /// from outside the project.
 fn inputs(root: &Path, code: &[PathBuf]) -> std::io::Result<BTreeMap<PathBuf, Stat>> {
     let mut files = BTreeMap::new();
-    tree(&root.join("assets"), &mut files)?;
-    let project = root.join("project.ogt");
-    if project.exists() {
-        files.insert(project.clone(), stat(&project)?);
+    for path in crate::cook::source_project::files(root)? {
+        files.insert(path.clone(), stat(&path)?);
     }
     for path in code {
         files.insert(path.clone(), stat(path)?);
@@ -286,10 +284,12 @@ impl Index {
 
     /// The checkpointed cook's report and what it held before it read the
     /// project's code, when code is all that has changed since: the asset
-    /// tree and `project.ogt` are as they were, and so is what was written.
+    /// tree and author bootstrap are as they were, and so is what was written.
     pub fn only_code_changed(&self) -> Option<(Report, BeforeCode)> {
         let report = self.checkpoint(|path| {
-            !path.starts_with(self.root.join("assets")) && path != self.root.join("project.ogt")
+            self.code.iter().any(|code| code == path)
+                && path.starts_with(self.root.join("src"))
+                && !path.starts_with(self.root.join("src/schema"))
         })?;
         let before = self.saved.lock().expect("index lock").before_code.clone()?;
         Some((report, before))

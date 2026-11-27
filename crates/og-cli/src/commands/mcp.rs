@@ -1073,7 +1073,7 @@ fn tools() -> Value {
                 "target": s("Pack name/dir (`add`), Effekseer file (`import`), or effect `.ogt` (`preview`)."),
                 "project": project, "out": s("Output directory."),
                 "size": s("Preview WxH."), "quality": s("`low`, `medium`, or `high`."),
-                "projectLook": b("Use project.ogt's look for preview shots and costs, not black-stage bounds."),
+                "projectLook": b("Use og-project.json's look for preview shots and costs, not black-stage bounds."),
                 "look": s("Explicit look asset, exclusive with projectLook."), "scene": s("Scene asset for preview shots/costs; applies its resources after the look."),
                 "position": s("Effect world position x,y,z; contextual previews do not auto-raise the effect."),
                 "camera": s("World-space px,py,pz,tx,ty,tz,fov; otherwise auto-frame at the effect position."),

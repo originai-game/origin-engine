@@ -664,6 +664,9 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
         ix,
         wanted: BTreeSet::new(),
     };
+    // The lifecycle create call transports JSON rather than a game binding's
+    // parameter. Its startup payload still has one IDL type for both hosts.
+    g.want(None, &TypeRef::named("ProjectStartup"));
     for b in bindings(ix) {
         if let Some(f) = b.function {
             for p in &f.params {

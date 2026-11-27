@@ -30,6 +30,7 @@
 //   only when the install criteria hold;
 // - "Made with Origin Engine" in the corner unless the project turns it off.
 
+import type { ProjectStartup } from "../types/index.d.ts";
 import { Shell } from "../src/web/shell.ts";
 import { webGpuAbsent } from "../src/web/webgpu.ts";
 import { AudioShell } from "../src/web/audio.ts";
@@ -58,8 +59,8 @@ export interface ShellConfig {
   readonly telemetry: "on" | "off";
   readonly build: "publish" | "dev";
   readonly name: string;
-  /** project.ogt's text, for the engine's tick, seed, scenes and scene (CreateOptions.project). */
-  readonly project?: string;
+  /** Checked normalized startup data (CreateOptions.project). */
+  readonly project?: ProjectStartup;
   readonly isolation: "required" | "preferred" | "off";
   readonly fit: "letterbox" | "fill";
   /** Width over height for letterbox; null takes the screen's. */

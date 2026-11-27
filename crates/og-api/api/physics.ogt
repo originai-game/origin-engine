@@ -253,7 +253,7 @@ module physics {
 
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again." {
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ts. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again." {
       guide "physics §2"
       default 3
       min 2
@@ -521,4 +521,3 @@ module physics {
     }
     field motorModel JointMotorModel "How motor stiffness and damping are interpreted: acceleration (mass-independent) or force."
   }
-

@@ -1,13 +1,11 @@
 use super::*;
 
-/// The project's own settings (`project.ogt`) and where its assets are:
+/// The project's checked bootstrap and where its assets are:
 /// read once, before the scan.
 pub(crate) struct Project {
-    root: PathBuf,
     pub(crate) assets_dir: PathBuf,
     pub(crate) cooked_dir: PathBuf,
-    /// `project.ogt`, parsed; `None` when it is missing or malformed.
-    doc: Option<Document>,
+    pub(crate) source: source_project::Project,
     pub(crate) budgets: stats::Budgets,
     pub(crate) budget_desc: String,
     pub(crate) story_functions: BTreeMap<String, og_story::yarn::types::Function>,
@@ -15,11 +13,11 @@ pub(crate) struct Project {
     /// The creation form's profile (`look::project_profile`): the
     /// manifest's.
     pub(crate) profile: crate::look::Profile,
-    /// The boot scene's asset id: project.ogt's `scene` (else `main`)
+    /// The boot scene's project ref: project.ts's `scene` (else `main`)
     /// through its `scenes` block; `None` when the block does not name it
     /// (the game's GameDesc does, which the cook does not read).
     pub(crate) boot: Option<String>,
-    /// project.ogt's `flow`: its dialogue's asset id, which the engine runs
+    /// project.ts's `flow`: its dialogue's project ref, which the engine runs
     /// from the first tick, so the bundle needs what it needs.
     pub(crate) flow: Option<String>,
     /// `cook { uses }`: the assets other cooked bundles provide.
@@ -28,59 +26,64 @@ pub(crate) struct Project {
 
 impl Project {
     pub(crate) fn read(root: &Path) -> Result<Project, CookError> {
-        let story_functions = story_functions::read(root).map_err(CookError)?;
+        let source = source_project::Project::open(root).map_err(|e| CookError(e.to_string()))?;
+        let story_functions =
+            story_functions::read(&source.input.story_functions).map_err(CookError)?;
         let story_functions_stamp =
             serde_json::to_vec(&story_functions).map_err(|e| CookError(e.to_string()))?;
-        let doc = std::fs::read_to_string(root.join("project.ogt"))
-            .ok()
-            .and_then(|t| Document::parse(&t).ok());
-        // The project's budgets (project.ogt's `budgets { }`, the defaults
-        // without one): a `type model` past them is cooked with a warning.
-        let budgets = doc
-            .as_ref()
-            .and_then(|d| stats::Budgets::from_project(&d.body).ok())
-            .unwrap_or_default();
-        let profile = doc
-            .as_ref()
-            .map(|d| crate::look::project_profile(&d.body))
-            .transpose()
-            .map_err(|e| CookError(format!("project.ogt:{e}")))?
-            .unwrap_or_default();
-        let provided =
-            provided::Provided::read(root, doc.as_ref().map(|d| &d.body)).map_err(CookError)?;
-        let boot = doc.as_ref().and_then(|d| {
-            let name = d
-                .body
-                .get("scene")
-                .and_then(|e| e.values.first())
-                .and_then(|v| v.as_word().or_else(|| v.as_str()))
-                .unwrap_or("main");
-            let path = d
-                .body
-                .get("scenes")?
-                .block
-                .as_ref()?
-                .get(name)?
-                .string(0)
-                .ok()?;
-            Some(crate::runtime::asset_id(path).to_string())
-        });
-        let flow = doc
-            .as_ref()
-            .map(|d| crate::look::project_flow(&d.body))
-            .transpose()
-            .map_err(|e| CookError(format!("project.ogt:{e}")))?
-            .flatten()
-            .map(|f| f.dialogue);
+        let mut budgets = stats::Budgets::default();
+        if let Some(input) = &source.input.budgets {
+            macro_rules! apply { ($($field:ident),* $(,)?) => { $(
+                if let Some(value) = input.$field { budgets.$field = value; }
+            )* }; }
+            apply!(
+                triangles,
+                vertices,
+                texture_size,
+                bones,
+                clips,
+                asset_bytes,
+                total_bytes,
+                sound_seconds,
+                video_seconds,
+                nav_polygons,
+                scene_entities,
+                emitter_particles,
+                bvh_share,
+                gpu_bytes
+            );
+        }
+        let profile = if matches!(
+            source.input.create.as_ref().and_then(|c| c.form.as_ref()),
+            Some(source_schemas::project::Form::TwoD)
+        ) {
+            crate::look::Profile::TwoD
+        } else {
+            crate::look::Profile::ThreeD
+        };
+        let provided = provided::Provided::read(
+            root,
+            source
+                .input
+                .cook
+                .as_ref()
+                .map_or(&[], |c| c.uses.as_slice()),
+        )
+        .map_err(CookError)?;
+        let boot = source
+            .input
+            .scenes
+            .get(source.input.scene.as_deref().unwrap_or("main"))
+            .map(|r| r.id.clone());
+        let flow = source.input.flow.as_ref().map(|f| f.source.id.clone());
         let budget_desc = format!(
             "budgets triangles {} vertices {}",
             budgets.triangles, budgets.vertices
         );
         Ok(Project {
-            root: root.to_path_buf(),
             assets_dir: root.join("assets"),
             cooked_dir: root.join("cooked"),
-            doc,
+            source,
             budgets,
             budget_desc,
             story_functions,
@@ -108,18 +111,25 @@ pub(crate) struct Scanned {
 }
 
 pub(crate) fn scan_sources(
-    assets_dir: &Path,
+    project: &Project,
     cook_index: &index::Index,
     threads: usize,
     code: &CodeGraph,
 ) -> Result<Scanned, CookError> {
+    let assets_dir = &project.assets_dir;
     let Scan {
         mut sources,
         ignored,
         early_errors,
         external,
         warnings,
-    } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads, code)?;
+    } = scan::scan_with(
+        assets_dir,
+        &|path| cook_index.read(path),
+        threads,
+        code,
+        project.source.metadata.look.as_ref(),
+    )?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     crate::cook::materials::expand(&mut sources);
@@ -731,15 +741,15 @@ pub(crate) struct Contracted {
 
 pub(crate) fn contract(
     project: &Project,
+    content: &source_content::Graph,
     sources: &mut Vec<Source>,
     known: &BTreeSet<String>,
     model_texts: &BTreeMap<String, String>,
     options: &CookOptions,
     early_errors: &mut Vec<EarlyError>,
 ) -> Result<Contracted, CookError> {
-    let root = project.root.as_path();
     let assets_dir = project.assets_dir.as_path();
-    // The project's look (project.ogt's `look "looks/<id>.ogt"`): its art
+    // The project's look (og-project.json's `look`): its art
     // contract (docs/art.md §2.1), read before anything cooks. A line that
     // names no look of the bundle is that asset's error.
     let mut contract: Option<(String, crate::look::LookFile)> = None;
@@ -747,23 +757,27 @@ pub(crate) fn contract(
     // textures with in texel space (painterly 3D).
     let mut mesh_paint = None;
     let project_look = project
-        .doc
+        .source
+        .metadata
+        .look
         .as_ref()
-        .map(|d| crate::look::project_look(&d.body))
-        .transpose()
-        .map_err(|e| CookError(format!("project.ogt:{e}")))?
-        .flatten();
+        .map(|look| match look {
+            source_schemas::procedural::LookBase::Asset(reference) => {
+                content.outputs[&reference.id].asset.clone()
+            }
+            source_schemas::procedural::LookBase::Preset(name) => format!("@looks/{name}"),
+        });
     if let Some(id) = project_look {
         match sources.iter().find(|s| s.rel == id) {
             Some(s) if s.kind == &look::LOOK => {
                 // The project's look decides the art contract, the UI pack
                 // and what the models' textures cook to: one that fails stops
-                // the cook with nothing changed, as a project.ogt that fails
+                // the cook with nothing changed, as a project.ts that fails
                 // does, instead of cooking the project without it and again
                 // once it is fixed (a mistyped mood recooked every model
                 // texture twice).
                 let c = look::contract(s, assets_dir, &|id| known.contains(id))
-                    .map_err(|e| CookError(format!("assets/{id}: {e} (project.ogt's look)")))?;
+                    .map_err(|e| CookError(format!("assets/{id}: {e} (og-project.json's look)")))?;
                 if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
                     match conform::texture2d::paint_of(&full, assets_dir) {
                         Ok(p) => mesh_paint = p.active().then_some(p),
@@ -775,29 +789,25 @@ pub(crate) fn contract(
             Some(_) => early_errors.push((
                 id,
                 "look",
-                "project.ogt's `look` names it, and it is not an .ogt of `type look`".into(),
+                "og-project.json's `look` names it, and it is not a look output".into(),
             )),
             None => early_errors.push((
                 id.clone(),
                 "look",
-                format!("project.ogt's `look` names assets/{id}, which does not exist"),
+                format!("og-project.json's `look` names assets/{id}, which does not exist"),
             )),
         }
     }
     // What the 3D pass keeps as made (docs/art.md §2.3): read before the
     // 2D pass, which takes a sheet's own `conform` line out of its text.
-    let project_conform = project
-        .doc
-        .as_ref()
-        .map(|d| conform::ProjectConform::parse(&d.body))
-        .transpose()
-        .map_err(|e| CookError(format!("project.ogt:{e}")))?
-        .unwrap_or_default();
-    // The screens `og ui check` visits (project.ogt's `ui { screen ... }`):
-    // a malformed block fails the cook with its line and fix.
-    if let Some(d) = &project.doc {
-        ui_screens::screens(&d.body).map_err(|e| CookError(format!("project.ogt:{e}")))?;
-    }
+    let project_conform = conform::ProjectConform {
+        off: project
+            .source
+            .input
+            .conform
+            .as_ref()
+            .map_or_else(Vec::new, |c| c.off.clone()),
+    };
     let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
     for s in sources
         .iter()
@@ -806,24 +816,30 @@ pub(crate) fn contract(
         let why = own_conform_off(s).or_else(|| {
             project_conform
                 .off_by(&s.rel)
-                .map(|p| format!("project.ogt's conform block: off \"{p}\""))
+                .map(|p| format!("project.ts's conform.off: \"{p}\""))
         });
         if let Some(why) = why {
             mesh_off.insert(s.rel.clone(), why);
         }
     }
     // Conformance (docs/art.md §2.3): the 2D textures, to the contract.
-    let (conformed, mesh_textures) =
-        conform::texture2d::conform(root, assets_dir, sources, known, contract.as_ref())
-            .map_err(CookError)?;
+    let (conformed, mesh_textures) = conform::texture2d::conform(
+        &project_conform,
+        project.profile,
+        assets_dir,
+        sources,
+        known,
+        contract.as_ref(),
+    )
+    .map_err(CookError)?;
     // In a 3D project a texture nothing else claims is a mesh's
     // (`conform::TextureRole::Mesh`): the mesh pass holds it, unless it or
-    // project.ogt opts it out.
+    // project.ts opts it out.
     for s in sources.iter().filter(|s| mesh_textures.contains(&s.rel)) {
         let why = own_conform_off(s).or_else(|| {
             project_conform
                 .off_by(&s.rel)
-                .map(|p| format!("project.ogt's conform block: off \"{p}\""))
+                .map(|p| format!("project.ts conform.off: \"{p}\""))
         });
         if let Some(why) = why {
             mesh_off.insert(s.rel.clone(), why);

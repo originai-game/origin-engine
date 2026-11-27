@@ -142,7 +142,7 @@ export const VARIANT_ZH: Readonly<Record<string, readonly [string, string]>> = {
   "cartoon-2d.rubber-hose": ["橡皮管动画", "圆头角色、可弯曲的管状四肢与持续的挤压拉伸，墨线如早期影院动画。"],
 };
 
-/** The genre told in segments (og.flow, project.ogt's `flow`): its form is the world its live scenes draw in (3d unless named), and it may leave its view out. */
+/** The genre told in segments (og.flow, project.ts's `flow`): its form is the world its live scenes draw in (3d unless named), and it may leave its view out. */
 export const FILM_GENRE = "interactive-film";
 
 /** Each form's views; a game's view is one of its form's. */
@@ -280,10 +280,4 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
     input: pick("input", platform.startsWith("phone-") ? "touch" : "keyboard-mouse"),
     players, lang, music: pick("music", "ambient"),
   };
-}
-
-/** The canonical project.ogt block: constraints and hints, not runtime settings. */
-export function creationBlock(choices: CreationChoices): string {
-  const checked = inferCreationChoices("", choices);
-  return `create {\n${Object.entries(checked).map(([key, value]) => `  ${key} ${Array.isArray(value) ? value.map(v => JSON.stringify(v)).join(" ") : JSON.stringify(value)}`).join("\n")}\n}\n`;
 }

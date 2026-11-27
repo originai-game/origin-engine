@@ -25,4 +25,4 @@ callback UiSetupFn {
 }
 ```
 
-<sub>Module `game` line 17</sub>
+<sub>Module `game` line 71</sub>

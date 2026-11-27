@@ -503,125 +503,44 @@ pub(crate) struct Given {
     pub save_version: bool,
 }
 
-/// project.ogt's `tick`, `seed`, `scenes`, `scene` and `look`, as the host
-/// read them (CreateOptions.project): the defaults of the GameDesc fields a
-/// game leaves unset.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct ProjectGame {
-    pub tick: Option<u32>,
-    pub seed: Option<u32>,
-    pub scenes: Option<BTreeMap<String, String>>,
-    pub scene: Option<String>,
-    /// `look "looks/<id>.ogt"`: the look whose art contract the cook reads
-    /// (og-cook's `cook::look::project_look`), as an asset id.
-    pub look: Option<String>,
-    /// `saveVersion 3`: the game's save version (GameDesc.saveVersion).
-    pub save_version: Option<u32>,
-    /// `publish { loading game }`: who draws the loading screen
-    /// (og.loading.status answers it on every host).
-    pub loading: Option<String>,
-    /// `flow "story/<name>.yarn"`: the flow the engine starts before
-    /// GameDesc.start (og.flow.current), and whether the game draws it.
-    pub flow: Option<og_bundle::look::ProjectFlow>,
-    /// `create { form "2d" }`: the 2D profile (og-bundle's
-    /// `look::project_profile`); any other form, or none, is 3D.
-    pub two_d: bool,
-}
+/// The same generated startup type is consumed by the native and web hosts.
+pub(crate) use og_api::wire::ProjectStartup;
 
-/// Reads `tick`, `seed`, `scenes`, `scene`, `look`, `saveVersion`, `flow`
-/// and the creation form from project.ogt's text; a value of the wrong kind is
-/// refused naming its line. Other keys are og's (`name`, `entry`,
-/// `publish`, ...) and are not read here.
-pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
-    let doc = og_core::ogt::parse(text).map_err(|e| format!("project.ogt: {}", e.reason()))?;
-    let b = &doc.body;
-    let whole = |key: &str, lo: u64, hi: u64, what: &str| -> Result<Option<u32>, String> {
-        let Some(e) = b.get(key) else {
-            return Ok(None);
-        };
-        e.number(0)
-            .ok()
-            .and_then(|n| n.as_u64().ok())
-            .filter(|n| (lo..=hi).contains(n))
-            .map(|n| Some(n as u32))
-            .ok_or_else(|| format!("project.ogt:{}: `{key}` takes {what}", e.line))
-    };
-    let tick = whole(
-        "tick",
-        1,
-        240,
-        "a whole number of ticks per second, 1 to 240",
-    )?;
-    let seed = whole(
-        "seed",
-        0,
-        u64::from(u32::MAX),
-        "a whole number from 0 to 4294967295",
-    )?;
-    let scene = match b.get("scene") {
-        None => None,
-        Some(e) => Some(
-            e.values
-                .first()
-                .and_then(|v| v.as_word().or_else(|| v.as_str()))
-                .ok_or_else(|| {
-                    format!(
-                        "project.ogt:{}: `scene` names a scene of `scenes`, such as `scene main`",
-                        e.line
-                    )
-                })?
-                .to_string(),
-        ),
-    };
-    let scenes = match b.get("scenes") {
-        None => None,
-        Some(e) => {
-            let block = e.block.as_ref().ok_or_else(|| {
-                format!(
-                    "project.ogt:{}: `scenes` is a block of `<name> \"<path>\"` lines",
-                    e.line
-                )
-            })?;
-            let mut out = BTreeMap::new();
-            for s in &block.entries {
-                let path = s.string(0).map_err(|_| {
-                    format!("project.ogt:{}: scenes.{} takes the scene's quoted path, such as \"scenes/main.ogt\"", s.line, s.key)
-                })?;
-                out.insert(s.key.clone(), path.to_string());
+/// Decode only normalized startup data. There is no project source parser in
+/// the runtime. Use the generated writer to reject null/extra fields without
+/// maintaining another list of the schema's keys here.
+pub(crate) fn project_game(value: &Value) -> Result<ProjectStartup, String> {
+    use og_api::wire::{ToJson, value as read};
+    fn shape(input: &Value, output: &Value, path: &str) -> Result<(), String> {
+        if let Some(object) = input.as_object() {
+            for (key, value) in object {
+                let field = format!("{path}.{key}");
+                let Some(expected) = output.get(key) else {
+                    return Err(format!("{field}: unknown or null startup field"));
+                };
+                if value.is_null() {
+                    return Err(format!("{field}: null is not startup data"));
+                }
+                shape(value, expected, &field)?;
             }
-            Some(out)
         }
-    };
-    let look = og_bundle::look::project_look(b).map_err(|e| format!("project.ogt:{e}"))?;
-    let save_version = whole(
-        "saveVersion",
-        1,
-        u64::from(u32::MAX),
-        "the game's save version, a whole number from 1",
-    )?;
-    // og checks the publish block (crates/og-cli/src/publish.rs); the
-    // runtime reads only who draws the loading screen.
-    let loading = b
-        .get("publish")
-        .and_then(|e| e.block.as_ref())
-        .and_then(|p| p.get("loading"))
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_word().or_else(|| v.as_str()))
-        .map(str::to_string);
-    let flow = og_bundle::look::project_flow(b).map_err(|e| format!("project.ogt:{e}"))?;
-    let two_d = og_bundle::look::project_profile(b).map_err(|e| format!("project.ogt:{e}"))?
-        == og_bundle::look::Profile::TwoD;
-    Ok(ProjectGame {
-        tick,
-        seed,
-        scenes,
-        scene,
-        look,
-        save_version,
-        loading,
-        flow,
-        two_d,
-    })
+        Ok(())
+    }
+    if !value.is_object() {
+        return Err("CreateOptions.project takes ProjectStartup data from checked project.ts, not project text or null".into());
+    }
+    let startup: ProjectStartup = read(value, "CreateOptions.project")?;
+    shape(value, &startup.to_json(), "CreateOptions.project")?;
+    if startup.tick.is_some_and(|n| !(1..=240).contains(&n)) {
+        return Err("CreateOptions.project.tick must be 1..240".into());
+    }
+    if startup.save_version == Some(0) {
+        return Err("CreateOptions.project.saveVersion must be at least 1".into());
+    }
+    if startup.flow.as_ref().is_some_and(|f| f.dialogue.is_empty()) {
+        return Err("CreateOptions.project.flow.dialogue needs a cooked dialogue ID".into());
+    }
+    Ok(startup)
 }
 
 /// GameDesc.migrations against GameDesc.saveVersion: each step's `from`
@@ -648,7 +567,7 @@ pub(crate) fn check_migrations(game: &GameDecl) -> Result<(), String> {
 /// GameDesc with project.ogt's values for the fields it left unset. A field
 /// set in both places to different values is refused: one value has one
 /// home, and the two would drift apart silently.
-pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDecl, String> {
+pub(crate) fn with_project(mut game: GameDecl, p: &ProjectStartup) -> Result<GameDecl, String> {
     fn both<T: PartialEq + Clone + std::fmt::Debug>(
         field: &str,
         given: bool,
@@ -663,7 +582,7 @@ pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDe
             }
             Some(v) if v == ours => Ok(()),
             Some(v) => Err(format!(
-                "GameDesc.{field} is {ours:?} but project.ogt's `{field}` is {v:?}: one value set in two places; keep one (delete the line from project.ogt, or the field from GameDesc)"
+                "GameDesc.{field} is {ours:?} but project.ts's `{field}` is {v:?}: one value set in two places; keep the field in project.ts or GameDesc, not both"
             )),
         }
     }

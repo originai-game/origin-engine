@@ -54,6 +54,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
+import { readProject } from "./project.ts";
 import { openAudio } from "./audio.ts";
 import { bundleHash } from "./bundle-hash.ts";
 import { nativePlatform, readFake } from "./platform.ts";
@@ -201,14 +202,14 @@ const bundleSha256 = bundleHash(entry);
 const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };
 if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
 
-const projectText = root && existsSync(join(root, "project.ogt")) ? readFileSync(join(root, "project.ogt"), "utf8") : undefined;
-const projectId = projectText === undefined ? null : (/^\s*id\s+"([^"]*)"/m.exec(projectText)?.[1] ?? null);
+const project = readProject(root);
+const projectId = project?.id ?? null;
 
 const created = createEngine(mod.default!, {
   ...(seed === undefined ? {} : { seed }),
   ...(root ? { root } : {}),
   ...(content ? { content } : {}),
-  ...(projectText === undefined ? {} : { project: projectText }),
+  ...(project === undefined ? {} : { project: project.startup }),
   ...(locale ? { locale } : {}),
 });
 if (!created.ok) fail(`${entry}: ${created.reason}`);

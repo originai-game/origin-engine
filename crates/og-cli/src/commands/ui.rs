@@ -187,29 +187,12 @@ pub fn spawn(
         .map_err(|e| format!("{} ({e})", project::NO_BUN))
 }
 
-/// The screens project.ogt declares, in order: `ui { screen "<name>"
-/// "<commands>" }` entries, then `screens { title|play|results "<commands>" }`.
+/// Named capture scripts from the checked project.ts configuration.
 fn declared_screens(root: &Path) -> Result<Vec<(String, String)>, String> {
-    let path = root.join("project.ogt");
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return Ok(Vec::new());
-    };
-    let body = og_core::ogt::parse(&text)
-        .map_err(|e| format!("{}: {}", path.display(), e.reason()))?
-        .body;
-    let mut out: Vec<(String, String)> = og_cook::cook::ui_screens::screens(&body)
-        .map_err(|e| format!("project.ogt:{e}"))?
+    Ok(og_cook::cook::source_project::Project::open(root)
+        .map_err(|e| e.to_string())?
+        .input
+        .screens
         .into_iter()
-        .map(|s| (s.name, s.commands))
-        .collect();
-    if let Some(screens) = body.get("screens").and_then(|e| e.block.as_ref()) {
-        for e in &screens.entries {
-            if let Ok(commands) = e.string(0)
-                && !out.iter().any(|(n, _)| n == &e.key)
-            {
-                out.push((e.key.clone(), commands.to_string()));
-            }
-        }
-    }
-    Ok(out)
+        .collect())
 }

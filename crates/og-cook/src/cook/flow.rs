@@ -25,17 +25,23 @@ struct Flow {
     graph: Vec<GraphNode>,
 }
 
-/// The project's flow dialogues, the one project.ogt's `flow` names first.
+/// The project's flow dialogues, the one project.ts's `flow` names first.
 fn flows(root: &Path) -> Result<(Option<String>, Vec<Flow>), String> {
-    let declared = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| og_core::ogt::Document::parse(&t).ok())
-        .map(|d| og_bundle::look::project_flow(&d.body))
-        .transpose()
-        .map_err(|e| format!("project.ogt:{e}"))?
-        .flatten()
-        .map(|f| f.dialogue);
-    let functions = story_functions::read(root)?;
+    let project = super::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let bindings = super::project_assets(root, &project).map_err(|e| e.to_string())?;
+    let declared = project
+        .input
+        .flow
+        .as_ref()
+        .map(|flow| {
+            bindings
+                .get(&flow.source.id)
+                .filter(|output| output.kind == "dialogue")
+                .map(|output| output.asset.clone())
+                .ok_or_else(|| format!("project.ts: {} is not a scanned dialogue", flow.source.id))
+        })
+        .transpose()?;
+    let functions = story_functions::read(&project.input.story_functions)?;
     let assets = root.join("assets");
     let mut files = Vec::new();
     walk(&assets, &mut files);
@@ -60,7 +66,7 @@ fn flows(root: &Path) -> Result<(Option<String>, Vec<Flow>), String> {
         && !out.iter().any(|f| &f.rel == id)
     {
         return Err(format!(
-            "project.ogt's `flow` names {id}, which is no dialogue with a flow node under assets/"
+            "project.ts's flow names {id}, which is no dialogue with a flow node under assets/"
         ));
     }
     out.sort_by_key(|f| Some(&f.rel) != declared.as_ref());

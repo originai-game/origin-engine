@@ -1,6 +1,7 @@
 // What the shell sends the engine Worker (worker.ts), and the Worker's global
 // scope as it uses it.
 
+import type { ProjectStartup } from "../../../types/index.d.ts";
 import type { PlatformAnswer, PlatformNotice } from "../../platform-local.ts";
 import type { AudioLatencyMessage, AudioMessage } from "../audio.ts";
 import type { InjectedInput } from "../input.ts";
@@ -57,8 +58,8 @@ export interface Start {
    * from a `blob:` copy of its source.
    */
   decoders?: { audio?: string; av1?: string };
-  /** project.ogt's text (CreateOptions.project). */
-  project?: string;
+  /** Checked normalized startup data (CreateOptions.project). */
+  project?: ProjectStartup;
   /** The locale og.i18n is asked for (the page's `navigator.language`). */
   locale?: string;
   /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */

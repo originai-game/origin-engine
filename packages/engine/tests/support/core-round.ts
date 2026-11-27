@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og, type Sound } from "@origingame/engine";
-import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
+import { createEngine, type CreateOptions, type Engine, type GameToken } from "../../src/runtime.ts";
 
 const argv = process.argv.slice(2);
 const opt = (name: string) => argv[argv.indexOf(name) + 1] ?? "";
@@ -47,7 +47,43 @@ const fnv = (bytes: Iterable<number>): string => {
   return h.toString(16).padStart(16, "0");
 };
 
-if (which === "rng") {
+if (which === "startup") {
+  const game = og.game({}) as unknown as GameToken;
+  const project = { tick: 30, seed: 83, saveVersion: 4, profile: "3d" as const };
+  const created = createEngine(game, { project });
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  engine.advance(15);
+  out.time = JSON.parse(JSON.stringify(engine.world.resource(og.Time)));
+  out.rng = JSON.parse(JSON.stringify(engine.world.resource(og.Rng)));
+  const saved = engine.world.snapshot();
+  if (!saved.ok) throw new Error(saved.reason);
+  const defaults = start(og.game({}));
+  out.defaults = JSON.parse(JSON.stringify(defaults.world.resource(og.Time)));
+  out.oldSave = defaults.world.restore(saved.value);
+  const replay = createEngine(game, { project, seed: 197 });
+  if (!replay.ok) throw new Error(replay.reason);
+  out.override = JSON.parse(JSON.stringify(replay.value.world.resource(og.Rng)));
+  out.conflicts = [
+    og.game({ tick: 45 }), og.game({ seed: 84 }), og.game({ saveVersion: 5 }),
+  ].map((game) => {
+    const result = createEngine(game as unknown as GameToken, { project });
+    if (result.ok) { result.value.destroy(); throw new Error("conflicting project startup accepted"); }
+    return result.reason;
+  });
+  out.invalid = [
+    "type project\nversion 1\n---\ntick 30", null,
+    { tick: 0 }, { tick: 241 }, { tick: 30.5 }, { seed: -1 }, { seed: 4294967296 },
+    { saveVersion: 0 }, { unknown: 1 }, { flow: { dialogue: "x", unknown: true } }, { tick: null },
+  ].map((project) => {
+    const result = createEngine(game, { project: project as unknown as NonNullable<CreateOptions["project"]> });
+    if (result.ok) { result.value.destroy(); throw new Error("invalid project startup accepted"); }
+    return result.reason;
+  });
+  defaults.destroy();
+  replay.value.destroy();
+  engine.destroy();
+} else if (which === "rng") {
   const { default: game, Repro } = await import("../fixtures/rng-readonly/src/main.ts");
   const engine = start(game);
   const advanced = engine.advance(3);

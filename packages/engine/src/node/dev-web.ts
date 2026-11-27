@@ -2,7 +2,7 @@
 // the open page (the web half of `og dev`; the UI gallery's live edits, for any project).
 //
 //   bun src/node/dev-web.ts --project <dir> --entry <src/main.ts> [--port P] [--host H]
-//                           [--og <og binary>] [--settings <json>]
+//                           [--og <og binary>]
 //
 // og-cli's `og dev --web` runs it. The page is a development build (`webBuild`, `live`): the
 // inspector (F1, gizmos), Tune, Pause and Step and every probe member, the engine running in the
@@ -11,7 +11,7 @@
 // which cooked files changed and the page applies them in place (`devFiles`: the world, the code
 // and the UI kept). A change under src/ bundles the game's own code alone (build.ts `web-code`,
 // tens of milliseconds) and the page swaps it in (`devCode`: snapshot, swap, restore). Only a
-// cold restart (project.ogt changed, or the first build) reloads the page.
+// cold restart (project/module/schema/helper inputs changed, or the first build) reloads the page.
 //
 // Every URL the page uses is relative, so it may be served under a prefix (a proxy's ticket
 // path). The server's own routes are under `_dev/` (docs/web-export.md §og dev --web):
@@ -28,11 +28,13 @@
 //   GET  cooked/<path> the project's live cooked bundle; any other path: the build's files.
 // Every response is no-store; the build has no service worker.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { bundleGame } from "./build.ts";
-import { DEFAULT_PUBLISH, settingsOf, webBuild, type ProjectSettings, type PublishSettings } from "./web-build.ts";
+import { readProject } from "./project.ts";
+import { readProjectMetadata } from "./project-metadata.ts";
+import { settingsOf, webBuild } from "./web-build.ts";
 
 interface Socket {
   send(text: string): void;
@@ -56,16 +58,10 @@ function arg(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 const project = resolve(arg("--project") ?? ".");
-const entry = resolve(project, arg("--entry") ?? "src/main.ts");
+let entry = resolve(project, arg("--entry") ?? "src/main.ts");
 const port = Number(arg("--port") ?? process.env.PORT ?? 47810);
 const host = arg("--host") ?? "127.0.0.1";
 const og = arg("--og") ?? "og";
-const settings: ProjectSettings = (() => {
-  const given = arg("--settings");
-  if (!given) return settingsOf(project);
-  const s = JSON.parse(given) as Omit<ProjectSettings, "publish"> & { publish?: Partial<PublishSettings> };
-  return { ...s, publish: { ...DEFAULT_PUBLISH, ...s.publish } };
-})();
 const out = join(project, "og-out", "dev-web");
 const codeDir = join(out, "_dev");
 const cookedDir = join(project, "cooked");
@@ -78,7 +74,7 @@ function stat(path: string): ReturnType<typeof statSync> | undefined {
   }
 }
 /** Every file under `dir` (dot files included: the cooked manifest is `.cook.ogt`) by its size and mtime. */
-function stamps(dir: string, into = new Map<string, string>(), base = dir): Map<string, string> {
+function stamps(dir: string, into = new Map<string, string>(), base = dir, inputs = false): Map<string, string> {
   let entries: string[];
   try {
     entries = readdirSync(dir);
@@ -86,10 +82,12 @@ function stamps(dir: string, into = new Map<string, string>(), base = dir): Map<
     return into;
   }
   for (const e of entries) {
+    if (inputs && (e.startsWith(".") || ["node_modules", "target", "cooked", "og-out", "dist"].includes(e))) continue;
     const p = join(dir, e);
-    const s = stat(p);
-    if (!s) continue;
-    if (s.isDirectory()) stamps(p, into, base);
+    let s: ReturnType<typeof lstatSync>;
+    try { s = lstatSync(p); } catch { continue; }
+    if (s.isSymbolicLink()) continue;
+    if (s.isDirectory()) stamps(p, into, base, inputs);
     else into.set(relative(base, p).split(sep).join("/"), `${s.size}:${Math.floor(s.mtimeMs)}`);
   }
   return into;
@@ -135,47 +133,62 @@ async function runOg(args: string[]): Promise<{ ok: boolean; out: string }> {
 }
 
 let codeCount = 0;
+let building = false;
 /** Cook, export the development build and start watching: the first build and every cold restart. */
 async function coldBuild(): Promise<void> {
+  if (building) return;
+  building = true;
+  // Snapshot BEFORE the build: an edit during an await must trigger another
+  // pass, not be swallowed by a post-build snapshot of unchecked inputs.
+  seenProject = projectInputs();
+  seenSrc = stamps(join(project, "src"));
   const t0 = performance.now();
   ready = false;
   stopCooker();
-  const cooked = await runOg(["cook", project]);
-  if (!cooked.ok) {
-    errors.build = `og cook: ${cooked.out}`;
-    console.error(errors.build);
-    tellError(["project.ogt"]);
-    // The cook watches anyway: the next edit may fix it.
+  try {
+    const settings = settingsOf(project);
+    entry = resolve(project, readProject(project)!.input.entry);
+    const cooked = await runOg(["cook", project]);
+    if (!cooked.ok) {
+      errors.build = `og cook: ${cooked.out}`;
+      console.error(errors.build);
+      tellError(["project.ts", "og-project.json"]);
+      // The cook watches anyway: the next edit may fix it.
+      startCooker();
+      return;
+    }
+    const b = await webBuild(project, entry, out, false, settings, true);
+    if (!b.ok) {
+      errors.build = `og build: ${b.reason}`;
+      console.error(errors.build);
+      tellError(["project.ts", "og-project.json"]);
+      startCooker();
+      return;
+    }
+    errors.build = errors.cook = errors.code = errors.check = null;
+    mkdirSync(codeDir, { recursive: true });
+    // The page's live client and the gate: a development page plays at once.
+    build = `${Date.now().toString(36)}`;
+    const index = join(out, "index.html");
+    writeFileSync(index, readFileSync(index, "utf8").replace(/"gate":"tap"/, '"gate":"none"').replace("</body>", `<meta name="og-dev-build" content="${build}">\n<script type="module" src="./_dev/client.js"></script>\n</body>`));
+    writeFileSync(join(codeDir, "client.js"), readFileSync(join(here, "dev-web-client.js"), "utf8"));
+    seq = 0;
+    fileSeq.clear();
+    code = null;
+    codeCount = 0;
     startCooker();
-    return;
-  }
-  const b = await webBuild(project, entry, out, false, settings, true);
-  if (!b.ok) {
-    errors.build = `og build: ${b.reason}`;
+    ready = true;
+    const ms = Math.round(performance.now() - t0);
+    last = { kind: "reload", ms, at: Date.now() };
+    console.log(`og dev --web: built ${relative(process.cwd(), out) || out} in ${ms} ms (build ${build})`);
+    tell({ type: "reload", build });
+  } catch (e) {
+    errors.build = String(e);
     console.error(errors.build);
-    tellError(["project.ogt"]);
-    startCooker();
-    return;
+    tellError(["project.ts", "og-project.json"]);
+  } finally {
+    building = false;
   }
-  errors.build = errors.cook = errors.code = errors.check = null;
-  mkdirSync(codeDir, { recursive: true });
-  // The page's live client and the gate: a development page plays at once.
-  build = `${Date.now().toString(36)}`;
-  const index = join(out, "index.html");
-  writeFileSync(index, readFileSync(index, "utf8").replace(/"gate":"tap"/, '"gate":"none"').replace("</body>", `<meta name="og-dev-build" content="${build}">\n<script type="module" src="./_dev/client.js"></script>\n</body>`));
-  writeFileSync(join(codeDir, "client.js"), readFileSync(join(here, "dev-web-client.js"), "utf8"));
-  seq = 0;
-  fileSeq.clear();
-  code = null;
-  codeCount = 0;
-  seenSrc = stamps(join(project, "src"));
-  seenProject = stat(join(project, "project.ogt"))?.mtimeMs ?? 0;
-  startCooker();
-  ready = true;
-  const ms = Math.round(performance.now() - t0);
-  last = { kind: "reload", ms, at: Date.now() };
-  console.log(`og dev --web: built ${relative(process.cwd(), out) || out} in ${ms} ms (build ${build})`);
-  tell({ type: "reload", build });
 }
 
 // ── assets: one long-running cook ───────────────────────────────────────────
@@ -258,9 +271,12 @@ let warming: Promise<void> | null = null;
 function warmPacks(stylesDir: string | null): Promise<void> {
   if (!stylesDir || warming) return warming ?? Promise.resolve();
   warming = (async () => {
-    const projectText = readFileSync(join(project, "project.ogt"), "utf8");
-    const lookRel = /^\s*look\s+"([^"]+)"/m.exec(projectText)?.[1];
-    if (!lookRel || lookRel.startsWith("@")) return;
+    const checked = readProject(project)!;
+    const metadata = readProjectMetadata(project);
+    const look = metadata.look;
+    if (!look || typeof look === "string" || !look.$ogRef.startsWith("base/")) return;
+    // Removed with the scanned look catalogue in P1, not a project DSL reader.
+    const lookRel = `${look.$ogRef.slice("base/".length)}.ogt`;
     const lookFile = join(project, "assets", lookRel);
     const lookText = stat(lookFile)?.isFile() ? readFileSync(lookFile, "utf8") : "";
     const current = /^\s*ui\s+"([^"]+)"/m.exec(lookText)?.[1] ?? "default";
@@ -273,7 +289,10 @@ function warmPacks(stylesDir: string | null): Promise<void> {
       rmSync(dir, { recursive: true, force: true });
       mkdirSync(dirname(join(dir, "assets", lookRel)), { recursive: true });
       mkdirSync(dirname(join(dir, entryRel)), { recursive: true });
-      writeFileSync(join(dir, "project.ogt"), projectText);
+      writeFileSync(join(dir, "og-project.json"), JSON.stringify(metadata));
+      const { entry: _entry, modules: _modules, packs: _packs, dependsOn: _dependsOn,
+        roots: _roots, scenes: _scenes, scene: _scene, flow: _flow, schemas: _schemas, ...input } = checked.input;
+      writeFileSync(join(dir, "project.ts"), `import {defineProject} from '@origingame/engine/author';\nexport default defineProject(${JSON.stringify({ ...input, entry: entryRel })});\n`);
       const ui = /^\s*ui\s+"[^"]*"/m.test(lookText) ? lookText.replace(/^(\s*)ui\s+"[^"]*"/m, `$1ui "${pack}"`) : `${lookText.trimEnd()}\nui "${pack}"\n`;
       writeFileSync(join(dir, "assets", lookRel), ui);
       writeFileSync(join(dir, entryRel), "export default null;\n");
@@ -303,7 +322,11 @@ async function check(edits: string[]): Promise<void> {
 }
 
 let seenSrc = new Map<string, string>();
-let seenProject = 0;
+function projectInputs(): Map<string, string> {
+  return new Map([...stamps(project, new Map(), project, true)].filter(([p]) =>
+    p !== "project.ogt" && !p.startsWith("assets/") && (!p.startsWith("src/") || p.startsWith("src/schema/"))));
+}
+let seenProject = projectInputs();
 let bundling = false;
 let again = false;
 async function bundleCode(edits: string[]): Promise<void> {
@@ -343,11 +366,11 @@ async function bundleCode(edits: string[]): Promise<void> {
 }
 
 setInterval(() => {
-  if (!build) return;
-  const pm = stat(join(project, "project.ogt"))?.mtimeMs ?? 0;
-  if (pm !== seenProject) {
+  if (building) return;
+  const pm = projectInputs();
+  if (changed(seenProject, pm).length || [...seenProject.keys()].some(k => !pm.has(k))) {
     seenProject = pm;
-    console.log("project.ogt changed: a cold restart");
+    console.log("project author inputs changed: a cold restart");
     void coldBuild();
     return;
   }
@@ -355,6 +378,7 @@ setInterval(() => {
   const edits = [...changed(seenSrc, now), ...[...seenSrc.keys()].filter((k) => !now.has(k))];
   if (!edits.length) return;
   seenSrc = now;
+  if (!ready) { void coldBuild(); return; }
   const shown = edits.map((p) => `src/${p}`);
   void bundleCode(shown);
   void check(shown);

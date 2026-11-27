@@ -185,9 +185,6 @@ pub fn move_asset(root: &Path, from: &str, to: &str) -> Result<MoveReport, Strin
     }
     let mut paths = Vec::new();
     documents(&assets, &mut paths)?;
-    if root.join("project.ogt").is_file() {
-        paths.push(root.join("project.ogt"));
-    }
     paths.extend(assets::game_typescript(&root)?);
     paths.extend(moves.keys().cloned());
     paths.sort();

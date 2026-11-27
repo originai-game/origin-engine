@@ -391,7 +391,7 @@ impl Stage<'_> {
             .arg("--root")
             .arg(&self.project.root)
             .arg("--project")
-            .arg(self.scratch.join("project.ogt"))
+            .arg(&self.scratch)
             .arg("--size")
             .arg(format!("{}x{}", size.0, size.1))
             .arg("--json")
@@ -1018,7 +1018,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         return Err((
             1,
             format!(
-                "{}: no project.ogt; a preview plays an effect of a project's assets (--project DIR)",
+                "{}: no og-project.json; a preview plays an effect of a project's assets (--project DIR)",
                 p.root.display()
             ),
         ));
@@ -1076,20 +1076,22 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     // Runtime metadata is deliberately isolated from the project's boot
     // scene, seed and look. Assets still come from the project's bundle.
     std::fs::write(
-        scratch.join("project.ogt"),
-        format!("type project\nversion 1\n---\ncreate {{\nform \"{dim}\"\n}}\n"),
+        scratch.join("og-project.json"),
+        json!({"version": 1, "engine": p.engine, "name": "VFX preview"}).to_string(),
     )
     .map_err(|e| fail(e.to_string()))?;
+    std::fs::write(scratch.join("entry.ts"), "export {};\n").map_err(|e| fail(e.to_string()))?;
+    std::fs::write(scratch.join("project.ts"), format!(
+        "import {{ defineProject }} from '@origingame/engine/author';\nexport default defineProject({{id:'vfx-preview',entry:'entry.ts',create:{{form:'{dim}'}}}});\n"
+    )).map_err(|e| fail(e.to_string()))?;
     let look = if a.project_look {
-        let text =
-            std::fs::read_to_string(p.root.join("project.ogt")).map_err(|e| fail(e.to_string()))?;
-        let doc = og_core::ogt::Document::parse(&text).map_err(|e| fail(e.to_string()))?;
-        og_cook::look::project_look(&doc.body)
-            .map_err(fail)?
+        crate::project::snapshot(&p.root).map_err(fail)?["startup"]["look"]
+            .as_str()
+            .map(str::to_owned)
             .ok_or_else(|| {
                 (
                     2,
-                    "--project-look requires project.ogt's look declaration".into(),
+                    "--project-look requires og-project.json's look declaration".into(),
                 )
             })?
     } else {

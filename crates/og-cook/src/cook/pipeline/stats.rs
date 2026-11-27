@@ -46,7 +46,6 @@ use crate::format::{self, codec, kind};
 use crate::runtime::Bundle;
 use og_ai::nav::cooked::BundleNav;
 use og_anim::cooked::BundleAnim;
-use og_core::ogt::Block;
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -115,70 +114,7 @@ impl Default for Budgets {
     }
 }
 
-pub(in crate::cook) const KEYS: [&str; 14] = [
-    "triangles",
-    "vertices",
-    "textureSize",
-    "bones",
-    "clips",
-    "assetBytes",
-    "totalBytes",
-    "soundSeconds",
-    "videoSeconds",
-    "navPolygons",
-    "sceneEntities",
-    "emitterParticles",
-    "bvhShare",
-    "gpuBytes",
-];
-
 impl Budgets {
-    /// The budgets of a project manifest's body: its `budgets { }` block
-    /// over the defaults. `Err` names an unknown key or a value that is not
-    /// a whole number.
-    pub fn from_project(body: &Block) -> Result<Budgets, String> {
-        let mut b = Budgets::default();
-        let Some(block) = body.get("budgets").and_then(|e| e.block.as_ref()) else {
-            return Ok(b);
-        };
-        for e in &block.entries {
-            let v = e
-                .number(0)
-                .ok()
-                .and_then(|n| n.as_u64().ok())
-                .ok_or_else(|| {
-                    format!(
-                        "project.ogt line {}: budgets.{} takes a whole number",
-                        e.line, e.key
-                    )
-                })?;
-            match e.key.as_str() {
-                "triangles" => b.triangles = v,
-                "vertices" => b.vertices = v,
-                "textureSize" => b.texture_size = v,
-                "bones" => b.bones = v,
-                "clips" => b.clips = v,
-                "assetBytes" => b.asset_bytes = v,
-                "totalBytes" => b.total_bytes = v,
-                "soundSeconds" => b.sound_seconds = v,
-                "videoSeconds" => b.video_seconds = v,
-                "navPolygons" => b.nav_polygons = v,
-                "sceneEntities" => b.scene_entities = v,
-                "emitterParticles" => b.emitter_particles = v,
-                "bvhShare" => b.bvh_share = v,
-                "gpuBytes" => b.gpu_bytes = v,
-                k => {
-                    return Err(format!(
-                        "project.ogt line {}: unknown budget '{k}' (expected {})",
-                        e.line,
-                        KEYS.join(", ")
-                    ));
-                }
-            }
-        }
-        Ok(b)
-    }
-
     pub fn to_json(&self) -> Value {
         json!({
             "triangles": self.triangles,

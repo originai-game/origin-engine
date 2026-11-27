@@ -57,7 +57,7 @@ functions, importing this file itself (its `bin/knowledge.ts`).
 import { artBrief, readLook, presetLook } from "@origingame/create-game/bin/create.ts";
 // or, in a game: node_modules/@origingame/engine/knowledge/scripts/brief.ts
 
-const look = readLook("path/to/game");           // project.ogt's look, flattened
+const look = readLook("path/to/game");           // checked JSON/TS project's look, flattened
 const brief = artBrief(look, "sprite", "a lantern keeper with a long coat", {
   references: ["assets/sprites/courier.png"],    // accepted assets of the game
 });
@@ -108,14 +108,18 @@ break, with a `changelog.json` breaking entry):
 - `ArtBrief { kind, subject, style, medium: "image" | "model", prompt,
   avoid, palette, references: BriefReference[], image?: ImageParams,
   model?: ModelParams, ui?: UiParams }`.
-- `readLook(projectDir, options?)`: a project's look from disk:
-  project.ogt's `look "looks/<id>.ogt"` and creation form (`create { form }`, `profileOf`), the look's
+- `readLook(projectDir, options?)`: a project's look from the restricted
+  `og project --json` snapshot: og-project.json's look and project.ts's creation
+  form (`create.form`, `profileOf`), the look's
   `extends` chain through the game's own looks (a slug names the game's
   `assets/looks/<slug>.ogt` first, a path another look under `assets/`)
   merged field by field over the preset as the cook flattened it in the
   variant and mood the chain asks (`presets/`), the palette
   file, the entry and its preview. `presetLook(slug, options?)`: a preset
   alone, for a game not written yet (the platform's style step).
+  `readLook` and `readAudioChoices` require the matching installed `og` on PATH
+  (or `OG_BIN`); neither executes TS in Bun. Their signatures and result shapes
+  are unchanged. `presetLook` and `artBrief` need no executable.
 - `parsePalette(file, text)` and `colourName(hex)`: a `.hex` or `.gpl`
   palette as named colours.
 - `rigParts(template: string): RigPart[]`: the layers

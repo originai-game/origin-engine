@@ -45,17 +45,12 @@ const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md|ou
 /// project (`og doctor --project` reads it there).
 pub const COOK_REPORT: &str = "og-out/cook-report.json";
 
-/// The budgets of the project at `root` (project.ogt's `budgets { }` over
-/// the defaults; the defaults without a manifest).
+/// Checked project.ts report budgets over the report defaults.
 pub fn budgets(root: &Path) -> Result<og_cook::cook::stats::Budgets, String> {
-    match std::fs::read_to_string(root.join("project.ogt")) {
-        Ok(text) => {
-            let doc =
-                og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
-            og_cook::cook::stats::Budgets::from_project(&doc.body)
-        }
-        Err(_) => Ok(og_cook::cook::stats::Budgets::default()),
-    }
+    let project = og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    Ok(og_cook::cook::stats::Budgets::from_json(
+        &project.data.root().into_json()["budgets"],
+    ))
 }
 
 /// Writes `cook-report.json` for a finished cook at `path`; returns its
@@ -78,83 +73,39 @@ pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<Ve
         .collect())
 }
 
-/// The texture options of the project at `root`: project.ogt's `cook {
-/// color_textures uastc|etc1s }` (etc1s without it), which `publish {
-/// color_textures ... }` overrides for the web export (`web`: `og build`,
-/// `og run --device`). The defaults without a manifest.
+/// Checked cook texture settings; publish overrides apply to web exports.
 pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String> {
+    use og_cook::cook::source_schemas::project::ColorEncoding;
+    let project = og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
     let mut o = TextureOptions::default();
-    let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) else {
-        return Ok(o);
-    };
-    let doc = og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
-    let blocks: &[&str] = if web { &["cook", "publish"] } else { &["cook"] };
-    for name in blocks {
-        let Some(block) = doc.body.get(name).and_then(|e| e.block.as_ref()) else {
-            continue;
-        };
-        if *name == "cook" {
-            og_cook::grammar::check(block, og_cook::project::COOK, "project.ogt cook")?;
-        }
-        for e in &block.entries {
-            match e.key.as_str() {
-                "color_textures" => {
-                    let v = e
-                        .values
-                        .first()
-                        .and_then(|v| v.as_word().or_else(|| v.as_str()));
-                    o.color_uastc = match v {
-                        Some("uastc") => true,
-                        Some("etc1s") => false,
-                        _ => {
-                            return Err(format!(
-                                "project.ogt:{}: {name}.color_textures is `{}`; use etc1s (the default, a quarter of the bytes) or uastc (no 4x4 block colour loss)",
-                                e.line,
-                                v.unwrap_or("")
-                            ));
-                        }
-                    };
-                }
-                // The models' (`mesh_options`), and the bundles the
-                // project's assets may name (og-cook's `cook { uses }`).
-                "clusters" | "uses" => {}
-                // The publish block's other settings are the export's
-                // (`publish.rs`).
-                _ if *name == "publish" => {}
-                other => {
-                    return Err(format!(
-                        "project.ogt:{}: cook has no `{other}`; it takes color_textures, clusters and uses",
-                        e.line
-                    ));
-                }
-            }
-        }
+    let encoding = web
+        .then(|| {
+            project
+                .input
+                .publish
+                .as_ref()
+                .and_then(|p| p.color_textures.as_ref())
+        })
+        .flatten()
+        .or_else(|| {
+            project
+                .input
+                .cook
+                .as_ref()
+                .and_then(|c| c.color_textures.as_ref())
+        });
+    if let Some(encoding) = encoding {
+        o.color_uastc = matches!(encoding, ColorEncoding::Uastc);
     }
     Ok(o)
 }
 
-/// The mesh options of the project at `root`: project.ogt's `cook {
-/// clusters false }` cooks no meshlet clusters (og-cook's
-/// `MeshOptions::clusters`; true without it). The defaults without a
-/// manifest.
+/// Checked project.ts mesh settings, preserving the cooker's defaults.
 pub fn mesh_options(root: &Path) -> Result<og_cook::cook::MeshOptions, String> {
+    let project = og_cook::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
     let mut o = og_cook::cook::MeshOptions::default();
-    let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) else {
-        return Ok(o);
-    };
-    let doc = og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
-    let entry = doc
-        .body
-        .get("cook")
-        .and_then(|e| e.block.as_ref())
-        .and_then(|b| b.get("clusters"));
-    if let Some(e) = entry {
-        o.clusters = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-            format!(
-                "project.ogt:{}: cook.clusters takes true (the default: meshlet clusters for frames culled on the GPU) or false (none, a tenth fewer model bytes)",
-                e.line
-            )
-        })?;
+    if let Some(clusters) = project.input.cook.and_then(|c| c.clusters) {
+        o.clusters = clusters;
     }
     Ok(o)
 }
@@ -214,6 +165,7 @@ pub fn cook_with(
     publish: bool,
     code: CodeGraph,
 ) -> Result<Report, String> {
+    crate::author_types::ensure(root)?;
     let options = options(root, threads, web, code)?;
     let options = CookOptions { publish, ..options };
     let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;
@@ -359,19 +311,16 @@ pub fn slowest_lines(r: &Report) -> Vec<String> {
 /// took against the reload budget. One process: what an earlier cook
 /// parsed and did not change is not parsed again.
 fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> ExitCode {
-    // The watch follows the assets; the code's graph is read once.
-    let code = match code_graph(root) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("{e}");
-            return ExitCode::FAILURE;
-        }
-    };
     let assets = root.join("assets");
-    let mut watched = vec![assets.clone()];
+    let mut watched = Vec::new();
     watched.extend(og_cook::cook::look::styles_dir().map(Path::to_path_buf));
     let take = || {
         let mut m = BTreeMap::new();
+        for file in og_cook::cook::source_project::files(root).unwrap_or_default() {
+            if let Ok(time) = std::fs::metadata(&file).and_then(|m| m.modified()) {
+                m.insert(file, time);
+            }
+        }
         for w in &watched {
             if w.is_file() {
                 if let Ok(t) = std::fs::metadata(w).and_then(|m| m.modified()) {
@@ -427,14 +376,9 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
             .map(|c| c.strip_prefix(&assets).unwrap_or(c))
             .map(|c| c.to_string_lossy().replace('\\', "/"))
             .collect();
-        let options = match options(root, threads, false, code.clone()) {
-            Ok(o) => o,
-            Err(e) => {
-                eprintln!("og cook: {e}");
-                continue;
-            }
-        };
-        match cook_project(root, &options) {
+        // Refresh bootstrap, generated types and the runtime import graph on
+        // every edit; keeping the first graph loses newly imported assets.
+        match cook(root, threads, false) {
             Ok(r) if json => {
                 let cooked: Vec<serde_json::Value> = r
                     .cooked_assets()
@@ -481,6 +425,13 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
                     if r.elapsed_ms <= budget { "" } else { ", OVER" }
                 );
             }
+            Err(e) if json => println!(
+                "{}",
+                serde_json::json!({
+                    "event": "cook", "n": cooks, "ok": false,
+                    "changed": changed, "errors": [e],
+                })
+            ),
             Err(e) => eprintln!("og cook: {e}"),
         }
         if exit_after.is_some_and(|n| cooks >= n) {

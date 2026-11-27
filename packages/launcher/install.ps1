@@ -26,6 +26,11 @@ __OG_MINISIGN__
 '@
 [IO.File]::WriteAllText((Join-Path $dir 'lib\engine\src\node\minisign.ts'), $minisign.Replace("`r`n", "`n"), $utf8)
 
+$project = @'
+__OG_PROJECT__
+'@
+[IO.File]::WriteAllText((Join-Path $dir 'lib\engine\src\node\project-metadata.ts'), $project.Replace("`r`n", "`n"), $utf8)
+
 $shim = "@echo off`r`nsetlocal`r`n" +
   "set `"OG_BUN=bun`"`r`n" +
   "where bun >nul 2>nul || set `"OG_BUN=%USERPROFILE%\.bun\bin\bun.exe`"`r`n" +

@@ -53,6 +53,7 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { referencedModules } from "./modules.ts";
+import { readProject, type CheckedProject } from "./project.ts";
 import type { EngineModules } from "../web/split.ts";
 import bindingsJson from "../../types/bindings.json" with { type: "json" };
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -202,8 +203,9 @@ export type GameProfile = "2d" | "3d";
 export interface ProjectSettings {
   readonly name: string;
   readonly id: string;
-  /** The engine version project.ogt pins. */
+  /** The engine version og-project.json pins. */
   readonly engine: string;
+  readonly startup?: CheckedProject["startup"];
   readonly publish: PublishSettings;
 }
 
@@ -230,15 +232,15 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   modules: "cdn",
 };
 
-/** The settings of a project read without og (tests): name, id and engine; publish defaults. */
+/** The checked bootstrap snapshot plus publish defaults; requires matching og. */
 export function settingsOf(project: string): ProjectSettings {
-  const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
-  const word = (key: string) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(text)?.[1];
+  const checked = readProject(project);
   return {
-    name: word("name") ?? "Origin Engine game",
-    id: word("id") ?? "game",
-    engine: word("engine") ?? ENGINE_VERSION,
-    publish: DEFAULT_PUBLISH,
+    name: checked?.name ?? "Origin Engine game",
+    id: checked?.id ?? "game",
+    engine: checked?.engine ?? ENGINE_VERSION,
+    ...(checked ? {startup: checked.startup} : {}),
+    publish: {...DEFAULT_PUBLISH, ...checked?.publish},
   };
 }
 
@@ -758,7 +760,7 @@ async function probeOfUncached(glue: string, wasm: string, profile: "2d" | "3d")
     const { readFileSync } = await import("node:fs");
     const { fileModuleHost } = await import(${JSON.stringify(pathToFileURL(join(here, "modules.ts")).href)});
     await loadWebHost(glue, readFileSync(${JSON.stringify(wasm)}), undefined, fileModuleHost(${JSON.stringify(dirname(wasm))}));
-    const e = createEngine(og.game({}), ${profile === "2d" ? `{ project: ${JSON.stringify('type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n')} }` : "{}"});
+    const e = createEngine(og.game({}), {project: {profile: ${JSON.stringify(profile)}}});
     if (!e.ok) throw new Error(e.reason);
     const hello = JSON.parse(e.value.call(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "hello", params: {} }))).result;
     console.log(JSON.stringify({ build: hello.build, members: hello.members }));
@@ -978,7 +980,7 @@ function outRefusal(project: string, out: string): string | null {
   if (up === "" || !(up === ".." || up.startsWith(`..${sep}`) || isAbsolute(up))) return `${out} is the project or contains it; give an output directory inside or beside the project (default dist)`;
   if (!existsSync(target)) return null;
   if (!statSync(target).isDirectory()) return `${out} is a file, not a directory`;
-  if (existsSync(join(target, "project.ogt"))) return `${out} holds a project.ogt; give an output directory of its own (default dist)`;
+  if (existsSync(join(target, "og-project.json"))) return `${out} holds an og-project.json; give an output directory of its own (default dist)`;
   if (readdirSync(target).length > 0 && !existsSync(join(target, BUILD_MANIFEST))) return `${out} is not empty and holds no ${BUILD_MANIFEST} from an earlier build, so og build will not replace it; empty or remove it, or give another output directory`;
   return null;
 }
@@ -1029,11 +1031,11 @@ export async function webBuild(project: string, entry: string, out: string, publ
   let projectIcon: { bytes: Uint8Array; size: number } | null = null;
   if (p.icon) {
     const file = resolve(project, p.icon);
-    if (!existsSync(file)) return fail(`project.ogt publish.icon: ${p.icon} does not exist; give a square PNG of at least 192 px, or remove the line for the brand tile`);
+    if (!existsSync(file)) return fail(`project.ts publish.icon: ${p.icon} does not exist; give a square PNG of at least 192 px, or remove the property for the brand tile`);
     const bytes = new Uint8Array(readFileSync(file));
     const size = pngSize(bytes);
-    if (!size) return fail(`project.ogt publish.icon: ${p.icon} is not a PNG; give a square PNG of at least 192 px`);
-    if (size.width !== size.height || size.width < 192) return fail(`project.ogt publish.icon: ${p.icon} is ${size.width}x${size.height}; give a square PNG of at least 192 px (512 px is best)`);
+    if (!size) return fail(`project.ts publish.icon: ${p.icon} is not a PNG; give a square PNG of at least 192 px`);
+    if (size.width !== size.height || size.width < 192) return fail(`project.ts publish.icon: ${p.icon} is ${size.width}x${size.height}; give a square PNG of at least 192 px (512 px is best)`);
     projectIcon = { bytes, size: size.width };
   }
   rmSync(out, { recursive: true, force: true });
@@ -1187,9 +1189,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     telemetry: p.telemetry,
     build: publish ? "publish" : "dev",
     name: settings.name,
-    // project.ogt's text: the engine takes its tick, seed, scenes and scene
-    // for what GameDesc leaves unset (CreateOptions.project).
-    ...(existsSync(join(project, "project.ogt")) ? { project: readFileSync(join(project, "project.ogt"), "utf8") } : {}),
+    ...(settings.startup ? {project: settings.startup} : {}),
     isolation: p.isolation,
     fit: p.fit,
     aspect: aspectRatio(p.aspect),
