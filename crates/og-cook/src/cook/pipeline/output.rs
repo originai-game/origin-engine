@@ -395,6 +395,16 @@ pub(crate) fn write(
         streams: Vec::new(),
         motion: None,
         preload: Vec::new(),
+        lightmaps: sources
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| reports[*i].error.is_none())
+            .filter_map(|(_, s)| {
+                s.lightmap
+                    .as_ref()
+                    .map(|p| (p.file.scene.clone(), s.rel.clone()))
+            })
+            .collect(),
     };
     let mut keep: BTreeSet<String> = BTreeSet::new();
     for (si, outs) in new_outputs {

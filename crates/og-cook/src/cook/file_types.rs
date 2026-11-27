@@ -87,6 +87,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "navmesh" {
                 out.push_str("Output: a baked navigation mesh loaded with og.nav.load, with one mesh per agent profile. Scene, placed model and terrain operands are canonical refs, not file paths. Cook captures imported geometry once; planning and execution do not reopen model files. Terrain uses the writer's shared checked surface. Areas explicitly select box, cylinder or convex shape and retain written overlap order. Link IDs are exact u32 values and unique; unnamed profiles take precedence, otherwise the first is default. No navigation author OGT parser remains. See world.\n\n");
             }
+            if ty == "lightmap" {
+                out.push_str("Output: native lighting tables and captured RGBA16F KTX2 pages. og bake lightmaps writes TS under content/lightmaps/ and pages plus dense binary bindings under assets/lightmaps/; rebaking retains existing declaration ownership. Tracked input.bytes feeds typed arrays rather than huge TS literals. UVs are flat u/v/page triples; probes have twelve flat RGB coefficients each. Scene/model assets are canonical refs; HLOD uses {hlodProxy: nodeNumber} with an empty entity. Hashes are hexadecimal strings. Pages use an explicit owning-module assets/ or sources/ path. The bundle explicitly associates at most one lightmap per scene. Warm cooks capture inputs before stamp lookup. No lightmap author text parser remains.\n\n");
+            }
             if matches!(ty, "shader" | "post" | "ui-material") {
                 out.push_str("Output: checked WGSL and ordered typed uniforms, loaded with og.load.shader, og.load.post or og.load.uiMaterial. Use code: input.text('sources/example.wgsl') for an external WGSL file; imports and exact input bytes enter the shared evaluator/cache key. Shader mode explicitly selects hooks, sprite or full with lit. Parameters select float/vec2/vec3/vec4/color; defaults are zero and colors are linear RGB. Native checks and naga validate the existing WGSL contracts for SPIR-V, MSL and HLSL before writing the binary payload. No shader-family author OGT or runtime text parser remains. See render and ui-materials.\n\n");
             }
@@ -279,21 +282,6 @@ pub fn markdown() -> Result<String, String> {
                         }
                     }
                 }
-            }
-            "lightmap" => {
-                out.push_str("Field coverage: derived bake record root and nested fields. Normally written by og bake lightmaps, not hand-authored; stale scene/geometry bindings require a new bake. Numeric arrays may span repeated lines. Unknown fields are refused.\n\n");
-                table(&mut out, og_bundle::lightmap::LINES);
-                block(&mut out, "lightmap.model", og_bundle::lightmap::MODEL_LINES);
-                block(
-                    &mut out,
-                    "lightmap.model.part",
-                    og_bundle::lightmap::PART_LINES,
-                );
-                block(
-                    &mut out,
-                    "lightmap.volume",
-                    og_bundle::lightmap::VOLUME_LINES,
-                );
             }
             "table" => {
                 out.push_str("Field coverage: shared table parser structure and value forms. Row field names, types and defaults belong to the game's reflected record. The engine supplies no item, wave or gameplay schema.\n\n");

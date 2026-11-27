@@ -260,19 +260,18 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
 /// the scene and the proxy (`og bake lightmaps` writes an entry per proxy,
 /// keyed by its asset).
 fn light(eng: &Engine, scene: &str, owner: usize, tree: &Tree) {
-    let lightmap_id = og_bundle::lightmap::lightmap_id(scene);
     let lm = {
         let assets = eng.assets.borrow();
-        let Ok((bundle, _)) = assets.bundle_from(&lightmap_id, Some(owner)) else {
+        let Ok((bundle, _)) = assets.bundle_from(scene, Some(owner)) else {
             return;
         };
-        if bundle.output(&lightmap_id).is_err() {
-            return;
-        }
-        let Ok((bytes, bundle)) = assets.blob_from(&lightmap_id, Some(owner)) else {
+        let Some(lightmap_id) = bundle.manifest().lightmaps.get(scene) else {
             return;
         };
-        let Ok(lm) = bundle.lightmap(&lightmap_id, bytes.bytes()) else {
+        let Ok((bytes, bundle)) = assets.blob_from(lightmap_id, Some(owner)) else {
+            return;
+        };
+        let Ok(lm) = bundle.lightmap(lightmap_id, bytes.bytes()) else {
             return;
         };
         let scene_hash = bundle.asset(scene).map(|a| a.source_hash).unwrap_or(0);

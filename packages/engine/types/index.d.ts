@@ -14765,7 +14765,7 @@ export interface BakedScene {
   /** Its lightmap and probes are loaded and drawn. */
   readonly baked: boolean;
   /**
-   * Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked.
+   * Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked.
    */
   readonly reason: string;
   /** Static model instances drawn with the lightmap. */

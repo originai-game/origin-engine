@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "lightmap author input and og bake lightmaps",
+    "change": "Baked lighting is checked TypeScript with explicit scene associations in the cooked manifest. The author OGT parser, writer and filename-based lookup have been removed. Native tables and captured KTX2 bytes are the sole runtime payload.",
+    "fix": "Run og bake lightmaps to write content/lightmaps/**/*.ts plus assets/lightmaps/**/*.pages.ktx2 and *.bindings.bin in the scene module; re-baking retains existing declaration ownership. Dense arrays use tracked input.bytes and typed arrays (flat u/v/page triples and twelve coefficients per probe). Reference scenes/models with canonical content refs; HLOD records use {hlodProxy: nodeNumber} and an empty entity. Re-cook and install matching hosts; old lightmap files and blobs are not supported."
+  }]
+}

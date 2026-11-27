@@ -12,7 +12,7 @@ One instantiated scene's baked lighting, as og.render.bakedLighting reports it.
 |---|---|---|---|---|---|---|
 | `scene` | `string` | `""` | — | — | — | The scene's asset id, such as `scenes/cornell.ogt`. |
 | `baked` | `boolean` | `false` | — | — | — | Its lightmap and probes are loaded and drawn. |
-| `reason` | `string` | `""` | — | — | — | Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked. |
+| `reason` | `string` | `""` | — | — | — | Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked. |
 | `models` | `number` | `0` | — | — | — | Static model instances drawn with the lightmap. |
 | `pages` | `number` | `0` | — | — | — | Lightmap pages (RGBA16F texture array layers). |
 | `texels` | `number` | `0` | — | — | — | The pages' side in texels. |
@@ -24,7 +24,7 @@ struct BakedScene {
   doc "One instantiated scene's baked lighting, as og.render.bakedLighting reports it."
   field scene String "The scene's asset id, such as `scenes/cornell.ogt`."
   field baked bool "Its lightmap and probes are loaded and drawn."
-  field reason String "Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
+  field reason String "Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
   field models u32 "Static model instances drawn with the lightmap."
   field pages u32 "Lightmap pages (RGBA16F texture array layers)."
   field texels u32 "The pages' side in texels."

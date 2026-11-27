@@ -508,6 +508,7 @@ pub(in crate::cook) fn conform(
                 fields: Default::default(),
                 terrains: Default::default(),
                 navmesh: None,
+                lightmap: None,
                 conformed: None,
                 fracture: None,
             };

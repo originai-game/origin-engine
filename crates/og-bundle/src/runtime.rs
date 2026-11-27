@@ -254,6 +254,8 @@ pub struct Manifest {
     /// not engine module names in `modules`: they must already be resident
     /// when a synchronous loader runs, not best-effort code prefetch hints.
     pub preload: Vec<String>,
+    /// Actual scene output ID to its unique lightmap output ID.
+    pub lightmaps: BTreeMap<String, String>,
 }
 
 /// A file of the bundle outside its outputs and groups.
@@ -340,6 +342,13 @@ impl Manifest {
         for e in doc.body.get_all("preload") {
             m.preload
                 .push(e.string(0).map_err(|e| bad(e.to_string()))?.to_string());
+        }
+        for e in doc.body.get_all("lightmap") {
+            let scene = e.string(0).map_err(|e| bad(e.to_string()))?.to_string();
+            let id = e.string(1).map_err(|e| bad(e.to_string()))?.to_string();
+            if m.lightmaps.insert(scene, id).is_some() {
+                return Err(bad("a scene has more than one lightmap".into()));
+            }
         }
         let field = |b: &Block, key: &str, line: usize| -> Result<String, LoadError> {
             let e = b
@@ -524,6 +533,10 @@ impl Manifest {
         doc.body.push(Entry::new("options").with_block(options));
         for file in &self.preload {
             doc.body.push(Entry::new("preload").with(s(file)));
+        }
+        for (scene, id) in &self.lightmaps {
+            doc.body
+                .push(Entry::new("lightmap").with(s(scene)).with(s(id)));
         }
         for a in &self.assets {
             let mut b = Block::new()

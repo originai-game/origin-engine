@@ -305,6 +305,15 @@ LDR sunlight is estimated, not a calibrated illuminance measurement.
   `og bake lightmaps` names the entity. A volume added, moved or resized
   is unbaked until the next bake. `bakedLighting false`
   compares the bake against the realtime lights alone.
+  The bake writes `file.lightmap` TypeScript into the scene module's
+  `content/lightmaps/` and KTX2 pages plus dense bindings into
+  `assets/lightmaps/`. The declaration reads those bindings with
+  `input.bytes`, so large UV/index/probe arrays do not bloat TS source;
+  UVs are flat u/v/page triples, probes flat RGB groups of four coefficients.
+  Scene and model bindings are canonical content refs; HLOD records bind
+  scene node numbers with `{hlodProxy: n}`. Re-baking retains an existing
+  declaration's path and owning module. Re-bake after source or geometry
+  changes; changing cook options alone keeps a matching bake.
 - RealtimeLightVolume: each capture draws every light, the sky and
   lights' shadows, emissive surfaces and lightmapped models, and sees the
   probes, so a lamp in a red room fills it with red light after a few

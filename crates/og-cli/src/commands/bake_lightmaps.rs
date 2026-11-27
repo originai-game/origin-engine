@@ -12,9 +12,9 @@
 //! traces the light arriving at each texel (bounces, sky, emissive and the
 //! static lights' direct light; not a stationary light's direct term,
 //! which the renderer draws) and at each LightVolume's
-//! probes, and the result is written beside the scene source:
-//! `<scene>.lightmap.ogt` and `<scene>.lightmap.ktx2`. The project is cooked
-//! again so the bundle holds them.
+//! probes, and writes a checked file.lightmap TS declaration under content/
+//! with binary KTX2 pages under assets/ in the scene's module. The project is
+//! cooked again so its manifest explicitly associates the scene and lighting.
 //!
 //! The bake names the scene source's hash and each static model's geometry
 //! hash (`og_cook::lightmap::geometry_hash`); a scene or a model's geometry
@@ -322,8 +322,13 @@ pub fn status(root: &Path) -> Vec<(String, String)> {
     };
     let mut out = Vec::new();
     for (id, _) in bakeable_scenes(&bundle) {
-        let lm_id = og_cook::lightmap::lightmap_id(&id);
-        let reason = match bundle.load_lightmap(&lm_id) {
+        let lm = bundle
+            .manifest()
+            .lightmaps
+            .get(&id)
+            .ok_or(())
+            .and_then(|lm_id| bundle.load_lightmap(lm_id).map_err(|_| ()));
+        let reason = match lm {
             Err(_) => Some(format!(
                 "{id} has static models or light volumes and no bake"
             )),
@@ -372,8 +377,9 @@ fn bake(o: &Options) -> Result<(), String> {
         return Ok(());
     }
     let started = Instant::now();
+    let sources = BakeSources::open(&root)?;
     for (id, s) in &scenes {
-        bake_scene(o, &root, &bundle, id, s)?;
+        bake_scene(o, &root, &bundle, id, s, &sources)?;
     }
     crate::cook::cook(&root, o.threads, false)?;
     println!(
@@ -394,6 +400,7 @@ fn bake_scene(
     bundle: &Bundle,
     id: &str,
     s: &SceneDesc,
+    sources: &BakeSources,
 ) -> Result<(), String> {
     let started = Instant::now();
     let world = world_transforms(s);
@@ -469,7 +476,6 @@ fn bake_scene(
     let mut file = LightmapFile {
         scene: id.to_string(),
         scene_hash: scene_hash(bundle, id),
-        pages: og_cook::lightmap::pages_name(id),
         ..Default::default()
     };
     let mut pages_out: Vec<Vec<u16>> = Vec::new();
@@ -623,16 +629,11 @@ fn bake_scene(
         }
     }
     file.seconds = (started.elapsed().as_secs_f32() * 10.0).round() / 10.0;
-    // Beside the scene's source.
-    let source = root.join("assets").join(id);
-    let dir = source.parent().ok_or("a scene without a folder")?;
     if pages_out.is_empty() {
         pages_out.push(vec![0; 4]);
     }
     let ktx2 = og_cook::lightmap::pages_to_ktx2(width, height, &pages_out);
-    std::fs::write(dir.join(&file.pages), ktx2).map_err(|e| e.to_string())?;
-    let text_path = root.join("assets").join(og_cook::lightmap::lightmap_id(id));
-    std::fs::write(&text_path, file.to_text()).map_err(|e| e.to_string())?;
+    let text_path = write_source(root, bundle, &file, &ktx2, sources)?;
     println!(
         "{id}: {} static model(s), {} page(s) of {width}x{height}, {} volume(s), {} samples, {:.1} s -> {}",
         file.models.len(),
@@ -643,6 +644,196 @@ fn bake_scene(
         text_path.display()
     );
     Ok(())
+}
+
+/// Capture bindings once for the whole bake, not once per scene in a world.
+struct BakeSources {
+    project: og_cook::cook::source_project::Project,
+    index: og_cook::cook::source_index::Index,
+    ids: std::collections::BTreeMap<String, String>,
+}
+
+impl BakeSources {
+    fn open(root: &Path) -> Result<Self, String> {
+        use og_cook::cook::{source_index::Index, source_project::Project};
+        let project = Project::open(root).map_err(|e| e.to_string())?;
+        let index = Index::open(root, &project).map_err(|e| e.to_string())?;
+        let mut ids: std::collections::BTreeMap<_, _> =
+            og_cook::cook::project_assets(root, &project)
+                .map_err(|e| e.to_string())?
+                .into_iter()
+                .map(|(id, output)| (output.asset, id))
+                .collect();
+        ids.extend(index.entries.keys().map(|id| (id.clone(), id.clone())));
+        Ok(Self {
+            project,
+            index,
+            ids,
+        })
+    }
+}
+
+/// Resolve physical scanned IDs through the same catalogue as cook; authored
+/// IDs are already canonical. Never infer source IDs from filename extensions.
+fn write_source(
+    root: &Path,
+    bundle: &Bundle,
+    file: &LightmapFile,
+    pages: &[u8],
+    sources: &BakeSources,
+) -> Result<std::path::PathBuf, String> {
+    use serde_json::json;
+    let BakeSources {
+        project,
+        index,
+        ids,
+    } = sources;
+    let canonical = |id: &str| {
+        ids.get(id)
+            .cloned()
+            .ok_or_else(|| format!("{id}: no canonical source binding"))
+    };
+    let scene = canonical(&file.scene)?;
+    let (scene_module, stem) = scene.split_once('/').ok_or("scene has no source module")?;
+    let existing = bundle
+        .manifest()
+        .lightmaps
+        .get(&file.scene)
+        .map(|id| {
+            index
+                .entries
+                .get(id)
+                .ok_or("lightmap source absent from index")
+        })
+        .transpose()?;
+    let module = existing.map_or(scene_module, |e| e.module.as_str());
+    let module_root = root.join(&project.modules[module].root);
+    let pages_stem = if module == scene_module { stem } else { &scene };
+    let pages_path = format!("assets/lightmaps/{pages_stem}.pages.ktx2");
+    let data_path = format!("assets/lightmaps/{pages_stem}.bindings.bin");
+    let path = if let Some(existing) = existing {
+        root.join(&existing.file)
+    } else {
+        let path = module_root.join(format!("content/lightmaps/{stem}.ts"));
+        if path.exists()
+            || module_root.join(&pages_path).exists()
+            || module_root.join(&data_path).exists()
+        {
+            return Err(format!(
+                "{}: bake output already exists without a scene association",
+                path.display()
+            ));
+        }
+        path
+    };
+    let tree_id = og_cook::hlod::hlod_id(&file.scene);
+    let proxies: std::collections::BTreeMap<_, _> = bundle
+        .read(&tree_id)
+        .ok()
+        .and_then(|bytes| bundle.hlod(&tree_id, &bytes).ok())
+        .map(|t| {
+            (0..t.nodes.len())
+                .map(|n| (og_cook::hlod::node_id(&file.scene, n), n))
+                .collect()
+        })
+        .unwrap_or_default();
+    file.validate(og_cook::lightmap::pages_from_ktx2(pages)?.2.len())?;
+    // Dense buffers must not consume the TS source/node budgets of a large
+    // region. Explicit little-endian reads keep the generated source portable.
+    let mut data = Vec::new();
+    let mut buffer = |kind: &str, bytes: Vec<u8>| {
+        let offset = data.len();
+        let count = bytes.len() / 4;
+        data.extend(bytes);
+        format!("{kind}({offset}, {count})")
+    };
+    let mut models = Vec::new();
+    for model in &file.models {
+        let asset = if model.entity.is_empty() {
+            let node = proxies
+                .get(&model.asset)
+                .ok_or_else(|| format!("{}: not a generated scene proxy", model.asset))?;
+            json!({"hlodProxy":node})
+        } else {
+            json!({"$ogRef":canonical(&model.asset)?})
+        };
+        let parts: Vec<_> = model
+            .parts
+            .iter()
+            .map(|p| {
+                let xref = buffer("u32", p.xref.iter().flat_map(|v| v.to_le_bytes()).collect());
+                let indices = buffer(
+                    "u32",
+                    p.indices.iter().flat_map(|v| v.to_le_bytes()).collect(),
+                );
+                let uv = buffer(
+                    "f32",
+                    p.uv.iter()
+                        .flatten()
+                        .flat_map(|v| v.to_le_bytes())
+                        .collect(),
+                );
+                format!(
+                    "{{vertices:{},xref:{xref},indices:{indices},uv:{uv}}}",
+                    p.vertices
+                )
+            })
+            .collect();
+        models.push(format!(
+            "{{entity:{},asset:{asset},hash:\"{:016x}\",parts:[{}]}}",
+            json!(model.entity),
+            model.hash,
+            parts.join(",\n")
+        ));
+    }
+    let volumes: Vec<_> = file
+        .volumes
+        .iter()
+        .map(|v| {
+            let probes = buffer(
+                "f32",
+                v.probes
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .flat_map(|v| v.to_le_bytes())
+                    .collect(),
+            );
+            format!(
+                "{{entity:{},min:{},max:{},fade:{},counts:{},probes:{probes}}}",
+                json!(v.entity),
+                json!(v.min),
+                json!(v.max),
+                v.fade,
+                json!(v.counts)
+            )
+        })
+        .collect();
+    let text = format!(
+        "// Written by og bake lightmaps; bake again after scene or geometry edits.
+import {{file, input}} from '@origingame/engine/author';
+const bytes = input.bytes({});
+const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+const u32 = (offset: number, count: number) => Uint32Array.from({{length:count}}, (_, i) => view.getUint32(offset + i * 4, true));
+const f32 = (offset: number, count: number) => Float32Array.from({{length:count}}, (_, i) => view.getFloat32(offset + i * 4, true));
+export default file.lightmap({{
+  scene: {}, sceneHash: \"{:016x}\", pages: {}, samples: {}, seconds: {},
+  models: [{}],
+  volumes: [{}]
+}});
+",
+        json!(data_path), json!({"$ogRef":scene}), file.scene_hash, json!(pages_path),
+        file.samples, file.seconds, models.join(",\n"), volumes.join(",\n")
+    );
+    let binary = module_root.join(&pages_path);
+    std::fs::create_dir_all(binary.parent().ok_or("pages have no directory")?)
+        .map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(path.parent().ok_or("lightmap has no directory")?)
+        .map_err(|e| e.to_string())?;
+    std::fs::write(module_root.join(data_path), data).map_err(|e| e.to_string())?;
+    std::fs::write(binary, pages).map_err(|e| e.to_string())?;
+    std::fs::write(&path, text).map_err(|e| e.to_string())?;
+    Ok(path)
 }
 
 /// A lightmap's texel on a proxy covers this many times its node's error:

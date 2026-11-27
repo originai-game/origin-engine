@@ -1,5 +1,124 @@
 use super::*;
 
+/// The bake command produces cookable TS plus captured dense buffers, and
+/// rebakes the existing declaration even when a module owns it elsewhere.
+#[test]
+fn lightmap_bakes_roundtrip_typed_sources_and_module_ownership() {
+    use og_cook::runtime::Bundle;
+    let root = TempDir::new("og-lightmap-bake");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Lighting","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'lighting',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "");
+    write("modules/north/lib/empty.ts", "");
+    write(
+        "assets/box.ogt",
+        "type model\nversion 1\n---\npart \"box\" {\nboxGeometry {\nwidth 1\nheight 1\ndepth 1\n}\n}\n",
+    );
+    write(
+        "assets/room.ogt",
+        "type scene\nversion 1\n---\nhlod {\nsize 16\nerror 0.25\ntexels 64\n}\nentity \"north\" {\nmodel \"box.ogt\"\nstatic true\nTransform {\nposition 1 0 1\n}\n}\nentity \"south\" {\nmodel \"box.ogt\"\nstatic true\nTransform {\nposition 3 0 1\n}\n}\nentity \"probe\" {\nVolume {\nsize 2 1 1\n}\nLightVolume {\nspacing 1\n}\n}\n",
+    );
+    let run = |args: &[&str]| {
+        og().args(args)
+            .current_dir(&root)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    let bake = || {
+        let out = run(&[
+            "bake",
+            "lightmaps",
+            ".",
+            "--samples",
+            "1",
+            "--bounces",
+            "1",
+            "--texels-per-metre",
+            "1",
+            "--max-size",
+            "32",
+            "--threads",
+            "2",
+        ]);
+        assert!(out.status.success(), "{}", text(&out));
+    };
+    bake();
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let lighting = bundle.load_lightmap("base/lightmaps/room").unwrap();
+    assert_eq!(
+        lighting
+            .file
+            .models
+            .iter()
+            .filter(|m| !m.entity.is_empty())
+            .count(),
+        2
+    );
+    assert!(lighting.file.models.iter().any(|m| m.entity.is_empty()));
+    assert_eq!(lighting.file.volumes.len(), 1);
+    let expected_uv = lighting.file.models[0].parts[0].uv.clone();
+    let source = std::fs::read_to_string(root.join("content/lightmaps/room.ts")).unwrap();
+    let out = run(&["check", "."]);
+    assert!(out.status.success(), "{}", text(&out));
+    write("modules/north/content/custom/lighting.ts", &source);
+    std::fs::create_dir_all(root.join("modules/north/assets/lightmaps")).unwrap();
+    for suffix in ["pages.ktx2", "bindings.bin"] {
+        std::fs::rename(
+            root.join(format!("assets/lightmaps/room.{suffix}")),
+            root.join(format!("modules/north/assets/lightmaps/room.{suffix}")),
+        )
+        .unwrap();
+    }
+    std::fs::remove_file(root.join("content/lightmaps/room.ts")).unwrap();
+    bake();
+    assert!(!root.join("content/lightmaps/room.ts").exists());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle
+            .manifest()
+            .lightmaps
+            .get("room.ogt")
+            .map(String::as_str),
+        Some("north/custom/lighting")
+    );
+    let lighting = bundle.load_lightmap("north/custom/lighting").unwrap();
+    assert_eq!(lighting.file.models[0].parts[0].uv, expected_uv);
+    let path = root.join("modules/north/assets/lightmaps/base/room.bindings.bin");
+    let mut bytes = std::fs::read(&path).unwrap();
+    // First part's xref + indices precede its interleaved f32 UVs.
+    let part = &lighting.file.models[0].parts[0];
+    let at = (part.xref.len() + part.indices.len()) * 4;
+    bytes[at..at + 4].copy_from_slice(&0.375f32.to_le_bytes());
+    std::fs::write(path, bytes).unwrap();
+    let out = run(&["cook", "."]);
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle
+            .load_lightmap("north/custom/lighting")
+            .unwrap()
+            .file
+            .models[0]
+            .parts[0]
+            .uv[0][0],
+        0.375
+    );
+    let out = run(&["check", "."]);
+    assert!(out.status.success(), "{}", text(&out));
+}
+
 /// Extraction and UI eject author typed literals through the public tools,
 /// preserving source bytes outside edits and refusing computed/colliding data.
 #[test]

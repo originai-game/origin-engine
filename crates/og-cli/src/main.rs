@@ -190,7 +190,7 @@ commands:
                       trim the shared cook action/content cache (default cap 10 GiB)
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]
                       trace the light of the scenes with static models or LightVolumes into
-                      <scene>.lightmap.ogt and .ktx2 beside them (CPU, native), then cook
+                      content/lightmaps/ TS and assets/lightmaps/ KTX2 (CPU, native), then cook
   prefab check [project]
                       flatten every scene and prefab as the cook does: cycles, name clashes and
                       orphaned overrides (a node, component or field the prefab no longer has);

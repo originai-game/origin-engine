@@ -14,6 +14,142 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Lighting's public cook/load contract retains scene associations, full-width
+/// hashes, remaps, multiple layers and volumes across module and warm-cache use.
+#[test]
+fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
+    use og_cook::lightmap::{f32_to_f16, pages_to_ktx2};
+    let root = crate::temp::TempDir::new("typed-lightmap");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'lighting',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write(
+        "assets/room.ogt",
+        "type scene\nversion 1\n---\nentity \"Room\" {\n}\n",
+    );
+    write(
+        "assets/mesh.gltf",
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"Root"}]}"#,
+    );
+    write(
+        "modules/north/lib/irradiance.ts",
+        "export const ambient=0.375;",
+    );
+    let declaration = "import {file,ref} from '@origingame/engine/author';\nimport {ambient} from '../lib/irradiance.ts';\nexport default file.lightmap({scene:ref('base/room'),sceneHash:'fedcba9876543210',pages:'assets/pages.ktx2',samples:83,seconds:1.25,
+      models:[{entity:'北😀',asset:ref('base/mesh'),hash:'ffffffffffffffff',parts:[
+        {vertices:5,xref:[4,1,3],indices:[2,0,1],uv:new Float32Array([0.125,0.25,1,0.5,0.75,0,1,0,1])},
+        {vertices:2,xref:[1],uv:[0.25,0.5,0]}]},
+        {entity:'',asset:{hlodProxy:7},hash:'123456789abcdef0',parts:[]},
+        {entity:'',asset:{hlodProxy:2},hash:'76543210',parts:[]}],
+      volumes:[{entity:'red',min:[-2,0,-1],max:[3,4,2],fade:0.625,counts:[2,1,1],probes:new Float32Array([1,2,3,ambient,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24])},
+        {entity:'blue',min:[0,1,2],max:[0,2,3],counts:[1,1,1],probes:[25,26,27,28,29,30,31,32,33,34,35,36]}]});";
+    write("modules/north/content/lighting.ts", declaration);
+    let options = CookOptions::default();
+    let mut previous = None;
+    for (step, intensity) in [0.25, 0.25, 0.75].into_iter().enumerate() {
+        let pages = vec![vec![f32_to_f16(intensity); 8], vec![f32_to_f16(1.5); 8]];
+        let ktx2 = pages_to_ktx2(2, 1, &pages);
+        let path = root.join("modules/north/assets/pages.ktx2");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, &ktx2).unwrap();
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(
+            b.manifest().lightmaps.get("room.ogt").map(String::as_str),
+            Some("north/lighting")
+        );
+        let bytes = b.read("north/lighting").unwrap();
+        let lm = b.lightmap("north/lighting", &bytes).unwrap();
+        assert_eq!(
+            (lm.file.scene.as_str(), lm.file.scene_hash),
+            ("room.ogt", 0xfedcba9876543210)
+        );
+        assert_eq!((lm.file.samples, lm.file.seconds), (83, 1.25));
+        assert_eq!((lm.width, lm.height), (2, 1));
+        assert_eq!(lm.pages, pages);
+        assert_eq!(lm.file.models[0].entity, "北😀");
+        assert_eq!(
+            (lm.file.models[0].asset.as_str(), lm.file.models[0].hash),
+            ("mesh.gltf", u64::MAX)
+        );
+        assert_eq!(lm.file.models[0].parts[0].xref, [4, 1, 3]);
+        assert_eq!(lm.file.models[0].parts[0].indices, [2, 0, 1]);
+        assert_eq!(
+            lm.file.models[0].parts[0].uv,
+            [[0.125, 0.25, 1.0], [0.5, 0.75, 0.0], [1.0, 0.0, 1.0]]
+        );
+        assert_eq!(lm.file.models[0].parts[1].xref, [1]);
+        assert_eq!(lm.file.models[1].asset, "room.ogt#hlod-7");
+        assert_eq!(lm.file.models[2].asset, "room.ogt#hlod-2");
+        assert_eq!(lm.file.volumes[0].probes[1][2], [21.0, 22.0, 23.0, 24.0]);
+        assert_eq!(lm.file.volumes[1].probes[0][0], [25.0, 26.0, 27.0, 28.0]);
+        if let Some(old) = previous {
+            assert_eq!(
+                old == bytes.to_vec(),
+                step == 1,
+                "page-only changes must invalidate a warm cook"
+            );
+        }
+        previous = Some(bytes.to_vec());
+    }
+    write(
+        "modules/north/lib/irradiance.ts",
+        "export const ambient=0.875;",
+    );
+    assert!(cook_project(&root, &options).unwrap().ok());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        b.load_lightmap("north/lighting").unwrap().file.volumes[0].probes[0][0][3],
+        0.875
+    );
+    for (from, to, expected) in [
+        ("xref:[4,1,3]", "xref:[5,1,3]", "invalid vertex remapping"),
+        ("0.125,0.25,1", "0.125,0.25,2", "invalid lightmap UV"),
+        (
+            "uv:[0.25,0.5,0]",
+            "uv:[0.25,0.5]",
+            "complete u/v/page triples",
+        ),
+        ("33,34,35,36]", "33,34,35]", "twelve RGB coefficients"),
+        ("base/mesh", "base/missing", "base/missing"),
+        ("base/mesh", "base/room", "model"),
+        ("assets/pages.ktx2", "../pages.ktx2", "canonical"),
+    ] {
+        write(
+            "modules/north/content/lighting.ts",
+            &declaration.replace(from, to),
+        );
+        let error = match cook_project(&root, &options) {
+            Err(e) => e.to_string(),
+            Ok(report) => format!("{:?}", report.errors()),
+        };
+        assert!(error.contains(expected), "{error}");
+        let line = if from == "base/mesh" { 4 } else { 3 };
+        assert!(
+            error.contains(&format!("content/lighting.ts:{line}")),
+            "{error}"
+        );
+    }
+    write("modules/north/content/lighting.ts", declaration);
+    write("modules/north/content/duplicate.ts", declaration);
+    let error = cook_project(&root, &options).err().unwrap().to_string();
+    assert!(error.contains("more than one lightmap"), "{error}");
+    std::fs::remove_file(root.join("modules/north/content/duplicate.ts")).unwrap();
+    write("assets/old.ogt", "type lightmap\nversion 1\n---\n");
+    assert!(
+        !cook_project(&root, &options).unwrap().ok(),
+        "old lightmap author entry accepted"
+    );
+}
+
 /// Font-pack TS refs, cmaps and conditional dictionary bytes reach the native
 /// reader without changing another font, including warm-cache invalidation.
 #[test]

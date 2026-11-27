@@ -23,6 +23,7 @@ fn source(root: &Path, rel: &str) -> Source {
         fields: Default::default(),
         terrains: Default::default(),
         navmesh: None,
+        lightmap: None,
         conformed: None,
         fracture: None,
     }

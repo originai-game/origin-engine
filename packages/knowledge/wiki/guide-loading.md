@@ -200,8 +200,9 @@ cook (HLOD): the world guide, §5.
   still.
 - Model.static marks a model for `og bake lightmaps`. The bake gives it
   lightmap UVs (xatlas, over its world-space triangles) and traces the
-  light arriving at its surfaces into `<scene>.lightmap.ogt` and
-  `.ktx2` beside the scene. A baked model takes its ambient light from
+  light arriving at its surfaces into checked `file.lightmap` declarations
+  under `content/lightmaps/` and binary pages under `assets/lightmaps/` in
+  the scene's module. A baked model takes its ambient light from
   the lightmap, while the direct light, shadows and highlights of its
   movable and stationary lights are still drawn every frame (a static
   light's direct light is in the lightmap: render §3). A scene entity says `static true` beside its

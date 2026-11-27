@@ -2,9 +2,9 @@
 //! `og bake lightmaps` wrote for a scene, applied to the scene's static
 //! models and to everything inside its light volumes; and og.RectLight.
 //!
-//! When a scene is instantiated (`assets::spawn_scene`) its lightmap file
-//! (`<scene>.lightmap.ogt`, cooked to an `og.Lightmap` blob) is read, if the
-//! bundle has one, and checked against the cooked scene and models it was
+//! When a scene is instantiated (`assets::spawn_scene`) its manifest-associated
+//! native `og.Lightmap` blob is read, if the bundle has one, and checked
+//! against the cooked scene and models it was
 //! baked from (their hashes). A matching bake gives each static model
 //! entity its lightmapped meshes (the model's parts re-indexed by the
 //! lightmap's vertices, each with its lightmap uvs) and hands the pages and
@@ -166,22 +166,19 @@ pub(crate) fn scene_spawned(
     scene: &crate::world::assets::LoadedScene,
     spawned: &[og_ecs::Entity],
 ) {
-    let lightmap_id = og_bundle::lightmap::lightmap_id(&scene.id);
     let mut report = SceneBake {
         scene: scene.id.clone(),
         ..Default::default()
     };
     let loaded = (|| -> Result<Option<og_bundle::runtime::CookedLightmap>, String> {
         let assets = eng.assets.borrow();
-        let Ok((bundle, _)) = assets.bundle_from(&lightmap_id, Some(scene.bundle)) else {
+        let (bundle, _) = assets.bundle_from(&scene.id, Some(scene.bundle))?;
+        let Some(lightmap_id) = bundle.manifest().lightmaps.get(&scene.id) else {
             return Ok(None);
         };
-        if bundle.output(&lightmap_id).is_err() {
-            return Ok(None);
-        }
-        let (bytes, bundle) = assets.blob_from(&lightmap_id, Some(scene.bundle))?;
+        let (bytes, bundle) = assets.blob_from(lightmap_id, Some(scene.bundle))?;
         let lm = bundle
-            .lightmap(&lightmap_id, bytes.bytes())
+            .lightmap(lightmap_id, bytes.bytes())
             .map_err(|e| e.to_string())?;
         // The scene's source hash: a re-cook alone never stales a bake.
         let scene_hash = bundle.asset(&scene.id).map(|a| a.source_hash).unwrap_or(0);
@@ -197,8 +194,7 @@ pub(crate) fn scene_spawned(
         Ok(Some(lm)) => lm,
         Ok(None) => {
             if bakeable(scene) {
-                report.reason =
-                    format!("the scene has no bake (og bake lightmaps writes {lightmap_id})");
+                report.reason = "the scene has no bake (run og bake lightmaps)".into();
                 eng.render.borrow_mut().baked.scenes.push(report);
             }
             return;

@@ -155,6 +155,8 @@ pub(crate) struct Source {
     terrains: std::sync::Arc<terrain::Terrains>,
     /// Captured static geometry for the typed navigation bake.
     navmesh: Option<navmesh::Prepared>,
+    /// Native bake bindings and captured irradiance pages.
+    lightmap: Option<lightmap::Prepared>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

@@ -507,8 +507,8 @@ fn bake_and_localization_author_contracts() {
         "links":[{"id":1,"start":[1,2,3],"end":[5,6,7],"kind":"door","traverse":"game"}]});
     let lightmap = json!({"scene":{"$ogRef":"base/scene/world"},"sceneHash":"ffffffffffffffff","pages":"world.ktx2",
         "samples":256,"seconds":12.5,"models":[{"entity":"Gate","asset":{"$ogRef":"base/model/gate"},"hash":"0123456789abcdef",
-            "parts":[{"vertices":3,"xref":[0,1,2],"indices":[0,1,2],"uv":[[0,0,0],[1,0,0],[0,1,0]]}]}],
-        "volumes":[{"entity":"Probe","min":[-1,0,-2],"max":[1,3,2],"counts":[1,1,1],"probes":[[[1,2,3,4],[5,6,7,8],[9,10,11,12]]]}]});
+            "parts":[{"vertices":3,"xref":[0,1,2],"indices":[0,1,2],"uv":[0,0,0,1,0,0,0,1,0]}]}],
+        "volumes":[{"entity":"Probe","min":[-1,0,-2],"max":[1,3,2],"counts":[1,1,1],"probes":[1,2,3,4,5,6,7,8,9,10,11,12]}]});
     let strings = json!({"locale":"ar","base":true,"direction":"rtl","fallback":"en",
         "fonts":[{"$ogRef":"base/font/arabic"}],"entries":{"items":"{count, plural, one {One item} other {{count} items}}"}});
     let font = json!({"kind":"font","name":"Arabic","languages":["ar"],"scripts":["Arab"],
@@ -608,7 +608,7 @@ const transform: Navmesh = {models:[{model:{$ogRef:"base/model/a"},transform:{ty
 const points: Navmesh = {areas:[{id:1,shape:{kind:"convex",points:[[0,1,2],[0,2,3],[0,3,4]]}}]};
 // @ts-expect-error Hashes are lossless hex text, not numeric handles.
 const hash: Lightmap = {scene:{$ogRef:"base/scene/a"},sceneHash:42,pages:"a.ktx2"};
-// @ts-expect-error A lightmap UV includes its page.
+// @ts-expect-error Dense UV buffers are flat numeric triples, not nested arrays.
 const uv: Lightmap = {scene:{$ogRef:"base/scene/a"},sceneHash:"ab",pages:"a.ktx2",models:[{entity:"x",asset:{$ogRef:"base/model/a"},hash:"ab",parts:[{uv:[[0,1]]}]}]};
 // @ts-expect-error Message values are ICU source strings.
 const message: Strings = {locale:"en",entries:{x:{message:"Hi"}}};
@@ -616,8 +616,8 @@ const message: Strings = {locale:"en",entries:{x:{message:"Hi"}}};
 const direction: Strings = {locale:"ar",entries:{},direction:"auto"};
 // @ts-expect-error Font faces are content references, not raw paths.
 const face: FontExtension = {kind:"font",name:"x",faces:["body.ttf"]};
-// @ts-expect-error Nested derived coefficients stay readonly.
-valueLightmap.volumes[0].probes[0][1][2] = 0;
+// @ts-expect-error Derived coefficient buffers stay readonly.
+valueLightmap.volumes![0].probes![0] = 0;
 "#);
     let dir = temp::TempDir::new("bake-locale-schema");
     std::fs::write(dir.join("inputs.ts"), ts).unwrap();

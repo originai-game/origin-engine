@@ -446,6 +446,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
+            lightmap: None,
             conformed: None,
             fracture: None,
         });

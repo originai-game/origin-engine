@@ -1,107 +1,11 @@
-//! A scene's baked lighting as `og bake lightmaps` writes it beside the
-//! scene (docs/design.md §2.6): `<scene>.lightmap.ogt`, the text the cook
-//! and the runtime read, and `<scene>.lightmap.ktx2`, the lightmap pages
-//! (RGBA16F array layers, zlib-supercompressed, linear irradiance over π).
-//!
-//! ```text
-//! type lightmap
-//! version 1
-//! ---
-//! scene "scenes/cornell.ogt"
-//! scene-hash "0123456789abcdef"   # the scene source's hash the bake read
-//! pages "cornell.lightmap.ktx2"   # beside this file
-//! samples 256
-//! seconds 12.5
-//! model "box" {                   # a static model entity, by name
-//!   asset "models/box.glb"
-//!   hash "…"                      # the model's geometry hash the bake read
-//!   part {                        # per model part, in the model's order
-//!     vertices 24                 # the part's own vertex count
-//!     xref 0 1 2 …                # per lightmap vertex: the part's vertex
-//!     indices 0 1 2 …
-//!     uv 0.1 0.2 0 …              # per lightmap vertex: u, v, page
-//!   }
-//! }
-//! volume "probes" {               # a LightVolume entity, by name
-//!   min -2 0 -2
-//!   max 2 4 2
-//!   fade 0.5                      # its og.Volume's fade past the box
-//!   counts 5 5 5
-//!   probes …                      # 12 numbers a probe, x fastest
-//! }
-//! ```
-//!
-//! The cook packs the text and the pages into one `og.Lightmap` blob, so
-//! the runtime reads both from the bundle; the `.ktx2` is consumed by it
-//! (never cooked as a texture of its own).
-//!
-//! The hashes name what the bake read, never the cooked blobs: the scene's
-//! source (its text, the manifest's `source` hash) and each static model's
-//! geometry ([`geometry_hash`]). A changed scene or a changed static model
-//! stales the bake; a re-cook that leaves both alone (a cooker revision,
-//! the raycast BVH cooked or left out, a texture option) keeps it.
-
-use og_core::ogt::line::Line;
-use og_core::ogt::{Block, Document, Value};
+//! Native baked-lighting records and RGBA16F KTX2 pages. Author declarations
+//! are checked TypeScript; neither the cook nor runtime accepts author text.
+//! Scene source and model geometry hashes stale a bake only when its inputs move.
 
 pub(crate) mod cooked;
 
-macro_rules! lines {
-    ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
-        &[$(Line::new($key, $args, $default, $doc, "")),*]
-    };
-}
-
-/// Fields of the derived record written by `og bake lightmaps`.
-pub const LINES: &[Line] = lines![
-    "scene", "\"<asset>\"", "required", "Scene asset id whose static lighting was baked.";
-    "scene-hash", "\"<hex u64>\"", "required", "Scene source hash when baked.";
-    "pages", "\"<file.ktx2>\"", "required", "RGBA16F array pages beside this record, consumed as a lightmap, not an independent texture.";
-    "samples", "<count>", "0", "Recorded bake sample count.";
-    "seconds", "<seconds>", "0", "Recorded elapsed bake time.";
-    "model", "\"<entity>\" { ... }", "", "Repeat a static model's baked geometry binding.";
-    "volume", "\"<entity>\" { ... }", "", "Repeat baked irradiance probes."
-];
-/// A static model's binding fields.
-pub const MODEL_LINES: &[Line] = lines![
-    "asset", "\"<model asset>\"", "required", "Model asset id.";
-    "hash", "\"<hex u64>\"", "required", "Geometry hash, not cooked blob hash.";
-    "part", "{ ... }", "", "Parts in the model's order."
-];
-/// A part's derived vertex remapping and lightmap coordinates.
-pub const PART_LINES: &[Line] = lines![
-    "vertices", "<count>", "0", "Original vertex count, checked for stale bakes.";
-    "xref", "<index> ...", "", "Original vertex per lightmap vertex; repeated lines concatenate.";
-    "indices", "<index> ...", "", "Triangle indices; repeated lines concatenate.";
-    "uv", "<u> <v> <page> ...", "", "One UV/page triple per xref; v down. Repeated lines concatenate."
-];
-/// A volume's irradiance lattice fields.
-pub const VOLUME_LINES: &[Line] = lines![
-    "min", "<x> <y> <z>", "required", "Volume minimum in scene metres.";
-    "max", "<x> <y> <z>", "required", "Volume maximum in scene metres.";
-    "fade", "<metres>", "0", "Light fade distance outside its box.";
-    "counts", "<x> <y> <z>", "required", "Probe counts along each axis.";
-    "probes", "<number> ...", "", "Twelve coefficients per probe, x fastest: RGB each as c1.x c1.y c1.z c0. Repeated lines concatenate."
-];
-
-fn fields(b: &Block, lines: &[Line]) -> Result<(), String> {
-    for e in &b.entries {
-        if !lines.iter().any(|f| f.key == e.key) {
-            return Err(format!(
-                "line {}: unknown lightmap field '{}'",
-                e.line, e.key
-            ));
-        }
-    }
-    Ok(())
-}
-
-/// The hash a bake keys a static model on: the geometry of its parts as
-/// the runtime loads them (per part, in its order: the vertex count, every
-/// vertex's position, normal, uv and colour, then the indices). It moves
-/// exactly when the lightmapped geometry moves; the blob around it (a
-/// cooker revision, the raycast BVH, the textures) is not read. Tangents
-/// are left out: the renderer generates them.
+/// Geometry identity independent of cooker revision, BVH and texture options.
+/// Tangents are omitted because the renderer generates them.
 pub fn geometry_hash<'a>(parts: impl IntoIterator<Item = &'a og_render_data::MeshData>) -> u64 {
     let mut h = og_core::hash::StableHasher::new();
     for data in parts {
@@ -125,27 +29,22 @@ pub fn geometry_hash<'a>(parts: impl IntoIterator<Item = &'a og_render_data::Mes
     h.finish()
 }
 
-/// The `.ogt` type of a lightmap file.
-pub const LIGHTMAP_TYPE: &str = "lightmap";
-
-/// A static model's lightmap coordinates, per part.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BakedPart {
-    /// The part's own vertex count (a mismatch makes the bake stale).
+    /// Original part vertex count, used to detect stale bakes.
     pub vertices: u32,
-    /// Per lightmap vertex: the part's vertex it copies.
+    /// Original vertex copied by each lightmap vertex.
     pub xref: Vec<u32>,
     pub indices: Vec<u32>,
-    /// Per lightmap vertex: u, v (0..1, v down) and the page.
+    /// u, v (0..1, v down), page per lightmap vertex.
     pub uv: Vec<[f32; 3]>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BakedModel {
-    /// The scene entity's name.
+    /// Scene entity name; empty only for HLOD proxies, which bind by asset.
     pub entity: String,
     pub asset: String,
-    /// The model's [`geometry_hash`] when baked.
     pub hash: u64,
     pub parts: Vec<BakedPart>,
 }
@@ -155,20 +54,17 @@ pub struct BakedVolume {
     pub entity: String,
     pub min: [f32; 3],
     pub max: [f32; 3],
-    /// How far past the box its light fades out (its og.Volume's fade).
     pub fade: f32,
     pub counts: [u32; 3],
-    /// Per probe, red, green and blue as `[c1.x, c1.y, c1.z, c0]`.
+    /// Per probe, RGB coefficients [c1.x, c1.y, c1.z, c0], x fastest.
     pub probes: Vec<[[f32; 4]; 3]>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LightmapFile {
     pub scene: String,
-    /// The scene source's hash when baked (the manifest's
-    /// [`ManifestAsset::source_hash`](crate::runtime::ManifestAsset)).
     pub scene_hash: u64,
-    /// The pages file, relative to this one.
+    /// Canonical path under the declaration's owning module.
     pub pages: String,
     pub samples: u32,
     pub seconds: f32,
@@ -176,224 +72,15 @@ pub struct LightmapFile {
     pub volumes: Vec<BakedVolume>,
 }
 
-/// Numbers per line in the text (keys repeat; the parser concatenates).
-const PER_LINE: usize = 48;
-
-fn numbers<T: std::fmt::Display>(out: &mut String, indent: &str, key: &str, values: &[T]) {
-    if values.is_empty() {
-        out.push_str(&format!("{indent}{key}\n"));
-    }
-    for chunk in values.chunks(PER_LINE) {
-        out.push_str(indent);
-        out.push_str(key);
-        for v in chunk {
-            out.push(' ');
-            out.push_str(&v.to_string());
-        }
-        out.push('\n');
-    }
-}
-
-fn hex(v: u64) -> String {
-    format!("{v:016x}")
-}
-
-fn quote(s: &str) -> String {
-    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-impl LightmapFile {
-    pub fn to_text(&self) -> String {
-        let mut o = String::from("type lightmap\nversion 1\n---\n");
-        o.push_str("# Written by og bake lightmaps: the scene's baked lighting. Bake again\n# after changing the scene or a static model's geometry (a re-cook alone\n# keeps it).\n");
-        o.push_str(&format!("scene {}\n", quote(&self.scene)));
-        o.push_str(&format!("scene-hash {}\n", quote(&hex(self.scene_hash))));
-        o.push_str(&format!("pages {}\n", quote(&self.pages)));
-        o.push_str(&format!("samples {}\n", self.samples));
-        o.push_str(&format!("seconds {}\n", self.seconds));
-        for m in &self.models {
-            o.push_str(&format!("model {} {{\n", quote(&m.entity)));
-            o.push_str(&format!("  asset {}\n", quote(&m.asset)));
-            o.push_str(&format!("  hash {}\n", quote(&hex(m.hash))));
-            for p in &m.parts {
-                o.push_str("  part {\n");
-                o.push_str(&format!("    vertices {}\n", p.vertices));
-                numbers(&mut o, "    ", "xref", &p.xref);
-                numbers(&mut o, "    ", "indices", &p.indices);
-                let uv: Vec<f32> = p.uv.iter().flatten().copied().collect();
-                numbers(&mut o, "    ", "uv", &uv);
-                o.push_str("  }\n");
-            }
-            o.push_str("}\n");
-        }
-        for v in &self.volumes {
-            o.push_str(&format!("volume {} {{\n", quote(&v.entity)));
-            numbers(&mut o, "  ", "min", &v.min);
-            numbers(&mut o, "  ", "max", &v.max);
-            numbers(&mut o, "  ", "fade", &[v.fade]);
-            numbers(&mut o, "  ", "counts", &v.counts);
-            let p: Vec<f32> = v.probes.iter().flatten().flatten().copied().collect();
-            numbers(&mut o, "  ", "probes", &p);
-            o.push_str("}\n");
-        }
-        o
-    }
-
-    pub fn parse(text: &str) -> Result<LightmapFile, String> {
-        let doc = Document::parse(text).map_err(|e| e.to_string())?;
-        if doc.ty != LIGHTMAP_TYPE {
-            return Err(format!("type '{}' is not a lightmap", doc.ty));
-        }
-        let b = &doc.body;
-        fields(b, LINES)?;
-        let s = |b: &Block, k: &str| -> Result<String, String> {
-            b.get(k)
-                .and_then(|e| e.values.first())
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .ok_or_else(|| format!("'{k}' is missing"))
-        };
-        let h = |b: &Block, k: &str| -> Result<u64, String> {
-            u64::from_str_radix(&s(b, k)?, 16).map_err(|_| format!("'{k}' is not a hash"))
-        };
-        let nums = |b: &Block, k: &str| -> Result<Vec<f64>, String> {
-            let mut out = Vec::new();
-            for e in b.get_all(k) {
-                for v in &e.values {
-                    match v {
-                        Value::Number(n) => out.push(n.as_f64()),
-                        _ => return Err(format!("'{k}': numbers only")),
-                    }
-                }
-            }
-            Ok(out)
-        };
-        let block = |e: &og_core::ogt::Entry| -> Result<Block, String> {
-            e.block
-                .clone()
-                .ok_or_else(|| "a block is missing".to_string())
-        };
-        let mut file = LightmapFile {
-            scene: s(b, "scene")?,
-            scene_hash: h(b, "scene-hash")?,
-            pages: s(b, "pages")?,
-            samples: nums(b, "samples")?.first().copied().unwrap_or(0.0) as u32,
-            seconds: nums(b, "seconds")?.first().copied().unwrap_or(0.0) as f32,
-            ..Default::default()
-        };
-        for e in b.get_all("model") {
-            let mb = block(e)?;
-            fields(&mb, MODEL_LINES)?;
-            let mut m = BakedModel {
-                entity: e
-                    .values
-                    .first()
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-                asset: s(&mb, "asset")?,
-                hash: h(&mb, "hash")?,
-                parts: Vec::new(),
-            };
-            for pe in mb.get_all("part") {
-                let pb = block(pe)?;
-                fields(&pb, PART_LINES)?;
-                let uv = nums(&pb, "uv")?;
-                let p = BakedPart {
-                    vertices: nums(&pb, "vertices")?.first().copied().unwrap_or(0.0) as u32,
-                    xref: nums(&pb, "xref")?.into_iter().map(|v| v as u32).collect(),
-                    indices: nums(&pb, "indices")?
-                        .into_iter()
-                        .map(|v| v as u32)
-                        .collect(),
-                    uv: uv
-                        .as_chunks::<3>()
-                        .0
-                        .iter()
-                        .map(|c| [c[0] as f32, c[1] as f32, c[2] as f32])
-                        .collect(),
-                };
-                if p.uv.len() != p.xref.len() {
-                    return Err(format!(
-                        "model '{}': {} uvs for {} vertices",
-                        m.entity,
-                        p.uv.len(),
-                        p.xref.len()
-                    ));
-                }
-                m.parts.push(p);
-            }
-            file.models.push(m);
-        }
-        for e in b.get_all("volume") {
-            let vb = block(e)?;
-            fields(&vb, VOLUME_LINES)?;
-            let v3 = |k: &str| -> Result<[f32; 3], String> {
-                match nums(&vb, k)?.as_slice() {
-                    [x, y, z] => Ok([*x as f32, *y as f32, *z as f32]),
-                    _ => Err(format!("'{k}' takes three numbers")),
-                }
-            };
-            let c = v3("counts")?.map(|c| c as u32);
-            let p = nums(&vb, "probes")?;
-            let probes: Vec<[[f32; 4]; 3]> = p
-                .as_chunks::<12>()
-                .0
-                .iter()
-                .map(|q| {
-                    let f = |i: usize| q[i] as f32;
-                    [
-                        [f(0), f(1), f(2), f(3)],
-                        [f(4), f(5), f(6), f(7)],
-                        [f(8), f(9), f(10), f(11)],
-                    ]
-                })
-                .collect();
-            if probes.len() != (c[0] * c[1] * c[2]) as usize {
-                return Err("a volume's probes do not fill its counts".into());
-            }
-            file.volumes.push(BakedVolume {
-                entity: e
-                    .values
-                    .first()
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-                min: v3("min")?,
-                max: v3("max")?,
-                fade: nums(&vb, "fade")?.first().copied().unwrap_or(0.0) as f32,
-                counts: c,
-                probes,
-            });
-        }
-        Ok(file)
-    }
-}
-
-/// The lightmap file of a scene asset (`scenes/a.ogt` → `scenes/a.lightmap.ogt`).
-pub fn lightmap_id(scene: &str) -> String {
-    format!("{}.lightmap.ogt", scene.trim_end_matches(".ogt"))
-}
-
-/// The pages file's name beside the lightmap file of `scene`.
-pub fn pages_name(scene: &str) -> String {
-    let stem = scene.trim_end_matches(".ogt");
-    let base = stem.rsplit('/').next().unwrap_or(stem);
-    format!("{base}.lightmap.ktx2")
-}
-
 const VK_FORMAT_R16G16B16A16_SFLOAT: u32 = 97;
 
-/// Lightmap pages as a KTX2 file: RGBA16F (`f16` bits), `width × height`,
-/// one array layer per page, zlib-supercompressed.
+/// Linear irradiance over π as zlib-supercompressed RGBA16F array layers.
 pub fn pages_to_ktx2(width: u32, height: u32, pages: &[Vec<u16>]) -> Vec<u8> {
     crate::ktx2::write_layers_rgba16f(width, height, pages, "og bake lightmaps")
 }
 
-/// [`pages_to_ktx2`]'s file read back: (width, height, pages of RGBA f16 bits).
+/// Read [`pages_to_ktx2`]: (width, height, RGBA half-float bits per layer).
 pub fn pages_from_ktx2(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u16>>), String> {
-    // The header and level 0's index, read directly (ktx2::parse takes
-    // single-layer textures only).
     let word = |at: usize| -> Result<u32, String> {
         bytes
             .get(at..at + 4)
@@ -418,38 +105,34 @@ pub fn pages_from_ktx2(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u16>>), String
     let (width, height) = (word(20)?, word(24)?);
     let layers = word(32)?.max(1);
     let supercompression = word(44)?;
-    // Level 0's byte offset and length are u64 in the file; a usize on
-    // wasm32 is 32 bits, so they are read as u64 and then fitted.
     let u64_at = |at: usize| -> Result<usize, String> {
         let v = u64::from(word(at)?) | u64::from(word(at + 4)?) << 32;
         usize::try_from(v).map_err(|_| "the level does not fit in memory".to_string())
     };
     let offset = u64_at(80)?;
     let length = u64_at(88)?;
-    let stored = bytes
-        .get(offset..offset + length)
+    let stored = offset
+        .checked_add(length)
+        .and_then(|end| bytes.get(offset..end))
         .ok_or("the level is cut short")?;
-    struct I {
-        width: u32,
-        height: u32,
-        supercompression: u32,
-    }
-    let info = I {
-        width,
-        height,
-        supercompression,
-    };
-    let texels = (info.width * info.height) as usize * 4;
-    let raw = match info.supercompression {
+    let texels = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|n| n.checked_mul(4))
+        .filter(|n| *n > 0)
+        .ok_or("invalid lightmap dimensions")?;
+    let size = texels
+        .checked_mul(2)
+        .and_then(|n| n.checked_mul(layers as usize))
+        .ok_or("lightmap pages overflow")?;
+    let raw = match supercompression {
         0 => stored.to_vec(),
-        crate::ktx2::SS_ZLIB => miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
-            stored,
-            texels * 2 * layers as usize,
-        )
-        .map_err(|e| format!("zlib: {e:?}"))?,
+        crate::ktx2::SS_ZLIB => {
+            miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(stored, size)
+                .map_err(|e| format!("zlib: {e:?}"))?
+        }
         s => return Err(format!("supercompression {s} is not read")),
     };
-    if raw.len() != texels * 2 * layers as usize {
+    if raw.len() != size {
         return Err("the pages are cut short".into());
     }
     let halves: Vec<u16> = raw
@@ -459,11 +142,10 @@ pub fn pages_from_ktx2(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u16>>), String
         .map(|b| u16::from_le_bytes(*b))
         .collect();
     Ok((
-        info.width,
-        info.height,
+        width,
+        height,
         halves.chunks(texels).map(<[u16]>::to_vec).collect(),
     ))
 }
 
-/// IEEE half floats, og-core's.
 pub use og_core::half::{f16_to_f32, f32_to_f16};

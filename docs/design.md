@@ -1392,6 +1392,14 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   only while its scene and model hashes match; otherwise the scene renders
   unbaked, `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`.
+  `og bake lightmaps` writes checked `file.lightmap` declarations into the
+  scene module's `content/lightmaps/` and RGBA16F KTX2 pages plus dense
+  little-endian bindings into its `assets/lightmaps/`. TS captures the
+  bindings with `input.bytes` and typed arrays, keeping large regions out
+  of the source/node budgets. Re-baking keeps an existing declaration's
+  path and module. A bundle records scene-to-lightmap associations explicitly.
+  Geometry bindings use canonical model refs or a scene HLOD node number,
+  not inferred sibling filenames; native tables carry the bake.
 - **Light mobility** (`mobility` on every light; UE's): one light
   description, `og_render_data::light::LightDesc` and `DirectionalLight`,
   is read by the frame and the bake, falloff (`radius`, the range window)

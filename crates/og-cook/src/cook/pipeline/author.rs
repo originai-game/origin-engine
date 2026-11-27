@@ -26,6 +26,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("strings", &strings::STRINGS),
     ("font-extension", &font_pack::FONT_PACK),
     ("rig", &anim::RIG),
+    ("lightmap", &lightmap::LIGHTMAP),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -223,10 +224,24 @@ pub(crate) fn sources(
             fields: Default::default(),
             terrains: Default::default(),
             navmesh: None,
+            lightmap: None,
             conformed: None,
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "lightmap" => {
+                let prepared = lightmap::Prepared::new(
+                    source.input()?,
+                    &assets_root(&source),
+                    source_content::diagnostic(content.source(), &entry.file, "/scene", "")
+                        .to_string(),
+                )?;
+                if let Ok(path) = prepared.path.strip_prefix(root.join("assets")) {
+                    consumed.insert(path.to_string_lossy().replace('\\', "/"));
+                }
+                source.lightmap = Some(prepared);
+                Ok(BTreeMap::new())
+            }
             "font-extension" => {
                 source.font_pack = Some(font_pack::declaration(
                     source.input()?,
@@ -289,7 +304,17 @@ pub(crate) fn sources(
         sources.push(source);
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
+    let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if let Some(lightmap) = &mut source.lightmap {
+            lightmap.bind(&graph.outputs);
+            if !lightmap_scenes.insert(lightmap.file.scene.clone()) {
+                return Err(CookError(format!(
+                    "{}scene '{}' has more than one lightmap",
+                    lightmap.at, lightmap.file.scene
+                )));
+            }
+        }
         if let Some(table) = &mut source.strings {
             for font in &mut table.fonts {
                 *font = graph.outputs[font.as_str()].asset.clone();

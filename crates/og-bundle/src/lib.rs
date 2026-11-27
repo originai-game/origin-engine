@@ -10,7 +10,7 @@
 //! | [`meshopt_codec`] | pure-Rust meshoptimizer vertex and index decoders |
 //! | [`qoa`] | the QOA audio codec |
 //! | [`opus`] | Opus sounds: Opus packets in self-contained blocks (music and long sounds) |
-//! | [`lightmap`] | a scene's baked lighting (`<scene>.lightmap.ogt` and its KTX2 pages) |
+//! | [`lightmap`] | native baked-lighting records and their KTX2 pages |
 //! | [`fx`] | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
 //! | [`grammar`] | the effect files' line tables and the `effect-files` guide written from them |
 //! | [`look`] | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |

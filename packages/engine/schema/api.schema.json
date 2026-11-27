@@ -34278,7 +34278,7 @@
         },
         "reason": {
           "type": "string",
-          "description": "Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
+          "description": "Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
         },
         "models": {
           "type": "integer",
