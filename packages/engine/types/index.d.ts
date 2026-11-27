@@ -10341,7 +10341,7 @@ export interface GlobalIllumination {
 export type Palette = number & { readonly [handleType]: "Palette" };
 
 /**
- * A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook.
+ * A cooked file.look TypeScript declaration loaded by canonical content ID: the frame's whole art direction as data, applied with og.render.applyLook.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -39914,11 +39914,11 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
-     * Load a look: an `.ogt` of `type look` binding a frame's art direction as data, with `name`, `extends` (a preset slug or another look), `ui` and `antialias` lines and one block per resource it sets (LookInfo.resources), its fields by name. The cook validates every field against the reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.
+     * Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID.
      * See `loading §6`, `looks §1`.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `looks/main.ogt`.
+     * @param path The canonical content id, such as `base/looks/main`.
      * @returns Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load.
      */
     function look(world: World, path: string): Result<Look>;

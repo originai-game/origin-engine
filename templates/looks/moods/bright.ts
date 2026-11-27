@@ -1,0 +1,16 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Bright: more light and livelier colour, open shadows, a touch warm.
+  RenderSettings: {
+    exposure: 1.12,
+    environmentIntensity: 0.7,
+  },
+  PostEffects: {
+    temperature: 0.06,
+    brightness: 0.02,
+    contrast: 0.04,
+    saturation: 0.15,
+    vibrance: 0.15,
+  },
+});

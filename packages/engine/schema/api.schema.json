@@ -7428,7 +7428,7 @@
         },
         {
           "name": "look",
-          "doc": "Load a look: an `.ogt` of `type look` binding a frame's art direction as data, with `name`, `extends` (a preset slug or another look), `ui` and `antialias` lines and one block per resource it sets (LookInfo.resources), its fields by name. The cook validates every field against the reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.\nSee `loading §6`, `looks §1`.",
+          "doc": "Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID.\nSee `loading §6`, `looks §1`.",
           "params": [
             {
               "name": "world",
@@ -7440,7 +7440,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The asset id, such as `looks/main.ogt`."
+              "doc": "The canonical content id, such as `base/looks/main`."
             }
           ],
           "returns": "Result<Look>",
@@ -29069,7 +29069,7 @@
     "Look": {
       "x-og-kind": "handle",
       "x-og-module": "render",
-      "description": "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook.",
+      "description": "A cooked file.look TypeScript declaration loaded by canonical content ID: the frame's whole art direction as data, applied with og.render.applyLook.",
       "type": "integer",
       "minimum": 0
     },

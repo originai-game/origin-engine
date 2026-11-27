@@ -3485,7 +3485,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4"
+              "@palettes/handheld4.hex"
             ],
             "dither": [
               "bayer8"
@@ -3532,7 +3532,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4"
+              "@palettes/handheld4.hex"
             ],
             "pixelHeight": [
               160
@@ -3580,7 +3580,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4-bright"
+              "@palettes/handheld4-bright.hex"
             ],
             "dither": [
               "bayer8"
@@ -3627,7 +3627,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4-bright"
+              "@palettes/handheld4-bright.hex"
             ],
             "pixelHeight": [
               160
@@ -3675,7 +3675,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4-dark"
+              "@palettes/handheld4-dark.hex"
             ],
             "dither": [
               "bayer8"
@@ -3722,7 +3722,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4-dark"
+              "@palettes/handheld4-dark.hex"
             ],
             "pixelHeight": [
               160
@@ -3770,7 +3770,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4-warm"
+              "@palettes/handheld4-warm.hex"
             ],
             "dither": [
               "bayer8"
@@ -3817,7 +3817,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4-warm"
+              "@palettes/handheld4-warm.hex"
             ],
             "pixelHeight": [
               160
@@ -3865,7 +3865,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4-cold"
+              "@palettes/handheld4-cold.hex"
             ],
             "dither": [
               "bayer8"
@@ -3912,7 +3912,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4-cold"
+              "@palettes/handheld4-cold.hex"
             ],
             "pixelHeight": [
               160
@@ -3960,7 +3960,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4"
+              "@palettes/handheld4.hex"
             ],
             "dither": [
               "bayer8"
@@ -4007,7 +4007,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4"
+              "@palettes/handheld4.hex"
             ],
             "pixelHeight": [
               160
@@ -4055,7 +4055,7 @@
           },
           "ArtPalette": {
             "colors": [
-              "@palettes/handheld4-high-contrast"
+              "@palettes/handheld4-high-contrast.hex"
             ],
             "dither": [
               "bayer8"
@@ -4102,7 +4102,7 @@
               1
             ],
             "palette": [
-              "@palettes/handheld4-high-contrast"
+              "@palettes/handheld4-high-contrast.hex"
             ],
             "pixelHeight": [
               160

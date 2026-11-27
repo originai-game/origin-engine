@@ -218,7 +218,7 @@ the frame, these say what the assets themselves must be.
 - Every field is no constraint at its zero value (0, false, the first
   variant, an empty list), so a look without these blocks, and every game
   made before them, cooks and draws as before.
-- The built-in presets (templates/looks/<slug>.ogt) carry each catalogue
+- The built-in presets (templates/looks/<slug>.ts) carry each catalogue
   style's values; a game's look overrides them field by field, and
   og-project.json's `look` names the look whose contract the cook reads.
 - Game code reads the contract too: a sprite snapping to ArtPixels.unit, a

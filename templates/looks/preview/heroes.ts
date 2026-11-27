@@ -1,8 +1,8 @@
 // Draws a showcase hero scene in every 3D look and variant: the game as it
 // is (its set, camera, light and code), with only its look swapped. The
 // project is copied to target/look-previews/heroes/<hero>/<name>/ and the
-// copy's look file is the game's own with its `extends` line naming the
-// preset (and a `variant` line after it), so the game's mood, exposure and
+// copy's look file imports the game's own patch and overrides extends and
+// variant, so the game's mood, exposure and
 // grade lie over every preset, as for a game that changed its look; nothing
 // under showcase/ is written. The game's look unchanged is the frame named
 // `game`.
@@ -77,19 +77,8 @@ const all = catalogue.styles.filter((s) => s.look.profiles.includes("3d")).flatM
 const todo = !draw ? [] : names.length ? names : all;
 
 const metadata = JSON.parse(readFileSync(join(project, "og-project.json"), "utf8")) as { look: { $ogRef: string } };
-const look = `${metadata.look.$ogRef.replace(/^base\//, "")}.ogt`;
-const ownLook = readFileSync(join(project, "assets", look), "utf8");
-if (!/^extends\s+"[^"]+"\s*$/m.test(ownLook)) throw new Error(`${project}/assets/${look} extends no preset`);
-
-/** The game's look on another preset: its `extends` line names the preset and the variant follows it; its mood, ui and overrides stay. */
-function swapped(own: string, slug: string, variant: string | undefined): string {
-  const preset = `extends ${JSON.stringify(slug)}${variant ? `\nvariant ${JSON.stringify(variant)}` : ""}`;
-  return own
-    .split("\n")
-    .filter((line) => !/^variant\s/.test(line))
-    .map((line) => (/^extends\s/.test(line) ? preset : line))
-    .join("\n");
-}
+const look = `content/${metadata.look.$ogRef.replace(/^base\//, "")}.ts`;
+const ownLook = readFileSync(join(project, look), "utf8");
 
 const ensure = spawnSync("bun", [join(repo, "scripts/assets.ts"), "ensure", project], { encoding: "utf8" });
 if (ensure.status !== 0) {
@@ -112,7 +101,13 @@ for (const name of todo) {
     mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
     symlinkSync(join(repo, "packages/engine"), join(dir, "node_modules/@origingame/engine"));
   }
-  writeFileSync(join(dir, "assets", look), name === "game" ? ownLook : swapped(ownLook, slug, variant));
+  if (name === "game") writeFileSync(join(dir, look), ownLook);
+  else {
+    // Preserve relative imports by keeping the original next to its wrapper.
+    const original = look.replace(/\.ts$/, ".original.ts");
+    writeFileSync(join(dir, original), ownLook);
+    writeFileSync(join(dir, look), `import {file} from '@origingame/engine/author';\nimport own from ${JSON.stringify(`./${basename(original)}`)};\nconst {variant: _variant, ...patch} = own.value;\nexport default file.look({...patch, extends: [${JSON.stringify(slug)}], ${variant ? `variant: ${JSON.stringify(variant)}` : ""}});\n`);
+  }
   const file = fileOf(name);
   rmSync(join(out, file), { force: true });
   const at = setup.hold + settle;

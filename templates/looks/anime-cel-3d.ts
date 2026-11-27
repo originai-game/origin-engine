@@ -1,0 +1,55 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Hard shadow bands, cool-tinted shadows, outlines that thin with distance.
+  name: "Anime cel-shaded 3D",
+  mood: "bright",
+  ui: "anime",
+  // The UI's seed colours (UiSeeds), so the default style matches the
+  // scene: the cool indigo of its shadow tint.
+  uiSeeds: {
+    primary: "#4f5bd5",
+    neutral: "#2a3060",
+  },
+  MaterialStyle: {
+    toon: true,
+    shadowTint: "#2a3060",
+    shadowTintAmount: 0.7,
+    outlineWidth: 2.5,
+    outlineDistance: 10,
+    outlineNearCap: 1,
+    outlinePlace: "outside",
+    outlineColor: "#141028",
+  },
+  RenderSettings: {
+    toneMapping: "agx",
+    autoExposure: true,
+    adaptSpeedUp: 1,
+    adaptSpeedDown: 3,
+  },
+  // The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+  // assets: 24 to 48 colours, two tones per material; 15k to 40k triangles with
+  // smooth normals for the cel bands; the preset's 2.5 px line, thinning with
+  // distance; flat or lightly painted at 1 texel per screen pixel on 300 px
+  // characters. Props are held to the same 40k (the art direction gives one
+  // range for every model), and no texture is longer than 2048 texels (1
+  // texel per screen pixel on a model filling a 1080-line frame, unwrapped).
+  ArtPalette: {
+    maxColors: 48,
+    rampSteps: 2,
+  },
+  ArtTexels: {
+    density: 128,
+    maxSize: 2048,
+  },
+  ArtShape: {
+    propFaces: 40000,
+    characterFaces: 40000,
+    normals: "smooth",
+  },
+  ArtLine: {
+    width: 2.5,
+    color: "#141028",
+    distanceFalloff: 10,
+  },
+});

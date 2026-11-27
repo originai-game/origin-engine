@@ -1647,12 +1647,14 @@ impl Bundle {
     pub fn look(&self, id: &str, bytes: &[u8]) -> Result<crate::look::LookFile, LoadError> {
         let blob = self.blob::<format::Look>(id, bytes)?;
         let meta = one::<format::LookMeta>(&blob)?;
-        let text = blob
-            .raw("text")?
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the look text is cut short or not UTF-8"))?;
-        crate::look::LookFile::parse(text).map_err(|e| invalid(&blob, e))
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(
+                &blob,
+                "native look length differs from its metadata",
+            ));
+        }
+        crate::look::LookFile::from_bytes(data).map_err(|e| invalid(&blob, e))
     }
 
     /// The colours of a palette blob (`og.Palette`): sRGB, in file order.

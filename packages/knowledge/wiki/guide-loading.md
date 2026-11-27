@@ -337,13 +337,14 @@ The checked input is `og api show file:particles`; native fields and explicit re
   install a directory with `og style add <directory>`, and check it with
   `og style validate <directory>`. Legacy `style.ogt` CSS packs are removed
   and refused by the cook and runtime.
-- A look is an `.ogt` of `type look`. Its top-level lines are `name`,
+- A look exports `file.look({...})` from `content/looks/<name>.ts` and loads
+  by canonical ID (`base/looks/<name>`). Its top-level fields are `name`,
   `extends`, `variant`, `mood`, `ui`, `uiSeeds` and `antialias`. `extends`
-  names a built-in preset's slug or another look's asset id; the game's own
-  `assets/looks/<slug>.ogt` wins over the preset of that slug. `ui` names
-  a built-in theme slug or the game's style directory (`styles/<name>`).
-  Then comes one block per resource it sets, with that resource's fields by
-  name and an asset id where a field is a handle (`lut "luts/warm.cube"`).
+  contains built-in preset slugs or typed refs to other looks; there is no
+  same-slug project override. `ui` names a built-in theme slug or a style ref.
+  Reflected resource objects set fields by name; handles use typed refs
+  (`lut: ref("base/luts/warm")`), never raw filenames. Built-in assets use
+  their full IDs (`ref("@canvas/paper.png")`).
   The cook checks every field against the reflected schema and flattens
   `extends`, so the blob is the whole look (looks §1).
 

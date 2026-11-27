@@ -1,0 +1,14 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Soft: low contrast, gentle colour, lifted shadows and a fuller ambient light.
+  RenderSettings: {
+    environmentIntensity: 0.8,
+  },
+  PostEffects: {
+    brightness: 0.03,
+    contrast: -0.18,
+    saturation: -0.12,
+    vibrance: 0.05,
+  },
+});

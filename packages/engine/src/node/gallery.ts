@@ -100,12 +100,9 @@ const PROJECT = `import {defineProject} from '@origingame/engine/author';
 export default defineProject({id:'ui-gallery',entry:'src/main.tsx',create:{form:'2d'},tick:60,seed:1});
 `;
 
-const LOOK = (pack: string) => `type look
-version 1
----
-# Names the pack or theme so the cook bundles it; the gallery switches packs itself.
-name "gallery ${pack}"
-ui "${pack}"
+const LOOK = (pack: string) => `import { file } from '@origingame/engine/author';
+// Names the pack or theme so the cook bundles it; the gallery switches packs itself.
+export default file.look(${JSON.stringify({name: `gallery ${pack}`, ui: pack})});
 `;
 
 /**
@@ -229,12 +226,12 @@ export default og.game({
 /** Writes the gallery project for `list` under `dir`. */
 export async function generate(dir: string, list: Page[], packNames: string[]): Promise<void> {
   rmSync(join(dir, "src"), { recursive: true, force: true });
-  rmSync(join(dir, "assets", "looks"), { recursive: true, force: true });
+  rmSync(join(dir, "content", "looks"), { recursive: true, force: true });
   mkdirSync(join(dir, "src"), { recursive: true });
-  mkdirSync(join(dir, "assets", "looks"), { recursive: true });
+  mkdirSync(join(dir, "content", "looks"), { recursive: true });
   writeFileSync(join(dir, "og-project.json"), JSON.stringify({version:1,engine:"0.9.0",name:"UI gallery"}) + "\n");
   writeFileSync(join(dir, "project.ts"), PROJECT);
-  for (const p of packNames.filter((p) => p !== "default")) writeFileSync(join(dir, "assets", "looks", `${p}.ogt`), LOOK(p));
+  for (const p of packNames.filter((p) => p !== "default")) writeFileSync(join(dir, "content", "looks", `${p}.ts`), LOOK(p));
   writeFileSync(join(dir, "src", "main.tsx"), MAIN(list));
   // The asset sheets, and the names of the engine's icon set they show (toned icons first).
   cpSync(sheets, join(dir, "src", "sheets"), { recursive: true });

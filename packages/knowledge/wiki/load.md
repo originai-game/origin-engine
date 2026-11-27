@@ -78,7 +78,7 @@ module load {
 | [`og.load.texture`](load/fn-texture.md) | function | `(world: World, path: string): Result<Texture>` | Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](load/fn-textureArray.md) | function | `(world: World, path: string): Result<TextureArrayInfo>` | Load a cooked TS file['texture-array'] declaration as one 2D-array texture: 1..256 equally sized images, in declaration order, encoded for their kind. |
 | [`og.load.style`](load/fn-style.md) | function | `(world: World, path: string): Result<Style>` | Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. |
-| [`og.load.look`](load/fn-look.md) | function | `(world: World, path: string): Result<Look>` | Load a look: an `.ogt` of `type look` binding a frame's art direction as data, with `name`, `extends` (a preset slug or another look), `ui` and `antialias` lines and one block per resource it sets (L… |
+| [`og.load.look`](load/fn-look.md) | function | `(world: World, path: string): Result<Look>` | Load a cooked file.look TypeScript declaration by canonical content ID. |
 | [`og.load.lookInfo`](load/fn-lookInfo.md) | function | `(world: World, look: Look): Result<LookInfo>` | What a loaded look holds and sets. |
 | [`og.load.palette`](load/fn-palette.md) | function | `(world: World, path: string): Result<Palette>` | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. |
 | [`og.load.soundInfo`](load/fn-soundInfo.md) | function | `(world: World, sound: Sound): Result<SoundInfo>` | A loaded sound's format and length. |

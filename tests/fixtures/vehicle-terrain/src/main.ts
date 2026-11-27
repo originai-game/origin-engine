@@ -209,7 +209,7 @@ const Hud = defineSystem("Hud", { reads: [Drive] }, (_q, _t, world) => {
 export default og.game({
   tick: 60,
   seed: 1,
-  look: "looks/drive.ogt",
+  look: "base/looks/drive",
   resources: [Drive],
   systems: [Driver, Ground, Effects, Marks, Chase, Hud],
   start: build,

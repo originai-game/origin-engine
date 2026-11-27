@@ -32,7 +32,7 @@ function model(world: World, name: string, x: number, z: number, turn = 0) {
 export default og.game({
   tick: 60,
   seed: 1,
-  look: "looks/main.ogt",
+  look: "base/looks/main",
   start(world) {
     model(world, "ground", 0, 0);
     model(world, "hills", 0, -24);

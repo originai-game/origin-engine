@@ -108,6 +108,7 @@ pub(crate) struct Scanned {
     pub(crate) consumed: BTreeSet<String>,
     /// The scan's warnings ([`scan::Scan::warnings`]).
     pub(crate) warnings: Vec<String>,
+    pub(crate) prepared: BTreeMap<String, crate::cook::source_content::Content>,
 }
 
 pub(crate) fn scan_sources(
@@ -117,6 +118,16 @@ pub(crate) fn scan_sources(
     code: &CodeGraph,
 ) -> Result<Scanned, CookError> {
     let assets_dir = &project.assets_dir;
+    let (
+        look::Prepared {
+            content: prepared,
+            looks,
+        },
+        look_sources,
+    ) = author::looks(
+        assets_dir.parent().expect("project assets directory"),
+        &project.source,
+    )?;
     let Scan {
         mut sources,
         ignored,
@@ -128,8 +139,9 @@ pub(crate) fn scan_sources(
         &|path| cook_index.read(path),
         threads,
         code,
-        project.source.metadata.look.as_ref(),
+        &looks,
     )?;
+    sources.extend(look_sources);
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Effekseer projects become composed effects and what they need (`efk/`).
@@ -140,6 +152,7 @@ pub(crate) fn scan_sources(
         early_errors,
         consumed,
         warnings,
+        prepared,
     })
 }
 

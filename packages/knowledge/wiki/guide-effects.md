@@ -138,7 +138,7 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
   quarter more: the last shows the mark alone, the others what left it.
   The record's `frameSeconds` says when each frame was taken.
 - For context, `og vfx preview base/fx/hit --project-look --scene base/scenes/courtyard --position 2,0.5,-1 --camera 2,2,6,2,1,-1,50`
-  checks the same six moments in the project's look and a cooked scene instead. Fog, exposure and grading stay active; scene resources apply after the look. Use `--look looks/alternate.ogt` instead of `--project-look` to compare an explicit look. The position is exact (no automatic ground lift); the camera is world-space, or without `--camera` it auto-frames at that position. Bounds remain an isolated black-stage measurement, while draws and GPU growth are measured in the selected scene. No game entry or gameplay system runs in this preview.
+  checks the same six moments in the project's look and a cooked scene instead. Fog, exposure and grading stay active; scene resources apply after the look. Use `--look base/looks/alternate` instead of `--project-look` to compare an explicit look. The position is exact (no automatic ground lift); the camera is world-space, or without `--camera` it auto-frames at that position. Bounds remain an isolated black-stage measurement, while draws and GPU growth are measured in the selected scene. No game entry or gameplay system runs in this preview.
 - Read og.VfxEvent for the frame the hit lands; the drawn parts never
   feed gameplay.
 - An effect that stands on its origin (a pillar of fire) is spawned on the

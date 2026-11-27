@@ -6,7 +6,7 @@
 //! The project is cooked first, then every cooked asset is measured from
 //! `cooked/` itself (never from the cook's notes, which an up-to-date cook
 //! does not carry), and each number is compared with the contract of the
-//! look project.ogt names (`look "looks/<id>.ogt"`):
+//! look og-project.json names by canonical content ID:
 //!
 //! - **sprites** (textures of a 2D project, `create { form "2d" }`, or cooked as pixel
 //!   art): distinct colours against `ArtPalette.maxColors`, the palette hit

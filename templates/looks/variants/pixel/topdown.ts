@@ -1,0 +1,24 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // A tile-friendly grid, eight tones, no dither, so tiles stay flat and crisp.
+  // The topdown variant of pixel (`variant "topdown" `): only what it changes of
+  // the preset, a field it turns off written at its default.
+  name: "Top-down tile-based pixel art",
+  Stylise: {
+    pixelHeight: 180,
+    dither: "none",
+    ditherStrength: 1,
+  },
+  ArtPalette: {
+    rampSteps: 0,
+  },
+  ArtPixels: {
+    logicalHeight: 180,
+    spriteSizes: [16, 24, 32],
+  },
+  ArtLine: {
+    width: 0,
+    place: "outside",
+  },
+});

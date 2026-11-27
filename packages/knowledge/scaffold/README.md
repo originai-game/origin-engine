@@ -19,9 +19,9 @@ genre and view. The platform mounts its text as
 `og create` fills the name and id and writes the agent's choices in
 `project.ts`'s `create` object. Genre, view, look and variant, UI style, platform, input, players,
 languages, and music are constraints and hints. Create also writes
-`assets/looks/<id>.ogt` with the preset, variant and UI (it draws in the
+`content/looks/<id>.ts` with the preset, variant and UI (it draws in the
 preset's own mood), and names its canonical `base/looks/<id>` reference in
-og-project.json. Look-domain TS migration follows in P1. Mounting the raw payload alone does not perform this step.
+og-project.json. Mounting the raw payload alone does not perform this step.
 No gameplay or art is generated.
 
 `origin-engine.json` pins the engine and probe protocol. `distribution.json`

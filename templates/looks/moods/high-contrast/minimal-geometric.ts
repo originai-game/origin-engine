@@ -1,0 +1,14 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // minimal-geometric in a high-contrast mood: the high-contrast layer without its vignette. Under posterize a
+  // vignette's falloff steps into rings across the flat sky and ground.
+  RenderSettings: {
+    environmentIntensity: 0.3,
+  },
+  PostEffects: {
+    contrast: 0.25,
+    saturation: 0.12,
+    vibrance: 0.1,
+  },
+});

@@ -1,12 +1,9 @@
-//! The look cook step: a `type look` .ogt (grammar: [`crate::look`]) is
-//! resolved, checked and flattened here, so its blob is the whole look.
+//! Checked `file.look` TS patches, including embedded presets, compose into
+//! native look values. No author text parser or runtime text payload remains.
 //!
-//! - `extends "<slug>"` names the game's own `assets/looks/<slug>.ogt`
-//!   when it has one (a look of that path never extends itself: there the
-//!   slug is the built-in preset), else the built-in preset `<slug>`
-//!   ([`PRESETS`], the engine's `templates/looks/<slug>.ogt`); `extends
-//!   "looks/base.ogt"` (a path) names another look under `assets/`. Bases
-//!   chain up to [`MAX_EXTENDS`] deep; a cycle is refused. The look is laid
+//! - `extends: ["<slug>"]` names a built-in preset ([`PRESETS`]); typed
+//!   content refs name project looks. There is no same-slug fallback.
+//!   Bases chain up to [`MAX_EXTENDS`] deep; a cycle is refused. A look lies
 //!   over its base field by field ([`LookFile::over`]).
 //! - Every field is checked against the IDL's records (`og_records::RECORDS`,
 //!   the reflection every tool reads): the resource and field exist and are
@@ -14,23 +11,22 @@
 //!   colour is three linear numbers or an sRGB `#rrggbb` (written linear), a
 //!   handle field names an asset of its kind that the bundle has.
 //! - A handle field may name one of the engine's built-in assets
-//!   ([`BUILTINS`], `templates/looks/assets/`) as `"@canvas/<name>"` or
-//!   `"@palettes/<name>"` (the extension may be left out): the look stores
+//!   ([`BUILTINS`], `templates/looks/assets/`) by its complete ID: the look stores
 //!   its bundle id (`@canvas/paper.png`), and the cook adds the built-in to
 //!   the game's bundle under that id ([`builtin_references`]), so the
 //!   runtime loads it as any other asset. Paths under `assets/` starting
 //!   with `@` are the engine's, and refused as a game's own.
-//! - `mood "<word>"` in a preset names the mood it is drawn in; in any other
+//! - `mood: "<word>"` in a preset names the mood it is drawn in; in any other
 //!   look it asks for a mood: when it differs from the preset's own, the
 //!   mood's layer ([`MOOD_LAYERS`], `templates/looks/moods/`) is laid over
 //!   the preset the chain reaches ([`lay_mood`]) before the looks above it,
 //!   so the game's own fields still win. A chain that reaches no preset
 //!   lays the layer under its deepest look.
-//! - `variant "<name>"` asks for one of the variants of the preset the
+//! - `variant: "<name>"` asks for one of the variants of the preset the
 //!   chain reaches ([`VARIANT_LAYERS`], `templates/looks/variants/<slug>/`):
 //!   its layer is laid over the preset ([`lay_variant`]) field by field,
 //!   before the mood's, and the mood then reads the variant's own layer
-//!   (`moods/<mood>/<slug>.<variant>.ogt`) first. The nearest look's
+//!   (`moods/<mood>/<slug>.<variant>.ts`) first. The nearest look's
 //!   variant wins for the whole chain; a chain that reaches no preset, or a
 //!   preset without that variant, is refused.
 //! - The stamp covers every look in the chain, so editing a base re-cooks
@@ -40,14 +36,16 @@ pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS, VARIANT_LAYERS};
 pub use super::look_styles::{
     StyleFile, fonts_dir, style_licences, style_path, styles, styles_dir,
 };
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
-};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
 use crate::format::{self, Area, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};
 use og_blob::BlobWriter;
 use og_core::ogt::{Number, Value};
+use std::collections::BTreeMap;
 use std::path::Path;
+
+mod author;
+pub(crate) use author::{Prepared, project as prepare};
 
 /// The built-in styles' slugs: the directories with a pack.json.
 pub fn style_slugs() -> Vec<&'static str> {
@@ -103,19 +101,28 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
     ))
 }
 
-/// The UI style id resolved from the look at `assets/<rel>` (flattening its
-/// `extends` chain against the built-in presets), or `None` when the look does
-/// not name a non-default UI style or cannot be read.
-pub fn look_ui_style(assets_root: &Path, rel: &str) -> Option<String> {
-    let text = std::fs::read_to_string(assets_root.join(rel)).ok()?;
-    let mut seen = vec![rel.to_string()];
-    let mut bases = Vec::new();
-    let look = flatten(rel, &text, assets_root, PRESETS, &mut seen, &mut bases).ok()?;
-    let ui = look.ui.as_deref()?;
+/// UI checks consume the same checked TS composition as the cook, not a
+/// second author parser. Project bootstrap itself never evaluates content.
+pub fn project_ui_style(root: &Path) -> Result<Option<String>, String> {
+    let project = crate::cook::source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let Prepared { looks, .. } = prepare(root, &project).map_err(|e| e.to_string())?;
+    let id = match &project.metadata.look {
+        Some(crate::cook::source_schemas::procedural::LookBase::Preset(slug)) => {
+            format!("@looks/{slug}")
+        }
+        Some(crate::cook::source_schemas::procedural::LookBase::Asset(reference)) => {
+            reference.id.clone()
+        }
+        None => return Ok(None),
+    };
+    let ui = match looks.get(&id).and_then(|look| look.ui.as_deref()) {
+        Some(ui) => ui,
+        None => return Ok(None),
+    };
     if ui == "default" {
-        return None;
+        return Ok(None);
     }
-    resolve_style(ui, &|id| assets_root.join(id).is_dir()).ok()
+    resolve_style(ui, &|id| root.join("assets").join(id).is_dir()).map(Some)
 }
 
 /// The files of a built-in pack directory, by bundle ID.
@@ -154,31 +161,18 @@ pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])
     out
 }
 
-/// The built-in asset `name` names (`"@canvas/paper"` or its full id
-/// `"@canvas/paper.png"`): its bundle id and bytes.
+/// The built-in asset's complete id (`"@canvas/paper.png"`) and bytes.
 pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
-    BUILTINS
-        .iter()
-        .find(|(id, _)| *id == name || id.rsplit_once('.').is_some_and(|(stem, _)| stem == name))
-        .copied()
+    BUILTINS.iter().find(|(id, _)| *id == name).copied()
 }
 
-/// The built-in assets the look `rel` (text `text`) names through its chain
+/// The built-in assets the checked look names through its chain
 /// of bases, by bundle id with their bytes: the canvases and palettes its
 /// fields name, and every file of the built-in style its `ui` names (unless
 /// the game has its own of that slug). The cook adds each to the bundle
 /// once. A look that does not resolve names none here; its own cook reports
 /// why.
-pub(crate) fn builtin_files(
-    rel: &str,
-    text: &str,
-    root: &Path,
-) -> Vec<(&'static str, &'static [u8])> {
-    let mut seen = vec![rel.to_string()];
-    let mut bases = Vec::new();
-    let Ok(look) = flatten(rel, text, root, PRESETS, &mut seen, &mut bases) else {
-        return Vec::new();
-    };
+pub(crate) fn builtin_files(look: &LookFile, root: &Path) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for b in &look.blocks {
         for (_, v, _) in &b.fields {
@@ -218,85 +212,53 @@ pub(crate) fn builtin_files(
     out
 }
 
-/// A look in an `extends` chain: its id (an asset id, or a preset's slug)
-/// and its text.
-struct Base {
-    id: String,
-    text: String,
+fn builtin_looks() -> Result<&'static BTreeMap<String, LookFile>, String> {
+    static LOOKS: std::sync::OnceLock<Result<BTreeMap<String, LookFile>, String>> =
+        std::sync::OnceLock::new();
+    LOOKS
+        .get_or_init(|| {
+            PRESETS
+                .iter()
+                .map(|(id, text)| ((*id).to_owned(), *text))
+                .chain(
+                    VARIANT_LAYERS.iter().map(|(slug, variant, text)| {
+                        (format!("@variants/{slug}/{variant}"), *text)
+                    }),
+                )
+                .chain(MOOD_LAYERS.iter().map(|(mood, key, text)| {
+                    (
+                        key.map_or_else(
+                            || format!("@moods/{mood}"),
+                            |key| format!("@moods/{mood}/{key}"),
+                        ),
+                        *text,
+                    )
+                }))
+                .map(|(id, text)| author::builtin(&id, text).map(|look| (id, look)))
+                .collect()
+        })
+        .as_ref()
+        .map_err(Clone::clone)
 }
 
-fn find_base(
-    name: &str,
-    from: &str,
-    root: &Path,
-    presets: &[(&str, &str)],
-) -> Result<Base, String> {
-    let read = |id: &str| std::fs::read_to_string(root.join(id)).ok();
-    if name.contains('/') || name.ends_with(".ogt") {
-        let id = crate::runtime::asset_id(name).to_string();
-        return read(&id)
-            .map(|text| Base {
-                id: id.clone(),
-                text,
-            })
-            .ok_or_else(|| format!("extends \"{name}\": there is no assets/{id}"));
-    }
-    let own = format!("looks/{name}.ogt");
-    if own != from
-        && let Some(text) = read(&own)
-    {
-        return Ok(Base { id: own, text });
-    }
-    if let Some((slug, text)) = presets.iter().find(|(s, _)| *s == name) {
-        return Ok(Base {
-            id: slug.to_string(),
-            text: text.to_string(),
-        });
-    }
-    let names: Vec<&str> = presets.iter().map(|(s, _)| *s).collect();
-    Err(format!(
-        "extends \"{name}\": neither assets/{own} nor a built-in preset ({})",
-        if names.is_empty() {
-            "the engine ships none yet".to_string()
-        } else {
-            names.join(", ")
-        }
-    ))
+/// Compose checked patches. Strings select engine presets; content refs were
+/// normalized to canonical IDs by the typed declaration adapter, never paths.
+fn flatten(id: &str, patches: &BTreeMap<String, LookFile>) -> Result<LookFile, String> {
+    flatten_asked(id, patches, &mut vec![id.into()], None, None)
 }
 
-/// The look `text` (of id `id`) laid over its chain of bases, and the
-/// bases it read, nearest first.
-fn flatten(
-    id: &str,
-    text: &str,
-    root: &Path,
-    presets: &[(&str, &str)],
-    seen: &mut Vec<String>,
-    bases: &mut Vec<Base>,
-) -> Result<LookFile, String> {
-    flatten_asked(id, text, root, presets, seen, bases, None, None)
-}
-
-/// [`flatten`] with the mood and variant a look above asked for (`asked`,
-/// `asked_variant`), which win over this look's own `mood` and `variant`.
-#[allow(clippy::too_many_arguments)]
 fn flatten_asked(
     id: &str,
-    text: &str,
-    root: &Path,
-    presets: &[(&str, &str)],
+    patches: &BTreeMap<String, LookFile>,
     seen: &mut Vec<String>,
-    bases: &mut Vec<Base>,
     asked: Option<&str>,
     asked_variant: Option<&str>,
 ) -> Result<LookFile, String> {
-    let mut look = LookFile::parse(text).map_err(|e| {
-        if seen.len() > 1 {
-            format!("{id}: {e}")
-        } else {
-            e
-        }
-    })?;
+    let mut look = patches
+        .get(id)
+        .or(builtin_looks()?.get(id))
+        .cloned()
+        .ok_or_else(|| format!("extends: unknown look {id}"))?;
     // The mood asked here: the one asked from above (the nearest look's
     // wins for the whole chain), else this look's own.
     let asked = asked.map(str::to_string).or_else(|| look.mood.clone());
@@ -304,7 +266,7 @@ fn flatten_asked(
         .map(str::to_string)
         .or_else(|| look.variant.clone());
     let Some(name) = look.extends.first().cloned() else {
-        let is_preset = presets.iter().any(|(s, _)| *s == id);
+        let is_preset = PRESETS.iter().any(|(s, _)| *s == id);
         if is_preset && look.variant.is_some() {
             return Err(format!(
                 "{id}: a preset names no variant; a look extending it asks for one"
@@ -319,10 +281,9 @@ fn flatten_asked(
         }
         // A chain that reaches no preset: the mood lies under its root.
         if let Some(m) = asked.as_deref()
-            && !presets.iter().any(|(s, _)| *s == id)
+            && !is_preset
         {
-            let (layer, layer_base) = lay_mood(&LookFile::default(), m, &[])?;
-            bases.insert(0, layer_base);
+            let layer = lay_mood(&LookFile::default(), m, &[])?;
             let mut merged = look.over(&layer, "");
             merged.extends.clear();
             merged.mood = Some(m.to_string());
@@ -338,50 +299,37 @@ fn flatten_asked(
     if seen.len() > MAX_EXTENDS {
         return Err(format!("extends chains at most {MAX_EXTENDS} looks deep"));
     }
-    let base = find_base(&name, id, root, presets)?;
-    if seen.contains(&base.id) {
-        seen.push(base.id.clone());
+    if seen.contains(&name) {
+        seen.push(name.clone());
         return Err(format!(
             "extends goes round in a circle: {}",
             seen.join(" → ")
         ));
     }
-    seen.push(base.id.clone());
+    seen.push(name.clone());
     let mut base_look = flatten_asked(
-        &base.id,
-        &base.text,
-        root,
-        presets,
+        &name,
+        patches,
         seen,
-        bases,
         asked.as_deref(),
         asked_variant.as_deref(),
     )?;
-    let is_preset = presets.iter().any(|(s, _)| *s == base.id);
+    let is_preset = PRESETS.iter().any(|(s, _)| *s == name);
     if let Some(v) = asked_variant.as_deref()
         && is_preset
     {
-        let (layered, layer_base) = lay_variant(&base_look, &base.id, v)?;
-        base_look = layered;
-        bases.insert(0, layer_base);
+        base_look = lay_variant(&base_look, &name, v)?;
     }
     if let Some(m) = asked.as_deref()
         && is_preset
         && base_look.mood.as_deref() != Some(m)
     {
-        let own = asked_variant.as_deref().map(|v| format!("{}.{v}", base.id));
-        let keys: Vec<&str> = own
-            .as_deref()
-            .into_iter()
-            .chain([base.id.as_str()])
-            .collect();
-        let (layered, layer_base) = lay_mood(&base_look, m, &keys)?;
-        base_look = layered;
-        bases.insert(0, layer_base);
+        let own = asked_variant.as_deref().map(|v| format!("{name}.{v}"));
+        let keys: Vec<&str> = own.as_deref().into_iter().chain([name.as_str()]).collect();
+        base_look = lay_mood(&base_look, m, &keys)?;
     }
     look.extends.clear();
-    let merged = look.over(&base_look, &base.id);
-    bases.insert(0, base);
+    let merged = look.over(&base_look, &name);
     Ok(merged)
 }
 
@@ -392,22 +340,22 @@ fn flatten_asked(
 /// and every one of the preset's) in each mood (its own and every one of
 /// [`crate::look::MOODS`]); `moods.json`, each mood's layer laid as under a
 /// chain that reaches no preset; and `palettes.json`, the built-in palettes'
-/// text by file name. This flattener is the only one: the brief lays only a
-/// game's own looks over these, field by field.
+/// text by file name. This flattener is the only one; briefs read checked JSON.
 pub fn preset_documents() -> Result<Vec<(String, String)>, String> {
     let entry = |variant: Option<&str>, mood: Option<&str>, look: &LookFile| serde_json::json!({ "variant": variant, "mood": mood, "look": look_json(look) });
     let asked = |slug: Option<&str>, variant: Option<&str>, mood: Option<&str>| {
-        let mut text = String::from("type look\nversion 1\n---\n");
-        for (key, v) in [("extends", slug), ("variant", variant), ("mood", mood)] {
-            if let Some(v) = v {
-                text.push_str(&format!("{key} \"{v}\"\n"));
-            }
-        }
-        // The asking look's id is the preset's own path, which never
-        // extends itself, so the slug is the built-in preset and no game's.
-        let id = format!("looks/{}.ogt", slug.unwrap_or("asked"));
-        let (mut seen, mut bases) = (vec![id.clone()], Vec::new());
-        flatten(&id, &text, Path::new(""), PRESETS, &mut seen, &mut bases)
+        flatten(
+            "@asked",
+            &BTreeMap::from([(
+                "@asked".into(),
+                LookFile {
+                    extends: slug.map(str::to_owned).into_iter().collect(),
+                    variant: variant.map(str::to_owned),
+                    mood: mood.map(str::to_owned),
+                    ..Default::default()
+                },
+            )]),
+        )
     };
     let pretty = |v: serde_json::Value| {
         serde_json::to_string_pretty(&v).expect("JSON values serialise") + "\n"
@@ -503,13 +451,127 @@ fn look_json(look: &LookFile) -> serde_json::Value {
     })
 }
 
+/// Knowledge reads checked cook results, never TS source or another parser.
+pub(crate) const REPORT: &str = ".og/cook/look.json";
+
+pub(crate) fn write_report(
+    root: &Path,
+    project: &crate::cook::source_project::Project,
+    graph: &crate::cook::source_content::Graph,
+    sources: &[Source],
+    known: &dyn Fn(&str) -> bool,
+) -> Result<(), CookError> {
+    let Some(look_id) = project.metadata.look.as_ref() else {
+        return Ok(());
+    };
+    let id = match look_id {
+        crate::cook::source_schemas::procedural::LookBase::Preset(slug) => format!("@looks/{slug}"),
+        crate::cook::source_schemas::procedural::LookBase::Asset(reference) => {
+            graph.outputs[&reference.id].asset.clone()
+        }
+    };
+    let source = sources
+        .iter()
+        .find(|s| s.rel == id && s.kind == &LOOK)
+        .ok_or_else(|| CookError(format!("{id}: missing project look")))?;
+    let look = resolve(source, known).map_err(CookError)?;
+    let mut palettes = BTreeMap::new();
+    for block in &look.blocks {
+        for (field, values, _) in &block.fields {
+            if !matches!(
+                (block.resource.as_str(), field.as_str()),
+                ("ArtPalette", "colors") | ("Stylise", "palette")
+            ) {
+                continue;
+            }
+            let [Value::String(id)] = values.as_slice() else {
+                continue;
+            };
+            if id.is_empty() {
+                continue;
+            }
+            let source = sources
+                .iter()
+                .find(|s| &s.rel == id)
+                .ok_or_else(|| CookError(format!("{id}: missing look palette")))?;
+            let text = std::str::from_utf8(&source.bytes).map_err(|e| CookError(e.to_string()))?;
+            let file = source.path.to_string_lossy();
+            crate::look::parse_palette(&file, text).map_err(CookError)?;
+            palettes.insert(id.clone(), serde_json::json!({"format": if file.ends_with(".gpl") { "gpl" } else { "hex" }, "text": text}));
+        }
+    }
+    let preset = look
+        .extends
+        .iter()
+        .find(|id| PRESETS.iter().any(|(s, _)| s == id));
+    let mut fingerprints = project.fingerprints.clone();
+    let mut seen = std::collections::BTreeSet::new();
+    let mut todo = vec![id.clone()];
+    while let Some(id) = todo.pop() {
+        let asset = graph.outputs.get(&id).map_or(id.as_str(), |o| &o.asset);
+        let id = graph.outputs.get(&id).map_or(id.as_str(), |o| &o.entry);
+        if !seen.insert(id.to_owned()) {
+            continue;
+        }
+        if let Some(node) = graph.nodes.get(id) {
+            for (file, hash) in &node.fingerprints {
+                if fingerprints
+                    .insert(file.clone(), hash.clone())
+                    .is_some_and(|before| before != *hash)
+                {
+                    return Err(CookError(format!(
+                        "{file}: changed during look cook; run og cook again"
+                    )));
+                }
+            }
+            todo.extend(node.references.iter().map(|r| r.target.clone()));
+        }
+        if let Some(source) = sources.iter().find(|s| s.rel == asset) {
+            if let Ok(path) = source.path.strip_prefix(root)
+                && source.path.is_file()
+                && !graph.nodes.contains_key(id)
+            {
+                fingerprints.insert(
+                    path.to_string_lossy().replace('\\', "/"),
+                    super::integrity(&source.bytes),
+                );
+            }
+            let module = graph
+                .nodes
+                .get(id)
+                .map(|node| project.module_for(&node.entry.file));
+            for (file, bytes) in &source.settings.files {
+                let file = module.map_or_else(
+                    || file.clone(),
+                    |m| {
+                        if m.root.is_empty() {
+                            file.clone()
+                        } else {
+                            format!("{}/{file}", m.root)
+                        }
+                    },
+                );
+                fingerprints.insert(file, super::integrity(bytes));
+            }
+        }
+    }
+    let document = serde_json::json!({
+        "id": id, "profile": if matches!(project.input.create.as_ref().and_then(|c| c.form.as_ref()), Some(crate::cook::source_schemas::project::Form::TwoD)) {"2d"} else {"3d"}, "preset": preset,
+        "look": look_json(&look), "palettes": palettes, "fingerprints": fingerprints,
+    });
+    let path = root.join(REPORT);
+    std::fs::create_dir_all(path.parent().expect("report directory"))
+        .and_then(|_| std::fs::write(&path, serde_json::to_vec_pretty(&document).expect("JSON")))
+        .map_err(|e| CookError(format!("{}: {e}", path.display())))
+}
+
 /// The variants' layer `variant` of the preset `slug`
-/// (`variants/<slug>/<variant>.ogt`) laid over `base`, the preset
+/// (`variants/<slug>/<variant>.ts`) laid over `base`, the preset
 /// flattened: field by field, the layer winning, its name, mood and
 /// antialias where it gives them. Returns the laid look, carrying the
 /// variant, and the layer as a base for the stamp.
-fn lay_variant(base: &LookFile, slug: &str, variant: &str) -> Result<(LookFile, Base), String> {
-    let Some((_, _, text)) = VARIANT_LAYERS
+fn lay_variant(base: &LookFile, slug: &str, variant: &str) -> Result<LookFile, String> {
+    let Some(_) = VARIANT_LAYERS
         .iter()
         .find(|(s, v, _)| *s == slug && *v == variant)
     else {
@@ -528,7 +590,7 @@ fn lay_variant(base: &LookFile, slug: &str, variant: &str) -> Result<(LookFile, 
         });
     };
     let id = format!("@variants/{slug}/{variant}");
-    let layer = LookFile::parse(text).map_err(|e| format!("{id}: {e}"))?;
+    let layer = &builtin_looks()?[&id];
     if !layer.extends.is_empty() || layer.variant.is_some() {
         return Err(format!(
             "{id}: a variant's layer names neither extends nor variant"
@@ -538,18 +600,12 @@ fn lay_variant(base: &LookFile, slug: &str, variant: &str) -> Result<(LookFile, 
     out.extends = base.extends.clone();
     out.name = layer.name.clone().or_else(|| base.name.clone());
     out.variant = Some(variant.to_string());
-    Ok((
-        out,
-        Base {
-            id,
-            text: text.to_string(),
-        },
-    ))
+    Ok(out)
 }
 
 /// The moods' layer for the first of `keys` that has its own
-/// (`moods/<mood>/<key>.ogt`: a preset's variant `<slug>.<variant>`, then
-/// the preset `<slug>`), else every style's (`moods/<mood>.ogt`), with its
+/// (`moods/<mood>/<key>.ts`: a preset's variant `<slug>.<variant>`, then
+/// the preset `<slug>`), else every style's (`moods/<mood>.ts`), with its
 /// id.
 fn mood_layer(mood: &str, keys: &[&str]) -> Option<(String, &'static str)> {
     let own = keys.iter().find_map(|s| {
@@ -594,10 +650,10 @@ fn default_numbers(json: &str) -> Vec<f64> {
 /// rounded for a whole-number field; any other value replacing the base's.
 /// Returns the laid look, carrying the mood, and the layer as a base for the
 /// stamp.
-fn lay_mood(base: &LookFile, mood: &str, keys: &[&str]) -> Result<(LookFile, Base), String> {
-    let (id, text) = mood_layer(mood, keys)
+fn lay_mood(base: &LookFile, mood: &str, keys: &[&str]) -> Result<LookFile, String> {
+    let (id, _) = mood_layer(mood, keys)
         .ok_or_else(|| format!("mood \"{mood}\": one of {}", crate::look::MOODS.join(", ")))?;
-    let layer = LookFile::parse(text).map_err(|e| format!("{id}: {e}"))?;
+    let layer = &builtin_looks()?[&id];
     let mut out = base.clone();
     for block in &layer.blocks {
         let schema = format!("og.{}", block.resource);
@@ -658,7 +714,7 @@ fn lay_mood(base: &LookFile, mood: &str, keys: &[&str]) -> Result<(LookFile, Bas
                             if matches!(decl.column, "u32" | "i32") {
                                 x = x.round();
                             }
-                            // Six decimals: the layer's sums are written as text.
+                            // Preserve the composed layers' six-decimal precision.
                             number((x * 1e6).round() / 1e6)
                         })
                         .collect()
@@ -672,13 +728,7 @@ fn lay_mood(base: &LookFile, mood: &str, keys: &[&str]) -> Result<(LookFile, Bas
         }
     }
     out.mood = Some(mood.to_string());
-    Ok((
-        out,
-        Base {
-            id,
-            text: text.to_string(),
-        },
-    ))
+    Ok(out)
 }
 
 /// What a handle column takes: the asset kinds by extension.
@@ -704,9 +754,7 @@ fn number(n: f64) -> Value {
     Value::Number(Number::from_f64(n).expect("a finite number"))
 }
 
-/// The asset id a handle field's value names: a string under `assets/`,
-/// or one of the engine's built-ins (`"@canvas/paper"`), of the column's
-/// kinds by extension.
+/// A bound canonical ref, or an engine built-in checked by extension.
 fn handle_path(at: &str, column: &str, exts: &[&str], values: &[Value]) -> Result<String, String> {
     let path = match values {
         [Value::String(s)] if s.starts_with('@') => match builtin(s) {
@@ -716,7 +764,6 @@ fn handle_path(at: &str, column: &str, exts: &[&str], values: &[Value]) -> Resul
                     .iter()
                     .map(|(id, _)| *id)
                     .filter(|id| id.rsplit_once('.').is_some_and(|(_, e)| exts.contains(&e)))
-                    .map(|id| id.rsplit_once('.').map_or(id, |(stem, _)| stem))
                     .collect();
                 return Err(format!(
                     "{at}: \"{s}\" is not one of the engine's built-in {column}s ({})",
@@ -735,7 +782,7 @@ fn handle_path(at: &str, column: &str, exts: &[&str], values: &[Value]) -> Resul
         .rsplit_once('.')
         .map_or("", |(_, e)| e)
         .to_ascii_lowercase();
-    if !exts.contains(&ext.as_str()) {
+    if path.starts_with('@') && !exts.contains(&ext.as_str()) {
         return Err(format!(
             "{at}: \"{path}\" is not a {column} (.{})",
             exts.join(", .")
@@ -917,29 +964,44 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
     Ok(())
 }
 
+pub(crate) fn bind(
+    sources: &mut [Source],
+    graph: &crate::cook::source_content::Graph,
+) -> Result<(), CookError> {
+    for source in sources.iter_mut().filter(|s| s.kind == &LOOK) {
+        let mut look = LookFile::from_bytes(&source.bytes).map_err(CookError)?;
+        for id in look.ui.iter_mut().chain(
+            look.blocks
+                .iter_mut()
+                .flat_map(|b| b.fields.iter_mut())
+                .flat_map(|(_, values, _)| values.iter_mut())
+                .filter_map(|v| match v {
+                    Value::String(s) => Some(s),
+                    _ => None,
+                }),
+        ) {
+            if let Some(output) = graph.outputs.get(id.as_str()) {
+                *id = output.asset.clone();
+            }
+        }
+        source.bytes = look.to_bytes().map_err(CookError)?;
+        source.hash = super::hash_bytes(&source.bytes);
+    }
+    Ok(())
+}
+
 /// The flattened, checked look of `s` and the bases it read.
-fn resolve(
-    s: &Source,
-    root: &Path,
-    known: &dyn Fn(&str) -> bool,
-    presets: &[(&str, &str)],
-) -> Result<(LookFile, Vec<Base>), String> {
-    let text = std::str::from_utf8(&s.bytes).map_err(|_| "a look is text (UTF-8)".to_string())?;
-    let mut seen = vec![s.rel.clone()];
-    let mut bases = Vec::new();
-    let mut look = flatten(&s.rel, text, root, presets, &mut seen, &mut bases)?;
+fn resolve(s: &Source, known: &dyn Fn(&str) -> bool) -> Result<LookFile, String> {
+    let mut look = LookFile::from_bytes(&s.bytes)?;
     check(&mut look, known)?;
-    Ok((look, bases))
+    Ok(look)
 }
 
 /// The stamp's dependencies: every base's id and text hash, and whether the
 /// assets the look names are in the bundle.
-pub(crate) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) -> bool) -> String {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let mut seen = vec![s.rel.clone()];
-    let mut bases = Vec::new();
+pub(crate) fn look_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
     let mut out = Vec::new();
-    match flatten(&s.rel, &text, root, PRESETS, &mut seen, &mut bases) {
+    match LookFile::from_bytes(&s.bytes) {
         Ok(look) => {
             let mut refs: Vec<String> = look
                 .ui
@@ -961,13 +1023,6 @@ pub(crate) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
         }
         Err(e) => out.push(format!("error {e}")),
     }
-    for b in bases {
-        out.push(format!(
-            "{}={:016x}",
-            b.id,
-            super::hash_bytes(b.text.as_bytes())
-        ));
-    }
     out.join("\n")
 }
 
@@ -976,47 +1031,36 @@ pub(crate) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
 /// painted 2D styles apply in texel space, `conform/texture2d.rs`).
 pub(crate) fn flattened(
     s: &Source,
-    root: &Path,
+    _root: &Path,
     known: &dyn Fn(&str) -> bool,
 ) -> Result<LookFile, String> {
-    resolve(s, root, known, PRESETS).map(|(look, _)| look)
+    resolve(s, known)
 }
 
-/// The art contract of the look `s` (project.ogt's `look`): the look
+/// The art contract of the look `s` (og-project.json's `look`): the look
 /// flattened over its chain and checked, with only its art resources'
 /// blocks (`crate::look::ART_RESOURCES`), which the cook reads before any
 /// asset of the game cooks. An error is the look's own (its cook reports it
 /// too).
 pub(crate) fn contract(
     s: &Source,
-    root: &Path,
+    _root: &Path,
     known: &dyn Fn(&str) -> bool,
 ) -> Result<LookFile, String> {
-    let (mut look, _) = resolve(s, root, known, PRESETS)?;
+    let mut look = resolve(s, known)?;
     look.blocks
         .retain(|b| crate::look::ART_RESOURCES.contains(&b.resource.as_str()));
     Ok(look)
 }
 
-/// Cooks one `type look` file.
+/// Cooks one checked look patch.
 pub(crate) fn cook_look(
     s: &Source,
-    root: &Path,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    cook_with(s, root, known, PRESETS, stamp)
-}
-
-fn cook_with(
-    s: &Source,
-    root: &Path,
-    known: &dyn Fn(&str) -> bool,
-    presets: &[(&str, &str)],
-    stamp: u64,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let (look, _) = resolve(s, root, known, presets).map_err(CookError)?;
-    let text = look.to_text();
+    let look = resolve(s, known).map_err(CookError)?;
+    let data = look.to_bytes().map_err(CookError)?;
     let mut w = BlobWriter::new(
         format::Look::type_hash(),
         format::Look::schema_version(),
@@ -1025,19 +1069,17 @@ fn cook_with(
     w.table(
         "meta",
         &[format::LookMeta {
-            text_bytes: text.len() as u32,
+            data_bytes: data.len() as u32,
         }],
         format::row_hash::<format::LookMeta>(),
     )
-    .raw("text", text.into_bytes(), 16);
+    .raw("data", data, 16);
     let fields: usize = look.blocks.iter().map(|b| b.fields.len()).sum();
     Ok((
         w.finish(),
         vec![format!(
             "look '{}': {} ({fields} field(s)){}",
-            look.name
-                .as_deref()
-                .unwrap_or(s.rel.trim_end_matches(".ogt")),
+            look.name.as_deref().unwrap_or(&s.rel),
             look.resources().join(", "),
             if look.extends.is_empty() {
                 String::new()
@@ -1123,7 +1165,7 @@ impl Job for LutJob<'_> {
 pub(crate) static LOOK: KindDef = KindDef {
     name: "look",
     extensions: &[],
-    types: &[crate::look::LOOK_TYPE],
+    types: &[],
     by_content: false,
     streams: true,
     plan: plan_look,
@@ -1136,11 +1178,9 @@ fn plan_look<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx {
-        known, assets_dir, ..
-    } = *cx;
+    let Cx { known, .. } = *cx;
     let PlanState { parsed_refs, .. } = state;
-    let deps = look_dependencies(s, assets_dir, &|id| known.contains(id));
+    let deps = look_dependencies(s, &|id| known.contains(id));
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
     let st = stamp(&[Area::Look], &[b"look 1", &hash, deps.as_bytes()]);
     outs.push((s.rel.clone(), format::Look::NAME, st, Box::new(LookJob(s))));
@@ -1153,7 +1193,7 @@ impl Job for LookJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let LookJob(s) = self;
         let Exec { known, .. } = ex;
-        cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp)
+        cook_look(s, &|id| known.contains(id), p.stamp)
     }
 }
 

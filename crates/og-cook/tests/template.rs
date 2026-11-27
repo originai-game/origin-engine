@@ -1267,8 +1267,8 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
         r#"{"version":1,"name":"Tiles","engine":"0.9.0","look":{"$ogRef":"base/look"}}"#,
     );
     write(
-        "assets/look.ogt",
-        "type look\nversion 1\n---\nArtPixels {\n unit 2\n}\nArtPalette {\n maxColors 64\n rampSteps 6\n}\n",
+        "content/look.ts",
+        "import {file} from '@origingame/engine/author'; export default file.look({ArtPixels:{unit:2}, ArtPalette:{maxColors:64,rampSteps:6}});",
     );
     for (conform, expected) in [("kind:'off'", (7, 11)), ("kind:'size',size:4", (3, 4))] {
         let source = declaration.replace("kind:'off'", conform);

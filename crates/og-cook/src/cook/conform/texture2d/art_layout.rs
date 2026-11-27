@@ -127,7 +127,7 @@ impl Art {
     ) -> Result<Option<Art>, String> {
         let mut h = StableHasher::new();
         h.write_str(VERSION);
-        h.write_str(&contract.to_text());
+        h.write(&contract.to_bytes()?);
         let colors = match block(full, "ArtPalette", "colors") {
             Some([Value::String(id)]) => {
                 let bytes = named(assets, id)

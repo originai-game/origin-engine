@@ -1,0 +1,34 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Bolder than the base: full brush strokes with their marks and ragged edges
+  // at their strongest, heavy pigment pooling, saturated colour with more
+  // contrast and no tone steps, and a lifted exposure.
+  // The expressionist variant of painterly-3d (`variant "expressionist" `): only what it changes of
+  // the preset, a field it turns off written at its default.
+  name: "Expressionist painting",
+  mood: "high-contrast",
+  Stylise: {
+    paintEdgeDarkening: 1,
+    paintStrokes: 1,
+    paintCanvasStrength: 0,
+    posterize: 0,
+    posterizeMode: "channel",
+  },
+  PostEffects: {
+    saturation: 0.45,
+    contrast: 0.15,
+    vignette: false,
+    vignetteIntensity: 0.35,
+  },
+  ArtTexels: {
+    maxSize: 2048,
+    density: 0,
+  },
+  ArtShape: {
+    characterFaces: 0,
+  },
+  RenderSettings: {
+    exposure: 1.1,
+  },
+});

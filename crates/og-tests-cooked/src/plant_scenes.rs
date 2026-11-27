@@ -834,7 +834,7 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
 /// `plant-scatter-toon` ([module docs](self)).
 pub fn toon_scene() -> Result<RenderScene, String> {
     let mut scene = scatter_scene()?;
-    // templates/looks/anime-cel-3d.ogt, its colours linear.
+    // templates/looks/anime-cel-3d.ts, its colours linear.
     scene.look.stylise.material = MaterialStyle {
         toon: true,
         shadow_tint: [0.0232, 0.0296, 0.117],

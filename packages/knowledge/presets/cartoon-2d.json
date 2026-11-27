@@ -1808,7 +1808,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -1933,7 +1933,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -2057,7 +2057,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -2178,7 +2178,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -2296,7 +2296,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -2403,7 +2403,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15
@@ -2522,7 +2522,7 @@
               0.8
             ],
             "paintCanvas": [
-              "@canvas/watercolor"
+              "@canvas/watercolor.png"
             ],
             "paintCanvasStrength": [
               0.15

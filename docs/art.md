@@ -1,6 +1,6 @@
 # The art contract: a game's style as a contract on every asset, not a filter on the frame
 
-A look (`type look`) holds the frame's render resources and the UI style;
+A look (`file.look` in TypeScript) holds the frame's render resources and the UI style;
 the art contract adds what a style asks of the assets themselves, so the
 assets carry the style instead of a filter put over whatever the game has.
 The platform's part (the style chosen at creation) is §4.
@@ -10,7 +10,7 @@ The platform's part (the style chosen at creation) is §4.
 A style is one contract, held at four places:
 
 ```text
-            ┌────────────── the contract: the game's look (.ogt, one source) ──────────────┐
+            ┌────────────── the contract: the game's look (TS, one source) ────────────────┐
             │ the frame             ArtPalette  ArtPixels  ArtTexels  ArtShape              │
             │ ArtLine  ArtMotion  ArtCamera   ui   (preview: the catalogue)                  │
             └────────┬──────────────────┬──────────────────┬──────────────────┬────────────┘
@@ -46,19 +46,19 @@ contract too.
 | `ArtMotion` | stepped animation rate, frames per clip and squash | conform flipbooks and clips, runtime defaults, check |
 | `ArtCamera` | projection, fixed angle, pitch and yaw, field of view and pixel-perfect snap | runtime camera defaults, check |
 
-Every preset (`templates/looks/<slug>.ogt`) sets these values, and the
+Every preset (`templates/looks/<slug>.ts`) sets these values, and the
 `looks` guide says how a game uses them. A game's look `extends` a preset
 and overrides it field by field.
 
 **The project names its look.** The cook needs the contract before game
-code runs, so `project.ogt` has `look "looks/<id>.ogt"` (the same id
-`GameDesc.look` takes, and its fallback). `create` writes both. A project
-without the line conforms nothing.
+code runs, so `og-project.json` has `look: {"$ogRef":"base/looks/<id>"}`.
+That is also the canonical ID `GameDesc.look` takes and its fallback.
+`og new` writes the metadata and `content/looks/<id>.ts`. A project without
+a look conforms nothing. Author OGT and same-slug project fallback are removed.
 
 **Creation choices precede the art contract.** `og new` records
 `genre`, `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`,
-`lang` and `music` (its flags of those names) in a `create` block in
-`project.ogt`.
+`lang` and `music` (its flags of those names) in `project.ts`'s `create` object.
 `packages/knowledge/scripts/creation.ts` owns the vocabulary and exports its JSON
 schema, premise inference and `resolveCreationChoices` through
 `@origingame/create-game`; these are additive public contracts beside the
@@ -73,8 +73,11 @@ hold equal) compiles the flattened look and its catalogue entry into the
 request for one asset: the prompt (direction, palette as named colours and
 hex, sizes, line, shape language, avoid list), the style's reference images
 and the generator's parameters. It is a pure function, so the platform and
-an agent in a sandbox read the same. `readLook(projectDir)` reads a
-project's look as the cook merges it, and `presetLook(slug)` a preset
+an agent in a sandbox read the same. `readLook(projectDir)` reads the last
+successful cook's `.og/cook/look.json` and checks its input hashes, never
+parsing TS or OGT. Platforms run `og cook` after `og new` before the first
+brief, and after any source/dependency/palette edit. A missing or stale
+report throws with that instruction. `presetLook(slug)` reads a preset
 alone. Their signatures, the kinds and what each kind decides are the
 knowledge README's §The art brief, a public contract (AGENTS.md).
 
@@ -315,10 +318,10 @@ deepest look). The cooked look carries the mood (`LookInfo.mood`).
 The layers are data in `templates/looks/moods/` (its README), compiled
 into the cook:
 
-- `<mood>.ogt`, for every style: the frame's grading and light. A number
+- `<mood>.ts`, for every style: the frame's grading and light. A number
   moves the preset's value by its distance from the field's default,
   clamped to the field's range; any other value replaces the preset's.
-- `<mood>/<slug>.ogt`, one style's own layer in place of the generic one,
+- `<mood>/<slug>.ts`, one style's own layer in place of the generic one,
   where grading alone fails it (palette-bound styles swap the palette, and
   posterized styles leave out what posterize breaks).
 
@@ -334,8 +337,8 @@ draws in its preset's or variant's mood until its look file names another.
 
 ### 2.11 Variants: one look drawn another way
 
-A look takes `variant "<name>"`, one of the variants of the preset its
-`extends` chain reaches: `templates/looks/variants/<slug>/<name>.ogt`, a
+A look takes `variant: "<name>"`, one of the variants of the preset its
+`extends` chain reaches: `templates/looks/variants/<slug>/<name>.ts`, a
 layer of the look's resources compiled into the cook (og-cook's
 `VARIANT_LAYERS`). The cook lays it over the preset field by field (a field
 it turns off is written at its default), then the mood's layer (§2.10),
@@ -343,7 +346,7 @@ then the game's own looks, so the game's fields still win. Its `name` and
 `mood` replace the preset's; the nearest look's variant wins for the whole
 chain. A variant the preset lacks, a chain without a preset, and a preset
 naming a variant are refused. A mood reads the variant's own layer
-(`moods/<mood>/<slug>.<variant>.ogt`) before the look's.
+(`moods/<mood>/<slug>.<variant>.ts`) before the look's.
 
 Each variant is an entry of its look's `variants` in the catalogue, with its
 own title, descriptor, mood, three checks, `intended` traits, premise,

@@ -89,7 +89,7 @@ module render {
 | [`GiMethod()`](#column-GiMethod) | column kind |  | A GiMethod field: the variant's index. |
 | [`og.GlobalIllumination`](render/record-GlobalIllumination.md) | resource |  | Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). |
 | [`Palette`](render/type-Palette.md) | handle |  | A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours). |
-| [`Look`](render/type-Look.md) | handle |  | A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook. |
+| [`Look`](render/type-Look.md) | handle |  | A cooked file.look TypeScript declaration loaded by canonical content ID: the frame's whole art direction as data, applied with og.render.applyLook. |
 | [`Palette()`](#column-Palette) | column kind |  | A Palette handle field (0 is none). |
 | [`Look()`](#column-Look) | column kind |  | A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook. |
 | [`DitherPattern`](render/type-DitherPattern.md) | enum |  | The threshold pattern Stylise.dither spreads the steps of posterize and palette with. |

@@ -1,7 +1,7 @@
 # Variants
 
-A look's `variant "<name>"` (docs/art.md §2.11): one preset drawn another
-way. `<slug>/<name>.ogt` is a `type look` layer the cook lays over the preset
+A look's `variant: "<name>"` (docs/art.md §2.11): one preset drawn another
+way. `<slug>/<name>.ts` is a `file.look` layer the cook lays over the preset
 `<slug>` field by field, before the mood's, when a game's look extending the
 preset asks for it; a field the layer turns off is written at its default.
 A layer names no `extends`, `variant` or `ui`; its `name` and `mood` replace

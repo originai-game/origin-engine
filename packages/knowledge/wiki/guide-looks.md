@@ -13,26 +13,23 @@ blocks); `og api show <Resource>` gives each field with its range.
 <a id="guide-looks-1"></a>
 ### `looks §1` The look
 
-A game's look is one file, `assets/looks/<id>.ogt`, which og-project.json's
-`look: { $ogRef: "base/looks/<id>" }` names until the P1 look-domain cutover.
-`og project --json` binds that ref through the scanned catalogue and emits
-`startup.look: "looks/<id>.ogt"`. Game code still loads the physical cooked
-ID; no second output or runtime lookup alias exists. The look-domain cutover
-will move its output to the canonical ID and remove this binding together.
-It `extends` a built-in preset by slug (the presets are the
-engine's `templates/looks/<slug>.ogt`; the creation step picked one) and
-overrides it field by field:
+A game's look is a typed `content/looks/<id>.ts` entry, named by
+og-project.json's `look: { $ogRef: "base/looks/<id>" }`.
+`og project --json` emits that same canonical ID as `startup.look`;
+game code loads it without a filename or extension. It extends built-in
+preset slugs (`templates/looks/<slug>.ts`) or typed refs to other looks,
+then overrides them field by field. There is no author OGT path or
+same-slug project override. Use `og api show file:look` for the generated
+input type, and `og check` for file/line diagnostics and canonical refs.
 
-```text
-type look
-version 1
----
-extends "faceted-low-poly"
-mood "warm"
-ui "default"
-PostEffects {
-  vignetteIntensity 0.3
-}
+```ts
+import { file } from "@origingame/engine/author";
+export default file.look({
+  extends: ["faceted-low-poly"],
+  mood: "warm",
+  ui: "default",
+  PostEffects: { vignetteIntensity: 0.3 },
+});
 ```
 
 - Change the look by adding fields to the game's file, never by setting
@@ -44,19 +41,19 @@ PostEffects {
   before the game's own fields; it never changes the art contract's
   sizes, lines or shapes. Try the mood before hand-grading.
 - `ui` names the UI style the screens wear (screens §3).
-- `uiSeeds { primary "#rrggbb" accent "#rrggbb" neutral "#rrggbb" }`
+- `uiSeeds: { primary: "#rrggbb", accent: "#rrggbb", neutral: "#rrggbb" }`
   gives the UI the seed colours its palette is derived from, so the
   screens match the scene (danger, warn, success, info and team too);
   the presets whose `ui` is the default style set them. Applying the look
   replaces the last seeds. A game's own `og.ui.configure` seeds, given
   after, win.
-- `extends` may name another look of the game (`"looks/base.ogt"`) for a
+- `extends: [ref("base/looks/base")]` may name another look for a
   level or a scene's variant; chains are a few deep and cycles are
   refused. Editing a base re-cooks every look on it.
 - A preset whose catalogue entry is not `full` support still lacks a
   primitive; the catalogue's `missing` names it. Do not promise the
   user that look's whole effect.
-- `variant "<name>"` draws the preset another way: one of the variants
+- `variant: "<name>"` draws the preset another way: one of the variants
   its catalogue entry lists (`pixel`'s `8bit` or `monochrome`, `toy-3d`'s
   `voxel` or `clay`). It is laid over the preset before the mood and the
   game's own fields. Pick a variant before hand-tuning the preset towards

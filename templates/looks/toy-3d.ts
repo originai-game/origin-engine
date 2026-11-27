@@ -1,0 +1,52 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Toy pieces on a sunny table: every material satin plastic (the engine's
+  // plastic surface) in a few plain colours, every hard edge bevelled round,
+  // soft ambient occlusion darkening every contact where the pieces meet, colour
+  // pushed bright and AgX keeping it from clipping, and a tilt-shift band that
+  // blurs the top and bottom of the frame so the world reads as a miniature.
+  // Its variants (templates/looks/variants/toy-3d/) build the same pieces of
+  // voxels, clay, card or a tabletop diorama.
+  name: "Toy 3D",
+  mood: "bright",
+  ui: "candy",
+  MaterialStyle: {
+    surface: "plastic",
+  },
+  RenderSettings: {
+    toneMapping: "agx",
+    autoExposure: true,
+    adaptSpeedUp: 1,
+    adaptSpeedDown: 3,
+  },
+  PostEffects: {
+    saturation: 0.35,
+    contrast: 0.1,
+    ao: true,
+    aoIntensity: 1.4,
+    vignette: true,
+    vignetteIntensity: 0.2,
+    depthOfField: true,
+    dofTiltShift: 0.1,
+    dofFalloff: 2.5,
+    dofMaxBlur: 0.012,
+    dofQuality: "high",
+  },
+  // The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+  // assets: 24 to 48 bright colours; chunky props of 500 to 3k triangles and
+  // figures under 8k with rounded bevels; simple colour textures, no finer
+  // than 32 texels, so a painted pattern reads as a print on the plastic.
+  ArtPalette: {
+    maxColors: 48,
+  },
+  ArtTexels: {
+    maxSize: 32,
+  },
+  ArtShape: {
+    propFaces: 3000,
+    characterFaces: 8000,
+    normals: "smooth",
+    bevel: 0.05,
+  },
+});

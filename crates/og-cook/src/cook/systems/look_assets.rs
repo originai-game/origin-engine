@@ -1,59 +1,59 @@
 /// The built-in presets `extends` names by slug: the engine's
-/// `templates/looks/<slug>.ogt`, compiled into the cook: one per style of
+/// `templates/looks/<slug>.ts`, compiled into the cook: one per style of
 /// the knowledge package's catalogue (`packages/knowledge/looks/catalogue.json`),
 /// shown by fx-showcase's `looks` station with a reference frame each.
 pub const PRESETS: &[(&str, &str)] = &[
     (
         "anime-cel-3d",
-        include_str!("../../../../../templates/looks/anime-cel-3d.ogt"),
+        include_str!("../../../../../templates/looks/anime-cel-3d.ts"),
     ),
     (
         "cartoon-2d",
-        include_str!("../../../../../templates/looks/cartoon-2d.ogt"),
+        include_str!("../../../../../templates/looks/cartoon-2d.ts"),
     ),
     (
         "cinematic-realism",
-        include_str!("../../../../../templates/looks/cinematic-realism.ogt"),
+        include_str!("../../../../../templates/looks/cinematic-realism.ts"),
     ),
     (
         "faceted-low-poly",
-        include_str!("../../../../../templates/looks/faceted-low-poly.ogt"),
+        include_str!("../../../../../templates/looks/faceted-low-poly.ts"),
     ),
     (
         "inked-comic-3d",
-        include_str!("../../../../../templates/looks/inked-comic-3d.ogt"),
+        include_str!("../../../../../templates/looks/inked-comic-3d.ts"),
     ),
     (
         "low-resolution-3d",
-        include_str!("../../../../../templates/looks/low-resolution-3d.ogt"),
+        include_str!("../../../../../templates/looks/low-resolution-3d.ts"),
     ),
     (
         "minimal-geometric",
-        include_str!("../../../../../templates/looks/minimal-geometric.ogt"),
+        include_str!("../../../../../templates/looks/minimal-geometric.ts"),
     ),
     (
         "neon-vector",
-        include_str!("../../../../../templates/looks/neon-vector.ogt"),
+        include_str!("../../../../../templates/looks/neon-vector.ts"),
     ),
     (
         "painterly-3d",
-        include_str!("../../../../../templates/looks/painterly-3d.ogt"),
+        include_str!("../../../../../templates/looks/painterly-3d.ts"),
     ),
     (
         "pixel",
-        include_str!("../../../../../templates/looks/pixel.ogt"),
+        include_str!("../../../../../templates/looks/pixel.ts"),
     ),
     (
         "pixel-3d-hybrid",
-        include_str!("../../../../../templates/looks/pixel-3d-hybrid.ogt"),
+        include_str!("../../../../../templates/looks/pixel-3d-hybrid.ts"),
     ),
     (
         "toy-3d",
-        include_str!("../../../../../templates/looks/toy-3d.ogt"),
+        include_str!("../../../../../templates/looks/toy-3d.ts"),
     ),
 ];
 
-/// The presets' variants (`templates/looks/variants/<slug>/<variant>.ogt`,
+/// The presets' variants (`templates/looks/variants/<slug>/<variant>.ts`,
 /// docs/art.md §2.11), compiled into the cook as `(slug, variant, text)`: a
 /// look asking for `variant "<variant>"` has the layer laid over the preset
 /// `<slug>` its chain reaches (`cook::look::lay_variant`).
@@ -61,111 +61,111 @@ pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[
     (
         "cartoon-2d",
         "rubber-hose",
-        include_str!("../../../../../templates/looks/variants/cartoon-2d/rubber-hose.ogt"),
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/rubber-hose.ts"),
     ),
     (
         "cartoon-2d",
         "storybook",
-        include_str!("../../../../../templates/looks/variants/cartoon-2d/storybook.ogt"),
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/storybook.ts"),
     ),
     (
         "cartoon-2d",
         "watercolor",
-        include_str!("../../../../../templates/looks/variants/cartoon-2d/watercolor.ogt"),
+        include_str!("../../../../../templates/looks/variants/cartoon-2d/watercolor.ts"),
     ),
     (
         "cinematic-realism",
         "muted",
-        include_str!("../../../../../templates/looks/variants/cinematic-realism/muted.ogt"),
+        include_str!("../../../../../templates/looks/variants/cinematic-realism/muted.ts"),
     ),
     (
         "inked-comic-3d",
         "bold-comic",
-        include_str!("../../../../../templates/looks/variants/inked-comic-3d/bold-comic.ogt"),
+        include_str!("../../../../../templates/looks/variants/inked-comic-3d/bold-comic.ts"),
     ),
     (
         "inked-comic-3d",
         "heavy-ink",
-        include_str!("../../../../../templates/looks/variants/inked-comic-3d/heavy-ink.ogt"),
+        include_str!("../../../../../templates/looks/variants/inked-comic-3d/heavy-ink.ts"),
     ),
     (
         "low-resolution-3d",
         "monochrome-dither",
         include_str!(
-            "../../../../../templates/looks/variants/low-resolution-3d/monochrome-dither.ogt"
+            "../../../../../templates/looks/variants/low-resolution-3d/monochrome-dither.ts"
         ),
     ),
     (
         "minimal-geometric",
         "layered-silhouette",
         include_str!(
-            "../../../../../templates/looks/variants/minimal-geometric/layered-silhouette.ogt"
+            "../../../../../templates/looks/variants/minimal-geometric/layered-silhouette.ts"
         ),
     ),
     (
         "painterly-3d",
         "expressionist",
-        include_str!("../../../../../templates/looks/variants/painterly-3d/expressionist.ogt"),
+        include_str!("../../../../../templates/looks/variants/painterly-3d/expressionist.ts"),
     ),
     (
         "painterly-3d",
         "luminous-layers",
-        include_str!("../../../../../templates/looks/variants/painterly-3d/luminous-layers.ogt"),
+        include_str!("../../../../../templates/looks/variants/painterly-3d/luminous-layers.ts"),
     ),
     (
         "painterly-3d",
         "lush",
-        include_str!("../../../../../templates/looks/variants/painterly-3d/lush.ogt"),
+        include_str!("../../../../../templates/looks/variants/painterly-3d/lush.ts"),
     ),
     (
         "pixel",
         "8bit",
-        include_str!("../../../../../templates/looks/variants/pixel/8bit.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/8bit.ts"),
     ),
     (
         "pixel",
         "coarse",
-        include_str!("../../../../../templates/looks/variants/pixel/coarse.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/coarse.ts"),
     ),
     (
         "pixel",
         "detailed",
-        include_str!("../../../../../templates/looks/variants/pixel/detailed.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/detailed.ts"),
     ),
     (
         "pixel",
         "luminous",
-        include_str!("../../../../../templates/looks/variants/pixel/luminous.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/luminous.ts"),
     ),
     (
         "pixel",
         "monochrome",
-        include_str!("../../../../../templates/looks/variants/pixel/monochrome.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/monochrome.ts"),
     ),
     (
         "pixel",
         "topdown",
-        include_str!("../../../../../templates/looks/variants/pixel/topdown.ogt"),
+        include_str!("../../../../../templates/looks/variants/pixel/topdown.ts"),
     ),
     (
         "toy-3d",
         "clay",
-        include_str!("../../../../../templates/looks/variants/toy-3d/clay.ogt"),
+        include_str!("../../../../../templates/looks/variants/toy-3d/clay.ts"),
     ),
     (
         "toy-3d",
         "diorama",
-        include_str!("../../../../../templates/looks/variants/toy-3d/diorama.ogt"),
+        include_str!("../../../../../templates/looks/variants/toy-3d/diorama.ts"),
     ),
     (
         "toy-3d",
         "paper",
-        include_str!("../../../../../templates/looks/variants/toy-3d/paper.ogt"),
+        include_str!("../../../../../templates/looks/variants/toy-3d/paper.ts"),
     ),
     (
         "toy-3d",
         "voxel",
-        include_str!("../../../../../templates/looks/variants/toy-3d/voxel.ogt"),
+        include_str!("../../../../../templates/looks/variants/toy-3d/voxel.ts"),
     ),
 ];
 
@@ -179,122 +179,122 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     (
         "bright",
         None,
-        include_str!("../../../../../templates/looks/moods/bright.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright.ts"),
     ),
     (
         "bright",
         Some("cinematic-realism.muted"),
-        include_str!("../../../../../templates/looks/moods/bright/cinematic-realism.muted.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/cinematic-realism.muted.ts"),
     ),
     (
         "bright",
         Some("low-resolution-3d.monochrome-dither"),
         include_str!(
-            "../../../../../templates/looks/moods/bright/low-resolution-3d.monochrome-dither.ogt"
+            "../../../../../templates/looks/moods/bright/low-resolution-3d.monochrome-dither.ts"
         ),
     ),
     (
         "bright",
         Some("minimal-geometric"),
-        include_str!("../../../../../templates/looks/moods/bright/minimal-geometric.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/minimal-geometric.ts"),
     ),
     (
         "bright",
         Some("pixel.monochrome"),
-        include_str!("../../../../../templates/looks/moods/bright/pixel.monochrome.ogt"),
+        include_str!("../../../../../templates/looks/moods/bright/pixel.monochrome.ts"),
     ),
     (
         "dark",
         None,
-        include_str!("../../../../../templates/looks/moods/dark.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark.ts"),
     ),
     (
         "dark",
         Some("inked-comic-3d.bold-comic"),
-        include_str!("../../../../../templates/looks/moods/dark/inked-comic-3d.bold-comic.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/inked-comic-3d.bold-comic.ts"),
     ),
     (
         "dark",
         Some("low-resolution-3d.monochrome-dither"),
         include_str!(
-            "../../../../../templates/looks/moods/dark/low-resolution-3d.monochrome-dither.ogt"
+            "../../../../../templates/looks/moods/dark/low-resolution-3d.monochrome-dither.ts"
         ),
     ),
     (
         "dark",
         Some("minimal-geometric"),
-        include_str!("../../../../../templates/looks/moods/dark/minimal-geometric.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/minimal-geometric.ts"),
     ),
     (
         "dark",
         Some("pixel.monochrome"),
-        include_str!("../../../../../templates/looks/moods/dark/pixel.monochrome.ogt"),
+        include_str!("../../../../../templates/looks/moods/dark/pixel.monochrome.ts"),
     ),
     (
         "warm",
         None,
-        include_str!("../../../../../templates/looks/moods/warm.ogt"),
+        include_str!("../../../../../templates/looks/moods/warm.ts"),
     ),
     (
         "warm",
         Some("low-resolution-3d.monochrome-dither"),
         include_str!(
-            "../../../../../templates/looks/moods/warm/low-resolution-3d.monochrome-dither.ogt"
+            "../../../../../templates/looks/moods/warm/low-resolution-3d.monochrome-dither.ts"
         ),
     ),
     (
         "warm",
         Some("pixel.monochrome"),
-        include_str!("../../../../../templates/looks/moods/warm/pixel.monochrome.ogt"),
+        include_str!("../../../../../templates/looks/moods/warm/pixel.monochrome.ts"),
     ),
     (
         "cold",
         None,
-        include_str!("../../../../../templates/looks/moods/cold.ogt"),
+        include_str!("../../../../../templates/looks/moods/cold.ts"),
     ),
     (
         "cold",
         Some("low-resolution-3d.monochrome-dither"),
         include_str!(
-            "../../../../../templates/looks/moods/cold/low-resolution-3d.monochrome-dither.ogt"
+            "../../../../../templates/looks/moods/cold/low-resolution-3d.monochrome-dither.ts"
         ),
     ),
     (
         "cold",
         Some("pixel.monochrome"),
-        include_str!("../../../../../templates/looks/moods/cold/pixel.monochrome.ogt"),
+        include_str!("../../../../../templates/looks/moods/cold/pixel.monochrome.ts"),
     ),
     (
         "soft",
         None,
-        include_str!("../../../../../templates/looks/moods/soft.ogt"),
+        include_str!("../../../../../templates/looks/moods/soft.ts"),
     ),
     (
         "soft",
         Some("cinematic-realism.muted"),
-        include_str!("../../../../../templates/looks/moods/soft/cinematic-realism.muted.ogt"),
+        include_str!("../../../../../templates/looks/moods/soft/cinematic-realism.muted.ts"),
     ),
     (
         "soft",
         Some("low-resolution-3d.monochrome-dither"),
         include_str!(
-            "../../../../../templates/looks/moods/soft/low-resolution-3d.monochrome-dither.ogt"
+            "../../../../../templates/looks/moods/soft/low-resolution-3d.monochrome-dither.ts"
         ),
     ),
     (
         "high-contrast",
         None,
-        include_str!("../../../../../templates/looks/moods/high-contrast.ogt"),
+        include_str!("../../../../../templates/looks/moods/high-contrast.ts"),
     ),
     (
         "high-contrast",
         Some("minimal-geometric"),
-        include_str!("../../../../../templates/looks/moods/high-contrast/minimal-geometric.ogt"),
+        include_str!("../../../../../templates/looks/moods/high-contrast/minimal-geometric.ts"),
     ),
     (
         "high-contrast",
         Some("pixel.monochrome"),
-        include_str!("../../../../../templates/looks/moods/high-contrast/pixel.monochrome.ogt"),
+        include_str!("../../../../../templates/looks/moods/high-contrast/pixel.monochrome.ts"),
     ),
 ];
 

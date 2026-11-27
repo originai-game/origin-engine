@@ -1,6 +1,0 @@
-type look
-version 1
----
-# The fixture uses the core default UI, independent of genre packs.
-name "Vehicle terrain"
-ui "default"

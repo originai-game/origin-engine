@@ -1,0 +1,15 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // High contrast: spread tones, saturated colour, deep shadows, darkened edges.
+  RenderSettings: {
+    environmentIntensity: 0.3,
+  },
+  PostEffects: {
+    contrast: 0.25,
+    saturation: 0.12,
+    vibrance: 0.1,
+    vignette: true,
+    vignetteIntensity: 0.45,
+  },
+});

@@ -1,0 +1,37 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Glowing vector lines on a dark scene: every lit material drawn as its
+  // feature edges (creases past 30 degrees and its borders) in its colour and
+  // emissive light, blooming, with a bright outline round the silhouettes.
+  name: "Neon vector-like graphics",
+  mood: "dark",
+  ui: "scifi",
+  MaterialStyle: {
+    outlineWidth: 2,
+    outlineColor: "#40f0ff",
+    wireframe: true,
+    wireframeAngle: 30,
+  },
+  RenderSettings: {
+    bloom: true,
+    bloomThreshold: 0.6,
+    bloomIntensity: 1.2,
+    toneMapping: "agx",
+    environmentIntensity: 0.05,
+  },
+  // A black field: the sky drawn and lighting near black, so only the lines
+  // and what the game makes emissive glow.
+  Sky: {
+    enabled: true,
+    zenith: [0, 0, 0],
+    horizon: [0.004, 0.002, 0.01],
+    ground: [0, 0, 0],
+  },
+  // The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+  // assets: black plus 2 to 4 saturated hues; the line is the shape (geometry,
+  // not an outline).
+  ArtPalette: {
+    maxColors: 5,
+  },
+});

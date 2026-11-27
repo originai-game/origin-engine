@@ -48,6 +48,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("dialogue", &story::DIALOGUE),
     ("quest", &story::QUEST),
     ("materials", &district::MATERIALS),
+    ("look", &look::LOOK),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -88,8 +89,15 @@ fn catalogue(
     graph: &mut source_content::GraphBuilder<'_>,
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let mut bindings = BTreeMap::new();
+    for source in sources {
+        if look::builtin(&source.rel).is_some() {
+            graph.insert_engine_asset(&source.rel, source.kind.name);
+        }
+    }
     for source in sources.iter().filter(|s| {
-        s.kind == &look::LOOK && !s.rel.starts_with('@') && s.path.starts_with(root.join("assets"))
+        [&look::PALETTE, &look::LUT].contains(&s.kind)
+            && !s.rel.starts_with('@')
+            && s.path.starts_with(root.join("assets"))
     }) {
         let file = source
             .path
@@ -222,6 +230,38 @@ pub(crate) fn declaration(
         conformed: None,
         fracture: None,
     }
+}
+
+pub(crate) fn looks(
+    root: &Path,
+    project: &source_project::Project,
+) -> Result<(look::Prepared, Vec<Source>), CookError> {
+    let prepared = look::prepare(root, project)?;
+    let mut sources = Vec::new();
+    for (id, look) in &prepared.looks {
+        let builtin;
+        let entry = match prepared.content.get(id) {
+            Some(content) => content.entry(),
+            None => {
+                builtin = source_index::Entry {
+                    id: id.clone(),
+                    module: "base".into(),
+                    file: format!("{id}.ts"),
+                    factory: "look".into(),
+                    kind: "look".into(),
+                    digest: String::new(),
+                };
+                &builtin
+            }
+        };
+        sources.push(declaration(
+            root,
+            entry,
+            &look::LOOK,
+            look.to_bytes().map_err(CookError)?,
+        ));
+    }
+    Ok((prepared, sources))
 }
 
 /// Mesh operands must be imported before terrain/navigation. Evaluate each
@@ -440,7 +480,7 @@ pub(crate) fn sources(
         let bytes = content.data().as_bytes().to_vec();
         if matches!(
             entry.factory.as_str(),
-            "model" | "model-program" | "materials"
+            "model" | "model-program" | "materials" | "look"
         ) {
             let prefix = format!("{}#", entry.id);
             let outputs = if entry.factory == "materials" {
@@ -686,6 +726,7 @@ pub(crate) fn sources(
             .map_err(|e| CookError(e.to_string()))?;
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
+    look::bind(sources, &graph)?;
     table::prepare(sources, &graph, &packed, &table_sources)?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {

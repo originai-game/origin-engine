@@ -14,9 +14,10 @@ og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 The agent chooses the form, genre, view, look and variant, UI style,
 platform, input, players, languages, and music. These choices are recorded in
 `project.ts`'s `create` object. `og-project.json` is the sole project marker
-and authority for name, engine pin and look. Creation also writes `assets/looks/<id>.ogt`
+and authority for name, engine pin and look. Creation also writes `content/looks/<id>.ts`
 with the chosen preset, variant and UI pack, named by the metadata's canonical
-`base/looks/<id>` reference. This scanned look entry is removed in P1's domain migration.
+`base/looks/<id>` reference. It exports the checked `file.look` declaration;
+no author OGT parser remains. Run `og cook` before reading the project's art brief.
 It generates no gameplay or art, and changes no publish settings.
 The agent customizes shell copy and art, then builds gameplay inside its
 `session` / `playing` state. Phone/touch defaults keep touch scale; built-in

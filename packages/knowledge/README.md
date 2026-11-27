@@ -108,14 +108,14 @@ break, with a `changelog.json` breaking entry):
 - `ArtBrief { kind, subject, style, medium: "image" | "model", prompt,
   avoid, palette, references: BriefReference[], image?: ImageParams,
   model?: ModelParams, ui?: UiParams }`.
-- `readLook(projectDir, options?)`: a project's look from the restricted
-  `og project --json` snapshot: og-project.json's look and project.ts's creation
-  form (`create.form`, `profileOf`), the look's
-  `extends` chain through the game's own looks (a slug names the game's
-  `assets/looks/<slug>.ogt` first, a path another look under `assets/`)
-  merged field by field over the preset as the cook flattened it in the
-  variant and mood the chain asks (`presets/`), the palette
-  file, the entry and its preview. `presetLook(slug, options?)`: a preset
+- `readLook(projectDir, options?)`: a project's checked look from the last
+  successful cook's `.og/cook/look.json`, including its flattened inheritance,
+  variant, mood and captured palettes. It checks startup identity/profile
+  against `og project --json` and hashes the captured project, TS/helper,
+  referenced look and raw input dependencies. Missing or stale reports throw
+  with a `run og cook` instruction. After `og new`, the platform must run
+  `og cook` before requesting its first art brief; repeat after edits.
+  `presetLook(slug, options?)`: a preset
   alone, for a game not written yet (the platform's style step).
   `readLook` and `readAudioChoices` require the matching installed `og` on PATH
   (or `OG_BIN`); neither executes TS in Bun. Their signatures and result shapes
@@ -156,8 +156,8 @@ look step is the one flattener of a preset's `variant` and `mood` layers,
 and `og api gen` writes what it lays (`<slug>.json`: the preset as a game's
 look asking for each variant in each mood; `moods.json`: each mood under a
 look whose chain reaches no preset; `palettes.json`: the built-in palettes),
-which `og api check` holds equal. The brief lays only the game's own looks
-over them. The catalogue is read from `looks/` and the previews from
+which `og api check` holds equal. No script parses or composes look source;
+the brief reads only these checked results. The catalogue is read from `looks/` and the previews from
 `previews/`; none of it is mounted for the platform.
 
 ## The audio brief

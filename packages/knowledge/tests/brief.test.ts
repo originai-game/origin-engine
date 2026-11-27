@@ -38,7 +38,7 @@ test("every kind for every preset makes a complete brief", () => {
 });
 
 test("project stdout contains exactly one envelope beside launcher progress and propagates install errors", () => {
-  const project = { startup: { look: "looks/t7.ogt", profile: "2d" }, input: { create: { music: "ambient" } } };
+  const project = { startup: { look: "base/looks/t7", profile: "2d" }, input: { create: { music: "ambient" } } };
   const read = (stdout: string, status = 0, stderr = "") => readProjectOutput({ stdout, status, stderr });
   const native = JSON.stringify(project);
   expect(read(native)).toEqual(project);
@@ -58,17 +58,28 @@ test.skipIf(!process.env.OG_BIN)("project briefs use the restricted JSON/TS boot
   temps.push(dir);
   mkdirSync(join(dir, "src"));
   mkdirSync(join(dir, "lib"));
-  mkdirSync(join(dir, "assets/looks"), { recursive: true });
+  mkdirSync(join(dir, "content/looks"), { recursive: true });
+  mkdirSync(join(dir, "assets/palettes"), { recursive: true });
   writeFileSync(join(dir, "og-project.json"), JSON.stringify({ version: 1, engine: "0.9.0", name: "Brief", look: { $ogRef: "base/looks/brief" } }));
   writeFileSync(join(dir, "project.ts"), `import { defineProject } from "@origingame/engine/author";
 import { choices } from "./lib/choices.ts";
 export default defineProject({ id: "brief", entry: "src/main.ts", create: choices });`);
   writeFileSync(join(dir, "src/main.ts"), "throw new Error('GAME_MUST_NOT_EXECUTE');");
-  writeFileSync(join(dir, "assets/looks/brief.ogt"), 'type look\nversion 1\n---\nextends "pixel"\nmood "cold"\n');
+  writeFileSync(join(dir, "lib/grade.ts"), 'export const mood = "cold";');
+  writeFileSync(join(dir, "content/looks/base.ts"), 'import {file,ref} from "@origingame/engine/author"; export default file.look({extends:["pixel"],ArtPalette:{colors:ref("base/palettes/brief")}});');
+  writeFileSync(join(dir, "content/looks/brief.ts"), 'import {file,ref} from "@origingame/engine/author"; import {mood} from "../../lib/grade.ts"; export default file.look({extends:[ref("base/looks/base")],mood});');
+  writeFileSync(join(dir, "assets/palettes/brief.hex"), "#123456\n#abcdef\n");
   const choices = join(dir, "lib/choices.ts");
   writeFileSync(choices, 'export const choices = { form: "2d", music: "ambient", genre: "rpg" };');
+  const cook = () => {
+    const result = Bun.spawnSync([process.env.OG_BIN!, "cook", dir, "--json"]);
+    expect(result.exitCode, new TextDecoder().decode(result.stderr)).toBe(0);
+  };
+  expect(() => readLook(dir)).toThrow("run og cook");
+  cook();
   const look = readLook(dir);
   expect([look.profile, look.style?.slug, look.mood]).toEqual(["2d", "pixel", "cold"]);
+  expect(look.palette?.colours.map(c => c.hex)).toEqual(["#123456", "#abcdef"]);
   expect(readAudioChoices(dir)).toEqual({ music: "ambient", genre: "rpg", mood: "cold" });
   const audio = audioBrief(readAudioChoices(dir));
   expect(audio.presets.length).toBeGreaterThan(0);
@@ -85,9 +96,25 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
   for (const preset of audio.presets) {
     expect(assets.find((a) => a.id === `base/audio/${preset.id}`)?.kind).toBe("sound");
   }
+  // Entry, helper, transitive look and raw palette edits must all invalidate
+  // a previously successful report, even if the chosen startup ID is unchanged.
+  for (const file of ["content/looks/brief.ts", "lib/grade.ts", "content/looks/base.ts", "assets/palettes/brief.hex"]) {
+    const path = join(dir, file);
+    const original = readFileSync(path, "utf8");
+    writeFileSync(path, original + (file.endsWith(".ts") ? "\n// edited\n" : "#fedcba\n"));
+    expect(() => readLook(dir)).toThrow("run og cook");
+    cook();
+    expect(readLook(dir).mood).toBe("cold");
+    rmSync(path);
+    expect(() => readLook(dir)).toThrow("run og cook");
+    writeFileSync(path, original);
+    cook();
+  }
   writeFileSync(choices, 'export const choices = { form: "3d", music: "orchestral", genre: "strategy" };');
+  expect(() => readLook(dir)).toThrow("run og cook");
+  cook();
   expect(readLook(dir).profile).toBe("3d");
   expect(readAudioChoices(dir)).toEqual({ music: "orchestral", genre: "strategy", mood: "cold" });
   writeFileSync(choices, 'export const choices = { form: "3d", music: String(Date.now()), genre: "strategy" };');
   expect(() => readLook(dir)).toThrow();
-});
+}, 120_000);

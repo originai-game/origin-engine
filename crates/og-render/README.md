@@ -1697,7 +1697,7 @@ and a restored world redraws its frames. `og-tests/tests/exposure.rs`.
 
 The primitives a look composes into a non-photographic frame
 (`src/stylise.rs`; the IDL's `Stylise` and `MaterialStyle` resources, set
-by a `type look` asset through `og.render.applyLook`), each off at its
+by a checked `file.look` asset through `og.render.applyLook`), each off at its
 zero value and then costing nothing: no pass is recorded, no pipeline
 built. `RenderCapabilities.stylise` names what this renderer draws
 (`STYLISE_DRAWN`). All of it draws on every backend (render passes only).

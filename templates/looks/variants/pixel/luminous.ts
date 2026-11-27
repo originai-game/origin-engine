@@ -1,0 +1,31 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // Pixels that glow: bloom over an eight-tone grid.
+  // The luminous variant of pixel (`variant "luminous" `): only what it changes of
+  // the preset, a field it turns off written at its default.
+  name: "Luminous high-contrast pixel art",
+  mood: "dark",
+  Stylise: {
+    pixelHeight: 216,
+    ditherStrength: 1,
+  },
+  RenderSettings: {
+    bloom: true,
+    bloomThreshold: 0.7,
+    bloomIntensity: 0.9,
+    toneMapping: "aces",
+  },
+  ArtPalette: {
+    maxColors: 48,
+    rampSteps: 0,
+  },
+  ArtPixels: {
+    logicalHeight: 216,
+    spriteSizes: [24, 32, 40],
+  },
+  ArtLine: {
+    width: 0,
+    place: "outside",
+  },
+});

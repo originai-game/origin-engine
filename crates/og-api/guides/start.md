@@ -39,8 +39,8 @@ having written ordinary `og-project.json` with `version: 1`, a concrete `engine`
 `name` and `look: { $ogRef: "base/looks/<id>" }`, and `project.ts` exporting
 `defineProject({...})` with `entry`, `id` and `create`. Metadata is not generated
 from TS and check/cook/dev never rewrite it. `project.ogt` is not read and is
-not a project marker. During the P1 look cutover, the scaffold's
-`assets/looks/<id>.ogt` still extends the selected preset and retains variant/UI.
+not a project marker. The scaffold's `content/looks/<id>.ts` exports
+`file.look({...})` with the selected preset, variant and UI.
 
 The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
 
@@ -86,7 +86,7 @@ Creation turns some choices into configuration; the rest remain the brief:
   simulation follows determinism §3 from the first system written.
 - When the user's request contradicts the block, the request wins: edit
   the block so it stays the record of the brief.
-- `look`, `variant` and `ui` are also written into `assets/looks/<id>.ogt`,
+- `look`, `variant` and `ui` are also written into `content/looks/<id>.ts`,
   which og-project.json's `look` names; that file is real configuration
   (looks §1). `lang` installs each language's font pack, which og.i18n
   chains with no code. Creation writes and imports each requested locale's

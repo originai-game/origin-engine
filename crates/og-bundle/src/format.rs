@@ -51,7 +51,7 @@
 //! | font pack (`og.FontPack`) | [`FontPackMeta`] | `faces` and `languages` ([`FontPackStringRow`]), `coverage` ([`FontPackRangeRow`]), `strings` (UTF-8 names and IDs); `hyphenation:<language>` (a shipped hyphenation dictionary each), `segmentation:<dictionary>` (a shipped ICU word dictionary each, og-i18n's `segmenter` bytes) |
 //! | humanoid rig (`og.Rig`) | [`RigMeta`] | `bones` [`RigBoneRow`], `strings` (UTF-8 scheme and node names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids, the layer arrays' ids) |
-//! | look (`og.Look`, an `.ogt` of `type look`) | [`LookMeta`] | `text` (the canonical, flattened look: `extends` resolved and listed, colours linear) |
+//! | look (`og.Look`, checked `file.look` TS) | [`LookMeta`] | `data` (native flattened values, with the resolved chain and linear colours) |
 //! | palette (`og.Palette`, a `.hex` or `.gpl` file) | [`PaletteMeta`] | `rgb` (`count` sRGB colours, 3 bytes each, in file order) |
 //! | environment map (`og.EnvironmentMap`, a typed environment declaration, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
 //! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
@@ -162,7 +162,8 @@ impl Area {
             Area::Scene => ("scene", 1),
             Area::Data => ("data", 1),
             Area::Nav => ("nav", 1),
-            Area::Look => ("look", 1),
+            // Resolved look values are native binary, not author text.
+            Area::Look => ("look", 2),
             Area::Shader => ("shader", 1),
             Area::Ui => ("ui", 1),
             Area::Effect => ("effect", 1),

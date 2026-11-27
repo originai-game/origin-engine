@@ -115,8 +115,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   Content TS evaluates to schema-checked IR and cooks into `.ogb`; it never
   serializes through OGT. Scene/prefab/scatter consume captured native TS data;
   Inspector/Tune changes memory only, while `og set` edits checked TS literals.
-  The foundation's scanned look and Yarn catalogue remains until their domain cutovers;
-  remove each author parser with its cutover. OGT then remains internal text
+  Looks consume checked TS and native binary values, including embedded presets.
+  The foundation's scanned Yarn catalogue remains until its domain cutover;
+  remove its author parser with that cutover. OGT then remains internal text
   (IDL, dumps and probe transport), not another author path.
 - **The API is for a reader who has never seen it.** Zero-value desc structs,
   no hidden state, errors as values, the three.js vocabulary where it fits.

@@ -150,8 +150,8 @@ for (const slot of slots) {
   cpSync(join(import.meta.dir, scene.scene), dir, { recursive: true, filter: (from) => !/\/2d\/(tools|stage\.ts)/.test(from) });
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
-  mkdirSync(join(dir, "assets/looks"), { recursive: true });
-  writeFileSync(join(dir, "assets/looks/main.ogt"), `type look\nversion 1\n---\nname "Preview: ${name}"\nextends ${JSON.stringify(slug)}\n${variant ? `variant ${JSON.stringify(variant)}\n` : ""}`);
+  mkdirSync(join(dir, "content/looks"), { recursive: true });
+  writeFileSync(join(dir, "content/looks/main.ts"), `import {file} from '@origingame/engine/author';\nexport default file.look(${JSON.stringify({name: `Preview: ${name}`, extends: [slug], ...(variant ? {variant} : {})})});\n`);
   if (scene.models) cpSync(join(looks, scene.models), join(dir, "content/models"), { recursive: true });
   if (scene.scene === "3d") {
     const sprites: Record<string, { path: string; width: number; height: number }> = {};

@@ -168,8 +168,8 @@ mod tests {
                 }
             }
         }
-        assert!(seen.contains_key("glb") && seen.contains_key("look"));
+        assert!(seen.contains_key("glb"));
         assert_eq!(by_extension("glb").map(|k| k.name), Some(seen["glb"]));
-        assert_eq!(by_type("look").map(|k| k.name), Some(seen["look"]));
+        assert!(by_type("look").is_none());
     }
 }

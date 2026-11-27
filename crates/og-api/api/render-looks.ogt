@@ -1,7 +1,7 @@
   # ── stylisation and looks ─────────────────────────────────────────────
 
   handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
-  handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
+  handle Look "A cooked file.look TypeScript declaration loaded by canonical content ID: the frame's whole art direction as data, applied with og.render.applyLook."
 
   column Palette {
     doc "A Palette handle field (0 is none)."

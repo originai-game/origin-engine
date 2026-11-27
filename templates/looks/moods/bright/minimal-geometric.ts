@@ -1,0 +1,16 @@
+import { file } from "@origingame/engine/author";
+
+export default file.look({
+  // minimal-geometric in a bright mood: the bright layer without its saturation
+  // and vibrance, which push its six flat tones a tint step greener; more light
+  // and a touch of warmth only.
+  RenderSettings: {
+    exposure: 1.12,
+    environmentIntensity: 0.7,
+  },
+  PostEffects: {
+    temperature: 0.06,
+    brightness: 0.02,
+    contrast: 0.04,
+  },
+});

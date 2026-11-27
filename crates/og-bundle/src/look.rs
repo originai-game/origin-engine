@@ -1,71 +1,8 @@
-//! Looks (`.ogt` of `type look`): a frame's art direction as one
-//! git-diffable file. A look names the engine resources it sets (the IDL's
-//! `RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`
-//! and `Environment` for the frame, and the art contract's `ArtPalette`,
-//! `ArtPixels`, `ArtTexels`, `ArtShape`, `ArtLine`, `ArtMotion` and
-//! `ArtCamera` for the assets) with their fields by reflected name, the UI
-//! style, and the antialiasing it wants, and may build on another look:
-//!
-//! ```text
-//! type look
-//! version 1
-//! ---
-//! name "Dusk ink"
-//! extends "anime-cel-3d"        # a built-in preset (templates/looks/<slug>.ogt),
-//!                               # the game's own assets/looks/<slug>.ogt first,
-//!                               # or another look's asset id ("looks/base.ogt")
-//! mood "warm"                   # bright, dark, warm, cold, soft or high-contrast:
-//!                               # in a preset, the mood it is drawn in; in any
-//!                               # other look, the mood asked of the preset its
-//!                               # chain reaches (`MOODS`, the cook lays the
-//!                               # mood's layer over that preset)
-//! variant "8bit"                # one of the variants of the preset its chain
-//!                               # reaches (templates/looks/variants/<slug>/):
-//!                               # the variant's layer is laid over that preset
-//!                               # before the mood's
-//! ui "paper"                   # the UI style applied with the look: a built-in
-//!                               # (templates/styles/<slug>), the game's own
-//!                               # styles/<slug>/style.ogt first, or an asset id
-//! antialias off                 # tier, off, msaa4 or taa
-//! RenderSettings {
-//!   toneMapping agx
-//!   exposure 1.2
-//! }
-//! PostEffects {
-//!   outline true
-//!   outlineColor "#1b1420"      # a colour as three linear numbers or an sRGB hex
-//!   lut "luts/dusk.cube"        # a handle field takes the asset's id
-//! }
-//! Stylise {
-//!   posterize 6
-//!   dither bayer4
-//!   palette "palettes/dusk.hex"
-//! }
-//! MaterialStyle {
-//!   toon true
-//! }
-//! ArtPalette {
-//!   colors "@palettes/dusk16"   # the palette the assets' texels sit on
-//!   rampSteps 4
-//!   accents 3 7                 # a list on its one line
-//! }
-//! ArtLine {
-//!   width 1
-//!   color "#1b1420"
-//! }
-//! ```
-//!
-//! This module reads and writes the text ([`LookFile`]) and merges a look
-//! over the one it extends; the cook (`cook::look`) resolves `extends`,
-//! checks every field against the resources' reflected schema (the IDL's
-//! records), turns hex colours into linear numbers, and writes the flattened
-//! result, so the cooked blob ([`crate::format::Look`]) is the whole look
-//! and the runtime never resolves anything but the assets it names.
+//! Checked look values and native composition. Author inputs are typed TS;
+//! the cook validates reflected fields before encoding the runtime payload.
+use og_core::ogt::Value;
 
-use og_core::ogt::{Block, Document, Entry, Value};
-
-/// The `.ogt` type of a look.
-pub const LOOK_TYPE: &str = "look";
+mod cooked;
 
 /// The resources a look may set, by IDL name (each registers as `og.<name>`):
 /// the frame's render resources, then the art contract (the IDL's `art`
@@ -88,7 +25,7 @@ pub const LOOK_RESOURCES: [&str; 14] = [
 ];
 
 /// The art contract's resources among [`LOOK_RESOURCES`]: what the cook
-/// reads from the project's look (project.ogt's `look`).
+/// reads from the project's look (og-project.json's `look`).
 pub const ART_RESOURCES: [&str; 7] = [
     "ArtPalette",
     "ArtPixels",
@@ -115,40 +52,6 @@ pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-co
 
 /// The longest `extends` chain the cook follows.
 pub const MAX_EXTENDS: usize = 8;
-
-/// The top-level keys of a look file.
-pub const LINES: &[og_core::ogt::line::Line] = &[
-    og_core::ogt::line::Line::new("name", "\"<name>\"", "", "Display name.", ""),
-    og_core::ogt::line::Line::new(
-        "extends",
-        "\"<look>\" ...",
-        "",
-        "Base looks, nearest first; at most eight inheritance levels. Asset id or a look slug.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "mood",
-        "\"<mood>\"",
-        "",
-        "Mood from MOODS; applied as the existing preset's explicit layer.",
-        "",
-    ),
-    og_core::ogt::line::Line::new(
-        "variant",
-        "\"<variant>\"",
-        "",
-        "Existing preset variant slug: lowercase alphanumeric words separated by hyphens.",
-        "",
-    ),
-    og_core::ogt::line::Line::new("ui", "\"<style>\"", "", "UI style slug or asset id.", ""),
-    og_core::ogt::line::Line::new(
-        "antialias",
-        "<mode>",
-        "",
-        "Antialias mode from ANTIALIAS.",
-        "",
-    ),
-];
 
 /// The seed colours a look gives the UI (`uiSeeds { primary "#rrggbb" }`):
 /// og-ui's `Seeds` (IDL `UiSeeds`), each an sRGB hex colour.
@@ -196,198 +99,7 @@ pub struct LookFile {
     pub blocks: Vec<LookBlock>,
 }
 
-fn one_string(e: &Entry) -> Result<String, String> {
-    match e.values.as_slice() {
-        [Value::String(s)] => Ok(s.clone()),
-        _ => Err(format!("line {}: '{}' takes one string", e.line, e.key)),
-    }
-}
-
 impl LookFile {
-    /// Parses a look's text. Checks the grammar only: which resources and
-    /// keys exist; the fields' names and values are the cook's to check
-    /// against the reflected schema.
-    pub fn parse(text: &str) -> Result<LookFile, String> {
-        let doc = Document::parse(text).map_err(|e| e.to_string())?;
-        if doc.ty != LOOK_TYPE {
-            return Err(format!("type {}: a look is `type look`", doc.ty));
-        }
-        if doc.version != 1 {
-            return Err(format!("version {}: looks are version 1", doc.version));
-        }
-        let mut look = LookFile::default();
-        let mut seen_top: Vec<&str> = Vec::new();
-        for e in &doc.body.entries {
-            if e.key == "uiSeeds" {
-                let block = e
-                    .block
-                    .as_ref()
-                    .filter(|_| e.values.is_empty())
-                    .ok_or_else(|| {
-                        format!(
-                            "line {}: 'uiSeeds' takes a block: uiSeeds {{ primary \"#rrggbb\" }}",
-                            e.line
-                        )
-                    })?;
-                if !look.ui_seeds.is_empty() {
-                    return Err(format!("line {}: a second 'uiSeeds' block", e.line));
-                }
-                for f in &block.entries {
-                    if !UI_SEEDS.contains(&f.key.as_str()) {
-                        return Err(format!(
-                            "line {}: '{}' is not a UI seed: {}",
-                            f.line,
-                            f.key,
-                            UI_SEEDS.join(", ")
-                        ));
-                    }
-                    let hex = one_string(f)?;
-                    let six = hex
-                        .strip_prefix('#')
-                        .is_some_and(|h| h.len() == 6 && h.chars().all(|c| c.is_ascii_hexdigit()));
-                    if !six {
-                        return Err(format!(
-                            "line {}: uiSeeds.{} is an sRGB \"#rrggbb\"",
-                            f.line, f.key
-                        ));
-                    }
-                    if look.ui_seeds.iter().any(|(n, _)| n == &f.key) {
-                        return Err(format!("line {}: uiSeeds.{} is set twice", f.line, f.key));
-                    }
-                    look.ui_seeds.push((f.key.clone(), hex));
-                }
-                continue;
-            }
-            if let Some(block) = &e.block {
-                if !LOOK_RESOURCES.contains(&e.key.as_str()) {
-                    return Err(format!(
-                        "line {}: '{}' is not a resource a look sets: {}",
-                        e.line,
-                        e.key,
-                        LOOK_RESOURCES.join(", ")
-                    ));
-                }
-                if !e.values.is_empty() {
-                    return Err(format!("line {}: '{} {{' takes no values", e.line, e.key));
-                }
-                if look.blocks.iter().any(|b| b.resource == e.key) {
-                    return Err(format!("line {}: a second '{}' block", e.line, e.key));
-                }
-                let mut fields: Vec<(String, Vec<Value>, usize)> = Vec::new();
-                for f in &block.entries {
-                    if f.block.is_some() {
-                        return Err(format!(
-                            "line {}: {}.{} opens a block; a field takes values only",
-                            f.line, e.key, f.key
-                        ));
-                    }
-                    // A key alone is an empty list; the cook refuses it for
-                    // any other field (`cook::look`, which reads the records).
-                    if fields.iter().any(|(n, _, _)| n == &f.key) {
-                        return Err(format!("line {}: {}.{} is set twice", f.line, e.key, f.key));
-                    }
-                    if ANIMATED_FIELDS.contains(&(e.key.as_str(), f.key.as_str())) {
-                        return Err(format!(
-                            "line {}: {}.{} is animated by game code tick by tick; a look does not set it",
-                            f.line, e.key, f.key
-                        ));
-                    }
-                    fields.push((f.key.clone(), f.values.clone(), f.line));
-                }
-                look.blocks.push(LookBlock {
-                    resource: e.key.clone(),
-                    fields,
-                });
-                continue;
-            }
-            if e.key == "skin" {
-                return Err(format!(
-                    "line {}: 'skin' is now 'ui': `ui \"<slug>\"` names a built-in style (pixel, cartoon, fantasy, scifi, paper, neon) or the game's own styles/<slug>/style.ogt",
-                    e.line
-                ));
-            }
-            if !LINES.iter().any(|f| f.key == e.key) {
-                return Err(format!(
-                    "line {}: '{}' is not a look entry: {}, or a resource block ({})",
-                    e.line,
-                    e.key,
-                    LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", "),
-                    LOOK_RESOURCES.join(", ")
-                ));
-            }
-            if seen_top.contains(&e.key.as_str()) {
-                return Err(format!("line {}: '{}' is given twice", e.line, e.key));
-            }
-            seen_top.push(
-                LINES
-                    .iter()
-                    .find(|f| f.key == e.key)
-                    .expect("a top key")
-                    .key,
-            );
-            match e.key.as_str() {
-                "name" => look.name = Some(one_string(e)?),
-                "mood" => {
-                    let m = one_string(e)?;
-                    if !MOODS.contains(&m.as_str()) {
-                        return Err(format!(
-                            "line {}: 'mood' is one of {}",
-                            e.line,
-                            MOODS.join(", ")
-                        ));
-                    }
-                    look.mood = Some(m);
-                }
-                "variant" => {
-                    let v = one_string(e)?;
-                    let word = !v.is_empty()
-                        && v.split('-').all(|w| {
-                            !w.is_empty()
-                                && w.chars()
-                                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-                        });
-                    if !word {
-                        return Err(format!(
-                            "line {}: 'variant' names one of the preset's variants, a lowercase-hyphen word",
-                            e.line
-                        ));
-                    }
-                    look.variant = Some(v);
-                }
-                "ui" => look.ui = Some(one_string(e)?),
-                "extends" => {
-                    look.extends = e
-                        .values
-                        .iter()
-                        .map(|v| match v {
-                            Value::String(s) if !s.is_empty() => Ok(s.clone()),
-                            _ => Err(format!(
-                                "line {}: 'extends' takes a preset's slug or a look's asset id, as a string",
-                                e.line
-                            )),
-                        })
-                        .collect::<Result<_, _>>()?;
-                    if look.extends.is_empty() {
-                        return Err(format!("line {}: 'extends' names no look", e.line));
-                    }
-                }
-                _ => match e.values.as_slice() {
-                    [Value::Word(w)] if ANTIALIAS.contains(&w.as_str()) => {
-                        look.antialias = Some(w.clone())
-                    }
-                    _ => {
-                        return Err(format!(
-                            "line {}: 'antialias' is one of {}",
-                            e.line,
-                            ANTIALIAS.join(", ")
-                        ));
-                    }
-                },
-            }
-        }
-        Ok(look)
-    }
-
     /// Whether the look's art blocks ([`ART_RESOURCES`]) set any field off
     /// its zero value: the art contract's switch (docs/art.md §2.3). Under
     /// a look whose art blocks are absent or all at zero the cook conforms
@@ -408,56 +120,6 @@ impl LookFile {
                     })
                 })
             })
-    }
-
-    /// The canonical text: top-level keys, then the blocks in
-    /// [`LOOK_RESOURCES`] order, fields as given.
-    pub fn to_text(&self) -> String {
-        let mut doc = Document::new(LOOK_TYPE, 1);
-        if let Some(n) = &self.name {
-            doc.body
-                .push(Entry::new("name").with(Value::String(n.clone())));
-        }
-        if !self.extends.is_empty() {
-            let mut e = Entry::new("extends");
-            e.values = self.extends.iter().cloned().map(Value::String).collect();
-            doc.body.push(e);
-        }
-        if let Some(m) = &self.mood {
-            doc.body
-                .push(Entry::new("mood").with(Value::String(m.clone())));
-        }
-        if let Some(v) = &self.variant {
-            doc.body
-                .push(Entry::new("variant").with(Value::String(v.clone())));
-        }
-        if let Some(s) = &self.ui {
-            doc.body
-                .push(Entry::new("ui").with(Value::String(s.clone())));
-        }
-        if !self.ui_seeds.is_empty() {
-            let mut inner = Block::new();
-            for (name, hex) in &self.ui_seeds {
-                inner.push(Entry::new(name.clone()).with(Value::String(hex.clone())));
-            }
-            doc.body.push(Entry::new("uiSeeds").with_block(inner));
-        }
-        if let Some(a) = &self.antialias {
-            doc.body
-                .push(Entry::new("antialias").with(Value::Word(a.clone())));
-        }
-        for r in LOOK_RESOURCES {
-            if let Some(b) = self.blocks.iter().find(|b| b.resource == r) {
-                let mut inner = Block::new();
-                for (f, v, _) in &b.fields {
-                    let mut e = Entry::new(f.clone());
-                    e.values = v.clone();
-                    inner.push(e);
-                }
-                doc.body.push(Entry::new(r).with_block(inner));
-            }
-        }
-        doc.to_text().expect("a parsed look writes back")
     }
 
     /// This look laid over `base` (the look it extends): the name is this
@@ -602,28 +264,4 @@ pub fn parse_palette(name: &str, text: &str) -> Result<Vec<[u8; 3]>, String> {
         return Err("the palette holds no colours".into());
     }
     Ok(out)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn refuses_what_is_not_a_look() {
-        let bad = |body: &str| {
-            LookFile::parse(&format!("type look\nversion 1\n---\n{body}")).unwrap_err()
-        };
-        assert!(bad("Camera {\n  fov 30\n}\n").contains("not a resource a look sets"));
-        assert!(bad("PostEffects {\n  flash 1\n}\n").contains("animated by game code"));
-        assert!(bad("antialias fxaa\n").contains("one of tier, off, msaa4, taa"));
-        assert!(bad("palette \"p.hex\"\n").contains("not a look entry"));
-        assert!(bad("Stylise {\n  posterize 4\n  posterize 5\n}\n").contains("set twice"));
-        assert!(bad("variant \"8 Bit\"\n").contains("lowercase-hyphen"));
-        assert!(bad("uiSeeds {\n  brand \"#ffffff\"\n}\n").contains("not a UI seed"));
-        assert!(bad("uiSeeds {\n  primary \"red\"\n}\n").contains("sRGB"));
-        assert!(
-            bad("mood \"gloomy\"\n")
-                .contains("one of bright, dark, warm, cold, soft, high-contrast")
-        );
-    }
 }

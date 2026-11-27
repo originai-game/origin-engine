@@ -1,8 +1,8 @@
 //! The art contract at run time (docs/art.md §2.4): what a look's art
 //! resources (`ArtLine`, `ArtPixels`, `ArtPalette`, `ArtMotion`,
 //! `ArtCamera`) default on the frame and on the sprites, once the project
-//! names its look in project.ogt (`look "looks/<id>.ogt"`, the same line
-//! the cook conforms its assets by). Without that line nothing here
+//! names its look in og-project.json (the same canonical content ID
+//! the cook conforms its assets by). Without that look nothing here
 //! applies, so a game that only applies looks (GameDesc.look, applyLook)
 //! draws as it did before the contract.
 //!

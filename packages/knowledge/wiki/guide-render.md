@@ -259,15 +259,15 @@ the tone curve, and the auto-exposure meter leaves it out. So:
 - Add the sun the cook took out with og.load.environmentSun at the same
   intensity; the default `expand 0.25` opens the sky's highlights a little.
 
-```text
-type look
-version 1
----
-RenderSettings {
-  autoExposure false
-  exposure 1
-  toneMapping none
-}
+```ts
+import { file } from "@origingame/engine/author";
+export default file.look({
+  RenderSettings: {
+    autoExposure: false,
+    exposure: 1,
+    toneMapping: "none",
+  },
+});
 ```
 
 `og cook --report` stores each environment's source facts under

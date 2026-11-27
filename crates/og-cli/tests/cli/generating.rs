@@ -2011,7 +2011,10 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
         "content/scenes/inland.ts",
         "import {file} from '@origingame/engine/author';export default file.scene({entities:[]});",
     );
-    write("assets/looks/harbor.ogt", "type look\nversion 1\n---\n");
+    write(
+        "content/looks/harbor.ts",
+        "import {file} from '@origingame/engine/author';export default file.look({});",
+    );
     write(
         "content/dialogue/arrival.ts",
         "import {file} from '@origingame/engine/author';export default file.dialogue({name:'arrival',start:'Start',nodes:[{id:'Start',steps:[{kind:'line',id:'welcome',text:{key:'arrival.welcome'}}]}]});",
@@ -2035,7 +2038,7 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
         json!({
             "tick":30,"seed":83,"saveVersion":4,"scene":"harbor",
             "scenes":{"harbor":"base/scenes/harbor","inland":"base/scenes/inland"},
-            "profile":"3d","loading":"game","look":"looks/harbor.ogt",
+            "profile":"3d","loading":"game","look":"base/looks/harbor",
             "flow":{"dialogue":"base/dialogue/arrival","screen":"game"}
         })
     );

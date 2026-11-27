@@ -1,5 +1,0 @@
-type look
-version 1
----
-extends "cinematic-realism"
-ui "minimal"

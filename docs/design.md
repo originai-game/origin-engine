@@ -477,7 +477,7 @@ the probe's CPU description of a frame.
 - Post: bloom, tonemapping, grading, AO, antialiasing (TAA by default in 3D,
   4× MSAA by default in 2D) and temporal upscaling (§11).
 - Stylisation as data a look composes (`og.Stylise`, `og.MaterialStyle`,
-  `type look`); every primitive is off at zero and then free.
+  `file.look`); every primitive is off at zero and then free.
 - GPU skinning, instancing by default (the API has no per-object draw call),
   GPU particles, terrain, decals, MSDF text with run-time and colour glyphs,
   2D lighting with shadows and normal maps.

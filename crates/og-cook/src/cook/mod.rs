@@ -384,6 +384,11 @@ pub fn cook_project_with_texture_cache(
         report.stages = laps.stages;
         return Ok(report);
     }
+    let look_report = root.join(look::REPORT);
+    if look_report.exists() {
+        std::fs::remove_file(&look_report)
+            .map_err(|e| CookError(format!("{}: {e}", look_report.display())))?;
+    }
     let project = Project::read(root)?;
     laps.lap("project");
     let assets_dir = &project.assets_dir;
@@ -400,12 +405,14 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
         mut consumed,
         warnings: scan_warnings,
+        mut prepared,
     } = scan_sources(&project, &cook_index, threads, &options.code)?;
     laps.lap("scan");
-    let (mut rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
-    materials::prepare(root, &project.source, &mut sources, &mut rig_content)?;
-    imports::prepare(root, &project.source, &mut sources, &mut rig_content)?;
-    pipeline::author::models(root, &project.source, &mut sources, &mut rig_content)?;
+    let (rig_content, rigs) = pipeline::author::rigs(root, &project.source)?;
+    prepared.extend(rig_content);
+    materials::prepare(root, &project.source, &mut sources, &mut prepared)?;
+    imports::prepare(root, &project.source, &mut sources, &mut prepared)?;
+    pipeline::author::models(root, &project.source, &mut sources, &mut prepared)?;
     let model_bindings = pipeline::author::bindings(root, &project.source, &sources)?;
     let mut imported = import(
         &mut sources,
@@ -424,7 +431,7 @@ pub fn cook_project_with_texture_cache(
         &mut sources,
         &mut consumed,
         &project.provided,
-        rig_content,
+        prepared,
     )?;
     // Districts expanded after TS terrain discovery can add model sources.
     // Import only those new sources; never re-import the captured originals.
@@ -642,6 +649,11 @@ pub fn cook_project_with_texture_cache(
         elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
         stages: Vec::new(),
     };
+    if report.ok() {
+        look::write_report(root, &project.source, &content, &sources, &|id| {
+            known.contains(id)
+        })?;
+    }
     save(
         &cook_index,
         &report,

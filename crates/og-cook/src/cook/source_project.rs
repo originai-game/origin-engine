@@ -56,6 +56,7 @@ pub struct Project {
     /// Evaluation identity only; content/schema/cook dependencies are separate.
     pub evaluation_key: String,
     pub dependencies: Vec<String>,
+    pub fingerprints: BTreeMap<String, String>,
     roots: BTreeMap<String, String>,
 }
 
@@ -223,6 +224,11 @@ impl Project {
         let mut dependencies = program.dependencies.clone();
         dependencies.push(source_metadata::FILE.into());
         dependencies.sort();
+        let mut fingerprints = program.fingerprints;
+        fingerprints.insert(
+            source_metadata::FILE.into(),
+            super::integrity(&metadata_bytes),
+        );
         let project = Self {
             metadata,
             input,
@@ -234,6 +240,7 @@ impl Project {
             source: program.source,
             evaluation_key: identity.finalize().to_hex().to_string(),
             dependencies,
+            fingerprints,
             roots,
         };
         for (i, file) in project.input.schemas.iter().enumerate() {

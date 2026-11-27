@@ -188,7 +188,7 @@ const Hud = defineSystem("Hud", { reads: [og.Camera] }, (_q, _time, world) => {
 export default og.game({
   tick: 60,
   seed: 1,
-  look: "looks/main.ogt",
+  look: "base/looks/main",
   systems: [Hud],
   start(world) {
     const cam = must(world.resource(og.Camera));

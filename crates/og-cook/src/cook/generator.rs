@@ -187,8 +187,27 @@ fn relative(base: &str, name: &str) -> Result<String, String> {
     Ok(out.to_string_lossy().replace('\\', "/"))
 }
 
-fn read(root: &Path, path: &str, overlay: &BTreeMap<String, String>) -> Result<Vec<u8>, String> {
+#[derive(Clone, Copy)]
+enum Inputs<'a> {
+    Files(&'a Path),
+    Embedded(&'a BTreeMap<String, String>),
+}
+
+fn read(
+    root: Inputs<'_>,
+    path: &str,
+    overlay: &BTreeMap<String, String>,
+) -> Result<Vec<u8>, String> {
     let path = relative("", path)?;
+    let root = match root {
+        Inputs::Embedded(files) => {
+            return files
+                .get(&path)
+                .map(|text| text.as_bytes().to_vec())
+                .ok_or_else(|| format!("{path}: not an embedded source"));
+        }
+        Inputs::Files(root) => root,
+    };
     let mut at = root.to_path_buf();
     for part in Path::new(&path).components() {
         at.push(part);
@@ -225,6 +244,9 @@ pub struct Program {
     pub key: String,
     /// Sorted, root-relative source and input paths, excluding built-in modules.
     pub dependencies: Vec<String>,
+    /// Integrity of the exact bytes captured before evaluation, for readers
+    /// of derived author reports that must refuse stale source snapshots.
+    pub fingerprints: BTreeMap<String, String>,
     /// Source path → sorted executable relative imports. Includes leaf sources,
     /// excludes built-ins and erased type imports. Raw inputs are never code.
     pub imports: BTreeMap<String, Vec<String>>,
@@ -270,6 +292,7 @@ impl<'a> Visit<'a> for Synchronous {
 
 struct ModuleGraph<'a> {
     modules: BTreeMap<String, String>,
+    fingerprints: BTreeMap<String, String>,
     inputs: BTreeMap<String, bool>,
     imports: BTreeMap<String, Vec<String>>,
     hash: blake3::Hasher,
@@ -280,7 +303,7 @@ struct ModuleGraph<'a> {
 impl ModuleGraph<'_> {
     fn read(
         &mut self,
-        root: &Path,
+        root: Inputs<'_>,
         path: &str,
         from: Option<&str>,
         overlay: &BTreeMap<String, String>,
@@ -295,6 +318,8 @@ impl ModuleGraph<'_> {
             return Err("a generator imports at most 128 modules".into());
         }
         let bytes = read(root, path, overlay)?;
+        self.fingerprints
+            .insert(path.into(), super::integrity(&bytes));
         if bytes.len() > SOURCE_LIMIT
             || self.modules.values().map(String::len).sum::<usize>() + bytes.len() > 8 * 1024 * 1024
         {
@@ -391,7 +416,35 @@ impl ModuleGraph<'_> {
 
 impl Program {
     pub fn prepare(root: &Path, source: &str, spec: &Spec) -> Result<Self, String> {
-        Self::prepare_export(root, source, spec, Export::Call, &BTreeMap::new(), None)
+        Self::prepare_export(
+            Inputs::Files(root),
+            source,
+            spec,
+            Export::Call,
+            &BTreeMap::new(),
+            None,
+        )
+    }
+
+    /// Engine-owned TS presets use the same transform, realm and cache as
+    /// project data. Missing embedded imports never fall back to disk.
+    pub(crate) fn prepare_embedded(
+        files: &BTreeMap<String, String>,
+        script: &str,
+    ) -> Result<Self, String> {
+        Self::prepare_export(
+            Inputs::Embedded(files),
+            "",
+            &Spec {
+                script: script.into(),
+                params: json!({}),
+                seed: 0,
+                inputs: BTreeMap::new(),
+            },
+            Export::Value,
+            &BTreeMap::new(),
+            None,
+        )
     }
 
     /// Evaluate an authored module's default data export, without calling it.
@@ -411,7 +464,7 @@ impl Program {
         overlay: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
         Self::prepare_export(
-            root,
+            Inputs::Files(root),
             "",
             &Spec {
                 script: script.into(),
@@ -437,7 +490,7 @@ impl Program {
         overlay: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
         Self::prepare_export(
-            root,
+            Inputs::Files(root),
             "",
             &Spec {
                 script: entry.file.clone(),
@@ -463,7 +516,7 @@ impl Program {
         overlay: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
         Self::prepare_export(
-            root,
+            Inputs::Files(root),
             "",
             &Spec {
                 script: file.into(),
@@ -481,7 +534,7 @@ impl Program {
     }
 
     fn prepare_export(
-        root: &Path,
+        root: Inputs<'_>,
         source: &str,
         spec: &Spec,
         export: Export,
@@ -540,6 +593,7 @@ impl Program {
         modules.extend(records::modules()?.clone());
         let mut graph = ModuleGraph {
             modules,
+            fingerprints: BTreeMap::new(),
             inputs: BTreeMap::new(),
             imports: BTreeMap::new(),
             hash,
@@ -549,6 +603,7 @@ impl Program {
         graph.read(root, &entry, None, overlay)?;
         let ModuleGraph {
             modules,
+            mut fingerprints,
             inputs: declared,
             imports,
             mut hash,
@@ -566,6 +621,7 @@ impl Program {
         for (name, path) in &spec.inputs {
             let path = relative(source, path)?;
             let bytes = read(root, &path, overlay)?;
+            fingerprints.insert(path.clone(), super::integrity(&bytes));
             input_dependencies.insert(path.clone());
             dependencies.insert(path);
             total += bytes.len();
@@ -581,6 +637,7 @@ impl Program {
                 None => name.clone(),
             };
             let bytes = read(root, &path, overlay)?;
+            fingerprints.insert(path.clone(), super::integrity(&bytes));
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
                 return Err("generator inputs exceed 64 MiB in total".into());
@@ -615,6 +672,7 @@ impl Program {
             modules,
             key: hash.finalize().to_hex().to_string(),
             dependencies: dependencies.into_iter().collect(),
+            fingerprints,
             imports,
             input_dependencies: input_dependencies.into_iter().collect(),
             source: entry_source

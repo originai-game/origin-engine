@@ -34,7 +34,7 @@ variant, the variant's name:
 
 `preview/` draws every look on its preset scene with this art
 (`preview/preview.json`) into the catalogue's previews. Nothing here is a
-preset: the cook reads only `templates/looks/*.ogt`,
+preset: the cook reads only `templates/looks/*.ts`,
 `variants/`, `assets/` and `moods/`, and `pack-template.ts` ships only those.
 
 A preview is one still frame, so it cannot show a trait that lives in

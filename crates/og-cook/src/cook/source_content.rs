@@ -24,6 +24,7 @@ pub struct Content {
     evaluation_key: String,
     schema_key: String,
     imports: BTreeMap<String, Vec<String>>,
+    fingerprints: BTreeMap<String, String>,
     input_dependencies: Vec<String>,
     references: Vec<Reference>,
 }
@@ -129,6 +130,7 @@ impl<'a> Evaluator<'a> {
             evaluation_key: program.key,
             schema_key: bound.key.clone(),
             imports: program.imports,
+            fingerprints: program.fingerprints,
             input_dependencies: program.input_dependencies,
             references,
         })
@@ -164,6 +166,7 @@ pub struct Node {
     /// algorithm implementation identities, not just these schema bytes.
     pub schema_key: String,
     pub imports: BTreeMap<String, Vec<String>>,
+    pub fingerprints: BTreeMap<String, String>,
     pub input_dependencies: Vec<String>,
     pub references: Vec<Edge>,
 }
@@ -221,6 +224,19 @@ impl<'a> GraphBuilder<'a> {
         }
     }
 
+    /// Included engine assets have reserved IDs and no game source owner.
+    pub(crate) fn insert_engine_asset(&mut self, id: &str, kind: &str) {
+        self.provided.insert(id.into());
+        self.outputs.insert(
+            id.into(),
+            Output {
+                entry: id.into(),
+                kind: kind.into(),
+                asset: id.into(),
+            },
+        );
+    }
+
     /// cook.uses grants access to actual cooked material outputs, not to the
     /// provider's source namespace or author-only capabilities such as fields.
     pub(crate) fn insert_provided(&mut self, provided: &super::provided::Provided) {
@@ -245,7 +261,7 @@ impl<'a> GraphBuilder<'a> {
     pub(crate) fn insert_scanned(&mut self, entry: Entry, asset: String) -> Result<Output, String> {
         if !matches!(
             entry.factory.as_str(),
-            "look" | "dialogue" | "materials" | "model" | "texture" | "rig" | "font" | "sound"
+            "dialogue" | "materials" | "palette" | "lut"
         ) {
             return Err(format!(
                 "{}: kind is outside the temporary scaffold catalogue",
@@ -330,6 +346,7 @@ impl<'a> GraphBuilder<'a> {
                     evaluation_key: content.evaluation_key.clone(),
                     schema_key: content.schema_key.clone(),
                     imports: content.imports.clone(),
+                    fingerprints: content.fingerprints.clone(),
                     input_dependencies: content.input_dependencies.clone(),
                     references: Vec::new(),
                 },

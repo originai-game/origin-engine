@@ -197,7 +197,11 @@ fn outputs(root: &Path) -> std::io::Result<BTreeMap<PathBuf, Stat>> {
     tree(&root.join("cooked"), &mut files)?;
     let plan = root.join(".og/publish-assets.json");
     files.insert(plan.clone(), stat(&plan)?);
-    for file in [super::delivery::BUILD_MANIFEST, super::delivery::REPORT] {
+    for file in [
+        super::delivery::BUILD_MANIFEST,
+        super::delivery::REPORT,
+        super::look::REPORT,
+    ] {
         let path = root.join(file);
         if path.exists() {
             files.insert(path.clone(), stat(&path)?);

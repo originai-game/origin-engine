@@ -295,10 +295,10 @@ export function create(options: CreateOptions): Created {
     if (locale !== "en") written.push(path);
   }
   writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../content/strings/shell.${l}.ts";`).join("\n") + "\n");
-  const look = `looks/${id}.ogt`;
-  mkdirSync(join(dir, "assets/looks"), { recursive: true });
-  writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);
-  written.push(`assets/${look}`);
+  const look = `content/looks/${id}.ts`;
+  mkdirSync(join(dir, "content/looks"), { recursive: true });
+  writeFileSync(join(dir, look), `import { file } from "@origingame/engine/author";\nexport default file.look(${JSON.stringify({ extends: [choices.look], ...(choices.variant === undefined ? {} : {variant: choices.variant}), ui: choices.ui }, null, 2)});\n`);
+  written.push(look);
   const manifest = join(dir, "og-project.json");
   const metadata = JSON.parse(readFileSync(manifest, "utf8"));
   writeFileSync(manifest, `${JSON.stringify({ ...metadata, name, look: { $ogRef: `base/looks/${id}` } }, null, 2)}\n`);

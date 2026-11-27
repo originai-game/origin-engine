@@ -324,16 +324,15 @@ impl BlobKind for MotionAction {
 }
 
 row!(
-    /// The root of a look blob (an `.ogt` of `type look`).
-    LookMeta, "og.Look", 1 {
-        /// Bytes of the canonical look text in `text`.
-        text_bytes: u32,
+    /// The root of a checked, resolved native look blob.
+    LookMeta, "og.Look", 2 {
+        /// Bytes of native look values in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The look blob: `text` holds the look the cook flattened and checked
-/// against the resources' reflected schema (`crate::look::LookFile`),
-/// parsed again at load, where the assets it names are loaded.
+/// The look blob: `data` holds resolved native resource patches. Loading
+/// decodes values, never an author language; asset loading is the caller's.
 pub struct Look;
 impl BlobKind for Look {
     const NAME: &'static str = "og.Look";

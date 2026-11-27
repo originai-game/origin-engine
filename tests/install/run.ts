@@ -386,8 +386,8 @@ export default og.game({
       );
       og(step, styledGame, "style", "new", "install-check");
       if (!existsSync(join(styledGame, "assets", "styles", "install-check", "main.css"))) step.fail("og style new install-check wrote no assets/styles/install-check/main.css");
-      mkdirSync(join(styledGame, "assets", "looks"), { recursive: true });
-      writeFileSync(join(styledGame, "assets", "looks", "generated-ui.ogt"), 'type look\nversion 1\n---\nui "install-check"\n');
+      mkdirSync(join(styledGame, "content", "looks"), { recursive: true });
+      writeFileSync(join(styledGame, "content", "looks", "generated-ui.ts"), 'import {file} from "@origingame/engine/author";export default file.look({ui:"install-check"});\n');
       const after = stylePacks(styledGame);
       if (!after.has("shared")) step.fail("a generated style cooked no @styles/shared/ asset");
       const others = [...after].filter((p) => p !== "shared");

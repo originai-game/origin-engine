@@ -1,0 +1,32 @@
+import { file, ref } from "@origingame/engine/author";
+
+export default file.look({
+  // A low grid, four tones per channel through a Bayer 8 dither, every pixel one of four greens (the engine's @palettes/handheld4): one hue carries the picture.
+  // The monochrome variant of pixel (`variant "monochrome" `): only what it changes of
+  // the preset, a field it turns off written at its default.
+  name: "Monochrome-led pixel art",
+  mood: "soft",
+  Stylise: {
+    pixelHeight: 160,
+    posterize: 4,
+    palette: ref("@palettes/handheld4.hex"),
+    dither: "bayer8",
+    ditherStrength: 1,
+  },
+  ArtPalette: {
+    colors: ref("@palettes/handheld4.hex"),
+    strict: true,
+    maxColors: 3,
+    dither: "bayer8",
+    rampSteps: 0,
+  },
+  ArtPixels: {
+    logicalHeight: 160,
+    spriteSizes: [12, 16, 24],
+    rotation: "nearest",
+  },
+  ArtLine: {
+    width: 0,
+    place: "outside",
+  },
+});

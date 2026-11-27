@@ -150,10 +150,9 @@ fn create_without_a_terminal_writes_the_chosen_look() {
     .unwrap();
     assert_eq!(manifest["engine"], package["version"]);
     assert_eq!(manifest["id"], "neon-run");
-    assert_eq!(manifest["startup"]["look"], "looks/neon-run.ogt");
+    assert_eq!(manifest["startup"]["look"], "base/looks/neon-run");
     assert_eq!(manifest["input"]["create"]["look"], "neon-vector");
-    let look = std::fs::read_to_string(game.join("assets/looks/neon-run.ogt")).unwrap();
-    assert!(look.contains("extends \"neon-vector\""), "{look}");
+    assert!(game.join("content/looks/neon-run.ts").is_file());
     assert_eq!(
         std::fs::read_to_string(game.join("notes.txt")).unwrap(),
         "kept"

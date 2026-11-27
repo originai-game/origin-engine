@@ -39,7 +39,7 @@ pub fn markdown() -> Result<String, String> {
         .chain([("import", "import")])
         .collect();
     types.sort();
-    for (ty, owner) in types {
+    for (ty, _) in types {
         if ty == "import" {
             out.push_str("<a id=\"file-import\"></a>\n### `file:import`\n\nExport file.import({kind, source, ...settings}) from content/**/*.ts. The source is an explicit owning-module assets/ or sources/ path. Checked TS feeds native import settings directly; no OGT sidecars, directory defaults or undeclared raw-file auto-cooking remain. Raw bytes, discovered model buffers/images and explicit auxiliary inputs are captured and tracked before caching. References use canonical ref('module/content-id'), never raw filenames. See loading.\n\n```ts\n");
             out.push_str(&og_core::reflect::source::typescript(
@@ -148,74 +148,7 @@ pub fn markdown() -> Result<String, String> {
             }
             continue;
         }
-        let _ = writeln!(
-            out,
-            "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `.ogt` under assets/.\n"
-        );
-        match ty {
-            "look" => {
-                out.push_str("Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.\n\n");
-                table(&mut out, og_bundle::look::LINES);
-                let _ = writeln!(
-                    out,
-                    "\nMood values: {}. Antialias values: {}.\n",
-                    og_bundle::look::MOODS.join(", "),
-                    og_bundle::look::ANTIALIAS.join(", ")
-                );
-                let seeds: Vec<_> = og_bundle::look::UI_SEEDS
-                    .iter()
-                    .map(|key| Line::new(key, "\"#rrggbb\"", "", "UI seed colour, sRGB.", ""))
-                    .collect();
-                block(&mut out, "look.uiSeeds", &seeds);
-                for resource in og_bundle::look::LOOK_RESOURCES {
-                    let record = og_records::RECORDS
-                        .iter()
-                        .find(|r| r.kind == "resource" && r.name == resource)
-                        .ok_or_else(|| {
-                            format!("look resource {resource} has no reflected record")
-                        })?;
-                    let fields: Vec<_> = record
-                        .fields
-                        .iter()
-                        .filter(|f| {
-                            !f.readonly
-                                && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))
-                        })
-                        .map(|f| Line::new(f.name, f.column, f.default, f.doc, ""))
-                        .collect();
-                    block(&mut out, &format!("look.{resource}"), &fields);
-                    for f in record.fields.iter().filter(|f| {
-                        !f.readonly
-                            && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))
-                    }) {
-                        if !f.variants.is_empty() {
-                            let _ = writeln!(
-                                out,
-                                "\n`{}` variants: {}.\n",
-                                f.name,
-                                f.variants.join(", ")
-                            );
-                        }
-                        if f.min.is_some() || f.max.is_some() || !f.unit.is_empty() {
-                            let _ = writeln!(
-                                out,
-                                "\n`{}` range: {} .. {}; unit: {}.\n",
-                                f.name,
-                                f.min.map_or("unbounded".into(), |n| n.to_string()),
-                                f.max.map_or("unbounded".into(), |n| n.to_string()),
-                                if f.unit.is_empty() {
-                                    "unstated"
-                                } else {
-                                    f.unit
-                                }
-                            );
-                        }
-                    }
-                }
-            }
-            _ => return Err(format!("cook type '{ty}' has no file field catalogue")),
-        }
-        out.push('\n');
+        return Err(format!("cook type '{ty}' has no file field catalogue"));
     }
     out.push_str("## 2. Other engineering sources\n\n");
     for (ty, doc) in [

@@ -2364,7 +2364,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -2488,7 +2488,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -2611,7 +2611,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -2734,7 +2734,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -2854,7 +2854,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -2963,7 +2963,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5
@@ -3078,7 +3078,7 @@
           },
           "Stylise": {
             "paintCanvas": [
-              "@canvas/paper"
+              "@canvas/paper.png"
             ],
             "paintCanvasStrength": [
               0.5

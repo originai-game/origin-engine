@@ -55,7 +55,7 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         &|path| std::fs::read(path),
         1,
         &CodeGraph::default(),
-        None,
+        &BTreeMap::new(),
     )
 }
 
@@ -93,7 +93,7 @@ pub(crate) fn scan_with(
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
     code: &CodeGraph,
-    project_look: Option<&crate::cook::source_schemas::procedural::LookBase>,
+    looks: &BTreeMap<String, crate::look::LookFile>,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     if assets_dir.exists() {
@@ -132,15 +132,8 @@ pub(crate) fn scan_with(
     // their reserved ids (`@canvas/paper.png`, every file of
     // `@styles/pixel/`), once each, read from the cook itself.
     let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
-    if let Some(crate::cook::source_schemas::procedural::LookBase::Preset(name)) = project_look {
-        let text = look::PRESETS
-            .iter()
-            .find(|(id, _)| *id == name)
-            .map(|(_, text)| *text)
-            .ok_or_else(|| CookError(format!("og-project.json: unknown look preset {name}")))?;
-        let id = format!("@looks/{name}");
-        builtins.insert(id.clone(), text.as_bytes());
-        for (id, bytes) in look::builtin_files(&id, text, assets_dir) {
+    for look in looks.values() {
+        for (id, bytes) in look::builtin_files(look, assets_dir) {
             builtins.insert(id.to_string(), bytes);
         }
     }
@@ -195,18 +188,6 @@ pub(crate) fn scan_with(
         }
     }
     for (rel, path) in &files {
-        if ext(rel) == "ogt"
-            && let Ok(text) =
-                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-            // The header says whether it is a look, before the whole of
-            // every text is parsed for it.
-            && Document::parse_header(&text).is_ok_and(|h| h.ty == crate::look::LOOK_TYPE)
-            && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
-        {
-            for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
-                builtins.insert(id.to_string(), bytes);
-            }
-        }
         // A game's own pack.json can name them.
         if crate::cook::ui_packs::is_pack(rel)
             && let Ok(text) =
@@ -409,7 +390,6 @@ pub(crate) fn scan_with(
         let mut imported_path = None;
         let mut imported_settings = imports::Settings::default();
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
-            _ if rel.starts_with("@looks/") && builtins.contains_key(rel) => &look::LOOK,
             (Some(kind), _)
                 if (builtins.contains_key(rel)
                     && !rel.starts_with("@styles/")
