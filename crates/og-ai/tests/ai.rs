@@ -130,11 +130,11 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
         },
     )
     .unwrap();
-    let b = ai
-        .behaviours
-        .lock()
-        .unwrap()
-        .insert(Behaviour::parse(behaviour).unwrap());
+    let parsed = Behaviour::parse(behaviour).unwrap();
+    let data = parsed.to_bytes().unwrap();
+    let native = Behaviour::from_bytes(&data).unwrap();
+    assert_eq!(native, parsed);
+    let b = ai.behaviours.lock().unwrap().insert(native);
     let guard = world
         .spawn((
             Transform {

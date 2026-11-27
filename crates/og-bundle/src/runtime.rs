@@ -1544,16 +1544,18 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
 // ── E6: behaviours and navmeshes ─────────────────────────────────────────
 
 impl Bundle {
-    /// The validated text of a behaviour blob (`og.Behaviour`); parse it
-    /// with og-ai's `Behaviour::parse`.
-    pub fn behaviour_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// Native behaviour fields; decode with og-ai's `Behaviour::from_bytes`.
+    pub fn behaviour_data(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
         let blob = self.blob::<format::Behaviour>(id, bytes)?;
         let meta = one::<format::BehaviourMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        text.get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .map(str::to_string)
-            .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(
+                &blob,
+                "the behaviour data length differs from its metadata",
+            ));
+        }
+        Ok(data.to_vec())
     }
 
     /// The validated text of a dialogue (`og.Dialogue`) or quest

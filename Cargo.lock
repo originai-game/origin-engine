@@ -3317,10 +3317,12 @@ dependencies = [
 name = "og-ai"
 version = "0.9.0"
 dependencies = [
+ "bincode",
  "og-ai",
  "og-bundle",
  "og-core",
  "og-ecs",
+ "serde",
  "serde_json",
 ]
 

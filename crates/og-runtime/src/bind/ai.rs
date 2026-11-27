@@ -67,15 +67,16 @@ fn insert(
     Ok(info(h, &b))
 }
 
-/// A cooked behaviour's text (what `use` subtrees read).
-fn cooked_text(world: u32, path: &str) -> Result<String, String> {
+/// A cooked behaviour, with its subtree nodes already resolved.
+fn cooked(world: u32, path: &str) -> Result<Behaviour, String> {
     let eng = engine(world)?;
     let id = og_bundle::runtime::asset_id(path).to_string();
     let assets = eng.assets.borrow();
     let (bytes, bundle) = assets.blob(&id)?;
-    bundle
-        .behaviour_text(&id, bytes.bytes())
-        .map_err(|e| e.to_string())
+    let data = bundle
+        .behaviour_data(&id, bytes.bytes())
+        .map_err(|e| e.to_string())?;
+    Behaviour::from_bytes(&data)
 }
 
 pub fn og_ai_load(world: u32, path: String) -> Result<crate::host::wire::BehaviourInfo, String> {
@@ -90,18 +91,13 @@ pub(crate) fn load(
 ) -> Result<BehaviourInfo, String> {
     (|| {
         let id = og_bundle::runtime::asset_id(path).to_string();
-        let text = cooked_text(world, &id)?;
-        let mut read = |p: &str| cooked_text(world, p);
-        let b = Behaviour::parse_with(&text, &id, &mut read).map_err(|e| format!("{id}: {e}"))?;
+        let b = cooked(world, &id).map_err(|e| format!("{id}: {e}"))?;
         insert(world, b, borrowed)
     })()
 }
 
 pub fn og_ai_parse(world: u32, text: String) -> Result<crate::host::wire::BehaviourInfo, String> {
-    engine(world).and_then(|_| {
-        let mut read = |p: &str| cooked_text(world, p);
-        insert(world, Behaviour::parse_with(&text, "", &mut read)?, None)
-    })
+    engine(world).and_then(|_| insert(world, Behaviour::parse(&text)?, None))
 }
 
 pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {

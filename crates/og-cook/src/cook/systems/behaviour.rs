@@ -41,6 +41,7 @@ pub(crate) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a behaviour is text (UTF-8)".into()))?;
     let b = parse_behaviour(s, text, &mut |_, _| {}).map_err(CookError)?;
+    let data = b.to_bytes().map_err(CookError)?;
     let mut w = BlobWriter::new(
         format::Behaviour::type_hash(),
         format::Behaviour::schema_version(),
@@ -49,11 +50,11 @@ pub(crate) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
     w.table(
         "meta",
         &[format::BehaviourMeta {
-            text_bytes: text.len() as u32,
+            data_bytes: data.len() as u32,
         }],
         format::row_hash::<format::BehaviourMeta>(),
     )
-    .raw("text", text.as_bytes().to_vec(), 16);
+    .raw("data", data, 16);
     let kind = match &b.root {
         og_ai::Root::Tree(_) => "a tree".to_string(),
         og_ai::Root::Machine { states, .. } => format!("a machine of {} states", states.len()),

@@ -30,22 +30,25 @@
 //! }
 //! ```
 
+mod cooked;
 mod grammar;
 mod parse;
+mod validate;
 pub use grammar::LINES;
 
 use og_core::glam::Vec3;
 use og_core::ogt::{Block, Document, Entry, Value as OgtValue};
+use serde::{Deserialize, Serialize};
 
 /// The `.ogt` type of a behaviour.
 pub const BEHAVIOUR_TYPE: &str = "behaviour";
 
 /// A blackboard value.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Num(f64),
     Bool(bool),
-    Vec(Vec3),
+    Vec(#[serde(with = "cooked::vector")] Vec3),
     Entity(u64),
 }
 
@@ -71,7 +74,7 @@ impl Value {
 }
 
 /// A comparison of a condition.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Op {
     Is,
     Not,
@@ -123,7 +126,7 @@ impl Op {
 /// agent, `Resource.field`, with an optional `.x`/`.y`/`.z` lane), an
 /// operator and a value: a literal, or (`against`) a key or field read
 /// each time the check runs, so a threshold can live in a tuning resource.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Check {
     pub operand: String,
     pub op: Op,
@@ -134,18 +137,19 @@ pub struct Check {
 }
 
 /// A speed: fixed, or read from a key or field each think (a tunable).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Speed {
     Fixed(f32),
     Read(String),
 }
 
 /// A movement or game action.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Action {
     /// To a blackboard key's point (or a fixed point); succeeds on arrival, fails when unreachable.
     MoveTo {
         key: Option<String>,
+        #[serde(with = "cooked::vector")]
         point: Vec3,
         speed: Option<Speed>,
     },
@@ -195,7 +199,7 @@ pub enum Action {
 
 /// How a consideration's input maps onto its score: `t` is the input
 /// placed between `lo` (0) and `hi` (1) and clamped to that range.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Curve {
     /// `t`.
     Linear,
@@ -250,7 +254,7 @@ impl Curve {
 
 /// One factor of a utility option's score: a constant, or a key or field
 /// read each think through a curve.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Consideration {
     /// None: `constant`.
     pub operand: Option<String>,
@@ -261,7 +265,7 @@ pub struct Consideration {
 }
 
 /// One node of a tree.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Kind {
     /// Children in order; the first that does not fail decides (re-checked every tick).
     Selector,
@@ -307,7 +311,7 @@ pub enum Kind {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     pub kind: Kind,
     /// A label (`ReactiveSequence chase`) or the node's kind and argument (`patrol beat`).
@@ -319,14 +323,14 @@ pub struct Node {
 
 /// A transition of a state machine: to `to` when every check holds and the
 /// state has lasted `after` seconds.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transition {
     pub to: usize,
     pub checks: Vec<Check>,
     pub after: f32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct State {
     pub name: String,
     /// Instant actions on entering and leaving (`set`, `stop`, `command`).
@@ -337,18 +341,19 @@ pub struct State {
     pub transitions: Vec<Transition>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Root {
     Tree(usize),
     Machine { states: Vec<State>, initial: usize },
 }
 
 /// A parsed behaviour.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Behaviour {
     pub name: String,
     /// Declared keys and their starting values, in order.
     pub keys: Vec<(String, Value)>,
+    #[serde(with = "cooked::routes")]
     pub routes: Vec<(String, Vec<Vec3>)>,
     pub nodes: Vec<Node>,
     pub root: Root,

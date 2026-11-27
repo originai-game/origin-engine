@@ -209,15 +209,14 @@ impl BlobKind for Rig2D {
 // ── E6: behaviours and navmeshes ─────────────────────────────────────────
 
 row!(
-    /// The root of a behaviour blob (an `.ogt` of `type behaviour`).
-    BehaviourMeta, "og.Behaviour", 1 {
-        /// Bytes of the validated behaviour text in `text`.
-        text_bytes: u32,
+    /// The root of a compiled behaviour blob.
+    BehaviourMeta, "og.Behaviour", 2 {
+        /// Bytes of the native fields in `data`.
+        data_bytes: u32,
     }
 );
 
-/// The behaviour blob: `text` holds the behaviour file the cook validated
-/// (og-ai's `Behaviour::parse`), parsed again at load.
+/// Native behaviour fields, including resolved subtree nodes, decoded by og-ai.
 pub struct Behaviour;
 impl BlobKind for Behaviour {
     const NAME: &'static str = "og.Behaviour";
