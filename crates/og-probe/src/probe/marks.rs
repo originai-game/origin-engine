@@ -69,7 +69,7 @@ impl Probe {
                 let id = e["id"].as_str().unwrap_or_default().to_owned();
                 let source = self.names.resolve(world, &id).and_then(|entity| {
                     self.host
-                        .scene_writer
+                        .scene_author
                         .as_ref()
                         .and_then(|w| w.source(world, entity))
                 });

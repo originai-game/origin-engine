@@ -110,11 +110,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Observable from the first frame.** The command channel, the probe, the
   dumps and frame capture exist in every build except `publish`.
 - **Reflection is the single schema** for the inspector, Tune, the probe,
-  scene text and the wiki. Author configuration is `project.ts`, with ordinary
+  scene records and the wiki. Author configuration is `project.ts`, with ordinary
   `og-project.json` as the sole project marker and name/engine/look authority.
   Content TS evaluates to schema-checked IR and cooks into `.ogb`; it never
-  serializes through OGT. The foundation's scanned scene/prefab, look and Yarn
-  catalogue exists only until their P3, P1 and P2 domain cutovers respectively;
+  serializes through OGT. Scene/prefab/scatter consume captured native TS data;
+  Inspector/Tune changes memory only, while `og set` edits checked TS literals.
+  The foundation's scanned look and Yarn catalogue remains until their domain cutovers;
   remove each author parser with its cutover. OGT then remains internal text
   (IDL, dumps and probe transport), not another author path.
 - **The API is for a reader who has never seen it.** Zero-value desc structs,

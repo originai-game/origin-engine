@@ -40,7 +40,7 @@ pub(crate) fn load_from(eng: &Engine, path: &str, owner: Option<usize>) -> Resul
             Ok(index)
         }
         _ => Err(format!(
-            "'{id}' is not a prefab (an .ogt of type prefab); load a scene with og.load.scene"
+            "'{id}' is not a file.prefab output; load a scene with og.load.scene"
         )),
     }
 }

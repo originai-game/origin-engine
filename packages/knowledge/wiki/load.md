@@ -2,11 +2,11 @@
 
 # The `load` module
 
-Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
+Load cooked output: `og cook` turns content/**/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/.
 
-Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
+Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp.
 
-The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries.
+The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
 
 See `loading §1`.
 
@@ -17,9 +17,9 @@ See `loading §1`.
 
 ```ogt
 module load {
-  doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
-  doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
-  doc "The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries."
+  doc "Load cooked output: `og cook` turns content/**/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/."
+  doc "Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp."
+  doc "The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries."
   # declarations follow, each on its own page
 ```
 
@@ -57,8 +57,8 @@ module load {
 | [`og.load.progress`](load/fn-progress.md) | function | `(world: World, asset: Asset): Result<LoadProgress>` | How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). |
 | [`og.load.defaultBundle`](load/fn-defaultBundle.md) | function | `(world: World): Result<Asset>` | The game's own bundle, opened before the first tick from `cooked/`. |
 | [`og.load.gltf`](load/fn-gltf.md) | function | `(world: World, path: string, desc?: GltfDesc): Result<Asset>` | Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once. |
-| [`og.load.scene`](load/fn-scene.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked scene (.ogt). |
-| [`og.load.prefab`](load/fn-prefab.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). |
+| [`og.load.scene`](load/fn-scene.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked file.scene declaration. |
+| [`og.load.prefab`](load/fn-prefab.md) | function | `(world: World, path: string): Result<Asset>` | Load a cooked file.prefab declaration: one entity tree authored once and placed many times, docs/design.md §2.5. |
 | [`og.PrefabLink`](load/record-PrefabLink.md) | component |  | Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. |
 | [`og.load.font`](load/fn-font.md) | function | `(world: World, path: string): Result<Font>` | Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. |
 | [`og.load.fontInfo`](load/fn-fontInfo.md) | function | `(world: World, font: Font): Result<FontInfo>` | A loaded font's metrics. |

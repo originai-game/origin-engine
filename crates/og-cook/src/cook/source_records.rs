@@ -7,6 +7,9 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::{collections::BTreeMap, path::Path};
 
+mod packing;
+pub use packing::PackedRecord;
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Record {

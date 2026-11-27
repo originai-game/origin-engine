@@ -411,9 +411,6 @@ export class EngineProbe extends RuntimeProbe {
   observe(records?: unknown, types?: boolean): unknown {
     return JSON.parse(abi().og_engine_probe_observe(this.#handle, json(records), types)) as unknown;
   }
-  saveScene(write?: boolean, spawned?: boolean): unknown {
-    return JSON.parse(abi().og_engine_probe_save_scene(this.#handle, write, spawned)) as unknown;
-  }
   pickUi(x: number, y: number): unknown {
     return JSON.parse(abi().og_engine_probe_pick_ui(this.#handle, x, y)) as unknown;
   }

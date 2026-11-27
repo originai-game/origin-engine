@@ -167,6 +167,8 @@ pub(crate) struct Source {
     flipbook: Option<og_anim::FlipbookSheet>,
     /// Native 2D rig and captured layered-art inputs.
     rig2d: Option<rig2d::Prepared>,
+    /// One checked scene tree shared by all author consumers.
+    scene: Option<std::sync::Arc<scene::Document>>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -428,7 +430,7 @@ pub fn cook_project_with_texture_cache(
     imported.reused_fractures.extend(added.reused_fractures);
     // Projected scatter needs both resolved mesh operands and the checked
     // TS field snapshot, just like the terrain writer and navmesh baker.
-    scene::expand(&mut sources);
+    scene::expand(&mut sources, &content);
     for s in sources.iter_mut().filter(|s| s.kind == &scene::SCENE) {
         s.hash = stage::source_hash(s);
     }

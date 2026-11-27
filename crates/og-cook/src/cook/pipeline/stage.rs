@@ -620,10 +620,8 @@ fn import_source(
 /// The bundle's assets once the files other assets consume are taken out.
 pub(crate) struct Resolved {
     pub(crate) known: BTreeSet<String>,
-    // Prefab and scene texts by asset id: scenes and prefabs flatten
-    // through the prefabs, and a sub-scene (`scene "<id>"`) is checked
-    // against the scenes (a scene, and no cycle).
-    pub(crate) prefab_texts: BTreeMap<String, String>,
+    /// Checked scene and prefab snapshots, keyed by cooked asset identity.
+    pub(crate) prefab_texts: BTreeMap<String, std::sync::Arc<scene::Document>>,
 }
 
 pub(crate) fn resolve(
@@ -688,15 +686,9 @@ pub(crate) fn resolve(
     // TS primary and derived outputs join this set from the actual content
     // graph in the caller, not a guessed list of special-case suffixes.
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
-    let prefab_texts: BTreeMap<String, String> = sources
+    let prefab_texts = sources
         .iter()
-        .filter(|s| [&scene::SCENE, &scene::PREFAB].contains(&s.kind))
-        .map(|s| {
-            (
-                s.rel.clone(),
-                String::from_utf8_lossy(&s.bytes).into_owned(),
-            )
-        })
+        .filter_map(|s| s.scene.as_ref().map(|doc| (s.rel.clone(), doc.clone())))
         .collect();
     Resolved {
         known,

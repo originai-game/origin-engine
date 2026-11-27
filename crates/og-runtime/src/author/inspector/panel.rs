@@ -78,9 +78,9 @@ pub(super) fn read_parts(
     Some(model::parts(editor, &f, &bytes, &|e| Names.id_of(world, e)))
 }
 
-/// A prefab instance's field as `apply_prefab` names it: `Component.field`
+/// A prefab instance's field as `revert_prefab` names it: `Component.field`
 /// with the engine's `og.` dropped (`og.Transform.position` is
-/// `Transform.position`, as the scene's text writes it).
+/// `Transform.position`).
 pub(crate) fn prefab_field(component_field: &str) -> String {
     component_field
         .strip_prefix("og.")

@@ -18,8 +18,9 @@
 //!   action map binds that key the inspector takes it only with Ctrl.
 //! - **Edits are Tune writes.** An edit is the probe's `set` (`Probe::tune`):
 //!   checked against the schema, applied between ticks and remembered as
-//!   tuned, so Save is `save_scene` with no writer of its own. A value the
-//!   game writes back over an edit flashes "changed by the game".
+//!   tuned in memory. Source edits belong to og set or the author;
+//!   the inspector never writes files. A value the game overwrites flashes "changed by
+//!   the game".
 //! - **A transform gizmo.** On the selected entity (`gizmo`): translate,
 //!   rotate and scale handles (W, E, R; world or local axes), dragged in
 //!   the game's frame; each drag is one field's `set` a frame, folded into
@@ -52,12 +53,8 @@ mod update;
 
 pub(crate) use pointer::*;
 pub(crate) use probe::*;
-pub(crate) use requests::*;
+use requests::*;
 pub(crate) use update::*;
-
-/// Whether this host writes the scene files itself: natively it does; a
-/// web page answers the texts, which go out in the frame's `saved`.
-const WRITES_FILES: bool = !cfg!(target_family = "wasm");
 
 /// The toggle key when none is set.
 pub(crate) const DEFAULT_KEY: &str = "F1";
@@ -156,18 +153,16 @@ pub(crate) enum Request {
         edit: Edit,
         merge: bool,
     },
-    /// `apply_prefab` or `revert_prefab` on a prefab instance: one field
+    /// A memory-only reset on a prefab instance: one field
     /// (`target`, `Component.field`) or every override; `fields` are the
     /// ones it covers, whose unsaved marks it clears.
     Prefab {
         entity: Entity,
         target: Option<String>,
         fields: Vec<String>,
-        apply: bool,
     },
     Undo,
     Redo,
-    Save,
     Pause,
     Resume,
     Step,
@@ -228,12 +223,8 @@ pub(crate) struct Inspector {
     /// The game binds the toggle key, so it needs Ctrl.
     needs_ctrl: bool,
     pub(crate) tool: Tool,
-    /// The selected entity's prefab as last read (`Probe::entity_prefab`
-    /// reads the scene's text: once per selection and after a save).
+    /// The selected entity's cooked prefab provenance, cached per selection.
     prefab: Option<(Entity, Option<serde_json::Value>)>,
-    /// Scene texts a save made on a host that writes no files, for the
-    /// next frame's answer (`saved`: the web page routes them).
-    pub(crate) saved: Vec<(String, String)>,
 }
 
 impl Inspector {
@@ -273,7 +264,6 @@ impl Inspector {
             needs_ctrl: false,
             tool: Tool::default(),
             prefab: None,
-            saved: Vec::new(),
         }
     }
 

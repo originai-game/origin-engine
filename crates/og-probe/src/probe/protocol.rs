@@ -62,8 +62,7 @@ impl Probe {
     /// A Tune write, as the command channel's `set` does it: `target` is
     /// `<entity>.<Component>.<field>` or `<Resource>.<field>` and `text`
     /// its value as a command writes it (`1,2.5,0`, `true`, a variant
-    /// name). The field is written through its schema and remembered as
-    /// tuned, so `save_scene` writes it back.
+    /// name). The field is written through its schema, in memory only.
     pub fn tune(&mut self, world: &mut World, target: &str, text: &str) -> Result<(), String> {
         let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
         // `<Resource>.<field>` names the resource, as a game's write would:
@@ -79,7 +78,6 @@ impl Probe {
         };
         if let Some((resource, field)) = Self::resource_target(world, target) {
             Self::write_resource_field(world, resource, &field, &value)?;
-            self.tuned.insert(target.to_owned());
             return Ok(());
         }
         let (entity, parameter) = match target.strip_prefix('#') {
@@ -99,7 +97,6 @@ impl Probe {
         };
         let e = self.entity_of(world, &entity)?;
         self.write_field(world, e, &parameter, &value, false)?;
-        self.tuned.insert(format!("{entity}.{parameter}"));
         Ok(())
     }
 
@@ -327,7 +324,7 @@ impl Probe {
         };
         let source = hit.source.or_else(|| {
             self.host
-                .scene_writer
+                .scene_author
                 .as_ref()
                 .and_then(|w| w.source(world, hit.entity))
         });
@@ -393,10 +390,7 @@ impl Probe {
             None => Err(format!("unknown entity '{id}'")),
         };
         match result {
-            Ok(()) => {
-                self.tuned.insert(format!("{id}.{parameter}"));
-                true
-            }
+            Ok(()) => true,
             Err(reason) => {
                 self.out.note(
                     world.time().tick,
@@ -434,7 +428,7 @@ impl Probe {
 
     /// `set`: synchronously write any reflected component or resource field
     /// (`<Resource>.<field>` or `<entity>.<Component>.<field>`) using a JSON
-    /// value, remembering it for `save_scene`, and returning `{ ok, error? }`.
+    /// value in memory, returning `{ ok, error? }`.
     pub fn set_target(&mut self, world: &mut World, target: &str, value: &Value) -> Value {
         match self.set_target_inner(world, target, value) {
             Ok(()) => json!({ "ok": true }),
@@ -460,7 +454,6 @@ impl Probe {
         }
         if let Some((resource, field)) = Self::resource_target(world, target) {
             Self::write_resource_field(world, resource, &field, value)?;
-            self.tuned.insert(target.to_owned());
             return Ok(());
         }
         let (entity, parameter) = match target.strip_prefix('#') {
@@ -478,7 +471,6 @@ impl Probe {
         };
         let e = self.entity_of(world, &entity)?;
         self.write_field(world, e, &parameter, value, false)?;
-        self.tuned.insert(format!("{entity}.{parameter}"));
         Ok(())
     }
 
@@ -1121,52 +1113,12 @@ impl Probe {
         }
     }
 
-    /// `save_scene`: every scene the world was assembled from rewritten
-    /// from the world (the lines whose values changed, and the fields
-    /// `set` and `patch` tuned), the boot scene's first and its fields at
-    /// the top level; with `spawned`, the entities the game spawned under
-    /// the boot scene's marked section; with `write`, over their source
-    /// files. `Err` without a scene writer or a scene.
-    pub fn save_scene(
-        &mut self,
-        world: &World,
-        write: bool,
-        spawned: bool,
-    ) -> Result<Value, String> {
-        let tuned: Vec<String> = self.tuned.iter().cloned().collect();
-        let writer = self
-            .host
-            .scene_writer
-            .as_mut()
-            .ok_or("this host has no scene write-back")?;
-        let saved = writer.save(world, &tuned, write, spawned)?;
-        let first = saved
-            .files
-            .first()
-            .cloned()
-            .ok_or("no scene to write back")?;
-        Ok(json!({
-            "tick": world.time().tick,
-            "source": first.source,
-            "written": first.written,
-            "lines": first.lines,
-            "skipped": saved.skipped,
-            "text": first.text,
-            "spawned": saved.spawned,
-            "scenes": saved.files.iter().map(|f| json!({
-                "source": f.source, "written": f.written, "lines": f.lines, "text": f.text,
-            })).collect::<Vec<_>>(),
-        }))
-    }
-
-    /// `apply_prefab` and `revert_prefab`: the host's prefab write-back,
-    /// noted in the log. `Err` without a scene writer, or for an entity
-    /// not placed from a prefab.
+    /// Reset selected cooked prefab fields in memory, without changing source.
     pub fn prefab_edit(
         &mut self,
         world: &mut World,
         edit: &crate::PrefabEdit,
-    ) -> Result<crate::SavedScene, String> {
+    ) -> Result<(), String> {
         self.host.prefab_edit(world, edit)
     }
 
@@ -1270,9 +1222,9 @@ impl Probe {
     /// `prefab`: `{prefab, node, root, overrides}` (the root by its probe
     /// id, the overrides its instance's lines in the scene's text as
     /// `Component.field`); none for another entity or a host without
-    /// scene write-back.
+    /// source provenance.
     pub fn entity_prefab(&self, world: &World, e: Entity) -> Option<Value> {
-        let mut p = self.host.scene_writer.as_ref()?.entity_prefab(world, e)?;
+        let mut p = self.host.scene_author.as_ref()?.entity_prefab(world, e)?;
         if let Some(bits) = p["root"].as_f64() {
             p["root"] = json!(self.names.id_of(world, Entity::from_bits(bits as u64)));
         }

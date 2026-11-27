@@ -15,7 +15,7 @@ module probe {
     doc "What a screen point resolved to in the scene."
     field entity String "The probe id of the entity under the point."
     field world OneOf.Array.f32.2.Array.f32.3 "Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero."
-    field source Option.String "Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source; none in a publish build)."
+    field source Option.String "Where a person would change it: the TS scene declaration (`content/scenes/main.ts:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source; none in a publish build). Computed declarations report the nearest captured source expression."
     field ui UiPickElement "The UI element over the point, as pickUi answers: what the player sees there instead of the entity." {
       optional true
     }
@@ -247,7 +247,7 @@ module probe {
     field text String "The text the element shows, or the entity's name; empty for none."
     field rect MarkRect "Its box on the image."
     field point ScreenPoint "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
-    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
+    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the TS scene declaration (`content/scenes/main.ts:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
     field part Option.String "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
     field rule Option.UiPickRule "The most specific style rule that dresses the element; null when none does."
     field depth Option.f32 "The entity's distance from the camera to its nearest visible point; null for an element." {
@@ -778,26 +778,6 @@ module probe {
     field results List.ExpectResult "Each, in order."
   }
 
-  struct SavedScene {
-    doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
-    field tick u32 "The tick of the world it was written from."
-    field source String "The first scene's source, project-relative."
-    field written String "Where it was written; empty when only returned."
-    field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
-    field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
-    field text String "The first scene's new text."
-    field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
-    field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
-  }
-
-  struct SavedSceneFile {
-    doc "One scene file written back."
-    field source String "Its source, project-relative."
-    field written String "Where it was written; empty when only returned."
-    field lines List.u32 "The 1-based lines of its new text that changed or were added."
-    field text String "Its new text."
-  }
-
   struct ProbeLogEntry {
     doc "One probe log or warning entry."
     field tick u32 "The tick when it was recorded."
@@ -1053,16 +1033,6 @@ module probe {
       }
       returns Json
     }
-    fn saveScene {
-      doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
-      param write bool "Replace each scene's source file." {
-        default false
-      }
-      param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
-        default false
-      }
-      returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
-    }
     fn pickUi {
       doc "The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene."
       param x f32 "Horizontal position in CSS pixels."
@@ -1070,14 +1040,14 @@ module probe {
       returns Option.UiPickElement "Null when no UI element that shows something or takes input is under the point."
     }
     fn logs {
-      doc "Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene)."
+      doc "Recent probe log and warning entries (including refusal reasons from patch, reload and commands)."
       param take bool "Clear the log ring after answering." {
         default false
       }
       returns ProbeLogs
     }
     fn set {
-      doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene."
+      doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) in memory using a JSON value. No source files change; use og set for explicit checked TS literal edits."
       param target String "Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`)."
       param value Json "New JSON value."
       returns ProbeSetResult
@@ -1091,4 +1061,3 @@ module probe {
 }
 
 # ── terrain ───────────────────────────────────────────────────────────────
-

@@ -129,13 +129,7 @@ export function Inspector(props: InspectorProps) {
           <Text class="text-base font-semibold whitespace-nowrap">Inspector</Text>
           <Tool label={v().key} quiet tip={v().keyTip} onPress={() => click("Key")} />
           <View class="grow" />
-          <Tool
-            label={v().dirty > 0 ? `Save (${v().dirty})` : "Save"}
-            on={v().dirty > 0}
-            disabled={v().dirty === 0}
-            tip="Write the edited fields into the scenes' text (save_scene)"
-            onPress={() => click("Save")}
-          />
+          <Text class="text-xs text-fg-muted">Memory only</Text>
           <Tool label="Close" quiet onPress={() => click("Close")} />
         </View>
         <View class="flex-row items-center gap-1">
@@ -216,16 +210,14 @@ export function Inspector(props: InspectorProps) {
             <Show when={v().prefab.what !== ""}>
               <View class="flex-row items-center gap-1">
                 <Text class="grow min-w-0 truncate text-xs text-info">{v().prefab.what}</Text>
-                <Tool label="Apply all" disabled={v().prefab.none} tip="Write every override into the prefab's file: every instance takes it" onPress={() => click("ApplyAll")} />
-                <Tool label="Revert all" quiet disabled={v().prefab.none} tip="Take every override back to the prefab's value" onPress={() => click("RevertAll")} />
+                <Tool label="Revert all" quiet disabled={v().prefab.none} tip="Reset live fields to the cooked prefab; source files stay unchanged" onPress={() => click("RevertAll")} />
               </View>
             </Show>
             <For each={v().overrides} key={(o) => o.id}>
               {(o) => (
                 <View class="flex-row items-center gap-1 pl-3">
                   <Text class="grow min-w-0 truncate text-sm text-fg-muted">{o().text}</Text>
-                  <Tool label="Apply" quiet tip="Write this value into the prefab" onPress={() => click("Apply", o().id)} />
-                  <Tool label="Revert" quiet tip="Back to the prefab's value" onPress={() => click("Revert", o().id)} />
+                  <Tool label="Revert" quiet tip="Reset this live field only; source files stay unchanged" onPress={() => click("Revert", o().id)} />
                 </View>
               )}
             </For>

@@ -220,7 +220,14 @@ pub(crate) fn column_schema(
     variants: &[&str],
     capacity: u32,
 ) -> Result<Value, String> {
-    Ok(if !variants.is_empty() {
+    Ok(if column == "ClipAsset" {
+        let mut asset = schemars::schema_for!(super::ContentRef).to_value();
+        asset["x-og-ref-kinds"] = json!(["model"]);
+        json!({"type":"object", "properties":{"asset":asset,"clip":{"type":"string","minLength":1}},
+            "required":["asset","clip"],"additionalProperties":false})
+    } else if column == "Ease" {
+        json!({"type": "string", "description": "Named or CSS timing curve; validated by the native easing parser."})
+    } else if !variants.is_empty() {
         json!({"type": "string", "enum": variants})
     } else {
         match column {

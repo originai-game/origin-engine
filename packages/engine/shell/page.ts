@@ -35,7 +35,7 @@ import { Shell } from "../src/web/shell.ts";
 import { webGpuAbsent } from "../src/web/webgpu.ts";
 import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
-import { mountWire, routeSavedScenes, SCENE_SAVED_CAPABILITY, type SavedScene } from "./wire.ts";
+import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, pageProviders, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
@@ -357,24 +357,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   let lastMemory: MemoryInfo | null = null;
   const failures: Array<{ file: string; reason: string }> = [];
   let failuresSeen = 0;
-  // The inspector's Save writes no file here (development builds): to a Stage whose hello
-  // lists scene_saved, the texts over the og-probe wire; otherwise a download each
-  // (docs/platform-asks.md #22).
-  let wire: { announce(): void; push(message: Record<string, unknown>): void } | null = null;
-  const download = (name: string, text: string) => {
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  const onScenesSaved = (scenes: readonly SavedScene[]) => {
-    const push = wire?.push;
-    routeSavedScenes(scenes, { capable: !!push && player.capabilities.includes(SCENE_SAVED_CAPABILITY), push: (m) => push?.(m), download });
-  };
+  let wire: { announce(): void } | null = null;
   const onLoadFailure = (f: { file: string; reason: string }) => {
     if (!telemetry || failuresSeen >= FAILURES_MAX) return;
     failuresSeen++;
@@ -800,7 +783,6 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       onCrash: (message, error) => void fail(readied ? T.stopped : T.startFailed, message, readied, true, error),
       telemetry,
       onLoadFailure,
-      onScenesSaved,
       onFirstFrame: () => {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
@@ -855,8 +837,6 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `boot`: where the Worker's boot went (src/web/worker.ts BootPhases), null before the first frame.
   Object.defineProperty(probe, "boot", { get: () => shell.boot, enumerable: true });
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
-  // `saveScene`: the wire's save_scene; a page writes no file, so it answers the text.
-  probe["saveScene"] = () => shell.probe("save_scene", { write: false });
   // `memory`: what the engine holds (ProbeMemory), from the Worker in every build (a publish probe has no `memory`).
   probe["memory"] = () => shell.call("memory");
   // `trace`: the run's Chrome trace, as `og run --trace` writes it ("take", "start", "stop");

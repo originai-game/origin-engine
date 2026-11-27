@@ -97,7 +97,8 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 37, "13 protocol-5 members + 24 wire members");
+    assert_eq!(MEMBERS.len(), 36, "13 protocol-5 members + 23 wire members");
+    t.err("save_scene", json!({"write":true}), -32601);
     // assertions: an empty report, a fresh one after take.
     let report = t.ok("assertions", json!({"take": true}));
     assert_eq!(report["violations"], json!([]));

@@ -2854,12 +2854,6 @@ pub fn og_engine_probe_observe(engine_probe: u32, records: Option<String>, types
 
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
-pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
-    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
-}
-
-#[cfg(not(feature = "publish"))]
-#[wasm_bindgen]
 pub fn og_engine_probe_pick_ui(engine_probe: u32, x: f64, y: f64) -> String {
     <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, engine_probe, x, y)
 }

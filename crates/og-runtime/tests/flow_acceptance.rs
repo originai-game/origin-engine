@@ -7,8 +7,8 @@ use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump,
     og_flow_choose, og_flow_history, og_flow_inspect, og_flow_load, og_flow_set_music,
     og_flow_set_speed, og_flow_start, og_flow_view, og_game_game, og_host_begin_bundle,
-    og_story_load, og_system_define_system, og_world_events, og_world_get_tick, og_world_restore,
-    og_world_snapshot, set_hooks,
+    og_load_sound, og_story_load, og_system_define_system, og_world_events, og_world_find,
+    og_world_get, og_world_get_tick, og_world_restore, og_world_snapshot, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -34,8 +34,16 @@ fn project() -> &'static Path {
         write("project.ts", "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'flow-accept',entry:'src/main.ts'});");
         write("src/main.ts", "export default {};\n");
         write(
-            "assets/scenes/room.ogt",
-            "type scene\nversion 1\n---\nentity \"stage\" {\n  og.Transform {\n    position 0 0 0\n  }\n}\n",
+            "content/scenes/room.ts",
+            "import {file,ref} from '@origingame/engine/author';export default file.scene({entities:[{name:'stage',prefab:ref('base/prefabs/stage'),components:{'og.Transform':{position:[2,3,7]},'og.AudioSource':{volume:0.375}}}]});",
+        );
+        write(
+            "content/prefabs/stage.ts",
+            "import {file,ref} from '@origingame/engine/author';export default file.prefab({entity:{name:'stage',components:{'og.AudioSource':{sound:ref('base/sounds/chime'),playing:false,volume:0.25}}}});",
+        );
+        write(
+            "content/sounds/chime.ts",
+            "import {file} from '@origingame/engine/author';export default file.sound({rate:8000,channels:1,samples:[0,0.25,-0.5]});",
         );
 
         let pcm: Vec<f32> = (0..12_000)
@@ -287,6 +295,62 @@ fn flow_snapshot_restore_determinism() {
 
     // Advance into Intro's idle loop, inspect clue, set speed & music, queue choice.
     ticks(a, 24);
+    let stage = og_world_find(a, "stage".into()).expect("timeline placed the TS scene") as f64;
+    let audio = og_world_get(a, stage, "og.AudioSource".into()).unwrap();
+    assert_eq!(
+        audio["sound"].as_f64(),
+        og_load_sound(a, "base/sounds/chime".into())
+            .unwrap()
+            .as_f64()
+    );
+    assert_eq!(audio["volume"], 0.375);
+    assert_eq!(
+        og_world_get(a, stage, "og.Transform".into()).unwrap()["position"],
+        json!({"x":2.0,"y":3.0,"z":7.0})
+    );
+    let source = project().join("content/scenes/room.ts");
+    let before = std::fs::read(&source).unwrap();
+    let info: Value = serde_json::from_str(&og_engine_probe_dump(
+        a,
+        Some(json!({"what":"entity","id":"stage"}).to_string()),
+    ))
+    .unwrap();
+    assert_eq!(info["prefab"]["prefab"], "base/prefabs/stage", "{info}");
+    let commands = og_runtime::og_commands_help(a);
+    for removed in ["save_scene", "apply_prefab"] {
+        assert!(!commands.iter().any(|c| c.name == removed));
+    }
+    og_runtime::og_engine_probe_commands(a, "0:revert_prefab:stage:AudioSource.volume".into());
+    ticks(a, 1);
+    assert_eq!(
+        og_world_get(a, stage, "og.AudioSource".into()).unwrap()["volume"],
+        0.25
+    );
+    let set: Value = serde_json::from_str(&og_runtime::og_engine_probe_set(
+        a,
+        "stage.og.AudioSource.playbackRate".into(),
+        "1.75".into(),
+    ))
+    .unwrap();
+    assert_eq!(set["ok"], true, "{set}");
+    assert_eq!(
+        og_world_get(a, stage, "og.AudioSource".into()).unwrap()["playbackRate"],
+        1.75
+    );
+    og_runtime::og_engine_probe_commands(a, "0:revert_prefab:stage".into());
+    ticks(a, 1);
+    assert_eq!(
+        og_world_get(a, stage, "og.AudioSource".into()).unwrap()["playbackRate"],
+        1.0
+    );
+    let set: Value = serde_json::from_str(&og_runtime::og_engine_probe_set(
+        a,
+        "stage.og.AudioSource.volume".into(),
+        "0.375".into(),
+    ))
+    .unwrap();
+    assert_eq!(set["ok"], true, "{set}");
+    assert_eq!(std::fs::read(&source).unwrap(), before);
     og_flow_inspect(a, flow, "clue_letter".into()).unwrap();
     og_flow_set_speed(a, flow, 1.5).unwrap();
     og_flow_set_music(

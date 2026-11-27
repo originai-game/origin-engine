@@ -10,7 +10,7 @@ One instantiated scene's baked lighting, as og.render.bakedLighting reports it.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `scene` | `string` | `""` | — | — | — | The scene's asset id, such as `scenes/cornell.ogt`. |
+| `scene` | `string` | `""` | — | — | — | The scene's canonical content id, such as `base/scenes/cornell`. |
 | `baked` | `boolean` | `false` | — | — | — | Its lightmap and probes are loaded and drawn. |
 | `reason` | `string` | `""` | — | — | — | Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked. |
 | `models` | `number` | `0` | — | — | — | Static model instances drawn with the lightmap. |
@@ -22,7 +22,7 @@ One instantiated scene's baked lighting, as og.render.bakedLighting reports it.
 ```ogt
 struct BakedScene {
   doc "One instantiated scene's baked lighting, as og.render.bakedLighting reports it."
-  field scene String "The scene's asset id, such as `scenes/cornell.ogt`."
+  field scene String "The scene's canonical content id, such as `base/scenes/cornell`."
   field baked bool "Its lightmap and probes are loaded and drawn."
   field reason String "Why not, when not: the scene has no bake (`og bake lightmaps` writes a checked file.lightmap declaration and binary pages), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
   field models u32 "Static model instances drawn with the lightmap."

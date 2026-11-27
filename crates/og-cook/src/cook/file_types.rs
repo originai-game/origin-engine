@@ -44,6 +44,13 @@ pub fn markdown() -> Result<String, String> {
             .iter()
             .any(|(name, _)| *name == ty)
         {
+            if matches!(ty, "scene" | "prefab") {
+                let _ = writeln!(
+                    out,
+                    "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAuthor `content/**/*.ts` with `export default file.{ty}({{...}})` from `@origingame/engine/author`. Run `og api gen --project <dir>` for the project's complete component/resource types, including game records. References use canonical `ref('module/content-id')`; numeric runtime handles and OGT author files are refused. Scenes supply entities, resource patches, paths, streaming groups and HLOD settings; prefabs supply one entity root and an optional base prefab. Ordered edits override fields or remove components/subtrees; computed content is evaluated only at cook. Inspector/Tune changes memory only; use checked `og set` for direct source literals.\n"
+                );
+                continue;
+            }
             let schema = super::source_schemas::schema(ty)
                 .ok_or_else(|| format!("{ty}: a TS domain needs its reflected input"))?;
             let _ = writeln!(
@@ -164,11 +171,6 @@ pub fn markdown() -> Result<String, String> {
             "dialogue" => {
                 out.push_str("Source: `.yarn`, not an authored `type dialogue` OGT. This registered kind is the cooked dialogue IR. The cook rejects removed OGT dialogue syntax; write Yarn with explicit #line: ids. See story for Yarn declarations, node headers, commands, expressions and validation.\n\n");
             }
-            "prefab" => {
-                table(&mut out, super::prefab::LINES);
-                block(&mut out, "prefab.entity", super::scene::ENTITY_LINES);
-                out.push_str("\nComponent blocks and their fields come from reflection, as for scenes. Query the record by name with og api show.\n");
-            }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
                 let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES
@@ -286,22 +288,6 @@ pub fn markdown() -> Result<String, String> {
                         block(&mut out, &format!("vfx.{kind}"), &fields);
                     }
                 }
-            }
-            "scatter" => {
-                out.push_str("Field coverage: complete parser line table. Output: a normal scene; load with og.load.scene or reference from a scene. Model placements reuse normal model instancing; prefab placements expand their authored entities. No distribution, density, model or gameplay rule is inferred. Paths are asset-root relative.\n\n");
-                table(&mut out, super::scene::SCATTER_LINES);
-                out.push_str("\n<a id=\"file-scatter-generate\"></a>\n### `file:scatter.generate`\n\nReturns ScatterSource: flat positions, optional xyzw quaternions and xyz scales with one per point; at most 1,000,000 points. Authored point lines and generation are exclusive. Project adds the authoritative terrain height to y and can align local up before authored rotation. Terrain and placements share local coordinates; off-terrain points and holes fail cook.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
-            }
-            "scene" => {
-                out.push_str("Field coverage: parser-owned declarations and reflected component/resource fields. Component blocks take schema field names: numbers/vectors, enum words, booleans or quoted strings; bounded lists may repeat. Query the reflected record with og api show. Game-owned records use the game's schema, never a gameplay template. Output: a normal scene, loaded with og.load.scene.\n\n");
-                table(&mut out, super::scene::LINES);
-                block(&mut out, "scene.entity", super::scene::ENTITY_LINES);
-                block(&mut out, "scene.stream", super::stream::LINES);
-                block(&mut out, "scene.hlod", super::hlod::LINES);
-                block(&mut out, "scene.path", og_timeline::PATH_LINES);
-                out.push_str("\n<a id=\"file-scene-generate\"></a>\n### `file:scene.generate`\n\nReturns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
             }
             "model" => {
                 out.push_str("Field coverage: text-model declarations, every geometry, placement, material, plant level and fracture block share parser line tables. Output: a normal model loaded with og.load.gltf. Program-based models instead use program/params and the .shape.json language (see model); program operation schema is separate. Segment counts can be reduced by the project's face budget, never increased. A part contains one geometry; merge parts and CSG a/b are geometries plus placement, not named model parts.\n\n");

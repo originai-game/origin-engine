@@ -562,6 +562,7 @@ pub(crate) fn scan_with(
             animgraph: None,
             flipbook: None,
             rig2d: None,
+            scene: None,
             conformed: None,
             fracture: None,
         };
@@ -661,7 +662,9 @@ pub(crate) fn plan_groups(
         .filter(|s| [&scene::SCENE, &scene::PREFAB].contains(&s.kind))
         .collect();
     let placed: BTreeSet<String> = each(&placing, threads, |s| {
-        super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None)
+        s.scene
+            .as_ref()
+            .map_or_else(Vec::new, |doc| doc.direct_subscenes())
     })
     .into_iter()
     .flatten()
@@ -670,9 +673,11 @@ pub(crate) fn plan_groups(
     // them at once, and they are taken in the scenes' order.
     let scenes: Vec<&Source> = sources.iter().filter(|s| s.kind == &scene::SCENE).collect();
     let declared = each(&scenes, threads, |s| {
-        stream::groups_of(&s.rel, &String::from_utf8_lossy(&s.bytes), &|id| {
-            known.contains(id)
-        })
+        let doc = s
+            .scene
+            .as_ref()
+            .ok_or_else(|| format!("{}: missing checked scene", s.rel))?;
+        stream::groups_of(&s.rel, doc, &|id| known.contains(id))
     });
     for (s, decls) in scenes.into_iter().zip(declared) {
         let decls = match decls {

@@ -27,7 +27,7 @@ change as it is saved: §Cook times).
 
 1. **Walk** `assets/` (sorted, dot-files skipped). By extension: `.glb`/`.gltf`/`.vox`/`.fbx`/`.obj`
    models, `.tmj` (Tiled) and `.ldtk` (LDtk) maps, `.png`/`.jpg`/`.jpeg`/`.webp`/`.tga`/`.psd`/`.dds`/`.ktx2` textures, `.wav`/`.mp3`/`.ogg`/`.flac` sounds, `.ttf`/`.otf` fonts,
-   `.ogt` scenes and tilemaps (until their domain cutovers), `.hex` and `.gpl` palettes. Checked `content/**/*.ts` declarations supply the migrated types, including tilesets. `<file>.ogt` of `type import` holds `<file>`'s import
+   `.hex` and `.gpl` palettes. Checked `content/**/*.ts` declarations supply scenes, prefabs, scatter, tilemaps and the other migrated types. `<file>.ogt` of `type import` holds `<file>`'s import
    settings. Files a `.gltf` references are part of that model, as are the textures an FBX or OBJ names and an OBJ's `.mtl`. Anything else
    (licences, notes) is listed as ignored.
 2. **Plan**: every output gets a cook stamp (below). An output whose stamp the
@@ -122,8 +122,8 @@ after an hour, leaving recent writes alone even if they exceed the cap.
 | checked TS `file.rig` | `<module>/<content-stem>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): naming scheme, standard bones mapped by name or explicitly unmapped with null, and optional per-foot heights; native fields loaded with `og.load.rig`. A model's `animation { rig }` names its canonical content ID for retargeting. |
 | animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. Then each `mirror "<clip>" ["<name>"]`: the clip (the model's own or a library's, retargeted) mirrored on the model's skeleton by `og_anim::mirror` (sides paired by name, reflected in x = 0), written under the name (default `<clip>.mirrored`), so a mirrored clip costs nothing at run time; a clip it lacks, a name already taken or named twice is refused. |
 | checked TS `file.flipbook` | `<id>.ogb` (`og.Flipbook`) | Native sheet fields from a canonical texture ref with grid, explicit frames or captured Aseprite/TexturePacker JSON; alternatively explicit module-relative animated GIF/WebP/APNG/still sources, decoded, composited, keyed, aligned, cropped, deduplicated and packed into `<id>#sheet`. Clips use frame names, positive timing and events. `array: true` also writes `<id>#array` and one `<id>#array#layerN` texture per frame (equally sized and inside the sheet, at most 256). No OGT author parser, text writer or sibling-path fallback. Input images, exchange data and helper imports participate in cook invalidation. |
-| scene `.ogt` | `<path>.ogb` (`og.Scene`) | Entities depth-first (parent before child), `model` references checked against the project's assets, one packed table per component type keyed by its reflected name. |
-| scene `.ogt` with an `hlod { size error texels }` block | `<path>#hlod` (`og.Hlod`) + per node `<path>#hlod-<n>` (`og.Model`) and its textures `#hlod-<n>-base`, `-surface`, `-emissive` | `src/cook/systems/hlod.rs` (docs/design.md §10.6): the scene's `static` models (its prefabs' too) in a quadtree over x and z, a leaf a `size` cell (default 64 m) of two or more, each level twice as wide, at most 10 levels. Per node one proxy, a leaf's from its models' source geometry and a higher node's from its children's proxies: welded, `meshopt_simplify` with pruning, the limit lowered (×0.6, at most 8 times) until the measured error is within `error × 2^level` (default `size` / 256), normals split at 45°, charted by xatlas at one texel per error within `texels` (default 1024), painted by og-bake's `transfer` and cooked as a model of one level, no collider and no raycast BVH. The node's stored error is the larger of the measured distance and a texel. Parts lying flush on a larger one within half the error (a window on its wall) are dropped first, and painted on it. Left out and counted in the report (`hlod` in cook-report.json) by reason: skinned, impostor, cut-out or translucent, fractured, GPU-instanced, tinted, flashed, variant, swaying, hidden, larger than a leaf, or with no other model near. The outputs stay in the first group whatever stream group the scene is in; a node's stamp is its models and where they stand (`tests/hlod.rs`). |
+| checked TS `file.scene`, `file.prefab`, `file.scatter` | `<module>/<content-stem>.ogb` (`og.Scene`) | Captured native entities depth-first, parents before children; reflected engine/game defaults and typed content relocations, sparse resource patches, native prefab expansion and ordered edits. No author text parser or generation wrapper. |
+| checked TS `file.scene` with `hlod: { size, error, texels }` | `<id>#hlod` (`og.Hlod`) + per node `<id>#hlod-<n>` (`og.Model`) and its textures `#hlod-<n>-base`, `-surface`, `-emissive` | `src/cook/systems/hlod.rs` (docs/design.md §10.6): the scene's `static` models (its prefabs' too) in a quadtree over x and z, a leaf a `size` cell (default 64 m) of two or more, each level twice as wide, at most 10 levels. Per node one proxy, a leaf's from its models' source geometry and a higher node's from its children's proxies: welded, `meshopt_simplify` with pruning, the limit lowered (×0.6, at most 8 times) until the measured error is within `error × 2^level` (default `size` / 256), normals split at 45°, charted by xatlas at one texel per error within `texels` (default 1024), painted by og-bake's `transfer` and cooked as a model of one level, no collider and no raycast BVH. The node's stored error is the larger of the measured distance and a texel. Parts lying flush on a larger one within half the error (a window on its wall) are dropped first, and painted on it. Left out and counted in the report (`hlod` in cook-report.json) by reason: skinned, impostor, cut-out or translucent, fractured, GPU-instanced, tinted, flashed, variant, swaying, hidden, larger than a leaf, or with no other model near. The outputs stay in the first group whatever stream group the scene is in; a node's stamp is its models and where they stand (`tests/hlod.rs`). |
 | checked TS `file.tileset` | `<id>.ogb` (`og.Tileset`) | Grid, solid/rect/polygon collision, animated tiles and blob47/bitmask16 terrains. Optional texture is a canonical content ref. Native fields are shared by bundles, embedded imports and snapshots; no text parser or fallback. |
 | checked TS `file.tilemap`, Tiled `.tmj`, LDtk `.ldtk` | `<id>.ogb` (`og.Tilemap`) | One `og_tilemap::TilemapAsset` whatever the source (`src/cook/systems/tilemap.rs`, native only). **TS**: direct checked layers, packed u32 cells (0 empty, else tile ID + 1 with optional X/Y flips; terrain 0/1), canonical tileset refs and world-space objects; no text parser or generate wrapper. **Tiled**: orthogonal, finite maps; layer data as a JSON array or uncompressed base64 (zlib/gzip/zstd refused: save as CSV or Base64); flip bits kept (diagonal refused); `offsetx/y`, `parallaxx/y`, `opacity`, `visible`, `repeatx/y`, group layers flattened; custom properties `collision` (bool), `z` (int), `autotile` (a terrain of the layer's tileset: nonzero gids mean filled), `repeatx`/`repeaty`; an external tileset `x.tsx`/`x.tsj` needs an explicit `bindTileset "x.tsx" "module/tileset-id"` import setting (or the all-tileset override), never a guessed sibling; an embedded one (single image) is imported with its tiles' `animation`, first `objectgroup` rectangle (collision) and boolean `solid` property; one tileset per layer; object layers become objects (`type` or `class` as kind, string-valued properties; tile objects anchored at their bottom). **LDtk**: one level (the first or `level`; separate level files refused), every layer on one grid size; `Tiles`/`AutoLayer`/IntGrid auto tiles become tile layers (tile id `t` or from `src`; flips from `f`; one tile per cell, the last of a stack wins), drawn in reverse list order (LDtk's first layer on top); IntGrid values listed in `solid` (default 1) become an invisible collision layer `<name>.collision` over an embedded one-tile solid tileset; an explicit image-path binding or all-tileset override uses a checked TS tileset, otherwise one is embedded from `tileGridSize`, `__cWid`, `__cHei`, `padding`, `spacing`; `Entities` become objects at their top-left (pivot applied), kind the identifier, name the `name` field or the `iid`, fields as properties. Units: `unit` world units per tile width (default 1); object positions and offsets in map-local world units, y up from the top-left corner. Referenced tilesets and images must be known cooked outputs. |
 | environment `.ogt` (`type environment`) | `<path>.ogb` (`og.EnvironmentMap`) | `src/cook/systems/environment.rs`: its `source` (an equirectangular Radiance `.hdr` or OpenEXR `.exr`, linear RGB, twice as wide as tall, decoded by the `image` crate; or a KTX2 cube map, `src/cook/formats/cube_source.rs`: six square faces +x −x +y −y +z −z with rows from the top, level 0 of RGBA16F, RGB16F, RGBA32F, RGB32F, RGB9E5, B10G11R11 or BC6H, unsigned or signed, decoded at cook time by `src/cook/formats/bc6h.rs`, stored plain, Zstandard or zlib, `KTXorientation` `rd` or none; with `prefiltered true` every level, its own mip chain already GGX-prefiltered (cmgen's, IBLBaker's, the glTF IBL sampler's), taken as the map's levels by `bake::from_prefiltered`: level m read at lod m/4 · (L − 1) of the file's L levels, a chain of five texel for texel, at the file's own size, no `samples`) or its `faces` (six square `.hdr`/`.exr` images of one size, in that order); read beside the file, else under `assets/`; part of the environment like a terrain's heightmap: not cooked or listed on its own, their bytes in the stamp) prefiltered by og-render's `bake` (`bake::bake`, or `bake::bake_cube` for a cube: the same radiance cube, read from the source's box-filtered level of at most twice the bake's face): `size` (level 0's face, a power of two 16..2048, default 128), `intensity` (default 1), `rotation` (degrees about +y, what was at +x moving towards -z; default 0) and `samples` (GGX samples per texel, 16..4096, default 256) into five cube levels of RGB9E5 texels, level m GGX-prefiltered at roughness m/4 (og-render's IBL convention; level 0 the radiance), and the diffuse irradiance as nine order-2 harmonics. fx-showcase's 256 × 128 studio at size 128 cooks in 0.52 s (a dev build, six threads) into a 132 KB blob (511 KiB of texels, zlib'd to 128 KiB). Loaded by `og.load.environment` (`Bundle::environment`), lit by through `og.Environment`. The studio given as a 64² cube (RGBA16F) bakes within 0.2 % mean per texel and 0.17 % in irradiance of the equirectangular studio it was cut from (`tests/environment.rs`). |
@@ -325,32 +325,33 @@ tilemap {                   # a .tmj, .ldtk or tilemap .ogt
 
 ### Scenes
 
-```text
-type scene
-version 1
----
-name "Main"
-entity "ship" {
-  model "models/dropship.glb"        # the host spawns the model's default scene under this entity
-  Transform {
-    position 0 1.5 0
-  }
-  entity "light" { … }               # children nest
-}
+```ts
+import { file, ref } from "@origingame/engine/author";
+
+export default file.scene({
+  name: "Main",
+  entities: [{
+    name: "ship",
+    model: ref("base/models/dropship"),
+    components: { "og.Transform": { position: [0, 1.5, 0] } },
+    children: [{ name: "light" }],
+  }],
+});
 ```
 
-A component block's entries are fields (numbers, `true`/`false`). With the
-component's schema in `CookOptions::schemas` (the `og schema` JSON, which
-`og-cook --schemas` reads) fields are checked by name and lane count,
-ordered, typed (integers must be integral) and defaulted from the schema;
-the key resolves exactly as written. Without a schema the cook infers one
-(f32 lanes; every entity must set the same fields), marks the table
-`inferred` and the report says so. Each table stores its schema JSON next to
-its rows, so a host migrates rows to its registered layout by field name.
+Project-listed pure TS schema modules supply game component/resource records;
+engine records come from the IDL. Every authored field is checked against
+that bound schema and omitted fields retain canonical record defaults.
+Unknown records are refused, never inferred from numeric values. Each packed
+table carries its reflected layout. Content references stay as typed
+relocations until the runtime calls the registered column loader. The manifest
+records direct content dependencies so runtime-bundle fetches include their
+transitive files before spawn. Inspector/Tune changes memory only; explicit
+checked TS edits belong to `og set`.
 
 ### Streaming groups
 
-A scene's `stream "<name>" { asset ... }` blocks (`src/cook/pipeline/stream.rs`)
+A scene's `streams: { name: { assets: [ref("module/id")] } }` declarations (`src/cook/pipeline/stream.rs`)
 group glTF models without skins or morph targets, textures, texture
 arrays, flipbooks (an `array true` sheet's `#array` and its layers go with
 it), sounds (not chunked), environment maps, palettes, looks and colour

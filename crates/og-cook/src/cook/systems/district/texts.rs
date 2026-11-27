@@ -1,142 +1,130 @@
-//! The scene texts a district expands to, written through `.ogt`'s own
-//! writer so every one reads back.
-
-use glam::{DQuat, DVec3};
-use og_core::ogt::{Block, Document, Entry, Number, Value};
-
+//! Native district entities and scene outputs, shared with the author cooker.
 use super::parse::PropCollider;
+use crate::cook::source_schemas::{
+    ContentRef,
+    world::scene::{EntityInput, HlodInput, SceneInput, StreamInput, StreamTriggerInput},
+};
+use glam::{DQuat, DVec3};
+use serde_json::{Map, Value, json};
 
-/// A number as the text keeps it: to a tenth of a millimetre, so the
-/// text stays short and the same on every host.
-fn num(x: f64) -> Value {
-    let r = (x * 10_000.0).round() / 10_000.0;
-    let r = if r == 0.0 { 0.0 } else { r };
-    Value::Number(Number::from_f64(r).expect("a finite number"))
+/// Keep the builder's tenth-of-a-millimetre quantization on every host.
+fn numbers(xs: &[f64]) -> Value {
+    json!(
+        xs.iter()
+            .map(|x| {
+                let r = (x * 10_000.0).round() / 10_000.0;
+                if r == 0.0 { 0.0 } else { r }
+            })
+            .collect::<Vec<_>>()
+    )
 }
 
-fn nums(key: &str, xs: &[f64]) -> Entry {
-    xs.iter().fold(Entry::new(key), |e, x| e.with(num(*x)))
-}
-
-fn string(key: &str, s: &str) -> Entry {
-    Entry::new(key).with(Value::String(s.to_string()))
-}
-
-fn word(key: &str, w: &str) -> Entry {
-    Entry::new(key).with(Value::Word(w.to_string()))
-}
-
-fn block(key: &str, entries: Vec<Entry>) -> Entry {
-    Entry::new(key).with_block(Block { entries })
-}
-
-fn transform(p: DVec3, q: DQuat) -> Entry {
-    let mut e = vec![nums("position", &p.to_array())];
+fn entity(name: &str, p: DVec3, q: DQuat) -> EntityInput {
+    let mut transform = Map::from_iter([("position".into(), numbers(&p.to_array()))]);
     if q != DQuat::IDENTITY {
-        e.push(nums("quaternion", &q.to_array()));
+        transform.insert("quaternion".into(), numbers(&q.to_array()));
     }
-    block("Transform", e)
+    EntityInput {
+        name: name.into(),
+        components: [("og.Transform".into(), transform)].into(),
+        ..Default::default()
+    }
 }
 
-/// An entity that collides as `c`, standing on its origin.
-fn collider_entity(name: &str, c: &PropCollider) -> Entry {
+fn collider_entity(name: &str, c: &PropCollider) -> EntityInput {
     let (lift, fields) = match c {
-        PropCollider::Box(s) => (s[1] / 2.0, vec![word("shape", "box"), nums("size", s)]),
+        PropCollider::Box(s) => (s[1] / 2.0, json!({"shape":"box","size":numbers(s)})),
         PropCollider::Capsule(r, h) => (
             r + h / 2.0,
-            vec![
-                word("shape", "capsule"),
-                nums("radius", &[*r]),
-                nums("height", &[*h]),
-            ],
+            json!({"shape":"capsule","radius":r,"height":h}),
         ),
     };
-    let mut e = Entry::new("entity").with(Value::String(name.to_string()));
-    e.block = Some(Block {
-        entries: vec![
-            transform(DVec3::new(0.0, lift, 0.0), DQuat::IDENTITY),
-            block("Collider", fields),
-        ],
-    });
+    let mut e = entity(name, DVec3::new(0.0, lift, 0.0), DQuat::IDENTITY);
+    e.components
+        .insert("og.Collider".into(), fields.as_object().unwrap().clone());
     e
 }
 
-/// An entity placing `model` at `p` turned by `q`, with its collider.
 pub(super) fn placed(
     name: &str,
     model: &str,
     p: DVec3,
     q: DQuat,
     c: Option<&PropCollider>,
-) -> Entry {
-    let mut entries = vec![
-        string("model", model),
-        word("static", "true"),
-        transform(p, q),
-    ];
+) -> EntityInput {
+    let mut e = entity(name, p, q);
+    e.model = Some(ContentRef { id: model.into() });
+    e.static_model = Some(true);
     if let Some(c) = c {
-        // Under its prop's name: names are unique in the whole world.
-        entries.push(collider_entity(&format!("{name}/collider"), c));
+        e.children
+            .push(collider_entity(&format!("{name}/collider"), c));
     }
-    let mut e = Entry::new("entity").with(Value::String(name.to_string()));
-    e.block = Some(Block { entries });
     e
 }
 
-/// An entity that only collides: a box of `c` centred at `p`.
-pub(super) fn collider(name: &str, p: DVec3, q: DQuat, c: &PropCollider) -> Entry {
+pub(super) fn collider(name: &str, p: DVec3, q: DQuat, c: &PropCollider) -> EntityInput {
     let PropCollider::Box(s) = c else {
         unreachable!("a building collides as a box")
     };
-    let mut e = Entry::new("entity").with(Value::String(name.to_string()));
-    e.block = Some(Block {
-        entries: vec![
-            transform(p, q),
-            block("Collider", vec![word("shape", "box"), nums("size", s)]),
-        ],
-    });
+    let mut e = entity(name, p, q);
+    e.components.insert(
+        "og.Collider".into(),
+        json!({"shape":"box","size":numbers(s)})
+            .as_object()
+            .unwrap()
+            .clone(),
+    );
     e
 }
 
-/// A streaming cell placing `scene` over a `size`-metre square at `at`,
-/// `height` tall, loaded within `load` metres.
-pub(super) fn cell(name: &str, scene: &str, at: DVec3, size: f64, height: f64, load: f64) -> Entry {
-    let mut e = Entry::new("entity").with(Value::String(name.to_string()));
-    e.block = Some(Block {
-        entries: vec![
-            string("scene", scene),
-            transform(at, DQuat::IDENTITY),
-            block("Volume", vec![nums("size", &[size, 2.0 * height, size])]),
-            block("StreamCell", vec![nums("load", &[load])]),
-        ],
-    });
+pub(super) fn cell(
+    name: &str,
+    scene: &str,
+    at: DVec3,
+    size: f64,
+    height: f64,
+    load: f64,
+) -> EntityInput {
+    let mut e = entity(name, at, DQuat::IDENTITY);
+    e.scene = Some(ContentRef { id: scene.into() });
+    e.components.insert(
+        "og.Volume".into(),
+        json!({"size":numbers(&[size,2.0*height,size])})
+            .as_object()
+            .unwrap()
+            .clone(),
+    );
+    e.components.insert(
+        "og.StreamCell".into(),
+        json!({"load":load}).as_object().unwrap().clone(),
+    );
     e
 }
 
-/// A scene's text: its name, its `hlod` block, its cell group (its name
-/// and the assets it packs) and its entities.
 pub(super) fn scene(
     id: &str,
-    hlod: Option<&Entry>,
+    hlod: Option<&HlodInput>,
     group: Option<(&str, &[String])>,
-    entities: &[Entry],
-) -> Result<String, String> {
-    let mut d = Document::new("scene", 1);
-    d.body.push(string("name", id));
-    if let Some(h) = hlod {
-        let mut h = h.clone();
-        h.line = 0;
-        d.body.push(h);
-    }
+    entities: &[EntityInput],
+) -> SceneInput {
+    let mut scene = SceneInput {
+        name: Some(id.into()),
+        entities: entities.into(),
+        hlod: hlod.cloned(),
+        ..Default::default()
+    };
     if let Some((name, assets)) = group {
-        let mut entries = vec![Entry::new("cell")];
-        entries.extend(assets.iter().map(|a| string("asset", a)));
-        d.body.push(
-            Entry::new("stream")
-                .with(Value::String(name.to_string()))
-                .with_block(Block { entries }),
+        scene.streams.insert(
+            name.into(),
+            StreamInput {
+                assets: assets
+                    .iter()
+                    .map(|id| ContentRef { id: id.clone() })
+                    .collect(),
+                trigger: Some(StreamTriggerInput::Cell),
+                priority: None,
+            },
         );
     }
-    d.body.entries.extend(entities.iter().cloned());
-    d.to_text().map_err(|e| e.to_string())
+    scene
 }

@@ -60,7 +60,7 @@ export class BootClock {
  * focused text control (text-input.ts), the accessibility tree (a11y.ts), the
  * pointer's shape, og.PointerLock.wanted, the page asks (fullscreen, the
  * power preference for the next load) and whether streamed footage holds the
- * clock (buffering); a copy, saved scenes, haptics and
+ * clock (buffering); a copy, haptics and
  * rumble whenever the frame has them.
  */
 export class PageRelay {
@@ -91,7 +91,6 @@ export class PageRelay {
       post({ type: "text", target: answered.text ?? null });
     }
     if (answered.copy !== undefined) post({ type: "copy", text: answered.copy });
-    if (answered.saved?.scenes.length) post({ type: "saved", scenes: answered.saved.scenes });
     if (answered.a11y !== undefined) post({ type: "a11y", update: answered.a11y });
     if (answered.haptics?.length) post({ type: "haptics", patterns: answered.haptics });
     if (answered.rumble?.length) post({ type: "rumble", rumble: answered.rumble });

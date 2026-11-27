@@ -204,34 +204,20 @@ should answer `{ type: "error", op: "quick", code: "unavailable" }`.
 
 ## The inspector's Save on a web page
 
-**Ask 22, open.** The Stage (the `og-probe` wire 1 at protocol 5,
-`origin-agent/packages/contracts/src/probe.ts`) accepts one pushed event
-from the page, `{ og: "probe", v: 1, kind: "scene_saved", scenes: [{
-source, text }] }`, posted to the origin in `window.__OG_STAGE_HOST__`:
-`source` is a scene's project-relative path (`assets/scenes/main.ogt`),
-`text` its whole new text, at most 1 MiB a scene and 64 scenes an event.
-The Stage writes each `text` over `source` in the game's project, refusing
-a `source` outside `assets/` or not ending in `.ogt`, and answers nothing.
-It advertises this in its `hello` reply as `capabilities: ["scene_saved"]`.
-Until then the shell's save routing (`shell/wire.ts` `routeSavedScenes`)
-downloads each scene as a `.ogt` file named by its source, since a web page
-writes no files. Under `og dev --web` (docs/web-export.md §og dev --web) the
-page is the same and the Stage's write reaches the open page as an
-ordinary edit: the server's cook picks it up and pushes it back. The
-Stage may answer each event with `{ og: "probe", v: 1, kind:
-"scene_saved_result", ok, error? }`; the page does not read it yet.
+**Ask 22, retired by TS authoring.** Inspector/Tune changes runtime memory
+only on both hosts. `save_scene`, `saveScene`, SavedScene and saved-scene
+notifications are removed; use checked `og set` edits for direct TS literals.
+The platform should remove its OGT-only `scene_saved` persistence
+UI and capability advertisement when consuming this release. Probe wire 1
+at protocol 5 is unchanged; no replacement entity-writeback service is required.
 
 ## The inspector's prefab Apply and Revert on a web page
 
-**Ask 23, open.** Beside #22, the Stage serves the call `{ og: "probe", v:
-1, kind: "call", method: "read_source", params: { source } }`, answered
-`{ kind: "result", result: { source, text } }` (or `{ kind: "error", code:
-"refused" }`) with the whole current text of a project file under the same
-rules as #22 and at most 1 MiB. A prefab's Apply sends the prefab's file and
-the instance's scene in one `scene_saved`, which the Stage writes all or
-none. It advertises `capabilities: ["scene_saved", "read_source"]`. Until
-then Apply and Revert on a web page say the source is not readable here and
-change nothing.
+**Ask 23, retired by TS authoring.** Apply and `apply_prefab` are removed;
+Revert restores selected cooked prefab fields in memory on both hosts.
+Neither operation reads author files through the Stage. Retire the prefab
+writeback capability alongside #22. Keep `read_source` for read-only entity source
+diagnostics retain TS file/line provenance; they do not authorize a source write.
 
 ## Native accessibility in Origin Desktop
 

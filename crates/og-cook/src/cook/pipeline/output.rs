@@ -418,6 +418,7 @@ pub(crate) fn write(
             source_hash: s.hash,
             source_bytes: reports[si].source_bytes,
             modules: Vec::new(),
+            dependencies: Vec::new(),
             outputs: Vec::new(),
         };
         for (m, bytes, mut rep) in outs {

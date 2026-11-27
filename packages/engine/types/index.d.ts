@@ -14760,7 +14760,7 @@ export interface RealtimeLightVolume {
 
 /** One instantiated scene's baked lighting, as og.render.bakedLighting reports it. */
 export interface BakedScene {
-  /** The scene's asset id, such as `scenes/cornell.ogt`. */
+  /** The scene's canonical content id, such as `base/scenes/cornell`. */
   readonly scene: string;
   /** Its lightmap and probes are loaded and drawn. */
   readonly baked: boolean;
@@ -14941,9 +14941,9 @@ export interface ShapeClass {
 }
 
 // ── load ────────────────────────────────────────────────────────
-// Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
-// Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
-// The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries.
+// Load cooked output: `og cook` turns content/**/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/.
+// Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp.
+// The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
 // See `loading §1`.
 
 /**
@@ -29592,14 +29592,12 @@ export interface UiScope {
  * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:`, `event:`, `ui:text:`, `region:`, `frame:`, `state:`, `timings:` or `audio:`. Failures warn and exit 1 in `og run --json`; frame/audio checks without a renderer/sink are unchecked.
  * - `"invariant"`: `invariant:<what>`: check an expectation (any `expect:` form except `region`, `frame` and `audio`) after every tick: the first failing tick is an assertion violation with the tick and observed value, failing `og run --json` and playtests.
- * - `"save_scene"`: `save_scene[:path][:spawned]`: write each scene the world was built from back from it, rewriting only the lines whose values changed; `spawned` adds the entities spawned at run time. To each scene's source, or with a path the boot scene's to that file in the output directory, the others beside it.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  * - `"mouse_move"`: `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves.
  * - `"pointer_lock"`: `pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own.
- * - `"apply_prefab"`: `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or a field's; run-time too) to its node in the prefab's `.ogt`, out of the scene's instance block: the scene cooks the same world and every instance takes them; `base`: to a variant's base.
- * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's.
+ * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: reset selected live fields to the cooked prefab's values in memory only; authored overrides and source files remain unchanged.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_drawn" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_drawn" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "help" | "mouse_move" | "pointer_lock" | "revert_prefab";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -29702,7 +29700,7 @@ export interface PickResult {
    */
   readonly world: [number, number] | [number, number, number];
   /**
-   * Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source; none in a publish build).
+   * Where a person would change it: the TS scene declaration (`content/scenes/main.ts:12`), or the TypeScript line that spawned it (`src/enemies.ts:42`, SpawnDesc.source; none in a publish build). Computed declarations report the nearest captured source expression.
    */
   readonly source: string | null;
   /**
@@ -30063,7 +30061,7 @@ export interface Mark {
    */
   readonly point: ScreenPoint;
   /**
-   * Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build.
+   * Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the TS scene declaration (`content/scenes/main.ts:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build.
    */
   readonly source: string | null;
   /**
@@ -31011,44 +31009,6 @@ export interface ExpectReport {
   readonly results: readonly ExpectResult[];
 }
 
-/**
- * The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.
- */
-export interface SavedScene {
-  /** The tick of the world it was written from. */
-  readonly tick: number;
-  /** The first scene's source, project-relative. */
-  readonly source: string;
-  /** Where it was written; empty when only returned. */
-  readonly written: string;
-  /** The 1-based lines of the first scene's new text that changed or were added. */
-  readonly lines: readonly number[];
-  /**
-   * Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it.
-   */
-  readonly skipped: readonly string[];
-  /** The first scene's new text. */
-  readonly text: string;
-  /** Entities written under the boot scene's spawned section (0 without `spawned`). */
-  readonly spawned: number;
-  /**
-   * Every scene written back: the boot scene's first, then each og.world.instantiate made, once each.
-   */
-  readonly scenes: readonly SavedSceneFile[];
-}
-
-/** One scene file written back. */
-export interface SavedSceneFile {
-  /** Its source, project-relative. */
-  readonly source: string;
-  /** Where it was written; empty when only returned. */
-  readonly written: string;
-  /** The 1-based lines of its new text that changed or were added. */
-  readonly lines: readonly number[];
-  /** Its new text. */
-  readonly text: string;
-}
-
 /** One probe log or warning entry. */
 export interface ProbeLogEntry {
   /** The tick when it was recorded. */
@@ -31289,14 +31249,6 @@ export interface EngineProbe extends RuntimeProbe {
    */
   observe(records?: readonly string[] | null, types?: boolean): unknown;
   /**
-   * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
-   *
-   * @param write Replace each scene's source file. Default `false`.
-   * @param spawned Write the entities the game spawned at run time under the boot scene's marked section. Default `false`.
-   * @returns Null without a scene to write back (the reason is in the log).
-   */
-  saveScene(write?: boolean, spawned?: boolean): SavedScene | null;
-  /**
    * The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene.
    *
    * @param x Horizontal position in CSS pixels.
@@ -31305,13 +31257,13 @@ export interface EngineProbe extends RuntimeProbe {
    */
   pickUi(x: number, y: number): UiPickElement | null;
   /**
-   * Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene).
+   * Recent probe log and warning entries (including refusal reasons from patch, reload and commands).
    *
    * @param take Clear the log ring after answering. Default `false`.
    */
   logs(take?: boolean): ProbeLogs;
   /**
-   * Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene.
+   * Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) in memory using a JSON value. No source files change; use og set for explicit checked TS literal edits.
    *
    * @param target Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`).
    * @param value New JSON value.
@@ -37003,7 +36955,7 @@ export interface FlowQteResult {
 
 
 // ── scene ───────────────────────────────────────────────────────
-// Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
+// Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`).
 // What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
 // See `loading §12`.
 
@@ -39743,9 +39695,9 @@ export declare namespace og {
   /** A load failed. */
   const AssetFailed: EventType<AssetFailed>;
   /**
-   * Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
-   * Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
-   * The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries.
+   * Load cooked output: `og cook` turns content/**\/*.ts and imported assets into cooked/ (.ogb blobs and the internal manifest cooked/.cook.ogt). The runtime reads only cooked/.
+   * Paths are cooked asset ids: a canonical TS content id (`base/scenes/main`) or an importer's actual output id (`models/ship.glb`). Every blob is checked against the manifest's type, schema version and cook stamp.
+   * The bundle opens before GameDesc.scene spawns. Manifests and blobs may still be fetching: keep pending handles and query status before instantiating. Pending loads complete at tick boundaries.
    * See `loading §1`.
    */
   namespace load {
@@ -39803,18 +39755,18 @@ export declare namespace og {
      */
     function gltf(world: World, path: string, desc?: GltfDesc): Result<Asset>;
     /**
-     * Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.
+     * Load a cooked file.scene declaration. world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning. Typed content references load through their registered columns.
      *
      * @param world The world that owns the asset.
-     * @param path The scene's asset id, such as `scenes/main.ogt`.
+     * @param path The scene's canonical content id, such as `base/scenes/main`.
      * @returns The stable handle, pending while its blob is fetched. Query status; error gives a failed load's reason.
      */
     function scene(world: World, path: string): Result<Asset>;
     /**
-     * Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there.
+     * Load a cooked file.prefab declaration: one entity tree authored once and placed many times, docs/design.md §2.5. world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with an entity's prefab: ref('module/content-id'); the cook flattens it there.
      *
      * @param world The world that owns the asset.
-     * @param path The prefab's asset id, such as `prefabs/crate.ogt`.
+     * @param path The prefab's canonical content id, such as `base/prefabs/crate`.
      * @returns The prefab, or why not (not cooked, or not a prefab).
      */
     function prefab(world: World, path: string): Result<Asset>;
@@ -43639,7 +43591,7 @@ export declare namespace og {
    */
   const SceneChanged: EventType<SceneChanged>;
   /**
-   * Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
+   * Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`).
    * What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
    * See `loading §12`.
    */

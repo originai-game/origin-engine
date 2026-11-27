@@ -1,531 +1,52 @@
-//! Scene `.ogt` → scene blobs: entities, model instances and one packed
-//! component table per reflected type.
-//!
-//! ```text
-//! type scene
-//! version 1
-//! ---
-//! name "Main"
-//! entity "ship" {
-//!   model "models/dropship.glb"
-//!   Transform {
-//!     position 0 1 0
-//!     scale 2 2 2
-//!   }
-//!   entity "light" {
-//!     Transform {
-//!       position 0 3 0
-//!     }
-//!   }
-//! }
-//! ```
-//!
-//! Inside an `entity` block: `entity` nests a child, `model "<asset id>"`
-//! instantiates a cooked glTF under the entity, `scene "<asset id>"` places
-//! another scene under it (a sub-scene: its own blob, not flattened, named
-//! in the `subscenes` table; the runtime spawns it with the entity, or
-//! when the entity's `og.StreamCell` loads; a sub-scene that reaches the
-//! scene placing it again is refused naming the chain), and any other key with a
-//! block is a component whose entries are its fields (numbers, the words
-//! `true`/`false`, or one quoted string for a `strN` field: `name "Mei"`,
-//! packed as its UTF-8 then zeros, refused over the capacity). A list field
-//! (`u64[8]`) is its elements on its one line, `weights 0.5 1 2`, and the
-//! key alone is the empty list; a list over the capacity is refused. With the
-//! component's schema (`CookOptions::schemas`) the fields are checked,
-//! ordered and defaulted from it; without one the cook infers a layout from
-//! the text (f32 lanes; a string needs the schema for its capacity) and
-//! every entity must set the same fields.
-//!
-//! At the top level, `resource <Name> { ... }` sets a resource's fields
-//! when the scene is instantiated (`resource Run { chimed true }`): its
-//! entries are fields as a component's are, packed with the resource's
-//! schema or inferred from the text; the fields it does not list keep the
-//! values the world holds. `save_scene` writes tuned resources there.
-//!
-//! `hlod { size 64 error 0.25 texels 1024 }` merges the scene's distant
-//! static models into proxies, cooked beside it (cook/systems/hlod.rs).
-
+//! Checked scene trees become packed component/resource rows. Prefab expansion,
+//! streaming, paths and HLOD consume the same captured native document.
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, hash_bytes, prefab, stamp,
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
-use og_core::ogt::{Block, Document, Value};
-use og_core::{FieldSchema, FieldType, Layout, Schema};
+use og_core::Schema;
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
-mod generate;
+mod input;
 mod scatter;
-pub(crate) use generate::expand;
-pub(crate) use scatter::LINES as SCATTER_LINES;
+pub use input::Document;
+pub(crate) use scatter::expand;
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new("name", "\"<name>\"", "", "Scene name.", ""),
-    crate::grammar::Line::new(
-        "entity",
-        "\"<name>\" { ... }",
-        "",
-        "Repeated entity trees, parents before children.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "resource",
-        "<record> { ... }",
-        "",
-        "One block per reflected resource; fields use its schema.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "stream",
-        "\"<group>\" { ... }",
-        "",
-        "Asset streaming group.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "hlod",
-        "{ ... }",
-        "",
-        "Explicit distant static-model proxy settings.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "path",
-        "\"<name>\" { ... }",
-        "",
-        "Named local-space path, shared with timeline paths.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "generate",
-        "{ ... }",
-        "",
-        "Deterministic SceneSource appended before normal scene validation.",
-        "",
-    ),
-];
-pub(crate) const ENTITY_LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "entity",
-        "\"<name>\" { ... }",
-        "",
-        "Repeated children in this entity's space.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "model",
-        "\"<asset>\"",
-        "",
-        "Instantiate a model; its geometry/material handles are resolved at load.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "scene",
-        "\"<asset>\"",
-        "",
-        "Place one sub-scene; dependency cycles fail.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "static",
-        "true | false",
-        "false",
-        "Mark this entity's model for baked lighting and HLOD.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "prefab",
-        "\"<asset>\"",
-        "",
-        "Expand a prefab; remaining entries are explicit overrides.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "override",
-        "\"<node path>\" { ... }",
-        "",
-        "Instance-only component overrides on a descendant.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "remove",
-        "\"<node path>\" [<component>]",
-        "",
-        "Instance-only removal of a subtree or component.",
-        "",
-    ),
-];
-
-struct Entity {
-    name: String,
-    parent: u32,
-    instance: u32,
-}
-
-struct Pending {
-    entity: u32,
-    line: usize,
-    fields: Vec<(String, Given, usize)>,
-}
-
-/// A field's value as the scene text gives it.
-enum Given {
-    /// Numbers (and `true`/`false` as 1/0), one per lane.
-    Lanes(Vec<f64>),
-    /// One quoted string: a `strN` field's text.
-    Text(String),
-}
-
-impl Given {
-    fn len(&self) -> usize {
-        match self {
-            Given::Lanes(v) => v.len(),
-            Given::Text(_) => 1,
-        }
-    }
-}
-
-fn lanes(values: &[Value], line: usize, comp: &str, field: &str) -> Result<Given, CookError> {
-    if let [Value::String(text)] = values {
-        return Ok(Given::Text(text.clone()));
-    }
-    // An enum field's variant by name (`mobility static`): read against
-    // the field's variants when packed.
-    if let [Value::Word(w)] = values
-        && w != "true"
-        && w != "false"
-    {
-        return Ok(Given::Text(w.clone()));
-    }
-    values
-        .iter()
-        .map(|v| match v {
-            Value::Number(n) => Ok(n.as_f64()),
-            Value::Word(w) if w == "true" => Ok(1.0),
-            Value::Word(w) if w == "false" => Ok(0.0),
-            _ => Err(CookError(format!(
-                "line {line}: {comp}.{field}: values are numbers, true/false, or one quoted string for a string field"
-            ))),
-        })
-        .collect::<Result<Vec<f64>, CookError>>()
-        .map(Given::Lanes)
-}
-
-fn infer(name: &str, rows: &[Pending]) -> Result<Schema, CookError> {
-    let mut fields: Vec<FieldSchema> = Vec::new();
-    for r in rows {
-        for (f, v, line) in &r.fields {
-            if let Given::Text(_) = v {
-                return Err(CookError(format!(
-                    "line {line}: {name}.{f} is a string; without {name}'s schema the cook cannot know its capacity (pass the schema set to the cook)"
-                )));
-            }
-            let ty = match v.len() {
-                1 => FieldType::F32,
-                2 => FieldType::Vec2,
-                3 => FieldType::Vec3,
-                4 => FieldType::Vec4,
-                n => {
-                    return Err(CookError(format!(
-                        "line {line}: {name}.{f}: {n} values; without a schema a field has 1 to 4"
-                    )));
-                }
-            };
-            match fields.iter().find(|x| &x.name == f) {
-                Some(x) if x.ty != ty => {
-                    return Err(CookError(format!(
-                        "line {line}: {name}.{f} has {} value(s) here and {} elsewhere",
-                        v.len(),
-                        x.ty.lanes()
-                    )));
-                }
-                Some(_) => {}
-                None => fields.push(FieldSchema::new(f.clone(), ty)),
-            }
-        }
-    }
-    for r in rows {
-        for f in &fields {
-            if !r.fields.iter().any(|(n, ..)| n == &f.name) {
-                return Err(CookError(format!(
-                    "line {}: {name} omits '{}' that another entity sets; without {name}'s schema the cook cannot know its default (pass the schema set to the cook)",
-                    r.line, f.name
-                )));
-            }
-        }
-    }
-    let schema = Schema {
-        name: name.to_string(),
-        version: 1,
-        doc: String::new(),
-        fields,
-    };
-    schema
-        .validate()
-        .map_err(|e| CookError(format!("{name}: {e}")))?;
-    Ok(schema)
-}
-
-fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookError> {
-    let comp = &schema.name;
-    for (f, _, line) in &row.fields {
-        if schema.field_index(f).is_none() {
-            return Err(CookError(format!("line {line}: {comp} has no field '{f}'")));
-        }
-    }
-    for fs in &schema.fields {
-        let given = row.fields.iter().find(|(n, ..)| n == &fs.name);
-        if fs.ty == FieldType::Ease {
-            match given {
-                Some((_, Given::Text(text), line)) => {
-                    let ease = og_core::ease::Ease::parse_text(text)
-                        .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
-                    out.extend_from_slice(&ease.to_bytes());
-                }
-                Some((_, _, line)) => {
-                    return Err(CookError(format!(
-                        "line {line}: {comp}.{} requires one quoted timing string",
-                        fs.name
-                    )));
-                }
-                None => out.extend_from_slice(&fs.default_bytes()),
-            }
-            continue;
-        }
-        if let Some((element, capacity)) = fs.ty.list_of() {
-            let values: &[f64] = match given {
-                Some((_, Given::Lanes(v), _)) => v,
-                Some((_, Given::Text(_), line)) => {
-                    return Err(CookError(format!(
-                        "line {line}: {comp}.{} is a {}: give it up to {capacity} number(s) on its line, or none for an empty list",
-                        fs.name,
-                        fs.ty.name()
-                    )));
-                }
-                None => &[],
-            };
-            let line = given.map_or(row.line, |g| g.2);
-            let mut lanes = Vec::with_capacity(values.len());
-            for &v in values {
-                let mut lane = Vec::with_capacity(element.size());
-                pack_lane(element.field_type(), v, &mut lane)
-                    .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
-                lanes.push(lane);
-            }
-            let refs: Vec<&[u8]> = lanes.iter().map(Vec::as_slice).collect();
-            out.extend_from_slice(
-                &og_core::pack_list(fs.ty, &refs)
-                    .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?,
-            );
-            continue;
-        }
-        if fs.ty.is_string() {
-            match given {
-                Some((_, Given::Text(text), line)) => out.extend_from_slice(
-                    &og_core::pack_str(text, fs.ty.size())
-                        .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?,
-                ),
-                Some((_, Given::Lanes(_), line)) => {
-                    return Err(CookError(format!(
-                        "line {line}: {comp}.{} is a {}: give it one quoted string",
-                        fs.name,
-                        fs.ty.name()
-                    )));
-                }
-                None => out.resize(out.len() + fs.ty.size(), 0),
-            }
-            continue;
-        }
-        let values: Vec<f64> = match given {
-            Some((_, Given::Text(name), line)) if fs.ty == FieldType::Enum => {
-                match fs.variants.iter().position(|v| v == name) {
-                    Some(i) => vec![i as f64],
-                    None => {
-                        return Err(CookError(format!(
-                            "line {line}: {comp}.{} is one of {}, not '{name}'",
-                            fs.name,
-                            fs.variants.join(", ")
-                        )));
-                    }
-                }
-            }
-            Some((_, Given::Text(_), line)) => {
-                return Err(CookError(format!(
-                    "line {line}: {comp}.{} is a {}, not a string: give it {} number(s)",
-                    fs.name,
-                    fs.ty.name(),
-                    fs.ty.lanes()
-                )));
-            }
-            Some((_, Given::Lanes(v), line)) => {
-                if v.len() != fs.ty.lanes() {
-                    return Err(CookError(format!(
-                        "line {line}: {comp}.{} is a {} ({} value(s)), got {}",
-                        fs.name,
-                        fs.ty.name(),
-                        fs.ty.lanes(),
-                        v.len()
-                    )));
-                }
-                v.clone()
-            }
-            None => fs
-                .default
-                .clone()
-                .unwrap_or_else(|| vec![0.0; fs.ty.lanes()]),
-        };
-        let line = given.map_or(row.line, |g| g.2);
-        for v in values {
-            pack_lane(fs.ty, v, out)
-                .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
-        }
-    }
-    Ok(())
-}
-
-/// One lane of a field of type `ty` (an element's type, for a list): `v`
-/// refused when it is not a value of the lane's number type.
-fn pack_lane(ty: FieldType, v: f64, out: &mut Vec<u8>) -> Result<(), String> {
-    let int = |lo: f64, hi: f64| -> Result<f64, String> {
-        if v.fract() != 0.0 || v < lo || v > hi {
-            Err(format!("{v} is not a {}", ty.name()))
-        } else {
-            Ok(v)
-        }
-    };
-    match ty {
-        FieldType::F64 => out.extend_from_slice(&v.to_le_bytes()),
-        FieldType::I32 => {
-            out.extend_from_slice(&(int(i32::MIN as f64, i32::MAX as f64)? as i32).to_le_bytes())
-        }
-        FieldType::U32 => out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes()),
-        FieldType::I64 => out.extend_from_slice(&(int(-9.007e15, 9.007e15)? as i64).to_le_bytes()),
-        FieldType::U64 => out.extend_from_slice(&(int(0.0, 9.007e15)? as u64).to_le_bytes()),
-        // og-core packs a bool in one byte and an enum as its u32
-        // variant index; four f32 bytes would break the row stride.
-        FieldType::Bool => out.push(int(0.0, 1.0)? as u8),
-        FieldType::Enum => {
-            out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes())
-        }
-        _ => out.extend_from_slice(&(v as f32).to_le_bytes()),
-    }
-    Ok(())
-}
-
-/// A component's or resource's block of fields, as one pending row.
-fn block_fields(
-    fields: &Block,
-    entity: u32,
-    line: usize,
-    comp: &str,
-) -> Result<Pending, CookError> {
-    let mut pending = Pending {
-        entity,
-        line,
-        fields: Vec::new(),
-    };
-    for f in &fields.entries {
-        if f.block.is_some() {
-            return Err(CookError(format!(
-                "line {}: {comp}.{}: fields do not nest",
-                f.line, f.key
-            )));
-        }
-        if pending.fields.iter().any(|(n, ..)| n == &f.key) {
-            return Err(CookError(format!(
-                "line {}: {comp}.{} is set twice",
-                f.line, f.key
-            )));
-        }
-        pending.fields.push((
-            f.key.clone(),
-            lanes(&f.values, f.line, comp, &f.key)?,
-            f.line,
-        ));
-    }
-    Ok(pending)
-}
-
-/// The asset ids a scene references (for its stamp and the planner).
-pub fn references(text: &str) -> Vec<String> {
-    let mut out = BTreeSet::new();
-    fn walk(b: &Block, out: &mut BTreeSet<String>) {
-        for e in &b.entries {
-            if (e.key == "model" || e.key == "scene")
-                && let Ok(s) = e.string(0)
-            {
-                out.insert(crate::runtime::asset_id(s).to_string());
-            }
-            if e.key == "entity"
-                && let Some(b) = &e.block
-            {
-                walk(b, out);
-            }
-        }
-    }
-    if let Ok(doc) = Document::parse(text) {
-        walk(&doc.body, &mut out);
-    }
-    out.into_iter().collect()
-}
-
-/// The sub-scenes a scene or prefab text places directly (`scene "<id>"`
-/// lines in its entities, at any depth), and those of the prefabs it
-/// reaches, as asset ids.
-pub fn subscenes(text: &str, texts: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
-    fn walk(b: &Block, out: &mut BTreeSet<String>) {
-        for e in &b.entries {
-            if e.key == "scene"
-                && e.block.is_none()
-                && let Ok(s) = e.string(0)
-            {
-                out.insert(crate::runtime::asset_id(s).to_string());
-            }
-            if let Some(b) = &e.block
-                && matches!(e.key.as_str(), "entity" | "override")
-            {
-                walk(b, out);
-            }
-        }
-    }
-    let mut out = BTreeSet::new();
-    let mut docs = vec![text.to_string()];
-    docs.extend(
-        super::prefab::reached(text, texts)
-            .iter()
-            .filter_map(|id| texts(id)),
-    );
-    for t in docs {
-        if let Ok(doc) = Document::parse(&t) {
-            walk(&doc.body, &mut out);
+/// Direct placements plus those inherited from every reached prefab.
+pub fn subscenes(doc: &Document, documents: &BTreeMap<String, Arc<Document>>) -> Vec<String> {
+    let mut out: BTreeSet<String> = doc.direct_subscenes().into_iter().collect();
+    for id in prefab::reached(doc, documents) {
+        if let Some(doc) = documents.get(&id) {
+            out.extend(doc.direct_subscenes());
         }
     }
     out.into_iter().collect()
 }
 
-/// The chain `source -> placed -> ... -> source` when sub-scene `placed`
-/// reaches `source` again through sub-scenes; `None` when it never does.
 fn subscene_cycle(
     source: &str,
     placed: &str,
-    texts: &dyn Fn(&str) -> Option<String>,
+    documents: &BTreeMap<String, Arc<Document>>,
 ) -> Option<Vec<String>> {
     fn go(
         at: &str,
         target: &str,
-        texts: &dyn Fn(&str) -> Option<String>,
+        documents: &BTreeMap<String, Arc<Document>>,
         path: &mut Vec<String>,
         seen: &mut BTreeSet<String>,
     ) -> bool {
-        path.push(at.to_string());
+        path.push(at.into());
         if at == target {
             return true;
         }
-        if seen.insert(at.to_string())
-            && let Some(t) = texts(at)
+        if seen.insert(at.into())
+            && let Some(doc) = documents.get(at)
         {
-            for next in subscenes(&t, texts) {
-                if go(&next, target, texts, path, seen) {
+            for next in subscenes(doc, documents) {
+                if go(&next, target, documents, path, seen) {
                     return true;
                 }
             }
@@ -533,24 +54,15 @@ fn subscene_cycle(
         path.pop();
         false
     }
-    let mut path = vec![source.to_string()];
-    let mut seen = BTreeSet::new();
-    go(placed, source, texts, &mut path, &mut seen).then_some(path)
+    let mut path = vec![source.into()];
+    go(placed, source, documents, &mut path, &mut BTreeSet::new()).then_some(path)
 }
 
-/// What a scene's cook reads beside its text: the project's scene and
-/// prefab texts by asset id (`None`: no such scene or prefab), and whether
-/// the cook is a publish's (an orphaned override is then refused, not
-/// noted).
 pub struct Prefabs<'a> {
-    pub texts: &'a dyn Fn(&str) -> Option<String>,
+    pub documents: &'a BTreeMap<String, Arc<Document>>,
     pub publish: bool,
 }
 
-/// Cooks a scene or prefab document (`source`, its asset id; a prefab's
-/// text is read through `prefabs.texts` by it). `known` says whether an
-/// asset id is cooked. Instances are flattened first ([`super::prefab`]);
-/// a prefab cooks to its own tree, every entity linked to it.
 pub fn cook(
     doc: &Document,
     source: &str,
@@ -559,514 +71,350 @@ pub fn cook(
     prefabs: &Prefabs,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let is_prefab = doc.ty == super::prefab::PREFAB_TYPE;
-    if doc.ty != "scene" && !is_prefab {
-        return Err(CookError(format!(
-            "expected a 'scene' or 'prefab' document, got '{}'",
-            doc.ty
-        )));
-    }
-    if doc.version != 1 {
-        return Err(CookError(format!(
-            "{} version {} is not supported (1)",
-            doc.ty, doc.version
-        )));
-    }
-    let mut notes = Vec::new();
-    // Instances flattened: the entities below are the scene's, with every
-    // prefab's tree in place.
-    let mut flattener = super::prefab::Flattener::new(prefabs.texts, schemas);
-    let flat = if is_prefab {
+    let mut flattener = prefab::Flattener::new(prefabs.documents, schemas);
+    let flat = if doc.prefab {
         vec![flattener.prefab(source)?]
     } else {
-        flattener.scene(source, &doc.body)?
+        flattener.scene(source, doc)?
     };
-    let orphans: Vec<String> = flattener
-        .orphans
-        .iter()
-        .filter(|o| o.source == source)
-        .map(ToString::to_string)
-        .collect();
-    if !orphans.is_empty() {
+    let mut notes = Vec::new();
+    for orphan in flattener.orphans.iter().filter(|o| o.source == source) {
         if prefabs.publish {
             return Err(CookError(format!(
-                "a published game never ships an override that does nothing: {}",
-                orphans.join("; ")
+                "a published game never ships an override that does nothing: {orphan}"
             )));
         }
-        notes.extend(orphans.into_iter().map(|o| format!("warning: {o}")));
+        notes.push(format!("warning: {orphan}"));
     }
-    let mut links = Vec::new();
-    for n in &flat {
-        n.links(&mut links);
-    }
-    let flat_body = Block {
-        entries: flat.iter().map(super::prefab::Node::to_entry).collect(),
-    };
-    let mut strings: Vec<u8> = Vec::new();
+    let mut strings = Vec::new();
     let mut add = |s: &str| {
         let at = strings.len() as u32;
         strings.extend_from_slice(s.as_bytes());
         (at, s.len() as u32)
     };
-    let mut entities: Vec<Entity> = Vec::new();
-    // Each entity's `entity` line, in entity order (SceneLineRow).
-    let mut lines: Vec<u32> = Vec::new();
-    let mut refs: Vec<String> = Vec::new();
-    // Sub-scenes: (entity index, `subscene_ids` entry).
-    let mut subscenes: Vec<(u32, u32)> = Vec::new();
-    let mut subscene_ids: Vec<String> = Vec::new();
-    let mut tables: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
-    let mut name = String::new();
-    let mut paths: Vec<(String, og_timeline::PathDesc)> = Vec::new();
-    let mut resources: BTreeMap<String, Pending> = BTreeMap::new();
-    let top: &[og_core::ogt::Entry] = if is_prefab {
-        name = flat[0].name.clone();
-        &[]
+    let name = if doc.prefab {
+        flat[0].name.as_str()
     } else {
-        &doc.body.entries
+        doc.scene.name.as_deref().unwrap_or_default()
     };
-    for e in top {
-        if !LINES.iter().any(|f| f.key == e.key) {
-            return Err(CookError(format!(
-                "line {}: unknown scene entry '{}'",
-                e.line, e.key
-            )));
-        }
-        match e.key.as_str() {
-            "name" => {
-                name = e
-                    .string(0)
-                    .map_err(|x| CookError(format!("line {}: {x}", e.line)))?
-                    .to_string()
-            }
-            "entity" => {}
-            "resource" => {
-                let r = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_word().or_else(|| v.as_str()))
-                    .ok_or_else(|| {
-                        CookError(format!(
-                            "line {}: resource: the resource's name (resource Run {{ ... }})",
-                            e.line
-                        ))
-                    })?
-                    .to_string();
-                let fields = e.block.as_ref().ok_or_else(|| {
-                    CookError(format!(
-                        "line {}: resource {r}: its fields in a block",
-                        e.line
-                    ))
-                })?;
-                if resources.contains_key(&r) {
-                    return Err(CookError(format!(
-                        "line {}: resource {r} is set twice",
-                        e.line
-                    )));
-                }
-                resources.insert(r.clone(), block_fields(fields, 0, e.line, &r)?);
-            }
-            // Streaming groups: read by the cook's planner (cook/pipeline/stream.rs).
-            "stream" => {}
-            // The scene's distant proxies: built by the cook's planner
-            // (cook/systems/hlod.rs).
-            "hlod" => {}
-            // Named paths (og.path.find, a timeline's `rail`), made when
-            // the scene is instantiated.
-            "path" => {
-                let (n, desc) = og_timeline::path_entry(e).map_err(CookError)?;
-                if paths.iter().any(|(m, _)| *m == n) {
-                    return Err(CookError(format!(
-                        "line {}: path '{n}' is declared twice",
-                        e.line
-                    )));
-                }
-                paths.push((n, desc));
-            }
-            k => {
-                return Err(CookError(format!(
-                    "line {}: unknown scene entry '{k}' (expected name, entity, resource, stream, hlod or path)",
-                    e.line
-                )));
-            }
-        }
-    }
-    // Depth-first, parents before children.
-    let empty = Block::new();
-    let mut stack: Vec<(&og_core::ogt::Entry, u32)> = flat_body
-        .get_all("entity")
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .map(|e| (e, NONE))
-        .collect();
-    while let Some((e, parent)) = stack.pop() {
-        let line = e.line;
-        let ename = e
-            .string(0)
-            .map_err(|x| CookError(format!("line {line}: entity: {x}")))?
-            .to_string();
+    let (name_offset, name_len) = add(name);
+    let mut entities = Vec::new();
+    let mut lines = Vec::new();
+    let mut origins = Vec::new();
+    let mut overrides = BTreeMap::new();
+    let mut refs: Vec<String> = Vec::new();
+    let mut subscene_ids: Vec<String> = Vec::new();
+    let mut subscene_rows = Vec::new();
+    let mut prefab_ids: Vec<String> = Vec::new();
+    let mut prefab_rows = Vec::new();
+    let mut instance_roots = BTreeMap::new();
+    let mut component_data: BTreeMap<String, Vec<(u32, Vec<u8>)>> = BTreeMap::new();
+    // Sparse typed relocations: entity -> record -> field -> content token.
+    let mut bindings: BTreeMap<u32, BTreeMap<String, Map<String, Value>>> = BTreeMap::new();
+    let mut resource_bindings: BTreeMap<String, Map<String, Value>> = BTreeMap::new();
+    let mut stack: Vec<_> = flat.iter().rev().map(|n| (n, NONE)).collect();
+    while let Some((node, parent)) = stack.pop() {
         let index = entities.len() as u32;
-        let mut entity = Entity {
-            name: ename,
-            parent,
-            instance: NONE,
-        };
-        let block = e.block.as_ref().unwrap_or(&empty);
-        let mut children = Vec::new();
-        // `static true` beside the model line: og.Model's `static` field
-        // (baked lighting, og bake lightmaps), merged into its Model block.
-        let mut static_flag: Option<(Given, usize)> = None;
-        for c in &block.entries {
-            match (c.key.as_str(), &c.block) {
-                ("entity", _) => children.push(c),
-                ("static", None) => {
-                    let given = lanes(&c.values, c.line, "Model", "static")?;
-                    if !matches!(&given, Given::Lanes(v) if v.len() == 1) {
-                        return Err(CookError(format!(
-                            "line {}: static is true or false",
-                            c.line
-                        )));
-                    }
-                    static_flag = Some((given, c.line));
-                }
-                ("scene", None) => {
-                    let id = crate::runtime::asset_id(
-                        c.string(0)
-                            .map_err(|x| CookError(format!("line {}: scene: {x}", c.line)))?,
-                    )
-                    .to_string();
-                    let is_scene = (prefabs.texts)(&id)
-                        .and_then(|t| Document::parse(&t).ok())
-                        .is_some_and(|d| d.ty == "scene");
-                    if !is_scene {
-                        return Err(CookError(format!(
-                            "line {}: scene '{id}' is not a scene of this project (a sub-scene is an .ogt of type scene)",
-                            c.line
-                        )));
-                    }
-                    if let Some(chain) = subscene_cycle(source, &id, prefabs.texts) {
-                        return Err(CookError(format!(
-                            "line {}: sub-scene '{id}' places this scene again: {}",
-                            c.line,
-                            chain.join(" -> ")
-                        )));
-                    }
-                    if subscenes.iter().any(|(e, _)| *e == index) {
-                        return Err(CookError(format!(
-                            "line {}: an entity places one sub-scene",
-                            c.line
-                        )));
-                    }
-                    let r = match subscene_ids.iter().position(|r| r == &id) {
-                        Some(r) => r,
-                        None => {
-                            subscene_ids.push(id);
-                            subscene_ids.len() - 1
-                        }
-                    };
-                    subscenes.push((index, r as u32));
-                }
-                ("model", None) => {
-                    let id = crate::runtime::asset_id(
-                        c.string(0)
-                            .map_err(|x| CookError(format!("line {}: model: {x}", c.line)))?,
-                    )
-                    .to_string();
-                    if !known(&id) {
-                        return Err(CookError(format!(
-                            "line {}: model '{id}' is not an asset of this project",
-                            c.line
-                        )));
-                    }
-                    let r = match refs.iter().position(|r| r == &id) {
-                        Some(r) => r,
-                        None => {
-                            refs.push(id);
-                            refs.len() - 1
-                        }
-                    };
-                    entity.instance = r as u32;
-                }
-                (comp, Some(fields)) => {
-                    let pending = block_fields(fields, index, c.line, comp)?;
-                    let rows = tables.entry(comp.to_string()).or_default();
-                    if rows.iter().any(|r| r.entity == index) {
-                        return Err(CookError(format!(
-                            "line {}: the entity has two {comp} components",
-                            c.line
-                        )));
-                    }
-                    rows.push(pending);
-                }
-                (k, None) => {
-                    return Err(CookError(format!(
-                        "line {}: '{k}' in an entity is neither a component block, a child entity, a model nor a sub-scene",
-                        c.line
-                    )));
-                }
+        origins.push(node.file.clone());
+        if node.link.is_some() {
+            let fields: Vec<_> = node
+                .origins
+                .iter()
+                .filter(|(_, owner)| owner.as_str() == source)
+                .map(|((component, field), _)| format!("{component}.{field}"))
+                .collect();
+            if !fields.is_empty() {
+                overrides.insert(index, fields);
             }
         }
-        if let Some((given, line)) = static_flag {
-            if entity.instance == NONE {
+        let (name_offset, name_len) = add(&node.name);
+        let mut instance = NONE;
+        if let Some(model) = &node.model {
+            if !known(model) {
                 return Err(CookError(format!(
-                    "line {line}: static marks a model for baked lighting: the entity has no model line"
+                    "{}:{}: model '{model}' is not an asset of this project",
+                    doc.file, node.line
                 )));
             }
-            let rows = tables.entry("Model".to_string()).or_default();
-            match rows.iter_mut().find(|r| r.entity == index) {
-                Some(r) if r.fields.iter().any(|(n, ..)| n == "static") => {
-                    return Err(CookError(format!("line {line}: Model.static is set twice")));
-                }
-                Some(r) => r.fields.push(("static".into(), given, line)),
-                None => rows.push(Pending {
-                    entity: index,
-                    line,
-                    fields: vec![("static".into(), given, line)],
-                }),
+            instance = refs.iter().position(|r| r == model).unwrap_or_else(|| {
+                refs.push(model.clone());
+                refs.len() - 1
+            }) as u32;
+        }
+        if let Some(sub) = &node.subscene {
+            if !prefabs.documents.get(sub).is_some_and(|d| !d.prefab) {
+                return Err(CookError(format!(
+                    "{}:{}: '{sub}' is not a checked scene",
+                    doc.file, node.line
+                )));
+            }
+            if let Some(chain) = subscene_cycle(source, sub, prefabs.documents) {
+                return Err(CookError(format!(
+                    "{}:{}: sub-scene places this scene again: {}",
+                    doc.file,
+                    node.line,
+                    chain.join(" -> ")
+                )));
+            }
+            let scene = subscene_ids
+                .iter()
+                .position(|r| r == sub)
+                .unwrap_or_else(|| {
+                    subscene_ids.push(sub.clone());
+                    subscene_ids.len() - 1
+                }) as u32;
+            subscene_rows.push(SubsceneRow {
+                entity: index,
+                scene,
+            });
+        }
+        let mut components = node.components.clone();
+        if let Some(flag) = node.static_model {
+            if instance == NONE {
+                return Err(CookError(format!(
+                    "{}:{}: static marks a model for baked lighting: the entity has no model",
+                    doc.file, node.line
+                )));
+            }
+            let model = components.entry("og.Model".into()).or_default();
+            if model.insert("static".into(), Value::Bool(flag)).is_some() {
+                return Err(CookError(format!(
+                    "{}:{}: og.Model.static is set twice",
+                    doc.file, node.line
+                )));
             }
         }
-        entities.push(entity);
-        lines.push(line as u32);
-        for c in children.into_iter().rev() {
-            stack.push((c, index));
+        for (name, patch) in &components {
+            let record = doc.records.get(name).ok_or_else(|| {
+                CookError(format!(
+                    "{}:{}: no declared record {name}",
+                    doc.file, node.line
+                ))
+            })?;
+            let (bytes, relocations) = record
+                .pack(patch)
+                .map_err(|e| CookError(format!("{}:{}: {e}", doc.file, node.line)))?;
+            if !relocations.is_empty() {
+                bindings
+                    .entry(index)
+                    .or_default()
+                    .insert(name.clone(), relocations);
+            }
+            component_data
+                .entry(name.clone())
+                .or_default()
+                .push((index, bytes));
         }
-    }
-    let (name_offset, name_len) = add(&name);
-    let mut entity_rows = Vec::with_capacity(entities.len());
-    for e in &entities {
-        let (name_offset, name_len) = add(&e.name);
-        entity_rows.push(EntityRow {
+        entities.push(EntityRow {
             name_offset,
             name_len,
-            parent: e.parent,
-            instance: e.instance,
+            parent,
+            instance,
         });
-    }
-    let mut ref_rows = Vec::new();
-    for r in &refs {
-        let (id_offset, id_len) = add(r);
-        ref_rows.push(RefRow { id_offset, id_len });
-    }
-    let mut comp_rows = Vec::new();
-    let mut payloads = Vec::new();
-    for (comp, rows) in &tables {
-        let (schema, inferred) = match schemas.get(comp) {
-            Some(s) => (s.clone(), false),
-            None => {
-                notes.push(format!(
-                    "{comp}: no schema given; layout inferred from the scene text"
-                ));
-                (infer(comp, rows)?, true)
+        lines.push(SceneLineRow {
+            line: node.line as u32,
+        });
+        let origin = match &node.link {
+            None => PrefabRow {
+                prefab: NONE,
+                node: NONE,
+                root: NONE,
+            },
+            Some(link) => {
+                let root = *instance_roots.entry(link.instance).or_insert(index);
+                let prefab = prefab_ids
+                    .iter()
+                    .position(|r| r == &link.prefab)
+                    .unwrap_or_else(|| {
+                        prefab_ids.push(link.prefab.clone());
+                        prefab_ids.len() - 1
+                    }) as u32;
+                PrefabRow {
+                    prefab,
+                    node: link.node,
+                    root,
+                }
             }
         };
-        let size = Layout::of(&schema).size();
-        let mut bytes = Vec::with_capacity(rows.len() * (4 + size));
-        for r in rows {
-            bytes.extend_from_slice(&r.entity.to_le_bytes());
-            pack(&schema, r, &mut bytes)?;
-        }
+        prefab_rows.push(origin);
+        stack.extend(node.children.iter().rev().map(|n| (n, index)));
+    }
+    let mut components = Vec::new();
+    let mut payloads = Vec::new();
+    for (name, rows) in component_data {
+        let schema = &doc.records[&name].schema;
         let hash = schema.layout_hash();
-        let (name_offset, name_len) = add(comp);
-        comp_rows.push(ComponentRow {
+        let size = og_core::Layout::of(schema).size();
+        let (name_offset, name_len) = add(&name);
+        components.push(ComponentRow {
             name_offset,
             name_len,
             layout_hash_lo: hash as u32,
             layout_hash_hi: (hash >> 32) as u32,
             rows: rows.len() as u32,
-            inferred: inferred as u32,
+            inferred: 0,
         });
-        payloads.push((
-            comp.clone(),
-            bytes,
-            (4 + size) as u32,
-            hash,
-            schema.to_json(),
-        ));
+        let mut bytes = Vec::with_capacity(rows.len() * (4 + size));
+        for (entity, row) in rows {
+            bytes.extend_from_slice(&entity.to_le_bytes());
+            bytes.extend_from_slice(&row);
+        }
+        payloads.push((name, bytes, (4 + size) as u32, hash, schema.to_json()));
     }
-    // Resources: one row each, its schema beside it (`r.`/`rs.<name>`).
-    let mut resource_rows = Vec::new();
+    let mut resources = Vec::new();
     let mut resource_payloads = Vec::new();
-    for (r, row) in &resources {
-        // Only the fields the text lists: the others keep the world's values.
-        let (schema, inferred) = match schemas.get(r) {
-            Some(s) => {
-                for (f, _, line) in &row.fields {
-                    if !s.fields.iter().any(|x| &x.name == f) {
-                        return Err(CookError(format!(
-                            "line {line}: resource {r} has no field '{f}'"
-                        )));
-                    }
-                }
-                let mut listed = s.clone();
-                listed
-                    .fields
-                    .retain(|x| row.fields.iter().any(|(f, ..)| *f == x.name));
-                (listed, false)
+    for (name, patch) in &doc.scene.resources {
+        let record = &doc.records[name];
+        let (packed, relocations) = record.pack(patch).map_err(CookError)?;
+        if !relocations.is_empty() {
+            resource_bindings.insert(name.clone(), relocations);
+        }
+        let layout = og_core::Layout::of(&record.schema);
+        let mut schema = record.schema.clone();
+        let mut bytes = Vec::new();
+        for (i, field) in record.schema.fields.iter().enumerate() {
+            if patch.contains_key(&field.name) {
+                bytes.extend_from_slice(&packed[layout.range(i)]);
             }
-            None => {
-                notes.push(format!(
-                    "resource {r}: no schema given; layout inferred from the scene text"
-                ));
-                (infer(r, std::slice::from_ref(row))?, true)
-            }
-        };
-        let size = Layout::of(&schema).size();
-        let mut bytes = Vec::with_capacity(size);
-        pack(&schema, row, &mut bytes)?;
+        }
+        schema.fields.retain(|f| patch.contains_key(&f.name));
         let hash = schema.layout_hash();
-        let (name_offset, name_len) = add(r);
-        resource_rows.push(ComponentRow {
+        let (name_offset, name_len) = add(name);
+        resources.push(ComponentRow {
             name_offset,
             name_len,
             layout_hash_lo: hash as u32,
             layout_hash_hi: (hash >> 32) as u32,
             rows: 1,
-            inferred: inferred as u32,
+            inferred: 0,
         });
-        resource_payloads.push((r.clone(), bytes, size as u32, hash, schema.to_json()));
+        resource_payloads.push((
+            name.clone(),
+            bytes,
+            og_core::Layout::of(&schema).size() as u32,
+            hash,
+            schema.to_json(),
+        ));
     }
-    // Where each entity came from: written when any was placed.
-    let mut prefab_ids: Vec<String> = Vec::new();
-    let mut prefab_rows = Vec::new();
-    if links.iter().any(Option::is_some) {
-        let mut roots: BTreeMap<u32, u32> = BTreeMap::new();
-        for (i, l) in links.iter().enumerate() {
-            let Some(l) = l else {
-                prefab_rows.push(PrefabRow {
-                    prefab: NONE,
-                    node: NONE,
-                    root: NONE,
-                });
-                continue;
-            };
-            let root = *roots.entry(l.instance).or_insert(i as u32);
-            let r = match prefab_ids.iter().position(|p| *p == l.prefab) {
-                Some(r) => r,
-                None => {
-                    prefab_ids.push(l.prefab.clone());
-                    prefab_ids.len() - 1
-                }
-            };
-            prefab_rows.push(PrefabRow {
-                prefab: r as u32,
-                node: l.node,
-                root,
-            });
-        }
-    }
-    let mut prefab_ref_rows = Vec::new();
-    for r in &prefab_ids {
-        let (id_offset, id_len) = add(r);
-        prefab_ref_rows.push(RefRow { id_offset, id_len });
-    }
-    let mut subscene_ref_rows = Vec::new();
-    for r in &subscene_ids {
-        let (id_offset, id_len) = add(r);
-        subscene_ref_rows.push(RefRow { id_offset, id_len });
-    }
+    let mut ref_rows = |ids: &[String]| {
+        ids.iter()
+            .map(|id| {
+                let (id_offset, id_len) = add(id);
+                RefRow { id_offset, id_len }
+            })
+            .collect::<Vec<_>>()
+    };
+    let models = ref_rows(&refs);
+    let subs = ref_rows(&subscene_ids);
+    let pref = ref_rows(&prefab_ids);
     let meta = SceneMeta {
-        entity_count: entity_rows.len() as u32,
-        component_count: comp_rows.len() as u32,
-        ref_count: ref_rows.len() as u32,
+        entity_count: entities.len() as u32,
+        component_count: components.len() as u32,
+        ref_count: models.len() as u32,
         name_offset,
         name_len,
     };
-    let mut w = BlobWriter::new(
+    let mut writer = BlobWriter::new(
         format::Scene::type_hash(),
         format::Scene::schema_version(),
         stamp,
     );
-    w.table("meta", &[meta], row_hash::<SceneMeta>())
-        .table("entities", &entity_rows, row_hash::<EntityRow>())
-        .table("refs", &ref_rows, row_hash::<RefRow>())
-        .table("components", &comp_rows, row_hash::<ComponentRow>())
+    writer
+        .table("meta", &[meta], row_hash::<SceneMeta>())
+        .table("entities", &entities, row_hash::<EntityRow>())
+        .table("refs", &models, row_hash::<RefRow>())
+        .table("components", &components, row_hash::<ComponentRow>())
         .raw("strings", strings, 1);
-    for (comp, bytes, stride, hash, json) in payloads {
-        w.rows(&format!("c.{comp}"), bytes, stride, hash);
-        w.raw(&format!("s.{comp}"), json.into_bytes(), 1);
+    for (name, bytes, stride, hash, json) in payloads {
+        writer.rows(&format!("c.{name}"), bytes, stride, hash).raw(
+            &format!("s.{name}"),
+            json.into_bytes(),
+            1,
+        );
     }
-    if !prefab_rows.is_empty() {
-        w.table("prefabs", &prefab_rows, row_hash::<PrefabRow>())
-            .table("prefab_refs", &prefab_ref_rows, row_hash::<RefRow>());
-        notes.push(format!(
-            "{} entities from {} prefab(s)",
-            prefab_rows.iter().filter(|r| r.prefab != NONE).count(),
-            prefab_ids.len()
-        ));
+    if !prefab_ids.is_empty() {
+        writer
+            .table("prefabs", &prefab_rows, row_hash::<PrefabRow>())
+            .table("prefab_refs", &pref, row_hash::<RefRow>());
     }
-    if !subscenes.is_empty() {
-        let rows: Vec<SubsceneRow> = subscenes
-            .iter()
-            .map(|&(entity, scene)| SubsceneRow { entity, scene })
-            .collect();
-        w.table("subscenes", &rows, row_hash::<SubsceneRow>())
-            .table("subscene_refs", &subscene_ref_rows, row_hash::<RefRow>());
-        notes.push(format!(
-            "{} sub-scene placement(s) of {} scene(s)",
-            rows.len(),
-            subscene_ids.len()
-        ));
+    if !subscene_rows.is_empty() {
+        writer
+            .table("subscenes", &subscene_rows, row_hash::<SubsceneRow>())
+            .table("subscene_refs", &subs, row_hash::<RefRow>());
     }
     if !prefabs.publish {
-        // In a scene, the nodes of a prefab instance carry the prefab's
-        // lines: each is declared where its instance is placed (its root,
-        // the instance's first entity). A prefab's own blob keeps its lines.
-        let mut placed: BTreeMap<u32, u32> = BTreeMap::new();
-        let rows: Vec<SceneLineRow> = lines
-            .iter()
-            .zip(&links)
-            .map(|(&line, link)| SceneLineRow {
-                line: match link {
-                    Some(l) if !is_prefab => *placed.entry(l.instance).or_insert(line),
-                    _ => line,
-                },
-            })
-            .collect();
-        w.table("lines", &rows, row_hash::<SceneLineRow>());
+        writer.table("lines", &lines, row_hash::<SceneLineRow>());
+        writer.raw(
+            "origins",
+            serde_json::to_vec(&(origins, overrides)).map_err(|e| CookError(e.to_string()))?,
+            1,
+        );
     }
-    if !resource_rows.is_empty() {
-        w.table("resources", &resource_rows, row_hash::<ComponentRow>());
-        for (r, bytes, stride, hash, json) in resource_payloads {
-            w.rows(&format!("r.{r}"), bytes, stride.max(1), hash);
-            w.raw(&format!("rs.{r}"), json.into_bytes(), 1);
+    if !resources.is_empty() {
+        writer.table("resources", &resources, row_hash::<ComponentRow>());
+        for (name, bytes, stride, hash, json) in resource_payloads {
+            writer
+                .rows(&format!("r.{name}"), bytes, stride.max(1), hash)
+                .raw(&format!("rs.{name}"), json.into_bytes(), 1);
         }
-        notes.push(format!("{} resource(s)", resources.len()));
+    }
+    writer.raw(
+        "bindings",
+        serde_json::to_vec(&(bindings, resource_bindings)).map_err(|e| CookError(e.to_string()))?,
+        1,
+    );
+    let mut paths = Vec::new();
+    for (name, input) in &doc.scene.paths {
+        use crate::cook::source_schemas::media::timeline::PathKind as Input;
+        let path = og_timeline::PathDesc {
+            points: input
+                .points
+                .iter()
+                .copied()
+                .map(og_core::glam::Vec3::from_array)
+                .collect(),
+            closed: input.closed.unwrap_or(false),
+            tension: input.tension.unwrap_or(0.5),
+            kind: match input.kind.as_ref().unwrap_or(&Input::CatmullRom) {
+                Input::CatmullRom => og_timeline::PathKind::CatmullRom,
+                Input::Bezier => og_timeline::PathKind::Bezier,
+                Input::Linear => og_timeline::PathKind::Linear,
+            },
+        };
+        if name.is_empty() {
+            return Err(CookError("a path needs a nonempty name".into()));
+        }
+        og_timeline::Path::new(path.clone()).map_err(CookError)?;
+        paths.push((name.clone(), path));
     }
     if !paths.is_empty() {
-        w.raw("paths", og_timeline::paths_to_text(&paths).into_bytes(), 1);
-        notes.push(format!("{} path(s)", paths.len()));
+        writer.raw("paths", og_timeline::paths_to_text(&paths).into_bytes(), 1);
     }
     notes.push(format!(
         "{} entities, {} component table(s), {} model reference(s)",
-        entity_rows.len(),
-        comp_rows.len(),
-        ref_rows.len()
+        entities.len(),
+        components.len(),
+        refs.len()
     ));
-    Ok((w.finish(), notes))
+    Ok((writer.finish(), notes))
 }
 
 pub(crate) static SCENE: KindDef = KindDef {
     name: "scene",
     extensions: &[],
-    types: &["scene", "scatter"],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_scene,
 };
-
-/// An `.ogt` of `type prefab`: cooked as a scene, flattened.
 pub(crate) static PREFAB: KindDef = KindDef {
     name: "prefab",
     extensions: &[],
-    types: &[super::prefab::PREFAB_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_scene,
 };
-
-/// The kinds this module cooks.
 pub(crate) static KINDS: &[&KindDef] = &[&SCENE, &PREFAB];
 
 fn plan_scene<'a>(
@@ -1076,58 +424,56 @@ fn plan_scene<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx {
-        options,
-        known,
-        prefab_texts,
-        schema_hash,
-        ..
-    } = *cx;
-    let text = String::from_utf8_lossy(&s.bytes);
-    // Every prefab it reaches, transitively, with its text's
-    // hash: editing a prefab re-cooks what places it.
-    let texts = |id: &str| prefab_texts.get(id).cloned();
-    let reached = prefab::reached(&text, &texts);
-    let mut refs: BTreeSet<String> = references(&text).into_iter().collect();
+    let Some(doc) = &s.scene else {
+        state.early_errors.push((
+            s.rel.clone(),
+            "scene",
+            "missing checked scene document".into(),
+        ));
+        return;
+    };
+    let reached = prefab::reached(doc, cx.prefab_texts);
+    let mut references: BTreeSet<String> = doc.references().into_iter().collect();
     let mut placed = Vec::new();
     for id in &reached {
-        let t = prefab_texts.get(id);
-        if let Some(t) = t {
-            refs.extend(references(t));
+        let other = cx.prefab_texts.get(id);
+        if let Some(other) = other {
+            references.extend(other.references());
         }
         placed.push(format!(
             "{id}#{}",
-            t.map_or(0, |t| hash_bytes(t.as_bytes()))
+            other.map_or(0, |d| hash_bytes(
+                &serde_json::to_vec(d.as_ref()).expect("native scene")
+            ))
         ));
     }
     state
         .parsed_refs
         .entry(s.rel.clone())
         .or_default()
-        .extend(refs.iter().chain(reached.iter()).cloned());
-    let refs: Vec<String> = refs
+        .extend(references.iter().chain(reached.iter()).cloned());
+    let references = references
         .into_iter()
-        .map(|r| format!("{r}={}", known.contains(&r)))
-        .collect();
-    // A scene that places no prefab keeps the stamp it had.
-    let st = if placed.is_empty() && s.kind == &SCENE {
-        stamp(
-            &[Area::Scene],
-            &[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()],
-        )
-    } else {
-        stamp(
-            &[Area::Scene],
-            &[
-                b"scene",
-                &hash,
-                &schema_hash,
-                refs.join("\n").as_bytes(),
-                placed.join("\n").as_bytes(),
-                &[options.publish as u8],
-            ],
-        )
-    };
+        .map(|id| format!("{id}={}", cx.known.contains(&id)))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let records = serde_json::to_vec(doc.records.as_ref()).expect("record metadata");
+    // Scatter/district snapshots include derived placements. Their author IR
+    // alone is unchanged when a referenced terrain surface changes.
+    let document = serde_json::to_vec(doc.as_ref()).expect("native scene");
+    let st = stamp(
+        &[Area::Scene],
+        &[
+            b"native-scene",
+            &hash,
+            &cx.schema_hash,
+            &records,
+            &document,
+            references.as_bytes(),
+            placed.join("\n").as_bytes(),
+            &[cx.options.publish as u8],
+        ],
+    );
     outs.push((
         s.rel.clone(),
         format::Scene::NAME,
@@ -1135,35 +481,26 @@ fn plan_scene<'a>(
         Box::new(SceneJob(s)),
     ));
     if s.kind == &SCENE {
-        super::hlod::plan(cx, state, s, &text, outs);
+        super::hlod::plan(cx, state, s, doc, outs);
     }
 }
 
-/// A scene's or prefab's one output.
 struct SceneJob<'a>(&'a Source);
-
 impl Job for SceneJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let SceneJob(s) = self;
-        let Exec {
-            options,
-            schemas,
-            known,
-            prefab_texts,
-            ..
-        } = ex;
-        let text =
-            std::str::from_utf8(&s.bytes).map_err(|_| CookError("scene is not UTF-8".into()))?;
-        let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
-        let texts = |id: &str| prefab_texts.get(id).cloned();
+        let source = self.0;
+        let doc = source
+            .scene
+            .as_ref()
+            .ok_or_else(|| CookError("missing checked scene".into()))?;
         cook(
-            &doc,
-            &s.rel,
-            schemas,
-            &|id| known.contains(id),
+            doc,
+            &source.rel,
+            ex.schemas,
+            &|id| ex.known.contains(id),
             &Prefabs {
-                texts: &texts,
-                publish: options.publish,
+                documents: ex.prefab_texts,
+                publish: ex.options.publish,
             },
             p.stamp,
         )

@@ -1021,12 +1021,11 @@ and prints one line on stdout when ready:
   {open}` opens or closes the inspector, and the page sends `inspector
   {open}` whenever it changes, F1 included. Version 1 has no Keep (the
   overlay's own Keep stays) and sends no `edits`.
-- **Save.** The inspector's Save posts `scene_saved` on the og-probe wire
-  (docs/platform-asks.md #22); the Stage writes the files into the
-  checkout and this server's cook takes them as ordinary edits. The
-  server writes no project file itself. A prefab's Apply and Revert need
-  the Stage's `read_source` (#23), which the page does not call yet: on a
-  web page they still say the source is not readable here.
+- **Runtime tuning.** Inspector/Tune edits and prefab Revert change memory
+  only, identically on native and web. Save, Apply and `scene_saved` are
+  removed (docs/platform-asks.md #22/#23). Persist explicit TS literals
+  through checked `og set`; edit computed/shared expressions in their source.
+  Read-only source diagnostics retain their TS file/line and `read_source`.
 
 ## Packaging
 

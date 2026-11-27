@@ -563,7 +563,7 @@ fn place(eng: &Engine, world: &mut World) {
             }
         }
     }
-    // The old scene's records for save_scene go with it.
+    // Drop provenance for unloaded scene instances.
     eng.state.borrow_mut().scene_instances.retain(|i| {
         i.entities
             .iter()

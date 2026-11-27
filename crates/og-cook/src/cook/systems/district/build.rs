@@ -16,8 +16,11 @@ use super::{glb, parse, texts};
 /// What a district expands to: its scene, its cells' scenes and its
 /// models, by asset id.
 pub(super) struct Output {
-    pub scene: String,
-    pub scenes: Vec<(String, String)>,
+    pub scene: crate::cook::source_schemas::world::scene::SceneInput,
+    pub scenes: Vec<(
+        String,
+        crate::cook::source_schemas::world::scene::SceneInput,
+    )>,
     pub models: Vec<(String, Vec<u8>)>,
     pub carve: Option<(String, og_core::ogt::Entry)>,
 }
@@ -30,7 +33,7 @@ pub(super) type Acc = BTreeMap<(String, u32), Mesh>;
 struct Cell {
     /// Its models by the suffix of their asset id ("" the cell's own).
     models: BTreeMap<String, Acc>,
-    entities: Vec<og_core::ogt::Entry>,
+    entities: Vec<crate::cook::source_schemas::world::scene::EntityInput>,
     top: f64,
 }
 
@@ -532,7 +535,7 @@ pub(super) fn build(
     let dir_depth = rel.matches('/').count();
     let uri = |id: &str| format!("{}{id}", "../".repeat(dir_depth));
     let mut out = Output {
-        scene: String::new(),
+        scene: Default::default(),
         scenes: Vec::new(),
         models: Vec::new(),
         carve: d
@@ -575,11 +578,11 @@ pub(super) fn build(
         entities.extend(cell.entities.iter().cloned());
         match (&d.cells, size) {
             (Some(cells_desc), Some(s)) => {
-                let scene_id = format!("{base}.ogt");
+                let scene_id = format!("{base}#scene");
                 let stream = format!("{group}-{}-{}", c.0, c.1);
                 out.scenes.push((
                     scene_id.clone(),
-                    texts::scene(&scene_id, d.hlod.as_ref(), Some((&stream, &ids)), &entities)?,
+                    texts::scene(&scene_id, d.hlod.as_ref(), Some((&stream, &ids)), &entities),
                 ));
                 placed.push(texts::cell(
                     &base,
@@ -598,6 +601,6 @@ pub(super) fn build(
     } else {
         d.hlod.as_ref()
     };
-    out.scene = texts::scene(rel, hlod, None, &placed)?;
+    out.scene = texts::scene(rel, hlod, None, &placed);
     Ok(out)
 }

@@ -2,21 +2,10 @@
 //! into proxies, each one ordinary cooked model drawn in place of the
 //! models it stands in for.
 //!
-//! ```text
-//! type scene
-//! version 1
-//! ---
-//! hlod {
-//!   size 64        # a leaf's cell, metres along x and z (default 64)
-//!   error 0.25     # how far a leaf's proxy may stand off its models, metres
-//!                  # (default size / 256); each level above doubles both
-//!   texels 1024    # the longest side a proxy's textures may have (default 1024)
-//! }
-//! entity "house-12" {
-//!   model "models/house.glb"
-//!   static true
-//! }
-//! ```
+//! A checked scene's `hlod` settings specify a leaf cell size in metres
+//! (default 64), maximum proxy error (default size / 256; doubles per level)
+//! and longest texture side (default 1024). Entities opt in with `static:
+//! true` and `model: ref('module/content-id')` in their TS declaration.
 //!
 //! **Members.** A scene's `static` model entities (the scene's own and its
 //! prefabs'; a sub-scene's are its own scene's). A model keeps drawing
@@ -79,6 +68,8 @@ use super::{
     prefab, stamp,
 };
 use crate::cook::Split;
+use crate::cook::formats::scene::Document;
+use crate::cook::source_schemas::world::scene::HlodInput;
 use crate::format::{
     self, Area, BlobKind, HlodCellRow, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash,
 };
@@ -87,7 +78,6 @@ use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use og_bake::scene::{Image as Texels, Mesh};
 use og_bake::transfer::{Mips, Source as Detailed, Surface, Target, TransferSettings, transfer};
 use og_blob::BlobWriter;
-use og_core::ogt::{Block, Document, Entry};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -139,45 +129,15 @@ pub(crate) struct Settings {
 }
 
 impl Settings {
-    fn parse(e: &Entry) -> Result<Settings, String> {
-        let line = e.line;
-        let empty = Block::new();
-        if !e.values.is_empty() {
-            return Err(format!(
-                "line {line}: hlod takes a block: hlod {{ size 64 }}"
-            ));
-        }
-        let b = e.block.as_ref().unwrap_or(&empty);
+    fn parse(input: &HlodInput) -> Result<Settings, String> {
         let mut s = Settings {
-            size: 64.0,
-            error: 0.0,
-            texels: 1024,
+            size: input.size.unwrap_or(64.0),
+            error: input.error.unwrap_or(0.0),
+            texels: input.texels.unwrap_or(1024),
         };
-        for f in &b.entries {
-            if !LINES.iter().any(|v| v.key == f.key) {
-                return Err(format!("line {}: unknown hlod entry '{}'", f.line, f.key));
-            }
-            let number = || {
-                f.f32(0)
-                    .ok()
-                    .filter(|v| v.is_finite() && f.values.len() == 1 && f.block.is_none())
-                    .ok_or_else(|| format!("line {}: hlod.{} takes one number", f.line, f.key))
-            };
-            match f.key.as_str() {
-                "size" => s.size = number()?,
-                "error" => s.error = number()?,
-                "texels" => s.texels = number()? as u32,
-                k => {
-                    return Err(format!(
-                        "line {}: '{k}' is not an hlod entry: size, error, texels",
-                        f.line
-                    ));
-                }
-            }
-        }
         if !(4.0..=4096.0).contains(&s.size) {
             return Err(format!(
-                "line {line}: hlod.size {} is a leaf cell's side in metres, 4 to 4096",
+                "hlod.size {} is a leaf cell's side in metres, 4 to 4096",
                 s.size
             ));
         }
@@ -186,14 +146,14 @@ impl Settings {
         }
         if !(s.error > 0.0 && s.error <= s.size * 0.25) {
             return Err(format!(
-                "line {line}: hlod.error {} is how far a leaf's proxy may stand off its models in metres: above 0, at most a quarter of size ({})",
+                "hlod.error {} is how far a leaf's proxy may stand off its models in metres: above 0, at most a quarter of size ({})",
                 s.error,
                 s.size * 0.25
             ));
         }
         if !(64..=4096).contains(&s.texels) {
             return Err(format!(
-                "line {line}: hlod.texels {} is the longest side of a proxy's textures, 64 to 4096",
+                "hlod.texels {} is the longest side of a proxy's textures, 64 to 4096",
                 s.texels
             ));
         }
@@ -295,13 +255,14 @@ fn fit(s: &Source, options: &CookOptions) -> Result<Fit, &'static str> {
 }
 
 /// A `Transform` block's matrix, as the runtime composes it.
-fn transform(b: &Block) -> Mat4 {
+fn transform(b: &serde_json::Map<String, serde_json::Value>) -> Mat4 {
     let lanes = |key: &str, default: &[f32]| -> Vec<f32> {
         b.get(key)
-            .map(|e| {
-                e.values
+            .and_then(serde_json::Value::as_array)
+            .map(|values| {
+                values
                     .iter()
-                    .filter_map(|v| v.as_number().map(|n| n.as_f32()))
+                    .filter_map(|v| v.as_f64().map(|n| n as f32))
                     .collect::<Vec<f32>>()
             })
             .filter(|v| v.len() == default.len())
@@ -348,48 +309,31 @@ fn collect<'a>(
     while let Some((n, parent)) = stack.pop() {
         let entity = index;
         index += 1;
-        let mut local = Mat4::IDENTITY;
-        let mut model = None;
-        let mut is_static = false;
+        let local = n
+            .components
+            .get("og.Transform")
+            .map_or(Mat4::IDENTITY, transform);
+        let model = n.model.as_ref();
+        let mut is_static = n.static_model == Some(true);
         let mut own_look = None;
-        let (mut sub, mut is_cell) = (None, false);
-        let truth = |e: &Entry| e.values.first().and_then(|v| v.as_bool());
-        for e in &n.entries {
-            match (e.key.as_str(), &e.block) {
-                ("scene", None) => {
-                    sub = e
-                        .string(0)
-                        .ok()
-                        .map(|s| crate::runtime::asset_id(s).to_string())
-                }
-                ("StreamCell" | "og.StreamCell", Some(_)) => is_cell = true,
-                ("Transform" | "og.Transform", Some(b)) => local = transform(b),
-                ("model", None) => {
-                    model = e
-                        .string(0)
-                        .ok()
-                        .map(|s| crate::runtime::asset_id(s).to_string())
-                }
-                ("static", None) => is_static |= truth(e) == Some(true),
-                ("Model" | "og.Model", Some(b)) => {
-                    for f in &b.entries {
-                        match f.key.as_str() {
-                            "static" => is_static |= truth(f) == Some(true),
-                            "visible" if truth(f) == Some(false) => own_look = Some("hidden"),
-                            "tint" | "flash" | "variant" | "sway" => {
-                                own_look = Some("with a tint, flash, variant or sway of its own")
-                            }
-                            _ => {}
-                        }
+        if let Some(b) = n.components.get("og.Model") {
+            is_static |= b.get("static").and_then(serde_json::Value::as_bool) == Some(true);
+            for (field, value) in b {
+                match field.as_str() {
+                    "visible" if value.as_bool() == Some(false) => own_look = Some("hidden"),
+                    "tint" | "flash" | "variant" | "sway" => {
+                        own_look = Some("with a tint, flash, variant or sway of its own")
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
         let world = parent * local;
         stack.extend(n.children.iter().rev().map(|c| (c, world)));
-        if let (Some(sub), true) = (sub, is_cell) {
-            cells.push((entity, world, sub));
+        if let Some(sub) = &n.subscene
+            && n.components.contains_key("og.StreamCell")
+        {
+            cells.push((entity, world, sub.clone()));
         }
         let (Some(model), true) = (model, is_static) else {
             continue;
@@ -1661,14 +1605,13 @@ fn page_id(scene: &str, n: usize, page: usize) -> String {
 fn planned<'a>(
     cx: &Cx<'a>,
     s: &'a Source,
-    body: &Block,
+    doc: &Document,
     settings: Settings,
     with_cells: bool,
 ) -> Option<(Arc<Shared<'a>>, u64)> {
     // The scene's own cook reports what does not flatten.
-    let texts = |id: &str| cx.prefab_texts.get(id).cloned();
-    let flat = prefab::Flattener::new(&texts, cx.schemas)
-        .scene(&s.rel, body)
+    let flat = prefab::Flattener::new(cx.prefab_texts, cx.schemas)
+        .scene(&s.rel, doc)
         .ok()?;
     let (found, left, placed_cells) = collect(cx, &flat, &settings);
     let center = |m: usize| (found[m].lo + found[m].hi) * 0.5;
@@ -1746,11 +1689,9 @@ fn planned<'a>(
                     .iter()
                     .find(|x| x.rel == *sub)
                     .and_then(|x| {
-                        let text = String::from_utf8_lossy(&x.bytes);
-                        let doc = Document::parse(&text).ok()?;
-                        let e = doc.body.get_all("hlod").next()?;
-                        let settings = Settings::parse(e).ok()?;
-                        planned(cx, x, &doc.body, settings, false)
+                        let doc = x.scene.as_ref()?;
+                        let settings = Settings::parse(doc.scene.hlod.as_ref()?).ok()?;
+                        planned(cx, x, doc, settings, false)
                     })
                     .map(|(tree, _)| {
                         subs.push(tree);
@@ -1880,30 +1821,20 @@ pub(crate) fn plan<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,
     s: &'a Source,
-    text: &str,
+    doc: &Document,
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Ok(doc) = Document::parse(text) else {
-        return;
-    };
-    let mut blocks = doc.body.get_all("hlod");
-    let Some(entry) = blocks.next() else {
+    let Some(input) = &doc.scene.hlod else {
         return;
     };
     let refused = |state: &mut PlanState, e: String| {
         state.early_errors.push((s.rel.clone(), "scene", e));
     };
-    if let Some(second) = blocks.next() {
-        return refused(
-            state,
-            format!("line {}: a scene has one hlod block", second.line),
-        );
-    }
-    let settings = match Settings::parse(entry) {
+    let settings = match Settings::parse(input) {
         Ok(v) => v,
         Err(e) => return refused(state, e),
     };
-    let Some((shared, tree_stamp)) = planned(cx, s, &doc.body, settings, true) else {
+    let Some((shared, tree_stamp)) = planned(cx, s, doc, settings, true) else {
         return;
     };
     // The cook's workers take outputs in this order, and a proxy waits

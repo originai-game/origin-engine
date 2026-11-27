@@ -42,13 +42,21 @@ fn info(h: u64, b: &Behaviour) -> BehaviourInfo {
     }
 }
 
-fn insert(world: u32, b: Behaviour) -> Result<BehaviourInfo, String> {
+fn insert(
+    world: u32,
+    b: Behaviour,
+    mut borrowed: Option<&mut World>,
+) -> Result<BehaviourInfo, String> {
     // A behaviour with a game action: og.AiActionStarted and
     // og.AiActionStopped join the world (lazy records).
     if og_ai::has_actions(&b) {
         let eng = engine(world)?;
         for name in ["og.AiActionStarted", "og.AiActionStopped"] {
-            crate::engine::lazy::ensure(&eng, eng.world()?, name)?;
+            let world = match borrowed.as_deref_mut() {
+                Some(world) => world,
+                None => eng.world()?,
+            };
+            crate::engine::lazy::ensure(&eng, world, name)?;
         }
     }
     let reg = crate::bind::agents::with(world, |m| m.behaviours.clone())
@@ -71,19 +79,28 @@ fn cooked_text(world: u32, path: &str) -> Result<String, String> {
 }
 
 pub fn og_ai_load(world: u32, path: String) -> Result<crate::host::wire::BehaviourInfo, String> {
+    load(world, &path, None)
+}
+
+/// A scene relocation may already own the world's exclusive borrow.
+pub(crate) fn load(
+    world: u32,
+    path: &str,
+    borrowed: Option<&mut World>,
+) -> Result<BehaviourInfo, String> {
     (|| {
-        let id = og_bundle::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(path).to_string();
         let text = cooked_text(world, &id)?;
         let mut read = |p: &str| cooked_text(world, p);
         let b = Behaviour::parse_with(&text, &id, &mut read).map_err(|e| format!("{id}: {e}"))?;
-        insert(world, b)
+        insert(world, b, borrowed)
     })()
 }
 
 pub fn og_ai_parse(world: u32, text: String) -> Result<crate::host::wire::BehaviourInfo, String> {
     engine(world).and_then(|_| {
         let mut read = |p: &str| cooked_text(world, p);
-        insert(world, Behaviour::parse_with(&text, "", &mut read)?)
+        insert(world, Behaviour::parse_with(&text, "", &mut read)?, None)
     })
 }
 

@@ -261,6 +261,7 @@ pub fn write_probe(
         source_hash: 0,
         source_bytes: 0,
         modules: Vec::new(),
+        dependencies: Vec::new(),
         outputs: vec![ManifestOutput {
             id: id.to_string(),
             ty: crate::format::EnvironmentMap::NAME.to_string(),

@@ -281,11 +281,15 @@ invalidated by the compiler itself.
 
 ### 2.5 Scenes and assets
 
-- **`.ogt`** is the one text format: a line-based `type`/`version` header, a
-  separator, then `key value` lines with nested blocks. Scenes, materials,
-  tuning, import settings and the project manifest (`project.ogt`, whose
-  `budgets { }` `og doctor --project` checks) use it. It diffs line by line;
-  the agent's checkpoints are git commits.
+- **Authoring is TypeScript.** `og-project.json` identifies the project and
+  pins its engine; `project.ts` configures it with `defineProject`.
+  `content/**/*.ts` exports checked `file.<kind>` declarations, `lib/`
+  holds shared computations, and `assets/` holds imported binary media.
+  Cook evaluates captured inputs in a deterministic realm, validates native
+  data against the reflected schema and packs it without a text intermediary.
+  `.ogt` is internal text for IDL, probes, dumps and manifests, not an author
+  format. Remaining domain cutovers remove each old author parser with its
+  TS consumer; they do not introduce compatibility paths.
 - **`.ogb`** is the one cooked blob: type hash, schema version, cook stamp,
   then the reflected struct with its payloads (meshopt vertex streams, KTX2
   Basis Universal textures, QOA audio, MSDF fonts, scenes as component
@@ -293,10 +297,11 @@ invalidated by the compiler itself.
 - **Cook** (`og cook`): incremental and hash-stamped. A stamp holds the
   revisions of the cook areas that write its output (`format::Area`:
   textures, models, fonts…), never the engine's version, so a new build
-  cooks again only what a moved area writes. Sources live in
-  `assets/`, output in `cooked/`; the runtime reads only `cooked/`. Colour
-  textures are ETC1S unless project.ogt's `cook { color_textures uastc }`
-  says otherwise (`publish { color_textures etc1s }` overrides it for the web
+  cooks again only what a moved area writes. TS imports, explicit raw inputs,
+  reflected schemas and content references participate in cache invalidation.
+  Output lives in `cooked/`; the runtime reads only cooked output. Colour
+  textures are ETC1S unless project.ts's `cook.colorTextures: 'uastc'`
+  says otherwise (`publish.colorTextures: 'etc1s'` overrides it for the web
   export). The base colour texture of an alpha-tested glTF material gets mips
   that keep its coverage at the material's cut-off (og-cook's
   `cutout_mips`); a texture file or a run-time alpha test is not a cut-out to
@@ -335,35 +340,35 @@ A prefab is a reusable entity tree authored once and placed many times. An
 instance stores only what differs from its prefab, so a prefab edit reaches
 every instance on the next cook and an instance's edits survive it.
 
-**The asset.** An `.ogt` of `type prefab` with exactly one top-level
-`entity` block in the scene grammar. Entities inside it are addressed by
+**The asset.** A `content/**/*.ts` module exporting `file.prefab({entity})`
+from `@origingame/engine/author`, with exactly one root. Entities inside it are addressed by
 their **node path**, names from the root joined by `/` (`""` is the root);
 sibling names are unique.
 
 **Placing one.** Anywhere an entity can appear, it may be an instance:
 
-```text
-entity "crate1" {
-  prefab "prefabs/crate.ogt"        # its tree is the prefab's
-  Transform { position 4 0 2 }      # an override of the root
-  override "lid" {                  # an override of a descendant
-    Health { hp 40 }                # only the fields that differ
-  }
-  remove "lid/sticker"              # a descendant this instance drops
-  entity "loot" { ... }             # an entity added under the root
+```ts
+{
+  name: "crate1", prefab: ref("base/prefabs/crate"),
+  components: { "og.Transform": { position: [4, 0, 2] } },
+  edits: [
+    { kind: "override", path: "lid", components: { Health: { hp: 40 } } },
+    { kind: "remove", path: "lid/sticker" },
+  ],
+  children: [{ name: "loot" }],
 }
 ```
 
-`remove "<node>" Health` drops one component. Instances nest to any depth; a
-cycle is refused naming the chain. A prefab whose body starts with `base
-"<prefab>"` is a variant of that base, and variants chain.
+An edit `{kind: 'remove', path, component: 'Health'}` drops one component.
+Instances nest to any depth; a cycle is refused naming the chain. A prefab
+with `base: ref('module/prefab-id')` is a variant; variants chain.
 
-**Cooking.** The cook flattens depth-first in text order: the prefab's tree,
+**Cooking.** The cook flattens depth-first in array order: the prefab's tree,
 then the variant chain's deltas from the base outwards, then the instance's
 own. The scene blob keeps its shape, so a flattened prefab spawns and hashes
 exactly as the same entities written by hand, plus a `prefabs` table (source
 prefab, node, instance root). A scene's cook stamp includes every prefab it
-reaches. An **orphaned** override or `remove` stays in the text so a rename
+reaches. An **orphaned** override or remove stays in the TS source so a rename
 back restores it: a dev cook warns, `og prefab check` fails, a publish cook
 refuses it by name.
 
@@ -373,14 +378,14 @@ collision fails the cook naming both.
 **At run time.** Each spawned entity carries `og.PrefabLink`, ordinary world
 state carried by snapshots and the hash. A game without prefabs has none.
 
-**Write-back (dev builds).** `save_scene` keeps instances as instances,
-writing a tuned field as an override only when it differs from the prefab.
-`apply_prefab` writes an instance's overrides into the prefab's text (or,
-with `:base`, a variant's base) so the scene cooks to the same world;
-`revert_prefab` removes them. `og prefab check | show | extract` are the
-tools.
+**Author tools.** `og prefab check | show | extract` consume checked native
+declarations. Extraction only moves an unambiguous direct literal subtree;
+computed/shared expressions require an explicit source edit. Inspector/Tune
+changes memory only. Runtime Save/Apply refuse persistence; Revert restores
+selected fields from the cooked prefab in memory. `og set` supplies a checked,
+source-bound edit for direct TS literals, never a runtime entity serializer.
 
-**Determinism.** Flattening is a pure function of the texts.
+**Determinism.** Flattening is a pure function of captured native declarations.
 
 #### Sub-scenes and world cells
 
@@ -389,7 +394,7 @@ nothing a tick reads depends on them. World cells move entities, which a
 tick does read, so what is loaded at a tick is a function of world state
 alone, never of I/O timing.
 
-- **Sub-scenes.** `scene "<id>"` in an entity block places another scene
+- **Sub-scenes.** `scene: ref('module/content-id')` on an entity places another scene
   there as its own blob; a cycle is refused naming the chain.
 - **Cells.** An entity with a sub-scene and `og.StreamCell` is a cell. As
   each tick starts (before any system, so replays, re-simulations and
@@ -1008,7 +1013,7 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
 
 export default og.game({
   tick: 60,
-  scenes: { main: "scenes/main.ogt" },
+  scenes: { main: "base/scenes/main" },
   systems: [Move],
   commands: { spawn_wave: (world, args) => spawnWave(world, Number(args[0])) },  // registered into the command channel
 });
@@ -1033,7 +1038,7 @@ arguments, so a result can be written straight into a column, and only
 schedule actions on sim time. Core actions ship with the engine; a module or
 a game registers more. Unknown actions warn and continue. The core actions
 (`screenshot`, pointer and keyboard input, `teleport`, the `dump_*` family,
-`set`, the clock controls, `describe`, `expect`, `save_scene`, `quit`) are
+`set`, the clock controls, `describe`, `expect`, `quit`) are
 listed with their arguments by `og` command help and the testing guide.
 
 ### 3.4 Probe
@@ -1070,15 +1075,13 @@ pixels:
   (engine, render, gpu where timestamps exist, load, cook and lane threads);
   the live probe's `state().timings` carries the last tick's systems and
   frame's passes.
-- **Scene write-back.** `save_scene` rewrites every scene the world was
-  assembled from, line by line: a field line changes only when its value,
-  rounded as the cook rounds it, differs; comments, order and spelling stay;
-  resources are scene text too. With `spawned`, run-time entities are
-  written under a marked section of the boot scene, regenerated whole. Cooking
-  the result loads the same world, and saving again changes nothing.
+- **Source provenance.** Development scene blobs retain TS filenames and
+  declaration lines for diagnostics. These are not writable entity identities.
+  Runtime tuning never rewrites scene/prefab source or serializes spawned entities.
+  `og set` checks literal edits with OXC, evaluation and the project schemas.
 - **Diagnostics as data.** `og cook --report` writes per-asset figures read
   back through the runtime's loaders; `og doctor --project` checks them
-  against project.ogt's budgets and prints findings with severity, asset,
+  against project.ts's budgets and prints findings with severity, asset,
   budget, limit, value and fix. Warnings never modify an asset.
 
 ### 3.5 Hot reload
@@ -1099,15 +1102,14 @@ reflected schema and writes only through the probe:
 
 - **Panel.** Entities and resources with an editor per field. Every edit is
   the probe's `set`: checked against the schema, applied between ticks,
-  undoable, marked unsaved. Save is `save_scene`.
+  undoable, marked as differing from source. Source edits use checked `og set`
+  for direct TS literals or an author edit for computed expressions.
 - **Prefab overrides.** A prefab instance shows its prefab, node and
-  overrides; each can be applied into the prefab (`apply_prefab`) or
-  reverted (`revert_prefab`).
-- **Where Save goes.** Natively the engine writes the files. A web page
-  writes none: the save answers the texts, and the shell sends them to a
-  Stage that lists `scene_saved` or downloads them (`shell/wire.ts`
-  `routeSavedScenes`; `docs/platform-asks.md` #22). Apply and Revert work
-  only where the engine reads the project's files (#23).
+  overrides. Revert restores fields in memory. No Apply or Save control exists.
+- **Persistence.** Neither host writes files from the inspector or emits
+  scene text for platform persistence. The old Stage `scene_saved` and
+  prefab writeback asks are retired (`docs/platform-asks.md` #22/#23).
+  Read-only `read_source` and TS file/line provenance remain diagnostic tools.
 - **Gizmos.** Translate, rotate and scale on the selected og.Transform,
   writing through the same `set`, one undo step a drag.
 - **Observable.** `dump_inspector` answers the panel's elements and each
@@ -1260,7 +1262,7 @@ default); `og check` uses the tsgo fallback there.
   exclamation marks, and every error names the fix.
 - **Versioning**: releases `x.y.z`, where a patch may carry breaks the
   changelog lists, and dev builds `dev.<YYYYMMDD>.<n>` (`docs/release.md`
-  §1a, §3); a game pins its engine version in `project.ogt`; upgrades are
+  §1a, §3); a game pins its engine version in `og-project.json`; upgrades are
   explicit.
 - **Licence**: MIT (`LICENSE`).
 
@@ -1269,7 +1271,7 @@ default); `og check` uses the tsgo fallback there.
 The feature areas below are referenced by their code; each section names the
 modules that own it. The IDL is the contract for every signature. A type or
 parameter that has a three.js name takes that name. `debug`, `expect`,
-`trace`, `describe`, `save_scene` and the `og render` machinery are
+`trace`, `describe` and the `og render` machinery are
 development members, marked so in the IDL and absent from `publish`. Paths
 and the timeline's playback are §2.7, the video producer §2.9, rooms and
 lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.

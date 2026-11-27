@@ -12,7 +12,7 @@ pub(crate) struct Cx<'a> {
     pub(crate) sources: &'a [Source],
     pub(crate) rigs: &'a anim::Rigs,
     pub(crate) known: &'a BTreeSet<String>,
-    pub(crate) prefab_texts: &'a BTreeMap<String, String>,
+    pub(crate) prefab_texts: &'a BTreeMap<String, std::sync::Arc<scene::Document>>,
     pub(crate) group_of: &'a BTreeMap<String, String>,
     pub(crate) pack_faces: &'a BTreeSet<String>,
     pub(crate) old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,

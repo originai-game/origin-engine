@@ -99,9 +99,6 @@ pub(crate) struct SceneInstance {
     pub id: String,
     pub root: Option<u64>,
     pub entities: Vec<u64>,
-    /// Each entity's line in the scene's text (cooked: SceneLineRow), in
-    /// `entities`' order; none from a publish cook.
-    pub lines: Vec<Option<u32>>,
 }
 
 pub(crate) struct State {
@@ -131,16 +128,12 @@ pub(crate) struct State {
     pub scenes: BTreeMap<String, String>,
     /// The scene GameDesc.scene names, while its bundle is still loading.
     pub boot_scene: Option<String>,
-    /// The asset id of the scene GameDesc.scene spawned (`save_scene`
-    /// writes its source back first, with the resources and the spawned
-    /// section).
+    /// The asset id of the scene GameDesc.scene spawned.
     pub scene_source: Option<String>,
-    /// Every scene instantiated, in order (the boot scene's, those of
-    /// og.world.instantiate): `save_scene` writes each back to its source.
+    /// Every scene instantiated, in order, for source/prefab provenance.
     pub scene_instances: Vec<SceneInstance>,
     /// Entities the game spawned (world.spawn, between ticks or in a
-    /// system), by bits: what `save_scene`'s spawned section writes. Each
-    /// with the line that spawned it (SpawnDesc.source), which the probe
+    /// system), by bits, with the line that spawned it (SpawnDesc.source), which the probe
     /// answers as its source; none in a publish build.
     pub game_spawned: BTreeMap<u64, Option<std::sync::Arc<str>>>,
     /// GameDesc.start, until it has run.

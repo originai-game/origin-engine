@@ -18,7 +18,6 @@
 
 use super::*;
 use crate::look::Profile;
-use og_core::ogt::Block;
 
 /// The modules an asset of `kind` needs whatever it holds.
 fn of_kind(kind: &str) -> &'static [&'static str] {
@@ -45,11 +44,10 @@ fn simulation(profile: u64) -> &'static str {
     }
 }
 
-/// The modules a scene's or prefab's text needs by its own records: each
-/// component block in its entities and their overrides, and each
-/// `resource`, by the IDL's `split` (a game's own records need none); with
+/// The modules a checked scene/prefab needs by its own records, including
+/// component overrides and resources, by the IDL's `split`; with
 /// `physics`, the simulation of its `og.Physics` profile, else `project`'s.
-fn of_records(text: &str, project: Profile) -> BTreeSet<&'static str> {
+fn of_records(doc: &scene::Document, project: Profile) -> BTreeSet<&'static str> {
     fn split(name: &str) -> &'static [&'static str] {
         let name = name.strip_prefix("og.").unwrap_or(name);
         og_records::RECORDS
@@ -57,45 +55,35 @@ fn of_records(text: &str, project: Profile) -> BTreeSet<&'static str> {
             .find(|r| r.name == name)
             .map_or(&[], |r| r.split)
     }
-    fn walk(b: &Block, out: &mut BTreeSet<&'static str>) {
-        for e in &b.entries {
-            let Some(block) = &e.block else { continue };
-            match e.key.as_str() {
-                "entity" | "override" => walk(block, out),
-                component => out.extend(split(component)),
+    fn walk(e: &source_schemas::world::scene::EntityInput, out: &mut BTreeSet<&'static str>) {
+        for name in e.components.keys() {
+            out.extend(split(name));
+        }
+        for edit in &e.edits {
+            if let source_schemas::world::scene::PrefabEdit::Override { components, .. } = edit {
+                for name in components.keys() {
+                    out.extend(split(name));
+                }
             }
+        }
+        for child in &e.children {
+            walk(child, out);
         }
     }
     let mut out = BTreeSet::new();
-    let Ok(doc) = Document::parse(text) else {
-        return out;
-    };
     let mut profile = match project {
         Profile::TwoD => 2,
         Profile::ThreeD => 3,
     };
-    for e in &doc.body.entries {
-        match (e.key.as_str(), &e.block) {
-            ("entity", Some(b)) => walk(b, &mut out),
-            ("resource", block) => {
-                if let Some(r) = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_word().or_else(|| v.as_str()))
-                {
-                    out.extend(split(r));
-                    if r.strip_prefix("og.").unwrap_or(r) == "Physics"
-                        && let Some(p) = block
-                            .as_ref()
-                            .and_then(|b| b.get("profile"))
-                            .and_then(|p| p.values.first())
-                            .and_then(|v| v.as_number()?.as_u64().ok())
-                    {
-                        profile = p;
-                    }
-                }
-            }
-            _ => {}
+    for e in &doc.scene.entities {
+        walk(e, &mut out);
+    }
+    for (name, fields) in &doc.scene.resources {
+        out.extend(split(name));
+        if name == "og.Physics"
+            && let Some(p) = fields.get("profile").and_then(serde_json::Value::as_u64)
+        {
+            profile = p;
         }
     }
     if out.contains("physics") {
@@ -137,10 +125,8 @@ pub(crate) fn record(
         .iter()
         .map(|a| {
             let mut m: BTreeSet<&'static str> = of_kind(&a.kind).iter().copied().collect();
-            if let Some(s) = by_rel.get(a.source.as_str())
-                && [&scene::SCENE, &scene::PREFAB].contains(&s.kind)
-            {
-                m.extend(of_records(&String::from_utf8_lossy(&s.bytes), profile));
+            if let Some(doc) = by_rel.get(a.source.as_str()).and_then(|s| s.scene.as_ref()) {
+                m.extend(of_records(doc, profile));
             }
             m
         })
@@ -210,5 +196,11 @@ pub(crate) fn record(
     manifest.modules = bundle.into_iter().map(str::to_string).collect();
     for (a, n) in manifest.assets.iter_mut().zip(needs) {
         a.modules = n.into_iter().map(str::to_string).collect();
+        a.dependencies = parsed_refs
+            .get(&a.source)
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect();
     }
 }

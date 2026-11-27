@@ -341,6 +341,7 @@ pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: Option<String>) -> Sou
         animgraph: None,
         flipbook: None,
         rig2d: None,
+        scene: None,
         conformed: None,
         fracture: None,
     }

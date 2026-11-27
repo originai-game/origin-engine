@@ -8,6 +8,13 @@ fn field_json(ty: FieldType, bytes: &[u8], target: &crate::host::codec::FieldLay
     if ty.is_string() {
         return json!(og_core::unpack_str(bytes));
     }
+    if ty == FieldType::Ease {
+        return json!(
+            og_core::ease::Ease::from_bytes(bytes)
+                .expect("checked ease")
+                .to_text()
+        );
+    }
     if let Some((element, _)) = ty.list_of() {
         // A list moves by its elements; the codec refuses more than fit.
         let one = element.field_type();
@@ -269,7 +276,6 @@ pub(crate) fn spawn_part(
     before_structural(eng);
     for i in spawned.len()..end {
         let e = &scene.entities[i];
-        let world = eng.world()?;
         let mut components = Vec::new();
         // Its og.PrefabLink, spawned with it (an instance's root gets its
         // own once its id is known, below).
@@ -293,6 +299,13 @@ pub(crate) fn spawn_part(
         for (t, layout) in &tables {
             if let Some(row) = t.get(i) {
                 let mut value = migrate(&t.schema, row, layout, &mut dropped);
+                if let Some(fields) = scene
+                    .bindings
+                    .get(&i)
+                    .and_then(|records| records.get(&t.name))
+                {
+                    super::bindings::apply(eng, eng.world()?, layout, fields, &mut value)?;
+                }
                 if let (Some(pose), Some(tl)) = (place, &transform)
                     && tl.schema == layout.schema
                 {
@@ -306,7 +319,8 @@ pub(crate) fn spawn_part(
                     model_table = Some(value);
                     continue;
                 }
-                let id = world
+                let id = eng
+                    .world()?
                     .id_by_name(&layout.schema)
                     .map_err(|e| e.reason().to_string())?;
                 components.push((id, layout.encode(None, Some(&value))?));
@@ -316,7 +330,8 @@ pub(crate) fn spawn_part(
             }
         }
         if !has_transform && let Some(tl) = &transform {
-            let id = world
+            let id = eng
+                .world()?
                 .id_by_name(&tl.schema)
                 .map_err(|e| e.reason().to_string())?;
             let value = place.map(|pose| crate::world::stream::cells::placed(pose, &json!({})));
@@ -327,7 +342,8 @@ pub(crate) fn spawn_part(
         }
         let parent = e.parent.and_then(|p| spawned.get(p).copied()).or(root);
         if let (Some(p), Some(pl)) = (parent, &parent_layout) {
-            let id = world
+            let id = eng
+                .world()?
                 .id_by_name(&pl.schema)
                 .map_err(|e| e.reason().to_string())?;
             components.push((
@@ -437,7 +453,6 @@ pub(crate) fn spawn_part(
                 Placement::Cell { cell, .. } => Some(cell.to_bits()),
             },
             entities: spawned.iter().map(|e| e.to_bits()).collect(),
-            lines: scene.entities.iter().map(|e| e.line).collect(),
         });
     Ok(())
 }
@@ -463,7 +478,10 @@ fn apply_resources(
             ));
             continue;
         };
-        let value = migrate(&r.schema, &r.bytes, layout, dropped);
+        let mut value = migrate(&r.schema, &r.bytes, layout, dropped);
+        if let Some(fields) = scene.resource_bindings.get(&r.name) {
+            super::bindings::apply(eng, eng.world()?, layout, fields, &mut value)?;
+        }
         let world = eng.world()?;
         // A lazy resource (og.Lighting2D) a scene sets is registered then.
         crate::engine::lazy::ensure(eng, world, &layout.schema)?;

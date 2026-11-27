@@ -1,29 +1,13 @@
 //! Streaming groups (phase 3): a scene names groups of assets that load
 //! and unload together at runtime, instead of all at boot.
 //!
-//! ```text
-//! type scene
-//! version 1
-//! ---
-//! name "Valley"
-//! stream "village" {
-//!   asset "models/house.glb"     # every asset the group holds (a glTF brings its textures)
-//!   asset "textures/roof.png"
-//!   distance 120 0 40 150        # anchor x y z and radius: loads while the camera is within it
-//!   unload 190                   # unloads past this distance from the anchor (default: radius × 1.25)
-//!   priority 2                   # higher loads first and unloads last (default 0)
-//! }
-//! stream "cave" {
-//!   asset "audio/drips.wav"
-//!   volume "cave-mouth"          # loads while the camera is inside this entity's box
-//! }
-//! stream "boss" {
-//!   asset "models/boss.glb"      # neither: loads on og.stream.request only
-//! }
-//! ```
+//! A scene's TS `streams` map supplies canonical content refs and a tagged
+//! trigger (`manual`, `distance`, `volume` or `cell`). Distance triggers carry
+//! an anchor/radius and optional unload distance (default radius × 1.25).
+//! Volume triggers name an entity. Higher priority loads first/unloads last.
 //!
-//! A sub-scene (a scene another scene places with `scene "<id>"`) can
-//! declare a cell group, `stream "<name>" { cell; asset ... }`: the group
+//! A sub-scene (placed with `scene: ref(id)`) can declare a group with
+//! `trigger: {kind: 'cell'}`: the group
 //! holds the sub-scene's own blob beside the assets it names, so the blob
 //! leaves the boot bundle, and the runtime loads the group ahead of the
 //! anchors nearing the cells that place the sub-scene (og-runtime's
@@ -45,10 +29,11 @@
 //! no group are the first group: what a page downloads and precaches
 //! before the game starts.
 
+use crate::cook::formats::scene::Document;
+use crate::cook::source_schemas::world::scene::StreamTriggerInput;
 use crate::format::{self, BlobKind};
 use crate::runtime::{ManifestStream, StreamSound, StreamTrigger};
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
 use std::collections::BTreeMap;
 
 /// One group a scene declares.
@@ -61,51 +46,6 @@ pub(crate) struct GroupDecl {
     pub priority: i32,
 }
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "asset",
-        "\"<asset>\"",
-        "",
-        "Repeated asset ids; each asset belongs to at most one group.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "distance",
-        "<x> <y> <z> <radius>",
-        "manual",
-        "Distance trigger in scene metres; exclusive with volume and cell.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "unload",
-        "<metres>",
-        "radius * 1.25",
-        "Unload distance for a distance trigger.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "volume",
-        "\"<entity>\"",
-        "manual",
-        "Trigger inside the named entity's box.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "priority",
-        "<i32>",
-        "0",
-        "Higher loads first and unloads last.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "cell",
-        "",
-        "",
-        "Sub-scene cell group, at most one, without other trigger.",
-        "",
-    ),
-];
-
 fn valid_name(n: &str) -> bool {
     !n.is_empty()
         && n.len() <= 64
@@ -117,150 +57,69 @@ fn valid_name(n: &str) -> bool {
 /// a trigger of distance or volume (or none: manual).
 pub(crate) fn groups_of(
     scene: &str,
-    text: &str,
+    doc: &Document,
     known: &dyn Fn(&str) -> bool,
 ) -> Result<Vec<GroupDecl>, String> {
-    let Ok(doc) = Document::parse(text) else {
-        return Ok(Vec::new());
-    };
     let mut out = Vec::new();
-    for e in doc.body.get_all("stream") {
-        let name = e
-            .string(0)
-            .map_err(|_| {
-                format!(
-                    "line {}: a stream group is stream \"<name>\" {{ ... }}",
-                    e.line
-                )
-            })?
-            .to_string();
-        if !valid_name(&name) {
+    for (name, input) in &doc.scene.streams {
+        if !valid_name(name) {
             return Err(format!(
-                "line {}: stream \"{name}\": a group's name is 1 to 64 letters, digits, '-' and '_' (it names its pack file)",
-                e.line
+                "stream {name:?}: a group's name is 1 to 64 letters, digits, '-' and '_' (it names its pack file)"
             ));
-        }
-        let Some(b) = &e.block else {
-            return Err(format!(
-                "line {}: stream \"{name}\" needs a block of its assets",
-                e.line
-            ));
-        };
-        for k in &b.entries {
-            if !LINES.iter().any(|f| f.key == k.key) {
-                return Err(format!(
-                    "line {}: '{}' is not a stream entry: {}",
-                    k.line,
-                    k.key,
-                    LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
-                ));
-            }
         }
         let mut assets = Vec::new();
-        for a in b.get_all("asset") {
-            let id = crate::runtime::asset_id(
-                a.string(0)
-                    .map_err(|_| format!("line {}: asset \"<path under assets/>\"", a.line))?,
-            )
-            .to_string();
-            if !known(&id) {
+        for reference in &input.assets {
+            let id = &reference.id;
+            if !known(id) {
                 return Err(format!(
-                    "line {}: stream \"{name}\" names {id}, which is not an asset under assets/",
-                    a.line
+                    "stream {name:?} names {id}, which is not a cooked asset of this project"
                 ));
             }
-            if !assets.contains(&id) {
-                assets.push(id);
+            if !assets.contains(id) {
+                assets.push(id.clone());
             }
         }
-        let cell = b.get("cell");
-        if let Some(c) = cell
-            && !c.values.is_empty()
+        let trigger = match input
+            .trigger
+            .as_ref()
+            .unwrap_or(&StreamTriggerInput::Manual)
         {
-            return Err(format!(
-                "line {}: stream \"{name}\": 'cell' takes no value",
-                c.line
-            ));
-        }
-        // A cell group holds its scene's blob, so it may name no asset.
-        if assets.is_empty() && cell.is_none() {
-            return Err(format!("line {}: stream \"{name}\" holds no asset", e.line));
-        }
-        let number = |key: &str| -> Result<Option<Vec<f32>>, String> {
-            match b.get(key) {
-                None => Ok(None),
-                Some(x) => x
-                    .values
-                    .iter()
-                    .map(|v| {
-                        v.as_number()
-                            .map(|n| n.as_f32())
-                            .filter(|f| f.is_finite())
-                            .ok_or_else(|| format!("line {}: '{key}' takes numbers", x.line))
-                    })
-                    .collect::<Result<Vec<f32>, String>>()
-                    .map(Some),
-            }
-        };
-        let trigger = match (number("distance")?, b.get("volume")) {
-            (d, v)
-                if cell.is_some() && (d.is_some() || v.is_some() || b.get("unload").is_some()) =>
-            {
-                return Err(format!(
-                    "stream \"{name}\": a cell group loads with its cells' anchors; give it no distance or volume"
-                ));
-            }
-            _ if cell.is_some() => StreamTrigger::Cell,
-            (Some(_), Some(v)) => {
-                return Err(format!(
-                    "line {}: stream \"{name}\" has both distance and volume; give it one trigger",
-                    v.line
-                ));
-            }
-            (Some(d), None) => {
-                if d.len() != 4 || d[3] <= 0.0 {
+            StreamTriggerInput::Manual => StreamTrigger::Manual,
+            StreamTriggerInput::Cell => StreamTrigger::Cell,
+            StreamTriggerInput::Volume { entity } => StreamTrigger::Volume(entity.clone()),
+            StreamTriggerInput::Distance {
+                anchor,
+                radius,
+                unload,
+            } => {
+                if !anchor.iter().all(|n| n.is_finite()) || !radius.is_finite() || *radius <= 0.0 {
                     return Err(format!(
-                        "stream \"{name}\": distance takes the anchor's x y z and a positive radius"
+                        "stream {name:?}: distance needs a finite anchor and positive radius"
                     ));
                 }
-                let unload = match number("unload")? {
-                    None => d[3] * 1.25,
-                    Some(u) if u.len() == 1 && u[0] >= d[3] => u[0],
-                    Some(_) => {
-                        return Err(format!(
-                            "stream \"{name}\": unload takes one distance at least the radius ({})",
-                            d[3]
-                        ));
-                    }
-                };
+                let unload = unload.unwrap_or(radius * 1.25);
+                if !unload.is_finite() || unload < *radius {
+                    return Err(format!(
+                        "stream {name:?}: unload must be finite and at least radius ({radius})"
+                    ));
+                }
                 StreamTrigger::Distance {
-                    anchor: [d[0], d[1], d[2]],
-                    radius: d[3],
+                    anchor: *anchor,
+                    radius: *radius,
                     unload,
                 }
             }
-            (None, Some(v)) => StreamTrigger::Volume(
-                v.string(0)
-                    .map_err(|_| format!("line {}: volume \"<entity name>\"", v.line))?
-                    .to_string(),
-            ),
-            (None, None) => StreamTrigger::Manual,
         };
-        let priority = match number("priority")? {
-            None => 0,
-            Some(p) if p.len() == 1 && p[0].fract() == 0.0 => p[0] as i32,
-            Some(_) => {
-                return Err(format!(
-                    "stream \"{name}\": priority takes one whole number"
-                ));
-            }
-        };
+        // A cell group holds its own scene blob, even with no named assets.
+        if assets.is_empty() && !matches!(trigger, StreamTrigger::Cell) {
+            return Err(format!("stream {name:?} holds no asset"));
+        }
         out.push(GroupDecl {
-            name,
+            name: name.clone(),
             scene: scene.to_string(),
             assets,
             trigger,
-            priority,
+            priority: input.priority.unwrap_or(0),
         });
     }
     Ok(out)

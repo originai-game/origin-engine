@@ -46,12 +46,10 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"describe"` | `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera. |
 | `"expect"` | `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:`, `event:`, `ui:text:`, `region:`, `frame:`, `state:`, `timings:` or `audio:`. Failures warn and exit 1 in `og run --json`; frame/audio checks without a renderer/sink are unchecked. |
 | `"invariant"` | `invariant:<what>`: check an expectation (any `expect:` form except `region`, `frame` and `audio`) after every tick: the first failing tick is an assertion violation with the tick and observed value, failing `og run --json` and playtests. |
-| `"save_scene"` | `save_scene[:path][:spawned]`: write each scene the world was built from back from it, rewriting only the lines whose values changed; `spawned` adds the entities spawned at run time. To each scene's source, or with a path the boot scene's to that file in the output directory, the others beside it. |
 | `"help"` | `help`: list every action the channel knows, core and registered. |
 | `"mouse_move"` | `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves. |
 | `"pointer_lock"` | `pointer_lock:<on\|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own. |
-| `"apply_prefab"` | `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or a field's; run-time too) to its node in the prefab's `.ogt`, out of the scene's instance block: the scene cooks the same world and every instance takes them; `base`: to a variant's base. |
-| `"revert_prefab"` | `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's. |
+| `"revert_prefab"` | `revert_prefab:<entity>[:<Component>[.<field>]]`: reset selected live fields to the cooked prefab's values in memory only; authored overrides and source files remain unchanged. |
 
 ```ogt
 enum CoreAction {
@@ -89,12 +87,10 @@ enum CoreAction {
   variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
   variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:`, `event:`, `ui:text:`, `region:`, `frame:`, `state:`, `timings:` or `audio:`. Failures warn and exit 1 in `og run --json`; frame/audio checks without a renderer/sink are unchecked."
   variant invariant "`invariant:<what>`: check an expectation (any `expect:` form except `region`, `frame` and `audio`) after every tick: the first failing tick is an assertion violation with the tick and observed value, failing `og run --json` and playtests."
-  variant save_scene "`save_scene[:path][:spawned]`: write each scene the world was built from back from it, rewriting only the lines whose values changed; `spawned` adds the entities spawned at run time. To each scene's source, or with a path the boot scene's to that file in the output directory, the others beside it."
   variant help "`help`: list every action the channel knows, core and registered."
   variant mouse_move "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves."
   variant pointer_lock "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own."
-  variant apply_prefab "`apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or a field's; run-time too) to its node in the prefab's `.ogt`, out of the scene's instance block: the scene cooks the same world and every instance takes them; `base`: to a variant's base."
-  variant revert_prefab "`revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's."
+  variant revert_prefab "`revert_prefab:<entity>[:<Component>[.<field>]]`: reset selected live fields to the cooked prefab's values in memory only; authored overrides and source files remain unchanged."
 }
 ```
 

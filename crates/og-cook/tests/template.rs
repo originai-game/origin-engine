@@ -564,8 +564,8 @@ fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
         "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'lighting',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
     );
     write(
-        "assets/room.ogt",
-        "type scene\nversion 1\n---\nentity \"Room\" {\n}\n",
+        "content/room.ts",
+        "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'Room'}]});",
     );
     write(
         "assets/mesh.gltf",
@@ -596,14 +596,14 @@ fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
         assert!(report.ok(), "{:?}", report.errors());
         let b = Bundle::open(&root.join("cooked")).unwrap();
         assert_eq!(
-            b.manifest().lightmaps.get("room.ogt").map(String::as_str),
+            b.manifest().lightmaps.get("base/room").map(String::as_str),
             Some("north/lighting")
         );
         let bytes = b.read("north/lighting").unwrap();
         let lm = b.lightmap("north/lighting", &bytes).unwrap();
         assert_eq!(
             (lm.file.scene.as_str(), lm.file.scene_hash),
-            ("room.ogt", 0xfedcba9876543210)
+            ("base/room", 0xfedcba9876543210)
         );
         assert_eq!((lm.file.samples, lm.file.seconds), (83, 1.25));
         assert_eq!((lm.width, lm.height), (2, 1));
@@ -620,8 +620,8 @@ fn typed_lightmaps_preserve_bindings_and_capture_page_dependencies() {
             [[0.125, 0.25, 1.0], [0.5, 0.75, 0.0], [1.0, 0.0, 1.0]]
         );
         assert_eq!(lm.file.models[0].parts[1].xref, [1]);
-        assert_eq!(lm.file.models[1].asset, "room.ogt#hlod-7");
-        assert_eq!(lm.file.models[2].asset, "room.ogt#hlod-2");
+        assert_eq!(lm.file.models[1].asset, "base/room#hlod-7");
+        assert_eq!(lm.file.models[2].asset, "base/room#hlod-2");
         assert_eq!(lm.file.volumes[0].probes[1][2], [21.0, 22.0, 23.0, 24.0]);
         assert_eq!(lm.file.volumes[1].probes[0][0], [25.0, 26.0, 27.0, 28.0]);
         if let Some(old) = previous {
@@ -1113,8 +1113,8 @@ fn typed_navigation_bakes_captured_geometry_and_preserves_profiles_and_links() {
         "accessors":[{"bufferView":0,"componentType":5126,"count":6,"type":"VEC3","min":[-5,0,-3],"max":[5,3,3]}]
     }).to_string());
     write(
-        "assets/scene.ogt",
-        "type scene\nversion 1\n---\nentity \"east\" {\nTransform {\nposition 20 1 0\n}\nCollider {\nsize 6 2 6\n}\n}\n",
+        "content/scene.ts",
+        "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'east',components:{'og.Transform':{position:[20,1,0]},'og.Collider':{size:[6,2,6]}}}]});",
     );
     let declaration = "import {file,ref} from '@origingame/engine/author';\nexport default file.navmesh({
         scene:ref('base/scene'),models:[{model:ref('base/platform'),transform:{position:[2,0,0],scale:[2,1,1]}}],
@@ -1470,7 +1470,7 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert_eq!(strings.entries["menu.spinning"].1.arguments(), ["speed"]);
 
     // Scene: entities, nesting, model instances and the Transform table.
-    let scene = b.load_scene("scenes/main.ogt").unwrap();
+    let scene = b.load_scene("base/scenes/main").unwrap();
     assert_eq!(scene.name, "Main");
     let names: Vec<&str> = scene.entities.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, ["ground", "dropship", "trickster", "marker"]);
@@ -1482,9 +1482,9 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     let t = scene
         .components
         .iter()
-        .find(|c| c.name == "Transform")
+        .find(|c| c.name == "og.Transform")
         .unwrap();
-    assert!(t.inferred);
+    assert!(!t.inferred);
     let fields: Vec<&str> = t.schema.fields.iter().map(|f| f.name.as_str()).collect();
     assert_eq!(fields, ["position", "quaternion", "scale"]);
     let marker = t.get(3).unwrap();

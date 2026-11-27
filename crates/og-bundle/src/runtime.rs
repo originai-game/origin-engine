@@ -218,6 +218,9 @@ pub struct ManifestAsset {
     /// and a timeline's pre-roll fetch them ahead of their first call
     /// (docs/web-export.md §Modules).
     pub modules: Vec<String>,
+    /// Direct cooked content dependencies, including exact subresource IDs.
+    /// Hosts fetch their closure before relocating a scene's typed columns.
+    pub dependencies: Vec<String>,
     pub outputs: Vec<ManifestOutput>,
 }
 
@@ -388,6 +391,23 @@ impl Manifest {
                     .map(words)
                     .transpose()?
                     .unwrap_or_default(),
+                dependencies: block
+                    .get("dependencies")
+                    .map(|e| {
+                        e.values
+                            .iter()
+                            .map(|v| {
+                                v.as_str().map(str::to_owned).ok_or_else(|| {
+                                    bad(format!(
+                                        "line {}: dependencies names quoted content IDs",
+                                        e.line
+                                    ))
+                                })
+                            })
+                            .collect::<Result<_, _>>()
+                    })
+                    .transpose()?
+                    .unwrap_or_default(),
                 outputs: Vec::new(),
             };
             for o in block.get_all("output") {
@@ -548,6 +568,13 @@ impl Manifest {
                     a.modules
                         .iter()
                         .fold(Entry::new("modules"), |e, m| e.with(w(m))),
+                );
+            }
+            if !a.dependencies.is_empty() {
+                b.push(
+                    a.dependencies
+                        .iter()
+                        .fold(Entry::new("dependencies"), |e, id| e.with(s(id))),
                 );
             }
             for o in &a.outputs {

@@ -220,7 +220,7 @@ pub(crate) struct District {
     pub materials: String,
     pub cells: Option<Cells>,
     /// The `hlod` block, given to each cell's sub-scene as written.
-    pub hlod: Option<Entry>,
+    pub hlod: Option<crate::cook::source_schemas::world::scene::HlodInput>,
     pub merge: bool,
     /// The terrain asset, in the district's local space, and carve depth.
     pub terrain: Option<(String, f64)>,
@@ -507,7 +507,22 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
         props,
         materials,
         cells,
-        hlod: b.get("hlod").cloned(),
+        hlod: b
+            .get("hlod")
+            .map(|e| {
+                let b = block(e)?;
+                fields(b, super::super::hlod::LINES, "hlod")?;
+                let texels = b.get("texels").map(one).transpose()?;
+                if texels.is_some_and(|n| n.fract() != 0.0 || !(64.0..=4096.0).contains(&n)) {
+                    return Err(at(e, "hlod.texels is an integer from 64 to 4096"));
+                }
+                Ok(crate::cook::source_schemas::world::scene::HlodInput {
+                    size: b.get("size").map(one).transpose()?.map(|n| n as f32),
+                    error: b.get("error").map(one).transpose()?.map(|n| n as f32),
+                    texels: texels.map(|n| n as u32),
+                })
+            })
+            .transpose()?,
         merge: b.get("merge").map(flag).transpose()?.unwrap_or(true),
         terrain,
     })

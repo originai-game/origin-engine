@@ -15,7 +15,7 @@ only: frames, the UI tree and bundle swaps come in through traits.
 | `Probe` | `Probe::new(&mut world)` (registers `og.Input`), `with_input(world, sink)`; hooks `set_capture`, `set_ui`, `set_reloader`, `set_facts`, `set_timings`, `set_engine_version`; `names()` resolves ids over the world's names |
 | driving | `frame(world, due)`, `step(world)`, `pump(world)`, `paused()`, `quit_requested()`, `take_outputs()`, `take_log()` |
 | command channel | `schedule(world, script) -> CommandsReport`, `register_command(name, CommandDesc, handler)`, `register_dump(name, CommandDesc, path_arg, handler)` (a module's dump: its JSON becomes an output like `dump_entity`'s), `inbox()` (an `Inbox` modules push actions into from inside a tick; the next tick runs them before its scheduled steps), `help()`, `command::parse`, `command::CORE_ACTIONS` |
-| probe members | `hello`, `tick`, `state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `pick_ui`, `entity`, `bounds`, `patch`, `run`, `capture`, `capture_views`, `marks`, `timeline`, `sweep`, `reload`, `snapshot`, `restore`, `dump` (`world`, `entity`, `ui`, `ui:layers`, `ui:motion`, `drawn`, `desync`, and any registered `dump_<name>`), `visible`, `commands`, `listen`, `memory`, `describe`, `expect`, `expectations`, `assertions`, `assertion_events`, `observe`, `save_scene`, `logs`, `set`, `get` |
+| probe members | `hello`, `tick`, `state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `pick_ui`, `entity`, `bounds`, `patch`, `run`, `capture`, `capture_views`, `marks`, `timeline`, `sweep`, `reload`, `snapshot`, `restore`, `dump` (`world`, `entity`, `ui`, `ui:layers`, `ui:motion`, `drawn`, `desync`, and any registered `dump_<name>`), `visible`, `commands`, `listen`, `memory`, `describe`, `expect`, `expectations`, `assertions`, `assertion_events`, `observe`, `logs`, `set`, `get` |
 | JSON-RPC | `Probe::call(world, frame) -> frame`, `Probe::answer(world, &Call)`, `rpc::parse`, `rpc::{PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR}` |
 | WebSocket (feature `ws`, native) | `server::ProbeServer::start(port)` (`None` for 0), `bind(addr)`, `poll()`, `Probe::serve(world, &server)`, `DEFAULT_PORT = 47800`, `PATH = "/probe"`; a handshake carrying an `Origin` header (every browser page sends one) is refused with 403, so only native clients (`og probe`, the runner) connect |
 | hooks | `Capture` (`tier`, `target_size`, `capture`, `pick`), `UiTree` (`elements`) + `StaticUi`, `Reloader` (`rebuild -> Rebuilt { world, ms }`), `InputSink` + `WorldInput`, `set_listen(seconds -> Heard)` (the last seconds of the mix: a WAV with its rate, frames, peak and RMS), `set_memory(world -> Value)` (what `memory` answers) |
@@ -174,7 +174,7 @@ world hash, replayed. The input module replaces it by implementing
   event keys reach (the input actions, `set`, `teleport`, `frame_entity`,
   `seed`, the clock, registered commands); the actions that only observe
   the world for a tool (`screenshot`, `listen`, `describe`, `expect`,
-  `save_scene`, `dump_world`, `dump_ui`, `dump_entity`, `get`, `help`) are
+  `dump_world`, `dump_ui`, `dump_entity`, `get`, `help`) are
   not built in and log a warning, and `register_dump`, `set_listen`,
   `set_memory` and `set_reader` keep nothing. `hello.build` is `publish`,
   `dev` (debug assertions) or `release`.

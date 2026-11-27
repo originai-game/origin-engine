@@ -282,7 +282,7 @@ looks and colour LUTs (`.cube`).
 ## 5. Cells
 
 Cells stream entities, not assets: an entity with an og.StreamCell and a
-sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene
+sub-scene (`scene: ref("module/scenes/id")` in its TS declaration, or StreamCell.scene
 from og.load.scene) is a cell.
 
 - When it loads, its sub-scene's entities (with their colliders, bodies and
@@ -299,13 +299,13 @@ from og.load.scene) is a cell.
   while `pin` is set. Without any anchor og.Camera's position anchors, for a
   single-player game; a lockstep or rollback session refuses that, since
   each peer's camera is its own.
-- Cells load in entity id order and a sub-scene spawns in its text order,
+- Cells load in entity id order and a sub-scene spawns in its declared array order,
   so the same world spawns the same entity ids on both hosts, in a replay,
   a rollback and after a restore. Which cells are loaded, and their
   entities, are in snapshots, saves and the hash; an unloaded cell's
   entities come back from its sub-scene as authored (unless `persist`).
 - A sub-scene's blob is in its declaring bundle unless the sub-scene declares a
-  cell group (`stream "<name>" { cell; asset ... }`): then it is in that
+  cell group (`streams: { region: { trigger: "cell", assets: [ref("module/model")] } }`): then it is in that
   group's pack with the assets it names, fetched ahead of the anchors, and
   its models stay hidden until their textures are prepared. A tick that
   would load a cell whose blob has not landed is
@@ -395,26 +395,22 @@ from og.load.scene) is a cell.
 ### Distant models as proxies (HLOD)
 
 A town of a thousand buildings is a thousand models' draws and triangles
-however far away it is. A scene with an `hlod` block has the cook merge
+however far away it is. A scene with an `hlod` object has the cook merge
 its `static` models into proxies, and the frame draws a proxy in place of
 its models once the difference is under a pixel:
 
-```
-type scene
-version 1
----
-hlod {
-  size 64
-  error 0.25
-  texels 1024
-}
-entity "house-12" {
-  model "models/house.glb"
-  static true
-  Transform {
-    position 120 0 48
-  }
-}
+```ts
+import { file, ref } from "@origingame/engine/author";
+
+export default file.scene({
+  hlod: { size: 64, error: 0.25, texels: 1024 },
+  entities: [{
+    name: "house-12",
+    model: ref("base/models/house"),
+    static: true,
+    components: { "og.Transform": { position: [120, 0, 48] } },
+  }],
+});
 ```
 
 | Field | Default | Meaning |

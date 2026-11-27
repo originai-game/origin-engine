@@ -19,6 +19,7 @@ use og_ecs::Entity;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+mod bindings;
 mod closure;
 mod models;
 mod recovery;
@@ -27,6 +28,7 @@ mod sound;
 mod spawn;
 mod textures;
 
+pub(crate) use bindings::apply as bind_fields;
 pub(crate) use closure::{
     Closure, Prepared, load as load_closure, prepared as closure_prepared, presented,
     ready as closure_ready,

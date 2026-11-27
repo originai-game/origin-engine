@@ -1,77 +1,35 @@
-//! `og prefab` (`docs/design.md` §2.5, prefabs):
-//!
-//! - `og prefab check [project]`: every scene and prefab flattened as the
-//!   cook flattens it; cycles, sibling name clashes, generated names that
-//!   collide, and orphaned overrides and removes (an override whose node,
-//!   component or field the prefab no longer has) are listed, and the
-//!   command exits 1 while any exists;
-//! - `og prefab show <prefab> [--scene <id> --instance <name>] [--project <dir>]`:
-//!   the flattened tree, each field with the text its value comes from (the
-//!   prefab, a variant's or an instance's override);
-//! - `og prefab extract <scene> <entity> <prefab> [--project <dir>]`: an
-//!   authored entity's block becomes a new prefab and the scene's block an
-//!   instance of it with no overrides.
-
-use og_cook::cook::prefab::{Flattener, Node, PREFAB_TYPE};
-use og_core::ogt::Document;
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+//! Prefab inspection shares the cook's checked native tree. Extraction edits
+//! only an OXC-proven literal entity and leaves computed source untouched.
+use og_cook::cook::{
+    generator::source::{Edit, Source},
+    prefab::{self, Flattener, Node},
+    source_content, source_index, source_project, source_records, source_transaction,
+};
+use serde_json::json;
+use std::{io::Write, path::PathBuf, process::ExitCode};
 
 const USAGE: &str = "usage: og prefab check [project] | og prefab show <prefab> [--scene <id> --instance <name>] [--project <dir>] | og prefab extract <scene> <entity> <prefab> [--project <dir>]";
 
 pub fn run(args: &[&str]) -> ExitCode {
-    let r = match args {
+    let result = match args {
         ["check", rest @ ..] => check(rest),
         ["show", rest @ ..] => show(rest),
         ["extract", rest @ ..] => extract(rest),
-        _ => Err(USAGE.to_string()),
+        _ => Err(USAGE.into()),
     };
-    match r {
+    match result {
         Ok(code) => code,
-        Err(e) => {
-            eprintln!("og prefab: {e}");
+        Err(error) => {
+            eprintln!("og prefab: {error}");
             ExitCode::from(2)
         }
     }
 }
 
-/// Every `.ogt` under `assets/` by asset id, with its document type.
-fn texts(root: &Path) -> Result<BTreeMap<String, (String, String)>, String> {
-    let assets = root.join("assets");
-    if !assets.is_dir() {
-        return Err(format!("{}: no assets/ directory", root.display()));
-    }
-    let mut out = BTreeMap::new();
-    let mut todo = vec![assets.clone()];
-    while let Some(dir) = todo.pop() {
-        let entries = std::fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        for e in entries.flatten() {
-            let path = e.path();
-            if path.is_dir() {
-                todo.push(path);
-            } else if path.extension().is_some_and(|x| x == "ogt")
-                && let Ok(text) = std::fs::read_to_string(&path)
-                && let Ok(doc) = Document::parse(&text)
-            {
-                let id = path
-                    .strip_prefix(&assets)
-                    .map_err(|e| e.to_string())?
-                    .to_string_lossy()
-                    .replace('\\', "/");
-                out.insert(id, (doc.ty, text));
-            }
-        }
-    }
-    Ok(out)
-}
-
-/// `--flag value` of `args`.
 fn flag<'a>(args: &[&'a str], name: &str) -> Option<&'a str> {
     args.windows(2).find(|w| w[0] == name).map(|w| w[1])
 }
 
-/// The positional arguments (those not a flag or a flag's value).
 fn positional<'a>(args: &[&'a str]) -> Vec<&'a str> {
     let mut out = Vec::new();
     let mut skip = false;
@@ -89,63 +47,37 @@ fn positional<'a>(args: &[&'a str]) -> Vec<&'a str> {
 
 fn check(args: &[&str]) -> Result<ExitCode, String> {
     let root = PathBuf::from(positional(args).first().copied().unwrap_or("."));
-    let all = texts(&root)?;
-    let schemas: BTreeMap<String, og_core::Schema> = og_cook::cook::engine_schemas()
-        .into_iter()
-        .map(|s| (s.name.clone(), s))
+    let all = prefab::documents(&root, &Default::default())?;
+    let schemas = all
+        .values()
+        .flat_map(|d| d.records.iter().map(|(n, r)| (n.clone(), r.schema.clone())))
         .collect();
-    let prefab_text = |id: &str| {
-        all.get(id)
-            .filter(|(ty, _)| ty == PREFAB_TYPE)
-            .map(|(_, t)| t.clone())
-    };
     let mut problems = Vec::new();
-    let mut checked = 0;
-    for (id, (ty, text)) in &all {
-        if ty != "scene" && ty != PREFAB_TYPE {
-            continue;
-        }
-        checked += 1;
-        let mut f = Flattener::new(&prefab_text, &schemas);
-        let r = if ty == PREFAB_TYPE {
+    for (id, doc) in &all {
+        let mut f = Flattener::new(&all, &schemas);
+        let result = if doc.prefab {
             f.prefab(id).map(|_| ())
         } else {
-            Document::parse(text)
-                .map_err(|e| og_cook::CookError(e.to_string()))
-                .and_then(|d| f.scene(id, &d.body).map(|_| ()))
+            f.scene(id, doc).map(|_| ())
         };
-        if let Err(e) = r {
-            problems.push(format!("assets/{id}: {}", e.0));
+        if let Err(e) = result {
+            problems.push(e.0);
         }
-        for o in f.orphans.iter().filter(|o| o.source == *id) {
-            problems.push(format!("assets/{o}"));
-        }
+        problems.extend(f.orphans.iter().map(ToString::to_string));
     }
     for p in &problems {
         println!("{p}");
     }
     if problems.is_empty() {
-        println!("og prefab check: {checked} scene(s) and prefab(s), nothing orphaned");
+        println!(
+            "og prefab check: {} scene(s) and prefab(s), nothing orphaned",
+            all.len()
+        );
         Ok(ExitCode::SUCCESS)
     } else {
         println!("og prefab check: {} problem(s)", problems.len());
         Ok(ExitCode::FAILURE)
     }
-}
-
-/// One entry as its text line (`hp 40`, `model "m.glb"`).
-fn line(e: &og_core::ogt::Entry) -> String {
-    let mut e = e.clone();
-    e.block = None;
-    Document {
-        ty: "x".into(),
-        version: 1,
-        body: og_core::ogt::Block::new().with(e),
-    }
-    .to_text()
-    .ok()
-    .and_then(|t| t.trim_end().lines().last().map(str::to_string))
-    .unwrap_or_default()
 }
 
 fn print(node: &Node) {
@@ -156,138 +88,285 @@ fn print(node: &Node) {
             path.matches('/').count() + 1
         };
         let pad = "  ".repeat(depth);
-        println!("{pad}entity \"{}\"", n.name);
+        println!("{pad}entity {:?}", n.name);
         let origin = |c: &str, f: &str| {
             n.origins
-                .get(&(c.to_string(), f.to_string()))
+                .get(&(c.into(), f.into()))
                 .map_or("", String::as_str)
-                .to_string()
         };
-        for e in &n.entries {
-            match &e.block {
-                None => println!("{pad}  {}  # {}", line(e), origin(&e.key, "")),
-                Some(b) => {
-                    println!("{pad}  {} {{", e.key);
-                    for f in &b.entries {
-                        println!("{pad}    {}  # {}", line(f), origin(&e.key, &f.key));
-                    }
-                    println!("{pad}  }}");
-                }
+        for (field, value) in [("model", n.model.as_ref()), ("scene", n.subscene.as_ref())] {
+            if let Some(value) = value {
+                println!("{pad}  {field}: {value:?} // {}", origin(field, ""));
             }
+        }
+        if let Some(value) = n.static_model {
+            println!("{pad}  static: {value} // {}", origin("static", ""));
+        }
+        for (component, fields) in &n.components {
+            println!("{pad}  {component} {{");
+            for (field, value) in fields {
+                println!("{pad}    {field}: {value} // {}", origin(component, field));
+            }
+            println!("{pad}  }}");
         }
     }
 }
 
 fn show(args: &[&str]) -> Result<ExitCode, String> {
     let root = PathBuf::from(flag(args, "--project").unwrap_or("."));
-    let [prefab] = positional(args)[..] else {
+    let [id] = positional(args)[..] else {
         return Err(USAGE.into());
     };
-    let prefab = og_cook::runtime::asset_id(prefab).to_string();
-    let all = texts(&root)?;
-    let schemas: BTreeMap<String, og_core::Schema> = og_cook::cook::engine_schemas()
-        .into_iter()
-        .map(|s| (s.name.clone(), s))
+    let all = prefab::documents(&root, &Default::default())?;
+    let schemas = all
+        .values()
+        .flat_map(|d| d.records.iter().map(|(n, r)| (n.clone(), r.schema.clone())))
         .collect();
-    let prefab_text = |id: &str| {
-        all.get(id)
-            .filter(|(ty, _)| ty == PREFAB_TYPE)
-            .map(|(_, t)| t.clone())
-    };
-    let mut f = Flattener::new(&prefab_text, &schemas);
+    let mut f = Flattener::new(&all, &schemas);
     let node = match (flag(args, "--scene"), flag(args, "--instance")) {
         (Some(scene), Some(instance)) => {
-            let scene = og_cook::runtime::asset_id(scene).to_string();
-            let (_, text) = all
-                .get(&scene)
-                .ok_or_else(|| format!("no scene assets/{scene}"))?;
-            let doc = Document::parse(text).map_err(|e| e.to_string())?;
-            let roots = f.scene(&scene, &doc.body).map_err(|e| e.0)?;
-            roots
+            let doc = all
+                .get(scene)
+                .filter(|d| !d.prefab)
+                .ok_or_else(|| format!("no checked scene {scene}"))?;
+            f.scene(scene, doc)
+                .map_err(|e| e.0)?
                 .iter()
                 .flat_map(|r| r.walk())
                 .find(|(_, n)| {
                     n.name == instance
                         && n.link
                             .as_ref()
-                            .is_some_and(|l| l.node == 0 && l.prefab == prefab)
+                            .is_some_and(|l| l.node == 0 && l.prefab == id)
                 })
                 .map(|(_, n)| n.clone())
-                .ok_or_else(|| format!("{scene} has no instance '{instance}' of {prefab}"))?
+                .ok_or_else(|| format!("{scene} has no instance {instance:?} of {id}"))?
         }
-        (None, None) => f.prefab(&prefab).map_err(|e| e.0)?,
+        (None, None) => f.prefab(id).map_err(|e| e.0)?,
         _ => return Err("--scene and --instance go together".into()),
     };
     print(&node);
-    for o in &f.orphans {
-        println!("# warning: {o}");
+    for orphan in &f.orphans {
+        println!("// warning: {orphan}");
     }
     Ok(ExitCode::SUCCESS)
 }
 
-/// The lines of the block `entity "<name>" {` opens (that line to its `}`).
-fn block_lines(lines: &[&str], name: &str) -> Option<(usize, usize)> {
-    let head = format!("entity \"{name}\" {{");
-    let start = lines.iter().position(|l| {
-        let code = l.split('#').next().unwrap_or("").trim();
-        code == head
-    })?;
-    let mut depth = 0i32;
-    for (i, l) in lines.iter().enumerate().skip(start) {
-        let code = l.split('#').next().unwrap_or("").trim();
-        if code.ends_with('{') {
-            depth += 1;
-        }
-        if code == "}" {
-            depth -= 1;
-            if depth == 0 {
-                return Some((start, i));
-            }
-        }
-    }
-    None
-}
-
 fn extract(args: &[&str]) -> Result<ExitCode, String> {
     let root = PathBuf::from(flag(args, "--project").unwrap_or("."));
-    let [scene, entity, prefab] = positional(args)[..] else {
+    let [scene, name, prefab] = positional(args)[..] else {
         return Err(USAGE.into());
     };
-    let (scene, prefab) = (
-        og_cook::runtime::asset_id(scene),
-        og_cook::runtime::asset_id(prefab),
+    let project = source_project::Project::open(&root).map_err(|e| e.to_string())?;
+    let index = source_index::Index::open(&root, &project).map_err(|e| e.to_string())?;
+    let entry = index
+        .entries
+        .get(scene)
+        .filter(|e| e.factory == "scene")
+        .ok_or_else(|| format!("no scene {scene}"))?;
+    let all = prefab::documents(&root, &Default::default())?;
+    fn find(
+        entities: &[og_cook::cook::source_schemas::world::scene::EntityInput],
+        name: &str,
+        parent: &str,
+        out: &mut Vec<String>,
+    ) {
+        for (i, e) in entities.iter().enumerate() {
+            let path = format!("{parent}/{i}");
+            if e.name == name {
+                out.push(path.clone());
+            }
+            find(&e.children, name, &format!("{path}/children"), out);
+        }
+    }
+    let mut paths = Vec::new();
+    find(&all[scene].scene.entities, name, "/entities", &mut paths);
+    let [path] = paths.as_slice() else {
+        return Err(format!(
+            "{scene}: expected exactly one authored entity {name:?}"
+        ));
+    };
+    let text = std::fs::read_to_string(root.join(&entry.file)).map_err(|e| e.to_string())?;
+    let source = Source::new(&entry.file, &text);
+    let field = source.field(path).map_err(|e| e.to_string())?;
+    let entity = field.value.ok_or("entity has no literal source")?;
+    let new_scene = source
+        .patch(
+            &text,
+            &[Edit {
+                path: path.clone(),
+                expected: Some(entity.clone()),
+                value: json!({"name":name,"prefab":{"$ogRef":prefab}}),
+            }],
+        )
+        .map_err(|e| e.to_string())?;
+    let (module, stem) = prefab
+        .split_once('/')
+        .ok_or("prefab must be a canonical module/content-id")?;
+    if stem
+        .split('/')
+        .any(|s| s.is_empty() || s == "." || s == ".." || s.ends_with(['.', ' ']))
+        || stem.contains(['\\', '#', ':', '*', '\0'])
+    {
+        return Err("prefab must be a canonical module/content-id".into());
+    }
+    let module = project.modules.get(module).ok_or("unknown prefab module")?;
+    if index
+        .entries
+        .keys()
+        .any(|id| id.to_lowercase() == prefab.to_lowercase())
+    {
+        return Err(format!("content identity {prefab} already exists"));
+    }
+    if entry.module != module.id
+        && !project.modules[&entry.module]
+            .depends_on
+            .contains(&module.id)
+    {
+        return Err(format!(
+            "module {} must declare a dependency on {}",
+            entry.module, module.id
+        ));
+    }
+    let mut pending = vec![&entity];
+    while let Some(value) = pending.pop() {
+        match value {
+            serde_json::Value::Object(fields) => {
+                if let Some(id) = fields.get("$ogRef").and_then(serde_json::Value::as_str) {
+                    let owner = id.split('/').next().ok_or("reference has no module")?;
+                    if owner != module.id && !module.depends_on.iter().any(|d| d == owner) {
+                        return Err(format!(
+                            "module {} cannot reference {id}; declare its module dependency first",
+                            module.id
+                        ));
+                    }
+                } else {
+                    pending.extend(fields.values());
+                }
+            }
+            serde_json::Value::Array(values) => pending.extend(values),
+            _ => {}
+        }
+    }
+    let new_file = PathBuf::from(&module.root)
+        .join("content")
+        .join(format!("{stem}.ts"));
+    let prefab_text = format!(
+        "import {{ file }} from '@origingame/engine/author';\nexport default file.prefab({});\n",
+        serde_json::to_string_pretty(&json!({"entity":entity})).map_err(|e| e.to_string())?
     );
-    let scene_path = root.join("assets").join(scene);
-    let prefab_path = root.join("assets").join(prefab);
-    if prefab_path.exists() {
-        return Err(format!("{} exists already", prefab_path.display()));
+    let records = source_records::Records::open(&root, &project)?;
+    let new_path = root.join(&new_file);
+    let mut parent = root.clone();
+    for component in new_file
+        .parent()
+        .ok_or("prefab has no parent")?
+        .components()
+    {
+        parent.push(component);
+        match std::fs::symlink_metadata(&parent) {
+            Ok(meta) if meta.is_dir() && !meta.file_type().is_symlink() => {}
+            Ok(_) => {
+                return Err(format!(
+                    "{}: prefab parent must be a directory, never a symlink",
+                    parent.display()
+                ));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                std::fs::create_dir(&parent).map_err(|e| e.to_string())?;
+            }
+            Err(e) => return Err(e.to_string()),
+        }
     }
-    let text = std::fs::read_to_string(&scene_path)
-        .map_err(|e| format!("{}: {e}", scene_path.display()))?;
-    let lines: Vec<&str> = text.split('\n').collect();
-    let (start, end) =
-        block_lines(&lines, entity).ok_or_else(|| format!("{scene} has no entity \"{entity}\""))?;
-    let indent = &lines[start][..lines[start].len() - lines[start].trim_start().len()];
-    let mut body = String::from("type prefab\nversion 1\n---\n");
-    for l in &lines[start..=end] {
-        body.push_str(l.strip_prefix(indent).unwrap_or(l));
-        body.push('\n');
+    let mut created = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&new_path)
+        .map_err(|e| format!("{}: {e}", new_path.display()))?;
+    if let Err(error) = created
+        .write_all(prefab_text.as_bytes())
+        .and_then(|_| created.sync_all())
+    {
+        drop(created);
+        std::fs::remove_file(&new_path).map_err(|e| e.to_string())?;
+        return Err(error.to_string());
     }
-    Document::parse(&body).map_err(|e| format!("the extracted prefab does not read: {e}"))?;
-    let mut out: Vec<String> = lines[..start].iter().map(|l| l.to_string()).collect();
-    out.push(lines[start].to_string());
-    out.push(format!("{indent}  prefab \"{prefab}\""));
-    out.push(format!("{indent}}}"));
-    out.extend(lines[end + 1..].iter().map(|l| l.to_string()));
-    let new_scene = out.join("\n");
-    Document::parse(&new_scene).map_err(|e| format!("the scene would not read: {e}"))?;
-    if let Some(dir) = prefab_path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    drop(created);
+    let result = source_transaction::commit(
+        &root,
+        &[source_transaction::FileEdit {
+            file: entry.file.clone(),
+            digest: source.digest(),
+            text: new_scene,
+        }],
+        |files| {
+            let overlay = files
+                .iter()
+                .map(|f| (f.file.clone(), f.text.clone()))
+                .collect();
+            let candidate = source_index::Index::open_with_overlay(&root, &project, &overlay)
+                .map_err(|e| vec![e])?;
+            let mut evaluator = source_content::Evaluator::default();
+            for id in [scene, prefab] {
+                let e = &candidate.entries[id];
+                evaluator
+                    .evaluate(
+                        &root,
+                        &project,
+                        e,
+                        &overlay,
+                        records.contexts[&e.module].schema(&e.factory),
+                    )
+                    .map_err(|e| vec![e])?;
+            }
+            let validate = || -> Result<(), String> {
+                let documents = prefab::documents(&root, &overlay)?;
+                let schemas = documents
+                    .values()
+                    .flat_map(|d| d.records.iter().map(|(n, r)| (n.clone(), r.schema.clone())))
+                    .collect();
+                for (id, doc) in &documents {
+                    let mut flattener = Flattener::new(&documents, &schemas);
+                    if doc.prefab {
+                        flattener.prefab(id).map_err(|e| e.0)?;
+                    } else {
+                        flattener.scene(id, doc).map_err(|e| e.0)?;
+                    }
+                    if !flattener.orphans.is_empty() {
+                        return Err(flattener
+                            .orphans
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join("\n"));
+                    }
+                }
+                Ok(())
+            };
+            validate().map_err(|error| {
+                vec![og_cook::cook::generator::source::Diagnostic {
+                    code: "prefab-extract",
+                    file: entry.file.clone(),
+                    path: path.clone(),
+                    location: field.location.clone(),
+                    message: error,
+                }]
+            })?;
+            Ok(())
+        },
+    );
+    if let Err(errors) = result {
+        if std::fs::read_to_string(&new_path).ok().as_deref() == Some(&prefab_text) {
+            std::fs::remove_file(&new_path).map_err(|e| e.to_string())?;
+        }
+        return Err(errors
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n"));
     }
-    std::fs::write(&prefab_path, body).map_err(|e| format!("{}: {e}", prefab_path.display()))?;
-    std::fs::write(&scene_path, new_scene).map_err(|e| format!("{}: {e}", scene_path.display()))?;
     println!(
-        "og prefab extract: assets/{prefab} from '{entity}' of assets/{scene}; its descendants are now named '{entity}/<path>'"
+        "og prefab extract: {prefab} from {name:?} of {scene}; descendants now use {name}/<path>"
     );
     Ok(ExitCode::SUCCESS)
 }

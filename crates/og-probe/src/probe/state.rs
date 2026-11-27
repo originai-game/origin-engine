@@ -17,8 +17,8 @@ pub(crate) struct Host {
     pub(crate) triangles: Option<Box<dyn Fn() -> Option<u64>>>,
     /// The frame as data and picking ([`Probe::set_scene_view`]).
     pub(crate) scene_view: Option<Box<dyn SceneView>>,
-    /// The boot scene's write-back ([`Probe::set_scene_writer`]).
-    pub(crate) scene_writer: Option<Box<dyn SceneWriter>>,
+    /// Source provenance and prefab resets ([`Probe::set_scene_author`]).
+    pub(crate) scene_author: Option<Box<dyn SceneAuthor>>,
     /// Reference files for `expect:frame` ([`Probe::set_reader`]).
     pub(crate) reader: Option<ReaderFn>,
     pub(super) listen: Option<ListenFn>,
@@ -579,11 +579,11 @@ impl Host {
         &mut self,
         world: &mut World,
         edit: &crate::PrefabEdit,
-    ) -> Result<crate::SavedScene, String> {
+    ) -> Result<(), String> {
         let writer = self
-            .scene_writer
+            .scene_author
             .as_mut()
-            .ok_or("this host has no scene write-back")?;
+            .ok_or("this host has no prefab reset")?;
         writer.prefab(world, edit)
     }
 

@@ -104,7 +104,9 @@ pub(crate) fn expand(
     sources: &mut Vec<Source>,
     consumed: &mut BTreeSet<String>,
     grammars: &BTreeMap<String, og_shape::generators::grammar::Grammar>,
-) {
+    records: &crate::cook::source_records::Records,
+) -> Result<(), String> {
+    let packed = std::sync::Arc::new(records.packed()?);
     let mut extra = Vec::new();
     let terrains: BTreeSet<String> = sources
         .iter()
@@ -141,7 +143,11 @@ pub(crate) fn expand(
                 continue;
             }
         };
-        s.bytes = out.scene.into_bytes();
+        let mut doc = scene::Document::scene(out.scene);
+        doc.file = s.path.to_string_lossy().into_owned();
+        doc.records = packed.clone();
+        s.bytes = serde_json::to_vec(&doc).map_err(|e| e.to_string())?;
+        s.scene = Some(std::sync::Arc::new(doc));
         s.kind = &scene::SCENE;
         if let Some(carve) = out.carve {
             carves.push(carve);
@@ -175,11 +181,21 @@ pub(crate) fn expand(
             animgraph: None,
             flipbook: None,
             rig2d: None,
+            scene: None,
             conformed: None,
             fracture: None,
         };
-        for (rel, text) in out.scenes {
-            extra.push(made(rel, &scene::SCENE, text.into_bytes()));
+        for (rel, input) in out.scenes {
+            let mut doc = scene::Document::scene(input);
+            doc.file = s.path.to_string_lossy().into_owned();
+            doc.records = packed.clone();
+            let mut source = made(
+                rel,
+                &scene::SCENE,
+                serde_json::to_vec(&doc).map_err(|e| e.to_string())?,
+            );
+            source.scene = Some(std::sync::Arc::new(doc));
+            extra.push(source);
         }
         for (rel, glb) in out.models {
             extra.push(made(rel, &crate::cook::model::MODEL, glb));
@@ -207,4 +223,5 @@ pub(crate) fn expand(
         }
     }
     sources.extend(extra);
+    Ok(())
 }

@@ -2,7 +2,7 @@
 
 # The `scene` module
 
-Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
+Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`).
 
 What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
 
@@ -15,7 +15,7 @@ See `loading §12`.
 
 ```ogt
 module scene {
-  doc "Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`)."
+  doc "Change scenes with assets fetched first: og.scene.preload requests a scene's streaming groups, og.scene.progress reports their arrival, and og.scene.change replaces the current scene as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or canonical file.scene content id (`base/scenes/level2`)."
   doc "What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready."
   # declarations follow, each on its own page
 ```

@@ -16,7 +16,7 @@ pub struct Timeline {
     pub tracks: Vec<Track>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, serde::Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct Path {
@@ -27,7 +27,7 @@ pub struct Path {
     pub tension: Option<f32>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, serde::Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "camelCase")]
 pub enum PathKind {

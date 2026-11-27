@@ -5,11 +5,11 @@ use super::records;
 use crate::cook::source_schemas::{ContentRef, media::timeline::Path};
 use og_core::Schema;
 use og_core::reflect::source::{InputSchema, schemars::JsonSchema};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct SceneInput {
@@ -48,7 +48,7 @@ impl SceneInput {
     }
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct PrefabInput {
@@ -71,7 +71,7 @@ impl PrefabInput {
     }
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct EntityInput {
@@ -96,7 +96,7 @@ pub struct EntityInput {
     pub children: Vec<EntityInput>,
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum PrefabEdit {
@@ -119,7 +119,7 @@ pub enum PrefabEdit {
     },
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct HlodInput {
@@ -135,7 +135,7 @@ pub struct HlodInput {
     pub texels: Option<u32>,
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
 pub struct StreamInput {
@@ -148,7 +148,7 @@ pub struct StreamInput {
     pub priority: Option<i32>,
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum StreamTriggerInput {

@@ -5,7 +5,7 @@ pub(crate) fn run(
     options: &CookOptions,
     schemas: &BTreeMap<String, Schema>,
     known: &BTreeSet<String>,
-    prefab_texts: &BTreeMap<String, String>,
+    prefab_texts: &BTreeMap<String, std::sync::Arc<scene::Document>>,
     budgets: &stats::Budgets,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     p.work.as_ref().expect("planned work").cook(

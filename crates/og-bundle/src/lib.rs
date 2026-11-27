@@ -14,7 +14,6 @@
 //! | [`fx`] | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
 //! | [`grammar`] | the effect files' line tables and the `effect-files` guide written from them |
 //! | [`look`] | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |
-//! | [`scene_text`] | scene write-back: a scene's `.ogt` rewritten line by line from current values, comments and order kept |
 //! | [`shader`] | material shaders (`.ogt` of `type shader`): parsing and the cooked text (og-cook compiles them with naga) |
 //!
 //! Without features it builds for `wasm32-unknown-unknown` (no C).
@@ -35,6 +34,5 @@ pub mod motion_action;
 pub mod opus;
 pub mod qoa;
 pub mod runtime;
-pub mod scene_text;
 pub mod shader;
 pub mod vfx;

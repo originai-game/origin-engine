@@ -41,6 +41,8 @@ pub(crate) struct Closure {
     pub scenes: Vec<String>,
     /// The prefabs its entities came from (not itself).
     pub prefabs: Vec<String>,
+    /// Component/resource content relocations, not numeric handle guesses.
+    pub assets: Vec<String>,
 }
 
 impl Closure {
@@ -72,6 +74,30 @@ impl Closure {
             .filter(|p| **p != desc.id)
             .cloned()
             .collect();
+        fn refs(value: &serde_json::Value, ids: &mut BTreeSet<String>) {
+            match value {
+                serde_json::Value::Object(m) => {
+                    if let Some(id) = m.get("$ogRef").and_then(serde_json::Value::as_str) {
+                        ids.insert(id.into());
+                    } else {
+                        m.values().for_each(|v| refs(v, ids));
+                    }
+                }
+                serde_json::Value::Array(a) => a.iter().for_each(|v| refs(v, ids)),
+                _ => {}
+            }
+        }
+        let mut ids = BTreeSet::new();
+        for records in desc
+            .bindings
+            .values()
+            .chain(std::iter::once(&desc.resource_bindings))
+        {
+            for value in records.values().flat_map(|m| m.values()) {
+                refs(value, &mut ids);
+            }
+        }
+        c.assets = ids.into_iter().collect();
         c
     }
 }
@@ -82,6 +108,8 @@ pub(crate) enum Part<'a> {
     Scene(&'a LoadedScene),
     /// A model a scene of it places, by the placing scene's bundle.
     Model { owner: usize, id: &'a str },
+    /// A typed column's content, including its manifest dependency closure.
+    Asset { owner: usize, id: &'a str },
     /// A nested scene or a prefab not decoded yet.
     Waiting { owner: usize, id: &'a str },
 }
@@ -104,6 +132,21 @@ pub(crate) fn walk<'a>(
         for id in &c.models {
             if seen.insert(("gltf", owner, id.as_str())) && !visit(Part::Model { owner, id }) {
                 return false;
+            }
+        }
+        let mut assets: Vec<_> = c.assets.iter().map(|id| (owner, id.as_str())).collect();
+        while let Some((owner, id)) = assets.pop() {
+            let owner = a.source(id, Some(owner)).unwrap_or(owner);
+            if !seen.insert(("asset", owner, id)) {
+                continue;
+            }
+            if !visit(Part::Asset { owner, id }) {
+                return false;
+            }
+            if let Ok((bundle, _)) = a.bundle_from(id, Some(owner))
+                && let Ok(asset) = bundle.asset(id)
+            {
+                assets.extend(asset.dependencies.iter().map(|id| (owner, id.as_str())));
             }
         }
         let nested = c.scenes.iter().map(|id| (id, true));
@@ -156,23 +199,37 @@ impl Assets {
             return false;
         };
         let mut fetching = false;
+        let mut asked = BTreeSet::new();
         let mut ask = |id: &str, owner: usize, kind: &str| {
-            let Ok((bundle, dir)) = self.bundle_from(id, Some(owner)) else {
-                return;
-            };
-            let Ok(asset) = bundle.asset(id) else {
-                return;
-            };
-            for out in asset.outputs.iter().filter(|o| {
-                o.group.is_none()
-                    && (o.ty == kind || (o.ty == "og.Texture" && !o.id.ends_with("#mips")))
-            }) {
-                fetching |= h.fetching(&format!("{dir}/{}", out.file));
+            let mut pending = vec![(id, owner, kind)];
+            while let Some((id, owner, kind)) = pending.pop() {
+                let Ok(owner) = self.source(id, Some(owner)) else {
+                    continue;
+                };
+                if !asked.insert((owner, id.to_owned(), kind.to_owned())) {
+                    continue;
+                }
+                let Ok((bundle, dir)) = self.bundle_from(id, Some(owner)) else {
+                    continue;
+                };
+                let Ok(asset) = bundle.asset(id) else {
+                    continue;
+                };
+                for out in asset.outputs.iter().filter(|o| {
+                    o.group.is_none()
+                        && (kind.is_empty()
+                            || o.ty == kind
+                            || (o.ty == "og.Texture" && !o.id.ends_with("#mips")))
+                }) {
+                    fetching |= h.fetching(&format!("{dir}/{}", out.file));
+                }
+                pending.extend(asset.dependencies.iter().map(|id| (id.as_str(), owner, "")));
             }
         };
         walk(self, scene, |part| {
             match part {
                 Part::Scene(_) => {}
+                Part::Asset { owner, id } => ask(id, owner, ""),
                 Part::Model { owner, id } => {
                     if self.index_of_kind("gltf", id, Some(owner)).is_none() {
                         ask(id, owner, "og.Model");
@@ -201,19 +258,23 @@ pub(crate) fn presented(rs: &RenderState, h: u64, now: f64) -> bool {
 /// its streaming group resident and upgraded, and presented. Presentation
 /// only, never what a tick does.
 pub(crate) fn ready(a: &Assets, rs: &RenderState, scene: &LoadedScene, now: f64) -> bool {
-    walk(a, scene, |part| match part {
-        Part::Scene(s) => crate::present::hlod::scene_ready(rs, s.bundle, &s.id, now),
-        Part::Model { owner, id } => {
-            if let Some(group) = a.group_from(id, Some(owner))
-                && !a.stream.upgraded(&group)
-            {
-                return false;
+    !a.closure_fetching(scene)
+        && walk(a, scene, |part| match part {
+            Part::Scene(s) => crate::present::hlod::scene_ready(rs, s.bundle, &s.id, now),
+            Part::Asset { owner, id } => a
+                .group_from(id, Some(owner))
+                .is_none_or(|g| a.stream.upgraded(&g)),
+            Part::Model { owner, id } => {
+                if let Some(group) = a.group_from(id, Some(owner))
+                    && !a.stream.upgraded(&group)
+                {
+                    return false;
+                }
+                a.index_of_kind("gltf", id, Some(owner))
+                    .is_some_and(|i| presented(rs, handle(i), now))
             }
-            a.index_of_kind("gltf", id, Some(owner))
-                .is_some_and(|i| presented(rs, handle(i), now))
-        }
-        Part::Waiting { .. } => false,
-    })
+            Part::Waiting { .. } => false,
+        })
 }
 
 /// What [`prepared`] finds of a scene not in the world yet.
@@ -245,7 +306,7 @@ pub(crate) fn load(eng: &Engine, root: usize) -> Vec<String> {
     let mut failed = Vec::new();
     let mut tried = BTreeSet::new();
     loop {
-        let (models, scenes) = {
+        let (models, scenes, bindings) = {
             let a = eng.assets.borrow();
             let Some(Payload::Scene(scene)) = a.entries.get(root).map(|e| &e.payload) else {
                 return failed;
@@ -254,9 +315,23 @@ pub(crate) fn load(eng: &Engine, root: usize) -> Vec<String> {
             a.closure_fetching(scene);
             let boot = |owner: usize, id: &str| a.source(id, Some(owner)).ok() == a.default_bundle;
             let (mut models, mut scenes) = (Vec::new(), Vec::new());
+            let mut bindings = Vec::new();
             walk(&a, scene, |part| {
                 match part {
-                    Part::Scene(_) => {}
+                    Part::Scene(s) if Some(s.bundle) == a.default_bundle => {
+                        for records in s
+                            .bindings
+                            .values()
+                            .chain(std::iter::once(&s.resource_bindings))
+                        {
+                            bindings.extend(
+                                records
+                                    .iter()
+                                    .map(|(name, fields)| (name.clone(), fields.clone())),
+                            );
+                        }
+                    }
+                    Part::Scene(_) | Part::Asset { .. } => {}
                     Part::Model { owner, id } => {
                         if boot(owner, id) && a.index_of_kind("gltf", id, Some(owner)).is_none() {
                             models.push((owner, id.to_string()));
@@ -270,8 +345,9 @@ pub(crate) fn load(eng: &Engine, root: usize) -> Vec<String> {
                 }
                 true
             });
-            (models, scenes)
+            (models, scenes, bindings)
         };
+        failed.extend(super::bindings::preload(eng, &bindings));
         // A nested scene decoded now names models of its own: walk again.
         let mut again = false;
         for (owner, id) in scenes {
@@ -329,6 +405,18 @@ pub(crate) fn prepared(a: &Assets, rs: &RenderState, scene: &LoadedScene) -> Pre
     walk(a, scene, |part| {
         match part {
             Part::Scene(_) => {}
+            Part::Asset { owner, id } => {
+                if let Some(group) = a
+                    .group_from(id, Some(owner))
+                    .filter(|g| !a.stream.upgraded(g))
+                {
+                    if a.stream.arriving(&group) {
+                        busy = true;
+                    } else {
+                        no = Some(format!("streaming group '{group}' is not loaded"));
+                    }
+                }
+            }
             Part::Model { owner, id } => {
                 let group = a
                     .group_from(id, Some(owner))

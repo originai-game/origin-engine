@@ -34,6 +34,9 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("vfx2d", &flipbook::FLIPBOOK),
     ("rig2d", &rig2d::RIG2D),
     ("flipbook", &flipbook::FLIPBOOK),
+    ("scene", &scene::SCENE),
+    ("prefab", &scene::PREFAB),
+    ("scatter", &scene::SCENE),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -52,7 +55,20 @@ pub(crate) fn bindings(
 ) -> Result<BTreeMap<String, source_content::Output>, CookError> {
     let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
     let mut graph = source_content::GraphBuilder::new(project, &index);
-    catalogue(root, sources, &mut graph)
+    let mut outputs = catalogue(root, sources, &mut graph)?;
+    // The static content index owns primary TS output identities. Bootstrap
+    // resolves these without running content; cooking later checks their data.
+    for entry in index.entries.values() {
+        outputs.insert(
+            entry.id.clone(),
+            source_content::Output {
+                entry: entry.id.clone(),
+                kind: entry.kind.clone(),
+                asset: entry.id.clone(),
+            },
+        );
+    }
+    Ok(outputs)
 }
 
 fn catalogue(
@@ -63,8 +79,6 @@ fn catalogue(
     let mut bindings = BTreeMap::new();
     for source in sources.iter().filter(|s| {
         [
-            &scene::SCENE,
-            &scene::PREFAB,
             &look::LOOK,
             &story::DIALOGUE,
             &model::MODEL,
@@ -176,6 +190,7 @@ pub(crate) fn sources(
 ) -> Result<source_content::Graph, CookError> {
     let index = source_index::Index::open(root, project).map_err(|e| CookError(e.to_string()))?;
     let records = source_records::Records::open(root, project).map_err(CookError)?;
+    let packed = std::sync::Arc::new(records.packed().map_err(CookError)?);
     let mut graph = source_content::GraphBuilder::new(project, &index);
     // Only actual scan results, not guessed paths or a second project reader.
     let scanned = catalogue(root, sources, &mut graph)?;
@@ -245,6 +260,7 @@ pub(crate) fn sources(
             animgraph: None,
             flipbook: None,
             rig2d: None,
+            scene: None,
             conformed: None,
             fracture: None,
         };
@@ -259,6 +275,19 @@ pub(crate) fn sources(
                 };
                 source.rig2d = Some(prepared);
                 Ok(derived)
+            }
+            "scene" | "prefab" | "scatter" => {
+                let mut doc = if entry.factory == "scene" {
+                    scene::Document::scene(source.input()?)
+                } else if entry.factory == "scatter" {
+                    scene::Document::scene(Default::default())
+                } else {
+                    scene::Document::prefab(source.input()?)
+                };
+                doc.records = packed.clone();
+                doc.locate(&content);
+                source.scene = Some(std::sync::Arc::new(doc));
+                Ok(BTreeMap::new())
             }
             "grammar" => {
                 let grammar = district::grammar::declaration(source.input()?, |name| {
@@ -425,6 +454,11 @@ pub(crate) fn sources(
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if let Some(doc) = &mut source.scene {
+            std::sync::Arc::get_mut(doc)
+                .expect("unshared author scene")
+                .bind(&graph);
+        }
         if let Some(map) = &mut source.tilemap {
             for tileset in &mut map.tilesets {
                 if let og_tilemap::TilesetRef::Asset(id) = tileset {
@@ -478,7 +512,7 @@ pub(crate) fn sources(
         }
     }
     // Street carves address actual canonical terrain IDs, discovered above.
-    district::expand(sources, consumed, &grammars);
+    district::expand(sources, consumed, &grammars, &records).map_err(CookError)?;
     let mut prepared = terrain::Terrains::new();
     for (id, (input, captured, file)) in terrains {
         let source = sources

@@ -261,8 +261,6 @@ export interface FrameAnswer {
   lowPower?: boolean;
   /** Ask pointer lock for raw mouse movement (og.input.setMouse's `raw`: unadjustedMovement). */
   rawMouse?: boolean;
-  /** The scene texts the inspector's Save (or a prefab Apply or Revert) made on a host that writes no files (development builds): the web shell routes them. */
-  saved?: { scenes: { source: string; text: string }[] };
 }
 
 /** A running engine: one world, its probe, and the host's lifecycle calls. */

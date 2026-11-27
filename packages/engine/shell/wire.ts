@@ -334,50 +334,12 @@ export function createWire(options: WireOptions) {
     return () => clearInterval(timer);
   }
 
-  /** Pushes an event to the host (no reply): `scene_saved`'s. */
+  /** Pushes an event to the host (no reply). */
   function push(message: Record<string, unknown>): void {
     post(message);
   }
 
   return { onMessage, watch, hello, answer, push };
-}
-
-/** One scene a save wrote no file for: its project-relative source and its whole new text. */
-export interface SavedScene {
-  readonly source: string;
-  readonly text: string;
-}
-
-/** The Stage writes at most this much a scene and this many scenes an event (docs/platform-asks.md #22). */
-export const SCENE_SAVED_MAX_BYTES = 1 << 20;
-export const SCENE_SAVED_MAX_SCENES = 64;
-/** The capability a Stage's hello lists when it takes `scene_saved`. */
-export const SCENE_SAVED_CAPABILITY = "scene_saved";
-
-/**
- * The inspector's Save on a page that writes no files (G3-7): to a Stage whose
- * hello lists `scene_saved`, the texts as `scene_saved` events of at most 64
- * scenes; to any other host, or for a scene the Stage would refuse (a source
- * outside `assets/` or not `.ogt`, or past 1 MiB), a download each, named by
- * its source's file name. Returns how many scenes went each way.
- */
-export function routeSavedScenes(
-  scenes: readonly SavedScene[],
-  options: {
-    readonly capable: boolean;
-    readonly push: (message: Record<string, unknown>) => void;
-    readonly download: (name: string, text: string) => void;
-  },
-): { sent: number; downloaded: number } {
-  const bytes = new TextEncoder();
-  const takes = (s: SavedScene) => s.source.startsWith("assets/") && s.source.endsWith(".ogt") && !s.source.split("/").includes("..") && bytes.encode(s.text).length <= SCENE_SAVED_MAX_BYTES;
-  const sent = options.capable ? scenes.filter(takes) : [];
-  for (let at = 0; at < sent.length; at += SCENE_SAVED_MAX_SCENES) {
-    options.push({ kind: "scene_saved", scenes: sent.slice(at, at + SCENE_SAVED_MAX_SCENES).map((s) => ({ source: s.source, text: s.text })) });
-  }
-  const rest = scenes.filter((s) => !sent.includes(s));
-  for (const s of rest) options.download(s.source.split("/").pop() || "scene.ogt", s.text);
-  return { sent: sent.length, downloaded: rest.length };
 }
 
 /**

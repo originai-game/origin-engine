@@ -340,15 +340,6 @@ macro_rules! __og_host_bindings_engine {
                 $crate::og_engine_probe_assertion_events(engine_probe)
             }
 
-            fn og_engine_probe_save_scene(
-                &self,
-                engine_probe: u32,
-                write: Option<bool>,
-                spawned: Option<bool>,
-            ) -> String {
-                $crate::og_engine_probe_save_scene(engine_probe, write, spawned)
-            }
-
             fn og_engine_probe_pick_ui(&self, engine_probe: u32, x: f64, y: f64) -> String {
                 $crate::og_engine_probe_pick_ui(engine_probe, x, y)
             }

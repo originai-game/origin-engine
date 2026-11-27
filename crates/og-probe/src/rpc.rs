@@ -523,19 +523,6 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "assertion_events" => self.checks.assertions.borrow_mut().take_events(),
             #[cfg(not(feature = "publish"))]
-            "save_scene" => {
-                let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);
-                let spawned = p.get("spawned").and_then(Value::as_bool).unwrap_or(false);
-                match self.save_scene(world, write, spawned) {
-                    Ok(v) => v,
-                    Err(reason) => {
-                        self.out
-                            .note(world.time().tick, true, format!("save_scene: {reason}"));
-                        Value::Null
-                    }
-                }
-            }
-            #[cfg(not(feature = "publish"))]
             "logs" => {
                 let take = p.get("take").and_then(Value::as_bool).unwrap_or(false);
                 self.logs(take)

@@ -17,7 +17,7 @@ use crate::command::{
     DumpHandler, Inbox, LogLine, Output, ParseError, Payload,
 };
 use crate::expect::{ExpectResult, Watch};
-use crate::hooks::{Capture, Reloader, SceneView, SceneWriter, UiTree, find_by_id, find_by_text};
+use crate::hooks::{Capture, Reloader, SceneAuthor, SceneView, UiTree, find_by_id, find_by_text};
 use crate::input::{
     InjectedInput, InputSink, KeyAction, Modifiers, PointerAction, PointerButton, WorldInput,
     key_for_char,
@@ -30,7 +30,7 @@ use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{Map, Value, json};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
 
 mod record;
@@ -96,7 +96,6 @@ pub const MEMBERS: &[&str] = &[
     "describe",
     "expect",
     "expectations",
-    "save_scene",
     "assertions",
     "assertion_events",
     "observe",
@@ -226,8 +225,6 @@ pub struct Probe {
     pub(crate) checks: state::Checks,
     /// The run's events since `timeline` last read them ([`timeline::Recorder`]).
     pub(crate) timeline: timeline::Recorder,
-    /// Fields `set` and `patch` wrote (`save_scene` writes them back).
-    tuned: BTreeSet<String>,
     /// The host's last measurements, for `state().timings`.
     pub(crate) stats: state::Stats,
     /// The command channel: the registered actions and the ones modules push.
@@ -443,7 +440,7 @@ impl Probe {
                 reloader: None,
                 facts: None,
                 scene_view: None,
-                scene_writer: None,
+                scene_author: None,
                 reader: None,
                 listen: None,
                 memory: None,
@@ -460,7 +457,6 @@ impl Probe {
                 event_base: BTreeMap::new(),
             },
             timeline: timeline::Recorder::default(),
-            tuned: BTreeSet::new(),
             stats: state::Stats {
                 systems_ms: Vec::new(),
                 passes_ms: Vec::new(),
@@ -533,9 +529,9 @@ impl Probe {
         self.host.scene_view = Some(view);
     }
 
-    /// The boot scene's write-back for `save_scene`.
-    pub fn set_scene_writer(&mut self, writer: Box<dyn SceneWriter>) {
-        self.host.scene_writer = Some(writer);
+    /// Source provenance and memory-only prefab resets.
+    pub fn set_scene_author(&mut self, author: Box<dyn SceneAuthor>) {
+        self.host.scene_author = Some(author);
     }
 
     /// Reads `expect:frame` references (project-relative paths).

@@ -50,7 +50,7 @@ pub(crate) struct Exec<'a> {
     pub(crate) options: &'a CookOptions,
     pub(crate) schemas: &'a BTreeMap<String, Schema>,
     pub(crate) known: &'a BTreeSet<String>,
-    pub(crate) prefab_texts: &'a BTreeMap<String, String>,
+    pub(crate) prefab_texts: &'a BTreeMap<String, std::sync::Arc<scene::Document>>,
     pub(crate) budgets: &'a stats::Budgets,
 }
 

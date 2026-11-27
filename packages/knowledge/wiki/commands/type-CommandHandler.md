@@ -27,4 +27,4 @@ callback CommandHandler {
 }
 ```
 
-<sub>Module `commands` line 51</sub>
+<sub>Module `commands` line 49</sub>

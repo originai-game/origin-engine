@@ -105,8 +105,6 @@ module probe {
 | [`ExpectStatus`](probe/type-ExpectStatus.md) | enum |  | How an expectation came out. |
 | [`ExpectResult`](probe/type-ExpectResult.md) | struct |  | One evaluated expectation. |
 | [`ExpectReport`](probe/type-ExpectReport.md) | struct |  | The expectations evaluated since the last call. |
-| [`SavedScene`](probe/type-SavedScene.md) | struct |  | The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one. |
-| [`SavedSceneFile`](probe/type-SavedSceneFile.md) | struct |  | One scene file written back. |
 | [`ProbeLogEntry`](probe/type-ProbeLogEntry.md) | struct |  | One probe log or warning entry. |
 | [`ProbeLogs`](probe/type-ProbeLogs.md) | struct |  | Recent probe logs and warnings (up to 512 entries). |
 | [`ProbeSetResult`](probe/type-ProbeSetResult.md) | struct |  | Outcome of a synchronous probe set call. |

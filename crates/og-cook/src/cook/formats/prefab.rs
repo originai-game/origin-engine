@@ -1,63 +1,57 @@
-//! Prefabs (`docs/design.md` §2.5, G2-1): `type prefab` texts placed in
-//! scenes and in other prefabs, flattened by the cook into the entities
-//! the scene blob already holds.
-//!
-//! ```text
-//! type prefab
-//! version 1
-//! ---
-//! entity "crate" {
-//!   Transform { scale 1 1 1 }
-//!   entity "lid" {
-//!     Health { hp 10 }
-//!   }
-//! }
-//! ```
-//!
-//! An entity with a `prefab "<id>"` line is an instance: its tree is the
-//! prefab's, flattened, and its block holds only the deltas, applied in
-//! text order: its own component blocks (and `model`, `static`) over the
-//! root's, field by field; `override "<node path>" { ... }` the same over
-//! a descendant's; `remove "<node path>" [Component]` drops a node's
-//! subtree or one component; `entity` blocks are added under the root. A
-//! prefab whose body starts with `base "<id>"` is a variant: its one
-//! entity is an instance of the base. Flattening is a pure function of
-//! the texts, depth-first in text order, so both hosts spawn the same
-//! entities in the same order.
-//!
-//! A delta whose target is gone (the prefab renamed or dropped the node,
-//! the component or the field) is an [`Orphan`]: it stays in the text, a
-//! dev cook notes it and a publish cook refuses it.
-
+//! Checked prefab trees and ordered instance deltas. Flattening is a pure
+//! function of native declarations, independent of author text syntax.
 use super::CookError;
+pub use super::scene::Document;
+use crate::cook::source_schemas::world::scene::{EntityInput, PrefabEdit};
 use og_core::Schema;
-use og_core::ogt::{Block, Document, Entry, Value};
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
-/// The document type of a prefab.
-pub const PREFAB_TYPE: &str = "prefab";
+/// The same checked author snapshots used by cooking, without cooking assets
+/// or running the game's runtime entry. Inspection keeps canonical references.
+pub fn documents(
+    root: &std::path::Path,
+    overlay: &BTreeMap<String, String>,
+) -> Result<BTreeMap<String, Arc<Document>>, String> {
+    use crate::cook::{
+        source_content, source_index, source_project, source_records, source_schemas,
+    };
+    let project = source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let index = source_index::Index::open_with_overlay(root, &project, overlay)
+        .map_err(|e| e.to_string())?;
+    let records = source_records::Records::open(root, &project)?;
+    let packed = Arc::new(records.packed()?);
+    let mut evaluator = source_content::Evaluator::default();
+    let mut out = BTreeMap::new();
+    for entry in index
+        .entries
+        .values()
+        .filter(|e| matches!(e.factory.as_str(), "scene" | "prefab"))
+    {
+        let content = evaluator
+            .evaluate(
+                root,
+                &project,
+                entry,
+                overlay,
+                records.contexts[&entry.module].schema(&entry.factory),
+            )
+            .map_err(|e| e.to_string())?;
+        let file: source_schemas::File =
+            serde_json::from_value(content.data().root().into_json()).map_err(|e| e.to_string())?;
+        let mut doc = if entry.factory == "scene" {
+            Document::scene(serde_json::from_value(file.value).map_err(|e| e.to_string())?)
+        } else {
+            Document::prefab(serde_json::from_value(file.value).map_err(|e| e.to_string())?)
+        };
+        doc.records = packed.clone();
+        doc.locate(&content);
+        out.insert(entry.id.clone(), Arc::new(doc));
+    }
+    Ok(out)
+}
 
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "base",
-        "\"<prefab asset>\"",
-        "",
-        "One base before the root entity; remaining fields override it.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "entity",
-        "\"<name>\" { ... }",
-        "required",
-        "Exactly one root; nested entity grammar is shared with scenes.",
-        "",
-    ),
-];
-
-/// Where a flattened entity came from: the prefab placed (the outermost
-/// one, for a nested instance), the node's index in that prefab's
-/// flattened table, and the instance it belongs to (an index the
-/// flattener hands out; its root is the first entity with it).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Link {
     pub prefab: String,
@@ -65,22 +59,23 @@ pub struct Link {
     pub instance: u32,
 }
 
-/// One entity of a flattened tree.
+/// One flattened entity. Model/subscene bindings and record patches retain
+/// their own types; there is no conversion to an OGT entry tree.
 #[derive(Clone, Debug)]
 pub struct Node {
     pub name: String,
-    /// Its component blocks, `model` and `static` lines, in text order.
-    pub entries: Vec<Entry>,
+    pub model: Option<String>,
+    pub subscene: Option<String>,
+    pub static_model: Option<bool>,
+    pub components: BTreeMap<String, Map<String, Value>>,
     pub children: Vec<Node>,
     pub link: Option<Link>,
     pub line: usize,
-    /// Per `(component, field)`, the text that gave its value (a prefab
-    /// id, or `<id> override` for an instance's delta): `og prefab show`.
+    pub file: String,
     pub origins: BTreeMap<(String, String), String>,
 }
 
 impl Node {
-    /// The node at `path` (`""` itself, `lid/hinge` a grandchild).
     pub fn find_mut(&mut self, path: &str) -> Option<&mut Node> {
         if path.is_empty() {
             return Some(self);
@@ -92,7 +87,7 @@ impl Node {
             .find_mut(rest)
     }
 
-    /// Every node depth-first, parents first, with its path.
+    /// Depth first, parents before children, with relative node paths.
     pub fn walk(&self) -> Vec<(String, &Node)> {
         fn go<'a>(n: &'a Node, path: String, out: &mut Vec<(String, &'a Node)>) {
             out.push((path.clone(), n));
@@ -117,23 +112,6 @@ impl Node {
         }
     }
 
-    /// The `entity` entry the scene cook reads.
-    pub fn to_entry(&self) -> Entry {
-        let mut block = Block::new();
-        block.entries.extend(self.entries.iter().cloned());
-        for c in &self.children {
-            block.push(c.to_entry());
-        }
-        Entry {
-            key: "entity".into(),
-            values: vec![Value::String(self.name.clone())],
-            block: Some(block),
-            line: self.line,
-        }
-    }
-
-    /// Its tree's links, depth-first, parents first (the scene cook's
-    /// entity order).
     pub fn links(&self, out: &mut Vec<Option<Link>>) {
         out.push(self.link.clone());
         for c in &self.children {
@@ -142,17 +120,12 @@ impl Node {
     }
 }
 
-/// An override or `remove` whose target the prefab no longer has.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Orphan {
-    /// The text holding it (a scene's or prefab's asset id).
     pub source: String,
     pub line: usize,
-    /// The instance entity's name (a variant's root, for `base`).
     pub instance: String,
-    /// The node path it targets (`""`: the instance's root).
     pub node: String,
-    /// `Component` or `Component.field`, when it targets one.
     pub field: Option<String>,
 }
 
@@ -163,111 +136,39 @@ impl std::fmt::Display for Orphan {
         } else {
             format!("node '{}'", self.node)
         };
-        let target = match &self.field {
-            Some(field) => format!("{field} of {node}"),
-            None => node,
-        };
+        let target = self
+            .field
+            .as_ref()
+            .map_or(node.clone(), |field| format!("{field} of {node}"));
         write!(
             f,
-            "{} line {}: instance '{}': {target} is not in the prefab (orphaned override, kept in the text)",
+            "{} line {}: instance '{}': {target} is not in the prefab (orphaned override, kept in the source)",
             self.source, self.line, self.instance
         )
     }
 }
 
-/// Flattens scenes and prefabs. `texts` gives a prefab's text by asset id
-/// (`None`: not a prefab of the project).
 pub struct Flattener<'a> {
-    texts: &'a dyn Fn(&str) -> Option<String>,
+    documents: &'a BTreeMap<String, Arc<Document>>,
     schemas: &'a BTreeMap<String, Schema>,
     memo: BTreeMap<String, Node>,
     stack: Vec<String>,
     next_instance: u32,
-    /// Every orphaned delta met, in the order met (a prefab's once).
     pub orphans: Vec<Orphan>,
-    /// Every prefab reached.
     pub reached: BTreeSet<String>,
 }
 
 fn err(source: &str, line: usize, what: impl std::fmt::Display) -> CookError {
-    CookError(format!("{source} line {line}: {what}"))
-}
-
-fn quoted(e: &Entry, source: &str, what: &str) -> Result<String, CookError> {
-    e.string(0)
-        .map(str::to_string)
-        .map_err(|_| err(source, e.line, format!("{what}: a quoted string")))
-}
-
-/// Merges `delta`'s component blocks and lines into `entries`, field by
-/// field. Returns the fields the schema says the component has not
-/// (orphans).
-fn merge(
-    node: &mut Node,
-    delta: &Entry,
-    origin: &str,
-    schemas: &BTreeMap<String, Schema>,
-) -> Vec<String> {
-    let mut gone = Vec::new();
-    match &delta.block {
-        // `model`, `static`: replaced.
-        None => {
-            match node.entries.iter_mut().find(|e| e.key == delta.key) {
-                Some(e) => *e = delta.clone(),
-                None => node.entries.push(delta.clone()),
-            }
-            node.origins
-                .insert((delta.key.clone(), String::new()), origin.to_string());
-        }
-        Some(fields) => {
-            let schema = schemas
-                .get(&delta.key)
-                .or_else(|| schemas.get(&format!("og.{}", delta.key)));
-            let mut kept = Block::new();
-            for f in &fields.entries {
-                if let Some(s) = schema
-                    && s.field_index(&f.key).is_none()
-                {
-                    gone.push(f.key.clone());
-                    continue;
-                }
-                kept.push(f.clone());
-                node.origins
-                    .insert((delta.key.clone(), f.key.clone()), origin.to_string());
-            }
-            match node
-                .entries
-                .iter_mut()
-                .find(|e| e.key == delta.key && e.block.is_some())
-            {
-                Some(e) => {
-                    let block = e.block.as_mut().expect("a block");
-                    for f in kept.entries {
-                        match block.entries.iter_mut().find(|x| x.key == f.key) {
-                            Some(x) => *x = f,
-                            None => block.push(f),
-                        }
-                    }
-                }
-                None => node.entries.push(Entry {
-                    key: delta.key.clone(),
-                    values: delta.values.clone(),
-                    block: Some(kept),
-                    line: delta.line,
-                }),
-            }
-        }
-    }
-    gone
+    CookError(format!("{source}:{line}: {what}"))
 }
 
 impl<'a> Flattener<'a> {
     pub fn new(
-        texts: &'a dyn Fn(&str) -> Option<String>,
+        documents: &'a BTreeMap<String, Arc<Document>>,
         schemas: &'a BTreeMap<String, Schema>,
-    ) -> Flattener<'a> {
-        Flattener {
-            texts,
+    ) -> Self {
+        Self {
+            documents,
             schemas,
             memo: BTreeMap::new(),
             stack: Vec::new(),
@@ -277,14 +178,10 @@ impl<'a> Flattener<'a> {
         }
     }
 
-    /// A scene's top-level entities, flattened; `source` is its asset id.
-    /// Descendants of an instance are named `<root>/<node path>`; a
-    /// generated name that is another entity's too is refused, naming
-    /// both.
-    pub fn scene(&mut self, source: &str, body: &Block) -> Result<Vec<Node>, CookError> {
+    pub fn scene(&mut self, source: &str, doc: &Document) -> Result<Vec<Node>, CookError> {
         let mut out = Vec::new();
-        for e in body.get_all("entity") {
-            out.push(self.entity(source, e, true)?);
+        for (i, e) in doc.scene.entities.iter().enumerate() {
+            out.push(self.entity(source, doc, e, &format!("/entities/{i}"), true)?);
         }
         let mut roots: BTreeMap<u32, String> = BTreeMap::new();
         for n in &out {
@@ -296,7 +193,6 @@ impl<'a> Flattener<'a> {
                 }
             }
         }
-        // By name: who has it, and whether the cook made the name.
         let mut names: BTreeMap<&str, Vec<(String, bool)>> = BTreeMap::new();
         for n in &out {
             for (_, node) in n.walk() {
@@ -313,124 +209,62 @@ impl<'a> Flattener<'a> {
                         ),
                         true,
                     ),
-                    _ => (format!("the hand-written entity '{}'", node.name), false),
+                    _ => (format!("the authored entity '{}'", node.name), false),
                 };
-                names.entry(node.name.as_str()).or_default().push(who);
+                names.entry(&node.name).or_default().push(who);
             }
         }
         for whos in names.values() {
             if whos.len() > 1 && whos.iter().any(|w| w.1) {
-                let made = whos.iter().position(|w| w.1).expect("one made");
-                let other = if made == 0 { 1 } else { 0 };
                 return Err(CookError(format!(
                     "{source}: {} collides with {}; rename one of them",
-                    whos[made].0, whos[other].0
+                    whos[0].0, whos[1].0
                 )));
             }
         }
         Ok(out)
     }
 
-    /// The prefab `id`, flattened: every node linked to it, with its index
-    /// in the prefab's own table (depth-first, parents first).
     pub fn prefab(&mut self, id: &str) -> Result<Node, CookError> {
         if let Some(n) = self.memo.get(id) {
             return Ok(n.clone());
         }
         if let Some(at) = self.stack.iter().position(|s| s == id) {
-            let mut chain: Vec<&str> = self.stack[at..].iter().map(String::as_str).collect();
-            chain.push(id);
+            let mut chain = self.stack[at..].to_vec();
+            chain.push(id.into());
             return Err(CookError(format!(
                 "prefab cycle: {} (a prefab cannot place itself, through its instances or its base)",
                 chain.join(" → ")
             )));
         }
-        let text = (self.texts)(id)
-            .ok_or_else(|| CookError(format!("'{id}' is not a prefab of this project")))?;
-        let doc = Document::parse(&text).map_err(|e| CookError(format!("{id}: {e}")))?;
-        if doc.ty != PREFAB_TYPE {
-            return Err(CookError(format!(
-                "'{id}' is a '{}' document, not a prefab",
-                doc.ty
-            )));
+        let doc =
+            self.documents.get(id).filter(|d| d.prefab).ok_or_else(|| {
+                CookError(format!("'{id}' is not a checked prefab of this project"))
+            })?;
+        let root = &doc.scene.entities[0];
+        if doc.base.is_some() && root.prefab.is_some() {
+            return Err(err(
+                &doc.file,
+                doc.line("/entity"),
+                "a variant's entity is already an instance of its base: no prefab property",
+            ));
         }
-        if doc.version != 1 {
-            return Err(CookError(format!(
-                "{id}: prefab version {} is not supported (1)",
-                doc.version
-            )));
-        }
-        let mut base = None;
-        let mut root = None;
-        for e in &doc.body.entries {
-            if !LINES.iter().any(|f| f.key == e.key) {
-                return Err(err(id, e.line, format!("unknown prefab entry '{}'", e.key)));
-            }
-            match e.key.as_str() {
-                "base" if base.is_none() && root.is_none() => {
-                    base = Some(crate::runtime::asset_id(&quoted(e, id, "base")?).to_string())
-                }
-                "base" => {
-                    return Err(err(
-                        id,
-                        e.line,
-                        "base comes once, before the prefab's entity",
-                    ));
-                }
-                "entity" if root.is_none() => root = Some(e),
-                "entity" => {
-                    return Err(err(
-                        id,
-                        e.line,
-                        "a prefab has exactly one top-level entity (its root)",
-                    ));
-                }
-                k => {
-                    return Err(err(
-                        id,
-                        e.line,
-                        format!("unknown prefab entry '{k}' (expected base or entity)"),
-                    ));
-                }
-            }
-        }
-        let root = root.ok_or_else(|| CookError(format!("{id}: a prefab has one entity")))?;
-        self.stack.push(id.to_string());
-        let built = match &base {
-            Some(b) => {
-                if root
-                    .block
-                    .as_ref()
-                    .is_some_and(|bl| bl.get("prefab").is_some())
-                {
-                    return Err(err(
-                        id,
-                        root.line,
-                        "a variant's entity is already an instance of its base: no prefab line",
-                    ));
-                }
-                let name = quoted(root, id, "entity")?;
-                self.instance(id, b, &name, root, false)
-            }
-            None => self.entity(id, root, false),
+        self.stack.push(id.into());
+        let built = match &doc.base {
+            Some(base) => self.instance(id, doc, base, root, "/entity", false),
+            None => self.entity(id, doc, root, "/entity", false),
         };
         self.stack.pop();
         let mut node = built?;
-        // Siblings are addressed by name: unique.
         for (path, n) in node.walk() {
             let mut seen = BTreeSet::new();
             for c in &n.children {
-                if !c.name.is_empty() && !seen.insert(c.name.as_str()) {
+                if !c.name.is_empty() && !seen.insert(&c.name) {
                     return Err(err(
                         id,
                         c.line,
                         format!(
-                            "two children of {} are named '{}'; a prefab's nodes are addressed by name",
-                            if path.is_empty() {
-                                "the root".to_string()
-                            } else {
-                                format!("'{path}'")
-                            },
+                            "two children of '{path}' are named '{}'; a prefab's nodes are addressed by name",
                             c.name
                         ),
                     ));
@@ -440,89 +274,77 @@ impl<'a> Flattener<'a> {
         let mut index = 0;
         node.walk_mut(&mut |n| {
             n.link = Some(Link {
-                prefab: id.to_string(),
+                prefab: id.into(),
                 node: index,
                 instance: 0,
             });
             index += 1;
         });
-        self.reached.insert(id.to_string());
-        self.memo.insert(id.to_string(), node.clone());
+        self.reached.insert(id.into());
+        self.memo.insert(id.into(), node.clone());
         Ok(node)
     }
 
-    /// One `entity` entry: authored, or an instance when it has a
-    /// `prefab` line.
-    fn entity(&mut self, source: &str, e: &Entry, scene: bool) -> Result<Node, CookError> {
-        let name = e
-            .string(0)
-            .map_err(|x| err(source, e.line, format!("entity: {x}")))?
-            .to_string();
-        let empty = Block::new();
-        let block = e.block.as_ref().unwrap_or(&empty);
-        let prefabs: Vec<&Entry> = block.get_all("prefab").collect();
-        match prefabs.as_slice() {
-            [] => {}
-            [p] => {
-                let id = crate::runtime::asset_id(&quoted(p, source, "prefab")?).to_string();
-                return self.instance(source, &id, &name, e, scene);
-            }
-            [_, p, ..] => {
-                return Err(err(
-                    source,
-                    p.line,
-                    "an entity is an instance of one prefab",
-                ));
-            }
+    fn entity(
+        &mut self,
+        source: &str,
+        doc: &Document,
+        e: &EntityInput,
+        path: &str,
+        scene: bool,
+    ) -> Result<Node, CookError> {
+        if let Some(prefab) = &e.prefab {
+            return self.instance(source, doc, &prefab.id, e, path, scene);
+        }
+        if !e.edits.is_empty() {
+            return Err(err(
+                &doc.file,
+                doc.line(path),
+                "edits belong to an instance (an entity with prefab or a variant's base)",
+            ));
         }
         let mut node = Node {
-            name,
-            entries: Vec::new(),
+            name: e.name.clone(),
+            model: e.model.as_ref().map(|r| r.id.clone()),
+            subscene: e.scene.as_ref().map(|r| r.id.clone()),
+            static_model: e.static_model,
+            components: e.components.clone(),
             children: Vec::new(),
             link: None,
-            line: e.line,
+            line: doc.line(path),
+            file: doc.file.clone(),
             origins: BTreeMap::new(),
         };
-        for c in &block.entries {
-            match c.key.as_str() {
-                "entity" => node.children.push(self.entity(source, c, scene)?),
-                "override" | "remove" => {
-                    return Err(err(
-                        source,
-                        c.line,
-                        format!(
-                            "{} belongs in an instance (an entity with a prefab line)",
-                            c.key
-                        ),
-                    ));
-                }
-                _ => {
-                    if let Some(b) = &c.block {
-                        for f in &b.entries {
-                            node.origins
-                                .insert((c.key.clone(), f.key.clone()), source.to_string());
-                        }
-                    }
-                    node.entries.push(c.clone());
-                }
+        for (c, fields) in &e.components {
+            for f in fields.keys() {
+                node.origins.insert((c.clone(), f.clone()), source.into());
             }
+        }
+        for (i, c) in e.children.iter().enumerate() {
+            node.children.push(self.entity(
+                source,
+                doc,
+                c,
+                &format!("{path}/children/{i}"),
+                scene,
+            )?);
         }
         Ok(node)
     }
 
-    /// An instance of prefab `id` named `name`, with the deltas of entry
-    /// `e`'s block.
     fn instance(
         &mut self,
         source: &str,
+        doc: &Document,
         id: &str,
-        name: &str,
-        e: &Entry,
+        e: &EntityInput,
+        path: &str,
         scene: bool,
     ) -> Result<Node, CookError> {
+        let line = doc.line(path);
         let mut root = self
             .prefab(id)
-            .map_err(|x| err(source, e.line, format!("prefab '{id}': {}", x.0)))?;
+            .map_err(|x| err(&doc.file, line, format!("prefab '{id}': {x}")))?;
         let instance = self.next_instance;
         self.next_instance += 1;
         root.walk_mut(&mut |n| {
@@ -531,118 +353,137 @@ impl<'a> Flattener<'a> {
             }
         });
         let origin = format!("{source} override");
-        let orphan = |line: usize, node: &str, field: Option<String>| Orphan {
-            source: source.to_string(),
+        let orphan = |node: &str, field: Option<String>| Orphan {
+            source: source.into(),
             line,
-            instance: name.to_string(),
-            node: node.to_string(),
+            instance: e.name.clone(),
+            node: node.into(),
             field,
         };
-        let empty = Block::new();
-        let block = e.block.as_ref().unwrap_or(&empty);
-        let mut added = Vec::new();
-        for c in &block.entries {
-            match c.key.as_str() {
-                "prefab" => {}
-                "entity" => added.push(self.entity(source, c, scene)?),
-                "override" => {
-                    let path = quoted(c, source, "override")?;
-                    let deltas = c.block.as_ref().ok_or_else(|| {
-                        err(
-                            source,
-                            c.line,
-                            "override \"<node>\" { Component { field value } }",
-                        )
-                    })?;
-                    let Some(node) = root.find_mut(&path) else {
-                        self.orphans.push(orphan(c.line, &path, None));
+        let merge = |node: &mut Node,
+                     model: Option<&str>,
+                     static_model,
+                     components: &BTreeMap<String, Map<String, Value>>| {
+            if let Some(m) = model {
+                node.model = Some(m.into());
+                node.origins
+                    .insert(("model".into(), String::new()), origin.clone());
+            }
+            if let Some(s) = static_model {
+                node.static_model = Some(s);
+                node.origins
+                    .insert(("static".into(), String::new()), origin.clone());
+            }
+            let mut gone = Vec::new();
+            for (name, fields) in components {
+                for (field, value) in fields {
+                    if self
+                        .schemas
+                        .get(name)
+                        .is_some_and(|s| s.field_index(field).is_none())
+                    {
+                        gone.push(format!("{name}.{field}"));
+                        continue;
+                    }
+                    node.components
+                        .entry(name.clone())
+                        .or_default()
+                        .insert(field.clone(), value.clone());
+                    node.origins
+                        .insert((name.clone(), field.clone()), origin.clone());
+                }
+                node.components.entry(name.clone()).or_default();
+            }
+            gone
+        };
+        for f in merge(
+            &mut root,
+            e.model.as_ref().map(|r| r.id.as_str()),
+            e.static_model,
+            &e.components,
+        ) {
+            self.orphans.push(orphan("", Some(f)));
+        }
+        if let Some(subscene) = &e.scene {
+            root.subscene = Some(subscene.id.clone());
+        }
+        for edit in &e.edits {
+            match edit {
+                PrefabEdit::Override {
+                    path,
+                    model,
+                    static_model,
+                    components,
+                } => {
+                    let Some(node) = root.find_mut(path) else {
+                        self.orphans.push(orphan(path, None));
                         continue;
                     };
-                    for d in &deltas.entries {
-                        if d.key == "entity" || d.key == "prefab" {
-                            return Err(err(
-                                source,
-                                d.line,
-                                "an override holds component blocks; add an entity under the instance's root",
-                            ));
-                        }
-                        for f in merge(node, d, &origin, self.schemas) {
-                            self.orphans.push(orphan(
-                                d.line,
-                                &path,
-                                Some(format!("{}.{f}", d.key)),
-                            ));
-                        }
+                    for f in merge(
+                        node,
+                        model.as_ref().map(|r| r.id.as_str()),
+                        *static_model,
+                        components,
+                    ) {
+                        self.orphans.push(orphan(path, Some(f)));
                     }
                 }
-                "remove" => {
-                    let path = quoted(c, source, "remove")?;
-                    let comp = match c.values.get(1) {
-                        None => None,
-                        Some(v) => {
-                            Some(v.as_word().or_else(|| v.as_str()).ok_or_else(|| {
-                                err(source, c.line, "remove \"<node>\" [Component]")
-                            })?)
-                        }
-                    };
-                    match comp {
-                        None if path.is_empty() => {
-                            return Err(err(
-                                source,
-                                c.line,
-                                "an instance cannot remove its own root",
-                            ));
-                        }
-                        None => {
-                            let (parent, leaf) = path.rsplit_once('/').unwrap_or(("", &path));
-                            let at = root.find_mut(parent).and_then(|p| {
-                                let i = p.children.iter().position(|x| x.name == leaf)?;
-                                Some((p, i))
-                            });
-                            match at {
-                                Some((p, i)) => {
-                                    p.children.remove(i);
-                                }
-                                None => self.orphans.push(orphan(c.line, &path, None)),
-                            }
-                        }
-                        Some(comp) => {
-                            let removed = root.find_mut(&path).is_some_and(|n| {
-                                let before = n.entries.len();
-                                n.entries.retain(|x| !(x.key == comp && x.block.is_some()));
-                                n.entries.len() != before
-                            });
-                            if !removed {
-                                self.orphans
-                                    .push(orphan(c.line, &path, Some(comp.to_string())));
-                            }
+                PrefabEdit::Remove { path, component } => match component {
+                    None if path.is_empty() => {
+                        return Err(err(
+                            &doc.file,
+                            line,
+                            "an instance cannot remove its own root",
+                        ));
+                    }
+                    None => {
+                        let (parent, leaf) = path.rsplit_once('/').unwrap_or(("", path));
+                        let at = root.find_mut(parent).and_then(|p| {
+                            p.children
+                                .iter()
+                                .position(|c| c.name == leaf)
+                                .map(|i| (p, i))
+                        });
+                        if let Some((p, i)) = at {
+                            p.children.remove(i);
+                        } else {
+                            self.orphans.push(orphan(path, None));
                         }
                     }
-                }
-                _ => {
-                    for f in merge(&mut root, c, &origin, self.schemas) {
-                        self.orphans
-                            .push(orphan(c.line, "", Some(format!("{}.{f}", c.key))));
+                    Some(comp) => {
+                        let removed = root
+                            .find_mut(path)
+                            .is_some_and(|n| n.components.remove(comp).is_some());
+                        if !removed {
+                            self.orphans.push(orphan(path, Some(comp.clone())));
+                        }
                     }
-                }
+                },
             }
         }
-        root.children.extend(added);
-        root.name = name.to_string();
-        root.line = e.line;
+        for (i, child) in e.children.iter().enumerate() {
+            root.children.push(self.entity(
+                source,
+                doc,
+                child,
+                &format!("{path}/children/{i}"),
+                scene,
+            )?);
+        }
+        root.name = e.name.clone();
+        root.line = line;
+        root.file = doc.file.clone();
         if scene {
-            // The tree's own descendants are `<root>/<path>`; entities the
-            // instance added keep the names written for them.
             let paths: Vec<String> = root.walk().into_iter().map(|(p, _)| p).collect();
             let mut k = 0;
             root.walk_mut(&mut |n| {
                 let path = &paths[k];
                 k += 1;
                 if !path.is_empty() && n.link.as_ref().is_some_and(|l| l.instance == instance) {
-                    n.name = if name.is_empty() {
+                    n.name = if e.name.is_empty() {
                         String::new()
                     } else {
-                        format!("{name}/{path}")
+                        format!("{}/{path}", e.name)
                     };
                 }
             });
@@ -651,38 +492,14 @@ impl<'a> Flattener<'a> {
     }
 }
 
-/// The prefabs a scene's or prefab's text places, directly (`prefab` and
-/// `base` lines, at any depth).
-pub fn placed(text: &str) -> Vec<String> {
-    fn walk(b: &Block, out: &mut BTreeSet<String>) {
-        for e in &b.entries {
-            if (e.key == "prefab" || e.key == "base")
-                && let Ok(s) = e.string(0)
-            {
-                out.insert(crate::runtime::asset_id(s).to_string());
-            }
-            if let Some(b) = &e.block {
-                walk(b, out);
-            }
-        }
-    }
-    let mut out = BTreeSet::new();
-    if let Ok(doc) = Document::parse(text) {
-        walk(&doc.body, &mut out);
-    }
-    out.into_iter().collect()
-}
-
-/// Every prefab `text` reaches, transitively, sorted (for the stamp).
-pub fn reached(text: &str, texts: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
+pub fn reached(doc: &Document, documents: &BTreeMap<String, Arc<Document>>) -> Vec<String> {
     let mut seen = BTreeSet::new();
-    let mut todo = placed(text);
+    let mut todo = doc.placed();
     while let Some(id) = todo.pop() {
-        if !seen.insert(id.clone()) {
-            continue;
-        }
-        if let Some(t) = texts(&id) {
-            todo.extend(placed(&t));
+        if seen.insert(id.clone())
+            && let Some(doc) = documents.get(&id)
+        {
+            todo.extend(doc.placed());
         }
     }
     seen.into_iter().collect()

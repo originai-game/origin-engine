@@ -17,7 +17,7 @@
 //! is answered on the world's thread between ticks. With the `publish`
 //! feature only the player-facing members answer, and only their code and
 //! the command actions that change the world are built in (the members
-//! and actions for tools, `describe`, `expect`, `dump_*`, `save_scene` and
+//! and actions for tools, `describe`, `expect`, `dump_*` and
 //! the rest, are compiled out, with what only they read). README.md has
 //! the whole contract.
 
@@ -45,9 +45,8 @@ pub use command::{
 };
 pub use expect::{ExpectResult, Status};
 pub use hooks::{
-    Capture, DrawReason, Drawn, Frame, Pick, PrefabEdit, RawFrame, Rebuilt, Reloader, SavedFile,
-    SavedScene, SceneView, SceneWriter, Seen, SeenView, Shown, ShownJoint, StaticUi, UiElement,
-    UiTree, Viewpoint, pick_ui,
+    Capture, DrawReason, Drawn, Frame, Pick, PrefabEdit, RawFrame, Rebuilt, Reloader, SceneAuthor,
+    SceneView, Seen, SeenView, Shown, ShownJoint, StaticUi, UiElement, UiTree, Viewpoint, pick_ui,
 };
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;

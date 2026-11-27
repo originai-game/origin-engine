@@ -207,8 +207,8 @@ fn lightmap_bakes_roundtrip_typed_sources_and_module_ownership() {
         "type model\nversion 1\n---\npart \"box\" {\nboxGeometry {\nwidth 1\nheight 1\ndepth 1\n}\n}\n",
     );
     write(
-        "assets/room.ogt",
-        "type scene\nversion 1\n---\nhlod {\nsize 16\nerror 0.25\ntexels 64\n}\nentity \"north\" {\nmodel \"box.ogt\"\nstatic true\nTransform {\nposition 1 0 1\n}\n}\nentity \"south\" {\nmodel \"box.ogt\"\nstatic true\nTransform {\nposition 3 0 1\n}\n}\nentity \"probe\" {\nVolume {\nsize 2 1 1\n}\nLightVolume {\nspacing 1\n}\n}\n",
+        "content/room.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.scene({hlod:{size:16,error:0.25,texels:64},entities:[{name:'north',model:ref('base/box'),static:true,components:{'og.Transform':{position:[1,0,1]}}},{name:'south',model:ref('base/box'),static:true,components:{'og.Transform':{position:[3,0,1]}}},{name:'probe',components:{'og.Volume':{size:[2,1,1]},'og.LightVolume':{spacing:1}}}]});",
     );
     let run = |args: &[&str]| {
         og().args(args)
@@ -270,7 +270,7 @@ fn lightmap_bakes_roundtrip_typed_sources_and_module_ownership() {
         bundle
             .manifest()
             .lightmaps
-            .get("room.ogt")
+            .get("base/room")
             .map(String::as_str),
         Some("north/custom/lighting")
     );
@@ -615,8 +615,8 @@ fn typed_timelines_load_tracks_captions_and_module_references() {
     );
     write("src/main.ts", "export default {};");
     write(
-        "assets/scenes/room.ogt",
-        "type scene\nversion 1\n---\nname \"Room\"\n",
+        "content/scenes/room.ts",
+        "import {file} from '@origingame/engine/author';export default file.scene({name:'Room'});",
     );
     write(
         "content/audio/tone.ts",
@@ -768,7 +768,7 @@ fn typed_timelines_load_tracks_captions_and_module_references() {
         };
         assert_eq!(
             (s[0].scene.as_str(), s[1].scene.as_str()),
-            ("scenes/room.ogt", "")
+            ("base/scenes/room", "")
         );
         let n = b
             .timeline(
@@ -1689,8 +1689,8 @@ fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
         "lib/depth.ts",
         "content/fields/depth.ts",
         "modules/island/content/fields/slope.ts",
-        "assets/scenes/harbor.ogt",
-        "assets/scenes/inland.ogt",
+        "content/scenes/harbor.ts",
+        "content/scenes/inland.ts",
     ] {
         let at = root.join(file);
         std::fs::create_dir_all(at.parent().unwrap()).unwrap();
@@ -1721,9 +1721,9 @@ fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
             bundle.load_field("island/fields/slope").unwrap().values,
             [5.0, 19.0]
         );
-        assert!(bundle.read("scenes/harbor.ogt").is_ok());
+        assert!(bundle.read("base/scenes/harbor").is_ok());
         assert!(
-            bundle.read("base/scenes/harbor").is_err(),
+            bundle.read("scenes/harbor.ogt").is_err(),
             "no second output or lookup alias"
         );
         assert_eq!(
@@ -1743,7 +1743,7 @@ fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
     }
     std::fs::create_dir_all(root.join("content/scenes")).unwrap();
     std::fs::write(
-        root.join("content/scenes/harbor.ts"),
+        root.join("content/scenes/Harbor.ts"),
         "import {file} from '@origingame/engine/author'; export default file.scene({entities:[]});",
     )
     .unwrap();
@@ -1758,7 +1758,7 @@ fn typed_project_cook_refreshes_helpers_and_rejects_catalogue_collisions() {
         text(&collision)
     );
     assert!(
-        text(&collision).contains("duplicate content identity"),
+        text(&collision).contains("after case folding"),
         "{}",
         text(&collision)
     );
@@ -1778,8 +1778,14 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
     write("project.ogt", "THIS MUST NOT BE PARSED");
     write("src/main.ts", "throw new Error('GAME_EXECUTED');");
     write("lib/timing.ts", "export const timing = {tick:30, seed:83};");
-    write("assets/scenes/harbor.ogt", "type scene\nversion 1\n---\n");
-    write("assets/scenes/inland.ogt", "type scene\nversion 1\n---\n");
+    write(
+        "content/scenes/harbor.ts",
+        "import {file} from '@origingame/engine/author';export default file.scene({entities:[]});",
+    );
+    write(
+        "content/scenes/inland.ts",
+        "import {file} from '@origingame/engine/author';export default file.scene({entities:[]});",
+    );
     write("assets/looks/harbor.ogt", "type look\nversion 1\n---\n");
     write(
         "assets/dialogue/arrival.yarn",
@@ -1803,7 +1809,7 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
         value["startup"],
         json!({
             "tick":30,"seed":83,"saveVersion":4,"scene":"harbor",
-            "scenes":{"harbor":"scenes/harbor.ogt","inland":"scenes/inland.ogt"},
+            "scenes":{"harbor":"base/scenes/harbor","inland":"base/scenes/inland"},
             "profile":"3d","loading":"game","look":"looks/harbor.ogt",
             "flow":{"dialogue":"dialogue/arrival.yarn","screen":"game"}
         })
@@ -1829,7 +1835,10 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
     let changed: serde_json::Value = serde_json::from_slice(&changed.stdout).unwrap();
     assert_eq!(changed["startup"]["tick"], 24);
     assert_eq!(changed["startup"]["seed"], 0);
-    write("assets/scenes/harbor.ogt", "type prefab\nversion 1\n---\n");
+    write(
+        "content/scenes/harbor.ts",
+        "import {file} from '@origingame/engine/author';export default file.prefab({entity:{name:'harbor'}});",
+    );
     let wrong_kind = snapshot();
     assert!(!wrong_kind.status.success());
     assert!(
@@ -1837,7 +1846,7 @@ fn checked_project_startup_is_fresh_and_metadata_is_read_only() {
         "{}",
         text(&wrong_kind)
     );
-    std::fs::remove_file(root.join("assets/scenes/harbor.ogt")).unwrap();
+    std::fs::remove_file(root.join("content/scenes/harbor.ts")).unwrap();
     let missing = snapshot();
     assert!(!missing.status.success());
     assert!(
@@ -2704,16 +2713,16 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     .unwrap();
     std::fs::write(root.join("content/surface.ts"), "import {file,ref} from '@origingame/engine/author'; import {field} from '../lib/heights.ts'; export default file.terrain({source:{kind:'heightfield',field},size:[8,4],tile:16,process:{preserve:ref('base/protect'),channels:[{points:[[-4,80,0],[4,72,0]],width:4,depth:2,river:true}]}});").unwrap();
     std::fs::write(
-        assets.join("marker.ogt"),
-        "type prefab\nversion 1\n---\nentity \"marker\" {\n}\n",
+        root.join("content/marker.ts"),
+        "import {file} from '@origingame/engine/author';export default file.prefab({entity:{name:'marker'}});",
     )
     .unwrap();
-    std::fs::write(assets.join("placed.ogt"), "type scatter\nversion 1\n---\nprefab \"marker.ogt\"\nproject \"base/surface\"\npoint 0 3 0\n").unwrap();
+    std::fs::write(root.join("content/placed.ts"), "import {file,ref} from '@origingame/engine/author';export default file.scatter({target:{kind:'prefab',asset:ref('base/marker')},project:ref('base/surface'),positions:[0,3,0]});").unwrap();
     std::fs::write(root.join("content/nav.ts"), "import {file,ref} from '@origingame/engine/author'; export default file.navmesh({terrains:[{terrain:ref('base/surface')}],cellSize:1,cellHeight:0.25,agents:[{radius:0,height:1,climb:2,slope:89}]});").unwrap();
     let mut previous_nav = None;
     for (mask, height) in [(0, 74.0), (1, 107.0)] {
         std::fs::write(root.join("content/protect.ts"), format!("import {{file}} from '@origingame/engine/author';export default file.field({{dimensions:[5,3,1],channels:1,values:Array(15).fill({mask})}});")).unwrap();
-        std::fs::write(assets.join("expected.ogt"), format!("type scene\nversion 1\n---\nentity \"point-0\" {{\nprefab \"marker.ogt\"\nTransform {{\nposition 0 {} 0\nquaternion 0 0 0 1\nscale 1 1 1\n}}\n}}\n",height+3.0)).unwrap();
+        std::fs::write(root.join("content/expected.ts"), format!("import {{file,ref}} from '@origingame/engine/author';export default file.scene({{entities:[{{name:'point-0',prefab:ref('base/marker'),components:{{'og.Transform':{{position:[0,{},0],quaternion:[0,0,0,1],scale:[1,1,1]}}}}}}]}});",height+3.0)).unwrap();
         for _ in 0..2 {
             let out = cook();
             assert!(out.status.success(), "{}", text(&out));
@@ -2725,8 +2734,8 @@ fn generated_fields_load_losslessly_and_feed_particles() {
                 .unwrap();
             assert!((field.heights[7] - height).abs() < 0.001);
             assert_eq!(
-                bundle.load_scene("placed.ogt").unwrap().components,
-                bundle.load_scene("expected.ogt").unwrap().components
+                bundle.load_scene("base/placed").unwrap().components,
+                bundle.load_scene("base/expected").unwrap().components
             );
         }
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
@@ -3864,24 +3873,27 @@ part "mixed" {
     }
 }
 
-/// Generated declarations use the same scene/prefab/reference compiler as
-/// authored ones, including input invalidation and sub-scene cycle refusal.
+/// Computed and literal TS declarations share native scene/prefab packing,
+/// including captured input invalidation and sub-scene cycle refusal.
 #[test]
 fn generated_scene_cooks_as_authored_declarations() {
     let root = TempDir::new("og-generated-scene");
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
         root.join("og-project.json"),
         r#"{"version":1,"name":"Scene","engine":"0.9.0"}"#,
     )
     .unwrap();
-    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'scene',entry:'src/main.ts'});").unwrap();
+    std::fs::create_dir_all(root.join("src/schema")).unwrap();
+    std::fs::write(root.join("src/schema/records.ts"), "import * as s from '@origingame/engine/schema';export const Stats=s.defineComponent('Stats',{weight:s.f32()});export const Run=s.defineResource('Run',{count:s.u32(),enabled:s.bool(),weights:s.list(s.f32(),4)});").unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'scene',entry:'src/main.ts',schemas:['src/schema/records.ts']});").unwrap();
     std::fs::write(
-        assets.join("sub.ogt"),
-        "type scene\nversion 1\n---\nentity \"nested\" {\n}\n",
+        root.join("content/sub.ts"),
+        "import {file} from '@origingame/engine/author';export default file.scene({entities:[{name:'nested'}]});",
     )
     .unwrap();
     std::fs::write(
@@ -3889,19 +3901,17 @@ fn generated_scene_cooks_as_authored_declarations() {
         "type model\nversion 1\n---\nconform off\npart \"part\" {\nboxGeometry {\n}\n}\n",
     )
     .unwrap();
-    std::fs::write(assets.join("base.ogt"), "type prefab\nversion 1\n---\nentity \"base\" {\nStats {\nweight 2\n}\nentity \"prefab-child\" {\nStats {\nweight 4\n}\n}\n}\n").unwrap();
-    let prefix = "type scene\nversion 1\n---\nname \"Generated\"\nentity \"manual\" {\nStats {\nweight 1\n}\n}\n";
+    std::fs::write(root.join("content/base.ts"), "import {file} from '@origingame/engine/author';export default file.prefab({entity:{name:'base',components:{Stats:{weight:2}},children:[{name:'prefab-child',components:{Stats:{weight:4}}}]}});").unwrap();
+    let declaration = |weight: &str| {
+        format!(
+            "import {{file,ref,input}} from '@origingame/engine/author';export default file.scene({{name:'Generated',entities:[{{name:'manual',components:{{Stats:{{weight:1}}}}}},{{name:'generated',prefab:ref('base/base'),components:{{Stats:{{weight:{weight}}}}},children:[{{name:'instance',model:ref('base/model'),static:true}},{{name:'cell',scene:ref('base/sub')}}]}}],resources:{{Run:{{count:3,enabled:true,weights:[2,7,3]}}}}}});"
+        )
+    };
     std::fs::write(
-        assets.join("made.ogt"),
-        format!("{prefix}generate {{\nscript \"scene.ts\"\ninput \"source\" \"weight.bin\"\n}}\n"),
+        root.join("content/made.ts"),
+        declaration("input.bytes('assets/weight.bin')[0]"),
     )
     .unwrap();
-    std::fs::write(assets.join("scene.ts"), r#"export default ({inputs}) => ({
-        entities: [{name: "generated", prefab: "base.ogt", components: {Stats: {weight: inputs.source[0]}}, children: [
-            {name: "instance", model: "model.ogt", static: true},
-            {name: "cell", scene: "sub.ogt"}
-        ]}], resources: {Run: {count: 3, enabled: true, weights: [2, 7, 3]}}
-    });"#).unwrap();
     let cook = || {
         og().args(["cook", ".", "--json"])
             .current_dir(&root)
@@ -3910,12 +3920,16 @@ fn generated_scene_cooks_as_authored_declarations() {
     };
     for weight in [7, 9] {
         std::fs::write(assets.join("weight.bin"), [weight]).unwrap();
-        std::fs::write(assets.join("authored.ogt"), format!("{prefix}entity \"generated\" {{\nprefab \"base.ogt\"\nStats {{\nweight {weight}\n}}\nentity \"instance\" {{\nmodel \"model.ogt\"\nstatic true\n}}\nentity \"cell\" {{\nscene \"sub.ogt\"\n}}\n}}\nresource Run {{\ncount 3\nenabled true\nweights 2 7 3\n}}\n")).unwrap();
+        std::fs::write(
+            root.join("content/authored.ts"),
+            declaration(&weight.to_string()),
+        )
+        .unwrap();
         let out = cook();
         assert!(out.status.success(), "{}", text(&out));
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-        let made = bundle.load_scene("made.ogt").unwrap();
-        let authored = bundle.load_scene("authored.ogt").unwrap();
+        let made = bundle.load_scene("base/made").unwrap();
+        let authored = bundle.load_scene("base/authored").unwrap();
         assert_eq!(made.entities.len(), 5);
         for (mut a, mut b) in made.entities.into_iter().zip(authored.entities) {
             a.line = None;
@@ -3927,15 +3941,15 @@ fn generated_scene_cooks_as_authored_declarations() {
         assert_eq!(made.prefabs, authored.prefabs);
     }
     for invalid in [
-        "({entities: [{name: 'bad', model: 'missing.glb'}]})",
-        "({entities: [{name: 'bad', scene: 'made.ogt'}]})",
+        "({entities: [{name: 'bad', model: ref('base/missing')}]})",
+        "({entities: [{name: 'bad', scene: ref('base/made')}]})",
         "({entities: [{name: 'bad', components: {Stats: {weight: {nested: 1}}}}]})",
         "({entities: [{name: 'bad', components: {entity: {}}}]})",
         "({entities: [{name: 'bad', unexpected: true}]})",
     ] {
         std::fs::write(
-            assets.join("scene.ts"),
-            format!("export default () => {invalid};"),
+            root.join("content/made.ts"),
+            format!("import {{file,ref}} from '@origingame/engine/author';export default file.scene{invalid};"),
         )
         .unwrap();
         let out = cook();

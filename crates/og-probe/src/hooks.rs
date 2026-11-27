@@ -343,55 +343,11 @@ pub trait SceneView {
     }
 }
 
-/// One scene file written back (`save_scene`).
-#[derive(Clone, Debug, PartialEq)]
-pub struct SavedFile {
-    /// The scene's source, project-relative (`assets/scenes/main.ogt`).
-    pub source: String,
-    /// Where the text was written: the source itself, or empty when only
-    /// returned (the caller writes it).
-    pub written: String,
-    /// The whole new text.
-    pub text: String,
-    /// The 1-based lines of the new text that changed or were added.
-    pub lines: Vec<usize>,
-}
-
-/// Every scene the world was assembled from, written back (`save_scene`).
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SavedScene {
-    /// The boot scene's first (it holds the resources and the spawned
-    /// section), then each scene og.world.instantiate made, once each.
-    pub files: Vec<SavedFile>,
-    /// Tuned fields that were not written, each with its reason (an entity
-    /// no scene made and the spawned section was not asked for, a
-    /// resource no scene sets where none takes new ones).
-    pub skipped: Vec<String>,
-    /// Entities written under the boot scene's spawned section.
-    pub spawned: usize,
-}
-
-/// The host's half of `save_scene`: the scenes the world was assembled
-/// from, rewritten line by line from the world.
-pub trait SceneWriter {
-    /// Rewrites each scene's text from `world`: the lines of its entities'
-    /// and resources' fields whose values changed, keeping every other
-    /// line, and a line or block for each `tuned` field
-    /// (`<entity>.<Component>.<field>` or `<Resource>.<field>`) the text
-    /// does not have. With `spawned`, the entities the game spawned at run
-    /// time are written under the boot scene's marked section. With
-    /// `write`, each text replaces its source file; otherwise they are only
-    /// returned.
-    fn save(
-        &mut self,
-        world: &World,
-        tuned: &[String],
-        write: bool,
-        spawned: bool,
-    ) -> Result<SavedScene, String>;
-
-    /// Where an entity is declared: `scenes/main.ogt:12`, the line of its
-    /// `entity` in the scene it was assembled from, or for one the game
+/// Source provenance and memory-only prefab resets supplied by the host.
+/// This hook never edits an author's source files.
+pub trait SceneAuthor {
+    /// Where an entity is declared: `content/scenes/main.ts:12`, the
+    /// captured expression in its scene, or for one the game
     /// spawned at run time the line that spawned it (SpawnDesc.source:
     /// `src/enemies.ts:42`). `None` when neither is known (a publish build,
     /// a host that does not know).
@@ -400,14 +356,11 @@ pub trait SceneWriter {
         None
     }
 
-    /// `apply_prefab` and `revert_prefab` (`docs/design.md` §2.5): the
-    /// overrides of an entity placed from a prefab moved into the prefab's
-    /// text (`edit.apply`) or dropped with the live values set back to the
-    /// prefab's. The files written (the scene's and, applying, the
-    /// prefab's).
-    fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<SavedScene, String> {
+    /// Reset selected fields to their cooked prefab values in memory.
+    /// Authored overrides and source files remain unchanged.
+    fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<(), String> {
         let _ = (world, edit);
-        Err("this host has no prefab write-back".into())
+        Err("this host has no prefab reset".into())
     }
 
     /// The asset id of the prefab an og.PrefabLink's `prefab` handle names
@@ -425,18 +378,12 @@ pub trait SceneWriter {
     }
 }
 
-/// One `apply_prefab` or `revert_prefab`.
+/// One memory-only `revert_prefab`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrefabEdit {
     pub entity: Entity,
     /// `Component` or `Component.field`; `None`: every override.
     pub target: Option<String>,
-    /// Apply into the prefab (else revert to it).
-    pub apply: bool,
-    /// Apply into a variant's base instead of the variant.
-    pub base: bool,
-    /// Write the files (else only return the texts).
-    pub write: bool,
 }
 
 /// One UI element with its bounds, in CSS pixels (IDL `probe.UiElement`).

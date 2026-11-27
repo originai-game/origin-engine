@@ -2854,12 +2854,6 @@ unsafe extern "C" fn og_engine_probe_observe(args: *const crate::OgValue, out: *
 }
 
 #[cfg(not(feature = "publish"))]
-unsafe extern "C" fn og_engine_probe_save_scene(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as ProbeApi>::og_engine_probe_save_scene(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-#[cfg(not(feature = "publish"))]
 unsafe extern "C" fn og_engine_probe_pick_ui(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -4119,8 +4113,6 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_engine_probe_assertion_events", arity: 1, call: og_engine_probe_assertion_events },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_observe", arity: 3, call: og_engine_probe_observe },
-    #[cfg(not(feature = "publish"))]
-    crate::Symbol { name: c"og_engine_probe_save_scene", arity: 3, call: og_engine_probe_save_scene },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_pick_ui", arity: 3, call: og_engine_probe_pick_ui },
     #[cfg(not(feature = "publish"))]

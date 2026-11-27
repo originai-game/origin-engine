@@ -32,7 +32,7 @@
 // { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "text", target } when the UI's focused text control changes
-// and { type: "copy", text } when a copy took text (text-input.ts); { type: "saved", scenes } when the inspector saved scenes this page cannot write (page.ts routes them: wire.ts routeSavedScenes); { type: "haptics", patterns } when the UI's feedback played haptics (haptics.ts); { type: "rumble", rumble } when og.input.rumble asked for one (gamepad.ts playRumble); { type: "a11y", update } when the UI's
+// and { type: "copy", text } when a copy took text (text-input.ts); { type: "haptics", patterns } when the UI's feedback played haptics (haptics.ts); { type: "rumble", rumble } when og.input.rumble asked for one (gamepad.ts playRumble); { type: "a11y", update } when the UI's
 // accessibility tree changed (a11y.ts); { type: "load-failure", file, reason } when a file
 // of the bundle did not arrive (loadFailure: field telemetry's load failures); { type: "cursor", cursor, image } when the UI's pointer shape changed (og.ui.frameCursor, and its CSS url() image or null); { type: "pointer-lock", wanted } when og.PointerLock.wanted
 // changed (the shell requests the lock on the next press on the canvas, or exits it);

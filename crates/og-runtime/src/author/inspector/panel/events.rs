@@ -40,13 +40,12 @@ pub(super) fn apply(ins: &mut Inspector, shown: &Shown, paused: bool, e: &Event)
 fn click(ins: &mut Inspector, shown: &Shown, paused: bool, name: &str, key: &str) {
     let request = match name {
         "Key" | "Close" => Request::Close,
-        "Save" => Request::Save,
         "Clock" if paused => Request::Resume,
         "Clock" => Request::Pause,
         "Step" => Request::Step,
         "Undo" => Request::Undo,
         "Redo" => Request::Redo,
-        "ApplyAll" | "RevertAll" | "Apply" | "Revert" => {
+        "RevertAll" | "Revert" => {
             let Some((entity, fields)) = &shown.prefab else {
                 return;
             };
@@ -62,7 +61,6 @@ fn click(ins: &mut Inspector, shown: &Shown, paused: bool, name: &str, key: &str
                 } else {
                     vec![key.to_string()]
                 },
-                apply: name.starts_with("Apply"),
             }
         }
         _ => {

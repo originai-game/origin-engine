@@ -79,7 +79,7 @@ export default og.game({
     }
     const generated = og.render.geometryInfo(world, info.value.parts[4]!.geometry);
     og.assert.always(generated.ok && generated.value!.min.x === -2 && generated.value!.max.x === 3 && generated.value!.max.y === 4, "authored mesh dimensions preserved", {});
-    const scene = og.load.scene(world, "placements.ogt");
+    const scene = og.load.scene(world, "base/placements");
     if (!scene.ok) throw new Error(scene.reason);
     const placed = world.instantiate(scene.value, { name: "placements" });
     if (!placed.ok) throw new Error(placed.reason);
@@ -87,7 +87,7 @@ export default og.game({
     if (!marker) throw new Error("generated entity was not instantiated");
     const transform = world.get(marker, og.Transform);
     og.assert.always(transform.ok && transform.value!.position.x === 2 && transform.value!.position.z === -3 && transform.value!.scale.x === 0.5, "generated fields compose with authored prefab fields", {});
-    const scatter = og.load.scene(world, "scatter.ogt");
+    const scatter = og.load.scene(world, "base/scatter");
     if (!scatter.ok) throw new Error(scatter.reason);
     const scattered = world.instantiate(scatter.value, { name: "scatter" });
     if (!scattered.ok) throw new Error(scattered.reason);
@@ -477,49 +477,22 @@ export default function mesh() {
 }
 ```
 
-```ogt recipe file=assets/placements.ogt
-type scene
-version 1
----
-generate {
-  script "placements.ts"
-}
+```ts recipe file=content/placements.ts
+import { file, ref } from "@origingame/engine/author";
+
+export default file.scene({ entities: [{
+  name: "marker", prefab: ref("base/marker"),
+  components: { "og.Transform": { position: [2, 1, -3] } },
+}] });
 ```
 
-```ts recipe file=assets/placements.ts
-import type { SceneSource } from "@origingame/engine/generate";
+```ts recipe file=content/marker.ts
+import { file, ref } from "@origingame/engine/author";
 
-export default function placements() {
-  return { entities: [{
-    name: "marker", prefab: "marker.ogt",
-    components: { Transform: { position: [2, 1, -3] } },
-  }] } satisfies SceneSource;
-}
-```
-
-```ogt recipe file=assets/marker.ogt
-type prefab
-version 1
----
-entity "marker" {
-  model "curves.ogt"
-  Transform {
-    scale 0.5 0.5 0.5
-  }
-}
-```
-
-```ogt recipe file=assets/scatter.ogt
-type scatter
-version 1
----
-model "curves.ogt"
-project "base/land"
-align true
-generate {
-  script "scatter.ts"
-  seed 17
-}
+export default file.prefab({ entity: {
+  name: "marker", model: ref("base/curves"),
+  components: { "og.Transform": { scale: [0.5, 0.5, 0.5] } },
+} });
 ```
 
 ```ogt recipe file=assets/copy.ogt
@@ -549,17 +522,19 @@ export default file.animgraph({
 });
 ```
 
-```ts recipe file=assets/scatter.ts
-import { procgen, type GeneratorContext, type ScatterSource } from "@origingame/engine/generate";
+```ts recipe file=content/scatter.ts
+import { file, ref, procgen } from "@origingame/engine/author";
 
-export default function scatter(ctx: GeneratorContext) {
-  const points = procgen.poissonDisk({ width: 20, height: 8, radius: 3, maxPoints: 12, seed: ctx.seed });
+export default file.scatter((() => {
+  const points = procgen.poissonDisk({ width: 20, height: 8, radius: 3, maxPoints: 12, seed: 17 });
   if (!points.ok) throw new Error(points.reason);
   return {
+    target: { kind: "model" as const, asset: ref("base/curves") },
+    project: ref("base/land"), align: true,
     positions: Float32Array.from(points.value.flatMap(p => [p.x - 10, 0.2, p.y - 4])),
     scales: new Float32Array(points.value.length * 3).fill(0.15),
-  } satisfies ScatterSource;
-}
+  };
+})());
 ```
 
 The TS terrain declaration supplies `{columns, rows, heights}` in `source.field`. Samples are row-major from -z to +z and -x to +x; dimensions are 2..4097, every height is finite, and `size` defines positive x/z extents. A supplied field is never implicitly resampled or normalised. Its discriminated source cannot also request noise or intensity-to-height conversion. Relative static imports must name their extensions and stay inside the project's allowed module dependencies.
@@ -730,12 +705,12 @@ export default file.field((() => {
 
 A particles file's `field "base/vectors" <strength> <size>` accepts a checked field by its canonical ID: a cubic 3-channel lattice, 1..16 samples a side. Terrain's `process.preserve: ref('base/protect')` names a one-channel field matching its height grid; navigation baking and projected scatter share that same checked value. Cook embeds particle vectors without RGB remapping or quantization. Size explicitly maps one tiling source period to emitter-local units; origin/spacing describe source sampling, not the emitter's transform. Changes to declared input bytes or transitive TS imports invalidate the field and affected consumers. Particles retain their current author syntax until their cutover, but never read Field OGT or re-evaluate field TS.
 
-`type scatter` uses either repeated `point x y z` lines or a `generate` block returning `ScatterSource`: flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). It places exactly one authored `model` or `prefab`; no model or distribution is selected for the author. The first recipe composes the shared Poisson mechanism and explicitly maps its rectangle into terrain-local metres. The normal scene pipeline owns model instancing and prefab expansion. `project "base/terrain"` names the canonical TS terrain output and adds its height to each y; `align true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes instead of silently moving or dropping them. Scene and terrain must use the same local coordinates. Load the result with `og.load.scene` or reference it as a sub-scene.
+`file.scatter` accepts flat xyz positions, optional xyzw quaternions and xyz scales, one per point (up to 1,000,000). `target` explicitly selects a model or prefab by canonical ref; the engine selects neither model nor distribution. The first recipe composes Poisson sampling and maps its rectangle into terrain-local metres. The normal scene pipeline owns instancing and prefab expansion. `project: ref('base/terrain')` adds terrain height to each y; `align: true` rotates up to its normal before the authored quaternion. Projection rejects points outside the terrain or in holes. Scene and terrain must use the same local coordinates. Load the canonical result with `og.load.scene` or place it as a sub-scene. No scatter author OGT or generate wrapper remains.
 
 <a id="guide-generating-8"></a>
 ### `generating §8` Cook explicit scene declarations
 
-A `scene.generate` module returns `SceneSource`: an entity tree and optional resource fields. Every entity has a name; optional `model`, `scene` and `prefab` are asset paths, `static` marks a model for baking, `components` maps reflected names to field objects, and `children` nests entities. Fields are numbers, booleans, strings or flat arrays, not runtime handles. Generated entities append after authored entities. A resource cannot be both authored and generated. Normal prefab merging, component reflection, asset dependencies and sub-scene cycle checks run on the combined declarations. Scene generation does not create a world.
+A content module exports `file.scene({...})`: an entity tree, optional resource patches, paths, streaming groups and HLOD settings. Every entity has a name; optional `model`, `scene` and `prefab` use canonical `ref` tokens. `static` marks a model for baking, `components` maps complete reflected names (such as `og.Transform`) to typed patches, and `children` nests entities. Import helpers and compute arrays in TS rather than emitting text. Run `og api gen --project <dir>` to bind game component/resource types; unknown fields, invalid values and numeric content handles are refused. Cooked bindings use the registered column's asset loader at runtime. Prefab merging, asset dependencies and sub-scene cycles are checked on the native snapshot. Source files never execute in the game. Inspector/Tune is memory-only; `og set` edits direct literals and refuses computed/shared expressions.
 
 The first recipe includes these declarations. The generator sets a placement; the authored prefab supplies its model and scale. The game only loads the cooked scene.
 

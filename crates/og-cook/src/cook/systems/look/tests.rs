@@ -29,6 +29,7 @@ fn source(root: &Path, rel: &str) -> Source {
         animgraph: None,
         flipbook: None,
         rig2d: None,
+        scene: None,
         conformed: None,
         fracture: None,
     }

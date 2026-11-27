@@ -83,7 +83,16 @@ pub struct SceneDesc {
     /// The prefabs its entities were placed from, by asset id
     /// ([`EntityDesc::prefab`]); empty when none was.
     pub prefabs: Vec<String>,
+    /// Content identities retained until the registered column's loader runs.
+    pub bindings: std::collections::BTreeMap<usize, RecordBindings>,
+    pub resource_bindings: RecordBindings,
+    /// Original TS file per entity, omitted in publish cooks and imported models.
+    pub origins: Vec<String>,
+    pub overrides: std::collections::BTreeMap<usize, Vec<String>>,
 }
+
+pub type RecordBindings =
+    std::collections::BTreeMap<String, serde_json::Map<String, serde_json::Value>>;
 
 /// One resource's fields in a scene: `schema` holds only the fields the
 /// text lists (the others keep the world's values) and `bytes` their
@@ -212,6 +221,9 @@ impl SceneDesc {
                 if entity >= out.len() {
                     return Err(bad(format!("{name}: entity index out of range")));
                 }
+                schema
+                    .check_packed(&r[4..])
+                    .map_err(|e| bad(e.to_string()))?;
                 rows.push((entity, r[4..].to_vec()));
             }
             // By entity for ComponentTable::get (stable: the first row for
@@ -254,6 +266,9 @@ impl SceneDesc {
                         bytes.len()
                     )));
                 }
+                schema
+                    .check_packed(&bytes[..size])
+                    .map_err(|e| bad(e.to_string()))?;
                 resources.push(ResourceTable {
                     name,
                     schema,
@@ -261,6 +276,53 @@ impl SceneDesc {
                     bytes: bytes[..size].to_vec(),
                 });
             }
+        }
+        let (bindings, resource_bindings): (
+            std::collections::BTreeMap<usize, RecordBindings>,
+            RecordBindings,
+        ) = match blob.raw_opt("bindings") {
+            Some(bytes) => {
+                serde_json::from_slice(bytes).map_err(|e| bad(format!("content bindings: {e}")))?
+            }
+            None => Default::default(),
+        };
+        for (entity, records) in &bindings {
+            if *entity >= out.len() {
+                return Err(bad("binding entity index out of range".into()));
+            }
+            for (name, fields) in records {
+                let table = components
+                    .iter()
+                    .find(|t| t.name == *name && t.get(*entity).is_some())
+                    .ok_or_else(|| {
+                        bad(format!(
+                            "binding has no component {name} on entity {entity}"
+                        ))
+                    })?;
+                if fields.keys().any(|f| table.schema.field_index(f).is_none()) {
+                    return Err(bad(format!("binding has unknown {name} field")));
+                }
+            }
+        }
+        for (name, fields) in &resource_bindings {
+            let table = resources
+                .iter()
+                .find(|t| t.name == *name)
+                .ok_or_else(|| bad(format!("binding has no resource {name}")))?;
+            if fields.keys().any(|f| table.schema.field_index(f).is_none()) {
+                return Err(bad(format!("binding has unknown {name} field")));
+            }
+        }
+        let (origins, overrides): (Vec<String>, std::collections::BTreeMap<usize, Vec<String>>) =
+            match blob.raw_opt("origins") {
+                Some(bytes) => serde_json::from_slice(bytes)
+                    .map_err(|e| bad(format!("source origins: {e}")))?,
+                None => Default::default(),
+            };
+        if (!origins.is_empty() && origins.len() != out.len())
+            || overrides.keys().any(|i| *i >= out.len())
+        {
+            return Err(bad("source origin entity index out of range".into()));
         }
         Ok(SceneDesc {
             id: id.to_string(),
@@ -270,6 +332,10 @@ impl SceneDesc {
             paths,
             resources,
             prefabs,
+            bindings,
+            resource_bindings,
+            origins,
+            overrides,
         })
     }
 }

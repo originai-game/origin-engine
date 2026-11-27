@@ -135,7 +135,7 @@ fn remove(eng: &Engine, world: &mut World, roots: &[u64]) {
             eng.state.borrow_mut().game_spawned.remove(&e.to_bits());
         }
     }
-    // Their records for save_scene go with them.
+    // Drop provenance for despawned scene instances.
     eng.state.borrow_mut().scene_instances.retain(|i| {
         i.entities
             .iter()

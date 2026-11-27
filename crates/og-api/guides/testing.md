@@ -335,25 +335,13 @@ intensity and direction it is drawn with. Each read is logged and
 written as JSON to `get-<tick>.json` (more unnamed ones on one tick:
 `get-<tick>-2.json`, ...).
 
-Editing scenes from a run, after tuning with `set:` or the probe's patch:
-
-- `save_scene` writes every scene the world was assembled from back from
-  the world: the boot scene's, then each one World.instantiate made,
-  each to its own `.ogt`. Only the lines whose values changed are
-  rewritten (comments and order kept): the fields set or patch tuned, and
-  resources as `resource <Name> { }` blocks. With `spawned`, the entities
-  the game spawned at run time go under the boot scene's marked section.
-  Without a path each scene goes to its source; with one, the boot scene
-  goes to that file under the output directory and the others beside it.
-- The command
-  ```
-  apply_prefab:<entity>[:<Component>[.<field>]][:base]
-  ```
-  moves an entity's prefab overrides (all, a component's
-  or one field, a field set at run time too) into its prefab's `.ogt` at
-  the entity's node and out of its scene's instance block, so the scene
-  cooks to the same world and every other instance takes the values; with
-  `base`, into a variant's base. `revert_prefab` drops them instead.
+Tuning with `set:` or the probe's patch changes memory only. Runtime
+source-saving commands and notifications do not exist. Use `og set`
+for a direct TS literal; computed or shared values need
+their source expression changed. Runtime entity diagnostics retain the TS
+file and line, not permission to rewrite it. `revert_prefab:<entity>[:<Component>[.<field>]]`
+restores selected cooked prefab fields in memory without changing the
+scene's authored overrides or any file.
 
 ## 8. Debug draw and debug views
 

@@ -357,19 +357,6 @@ pub fn og_engine_probe_assertion_events(probe: u32) -> String {
     member(probe, "assertion_events", json!({})).to_string()
 }
 
-pub fn og_engine_probe_save_scene(
-    probe: u32,
-    write: Option<bool>,
-    spawned: Option<bool>,
-) -> String {
-    member(
-        probe,
-        "save_scene",
-        json!({ "write": write.unwrap_or(false), "spawned": spawned.unwrap_or(false) }),
-    )
-    .to_string()
-}
-
 pub fn og_engine_probe_logs(probe: u32, take: Option<bool>) -> String {
     member(probe, "logs", json!({ "take": take.unwrap_or(false) })).to_string()
 }

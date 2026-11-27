@@ -25,7 +25,7 @@ impl Probe {
             "describe" | "dump_world" | "dump_ui" | "dump_entity" | "dump_drawn" | "get"
             | "help" => self.dump_step(world, step),
             #[cfg(not(feature = "publish"))]
-            "apply_prefab" | "revert_prefab" | "save_scene" => self.scene_step(world, step),
+            "revert_prefab" => self.prefab_step(world, step),
             #[cfg(not(feature = "publish"))]
             "expect" | "invariant" => self.check_step(world, step),
             "pause" | "resume" | "advance" | "quit" => self.clock_step(world, step),
@@ -34,12 +34,10 @@ impl Probe {
             // commands and a timeline's event keys reach); the ones that only
             // observe it for a tool are not built in.
             #[cfg(feature = "publish")]
-            "screenshot" | "listen" | "describe" | "expect" | "invariant" | "save_scene"
-            | "apply_prefab" | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity"
-            | "dump_drawn" | "get" | "help" => Err(format!(
-                "`{}` is not built into a publish build",
-                step.action
-            )),
+            "screenshot" | "listen" | "describe" | "expect" | "invariant" | "revert_prefab"
+            | "dump_world" | "dump_ui" | "dump_entity" | "dump_drawn" | "get" | "help" => Err(
+                format!("`{}` is not built into a publish build", step.action),
+            ),
             _ => self.commands.registered_step(&mut self.out, world, step),
         }
     }
@@ -287,130 +285,24 @@ impl Probe {
         }
     }
 
-    /// The actions that write the world back to its sources: the prefab
-    /// edits and `save_scene`.
+    /// Reset live prefab fields without editing any author source.
     #[cfg(not(feature = "publish"))]
-    fn scene_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+    fn prefab_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
-        match step.action.as_str() {
-            #[cfg(not(feature = "publish"))]
-            "apply_prefab" | "revert_prefab" => {
-                // `<action>:<entity>[:<Component>[.<field>]][:base]`, over
-                // the source files (docs/design.md §2.5, prefabs).
-                let apply = step.action == "apply_prefab";
-                let usage = if apply {
-                    "apply_prefab:<entity>[:<Component>[.<field>]][:base]"
-                } else {
-                    "revert_prefab:<entity>[:<Component>[.<field>]]"
-                };
-                let id = step.arg(0, usage)?;
-                let entity = self.entity_of(world, id)?;
-                let base = apply && args.iter().skip(1).any(|a| a == "base");
-                let target = args.iter().skip(1).find(|a| *a != "base").cloned();
-                let edit = crate::PrefabEdit {
-                    entity,
-                    target,
-                    apply,
-                    base,
-                    write: true,
-                };
-                let saved = self.prefab_edit(world, &edit)?;
-                self.out.note(
-                    tick,
-                    false,
-                    format!(
-                        "{}: {}",
-                        step.action,
-                        saved
-                            .files
-                            .iter()
-                            .map(|f| format!("{} ({} line(s) changed)", f.source, f.lines.len()))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    ),
-                );
-                Ok(())
-            }
-            #[cfg(not(feature = "publish"))]
-            "save_scene" => {
-                // `save_scene[:path][:spawned]`: `spawned` is a flag, any
-                // other argument the path.
-                let spawned = args.iter().any(|a| a == "spawned");
-                let path = output_path(args.iter().find(|a| *a != "spawned"))?;
-                let saved = self.save_scene(world, path.is_none(), spawned)?;
-                let scenes = saved["scenes"].as_array().cloned().unwrap_or_default();
-                self.out.note(
-                    tick,
-                    false,
-                    format!(
-                        "save_scene: {}{}{}",
-                        scenes
-                            .iter()
-                            .map(|s| format!(
-                                "{} ({} line(s) changed{})",
-                                s["source"].as_str().unwrap_or(""),
-                                s["lines"].as_array().map_or(0, Vec::len),
-                                match s["written"].as_str() {
-                                    Some(w) if !w.is_empty() => format!(", written to {w}"),
-                                    _ => String::new(),
-                                }
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                        match saved["spawned"].as_u64() {
-                            Some(n) if spawned => format!(
-                                "; {n} spawned entit{} under the marked section",
-                                if n == 1 { "y" } else { "ies" }
-                            ),
-                            _ => String::new(),
-                        },
-                        match saved["skipped"].as_array() {
-                            Some(s) if !s.is_empty() => format!(
-                                "; not written: {}",
-                                s.iter()
-                                    .filter_map(Value::as_str)
-                                    .collect::<Vec<_>>()
-                                    .join("; ")
-                            ),
-                            _ => String::new(),
-                        }
-                    ),
-                );
-                // With a path, the boot scene's text goes there and each
-                // other scene's beside it, at its path under assets/.
-                if let Some(path) = path {
-                    let dir = std::path::Path::new(&path)
-                        .parent()
-                        .map(|d| d.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    for (k, s) in scenes.iter().enumerate() {
-                        let to = if k == 0 {
-                            path.clone()
-                        } else {
-                            let source = s["source"].as_str().unwrap_or("");
-                            let rel = source.strip_prefix("assets/").unwrap_or(source);
-                            if dir.is_empty() {
-                                rel.to_string()
-                            } else {
-                                format!("{dir}/{rel}")
-                            }
-                        };
-                        self.out.emit(
-                            step.at,
-                            Output {
-                                tick,
-                                action: step.action.clone(),
-                                path: Some(to),
-                                payload: Payload::Text(s["text"].as_str().unwrap_or("").to_owned()),
-                            },
-                        );
-                    }
-                }
-                Ok(())
-            }
-            _ => unreachable!("`action` sends this family's names only"),
+        let usage = "revert_prefab:<entity>[:<Component>[.<field>]]";
+        if args.len() > 2 {
+            return Err(usage.into());
         }
+        let id = step.arg(0, usage)?;
+        let edit = crate::PrefabEdit {
+            entity: self.entity_of(world, id)?,
+            target: args.get(1).cloned(),
+        };
+        self.prefab_edit(world, &edit)?;
+        self.out
+            .note(tick, false, format!("revert_prefab: {id} reset in memory"));
+        Ok(())
     }
 
     /// `expect` and `invariant`: what the run asserts.

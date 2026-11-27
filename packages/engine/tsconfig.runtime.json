@@ -20,6 +20,7 @@
   ],
   "exclude": [
     "tests/contract.ts",
-    "tests/fixtures/*/src/**"
+    "tests/fixtures/*/src/**",
+    "tests/fixtures/*/content/**"
   ]
 }

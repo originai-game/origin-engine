@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.scene`
 
-Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.
+Load a cooked file.scene declaration. world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning. Typed content references load through their registered columns.
 
 ```ts
 og.load.scene(world: World, path: string): Result<Asset>
@@ -15,7 +15,7 @@ og.load.scene(world: World, path: string): Result<Asset>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world that owns the asset. |
-| `path` | `string` | no | The scene's asset id, such as `scenes/main.ogt`. |
+| `path` | `string` | no | The scene's canonical content id, such as `base/scenes/main`. |
 
 **Returns** `Result<Asset>`: The stable handle, pending while its blob is fetched. Query status; error gives a failed load's reason.
 
@@ -23,9 +23,9 @@ Binding symbol `og_load_scene` · publish builds: kept
 
 ```ogt
 fn scene {
-  doc "Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning."
+  doc "Load a cooked file.scene declaration. world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning. Typed content references load through their registered columns."
   param world World "The world that owns the asset."
-  param path String "The scene's asset id, such as `scenes/main.ogt`."
+  param path String "The scene's canonical content id, such as `base/scenes/main`."
   returns Result.Asset "The stable handle, pending while its blob is fetched. Query status; error gives a failed load's reason."
 }
 ```

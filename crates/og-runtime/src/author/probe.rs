@@ -696,10 +696,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         render: eng.render.clone(),
         engine: id,
     }));
-    // save_scene: every scene's text rewritten from the world (a publish
-    // build serves no save_scene).
+    // Source/prefab provenance and memory-only reverts; source writes are
+    // explicit OXC transactions in og, never runtime filesystem mutations.
     #[cfg(not(feature = "publish"))]
-    probe.set_scene_writer(Box::new(crate::author::scene_save::RuntimeWriter {
+    probe.set_scene_author(Box::new(crate::author::scene_save::RuntimeAuthor {
         engine: id,
     }));
     // expect:frame: its reference, a path in the project, read through the

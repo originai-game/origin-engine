@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 907</sub>
+<sub>Module `probe` line 887</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 912</sub>
+<sub>Module `probe` line 892</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 917</sub>
+<sub>Module `probe` line 897</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,7 +143,7 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 938</sub>
+<sub>Module `probe` line 918</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 954</sub>
+<sub>Module `probe` line 934</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 961</sub>
+<sub>Module `probe` line 941</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 971</sub>
+<sub>Module `probe` line 951</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 975</sub>
+<sub>Module `probe` line 955</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 982</sub>
+<sub>Module `probe` line 962</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 986</sub>
+<sub>Module `probe` line 966</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -344,7 +344,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 990</sub>
+<sub>Module `probe` line 970</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -374,7 +374,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 996</sub>
+<sub>Module `probe` line 976</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -402,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 1003</sub>
+<sub>Module `probe` line 983</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -432,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 1008</sub>
+<sub>Module `probe` line 988</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -455,7 +455,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 1015</sub>
+<sub>Module `probe` line 995</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -485,7 +485,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 1019</sub>
+<sub>Module `probe` line 999</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -513,7 +513,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 1026</sub>
+<sub>Module `probe` line 1006</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -536,7 +536,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 1031</sub>
+<sub>Module `probe` line 1011</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -566,7 +566,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 1035</sub>
+<sub>Module `probe` line 1015</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -589,7 +589,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 1042</sub>
+<sub>Module `probe` line 1022</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -623,41 +623,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 1046</sub>
-
-<a id="member-EngineProbe-saveScene"></a>
-
-#### `EngineProbe.saveScene`
-
-Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
-
-```ts
-EngineProbe.saveScene(write?: boolean, spawned?: boolean): SavedScene | null
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `write` | `boolean` | yes | Replace each scene's source file. Default `false`. |
-| `spawned` | `boolean` | yes | Write the entities the game spawned at run time under the boot scene's marked section. Default `false`. |
-
-**Returns** `SavedScene | null`: Null without a scene to write back (the reason is in the log).
-
-Binding symbol `og_engine_probe_save_scene` · publish builds: dropped
-
-```ogt
-fn saveScene {
-  doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
-  param write bool "Replace each scene's source file." {
-    default false
-  }
-  param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
-    default false
-  }
-  returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
-}
-```
-
-<sub>Module `probe` line 1056</sub>
+<sub>Module `probe` line 1026</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -687,13 +653,13 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 1066</sub>
+<sub>Module `probe` line 1036</sub>
 
 <a id="member-EngineProbe-logs"></a>
 
 #### `EngineProbe.logs`
 
-Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene).
+Recent probe log and warning entries (including refusal reasons from patch, reload and commands).
 
 ```ts
 EngineProbe.logs(take?: boolean): ProbeLogs
@@ -709,7 +675,7 @@ Binding symbol `og_engine_probe_logs` · publish builds: dropped
 
 ```ogt
 fn logs {
-  doc "Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene)."
+  doc "Recent probe log and warning entries (including refusal reasons from patch, reload and commands)."
   param take bool "Clear the log ring after answering." {
     default false
   }
@@ -717,13 +683,13 @@ fn logs {
 }
 ```
 
-<sub>Module `probe` line 1072</sub>
+<sub>Module `probe` line 1042</sub>
 
 <a id="member-EngineProbe-set"></a>
 
 #### `EngineProbe.set`
 
-Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene.
+Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) in memory using a JSON value. No source files change; use og set for explicit checked TS literal edits.
 
 ```ts
 EngineProbe.set(target: string, value: unknown): ProbeSetResult
@@ -740,14 +706,14 @@ Binding symbol `og_engine_probe_set` · publish builds: dropped
 
 ```ogt
 fn set {
-  doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene."
+  doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) in memory using a JSON value. No source files change; use og set for explicit checked TS literal edits."
   param target String "Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`)."
   param value Json "New JSON value."
   returns ProbeSetResult
 }
 ```
 
-<sub>Module `probe` line 1079</sub>
+<sub>Module `probe` line 1049</sub>
 
 <a id="member-EngineProbe-get"></a>
 
@@ -775,4 +741,4 @@ fn get {
 }
 ```
 
-<sub>Module `probe` line 1085</sub>
+<sub>Module `probe` line 1055</sub>

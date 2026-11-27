@@ -2,12 +2,12 @@
 //! Geometry is captured from imported models and scene snapshots; planning and
 //! execution never reopen author files. Terrain consumers share its surface.
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
+use crate::cook::formats::{prefab, scene};
 use crate::cook::{formats::geometry, source_content::Graph, source_schemas::world::bake as input};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::glam::{Mat4, Quat, Vec3};
-use og_core::ogt::{Block, Document};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) struct Prepared {
     input: input::NavmeshInput,
@@ -45,8 +45,19 @@ impl Prepared {
 }
 
 /// Capture geometry only after generated scenes and all model imports exist.
-/// The scene domain still owns its text input until its separate cutover.
 pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookError> {
+    let documents: BTreeMap<_, _> = sources
+        .iter()
+        .filter_map(|s| s.scene.as_ref().map(|d| (s.rel.clone(), d.clone())))
+        .collect();
+    let schemas = documents
+        .values()
+        .flat_map(|d| {
+            d.records
+                .iter()
+                .map(|(name, r)| (name.clone(), r.schema.clone()))
+        })
+        .collect();
     let pending: Vec<_> = sources
         .iter_mut()
         .enumerate()
@@ -72,24 +83,31 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
             };
             if let Some(scene) = &input.scene {
                 let asset = &graph.outputs[&scene.id].asset;
-                dependencies.insert(asset.clone());
-                let scene = sources
-                    .iter()
-                    .find(|s| &s.rel == asset)
-                    .ok_or_else(|| format!("scene '{asset}' has not been captured"))?;
-                if let Some(error) = &scene.error {
-                    return Err(error.clone());
+                let mut pending = vec![(asset.clone(), Mat4::IDENTITY, Vec::new())];
+                let mut flatten = prefab::Flattener::new(&documents, &schemas);
+                while let Some((asset, matrix, mut chain)) = pending.pop() {
+                    if chain.contains(&asset) {
+                        return Err(format!("subscene cycle: {} -> {asset}", chain.join(" -> ")));
+                    }
+                    chain.push(asset.clone());
+                    dependencies.insert(asset.clone());
+                    let doc = documents
+                        .get(&asset)
+                        .ok_or_else(|| format!("scene '{asset}' has not been captured"))?;
+                    let nodes = flatten.scene(&asset, doc).map_err(|e| e.0)?;
+                    dependencies.extend(scene::subscenes(doc, &documents));
+                    dependencies.extend(prefab::reached(doc, &documents));
+                    for (scene, matrix) in scene_triangles(
+                        &nodes,
+                        matrix,
+                        &models,
+                        &mut dependencies,
+                        &mut triangles,
+                        &mut notes,
+                    )? {
+                        pending.push((scene, matrix, chain.clone()));
+                    }
                 }
-                let doc = Document::parse(&String::from_utf8_lossy(&scene.bytes))
-                    .map_err(|e| format!("{asset}: {e}"))?;
-                scene_triangles(
-                    &doc.body,
-                    Mat4::IDENTITY,
-                    &models,
-                    &mut dependencies,
-                    &mut triangles,
-                    &mut notes,
-                )?;
             }
             for b in &input.boxes {
                 let m = Mat4::from_rotation_translation(
@@ -155,70 +173,78 @@ fn model_triangles(
     Ok(())
 }
 
-// Only the scene reader uses internal blocks. Navmesh has no text frontend.
-fn string_of(b: &Block, key: &str) -> Option<String> {
-    b.get(key)
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-}
-
-fn numbers<const N: usize>(b: Option<&Block>, key: &str) -> Option<[f32; N]> {
-    let e = b?.get(key)?;
-    let values: Vec<_> = e
-        .values
+fn numbers<const N: usize>(
+    b: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<[f32; N]> {
+    let values: Vec<_> = b?
+        .get(key)?
+        .as_array()?
         .iter()
-        .map(|v| v.as_number().map(|n| n.as_f32()))
+        .map(|v| v.as_f64().map(|v| v as f32))
         .collect::<Option<_>>()?;
     values.try_into().ok()
 }
 
 fn scene_triangles(
-    b: &Block,
+    nodes: &[prefab::Node],
     parent: Mat4,
     models: &geometry::Models<'_>,
     dependencies: &mut BTreeSet<String>,
     out: &mut Vec<[Vec3; 3]>,
     notes: &mut Vec<String>,
-) -> Result<(), String> {
-    for e in b.get_all("entity") {
-        let Some(block) = &e.block else { continue };
-        let t = block.get("Transform").and_then(|t| t.block.as_ref());
+) -> Result<Vec<(String, Mat4)>, String> {
+    let mut scenes = Vec::new();
+    for e in nodes {
+        let t = e.components.get("og.Transform");
         let m = parent
             * Mat4::from_scale_rotation_translation(
                 vector(numbers(t, "scale"), Vec3::ONE),
                 rotation(numbers(t, "quaternion"))?,
                 vector(numbers(t, "position"), Vec3::ZERO),
             );
-        let dynamic = block
-            .get("RigidBody")
-            .and_then(|r| r.block.as_ref())
-            .is_some_and(|r| numbers::<1>(Some(r), "kind").unwrap_or([0.0])[0] == 0.0);
-        if let Some(model) = string_of(block, "model")
+        let dynamic = e.components.get("og.RigidBody").is_some_and(|r| {
+            r.get("kind")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("dynamic")
+                == "dynamic"
+        });
+        if let Some(scene) = &e.subscene {
+            scenes.push((scene.clone(), m));
+        }
+        if let Some(model) = &e.model
             && !dynamic
         {
             dependencies.insert(model.clone());
-            model_triangles(&model, m, models, out)?;
+            model_triangles(model, m, models, out)?;
         }
-        if let Some(c) = block.get("Collider").and_then(|c| c.block.as_ref())
+        if let Some(c) = e.components.get("og.Collider")
             && !dynamic
         {
-            let scalar = |key, default| numbers::<1>(Some(c), key).map_or(default, |v| v[0]);
-            let half = match scalar("shape", 0.0) as u32 {
-                0 => vector(numbers(Some(c), "size"), Vec3::ONE) * 0.5,
-                1 => Vec3::splat(scalar("radius", 0.5)),
-                shape @ (2 | 3) => {
+            let scalar = |key: &str, default| {
+                c.get(key)
+                    .and_then(serde_json::Value::as_f64)
+                    .map_or(default, |v| v as f32)
+            };
+            let half = match c
+                .get("shape")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("box")
+            {
+                "box" => vector(numbers(Some(c), "size"), Vec3::ONE) * 0.5,
+                "sphere" => Vec3::splat(scalar("radius", 0.5)),
+                shape @ ("capsule" | "cylinder") => {
                     let r = scalar("radius", 0.5);
                     Vec3::new(
                         r,
-                        scalar("height", 1.0) * 0.5 + if shape == 2 { r } else { 0.0 },
+                        scalar("height", 1.0) * 0.5 + if shape == "capsule" { r } else { 0.0 },
                         r,
                     )
                 }
                 _ => {
                     notes.push(format!(
                         "entity '{}': a convex or mesh collider is baked from its model only",
-                        e.values.first().and_then(|v| v.as_str()).unwrap_or("")
+                        e.name
                     ));
                     continue;
                 }
@@ -230,9 +256,16 @@ fn scene_triangles(
                     .map(|t| t.map(|v| m.transform_point3(v))),
             );
         }
-        scene_triangles(block, m, models, dependencies, out, notes)?;
+        scenes.extend(scene_triangles(
+            &e.children,
+            m,
+            models,
+            dependencies,
+            out,
+            notes,
+        )?);
     }
-    Ok(())
+    Ok(scenes)
 }
 
 /// Sample the renderer's diagonals and holes, without a quantized reload.

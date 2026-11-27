@@ -363,19 +363,6 @@ fn frame_here(id: u32, eng: &Engine, elapsed_ms: f64, interval_ms: Option<f64>) 
     if let Some(tree) = a11y {
         answer["a11y"] = tree;
     }
-    // `saved`: `{scenes: [{source, text}]}`, the scene texts the
-    // inspector's Save (or a prefab Apply or Revert) made on a host that
-    // writes no files: the web shell sends them to the Stage
-    // (`scene_saved`) or downloads them.
-    #[cfg(not(feature = "publish"))]
-    if let Some(saved) = eng
-        .render
-        .try_borrow_mut()
-        .ok()
-        .and_then(|mut rs| crate::author::inspector::take_saved(&mut rs))
-    {
-        answer["saved"] = saved;
-    }
     answer
 }
 

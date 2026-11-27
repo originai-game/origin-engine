@@ -124,7 +124,7 @@ impl Probe {
     /// placed a prefab.
     fn prefab_instances(&self, world: &World) -> Vec<Value> {
         const LINK: &str = "og.PrefabLink";
-        let Some(writer) = self.host.scene_writer.as_ref() else {
+        let Some(writer) = self.host.scene_author.as_ref() else {
             return Vec::new();
         };
         let Ok(id) = world.id_by_name(LINK) else {

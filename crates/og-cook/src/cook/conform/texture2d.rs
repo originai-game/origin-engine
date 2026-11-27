@@ -582,6 +582,7 @@ pub(in crate::cook) fn conform(
                 animgraph: None,
                 flipbook: None,
                 rig2d: None,
+                scene: None,
                 conformed: None,
                 fracture: None,
             };

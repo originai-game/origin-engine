@@ -1,5 +1,5 @@
 //! Cook-only metadata and reference graph. Never part of a shipped bundle.
-use super::{CookError, Source, audio, each, scene};
+use super::{CookError, Source, audio, each};
 use crate::runtime::{Bundle, Manifest, ManifestOutput, asset_id};
 use og_core::ogt::{Block, Document, Entry, Value};
 use serde::{Deserialize, Serialize};
@@ -541,14 +541,14 @@ pub(crate) fn build(
             .cloned()
             .collect();
         if let Some(s) = input {
+            if let Some(doc) = &s.scene {
+                for scene in doc.direct_subscenes() {
+                    placed.extend(resolve(&scene, &s.rel, &known));
+                }
+            }
             if let Ok(text) = std::str::from_utf8(&s.bytes) {
                 if let Ok(doc) = Document::parse(text) {
                     text_values(&doc.body, &mut values);
-                    if [&scene::SCENE, &scene::PREFAB].contains(&s.kind) {
-                        for scene in super::scene::subscenes(text, &|_| None) {
-                            placed.extend(resolve(&scene, &s.rel, &known));
-                        }
-                    }
                 } else if let Ok(json) = serde_json::from_str(text) {
                     json_values(&json, &mut values);
                 }
