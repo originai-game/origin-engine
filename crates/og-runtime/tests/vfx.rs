@@ -67,6 +67,10 @@ fn project() -> &'static Path {
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
         std::fs::write(p, og_audio::wav(&pcm, 1, 48_000)).unwrap();
         write(
+            "sfx/blip.ts",
+            "file.import({kind:'sound',source:'assets/sfx/blip.wav'})",
+        );
+        write(
             "fx/loud.ts",
             "file.vfx({duration:0.4,elements:[{at:0.1,node:{kind:'sound',asset:ref('base/sfx/blip'),volume:0.8,pitch:[0.9,1.1]}}]})",
         );
