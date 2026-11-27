@@ -117,7 +117,9 @@ const server = createServer((socket) => {
     active.add(abort);
     send({ event: "accepted" });
     queue = queue.then(async () => {
-      const cwd = process.cwd();
+      // Every request runs in its own cwd. The host never returns to an
+      // earlier one: a directory the last command ran in may since have been
+      // deleted (a regenerated project), and process.cwd() then throws.
       const stdout = process.stdout.write;
       const stderr = process.stderr.write;
       const console = globalThis.console;
@@ -162,7 +164,6 @@ const server = createServer((socket) => {
         process.stdout.write = stdout;
         process.stderr.write = stderr;
         globalThis.console = console;
-        process.chdir(cwd);
         frozen.dispose();
         active.delete(abort);
         pending--;
