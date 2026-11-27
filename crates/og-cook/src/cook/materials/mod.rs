@@ -334,6 +334,7 @@ pub(crate) fn expand(sources: &mut Vec<super::Source>) {
                         lightmap: None,
                         tileset: None,
                         tilemap: None,
+                        animgraph: None,
                         conformed: None,
                         fracture: None,
                     });

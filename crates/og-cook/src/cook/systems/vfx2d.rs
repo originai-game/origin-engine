@@ -449,6 +449,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             lightmap: None,
             tileset: None,
             tilemap: None,
+            animgraph: None,
             conformed: None,
             fracture: None,
         });

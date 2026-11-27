@@ -86,7 +86,7 @@ module load {
 | [`og.load.error`](load/fn-error.md) | function | `(world: World, asset: Asset): string \| null` | Why a load failed. |
 | [`og.load.gltfInfo`](load/fn-gltfInfo.md) | function | `(world: World, asset: Asset): Result<GltfInfo>` | What a ready glTF holds. |
 | [`og.load.animation`](load/fn-animation.md) | function | `(world: World, path: string): Result<Animation>` | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. |
-| [`og.load.animgraph`](load/fn-animgraph.md) | function | `(world: World, path: string): Result<GraphAsset>` | Load a cooked type animgraph asset. |
+| [`og.load.animgraph`](load/fn-animgraph.md) | function | `(world: World, path: string): Result<GraphAsset>` | Load a cooked file.animgraph TS asset. |
 | [`og.load.rig`](load/fn-rig.md) | function | `(world: World, path: string): Result<Rig>` | Load a checked file.rig humanoid map for og.anim.retarget and og.anim.humanoid. |
 | [`og.load.flipbook`](load/fn-flipbook.md) | function | `(world: World, path: string): Result<FlipbookInfo>` | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`: an Aseprite or TexturePacker atlas, or animated GIF, WebP or APNG sources the cook packs into `<sheet>#sheet`) and its texture, and registe… |
 | [`og.load.tilemap`](load/fn-tilemap.md) | function | `(world: World, path: string): Result<TilemapInfo>` | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. |

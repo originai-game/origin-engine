@@ -7,7 +7,7 @@ module anim {
 
   handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
   handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
-  handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
+  handle GraphAsset "A structured blend-tree graph whose clip references were resolved to clip handles."
 
   column SkeletonAsset {
     doc "A SkeletonAsset handle field."
@@ -679,19 +679,140 @@ module anim {
     returns Result.Matrix4 "Refused for an invalid entity, missing og.Skeleton, unloaded asset or out-of-range node."
   }
 
+  union GraphMotion {
+    doc "A named clip leaf or blend; the kind selects its fields."
+    tag kind
+    case clip GraphClip "A named clip leaf."
+    case blend1d GraphBlend1d "Linear interpolation between threshold children."
+    case blend2d GraphBlend2d "Gradient-band interpolation between points."
+  }
+  enum GraphLayerMode {
+    doc "How a graph layer combines poses."
+    variant override "Replace the pose below by the layer weight."
+    variant additive "Add the difference from the motion's first frame."
+  }
+  enum GraphComparison {
+    doc "Compare a graph parameter to a number."
+    variant gt "Greater than."
+    variant ge "Greater than or equal."
+    variant lt "Less than."
+    variant le "Less than or equal."
+    variant eq "Equal."
+    variant ne "Not equal."
+  }
+  enum GraphInterrupt {
+    doc "Which transitions may interrupt a cross-fade."
+    variant any "Any eligible transition from the new state, including any-state transitions."
+    variant none "Complete this fade first."
+    variant source "Only transitions from the state being left."
+    variant next "Only transitions from the new state itself."
+  }
+  struct GraphClip {
+    doc "A named clip leaf."
+    field clip String "ClipInfo.name, or a sheet/2D rig clip name for sprite graphs."
+    field speed f32 "Positive playback rate; omitted is one." {
+      optional true
+    }
+    field looping bool "Loop playback; omitted is true." {
+      optional true
+    }
+    field mirror bool "Mirror a skeletal pose; omitted is false." {
+      optional true
+    }
+  }
+  struct GraphThreshold {
+    doc "One child of a threshold blend."
+    field motion String "A key in GraphDesc.motions."
+    field threshold f32 "Parameter value at this child. Children sort by threshold."
+  }
+  struct GraphPoint {
+    doc "One child of a Cartesian blend."
+    field motion String "A key in GraphDesc.motions."
+    field point Array.f32.2 "The child's x and y parameter values."
+  }
+  struct GraphBlend1d {
+    doc "Threshold interpolation, clamped at the ends."
+    field param String "Declared parameter name."
+    field children List.GraphThreshold "At least one child; forward motion references are allowed."
+  }
+  struct GraphBlend2d {
+    doc "Freeform Cartesian gradient-band interpolation."
+    field x String "Declared x parameter name."
+    field y String "Declared y parameter name."
+    field children List.GraphPoint "At least one child."
+  }
+  struct GraphState {
+    doc "A state in a graph layer."
+    field name String "Unique within the layer."
+    field motion String "A key in GraphDesc.motions."
+    field speed f32 "Nonnegative playback multiplier; omitted is one." {
+      optional true
+    }
+    field sync String "Phase synchronization group; omitted means independent." {
+      optional true
+    }
+  }
+  struct GraphCondition {
+    doc "A transition's parameter comparison; all its conditions must hold."
+    field param String "Declared parameter name."
+    field op GraphComparison "Comparison."
+    field value f32 "Finite comparison value."
+  }
+  struct GraphTransition {
+    doc "A prioritized transition; requires at least one condition or exit."
+    field from String "Source state; omitted means any state except the target." {
+      optional true
+    }
+    field to String "Target state."
+    field conditions List.GraphCondition "All must hold; omitted means no parameter conditions." {
+      optional true
+    }
+    field exit f32 "Minimum source phase in cycles, nonnegative." {
+      optional true
+    }
+    field fade f32 "Nonnegative cross-fade seconds; omitted is 0.2." {
+      optional true
+    }
+    field interrupt GraphInterrupt "Fade interruption policy; omitted is any." {
+      optional true
+    }
+  }
+  struct GraphLayer {
+    doc "A named state machine. The first layer supplies root motion and AnimationGraph.state."
+    field name String "Unique layer name."
+    field mode GraphLayerMode "Pose combination; omitted is override." {
+      optional true
+    }
+    field weight f32 "Fixed weight in 0..1; omitted is one. Exclusive with weightParam." {
+      optional true
+    }
+    field weightParam String "Parameter-driven weight, clamped to 0..1 at playback." {
+      optional true
+    }
+    field states List.GraphState "At least one state, in state-index order."
+    field entry String "Initial state name."
+    field transitions List.GraphTransition "Priority order; first eligible transition fires." {
+      optional true
+    }
+    field mask Map.f32 "Skeleton node names to subtree weights in 0..1; omitted means all joints." {
+      optional true
+    }
+  }
   struct GraphDesc {
     doc "A blend-tree graph to register."
     desc true
-    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`)."
-    field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
-    field sprite bool "A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read."
+    field params List.String "At most eight unique parameter names, in AnimationGraph p0..p7 order."
+    field motions Map.GraphMotion "Named clip and blend motions; cycles are rejected."
+    field layers List.GraphLayer "At least one layer, in playback order."
+    field clips List.ClipInfo "Clip leaves resolve by ClipInfo.name, usually og.load.animation's clips."
+    field sprite bool "Resolve clip names on an entity's flipbook or 2D rig at playback instead; clips is not read."
   }
 
   fn graph {
-    doc "Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`."
+    doc "Register a typed blend-tree graph for AnimationGraph.asset. Clip motions resolve by name against clips."
     param world World "The world whose animation owns the graph."
-    param desc GraphDesc "The text and the clips it may name."
-    returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
+    param desc GraphDesc "Named motions, layers, parameters and the clips they may name."
+    returns Result.GraphAsset "Refused for unknown names, cycles, invalid numbers or clip names clips lacks."
   }
 
   handle Rig "A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles stand above the ground."

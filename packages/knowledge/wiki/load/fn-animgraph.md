@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.animgraph`
 
-Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle.
+Load a cooked file.animgraph TS asset. Bindings map graph names to model clips; cook checks references and graph structure. Sprite graphs resolve sheet/rig clip names at playback. Repeated loads return the same handle.
 
 ```ts
 og.load.animgraph(world: World, path: string): Result<GraphAsset>
@@ -15,7 +15,7 @@ og.load.animgraph(world: World, path: string): Result<GraphAsset>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose animation owns the graph. |
-| `path` | `string` | no | The animgraph asset id under assets/. |
+| `path` | `string` | no | Canonical graph ID, such as base/graphs/locomotion. |
 
 **Returns** `Result<GraphAsset>`: Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip.
 
@@ -23,9 +23,9 @@ Binding symbol `og_load_animgraph` · publish builds: kept
 
 ```ogt
 fn animgraph {
-  doc "Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle."
+  doc "Load a cooked file.animgraph TS asset. Bindings map graph names to model clips; cook checks references and graph structure. Sprite graphs resolve sheet/rig clip names at playback. Repeated loads return the same handle."
   param world World "The world whose animation owns the graph."
-  param path String "The animgraph asset id under assets/."
+  param path String "Canonical graph ID, such as base/graphs/locomotion."
   returns Result.GraphAsset "Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip."
 }
 ```

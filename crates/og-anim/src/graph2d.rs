@@ -1,4 +1,4 @@
-//! Animation graphs on 2D targets: an `animgraph` whose `clip` lines name
+//! Animation graphs on 2D targets: an `animgraph` whose clip motions name
 //! clips of the sheet or rig it plays on, by name, so one graph serves
 //! every sheet (or rig) with those clip names. og.flipbook and
 //! og.skeleton2d run it on their entities that carry an og.AnimationGraph
@@ -30,7 +30,7 @@ use og_core::bytes::{ByteReader, ByteWriter};
 use std::cell::RefCell;
 
 /// A graph for a 2D target: its asset (clip ids are `1 + ` an index into
-/// `clips`) and the clip names its `clip` lines give.
+/// `clips`) and the clip names its motions give.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpriteGraph {
     pub asset: GraphAsset,
@@ -38,10 +38,10 @@ pub struct SpriteGraph {
 }
 
 impl SpriteGraph {
-    /// Parses `animgraph` text whose `clip` lines name the target's clips.
-    pub fn parse(text: &str) -> Result<SpriteGraph> {
+    /// Resolve typed graph clip names against the sheet or rig at playback.
+    pub fn new(input: &crate::GraphDefinition) -> Result<SpriteGraph> {
         let names = RefCell::new(Vec::<String>::new());
-        let asset = GraphAsset::parse(text, &|name| {
+        let asset = input.build(&|name| {
             let mut v = names.borrow_mut();
             let i = match v.iter().position(|n| n == name) {
                 Some(i) => i,

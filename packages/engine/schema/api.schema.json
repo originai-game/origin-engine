@@ -7595,7 +7595,7 @@
         },
         {
           "name": "animgraph",
-          "doc": "Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle.",
+          "doc": "Load a cooked file.animgraph TS asset. Bindings map graph names to model clips; cook checks references and graph structure. Sprite graphs resolve sheet/rig clip names at playback. Repeated loads return the same handle.",
           "params": [
             {
               "name": "world",
@@ -7607,7 +7607,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The animgraph asset id under assets/."
+              "doc": "Canonical graph ID, such as base/graphs/locomotion."
             }
           ],
           "returns": "Result<GraphAsset>",
@@ -9180,6 +9180,19 @@
         "AnimationEvent",
         "ClipInfo",
         "Animation",
+        "GraphMotion",
+        "GraphLayerMode",
+        "GraphComparison",
+        "GraphInterrupt",
+        "GraphClip",
+        "GraphThreshold",
+        "GraphPoint",
+        "GraphBlend1d",
+        "GraphBlend2d",
+        "GraphState",
+        "GraphCondition",
+        "GraphTransition",
+        "GraphLayer",
         "GraphDesc",
         "Rig",
         "Rig",
@@ -9235,7 +9248,7 @@
         },
         {
           "name": "graph",
-          "doc": "Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.",
+          "doc": "Register a typed blend-tree graph for AnimationGraph.asset. Clip motions resolve by name against clips.",
           "params": [
             {
               "name": "world",
@@ -9247,11 +9260,11 @@
               "name": "desc",
               "type": "GraphDesc",
               "optional": true,
-              "doc": "The text and the clips it may name."
+              "doc": "Named motions, layers, parameters and the clips they may name."
             }
           ],
           "returns": "Result<GraphAsset>",
-          "returnsDoc": "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.",
+          "returnsDoc": "Refused for unknown names, cycles, invalid numbers or clip names clips lacks.",
           "publish": true
         },
         {
@@ -41823,7 +41836,7 @@
     "GraphAsset": {
       "x-og-kind": "handle",
       "x-og-module": "anim",
-      "description": "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles.",
+      "description": "A structured blend-tree graph whose clip references were resolved to clip handles.",
       "type": "integer",
       "minimum": 0
     },
@@ -43110,28 +43123,476 @@
       ],
       "additionalProperties": false
     },
+    "GraphMotion": {
+      "x-og-kind": "union",
+      "x-og-module": "anim",
+      "description": "A named clip leaf or blend; the kind selects its fields.",
+      "x-og-tag": "kind",
+      "oneOf": [
+        {
+          "description": "A named clip leaf.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "clip"
+            },
+            "clip": {
+              "type": "string",
+              "description": "ClipInfo.name, or a sheet/2D rig clip name for sprite graphs."
+            },
+            "speed": {
+              "type": "number",
+              "description": "Positive playback rate; omitted is one."
+            },
+            "looping": {
+              "type": "boolean",
+              "description": "Loop playback; omitted is true."
+            },
+            "mirror": {
+              "type": "boolean",
+              "description": "Mirror a skeletal pose; omitted is false."
+            }
+          },
+          "required": [
+            "kind",
+            "clip"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "GraphClip"
+        },
+        {
+          "description": "Linear interpolation between threshold children.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "blend1d"
+            },
+            "param": {
+              "type": "string",
+              "description": "Declared parameter name."
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GraphThreshold"
+              },
+              "description": "At least one child; forward motion references are allowed."
+            }
+          },
+          "required": [
+            "kind",
+            "param",
+            "children"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "GraphBlend1d"
+        },
+        {
+          "description": "Gradient-band interpolation between points.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "blend2d"
+            },
+            "x": {
+              "type": "string",
+              "description": "Declared x parameter name."
+            },
+            "y": {
+              "type": "string",
+              "description": "Declared y parameter name."
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GraphPoint"
+              },
+              "description": "At least one child."
+            }
+          },
+          "required": [
+            "kind",
+            "x",
+            "y",
+            "children"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "GraphBlend2d"
+        }
+      ]
+    },
+    "GraphLayerMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "How a graph layer combines poses.",
+      "type": "string",
+      "enum": [
+        "override",
+        "additive"
+      ],
+      "x-og-variants": {
+        "override": "Replace the pose below by the layer weight.",
+        "additive": "Add the difference from the motion's first frame."
+      }
+    },
+    "GraphComparison": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "Compare a graph parameter to a number.",
+      "type": "string",
+      "enum": [
+        "gt",
+        "ge",
+        "lt",
+        "le",
+        "eq",
+        "ne"
+      ],
+      "x-og-variants": {
+        "gt": "Greater than.",
+        "ge": "Greater than or equal.",
+        "lt": "Less than.",
+        "le": "Less than or equal.",
+        "eq": "Equal.",
+        "ne": "Not equal."
+      }
+    },
+    "GraphInterrupt": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "Which transitions may interrupt a cross-fade.",
+      "type": "string",
+      "enum": [
+        "any",
+        "none",
+        "source",
+        "next"
+      ],
+      "x-og-variants": {
+        "any": "Any eligible transition from the new state, including any-state transitions.",
+        "none": "Complete this fade first.",
+        "source": "Only transitions from the state being left.",
+        "next": "Only transitions from the new state itself."
+      }
+    },
+    "GraphClip": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A named clip leaf.",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "type": "string",
+          "description": "ClipInfo.name, or a sheet/2D rig clip name for sprite graphs."
+        },
+        "speed": {
+          "type": "number",
+          "description": "Positive playback rate; omitted is one."
+        },
+        "looping": {
+          "type": "boolean",
+          "description": "Loop playback; omitted is true."
+        },
+        "mirror": {
+          "type": "boolean",
+          "description": "Mirror a skeletal pose; omitted is false."
+        }
+      },
+      "required": [
+        "clip"
+      ],
+      "additionalProperties": false
+    },
+    "GraphThreshold": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One child of a threshold blend.",
+      "type": "object",
+      "properties": {
+        "motion": {
+          "type": "string",
+          "description": "A key in GraphDesc.motions."
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Parameter value at this child. Children sort by threshold."
+        }
+      },
+      "required": [
+        "motion",
+        "threshold"
+      ],
+      "additionalProperties": false
+    },
+    "GraphPoint": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One child of a Cartesian blend.",
+      "type": "object",
+      "properties": {
+        "motion": {
+          "type": "string",
+          "description": "A key in GraphDesc.motions."
+        },
+        "point": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "The child's x and y parameter values."
+        }
+      },
+      "required": [
+        "motion",
+        "point"
+      ],
+      "additionalProperties": false
+    },
+    "GraphBlend1d": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "Threshold interpolation, clamped at the ends.",
+      "type": "object",
+      "properties": {
+        "param": {
+          "type": "string",
+          "description": "Declared parameter name."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphThreshold"
+          },
+          "description": "At least one child; forward motion references are allowed."
+        }
+      },
+      "required": [
+        "param",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "GraphBlend2d": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "Freeform Cartesian gradient-band interpolation.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "string",
+          "description": "Declared x parameter name."
+        },
+        "y": {
+          "type": "string",
+          "description": "Declared y parameter name."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphPoint"
+          },
+          "description": "At least one child."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "GraphState": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A state in a graph layer.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique within the layer."
+        },
+        "motion": {
+          "type": "string",
+          "description": "A key in GraphDesc.motions."
+        },
+        "speed": {
+          "type": "number",
+          "description": "Nonnegative playback multiplier; omitted is one."
+        },
+        "sync": {
+          "type": "string",
+          "description": "Phase synchronization group; omitted means independent."
+        }
+      },
+      "required": [
+        "name",
+        "motion"
+      ],
+      "additionalProperties": false
+    },
+    "GraphCondition": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A transition's parameter comparison; all its conditions must hold.",
+      "type": "object",
+      "properties": {
+        "param": {
+          "type": "string",
+          "description": "Declared parameter name."
+        },
+        "op": {
+          "$ref": "#/$defs/GraphComparison",
+          "description": "Comparison."
+        },
+        "value": {
+          "type": "number",
+          "description": "Finite comparison value."
+        }
+      },
+      "required": [
+        "param",
+        "op",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "GraphTransition": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A prioritized transition; requires at least one condition or exit.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source state; omitted means any state except the target."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target state."
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphCondition"
+          },
+          "description": "All must hold; omitted means no parameter conditions."
+        },
+        "exit": {
+          "type": "number",
+          "description": "Minimum source phase in cycles, nonnegative."
+        },
+        "fade": {
+          "type": "number",
+          "description": "Nonnegative cross-fade seconds; omitted is 0.2."
+        },
+        "interrupt": {
+          "$ref": "#/$defs/GraphInterrupt",
+          "description": "Fade interruption policy; omitted is any."
+        }
+      },
+      "required": [
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "GraphLayer": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A named state machine. The first layer supplies root motion and AnimationGraph.state.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique layer name."
+        },
+        "mode": {
+          "$ref": "#/$defs/GraphLayerMode",
+          "description": "Pose combination; omitted is override."
+        },
+        "weight": {
+          "type": "number",
+          "description": "Fixed weight in 0..1; omitted is one. Exclusive with weightParam."
+        },
+        "weightParam": {
+          "type": "string",
+          "description": "Parameter-driven weight, clamped to 0..1 at playback."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphState"
+          },
+          "description": "At least one state, in state-index order."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Initial state name."
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphTransition"
+          },
+          "description": "Priority order; first eligible transition fires."
+        },
+        "mask": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Skeleton node names to subtree weights in 0..1; omitted means all joints."
+        }
+      },
+      "required": [
+        "name",
+        "states",
+        "entry"
+      ],
+      "additionalProperties": false
+    },
     "GraphDesc": {
       "x-og-kind": "desc",
       "x-og-module": "anim",
       "description": "A blend-tree graph to register.",
       "type": "object",
       "properties": {
-        "text": {
-          "type": "string",
-          "description": "The graph's `.ogt` text (`type animgraph`, `version 1`).",
-          "default": ""
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "At most eight unique parameter names, in AnimationGraph p0..p7 order.",
+          "default": []
+        },
+        "motions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/GraphMotion"
+          },
+          "description": "Named clip and blend motions; cycles are rejected.",
+          "default": {}
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphLayer"
+          },
+          "description": "At least one layer, in playback order.",
+          "default": []
         },
         "clips": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/ClipInfo"
           },
-          "description": "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.",
+          "description": "Clip leaves resolve by ClipInfo.name, usually og.load.animation's clips.",
           "default": []
         },
         "sprite": {
           "type": "boolean",
-          "description": "A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read.",
+          "description": "Resolve clip names on an entity's flipbook or 2D rig at playback instead; clips is not read.",
           "default": false
         }
       },

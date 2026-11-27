@@ -12,7 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 56 more are advanced (`og api show anim --all`).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 69 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -31,7 +31,7 @@ module anim {
 |---|---|---|---|
 | [`SkeletonAsset`](anim/type-SkeletonAsset.md) | handle |  | A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices). |
 | [`ClipAsset`](anim/type-ClipAsset.md) | handle |  | An animation clip, resampled at the cook's rate, with its markers. |
-| [`GraphAsset`](anim/type-GraphAsset.md) | handle |  | A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles. |
+| [`GraphAsset`](anim/type-GraphAsset.md) | handle |  | A structured blend-tree graph whose clip references were resolved to clip handles. |
 | [`SkeletonAsset()`](#column-SkeletonAsset) | column kind |  | A SkeletonAsset handle field. |
 | [`ClipAsset()`](#column-ClipAsset) | column kind |  | A ClipAsset handle field. |
 | [`GraphAsset()`](#column-GraphAsset) | column kind |  | A GraphAsset handle field. |
@@ -66,8 +66,21 @@ module anim {
 | [`ClipInfo`](anim/type-ClipInfo.md) | struct |  | One clip of a loaded animation. |
 | [`Animation`](anim/type-Animation.md) | struct |  | What og.load.animation registered from a model's `#anim` blob. |
 | [`og.anim.getNodeMatrix`](anim/fn-getNodeMatrix.md) | function | `(world: World, entity: Entity, node: number): Result<Matrix4>` | A node's matrix in the skeleton entity's frame, including node ancestors, as three.js Bone.matrixWorld relative to its SkinnedMesh; no entity/parent transforms. |
+| [`GraphMotion`](anim/type-GraphMotion.md) | union |  | A named clip leaf or blend; the kind selects its fields. |
+| [`GraphLayerMode`](anim/type-GraphLayerMode.md) | enum |  | How a graph layer combines poses. |
+| [`GraphComparison`](anim/type-GraphComparison.md) | enum |  | Compare a graph parameter to a number. |
+| [`GraphInterrupt`](anim/type-GraphInterrupt.md) | enum |  | Which transitions may interrupt a cross-fade. |
+| [`GraphClip`](anim/type-GraphClip.md) | struct |  | A named clip leaf. |
+| [`GraphThreshold`](anim/type-GraphThreshold.md) | struct |  | One child of a threshold blend. |
+| [`GraphPoint`](anim/type-GraphPoint.md) | struct |  | One child of a Cartesian blend. |
+| [`GraphBlend1d`](anim/type-GraphBlend1d.md) | struct |  | Threshold interpolation, clamped at the ends. |
+| [`GraphBlend2d`](anim/type-GraphBlend2d.md) | struct |  | Freeform Cartesian gradient-band interpolation. |
+| [`GraphState`](anim/type-GraphState.md) | struct |  | A state in a graph layer. |
+| [`GraphCondition`](anim/type-GraphCondition.md) | struct |  | A transition's parameter comparison; all its conditions must hold. |
+| [`GraphTransition`](anim/type-GraphTransition.md) | struct |  | A prioritized transition; requires at least one condition or exit. |
+| [`GraphLayer`](anim/type-GraphLayer.md) | struct |  | A named state machine. |
 | [`GraphDesc`](anim/type-GraphDesc.md) | desc struct |  | A blend-tree graph to register. |
-| [`og.anim.graph`](anim/fn-graph.md) | function | `(world: World, desc?: GraphDesc): Result<GraphAsset>` | Register a blend-tree graph for AnimationGraph.asset. |
+| [`og.anim.graph`](anim/fn-graph.md) | function | `(world: World, desc?: GraphDesc): Result<GraphAsset>` | Register a typed blend-tree graph for AnimationGraph.asset. |
 | [`Rig`](anim/type-Rig.md) | handle |  | A humanoid map from og.load.rig (a checked file.rig TS declaration): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with footHeight, how high its ankles s… |
 | [`Rig()`](#column-Rig) | column kind |  | A Rig handle field (0 is none): a humanoid map og.load.rig answered. |
 | [`HumanBone`](anim/type-HumanBone.md) | struct |  | One standard humanoid bone of a skeleton. |
@@ -238,7 +251,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 699</sub>
+<sub>Module `anim` line 820</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -249,7 +262,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 770</sub>
+<sub>Module `anim` line 891</sub>
 
 ```ogt
 column Rig2D {
@@ -260,4 +273,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 873</sub>
+<sub>Module `anim` line 994</sub>

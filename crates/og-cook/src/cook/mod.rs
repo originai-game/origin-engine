@@ -161,6 +161,8 @@ pub(crate) struct Source {
     tileset: Option<og_tilemap::Tileset>,
     /// Checked map cells and metadata, bound to actual tileset outputs.
     tilemap: Option<og_tilemap::TilemapAsset>,
+    /// Checked animation graph and canonical model bindings.
+    animgraph: Option<og_anim::GraphSource>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

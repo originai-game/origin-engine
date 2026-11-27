@@ -172,8 +172,8 @@ readonly "root": (string);
 });
 export type Input_animgraph = ({
 readonly "bindings"?: (ReadonlyArray<(Input_animgraphDefinitions["Binding"])> | (number extends ((Input_animgraphDefinitions["Binding"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "layers": (ReadonlyArray<(Input_animgraphDefinitions["Layer"])> | (number extends ((Input_animgraphDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "motions": (Readonly<Record<string, (Input_animgraphDefinitions["Motion"])>>);
+readonly "layers": (ReadonlyArray<(Input_animgraphDefinitions["LayerInput"])> | (number extends ((Input_animgraphDefinitions["LayerInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "motions": (Readonly<Record<string, (Input_animgraphDefinitions["MotionInput"])>>);
 readonly "params"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "sprite"?: (boolean);
 });
@@ -183,7 +183,7 @@ readonly "clip": (string);
 readonly "name": (string);
 readonly "source": (Input_animgraphDefinitions["ContentRef"]);
 });
-readonly "Condition": ({
+readonly "ConditionInput": ({
 readonly "op": (Input_animgraphDefinitions["Op"]);
 readonly "param": (string);
 readonly "value": (number);
@@ -198,47 +198,52 @@ readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
 readonly "Interrupt": ("any" | "none" | "source" | "next") & (string);
-readonly "Layer": ({
+readonly "LayerInput": ({
 readonly "entry": (string);
-/** Skeleton node names to weights; the domain resolves subtrees. */
 readonly "mask"?: (Readonly<Record<string, (number)>>);
 readonly "mode"?: (((Input_animgraphDefinitions["LayerMode"])) | ((null)));
 readonly "name": (string);
-readonly "states": (ReadonlyArray<(Input_animgraphDefinitions["State"])> | (number extends ((Input_animgraphDefinitions["State"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-readonly "transitions"?: (ReadonlyArray<(Input_animgraphDefinitions["Transition"])> | (number extends ((Input_animgraphDefinitions["Transition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "states": (ReadonlyArray<(Input_animgraphDefinitions["StateInput"])> | (number extends ((Input_animgraphDefinitions["StateInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "transitions"?: (ReadonlyArray<(Input_animgraphDefinitions["TransitionInput"])> | (number extends ((Input_animgraphDefinitions["TransitionInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "weight"?: ((number) | (null));
 readonly "weightParam"?: ((string) | (null));
 });
 readonly "LayerMode": ("override" | "additive") & (string);
-readonly "Motion": (((({
+readonly "MotionInput": (((({
 readonly "clip": (string);
 readonly "kind": ("clip") & (string);
 readonly "looping"?: ((boolean) | (null));
 readonly "mirror"?: ((boolean) | (null));
 readonly "speed"?: ((number) | (null));
 })) & { readonly "children"?: never; readonly "param"?: never; readonly "x"?: never; readonly "y"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(readonly [(number), (string)])> | (number extends ((readonly [(number), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "children": (ReadonlyArray<(Input_animgraphDefinitions["ThresholdInput"])> | (number extends ((Input_animgraphDefinitions["ThresholdInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("blend1d") & (string);
 readonly "param": (string);
 })) & { readonly "clip"?: never; readonly "looping"?: never; readonly "mirror"?: never; readonly "speed"?: never; readonly "x"?: never; readonly "y"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(readonly [(ReadonlyArray<(number)> & { readonly length: 2 }), (string)])> | (number extends ((readonly [(ReadonlyArray<(number)> & { readonly length: 2 }), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "children": (ReadonlyArray<(Input_animgraphDefinitions["PointInput"])> | (number extends ((Input_animgraphDefinitions["PointInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("blend2d") & (string);
 readonly "x": (string);
 readonly "y": (string);
 })) & { readonly "clip"?: never; readonly "looping"?: never; readonly "mirror"?: never; readonly "param"?: never; readonly "speed"?: never; }));
 readonly "Op": ("gt" | "ge" | "lt" | "le" | "eq" | "ne") & (string);
-readonly "State": ({
+readonly "PointInput": ({
+readonly "motion": (string);
+readonly "point": (ReadonlyArray<(number)> & { readonly length: 2 });
+});
+readonly "StateInput": ({
 readonly "motion": (string);
 readonly "name": (string);
 readonly "speed"?: ((number) | (null));
 readonly "sync"?: ((string) | (null));
 });
-readonly "Transition": ({
-readonly "conditions"?: (ReadonlyArray<(Input_animgraphDefinitions["Condition"])> | (number extends ((Input_animgraphDefinitions["Condition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
-/** Source phase, in cycles since entry. */
+readonly "ThresholdInput": ({
+readonly "motion": (string);
+readonly "threshold": (number);
+});
+readonly "TransitionInput": ({
+readonly "conditions"?: (ReadonlyArray<(Input_animgraphDefinitions["ConditionInput"])> | (number extends ((Input_animgraphDefinitions["ConditionInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "exit"?: ((number) | (null));
 readonly "fade"?: ((number) | (null));
-/** Omitted means any state except the target. */
 readonly "from"?: ((string) | (null));
 readonly "interrupt"?: (((Input_animgraphDefinitions["Interrupt"])) | ((null)));
 readonly "to": (string);

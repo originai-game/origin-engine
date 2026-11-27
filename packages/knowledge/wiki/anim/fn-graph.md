@@ -6,7 +6,7 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.anim.graph`
 
-Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
+Register a typed blend-tree graph for AnimationGraph.asset. Clip motions resolve by name against clips.
 
 ```ts
 og.anim.graph(world: World, desc?: GraphDesc): Result<GraphAsset>
@@ -15,19 +15,19 @@ og.anim.graph(world: World, desc?: GraphDesc): Result<GraphAsset>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose animation owns the graph. |
-| `desc` | `GraphDesc` | yes | The text and the clips it may name. |
+| `desc` | `GraphDesc` | yes | Named motions, layers, parameters and the clips they may name. |
 
-**Returns** `Result<GraphAsset>`: Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
+**Returns** `Result<GraphAsset>`: Refused for unknown names, cycles, invalid numbers or clip names clips lacks.
 
 Binding symbol `og_anim_graph` · publish builds: kept
 
 ```ogt
 fn graph {
-  doc "Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`."
+  doc "Register a typed blend-tree graph for AnimationGraph.asset. Clip motions resolve by name against clips."
   param world World "The world whose animation owns the graph."
-  param desc GraphDesc "The text and the clips it may name."
-  returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
+  param desc GraphDesc "Named motions, layers, parameters and the clips they may name."
+  returns Result.GraphAsset "Refused for unknown names, cycles, invalid numbers or clip names clips lacks."
 }
 ```
 
-<sub>Module `anim` line 690</sub>
+<sub>Module `anim` line 811</sub>

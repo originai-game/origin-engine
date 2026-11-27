@@ -26,6 +26,7 @@ fn source(root: &Path, rel: &str) -> Source {
         lightmap: None,
         tileset: None,
         tilemap: None,
+        animgraph: None,
         conformed: None,
         fracture: None,
     }

@@ -261,45 +261,31 @@ pub fn clips() -> Vec<(u64, ClipAsset)> {
     ]
 }
 
-pub const GRAPH_TEXT: &str = r#"type animgraph
-version 1
----
-param speed
-param wave
-clip idle "idle"
-clip walk "walk"
-clip run "run"
-clip waving "wave"
-blend1d move speed {
-  child walk 1.5
-  child run 4
+pub fn graph_definition() -> GraphDefinition {
+    serde_json::from_value(serde_json::json!({
+        "params": ["speed", "wave"],
+        "motions": {
+            "idle": {"kind":"clip", "clip":"idle"},
+            "walk": {"kind":"clip", "clip":"walk"},
+            "run": {"kind":"clip", "clip":"run"},
+            "waving": {"kind":"clip", "clip":"wave"},
+            "move": {"kind":"blend1d", "param":"speed", "children":[
+                {"motion":"walk", "threshold":1.5}, {"motion":"run", "threshold":4}
+            ]}
+        },
+        "layers": [
+            {"name":"base", "entry":"idle", "states":[
+                {"name":"idle", "motion":"idle"},
+                {"name":"move", "motion":"move", "sync":"gait"}
+            ], "transitions":[
+                {"from":"idle", "to":"move", "conditions":[{"param":"speed", "op":"gt", "value":0.2}], "fade":0.25, "interrupt":"none"},
+                {"from":"move", "to":"idle", "conditions":[{"param":"speed", "op":"le", "value":0.2}], "fade":0.3}
+            ]},
+            {"name":"upper", "mode":"additive", "weightParam":"wave", "mask":{"arm.L":1},
+                "states":[{"name":"wave", "motion":"waving", "sync":"gait"}], "entry":"wave"}
+        ]
+    })).unwrap()
 }
-layer base {
-  state idle idle
-  state move move {
-    sync gait
-  }
-  entry idle
-  transition idle move {
-    when speed gt 0.2
-    fade 0.25
-    interrupt none
-  }
-  transition move idle {
-    when speed le 0.2
-    fade 0.3
-  }
-}
-layer upper {
-  mode additive
-  weight wave
-  mask "arm.L"
-  state wave waving {
-    sync gait
-  }
-  entry wave
-}
-"#;
 
 pub fn resolve(name: &str) -> Option<u64> {
     match name {
@@ -322,7 +308,7 @@ pub fn register(anim: &AnimationSystem) {
         }
         anim.add_clip(h, c).unwrap();
     }
-    anim.add_graph(GRAPH, GraphAsset::parse(GRAPH_TEXT, &resolve).unwrap())
+    anim.add_graph(GRAPH, graph_definition().build(&resolve).unwrap())
         .unwrap();
 }
 

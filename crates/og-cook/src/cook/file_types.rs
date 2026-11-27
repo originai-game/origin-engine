@@ -195,17 +195,6 @@ pub fn markdown() -> Result<String, String> {
                 block(&mut out, "prefab.entity", super::scene::ENTITY_LINES);
                 out.push_str("\nComponent blocks and their fields come from reflection, as for scenes. Query the record by name with og api show.\n");
             }
-            "animgraph" => {
-                out.push_str("Field coverage: asset bindings and all nested graph declarations share the runtime parser's line tables. Output: a validated graph with tracked model animation dependencies; load with og.load.animgraph. Bind names are resolved at cook; runtime handles are never stored.\n\n");
-                table(&mut out, og_anim::GRAPH_SOURCE_LINES);
-                for (path, fields) in og_anim::GRAPH_BLOCKS {
-                    if path.is_empty() {
-                        table(&mut out, fields);
-                    } else {
-                        block(&mut out, &format!("animgraph.{path}"), fields);
-                    }
-                }
-            }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
                 let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES

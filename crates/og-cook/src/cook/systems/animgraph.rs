@@ -1,5 +1,4 @@
-//! The graph grammar is og-anim's; the cook resolves asset clip names,
-//! never runtime handles, and records those models as dependencies.
+//! Checked named graphs resolve canonical model bindings to native clip slots.
 use super::*;
 use og_anim::GraphSource;
 use og_blob::BlobWriter;
@@ -7,12 +6,39 @@ use og_blob::BlobWriter;
 pub(crate) static GRAPH: KindDef = KindDef {
     name: "animgraph",
     extensions: &[],
-    types: &["animgraph"],
+    types: &[],
     by_content: false,
     streams: false,
     plan,
 };
 pub(crate) static KINDS: &[&KindDef] = &[&GRAPH];
+
+pub(crate) fn declaration(
+    input: source_schemas::media::animgraph::Animgraph,
+) -> Result<GraphSource, String> {
+    let definition = og_anim::GraphDefinition {
+        params: input.params,
+        motions: input.motions,
+        layers: input.layers,
+    };
+    let graph = og_anim::SpriteGraph::new(&definition).map_err(|e| e.to_string())?;
+    let source = GraphSource {
+        asset: graph.asset,
+        clips: graph.clips,
+        sprite: input.sprite,
+        bindings: input
+            .bindings
+            .into_iter()
+            .map(|b| og_anim::ClipBinding {
+                name: b.name,
+                source: b.source.id,
+                clip: b.clip,
+            })
+            .collect(),
+    };
+    source.validate().map_err(|e| e.to_string())?;
+    Ok(source)
+}
 
 fn plan<'a>(
     cx: &Cx<'a>,
@@ -22,8 +48,10 @@ fn plan<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let result = (|| -> Result<(Vec<u8>, Vec<u8>), String> {
-        let text = std::str::from_utf8(&s.bytes).map_err(|e| e.to_string())?;
-        let graph = GraphSource::parse(text).map_err(|e| e.to_string())?;
+        let graph = s
+            .animgraph
+            .as_ref()
+            .ok_or("animation graph requires file.animgraph")?;
         let mut deps = Vec::new();
         for b in &graph.bindings {
             let source = cx
@@ -67,7 +95,7 @@ fn plan<'a>(
     })();
     match result {
         Ok((text, deps)) => {
-            let st = stamp(&[Area::Anim], &[b"animgraph", &hash, &deps]);
+            let st = stamp(&[Area::Anim], &[b"animgraph", &hash, &deps, &text]);
             outs.push((
                 s.rel.clone(),
                 format::AnimGraph::NAME,

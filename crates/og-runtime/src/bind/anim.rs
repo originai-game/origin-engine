@@ -479,15 +479,15 @@ pub fn og_anim_get_node_matrix(world: u32, entity: f64, node: u32) -> Result<gla
 }
 
 fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
-    if desc.text.is_empty() {
-        return Err("desc.text is the graph's .ogt text (`type animgraph`); it is missing".into());
-    }
-    let text = desc.text.as_str();
-    // A graph for og.Flipbook and og.Skeleton2D: its clip lines name the
-    // sheet's or rig's clips, found as it plays.
+    let input: og_anim::GraphDefinition = serde_json::from_value(json!({
+        "params": desc.params,
+        "motions": desc.motions.to_json(),
+        "layers": desc.layers.to_json(),
+    }))
+    .map_err(|e| format!("the graph: {e}"))?;
     if desc.sprite {
         let graph =
-            og_anim::SpriteGraph::parse(text).map_err(|e| format!("the graph: {}", e.reason()))?;
+            og_anim::SpriteGraph::new(&input).map_err(|e| format!("the graph: {}", e.reason()))?;
         return register_graph(eng, graph.asset, Some(graph.clips));
     }
     let mut by_name = BTreeMap::new();
@@ -498,7 +498,9 @@ fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
                     .into(),
             );
         }
-        by_name.insert(c.name.clone(), c.clip);
+        if by_name.insert(c.name.clone(), c.clip).is_some() {
+            return Err(format!("desc.clips repeats '{}'", c.name));
+        }
     }
     let known = eng
         .state
@@ -509,7 +511,7 @@ fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {
         .copied()
         .collect::<Vec<_>>();
     let missing = std::cell::RefCell::new(Vec::new());
-    let parsed = GraphAsset::parse(text, &|name| {
+    let parsed = input.build(&|name| {
         let h = by_name.get(name).copied().filter(|h| known.contains(h));
         if h.is_none() {
             missing.borrow_mut().push(name.to_string());

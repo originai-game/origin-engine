@@ -30,6 +30,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("tileset", &tilemap::TILESET),
     ("tilemap", &tilemap::TILEMAP),
     ("grammar", &district::GRAMMAR),
+    ("animgraph", &animgraph::GRAPH),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -236,6 +237,7 @@ pub(crate) fn sources(
             lightmap: None,
             tileset: None,
             tilemap: None,
+            animgraph: None,
             conformed: None,
             fracture: None,
         };
@@ -257,6 +259,10 @@ pub(crate) fn sources(
             }
             "tilemap" => {
                 source.tilemap = Some(tilemap::map_declaration(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
+            "animgraph" => {
+                source.animgraph = Some(animgraph::declaration(source.input()?)?);
                 Ok(BTreeMap::new())
             }
             "tileset" => {
@@ -345,6 +351,11 @@ pub(crate) fn sources(
                 if let og_tilemap::TilesetRef::Asset(id) = tileset {
                     *id = graph.outputs[id.as_str()].asset.clone();
                 }
+            }
+        }
+        if let Some(graph_source) = &mut source.animgraph {
+            for b in &mut graph_source.bindings {
+                b.source = graph.outputs[&b.source].asset.clone();
             }
         }
         if let Some(t) = &mut source.tileset

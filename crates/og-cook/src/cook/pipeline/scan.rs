@@ -559,6 +559,7 @@ pub(crate) fn scan_with(
             lightmap: None,
             tileset: None,
             tilemap: None,
+            animgraph: None,
             conformed: None,
             fracture: None,
         };

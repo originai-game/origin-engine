@@ -21571,7 +21571,7 @@ export type SkeletonAsset = number & { readonly [handleType]: "SkeletonAsset" };
 export type ClipAsset = number & { readonly [handleType]: "ClipAsset" };
 
 /**
- * A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles.
+ * A structured blend-tree graph whose clip references were resolved to clip handles.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -22653,6 +22653,146 @@ export interface Animation {
 }
 
 
+/** A named clip leaf or blend; the kind selects its fields. */
+export type GraphMotion =
+  /** A named clip leaf. */
+  | ({ readonly kind: "clip" } & GraphClip)
+  /** Linear interpolation between threshold children. */
+  | ({ readonly kind: "blend1d" } & GraphBlend1d)
+  /** Gradient-band interpolation between points. */
+  | ({ readonly kind: "blend2d" } & GraphBlend2d);
+
+/**
+ * How a graph layer combines poses.
+ * - `"override"`: Replace the pose below by the layer weight.
+ * - `"additive"`: Add the difference from the motion's first frame.
+ */
+export type GraphLayerMode = "override" | "additive";
+
+/**
+ * Compare a graph parameter to a number.
+ * - `"gt"`: Greater than.
+ * - `"ge"`: Greater than or equal.
+ * - `"lt"`: Less than.
+ * - `"le"`: Less than or equal.
+ * - `"eq"`: Equal.
+ * - `"ne"`: Not equal.
+ */
+export type GraphComparison = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
+
+/**
+ * Which transitions may interrupt a cross-fade.
+ * - `"any"`: Any eligible transition from the new state, including any-state transitions.
+ * - `"none"`: Complete this fade first.
+ * - `"source"`: Only transitions from the state being left.
+ * - `"next"`: Only transitions from the new state itself.
+ */
+export type GraphInterrupt = "any" | "none" | "source" | "next";
+
+/** A named clip leaf. */
+export interface GraphClip {
+  /** ClipInfo.name, or a sheet/2D rig clip name for sprite graphs. */
+  readonly clip: string;
+  /** Positive playback rate; omitted is one. */
+  readonly speed?: number;
+  /** Loop playback; omitted is true. */
+  readonly looping?: boolean;
+  /** Mirror a skeletal pose; omitted is false. */
+  readonly mirror?: boolean;
+}
+
+/** One child of a threshold blend. */
+export interface GraphThreshold {
+  /** A key in GraphDesc.motions. */
+  readonly motion: string;
+  /** Parameter value at this child. Children sort by threshold. */
+  readonly threshold: number;
+}
+
+/** One child of a Cartesian blend. */
+export interface GraphPoint {
+  /** A key in GraphDesc.motions. */
+  readonly motion: string;
+  /** The child's x and y parameter values. */
+  readonly point: [number, number];
+}
+
+/** Threshold interpolation, clamped at the ends. */
+export interface GraphBlend1d {
+  /** Declared parameter name. */
+  readonly param: string;
+  /** At least one child; forward motion references are allowed. */
+  readonly children: readonly GraphThreshold[];
+}
+
+/** Freeform Cartesian gradient-band interpolation. */
+export interface GraphBlend2d {
+  /** Declared x parameter name. */
+  readonly x: string;
+  /** Declared y parameter name. */
+  readonly y: string;
+  /** At least one child. */
+  readonly children: readonly GraphPoint[];
+}
+
+/** A state in a graph layer. */
+export interface GraphState {
+  /** Unique within the layer. */
+  readonly name: string;
+  /** A key in GraphDesc.motions. */
+  readonly motion: string;
+  /** Nonnegative playback multiplier; omitted is one. */
+  readonly speed?: number;
+  /** Phase synchronization group; omitted means independent. */
+  readonly sync?: string;
+}
+
+/** A transition's parameter comparison; all its conditions must hold. */
+export interface GraphCondition {
+  /** Declared parameter name. */
+  readonly param: string;
+  /** Comparison. */
+  readonly op: GraphComparison;
+  /** Finite comparison value. */
+  readonly value: number;
+}
+
+/** A prioritized transition; requires at least one condition or exit. */
+export interface GraphTransition {
+  /** Source state; omitted means any state except the target. */
+  readonly from?: string;
+  /** Target state. */
+  readonly to: string;
+  /** All must hold; omitted means no parameter conditions. */
+  readonly conditions?: readonly GraphCondition[];
+  /** Minimum source phase in cycles, nonnegative. */
+  readonly exit?: number;
+  /** Nonnegative cross-fade seconds; omitted is 0.2. */
+  readonly fade?: number;
+  /** Fade interruption policy; omitted is any. */
+  readonly interrupt?: GraphInterrupt;
+}
+
+/** A named state machine. The first layer supplies root motion and AnimationGraph.state. */
+export interface GraphLayer {
+  /** Unique layer name. */
+  readonly name: string;
+  /** Pose combination; omitted is override. */
+  readonly mode?: GraphLayerMode;
+  /** Fixed weight in 0..1; omitted is one. Exclusive with weightParam. */
+  readonly weight?: number;
+  /** Parameter-driven weight, clamped to 0..1 at playback. */
+  readonly weightParam?: string;
+  /** At least one state, in state-index order. */
+  readonly states: readonly GraphState[];
+  /** Initial state name. */
+  readonly entry: string;
+  /** Priority order; first eligible transition fires. */
+  readonly transitions?: readonly GraphTransition[];
+  /** Skeleton node names to subtree weights in 0..1; omitted means all joints. */
+  readonly mask?: Readonly<Record<string, number>>;
+}
+
 /**
  * A blend-tree graph to register.
  *
@@ -22660,19 +22800,31 @@ export interface Animation {
  */
 export interface GraphDesc {
   /**
-   * The graph's `.ogt` text (`type animgraph`, `version 1`).
+   * At most eight unique parameter names, in AnimationGraph p0..p7 order.
    *
-   * @default ""
+   * @default []
    */
-  readonly text?: string;
+  readonly params?: readonly string[];
   /**
-   * The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.
+   * Named clip and blend motions; cycles are rejected.
+   *
+   * @default {}
+   */
+  readonly motions?: Readonly<Record<string, GraphMotion>>;
+  /**
+   * At least one layer, in playback order.
+   *
+   * @default []
+   */
+  readonly layers?: readonly GraphLayer[];
+  /**
+   * Clip leaves resolve by ClipInfo.name, usually og.load.animation's clips.
    *
    * @default []
    */
   readonly clips?: readonly ClipInfo[];
   /**
-   * A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read.
+   * Resolve clip names on an entity's flipbook or 2D rig at playback instead; clips is not read.
    *
    * @default false
    */
@@ -39875,10 +40027,10 @@ export declare namespace og {
      */
     function animation(world: World, path: string): Result<Animation>;
     /**
-     * Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle.
+     * Load a cooked file.animgraph TS asset. Bindings map graph names to model clips; cook checks references and graph structure. Sprite graphs resolve sheet/rig clip names at playback. Repeated loads return the same handle.
      *
      * @param world The world whose animation owns the graph.
-     * @param path The animgraph asset id under assets/.
+     * @param path Canonical graph ID, such as base/graphs/locomotion.
      * @returns Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip.
      */
     function animgraph(world: World, path: string): Result<GraphAsset>;
@@ -40664,11 +40816,11 @@ export declare namespace og {
      */
     function getNodeMatrix(world: World, entity: Entity, node: number): Result<Matrix4>;
     /**
-     * Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
+     * Register a typed blend-tree graph for AnimationGraph.asset. Clip motions resolve by name against clips.
      *
      * @param world The world whose animation owns the graph.
-     * @param desc The text and the clips it may name.
-     * @returns Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
+     * @param desc Named motions, layers, parameters and the clips they may name.
+     * @returns Refused for unknown names, cycles, invalid numbers or clip names clips lacks.
      */
     function graph(world: World, desc?: GraphDesc): Result<GraphAsset>;
     /**

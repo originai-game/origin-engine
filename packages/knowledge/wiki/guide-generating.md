@@ -104,8 +104,8 @@ export default og.game({
     if (!copied.ok) throw new Error(copied.reason);
     const bounds = og.render.geometryInfo(world, copied.value.parts[0]!.geometry);
     og.assert.always(bounds.ok && bounds.value!.min.x === -2 && bounds.value!.max.y === 6, "source mesh node retains geometry through a placed operand", {});
-    const graph = og.load.animgraph(world, "graph.ogt");
-    const again = og.load.animgraph(world, "graph.ogt");
+    const graph = og.load.animgraph(world, "base/graph");
+    const again = og.load.animgraph(world, "base/graph");
     og.assert.always(graph.ok && again.ok && graph.value === again.value, "cooked sprite graph loads once", {});
     const plant = og.load.gltf(world, "guided.ogt", {});
     if (!plant.ok) throw new Error(plant.reason);
@@ -540,16 +540,13 @@ part "copy" {
 }
 ```
 
-```ogt recipe file=assets/graph.ogt
-type animgraph
-version 1
----
-sprite true
-clip still "still"
-layer base {
-  state idle still
-  entry idle
-}
+```ts recipe file=content/graph.ts
+import { file } from "@origingame/engine/author";
+export default file.animgraph({
+  sprite: true,
+  motions: { still: { kind: "clip", clip: "still" } },
+  layers: [{ name: "base", states: [{ name: "idle", motion: "still" }], entry: "idle" }],
+});
 ```
 
 ```ts recipe file=assets/scatter.ts
@@ -747,7 +744,7 @@ The first recipe includes these declarations. The generator sets a placement; th
 
 `modelGeometry` supplies an imported model's static rest geometry to an ordinary part, merge or CSG operand. Name a `source` relative to assets/ and optionally a mesh `node`; without a node it merges the visible default scene. Normal source import and generators run first. Cycles fail cook. Full affine placement, UVs, vertex colours and tangent frames survive merges; topology-changing CSG builds new frames. The outer part owns the material. Skinning and animations are not copied into a static operand.
 
-An animation graph is also an asset: use its existing graph language, then load it with `og.load.animgraph`. Add `bind "graph clip name" "model asset" "model clip name"` for each skeletal clip reference; cook checks those names against the model's own, library and mirrored clips. For a flipbook/2D rig use `sprite true` instead of bindings; clip names are then looked up on the target at playback. The first recipe checks the cooked 2D graph and reused model operand. Graph parameters and playback remain runtime state.
+An animation graph is a checked `file.animgraph` TS asset, loaded by its canonical ID with `og.load.animgraph`. Set `bindings: [{name: "walk", source: ref("base/models/hero"), clip: "walk"}]` for skeletal clip references; cook checks names against the model's own, library and mirrored clips. For a flipbook/2D rig use `sprite: true` without bindings; clip names resolve on the target at playback. The first recipe checks the cooked 2D graph and reused model operand. Graph parameters and playback remain runtime state.
 
 <a id="guide-generating-10"></a>
 ### `generating §10` Author model-local animation keys

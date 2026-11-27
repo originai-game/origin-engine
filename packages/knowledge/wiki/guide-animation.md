@@ -85,6 +85,13 @@ walk or jump, so the generated stride has a start and a run to follow.
 <a id="guide-animation-3"></a>
 ### `animation §3` Clips and graphs
 
+- Author graphs with `file.animgraph` in `content/**/*.ts`, then load the
+  canonical ID with `og.load.animgraph`. Runtime-created graphs use the same
+  `params`, `motions` and `layers` data in `og.anim.graph`, plus `clips` from
+  `og.load.animation` or `sprite: true`. There is no graph text field or
+  author OGT parser. Motion children are `{motion, threshold}` for blend1d
+  and `{motion, point: [x,y]}` for blend2d; references may point forward but
+  must not cycle. Bind skeletal assets with canonical `ref` values.
 - A graph's parameters and IK targets are set from game systems in the
   tick. Base gameplay on the tick's simulation pose, never the drawn pose.
   Animation runs after game systems, so the pose they read is one tick
@@ -285,8 +292,8 @@ are not retroactive on seek unless authored that way.
 - Twist bones (unmapped nodes on a limb named `twist`, or Rigify's
   `DEF-….001`) take a share of the limb's twist by their position along
   it.
-- A mirrored clip known ahead needs no call: a graph's `clip` line with
-  `mirror true` plays it mirrored, and the cook's
+- A mirrored clip known ahead needs no call: a graph's clip motion with
+  `mirror: true` plays it mirrored, and the cook's
   `animation { mirror "<clip>" }` writes the mirrored clip into the model.
   og.anim.mirror is for clips chosen at run time; markers keep their
   names.
@@ -409,7 +416,7 @@ export default og.game({
   og.Lighting2D when its layer is in the lights' range. A skin swaps
   attachments: find one by name with `rig.skins.indexOf("armor")`.
 - One sprite graph (GraphDesc.sprite) serves every sheet or rig whose
-  clips have the names its `clip` lines use. On a flipbook its transitions
+  clips have the names its clip motions use. On a flipbook its transitions
   cut, never fade, and wait for the frame on screen to end, by the sheet's
   clip names. On a 2D skeleton it drives Skeleton2D's `clip`, `blendClip`,
   their times and `blend`, and fires both clips' events. Graph weight is

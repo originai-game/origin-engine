@@ -504,9 +504,9 @@ module load {
   }
 
   fn animgraph {
-    doc "Load a cooked type animgraph asset. Its bind lines map graph names to model clip names; the cook checks references and graph structure. Sprite graphs use sprite true and resolve sheet/rig clip names at playback. Loading the same asset again returns the same handle."
+    doc "Load a cooked file.animgraph TS asset. Bindings map graph names to model clips; cook checks references and graph structure. Sprite graphs resolve sheet/rig clip names at playback. Repeated loads return the same handle."
     param world World "The world whose animation owns the graph."
-    param path String "The animgraph asset id under assets/."
+    param path String "Canonical graph ID, such as base/graphs/locomotion."
     returns Result.GraphAsset "Refused for an uncooked or unavailable path, invalid graph or missing bound animation clip."
   }
 

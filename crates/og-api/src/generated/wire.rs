@@ -13364,10 +13364,626 @@ pub mod anim {
         }
     }
 
+    /// `GraphMotion`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum GraphMotion {
+        Clip(GraphClip),
+        Blend1d(GraphBlend1d),
+        Blend2d(GraphBlend2d),
+    }
+
+    impl Default for GraphMotion {
+        fn default() -> Self {
+            Self::Clip(Default::default())
+        }
+    }
+
+    impl GraphMotion {
+        /// The tag key and the cases' tags, in order.
+        pub const TAG: &'static str = "kind";
+        pub const TAGS: &'static [&'static str] = &["clip", "blend1d", "blend2d"];
+        /// This case's tag.
+        pub fn tag(&self) -> &'static str {
+            match self {
+                Self::Clip(_) => "clip",
+                Self::Blend1d(_) => "blend1d",
+                Self::Blend2d(_) => "blend2d",
+            }
+        }
+    }
+
+    impl FromJson for GraphMotion {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            let o = object(v)?;
+            let tag = match o.get(Self::TAG) {
+                Some(t) => text(t).map_err(|e| at(Self::TAG, e))?,
+                None => return Err(at(Self::TAG, format!("missing: one of {}", Self::TAGS.join(", ")))),
+            };
+            Ok(match tag {
+                "clip" => Self::Clip(GraphClip::from_json(v)?),
+                "blend1d" => Self::Blend1d(GraphBlend1d::from_json(v)?),
+                "blend2d" => Self::Blend2d(GraphBlend2d::from_json(v)?),
+                t => return Err(at(Self::TAG, unknown_variant("GraphMotion", t, Self::TAGS))),
+            })
+        }
+    }
+
+    impl ToJson for GraphMotion {
+        fn to_json(&self) -> Value {
+            let mut v = match self {
+                Self::Clip(p) => p.to_json(),
+                Self::Blend1d(p) => p.to_json(),
+                Self::Blend2d(p) => p.to_json(),
+            };
+            if let Value::Object(o) = &mut v {
+                o.insert(Self::TAG.into(), Value::String(self.tag().into()));
+            }
+            v
+        }
+    }
+
+    /// `GraphLayerMode`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum GraphLayerMode {
+        #[default]
+        Override,
+        Additive,
+    }
+
+    impl GraphLayerMode {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["override", "additive"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::Override, Self::Additive];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("GraphLayerMode", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for GraphLayerMode {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "GraphLayerMode", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for GraphLayerMode {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `GraphComparison`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum GraphComparison {
+        #[default]
+        Gt,
+        Ge,
+        Lt,
+        Le,
+        Eq,
+        Ne,
+    }
+
+    impl GraphComparison {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["gt", "ge", "lt", "le", "eq", "ne"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::Gt, Self::Ge, Self::Lt, Self::Le, Self::Eq, Self::Ne];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("GraphComparison", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for GraphComparison {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "GraphComparison", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for GraphComparison {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `GraphInterrupt`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum GraphInterrupt {
+        #[default]
+        Any,
+        None,
+        Source,
+        Next,
+    }
+
+    impl GraphInterrupt {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["any", "none", "source", "next"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::Any, Self::None, Self::Source, Self::Next];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("GraphInterrupt", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for GraphInterrupt {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "GraphInterrupt", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for GraphInterrupt {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `GraphClip`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphClip {
+        pub clip: String,
+        pub speed: Option<f32>,
+        pub looping: Option<bool>,
+        pub mirror: Option<bool>,
+    }
+
+    impl Default for GraphClip {
+        fn default() -> Self {
+            Self {
+                clip: Default::default(),
+                speed: Default::default(),
+                looping: Default::default(),
+                mirror: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphClip {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                clip: field(o, "clip", d.clip)?,
+                speed: field(o, "speed", d.speed)?,
+                looping: field(o, "looping", d.looping)?,
+                mirror: field(o, "mirror", d.mirror)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphClip {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("clip".into(), self.clip.to_json());
+            if let Some(x) = &self.speed {
+                o.insert("speed".into(), x.to_json());
+            }
+            if let Some(x) = &self.looping {
+                o.insert("looping".into(), x.to_json());
+            }
+            if let Some(x) = &self.mirror {
+                o.insert("mirror".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphThreshold`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphThreshold {
+        pub motion: String,
+        pub threshold: f32,
+    }
+
+    impl Default for GraphThreshold {
+        fn default() -> Self {
+            Self {
+                motion: Default::default(),
+                threshold: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphThreshold {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                motion: field(o, "motion", d.motion)?,
+                threshold: field(o, "threshold", d.threshold)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphThreshold {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("motion".into(), self.motion.to_json());
+            o.insert("threshold".into(), self.threshold.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphPoint`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphPoint {
+        pub motion: String,
+        pub point: [f32; 2],
+    }
+
+    impl Default for GraphPoint {
+        fn default() -> Self {
+            Self {
+                motion: Default::default(),
+                point: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphPoint {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                motion: field(o, "motion", d.motion)?,
+                point: field(o, "point", d.point)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphPoint {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("motion".into(), self.motion.to_json());
+            o.insert("point".into(), self.point.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphBlend1d`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphBlend1d {
+        pub param: String,
+        pub children: Vec<GraphThreshold>,
+    }
+
+    impl Default for GraphBlend1d {
+        fn default() -> Self {
+            Self {
+                param: Default::default(),
+                children: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphBlend1d {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                param: field(o, "param", d.param)?,
+                children: field(o, "children", d.children)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphBlend1d {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("param".into(), self.param.to_json());
+            o.insert("children".into(), self.children.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphBlend2d`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphBlend2d {
+        pub x: String,
+        pub y: String,
+        pub children: Vec<GraphPoint>,
+    }
+
+    impl Default for GraphBlend2d {
+        fn default() -> Self {
+            Self {
+                x: Default::default(),
+                y: Default::default(),
+                children: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphBlend2d {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                children: field(o, "children", d.children)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphBlend2d {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("x".into(), self.x.to_json());
+            o.insert("y".into(), self.y.to_json());
+            o.insert("children".into(), self.children.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphState`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphState {
+        pub name: String,
+        pub motion: String,
+        pub speed: Option<f32>,
+        pub sync: Option<String>,
+    }
+
+    impl Default for GraphState {
+        fn default() -> Self {
+            Self {
+                name: Default::default(),
+                motion: Default::default(),
+                speed: Default::default(),
+                sync: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphState {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                name: field(o, "name", d.name)?,
+                motion: field(o, "motion", d.motion)?,
+                speed: field(o, "speed", d.speed)?,
+                sync: field(o, "sync", d.sync)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphState {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("name".into(), self.name.to_json());
+            o.insert("motion".into(), self.motion.to_json());
+            if let Some(x) = &self.speed {
+                o.insert("speed".into(), x.to_json());
+            }
+            if let Some(x) = &self.sync {
+                o.insert("sync".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphCondition`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphCondition {
+        pub param: String,
+        pub op: GraphComparison,
+        pub value: f32,
+    }
+
+    impl Default for GraphCondition {
+        fn default() -> Self {
+            Self {
+                param: Default::default(),
+                op: Default::default(),
+                value: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphCondition {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                param: field(o, "param", d.param)?,
+                op: field(o, "op", d.op)?,
+                value: field(o, "value", d.value)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphCondition {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("param".into(), self.param.to_json());
+            o.insert("op".into(), self.op.to_json());
+            o.insert("value".into(), self.value.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphTransition`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphTransition {
+        pub from: Option<String>,
+        pub to: String,
+        pub conditions: Option<Vec<GraphCondition>>,
+        pub exit: Option<f32>,
+        pub fade: Option<f32>,
+        pub interrupt: Option<GraphInterrupt>,
+    }
+
+    impl Default for GraphTransition {
+        fn default() -> Self {
+            Self {
+                from: Default::default(),
+                to: Default::default(),
+                conditions: Default::default(),
+                exit: Default::default(),
+                fade: Default::default(),
+                interrupt: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphTransition {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                from: field(o, "from", d.from)?,
+                to: field(o, "to", d.to)?,
+                conditions: field(o, "conditions", d.conditions)?,
+                exit: field(o, "exit", d.exit)?,
+                fade: field(o, "fade", d.fade)?,
+                interrupt: field(o, "interrupt", d.interrupt)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphTransition {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            if let Some(x) = &self.from {
+                o.insert("from".into(), x.to_json());
+            }
+            o.insert("to".into(), self.to.to_json());
+            if let Some(x) = &self.conditions {
+                o.insert("conditions".into(), x.to_json());
+            }
+            if let Some(x) = &self.exit {
+                o.insert("exit".into(), x.to_json());
+            }
+            if let Some(x) = &self.fade {
+                o.insert("fade".into(), x.to_json());
+            }
+            if let Some(x) = &self.interrupt {
+                o.insert("interrupt".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
+    /// `GraphLayer`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GraphLayer {
+        pub name: String,
+        pub mode: Option<GraphLayerMode>,
+        pub weight: Option<f32>,
+        pub weight_param: Option<String>,
+        pub states: Vec<GraphState>,
+        pub entry: String,
+        pub transitions: Option<Vec<GraphTransition>>,
+        pub mask: Option<BTreeMap<String, f32>>,
+    }
+
+    impl Default for GraphLayer {
+        fn default() -> Self {
+            Self {
+                name: Default::default(),
+                mode: Default::default(),
+                weight: Default::default(),
+                weight_param: Default::default(),
+                states: Default::default(),
+                entry: Default::default(),
+                transitions: Default::default(),
+                mask: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for GraphLayer {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                name: field(o, "name", d.name)?,
+                mode: field(o, "mode", d.mode)?,
+                weight: field(o, "weight", d.weight)?,
+                weight_param: field(o, "weightParam", d.weight_param)?,
+                states: field(o, "states", d.states)?,
+                entry: field(o, "entry", d.entry)?,
+                transitions: field(o, "transitions", d.transitions)?,
+                mask: field(o, "mask", d.mask)?,
+            })
+        }
+    }
+
+    impl ToJson for GraphLayer {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("name".into(), self.name.to_json());
+            if let Some(x) = &self.mode {
+                o.insert("mode".into(), x.to_json());
+            }
+            if let Some(x) = &self.weight {
+                o.insert("weight".into(), x.to_json());
+            }
+            if let Some(x) = &self.weight_param {
+                o.insert("weightParam".into(), x.to_json());
+            }
+            o.insert("states".into(), self.states.to_json());
+            o.insert("entry".into(), self.entry.to_json());
+            if let Some(x) = &self.transitions {
+                o.insert("transitions".into(), x.to_json());
+            }
+            if let Some(x) = &self.mask {
+                o.insert("mask".into(), x.to_json());
+            }
+            Value::Object(o)
+        }
+    }
+
     /// `GraphDesc`: packages/knowledge/wiki/anim.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct GraphDesc {
-        pub text: String,
+        pub params: Vec<String>,
+        pub motions: BTreeMap<String, GraphMotion>,
+        pub layers: Vec<GraphLayer>,
         pub clips: Vec<ClipInfo>,
         pub sprite: bool,
     }
@@ -13375,7 +13991,9 @@ pub mod anim {
     impl Default for GraphDesc {
         fn default() -> Self {
             Self {
-                text: Default::default(),
+                params: Default::default(),
+                motions: Default::default(),
+                layers: Default::default(),
                 clips: Default::default(),
                 sprite: Default::default(),
             }
@@ -13389,7 +14007,9 @@ pub mod anim {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                text: field(o, "text", d.text)?,
+                params: field(o, "params", d.params)?,
+                motions: field(o, "motions", d.motions)?,
+                layers: field(o, "layers", d.layers)?,
                 clips: field(o, "clips", d.clips)?,
                 sprite: field(o, "sprite", d.sprite)?,
             })
@@ -13399,7 +14019,9 @@ pub mod anim {
     impl ToJson for GraphDesc {
         fn to_json(&self) -> Value {
             let mut o = Map::new();
-            o.insert("text".into(), self.text.to_json());
+            o.insert("params".into(), self.params.to_json());
+            o.insert("motions".into(), self.motions.to_json());
+            o.insert("layers".into(), self.layers.to_json());
             o.insert("clips".into(), self.clips.to_json());
             o.insert("sprite".into(), self.sprite.to_json());
             Value::Object(o)

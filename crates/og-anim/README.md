@@ -13,7 +13,7 @@ let anim = og_anim::install(&mut world)?;                       // after the sys
 let cooked = bundle.load_animation("models/walker.glb")?;        // cooked::BundleAnim on og-bundle's Bundle: skeleton, clips, skin and morph streams
 anim.add_skeleton(1, cooked.skeleton.clone())?;
 for (i, c) in cooked.clips.iter().enumerate() { anim.add_clip(10 + i as u64, c.clone())?; }
-let graph = GraphAsset::parse(&text, &|name| cooked.clips.iter().position(|c| c.name == name).map(|i| 10 + i as u64))?;
+let graph = definition.build(&|name| cooked.clips.iter().position(|c| c.name == name).map(|i| 10 + i as u64))?; // GraphDefinition: named typed input
 anim.add_graph(2, graph)?;
 let e = world.spawn((Transform::default(), Skeleton { asset: 1, root_motion: ROOT_MOTION_PLANAR, ..Default::default() },
                      AnimationGraph::new(2)))?;
@@ -37,7 +37,7 @@ its controller access. The cross-domain capture example lives in
 | `AnimationSystem` | `add_skeleton`/`add_clip`/`add_graph(handle, asset)` (handle ≠ 0; validated), `remove_*`, `skeleton`/`clip`/`graph(handle)`, `pose(entity)` (final local pose), `visible(entity)` (its per-node flags), `output(entity) -> AnimOutput` (palette, weights, `drawn` per node), `write_outputs(&mut dyn PaletteSink)` |
 | `SkeletonAsset { nodes, skins, hidden }`, `SkeletonNode`, `Skin` | a rig: every glTF node in topological order with its rest TRS and mesh, skins with joints and inverse bind matrices, the nodes hidden at rest; `rest_pose`, `rest_visibility`, `drawn`, `model_space`, `model_matrices`, `palette`, `joint_node`, `node` |
 | `ClipAsset`, `Channel`, `ChannelPath`, `ClipEvent` | a clip resampled at `rate` (with `source_rate` kept); `frame_pos`, `vec3`, `quat`, `weight`, `visible`; `frames_for` (§Visibility) |
-| `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition`, `MaskEntry` | the `animgraph` asset; `Layer::node_weights(skeleton)` resolves a mask |
+| `GraphDefinition::build(resolve)`, `GraphAsset`, `Motion`, `Layer`, `State`, `Transition`, `Condition`, `MaskEntry` | the named input and native `animgraph` asset; `Layer::node_weights(skeleton)` resolves a mask |
 | `Trs`, `nlerp`, `rotation_arc`, `twist_y` | deterministic transform math |
 | `two_bone`, `fabrik`, `ik_chain`, `look_at`, `JointLimit::clamp` | the solvers and the limit on a pose (used by the system, public for tools); each solver takes the chain's limits aligned with it, or `&[]` |
 | `HumanoidMap`, `RigAsset`, `retarget`, `RetargetOptions`, `HUMAN_BONES`, `SCHEMES` | humanoid bone maps and clips retargeted between rigs (§Retargeting) |
@@ -291,55 +291,43 @@ follows the swing. They hold no state: the state block is unchanged.
 `og.Transform` (`position: vec3`, `quaternion: quat`, `scale: vec3`) is
 adopted, not declared again.
 
-## The graph asset (`.ogt`, `type animgraph`, `version 1`)
+## The graph asset (`file.animgraph`)
 
-```text
-type animgraph
-version 1
----
-param speed                 # p0
-param wave                  # p1
-clip idle "idle"            # clip <motion> "<clip>"  (the loader's resolve turns the string into a handle)
-clip walk "walk" {
-  speed 1                   # duration multiplier (> 0)
-  loop true
-}
-clip walkOther "walk" {
-  mirror true               # played on the other side of the skeleton (default false)
-}
-clip run "run"
-clip waving "wave"
-blend1d move speed {        # blend1d <motion> <param>: linear between the two thresholds around the value
-  child walk 1.5
-  child run 4
-}
-blend2d strafe x y {        # blend2d <motion> <px> <py>: gradient-band weights
-  child fwd 0 1
-  child left -1 0
-}
-layer base {                # layer 0: the base, root motion and AnimationGraph.state come from it
-  state idle idle           # state <name> <motion> [{ speed s  sync <group> }]
-  state move move {
-    sync gait               # a sync group: phase-locked across layers
-  }
-  entry idle
-  transition idle move {    # transition <from|any> <to>
-    when speed gt 0.2       # all `when` must hold: gt ge lt le eq ne
-    exit 0.9                # optional: the source state's phase (cycles since entry) reached
-    fade 0.25               # cross-fade seconds (default 0.2)
-    interrupt next          # what may cut its fade: any (default) | none | source | next
-  }
-}
-layer upper {
-  mode additive             # override (default) | additive (difference from each clip's first frame)
-  weight wave               # a number 0..1 or a parameter
-  mask "spine" 0.5          # mask "<node>" [weight 0..1, default 1]: per-joint weights
-  mask "arm.L"
-  state wave waving {
-    sync gait
-  }
-}
+```ts
+import { file, ref } from "@origingame/engine/author";
+export default file.animgraph({
+  bindings: ["idle", "walk", "run", "wave"].map(clip => ({
+    name: clip, source: ref("base/models/walker"), clip,
+  })),
+  params: ["speed", "wave"], // p0, p1
+  motions: {
+    idle: { kind: "clip", clip: "idle" },
+    walk: { kind: "clip", clip: "walk", speed: 1, looping: true },
+    walkOther: { kind: "clip", clip: "walk", mirror: true },
+    run: { kind: "clip", clip: "run" },
+    waving: { kind: "clip", clip: "wave" },
+    move: { kind: "blend1d", param: "speed", children: [
+      { motion: "walk", threshold: 1.5 }, { motion: "run", threshold: 4 },
+    ] },
+  },
+  layers: [{
+    name: "base", entry: "idle",
+    states: [{ name: "idle", motion: "idle" }, { name: "move", motion: "move", sync: "gait" }],
+    transitions: [{ from: "idle", to: "move", conditions: [{ param: "speed", op: "gt", value: 0.2 }],
+      exit: 0.9, fade: 0.25, interrupt: "next" }],
+  }, {
+    name: "upper", mode: "additive", weightParam: "wave", mask: { spine: 0.5, "arm.L": 1 },
+    states: [{ name: "wave", motion: "waving", sync: "gait" }], entry: "wave",
+  }],
+});
 ```
+
+The checked TS declaration becomes native fields with local clip slots,
+resolved by the loader. Runtime `GraphDesc` takes the same params/motions/layers
+with loaded `clips` instead of bindings, or `sprite: true` for 2D targets.
+Blend2d children use `{motion, point: [x,y]}`. Named motions may point forward,
+but cycles fail. An omitted transition `from` matches any state; conditions
+are all required, with operators `gt`, `ge`, `lt`, `le`, `eq`, `ne`.
 
 Semantics: each state advances a phase by `dt · graph.speed · state.speed /
 duration`, where `duration` is the blend-weighted clip durations, so blended
@@ -355,10 +343,9 @@ the state being left (to a third state: the fade is re-targeted from the
 state being left, the abandoned target dropped, its `exit` counted on the
 left state's phase); `next` only the new state's own, not `any` ones. The
 guard of a fade in progress is saved in the state block (tagged section 2,
-written only when some layer has one other than `any`). Parse errors name
-the line.
+written only when some layer has one other than `any`).
 
-**Mirrored clips.** `mirror true` on a clip motion plays it on the
+**Mirrored clips.** `mirror: true` on a clip motion plays it on the
 other side of whatever skeleton the graph runs on: the system makes the
 clip with `mirror` (§Mirroring) the first time a graph plays it on a
 skeleton and keeps it, with its binding and foot plants, beside the
@@ -370,16 +357,16 @@ derived from the assets. The cook does the same once, offline:
 `animation { mirror "<clip>" ["<name>"] }` (og-cook's README) writes the
 mirrored clip into the model's `#anim`, so it is loaded like any other.
 
-**Layer masks.** A layer's `mask` lines give per-joint weights by node
+**Layer masks.** A layer's `mask` map gives per-joint weights by node
 name, resolved against the skeleton the graph plays on: a node takes the
-weight of the nearest of itself and its ancestors a line names, and nodes
+weight of the nearest of itself and its ancestors the map names, and nodes
 under none take 0 (Unreal's branch filter; a name the skeleton lacks
 masks nothing). An override layer moves node `i` towards its pose by
 `layer weight × mask[i]`, an additive layer adds its difference by the
-same; blendshape weights follow the layer weight. A layer without `mask`
-lines takes the old path, bit for bit.
+same; blendshape weights follow the layer weight. A layer without mask
+entries applies to the whole skeleton.
 
-**Sync groups.** `sync <group>` in a state's block puts it in a group
+**Sync groups.** `sync: "group"` on a state puts it in a group
 (groups are per graph, named in first-use order, `GraphAsset::sync_groups`).
 Per tick, the first layer (file order) whose current state is in a group
 leads it: its phase advances as usual. Every later layer whose current
@@ -815,8 +802,8 @@ restored world sends the same events on the same ticks.
 
 ### Graphs on 2D targets (`graph2d.rs`)
 
-An `animgraph` registered with `GraphDesc.sprite` (`SpriteGraph::parse`:
-its `clip` lines name the target's clips, by name, as it plays, so one
+An `animgraph` registered with `GraphDesc.sprite` (`SpriteGraph::new`:
+its clip motions name the target's clips, by name, as it plays, so one
 graph serves every sheet or rig with those names) drives the og.Flipbook
 or og.Skeleton2D of an entity whose og.AnimationGraph names it, run by
 og.flipbook or og.skeleton2d before they play (`FlipbookSystem::add_graph`,
@@ -835,7 +822,7 @@ on a skeleton.
   or, when the cut stays within one state (a blend's other leaf) or
   between states of one sync group, at the state's phase (a seek). The
   graph writes `clip`, `time` and `speed` (the graph's speed by the
-  state's and the clip line's); the sheet's mode decides looping.
+  state's and the clip motion's); the sheet's mode decides looping.
 - **2D skeleton**: the two heaviest leaves become `clip` and `blendClip`
   with their times (each leaf at its state's phase: `frac · duration`
   looping, held at its end otherwise) and `blend` (the second's share);

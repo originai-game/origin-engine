@@ -6,12 +6,12 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `GraphAsset` (handle)
 
-A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles.
+A structured blend-tree graph whose clip references were resolved to clip handles.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
+handle GraphAsset "A structured blend-tree graph whose clip references were resolved to clip handles."
 ```
 
 <sub>Module `anim` line 10</sub>

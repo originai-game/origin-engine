@@ -260,20 +260,13 @@ impl GraphSource {
             layers,
             sync_groups,
         };
-        asset.validate()?;
-        if asset
-            .clips()
-            .iter()
-            .any(|&c| c == 0 || c > clips.len() as u64)
-            || (sprite && !bindings.is_empty())
-        {
-            return Err(r.error("invalid clip slots or sprite bindings"));
-        }
-        Ok(Self {
+        let graph = Self {
             asset,
             clips,
             sprite,
             bindings,
-        })
+        };
+        graph.validate()?;
+        Ok(graph)
     }
 }

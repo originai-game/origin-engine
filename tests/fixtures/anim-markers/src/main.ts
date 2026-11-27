@@ -71,7 +71,15 @@ function start(world: World): void {
   const graph = (first: string, second: string) =>
     must(og.anim.graph(world, {
       clips: a.clips,
-      text: `type animgraph\nversion 1\n---\nparam go\nparam mix\nclip walk "walk"\nclip run "run"\nclip wave "wave"\nblend1d stride mix {\n  child walk 0\n  child run 1\n}\nlayer base {\n  state first ${first}\n  state second ${second}\n  entry first\n  transition first second {\n    when go gt 0.5\n    fade 1\n  }\n}\n`,
+      params: ["go", "mix"],
+      motions: {
+        walk: { kind: "clip", clip: "walk" }, run: { kind: "clip", clip: "run" },
+        wave: { kind: "clip", clip: "wave" },
+        stride: { kind: "blend1d", param: "mix", children: [{ motion: "walk", threshold: 0 }, { motion: "run", threshold: 1 }] },
+      },
+      layers: [{ name: "base", entry: "first", states: [{ name: "first", motion: first }, { name: "second", motion: second }],
+        transitions: [{ from: "first", to: "second", conditions: [{ param: "go", op: "gt", value: 0.5 }], fade: 1 }],
+      }],
     }));
   const spawn = (name: string, x: number, asset: GraphAsset, mix: number) => {
     const e = must(world.spawn({ name, position: { x, y: 0, z: 0 } }));

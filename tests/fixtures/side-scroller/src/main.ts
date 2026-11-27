@@ -32,40 +32,22 @@ const BODY = 2;
 const HIT_LIGHT = 2.2;
 
 /** The knight's states by the sheet's clip names (a GraphDesc.sprite graph). */
-const KNIGHT = `type animgraph
-version 1
----
-param speed
-param attack
-clip idle "idle"
-clip run "run"
-clip attack "attack" {
-  loop false
-}
-layer base {
-  state idle idle
-  state run run
-  state attack attack
-  entry idle
-  transition any attack {
-    when attack gt 0.5
-  }
-  transition idle run {
-    when speed gt 0.1
-  }
-  transition run idle {
-    when speed le 0.1
-  }
-  transition attack run {
-    exit 1
-    when speed gt 0.1
-  }
-  transition attack idle {
-    exit 1
-    when speed le 0.1
-  }
-}
-`;
+const KNIGHT = {
+  params: ["speed", "attack"],
+  motions: {
+    idle: { kind: "clip", clip: "idle" }, run: { kind: "clip", clip: "run" },
+    attack: { kind: "clip", clip: "attack", looping: false },
+  },
+  layers: [{ name: "base", entry: "idle", states: [
+    { name: "idle", motion: "idle" }, { name: "run", motion: "run" }, { name: "attack", motion: "attack" },
+  ], transitions: [
+    { to: "attack", conditions: [{ param: "attack", op: "gt", value: 0.5 }] },
+    { from: "idle", to: "run", conditions: [{ param: "speed", op: "gt", value: 0.1 }] },
+    { from: "run", to: "idle", conditions: [{ param: "speed", op: "le", value: 0.1 }] },
+    { from: "attack", to: "run", exit: 1, conditions: [{ param: "speed", op: "gt", value: 0.1 }] },
+    { from: "attack", to: "idle", exit: 1, conditions: [{ param: "speed", op: "le", value: 0.1 }] },
+  ] }],
+} as const;
 
 /** The knight's graph parameters and what the run has seen. */
 const Play = defineResource("Play", {
@@ -106,7 +88,7 @@ function prop(world: World, sheet: FlipbookInfo, name: keyof typeof PROPS, at: {
 function build(world: World): void {
   // The knight: one sheet of three clips, its states named by them.
   const hero = must(og.load.flipbook(world, "hero/hero.ogt"));
-  const graph = must(og.anim.graph(world, { text: KNIGHT, sprite: true }));
+  const graph = must(og.anim.graph(world, { ...KNIGHT, sprite: true }));
   const knight = must(world.spawn({ name: "knight", position: { x: -6, y: FLOOR, z: 0 } }));
   must(world.insert(knight, og.Sprite, { width: hero.frameWidth * PX, height: hero.frameHeight * PX, layer: 10 }));
   must(world.insert(knight, og.Flipbook, { sheet: hero.sheet, clip: og.anim.clip(hero, "idle") }));

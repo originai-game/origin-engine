@@ -9,7 +9,7 @@
 //! | [`Skeleton`], [`AnimationPlayer`], [`AnimationGraph`], [`Blendshapes`], [`IkChain`], [`LookAt`], [`JointLimit`], [`FootLock`], [`SpringBone`] | the components (`og.Skeleton`, …) |
 //! | [`AnimationEvent`] | a clip marker passed in the last tick |
 //! | [`Flipbook`], [`FlipbookEvent`], [`FlipbookSheet`], [`install_flipbook`] | sprite animation: sheets of frames, clips with fps, loop / ping-pong / once and frame events, played by `og.flipbook` |
-//! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, an `animgraph` `.ogt`) |
+//! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, a checked TS `file.animgraph`) |
 //! | [`Samples`], [`QuantizedKeys`] | a channel's frames in memory: f32, one constant sample, or the cooked quantised keys sampled where they lie (with [`unpack_quat`], [`dequantize`], [`nlerp4`], the decoding arithmetic the cook measures against) |
 //! | [`HumanoidMap`], [`RigAsset`], [`retarget`] | humanoid bone maps (detected from Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names, or a checked TS rig declaration) and clips rewritten from one rig to another (rest correction, bone lengths, scaled root travel, foot IK) |
 //! | [`Rig2dAsset`], [`Skeleton2D`], [`Skeleton2DEvent`], [`IkTarget2D`], [`install_skeleton2d`] | 2D skeletal animation: the `type rig2d` asset (bones, slots, region and weighted-mesh attachments, IK, clips with bone, slot and deform keys), played by `og.skeleton2d` and drawn as triangles |
@@ -54,9 +54,9 @@ pub use flipbook::{
     FlipbookEvent, FlipbookSheet, FlipbookSystem, SheetFilter, SheetFrame, install_flipbook,
 };
 pub use graph::{
-    BLOCKS as GRAPH_BLOCKS, ClipBinding, Condition, GraphAsset, GraphSource, Interrupt, Layer,
-    LayerMode, MaskEntry, Motion, MotionNode, Op, SOURCE_LINES as GRAPH_SOURCE_LINES, State,
-    Transition,
+    ClipBinding, Condition, ConditionInput, GraphAsset, GraphDefinition, GraphSource, Interrupt,
+    Layer, LayerInput, LayerMode, MaskEntry, Motion, MotionInput, MotionNode, Op, PointInput,
+    State, StateInput, ThresholdInput, Transition, TransitionInput,
 };
 pub use graph2d::SpriteGraph;
 pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, two_bone};

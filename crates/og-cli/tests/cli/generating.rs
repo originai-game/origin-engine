@@ -2204,6 +2204,7 @@ export default file['effect-texture']({
 #[test]
 fn animation_graph_cooks_with_tracked_clip_bindings() {
     use og_anim::cooked::BundleAnim;
+    use og_cook::runtime::Bundle;
     let root = TempDir::new("og-generated-graph");
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
@@ -2223,8 +2224,11 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         "type import\nversion 1\n---\nconform off\n",
     )
     .unwrap();
-    let graph = "type animgraph\nversion 1\n---\nbind \"stride\" \"walker.glb\" \"walk\"\nclip moving \"stride\"\nlayer base {\nstate active moving\nentry active\n}\n";
-    std::fs::write(assets.join("graph.ogt"), graph).unwrap();
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::create_dir_all(root.join("lib")).unwrap();
+    std::fs::write(root.join("lib/rate.ts"), "export const rate=0.75;").unwrap();
+    let graph = "import {file,ref} from '@origingame/engine/author';\nimport {rate} from '../lib/rate.ts';\nexport default file.animgraph({bindings:[{name:'stride',source:ref('base/walker'),clip:'walk'}],params:['x','y'],motions:{moving:{kind:'clip',clip:'stride',speed:rate,mirror:true,looping:false},blend:{kind:'blend1d',param:'x',children:[{motion:'moving',threshold:3},{motion:'plane',threshold:-2}]},plane:{kind:'blend2d',x:'x',y:'y',children:[{motion:'moving',point:[-3,2]}]}},layers:[{name:'base',states:[{name:'active',motion:'moving',speed:0.5,sync:'gait'},{name:'other',motion:'blend'}],entry:'active',mask:{hips:0.25,spine:0.75},transitions:[{to:'other',exit:1.25,fade:0.4,interrupt:'source',conditions:[{param:'y',op:'lt',value:-0.125}]}]}]});";
+    std::fs::write(root.join("content/graph.ts"), graph).unwrap();
     let cook = || {
         og().args(["cook", ".", "--json"])
             .current_dir(&root)
@@ -2235,7 +2239,7 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let source = bundle
-        .animgraph("graph.ogt", &bundle.read("graph.ogt").unwrap())
+        .animgraph("base/graph", &bundle.read("base/graph").unwrap())
         .unwrap();
     assert!(!source.sprite);
     assert_eq!(
@@ -2245,11 +2249,70 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         ),
         ("stride", "walk")
     );
+    assert_eq!(source.bindings[0].source, "walker.glb");
+    assert_eq!(source.asset.params, ["x", "y"]);
+    assert_eq!(source.asset.sync_groups, ["gait"]);
+    assert_eq!(source.asset.layers[0].states[0].speed, 0.5);
+    assert_eq!(source.asset.layers[0].transitions[0].exit, Some(1.25));
+    assert_eq!(source.asset.layers[0].transitions[0].fade, 0.4);
+    assert_eq!(
+        source.asset.layers[0].transitions[0].conditions[0].value,
+        -0.125
+    );
+    assert_eq!(source.asset.layers[0].mask[0].weight, 0.25);
+    assert!(matches!(
+        source.asset.nodes[1].motion,
+        og_anim::Motion::Clip {
+            speed: 0.75,
+            mirror: true,
+            looping: false,
+            ..
+        }
+    ));
+    assert!(
+        matches!(&source.asset.nodes[0].motion, og_anim::Motion::Blend1D {param:0,children} if children == &[( -2.0, 2), (3.0, 1)])
+    );
+    assert!(
+        matches!(&source.asset.nodes[2].motion, og_anim::Motion::Blend2D {x:0,y:1,children} if children == &[(og_core::glam::Vec2::new(-3.0, 2.0),1)])
+    );
+    let native = source.to_bytes();
+    for end in 0..native.len() {
+        assert!(og_anim::GraphSource::from_bytes(&native[..end]).is_err());
+    }
+    let mut trailing = native.clone();
+    trailing.push(0);
+    assert!(og_anim::GraphSource::from_bytes(&trailing).is_err());
+    assert_eq!(
+        og_anim::GraphSource::from_bytes(&native).unwrap().asset,
+        source.asset
+    );
+    let graph_bytes = bundle.read("base/graph").unwrap().to_vec();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(
+        Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .read("base/graph")
+            .unwrap()
+            .as_ref(),
+        graph_bytes
+    );
+    std::fs::write(root.join("lib/rate.ts"), "export const rate=1.125;").unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let changed = Bundle::open(&root.join("cooked")).unwrap();
+    let changed = changed
+        .animgraph("base/graph", &changed.read("base/graph").unwrap())
+        .unwrap();
+    assert!(matches!(
+        changed.asset.nodes[1].motion,
+        og_anim::Motion::Clip { speed: 1.125, .. }
+    ));
     let authored = "type import\nversion 1\n---\nconform off\nanimation {\nrate 4\ncompress true\nclip \"designed\" {\nchannel \"hips\" translation {\ninterpolation cubicSpline\nkey 0 0 0 0 2 3 5 8 0 0\nkey 1 0 0 0 6 7 9 0 0 0\n}\nchannel \"body\" visibility {\ninterpolation step\nkey 0 1\nkey 0.5 0\nkey 1 1\n}\n}\nevent \"designed\" \"half\" 0.5\n}\n";
     std::fs::write(assets.join("walker.glb.ogt"), authored).unwrap();
     std::fs::write(
-        assets.join("graph.ogt"),
-        graph.replace("\"walk\"", "\"designed\""),
+        root.join("content/graph.ts"),
+        graph.replace("'walk'", "'designed'"),
     )
     .unwrap();
     let out = cook();
@@ -2300,7 +2363,7 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         "type import\nversion 1\n---\nconform off\n",
     )
     .unwrap();
-    std::fs::write(assets.join("graph.ogt"), graph).unwrap();
+    std::fs::write(root.join("content/graph.ts"), graph).unwrap();
     let mut renamed = model;
     for i in 0..renamed.len() - 3 {
         if &renamed[i..i + 4] == b"walk" {
@@ -2312,26 +2375,47 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
     assert!(!out.status.success());
     assert!(text(&out).contains("has no clip 'walk'"), "{}", text(&out));
     std::fs::write(
-        assets.join("graph.ogt"),
-        graph.replace("\"walk\"", "\"hike\""),
+        root.join("content/graph.ts"),
+        graph.replace("'walk'", "'hike'"),
     )
     .unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     std::fs::write(
-        assets.join("graph.ogt"),
-        graph.replace("bind \"stride\" \"walker.glb\" \"walk\"", "sprite true"),
+        root.join("content/graph.ts"),
+        graph.replace(
+            "bindings:[{name:'stride',source:ref('base/walker'),clip:'walk'}]",
+            "sprite:true",
+        ),
     )
     .unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     std::fs::write(
-        assets.join("graph.ogt"),
-        graph.replace("state active moving", "state active absent"),
+        root.join("content/graph.ts"),
+        graph.replace("motion:'moving'", "motion:'absent'"),
     )
     .unwrap();
     let out = cook();
     assert!(!out.status.success(), "invalid graph accepted");
+    for bad in [
+        graph.replace("threshold:3", "threshold:'wrong'"),
+        graph.replace("motion:'plane'", "motion:'blend'"),
+        graph.replace("base/walker", "base/absent"),
+        graph.replace("mask:{hips:0.25", "mask:{hips:1.25"),
+    ] {
+        std::fs::write(root.join("content/graph.ts"), bad).unwrap();
+        let out = cook();
+        assert!(!out.status.success(), "invalid graph accepted");
+        assert!(text(&out).contains("content/graph.ts"), "{}", text(&out));
+    }
+    std::fs::remove_file(root.join("content/graph.ts")).unwrap();
+    std::fs::write(
+        assets.join("old.ogt"),
+        "type animgraph\nversion 1\n---\nsprite true\n",
+    )
+    .unwrap();
+    assert!(!cook().status.success(), "old author graph accepted");
 }
 
 /// Public lattice cook/load and emitter consumption retain channel order,

@@ -12,18 +12,22 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`). |
-| `clips` | `readonly ClipInfo[]` | `[]` | — | — | — | The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`. |
-| `sprite` | `boolean` | `false` | — | — | — | A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read. |
+| `params` | `readonly string[]` | `[]` | — | — | — | At most eight unique parameter names, in AnimationGraph p0..p7 order. |
+| `motions` | `Readonly<Record<string, GraphMotion>>` | `{}` | — | — | — | Named clip and blend motions; cycles are rejected. |
+| `layers` | `readonly GraphLayer[]` | `[]` | — | — | — | At least one layer, in playback order. |
+| `clips` | `readonly ClipInfo[]` | `[]` | — | — | — | Clip leaves resolve by ClipInfo.name, usually og.load.animation's clips. |
+| `sprite` | `boolean` | `false` | — | — | — | Resolve clip names on an entity's flipbook or 2D rig at playback instead; clips is not read. |
 
 ```ogt
 struct GraphDesc {
   doc "A blend-tree graph to register."
   desc true
-  field text String "The graph's `.ogt` text (`type animgraph`, `version 1`)."
-  field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
-  field sprite bool "A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read."
+  field params List.String "At most eight unique parameter names, in AnimationGraph p0..p7 order."
+  field motions Map.GraphMotion "Named clip and blend motions; cycles are rejected."
+  field layers List.GraphLayer "At least one layer, in playback order."
+  field clips List.ClipInfo "Clip leaves resolve by ClipInfo.name, usually og.load.animation's clips."
+  field sprite bool "Resolve clip names on an entity's flipbook or 2D rig at playback instead; clips is not read."
 }
 ```
 
-<sub>Module `anim` line 682</sub>
+<sub>Module `anim` line 801</sub>
