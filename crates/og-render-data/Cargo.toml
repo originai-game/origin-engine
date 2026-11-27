@@ -29,7 +29,8 @@ og-core = { path = "../og-core" }
 og-draw = { path = "../og-draw" }
 # og.ForceField's acceleration, the function physics takes too.
 og-env = { path = "../og-env" }
-glam = { workspace = true }
+glam = { workspace = true, features = ["serde"] }
 bytemuck = { workspace = true }
+serde = { version = "1", features = ["derive"] }
 gltf = { workspace = true, optional = true }
 naga = { version = "30.0.1", optional = true, features = ["wgsl-in"] }

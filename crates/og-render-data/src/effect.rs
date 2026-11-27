@@ -11,7 +11,7 @@ pub const EFFECT_PARAMS: usize = crate::MAX_SHADER_PARAMS;
 
 /// A number of an effect material over a surface's life (three.quarks'
 /// value generators; Effekseer's fixed, random and F-curve parameters).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EffectValue {
     Constant(f32),
     /// Uniform between the two, fixed per particle (or strip, or mesh).
@@ -45,7 +45,9 @@ impl EffectValue {
 }
 
 /// Which of a texture's channels an effect reads.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum EffectChannel {
     /// Colour and alpha as stored.
     #[default]
@@ -75,7 +77,7 @@ impl EffectChannel {
 /// across a strip), turned into polar coordinates first when `polar`,
 /// then `uv * tile + offset + scroll * time`, turned by `rotation` about
 /// the centre.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EffectUv {
     pub tile: Vec2,
     pub offset: Vec2,
@@ -101,7 +103,7 @@ impl Default for EffectUv {
 }
 
 /// A texture of an effect material and how it is read.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EffectTexture {
     /// `None`: the main texture is the surface's own (the emitter's, the
     /// trail's); the erosion's noise is procedural value noise; a mask or
@@ -115,7 +117,7 @@ pub struct EffectTexture {
 /// where the noise is below `amount` (0 keeps everything, 1 cuts it all),
 /// faded over `softness` above the cut, its last `edge` above that tinted
 /// `edge_color` (linear; above 1 glows).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Erosion {
     pub noise: EffectTexture,
     pub amount: EffectValue,
@@ -142,7 +144,7 @@ impl Default for Erosion {
 /// A flow map pushing the main texture: its red and green (0.5 still) as
 /// a direction, `strength` UV units at most, cycling `speed` times a
 /// second.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
     pub map: EffectTexture,
     pub strength: f32,
@@ -155,7 +157,7 @@ pub struct Flow {
 /// well inside the limb, so no edge of the mesh shows (soft spheres, glows,
 /// columns, smoke shells); a higher power fades further in.
 /// `strength` blends it in (0 none, 1 full).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Fresnel {
     pub power: f32,
     pub strength: f32,
@@ -163,7 +165,7 @@ pub struct Fresnel {
 }
 
 /// An effect material. See the module documentation.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EffectMaterial {
     pub main: EffectTexture,
     /// A gradient map: the main texture's value (its channel, or the
@@ -326,7 +328,9 @@ impl EffectMaterial {
 }
 
 /// A handle to an effect material of a [`crate::RenderScene`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct EffectMaterialHandle(pub u32);
 
 impl EffectMaterialHandle {
@@ -374,7 +378,7 @@ pub struct EffectMesh {
 /// each with its own colour, u along the arc and v 0 at the outer edge, 0.5
 /// at the band, 1 at the inner (Effekseer's ring, `RingRendererBase.h`, MIT,
 /// `third_party/effekseer/`).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EffectRing {
     /// The inner radius (0 to 16; past 1 the inner edge lies outside).
     pub inner: f32,

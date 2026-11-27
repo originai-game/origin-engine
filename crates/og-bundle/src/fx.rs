@@ -25,6 +25,8 @@
 //! run the other emitter's own emission (rate, bursts, duration, looping)
 //! from its birth while it lives, born where it is at each tick.
 
+pub mod cooked;
+
 use crate::grammar::Line;
 use og_core::ogt::{Document, Entry, Value};
 use og_render_data::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};

@@ -6,7 +6,7 @@ const INDEX_MASK: u32 = (1 << INDEX_BITS) - 1;
 macro_rules! handle {
     ($(#[$doc:meta])* $name:ident) => {
         $(#[$doc])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
         pub struct $name(pub u32);
         impl $name {
             /// The position of the resource in its scene: its slot, in

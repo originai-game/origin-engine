@@ -7,6 +7,8 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
+mod fx;
+
 macro_rules! input {
     ($(#[$meta:meta])* $name:ident { $($(#[$field:meta])* $key:ident: $ty:ty),* $(,)? }) => {
         #[derive(Debug, Deserialize, JsonSchema)]
@@ -642,6 +644,7 @@ pub enum VfxNode {
         segments: Option<u32>,
         #[schemars(range(min = 0), extend("x-og-unit" = "m"))]
         jitter: Option<f32>,
+        stretch: Option<String>,
     },
     Light {
         color: Option<[f32; 3]>,

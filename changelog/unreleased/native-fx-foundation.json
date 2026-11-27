@@ -1,0 +1,6 @@
+{
+  "added": [{
+    "member": "FX author inputs and native data transport",
+    "summary": "Checked particles/effect/vfx inputs can build native fields directly. Native FX resource tables support validated encoding and host-handle binding without author text. This foundation does not change existing author entries, cook outputs or runtime loading."
+  }]
+}

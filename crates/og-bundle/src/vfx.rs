@@ -21,6 +21,7 @@
 //! og.VfxEvent of the effect with the same name, so a file whose impact a
 //! pixel effect carries needs no `impact` line of its own.
 
+mod cooked;
 mod lines;
 mod parse;
 mod play;
@@ -49,7 +50,7 @@ pub const MAX_EVENT_NAME: usize = 63;
 pub const MAX_PARAMS: usize = 4;
 
 /// A composed effect: its length, events and elements.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Vfx {
     pub duration: f32,
     pub looping: bool,
@@ -61,21 +62,21 @@ pub struct Vfx {
 }
 
 /// A number the game sets per instance (`param <name> <default>`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VfxParam {
     pub name: String,
     pub default: f32,
 }
 
 /// A named event at a time (`event`, `impact`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VfxEventKey {
     pub time: f32,
     pub name: String,
 }
 
 /// One element: when it runs, where it sits, what it is.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VfxElement {
     /// Seconds from the effect's start.
     pub at: f32,
@@ -120,7 +121,7 @@ impl VfxElement {
 }
 
 /// The shape an effect mesh draws.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum VfxShape {
     Sphere,
     Quad,
@@ -134,7 +135,7 @@ pub enum VfxShape {
     Model(String),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum VfxKind {
     Emitter {
         id: String,

@@ -26,6 +26,8 @@ fn init_project(root: &std::path::Path) {
     }
 }
 
+#[path = "../fx_source.rs"]
+mod fx_source;
 #[path = "../scene_string.rs"]
 mod scene_string;
 #[path = "../shader.rs"]

@@ -28,7 +28,7 @@ pub const MAX_SUB_EMITTERS: usize = 4;
 /// A small keyframe table over a particle's life (0 at birth, 1 at death),
 /// linear between keys, constant beyond the ends. At most
 /// [`MAX_CURVE_KEYS`] keys, sorted by time.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Curve {
     pub keys: Vec<(f32, f32)>,
 }
@@ -91,7 +91,7 @@ impl Default for Curve {
 
 /// A colour keyframe table over a particle's life: linear RGBA (alpha is
 /// opacity), at most [`MAX_CURVE_KEYS`] keys.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ColorCurve {
     pub keys: Vec<(f32, [f32; 4])>,
 }
@@ -159,7 +159,7 @@ fn eval_keys<K, V: Copy>(
 
 /// Where particles are born, in the emitter's local space, and which way
 /// they start moving (before [`ParticleEmitter::spread_degrees`]).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EmitterShape {
     /// The origin, moving along +y (spread 180° makes it omnidirectional).
     Point,
@@ -199,7 +199,7 @@ pub const MAX_FIELD_CELLS: u32 = 16;
 /// heal gathering motes. With a `radius` the pull falls linearly from
 /// `strength` at the point to 0 at that distance; without (0), it is
 /// `strength / (1 + d²)` at distance `d`. Units per second².
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Attractor {
     pub position: Vec3,
     pub strength: f32,
@@ -207,7 +207,7 @@ pub struct Attractor {
 }
 
 /// A field of accelerations the particles move through.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum VectorField {
     /// Curl noise (Bridson et al. 2007): the curl of three smooth noise
     /// fields, swirling and divergence free, so particles curl round each
@@ -236,7 +236,7 @@ pub const THIN_KEEP: f32 = 8.0;
 
 /// Particles emitted at once: `count` at `time` seconds into each emission
 /// cycle, repeated `cycles` times `interval` apart.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Burst {
     pub time: f32,
     pub count: u32,
@@ -256,7 +256,7 @@ impl Burst {
 }
 
 /// Turbulence: smooth 3D value noise added to the velocity.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ParticleNoise {
     /// Acceleration in units per second².
     pub strength: f32,
@@ -277,7 +277,7 @@ impl Default for ParticleNoise {
 }
 
 /// How a sprite sheet animates.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SheetMode {
     /// One frame for the whole life (the first).
     #[default]
@@ -291,7 +291,7 @@ pub enum SheetMode {
 }
 
 /// A grid of frames in the particle texture, left to right, top to bottom.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SpriteSheet {
     pub columns: u32,
     pub rows: u32,
@@ -316,7 +316,9 @@ impl Default for SpriteSheet {
 }
 
 /// How particles blend into the image (sort-free either way).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ParticleBlend {
     /// Added: fire, sparks, magic. Order independent.
     #[default]
@@ -335,7 +337,9 @@ pub enum ParticleBlend {
 }
 
 /// The space particles move in.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum SimulationSpace {
     /// Born at the emitter, then independent of it (smoke trails behind a
     /// moving emitter).
@@ -355,7 +359,7 @@ pub const TRAIL_POINTS: usize = 8;
 /// least a tick), drawn as a camera-facing strip from the particle to its
 /// tail in the particle's colour, its width and alpha falling to nothing
 /// at the tail.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ParticleTrail {
     /// Seconds of its path behind each particle.
     pub lifetime: f32,
@@ -374,7 +378,7 @@ impl ParticleTrail {
 }
 
 /// Which way a particle quad faces.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ParticleAlign {
     /// Facing the camera, rotated by the particle's rotation.
     Camera,
@@ -399,7 +403,7 @@ pub enum ParticleAlign {
 /// system with no colliders to meet passes through and
 /// [`crate::FrameStats::particle_collision_skipped`] counts it. World
 /// space only.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ParticleCollision {
     /// Fraction of the normal speed kept (0 sticks, 1 bounces fully).
     pub bounce: f32,
@@ -423,7 +427,9 @@ impl Default for ParticleCollision {
 }
 
 /// What compute-simulated particles bounce off ([`ParticleCollision::against`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum CollisionTarget {
     /// The depth prepass (turning it on): whatever the camera sees, and
     /// nothing it does not (off screen, behind something). Billboards and
@@ -450,7 +456,7 @@ impl ParticleEmitter {
 }
 
 /// Where a system draws.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ParticleRender {
     /// Camera-facing (or velocity-aligned) quads in the 3D pass.
     #[default]
@@ -467,7 +473,9 @@ pub enum ParticleRender {
 
 /// What happens to a particle ([`ParticleEvent::kind`], a
 /// [`SubEmitter::trigger`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ParticleEventKind {
     /// Spawned.
     Birth,
@@ -505,7 +513,7 @@ pub struct ParticleEvent {
 /// Effekseer's child nodes, Unity's Birth sub-emitter, Niagara's
 /// particle-spawned emitters). One level deep: a sub-emitter's own
 /// sub-emitters are not fired.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SubEmitter {
     pub trigger: SubTrigger,
     pub emitter: EmitterHandle,
@@ -515,7 +523,7 @@ pub struct SubEmitter {
 }
 
 /// When a [`SubEmitter`] fires.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SubTrigger {
     /// `count` particles at each of the parent's events of this kind.
     Event(ParticleEventKind),
@@ -526,7 +534,7 @@ pub enum SubTrigger {
 /// The emitter description: an asset. `[min, max]` pairs are uniform random
 /// ranges per particle. The default is a small fountain of soft white
 /// points.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ParticleEmitter {
     /// Ring capacity: the newest particles overwrite the oldest beyond it.
     pub max_particles: u32,
@@ -907,7 +915,9 @@ impl ParticleEmitter {
 }
 
 /// A handle to an emitter of a [`crate::RenderScene`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct EmitterHandle(pub u32);
 
 impl EmitterHandle {

@@ -6911,9 +6911,10 @@ readonly "effect"?: (((Input_vfxDefinitions["ContentRef"])) | ((null)));
 readonly "jitter"?: ((number) | (null));
 readonly "kind": ("beam") & (string);
 readonly "segments"?: ((number) | (null));
+readonly "stretch"?: ((string) | (null));
 readonly "to"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
 readonly "width"?: ((number) | (null));
-})) & { readonly "angleFade"?: never; readonly "asset"?: never; readonly "blend"?: never; readonly "distance"?: never; readonly "emissive"?: never; readonly "faceCamera"?: never; readonly "fade"?: never; readonly "intensity"?: never; readonly "lifetime"?: never; readonly "metallic"?: never; readonly "normal"?: never; readonly "normalScale"?: never; readonly "orbit"?: never; readonly "pitch"?: never; readonly "rise"?: never; readonly "roughness"?: never; readonly "scale"?: never; readonly "seed"?: never; readonly "shape"?: never; readonly "size"?: never; readonly "spin"?: never; readonly "stretch"?: never; readonly "texture"?: never; readonly "trauma"?: never; readonly "turn"?: never; readonly "uv"?: never; readonly "volume"?: never; readonly "wet"?: never; }) | ((({
+})) & { readonly "angleFade"?: never; readonly "asset"?: never; readonly "blend"?: never; readonly "distance"?: never; readonly "emissive"?: never; readonly "faceCamera"?: never; readonly "fade"?: never; readonly "intensity"?: never; readonly "lifetime"?: never; readonly "metallic"?: never; readonly "normal"?: never; readonly "normalScale"?: never; readonly "orbit"?: never; readonly "pitch"?: never; readonly "rise"?: never; readonly "roughness"?: never; readonly "scale"?: never; readonly "seed"?: never; readonly "shape"?: never; readonly "size"?: never; readonly "spin"?: never; readonly "texture"?: never; readonly "trauma"?: never; readonly "turn"?: never; readonly "uv"?: never; readonly "volume"?: never; readonly "wet"?: never; }) | ((({
 readonly "color"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null));
 readonly "distance"?: ((number) | (null));
 readonly "intensity"?: (((Input_vfxDefinitions["EffectValue"])) | ((null)));
