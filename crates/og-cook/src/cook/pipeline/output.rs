@@ -393,6 +393,7 @@ pub(crate) fn write(
         ]),
         assets: Vec::new(),
         streams: Vec::new(),
+        requires: Vec::new(),
         motion: None,
         preload: Vec::new(),
         lightmaps: sources
@@ -440,6 +441,42 @@ pub(crate) fn write(
         }
         manifest.assets.push(asset);
     }
+    // A selected cook must not delete or claim to rebuild another pack's
+    // previous payloads. Their old stamps remain available for its next cook.
+    let mut positions: BTreeMap<_, _> = manifest
+        .assets
+        .iter()
+        .enumerate()
+        .map(|(i, a)| (a.source.clone(), i))
+        .collect();
+    for asset in old.assets.iter().filter(|a| a.kind != probes::KIND) {
+        let mut retained = asset.clone();
+        retained.outputs.clear();
+        for output in &asset.outputs {
+            if !cx.delivery.contains(&output.id, &asset.source)?
+                && cooked_dir.join(&output.file).is_file()
+            {
+                keep.insert(output.file.clone());
+                retained.outputs.push(output.clone());
+            }
+        }
+        if !retained.outputs.is_empty() {
+            if let Some(&i) = positions.get(&asset.source) {
+                manifest.assets[i].outputs.extend(retained.outputs);
+            } else {
+                positions.insert(asset.source.clone(), manifest.assets.len());
+                manifest.assets.push(retained);
+            }
+        }
+    }
+    for group in &old.streams {
+        if !cx.delivery.contains(&group.scene, &group.scene)?
+            && cooked_dir.join(&group.file).is_file()
+        {
+            keep.insert(group.file.clone());
+            manifest.streams.push(group.clone());
+        }
+    }
     // Baked reflection probes (`og bake probes`, probes.rs) have no source:
     // kept while their files are.
     for a in old.assets.iter().filter(|a| a.kind == probes::KIND) {
@@ -465,6 +502,9 @@ pub(crate) fn pack(
     let cooked_dir = cx.cooked_dir;
     let Written { manifest, keep } = written;
     for (name, g) in groups {
+        if !cx.delivery.contains(&g.scene, &g.scene)? {
+            continue;
+        }
         let mut files: Vec<(String, Vec<u8>)> = Vec::new();
         let mut memory = 0u64;
         let mut sounds = Vec::new();
@@ -664,6 +704,16 @@ pub(crate) fn cook_code(
     before: &BeforeCode,
     code: &CodeGraph,
 ) -> Result<bool, CookError> {
+    // Delivery manifests and cross-pack roots must be re-linked after code
+    // changes. Native payload stamps still avoid rebuilding those assets.
+    if !source_project::Project::open(root)
+        .map_err(|e| CookError(e.to_string()))?
+        .input
+        .packs
+        .is_empty()
+    {
+        return Ok(false);
+    }
     let cooked_dir = root.join("cooked");
     let (Some(mut manifest), Ok(last)) = (
         std::fs::read_to_string(cooked_dir.join(MANIFEST))

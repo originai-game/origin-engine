@@ -966,9 +966,10 @@ pub(crate) fn group(
     known: &BTreeSet<String>,
     early_errors: &mut Vec<EarlyError>,
     threads: usize,
+    delivery: &super::delivery::Delivery<'_>,
 ) -> Grouped {
     // Streaming groups (phase 3): every scene's, read before anything cooks.
-    let (groups, group_of) = plan_groups(sources, known, early_errors, threads);
+    let (groups, group_of) = plan_groups(sources, known, early_errors, threads, delivery);
     // Font packs' faces and every face a style pack's `fonts` names
     // (docs/ui.md §3.4): cooked as fonts by their own settings, to
     // `<id>.face.ogb`, which the web reads after the boot; text draws

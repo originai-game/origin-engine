@@ -574,6 +574,9 @@ impl FontSettings {
 /// Everything the cook's output depends on besides the sources.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CookOptions {
+    /// Build only this delivery pack and its declared prerequisites. Other
+    /// packs' retained payloads are not validated as current by this cook.
+    pub pack: Option<String>,
     /// Worker threads (0 = the machine's parallelism). Does not change output.
     pub threads: usize,
     /// Progress on stderr while a cook runs long: each stage and output

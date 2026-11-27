@@ -247,6 +247,9 @@ pub struct Manifest {
     pub assets: Vec<ManifestAsset>,
     /// The streaming groups, by name.
     pub streams: Vec<ManifestStream>,
+    /// Required bundle manifests, relative to this bundle's directory and
+    /// pinned by integrity. Opened before this bundle becomes ready.
+    pub requires: Vec<ManifestFile>,
     /// og.motion's model (`motion/model.ogb`), for a project whose code
     /// uses og.motion: not an output, so the boot bundle never loads it;
     /// the runtime reads it in the background once the bundle is open.
@@ -514,6 +517,18 @@ impl Manifest {
                     .collect::<Result<_, LoadError>>()?,
             });
         }
+        for e in doc.body.get_all("requires") {
+            let b = e
+                .block
+                .as_ref()
+                .ok_or_else(|| bad(format!("line {}: requires without a block", e.line)))?;
+            m.requires.push(ManifestFile {
+                file: e.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                bytes: num(b, "bytes", e.line)?,
+                hash: hexf(b, "hash", e.line)?,
+                integrity: field(b, "integrity", e.line)?,
+            });
+        }
         if let Some(e) = doc.body.get("motion") {
             let b = e
                 .block
@@ -636,13 +651,18 @@ impl Manifest {
             doc.body
                 .push(Entry::new("stream").with(s(&g.name)).with_block(b));
         }
-        if let Some(m) = &self.motion {
+        for (key, m) in self
+            .requires
+            .iter()
+            .map(|m| ("requires", m))
+            .chain(self.motion.iter().map(|m| ("motion", m)))
+        {
             let b = Block::new()
                 .with(Entry::new("bytes").with(n(m.bytes)))
                 .with(Entry::new("hash").with(s(&hex(m.hash))))
                 .with(Entry::new("integrity").with(s(&m.integrity)));
             doc.body
-                .push(Entry::new("motion").with(s(&m.file)).with_block(b));
+                .push(Entry::new(key).with(s(&m.file)).with_block(b));
         }
         doc.to_text()
             .expect("manifest keys and words are identifiers")
@@ -685,6 +705,15 @@ impl Bundle {
     pub fn from_manifest(text: &str) -> Result<Bundle, LoadError> {
         let manifest = Manifest::parse(text)?;
         let outputs: Vec<ManifestOutput> = manifest.outputs().cloned().collect();
+        let mut identities = std::collections::BTreeSet::new();
+        for output in &outputs {
+            if !identities.insert(output.id.to_lowercase()) {
+                return Err(LoadError::Manifest(format!(
+                    "duplicate global asset identity {}",
+                    output.id
+                )));
+            }
+        }
         let index = og_core::sort::map(outputs.iter().enumerate().map(|(i, o)| (o.id.clone(), i)));
         let assets = og_core::sort::map(
             manifest
@@ -707,7 +736,17 @@ impl Bundle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn open(cooked: &std::path::Path) -> Result<Bundle, LoadError> {
         let path = cooked.join(MANIFEST);
-        let text = std::fs::read_to_string(&path).map_err(|e| LoadError::Io {
+        Self::open_manifest(cooked, &path)
+    }
+
+    /// A tooling manifest whose output files live at `cooked` (the cook's
+    /// aggregate build index need not be a runtime delivery bundle).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn open_manifest(
+        cooked: &std::path::Path,
+        path: &std::path::Path,
+    ) -> Result<Bundle, LoadError> {
+        let text = std::fs::read_to_string(path).map_err(|e| LoadError::Io {
             path: path.display().to_string(),
             reason: format!("{e} (run og cook)"),
         })?;

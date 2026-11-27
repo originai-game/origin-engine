@@ -14,6 +14,184 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Modules, delivery and residency are independent: selecting a package must
+/// neither rebuild another region nor turn a build-only input into a download.
+#[test]
+fn delivery_packs_partition_loadable_assets_and_keep_partial_cooks_scoped() {
+    let root = crate::temp::TempDir::new("delivery-packs");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    let project = "import {defineProject,ref} from '@origingame/engine/author';export default defineProject({id:'packs',entry:'src/main.ts',scenes:{main:ref('base/boot')},scene:'main',packs:[{id:'base',dependsOn:['shared']},{id:'shared',include:['base/shared/**'],roots:[ref('base/shared/room')]},{id:'north',include:['base/north/**'],dependsOn:['shared'],roots:[ref('base/north/room')]},{id:'expansion',include:['base/expansion/**'],dependsOn:['base'],optional:true,roots:[ref('base/expansion/room')]}]});";
+    write("project.ts", project);
+    let scene = "import {file} from '@origingame/engine/author';export default file.scene({name:'shared',entities:[{name:'shared-marker'}]});";
+    write("content/shared/room.ts", scene);
+    write(
+        "content/expansion/room.ts",
+        &scene.replace("shared-marker", "expansion-marker"),
+    );
+    let referring = "import {file,ref} from '@origingame/engine/author';export default file.scene({entities:[{name:'placed-room',scene:ref('base/shared/room')}]});";
+    write("content/boot.ts", referring);
+    write("content/north/room.ts", referring);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(report.delivery.len(), 4);
+    let base = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        base.manifest()
+            .outputs()
+            .map(|o| o.id.as_str())
+            .collect::<Vec<_>>(),
+        ["base/boot"]
+    );
+    let required = &base.manifest().requires;
+    assert_eq!(required.len(), 1);
+    assert_eq!(required[0].file, "delivery/shared/.cook.ogt");
+    let bytes = std::fs::read(root.join("cooked").join(&required[0].file)).unwrap();
+    assert_eq!(required[0].integrity, og_cook::cook::integrity(&bytes));
+    let north_path = root.join("cooked/delivery/north");
+    let north = Bundle::open(&north_path).unwrap();
+    assert_eq!(north.manifest().requires[0].file, "../shared/.cook.ogt");
+    assert!(north.read("base/north/room").is_ok());
+    assert!(north.output("base/shared/room").is_err());
+    let north_bytes = north.read("base/north/room").unwrap();
+    let pack = |id: &str| report.delivery.iter().find(|p| p.id == id).unwrap();
+    assert!(pack("base").boot && pack("shared").boot);
+    assert!(!pack("north").boot && !pack("expansion").boot);
+    assert_eq!(
+        pack("north").cross_pack_refs["base/north/room"]
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        ["base/shared/room"]
+    );
+    write(
+        "content/north/room.ts",
+        &referring.replace("placed-room", "changed-room"),
+    );
+    write(
+        "content/shared/room.ts",
+        &scene.replace("shared-marker", "updated-shared"),
+    );
+    let selected = CookOptions {
+        pack: Some("shared".into()),
+        ..Default::default()
+    };
+    let report = cook_project(&root, &selected).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(report.pack.as_deref(), Some("shared"));
+    assert_eq!(
+        report
+            .delivery
+            .iter()
+            .filter(|p| p.selected)
+            .map(|p| p.id.as_str())
+            .collect::<Vec<_>>(),
+        ["shared"]
+    );
+    assert!(
+        report
+            .cooked_outputs()
+            .iter()
+            .all(|o| o.id.starts_with("base/shared/"))
+    );
+    assert_eq!(
+        Bundle::open(&north_path)
+            .unwrap()
+            .read("base/north/room")
+            .unwrap()
+            .to_vec(),
+        north_bytes.to_vec()
+    );
+    let north = Bundle::open(&north_path).unwrap();
+    assert_eq!(
+        north.manifest().requires[0].integrity,
+        og_cook::cook::integrity(
+            &std::fs::read(root.join("cooked/delivery/shared/.cook.ogt")).unwrap()
+        )
+    );
+    let warm = cook_project(&root, &selected).unwrap();
+    assert!(warm.ok() && warm.cooked_outputs().is_empty());
+    let full = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(full.ok(), "{:?}", full.errors());
+    assert_ne!(
+        Bundle::open(&north_path)
+            .unwrap()
+            .read("base/north/room")
+            .unwrap()
+            .to_vec(),
+        north_bytes.to_vec()
+    );
+    // Identical local stream names remain independent delivery units.
+    for region in ["north", "expansion"] {
+        write(
+            &format!("content/{region}/cell.ts"),
+            "import {file} from '@origingame/engine/author';export default file.sfx({preset:'click',seed:17});",
+        );
+        write(
+            &format!("content/{region}/room.ts"),
+            &format!(
+                "import {{file,ref}} from '@origingame/engine/author';export default file.scene({{streams:{{cells:{{assets:[ref('base/{region}/cell')]}}}}}});"
+            ),
+        );
+    }
+    let streamed = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(streamed.ok(), "{:?}", streamed.errors());
+    for region in ["north", "expansion"] {
+        let dir = root.join(format!("cooked/delivery/{region}"));
+        let bundle = Bundle::open(&dir).unwrap();
+        assert_eq!(bundle.manifest().streams[0].name, format!("{region}/cells"));
+        let report = streamed.delivery.iter().find(|p| p.id == region).unwrap();
+        assert!(report.stream_bytes > 0);
+        assert_eq!(
+            report.bytes,
+            report
+                .files
+                .iter()
+                .map(|f| std::fs::metadata(root.join("cooked").join(f))
+                    .unwrap()
+                    .len())
+                .sum::<u64>()
+        );
+    }
+    // Restore the cross-pack reference for the dependency rejection below.
+    write("content/north/room.ts", referring);
+    for (invalid, expected) in [
+        (
+            project.replace(
+                "id:'north',include:['base/north/**'],dependsOn:['shared']",
+                "id:'north',include:['base/north/**'],dependsOn:[]",
+            ),
+            "dependsOn edge",
+        ),
+        (
+            project.replace("base/north/**", "base/shared/**"),
+            "must not overlap",
+        ),
+        (
+            project
+                .replace(
+                    "id:'base',dependsOn:['shared']",
+                    "id:'base',dependsOn:['expansion']",
+                )
+                .replace(
+                    "id:'expansion',include:['base/expansion/**'],dependsOn:['base']",
+                    "id:'expansion',include:['base/expansion/**'],dependsOn:[]",
+                ),
+            "optional",
+        ),
+    ] {
+        write("project.ts", &invalid);
+        let error = cook_project(&root, &CookOptions::default())
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains(expected), "{error}");
+    }
+}
+
 /// Table data is packed, not author text; cyclic row identities, defaults and
 /// localized strings survive both cold and warm cooks and schema edits.
 #[test]

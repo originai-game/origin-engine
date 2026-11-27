@@ -39,7 +39,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::time::Duration;
 
-const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md|out.json]] [--json] [--watch [--exit-after N]]";
+const USAGE: &str = "usage: og cook [project] [--pack ID] [--threads N] [--report [out.md|out.json]] [--json] [--watch [--exit-after N]]";
 
 /// Where `og cook --report` writes the diagnostics by default, under the
 /// project (`og doctor --project` reads it there).
@@ -165,10 +165,20 @@ pub fn cook_with(
     publish: bool,
     code: CodeGraph,
 ) -> Result<Report, String> {
-    crate::author_types::ensure(root)?;
     let options = options(root, threads, web, code)?;
     let options = CookOptions { publish, ..options };
-    let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;
+    checked_cook(root, &options)
+}
+
+fn selected_cook(root: &Path, threads: usize, pack: Option<&str>) -> Result<Report, String> {
+    let mut options = options(root, threads, false, code_graph(root)?)?;
+    options.pack = pack.map(str::to_owned);
+    checked_cook(root, &options)
+}
+
+fn checked_cook(root: &Path, options: &CookOptions) -> Result<Report, String> {
+    crate::author_types::ensure(root)?;
+    let report = cook_project(root, options).map_err(|e| format!("og cook: {e}"))?;
     if report.ok() {
         Ok(report)
     } else if let Some(missing) = missing_checkout_pins() {
@@ -310,7 +320,13 @@ pub fn slowest_lines(r: &Report) -> Vec<String> {
 /// and default CSS the cook reads, printing what cooked and how long it
 /// took against the reload budget. One process: what an earlier cook
 /// parsed and did not change is not parsed again.
-fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> ExitCode {
+fn watch(
+    root: &Path,
+    threads: usize,
+    pack: Option<&str>,
+    json: bool,
+    exit_after: Option<usize>,
+) -> ExitCode {
     let assets = root.join("assets");
     let mut watched = Vec::new();
     watched.extend(og_cook::cook::look::styles_dir().map(Path::to_path_buf));
@@ -378,7 +394,7 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
             .collect();
         // Refresh bootstrap, generated types and the runtime import graph on
         // every edit; keeping the first graph loses newly imported assets.
-        match cook(root, threads, false) {
+        match selected_cook(root, threads, pack) {
             Ok(r) if json => {
                 let cooked: Vec<serde_json::Value> = r
                     .cooked_assets()
@@ -442,6 +458,7 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
 
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
+    let mut pack = None;
     let mut threads = 0;
     let mut report = None;
     let mut report_json = None;
@@ -452,6 +469,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut i = 0;
     while i < args.len() {
         match args[i] {
+            "--pack" => {
+                let Some(id) = args.get(i + 1).filter(|id| !id.starts_with('-')) else {
+                    eprintln!("og cook: --pack takes an ID. {USAGE}");
+                    return ExitCode::from(2);
+                };
+                pack = Some(*id);
+                i += 1;
+            }
             "--threads" => {
                 let Some(n) = args.get(i + 1).and_then(|v| v.parse().ok()) else {
                     eprintln!("og cook: --threads takes a number. {USAGE}");
@@ -500,7 +525,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og cook: {} has no assets/ to cook", p.root.display());
         return ExitCode::FAILURE;
     }
-    match cook(&p.root, threads, false) {
+    match selected_cook(&p.root, threads, pack) {
         Ok(r) => {
             if let Some(path) = report
                 && let Err(e) = std::fs::write(&path, r.to_markdown())
@@ -529,7 +554,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                 if !json {
                     println!("{}", summary(&r));
                 }
-                return watch(&p.root, threads, json, exit_after);
+                return watch(&p.root, threads, pack, json, exit_after);
             }
             if json {
                 println!("{}", r.to_json());
@@ -549,7 +574,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         // A watch keeps going: the next change may fix the failing asset.
         Err(e) if watching => {
             eprintln!("{e}");
-            watch(&p.root, threads, json, exit_after)
+            watch(&p.root, threads, pack, json, exit_after)
         }
         Err(e) => {
             eprintln!("{e}");

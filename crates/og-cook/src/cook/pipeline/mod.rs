@@ -7,6 +7,7 @@ pub mod asset_move;
 pub mod assets;
 pub(super) mod author;
 pub mod cache;
+pub(super) mod delivery;
 pub(super) mod execute;
 pub mod graph;
 pub(super) mod import_defaults;

@@ -89,7 +89,14 @@ fn export(project: &Path, asset: &str, out: &Path, lod: usize) -> Result<String,
     let p = Project::open(project)?;
     let root = PathBuf::from(&p.root);
     super::cook::cook(&root, 0, false)?;
-    let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
+    let project = og_cook::cook::source_project::Project::open(&root).map_err(|e| e.to_string())?;
+    let manifest = if project.input.packs.is_empty() {
+        root.join("cooked/.cook.ogt")
+    } else {
+        root.join(".og/cook/manifest.ogt")
+    };
+    let bundle =
+        Bundle::open_manifest(&root.join("cooked"), &manifest).map_err(|e| e.to_string())?;
     let id = asset_id(asset);
     let model = bundle.load_model(id).map_err(|e| {
         match bundle.manifest().outputs().any(|o| o.id == id) {

@@ -654,6 +654,7 @@ pub(crate) fn plan_groups(
     known: &BTreeSet<String>,
     errors: &mut Vec<(String, &'static str, String)>,
     threads: usize,
+    delivery: &super::delivery::Delivery<'_>,
 ) -> stream::Groups {
     let mut groups: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
     let mut group_of: BTreeMap<String, String> = BTreeMap::new();
@@ -682,18 +683,38 @@ pub(crate) fn plan_groups(
         stream::groups_of(&s.rel, doc, &|id| known.contains(id))
     });
     for (s, decls) in scenes.into_iter().zip(declared) {
-        let decls = match decls {
+        let mut decls = match decls {
             Ok(d) => d,
             Err(e) => {
                 errors.push((s.rel.clone(), "scene", e));
                 continue;
             }
         };
+        if delivery.split() {
+            match delivery.owner(&s.rel, &s.rel) {
+                Ok(pack) => {
+                    for group in &mut decls {
+                        group.name = format!("{pack}/{}", group.name);
+                    }
+                }
+                Err(e) => {
+                    errors.push((s.rel.clone(), "scene", e.to_string()));
+                    continue;
+                }
+            }
+        }
         // A scene with a refused group adds none of its groups.
         let mut refused = None;
         let mut mine: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
         let mut mine_of: BTreeMap<String, String> = BTreeMap::new();
         'groups: for g in &decls {
+            if g.name.len() > 64 {
+                refused = Some(format!(
+                    "stream {:?}: pack-qualified name exceeds the 64-byte StreamEvent.group limit; shorten the pack or group name",
+                    g.name
+                ));
+                break;
+            }
             if g.trigger == crate::runtime::StreamTrigger::Cell {
                 if !placed.contains(&s.rel) {
                     refused = Some(format!(

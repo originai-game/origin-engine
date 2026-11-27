@@ -279,6 +279,8 @@ export interface BuildManifest {
   readonly build: "publish" | "dev";
   /** Unreachable outputs omitted from this export, and conservative computed-load retention. */
   readonly pruning: Pick<PublishAssets, "omitted" | "computed" | "removed_files"> | null;
+  /** Delivery directories and their boot reachability, separate from residency. */
+  readonly delivery?: readonly { directory: string; boot: boolean; files: readonly string[] }[];
   readonly game: { readonly name: string; readonly id: string; readonly profile: GameProfile };
   readonly entry: "index.html";
   /** The engine Worker's bundle as served: `game.js`, or in a publish build `game.<hash>.js`. */
@@ -416,7 +418,7 @@ export function streamGroupsOf(manifest: string): { groups: Array<{ name: string
 }
 
 /** Explicit font-pack faces the cook placed in the boot (paths under the export). */
-function preloadsOf(manifest: string): ReadonlySet<string> {
+function preloadsOf(manifest: string): Set<string> {
   return new Set([...manifest.matchAll(/^preload ("(?:[^"\\]|\\.)*")$/gm)].map((m) => `cooked/${JSON.parse(m[1]!) as string}`));
 }
 
@@ -480,7 +482,7 @@ export interface DownloadBoot extends DownloadSum {
 }
 
 /** What each page of a build downloads (Downloads), from its size table and the split modules the game references. */
-export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<string> = new Set(), referenced: ReadonlySet<string> = new Set()): Downloads {
+export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<string> = new Set(), referenced: ReadonlySet<string> = new Set(), delivery: ReadonlySet<string> = new Set()): Downloads {
   // A content-hashed file counts under its plain name.
   const rows = files.map((f) => {
     const path = f.path.split("\\").join("/");
@@ -489,8 +491,8 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
   const sum = (test: (path: string) => boolean): DownloadSum =>
     rows.filter((f) => test(f.path)).reduce((a, f) => ({ files: a.files + 1, bytes: a.bytes + f.bytes, compressed: a.compressed + f.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
-  const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
-  const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
+  const isPack = (p: string) => delivery.has(p) || /^cooked\/(?:delivery\/[^/]+\/)?stream\/.+\.ogb$/.test(p) || p === MOTION_MODEL;
+  const isVideo = (p: string) => !isPack(p) && p.startsWith("cooked/") && VIDEO_STREAM.test(p);
   const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && (!FONT_FACE.test(p) || preloads.has(p)) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|shell\.css|install\.js|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
@@ -503,9 +505,9 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
     boot: { single: page(sum((p) => SINGLE_ENGINE.test(p) || booted("modules", p))), lanes: lanes.files > 0 ? page(lanes) : null },
     later: {
       packs: sum(isPack),
-      chunks: sum((p) => SOUND_CHUNK.test(p)),
-      mips: sum((p) => TEXTURE_MIPS.test(p)),
-      fonts: sum((p) => FONT_FACE.test(p) && !preloads.has(p)),
+      chunks: sum((p) => !isPack(p) && SOUND_CHUNK.test(p)),
+      mips: sum((p) => !isPack(p) && TEXTURE_MIPS.test(p)),
+      fonts: sum((p) => !isPack(p) && FONT_FACE.test(p) && !preloads.has(p)),
       worklet: sum((p) => p === "audio-worklet.js" || p === "audio-decoder.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
@@ -1004,6 +1006,10 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const cooked = join(project, "cooked");
   if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
   const cookedManifest = readFileSync(join(cooked, ".cook.ogt"), "utf8");
+  const deliveryPath = join(project, ".og/cook/delivery.json");
+  const delivery: Array<{ directory: string; boot: boolean; files: string[] }> = existsSync(deliveryPath)
+    ? JSON.parse(readFileSync(deliveryPath, "utf8")) : [];
+  const deliveryManifests = delivery.map((pack) => ({ ...pack, text: readFileSync(join(cooked, pack.directory, ".cook.ogt"), "utf8") }));
   // The game's profile: the cook's, from project.ogt's creation form (og-bundle's look::project_profile).
   const profile = /^profile "(2d|3d)"$/m.exec(cookedManifest)?.[1] as GameProfile | undefined;
   if (!profile) return fail(`${cooked}/.cook.ogt has no profile; run \`og cook ${project}\` again`);
@@ -1109,8 +1115,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
   // Only ship the Basis transcoder when the build can load Basis textures
   // (or in dev builds / remote content / runtime bundles), and only ship the
   // AV1 fallback decoder when video is present or referenced.
-  const needsBasis = !publish || Boolean(p.content) || usesRuntimeBundle || /^    type "?og\.(?:Texture|TextureArray|Lightmap)"?[ \t]*$/m.test(finalManifest);
-  const needsAv1 = Boolean(p.content) || usesRuntimeBundle || referenced.includes("video") || /^    type "?og\.Video(?:Stream|Chunk)?"?[ \t]*$/m.test(finalManifest) || VIDEO_STREAM.test(finalManifest);
+  const allManifests = deliveryManifests.length ? deliveryManifests.map((p) => p.text).join("\n") : finalManifest;
+  const needsBasis = !publish || Boolean(p.content) || usesRuntimeBundle || /^    type "?og\.(?:Texture|TextureArray|Lightmap)"?[ \t]*$/m.test(allManifests);
+  const needsAv1 = Boolean(p.content) || usesRuntimeBundle || referenced.includes("video") || /^    type "?og\.Video(?:Stream|Chunk)?"?[ \t]*$/m.test(allManifests) || VIDEO_STREAM.test(allManifests);
   if (needsBasis) cpSync(vendor, join(out, "basis"), { recursive: true });
   // The AV1 fallback decoder, fetched only by a browser without AV1 in WebCodecs (src/web/video.ts).
   const av1 = join(ENGINE_ROOT, "dist", "av1", "og-av1.wasm");
@@ -1125,6 +1132,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
   if (publish) writeFileSync(join(out, "install.js"), INSTALL_SCRIPT);
   writeFileSync(join(out, "audio-decoder.js"), decoderSource());
   cpSync(cooked, join(out, "cooked"), { recursive: true });
+  if (delivery.length) {
+    const runtimeFiles = new Set(delivery.flatMap((p) => p.files));
+    for (const path of walk(join(out, "cooked"))) {
+      if (!runtimeFiles.has(relative(join(out, "cooked"), path).split("\\").join("/"))) rmSync(path);
+    }
+  }
   // The cook's own timings and art-contract log (og cook --report) are not the game's.
   rmSync(join(out, "cooked", ".cook-times.ogt"), { force: true });
   rmSync(join(out, "cooked", ".conform.ogt"), { force: true });
@@ -1138,6 +1151,15 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const preloads = preloadsOf(finalManifest);
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
   const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
+  const streamGroups = deliveryManifests.length
+    ? deliveryManifests.flatMap((pack) => streamGroupsOf(pack.text).groups.map((g) => ({ ...g, file: pack.directory ? `${pack.directory}/${g.file}` : g.file })))
+    : split.groups;
+  for (const pack of deliveryManifests) {
+    const prefix = pack.directory ? `cooked/${pack.directory}/` : "cooked/";
+    for (const group of streamGroupsOf(pack.text).groups) packs.add(`${prefix}${group.file}`);
+    for (const preload of preloadsOf(pack.text)) preloads.add(`${prefix}${preload.slice("cooked/".length)}`);
+    if (!pack.boot) for (const file of pack.files) packs.add(`cooked/${file}`);
+  }
   if (existsSync(join(out, MOTION_MODEL))) packs.add(MOTION_MODEL);
 
   // Icons: the project's, or the brand tile (shell/brand, from the platform's packages/brand).
@@ -1280,6 +1302,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     format: 1,
     engine: { name: "origin-engine", version: ENGINE_VERSION, pinned: settings.engine },
     build: publish ? "publish" : "dev",
+    delivery,
     pruning: assets ? { omitted: assets.omitted, computed: assets.computed, removed_files: assets.removed_files } : null,
     game: { name: settings.name, id: settings.id, profile },
     entry: "index.html",
@@ -1312,11 +1335,11 @@ export async function webBuild(project: string, entry: string, out: string, publ
     files: rows,
     total: { files: rows.length, bytes: rows.reduce((n, f) => n + f.bytes, 0) },
     stream:
-      split.groups.length === 0
+      streamGroups.length === 0
         ? null
         : {
             first: { files: firstGroup.length, bytes: firstGroup.reduce((n, f) => n + statSync(f).size, 0) },
-            groups: split.groups.map((g) => {
+            groups: streamGroups.map((g) => {
               const row = rows.find((f) => f.path === `cooked/${g.file}`);
               return { name: g.name, file: `cooked/${g.file}`, bytes: row?.bytes ?? 0, sha256: row?.sha256 ?? "", priority: g.priority, memory: g.memory, assets: g.assets };
             }),
@@ -1353,8 +1376,10 @@ export async function sizesOf(out: string, publish: boolean): Promise<BuildSizes
   const preloads = preloadsOf(readFileSync(join(out, "cooked", ".cook.ogt"), "utf8"));
   // The split modules the boot puts in place (og-build.json `modules`, null for an unsplit engine).
   const manifest = join(out, BUILD_MANIFEST);
-  const modules = existsSync(manifest) ? (JSON.parse(readFileSync(manifest, "utf8")) as Partial<BuildManifest>).modules : null;
-  return { files, total, fontPreloads: files.filter((f) => preloads.has(f.path)), downloads: downloadsOf(files, preloads, new Set(modules?.referenced ?? [])) };
+  const build = existsSync(manifest) ? JSON.parse(readFileSync(manifest, "utf8")) as Partial<BuildManifest> : null;
+  const delivery = new Set(build?.delivery?.filter((p) => !p.boot).flatMap((p) => p.files.map((f) => `cooked/${f}`)) ?? []);
+  for (const preload of build?.fontPreloads ?? []) preloads.add(preload.path);
+  return { files, total, fontPreloads: files.filter((f) => preloads.has(f.path)), downloads: downloadsOf(files, preloads, new Set(build?.modules?.referenced ?? []), delivery) };
 }
 
 function table(b: BuildSizes): string {

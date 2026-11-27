@@ -37,10 +37,14 @@ const SKIP = new Set(["node_modules", "cooked", "dist", "og-out", ".og", ".git"]
  * none when the line is absent.
  */
 export function cookedModules(cooked: string): string[] {
-  const listing = join(cooked, ".cook.ogt");
-  if (!existsSync(listing)) return [];
-  const line = /^modules((?: [a-z0-9]+)+)[ \t]*$/m.exec(readFileSync(listing, "utf8"));
-  return line ? line[1]!.trim().split(" ") : [];
+  const report = join(cooked, "../.og/cook/delivery.json");
+  const delivery: Array<{ directory: string; boot: boolean }> = existsSync(report) ? JSON.parse(readFileSync(report, "utf8")) : [];
+  const listings = delivery.length ? delivery.filter((p) => p.boot).map((p) => join(cooked, p.directory, ".cook.ogt")) : [join(cooked, ".cook.ogt")];
+  return [...new Set(listings.flatMap((listing) => {
+    if (!existsSync(listing)) return [];
+    const line = /^modules((?: [a-z0-9]+)+)[ \t]*$/m.exec(readFileSync(listing, "utf8"));
+    return line ? line[1]!.trim().split(" ") : [];
+  }))].sort();
 }
 
 /** Whether a cooked bundle's project profile is 2D (`profile "2d"` in `.cook.ogt`). */

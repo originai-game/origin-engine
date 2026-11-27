@@ -17,6 +17,7 @@
 
 mod pipeline;
 pub use pipeline::author::project_assets;
+pub use pipeline::delivery::PackReport;
 pub use pipeline::{asset_move, assets, cache, graph, stats, ts_refs};
 use pipeline::{
     execute, import_defaults, index, kinds, options, output, plan, provided, report, scan, stage,
@@ -459,6 +460,8 @@ pub fn cook_project_with_texture_cache(
         .flow
         .as_ref()
         .map(|id| content.outputs[id].asset.clone());
+    let delivery =
+        pipeline::delivery::Delivery::new(&project.source, &content, options.pack.as_deref())?;
     laps.lap("author");
     let Resolved {
         mut known,
@@ -485,7 +488,7 @@ pub fn cook_project_with_texture_cache(
         groups,
         group_of,
         pack_faces,
-    } = group(&sources, &known, &mut early_errors, threads);
+    } = group(&sources, &known, &mut early_errors, threads, &delivery);
     laps.lap("group");
     let schemas: BTreeMap<String, Schema> = options
         .schemas
@@ -497,7 +500,12 @@ pub fn cook_project_with_texture_cache(
         schema_hash.write_str(&s.to_json());
     }
     let schema_hash = schema_hash.finish().to_le_bytes();
-    let old = std::fs::read_to_string(cooked_dir.join(MANIFEST))
+    let manifest_path = if delivery.split() {
+        root.join(pipeline::delivery::BUILD_MANIFEST)
+    } else {
+        cooked_dir.join(MANIFEST)
+    };
+    let old = std::fs::read_to_string(manifest_path)
         .ok()
         .and_then(|t| Manifest::parse(&t).ok())
         .unwrap_or_default();
@@ -516,6 +524,7 @@ pub fn cook_project_with_texture_cache(
         root,
         assets_dir,
         cooked_dir,
+        delivery: &delivery,
         options,
         sources: &sources,
         rigs: &rigs,
@@ -556,6 +565,14 @@ pub fn cook_project_with_texture_cache(
         );
     }
     laps.lap("plan");
+    let plan: Vec<_> = plan
+        .into_iter()
+        .filter_map(|p| match delivery.contains(&p.id, &sources[p.source].rel) {
+            Ok(true) => Some(Ok(p)),
+            Ok(false) => None,
+            Err(e) => Some(Err(e)),
+        })
+        .collect::<Result<_, _>>()?;
     let results = execute(
         &cx,
         &plan,
@@ -618,7 +635,11 @@ pub fn cook_project_with_texture_cache(
     warnings.extend(scan_warnings);
     reports.sort_by(|a, b| a.source.cmp(&b.source));
     laps.lap("diagnose");
+    let delivery_report = delivery.emit(root, options.publish)?;
+    laps.lap("delivery");
     let mut report = Report {
+        pack: options.pack.clone(),
+        delivery: delivery_report,
         conform: conformed,
         warnings,
         root: root.display().to_string(),

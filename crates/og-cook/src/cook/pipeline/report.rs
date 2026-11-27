@@ -105,6 +105,10 @@ impl CookTimes {
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Report {
     pub root: String,
+    #[serde(default)]
+    pub pack: Option<String>,
+    #[serde(default)]
+    pub delivery: Vec<super::delivery::PackReport>,
     pub cooker: String,
     pub texture_encoder: String,
     pub assets: Vec<AssetReport>,
@@ -356,6 +360,7 @@ impl Report {
             .collect();
         serde_json::to_string_pretty(&json!({
             "root": self.root, "cooker": self.cooker, "texture_encoder": self.texture_encoder,
+            "pack": self.pack, "delivery": self.delivery,
             "elapsed_ms": self.elapsed_ms, "source_bytes": self.source_bytes(), "cooked_bytes": self.cooked_bytes(),
             "by_kind": kinds, "assets": assets, "ignored": self.ignored, "removed": self.removed,
             "warnings": self.warnings,

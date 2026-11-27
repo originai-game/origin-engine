@@ -107,6 +107,25 @@ files. `og check` generates isolated contextual types under `.og/types/author/`
 and checks configuration and author files without executing the game.
 `og api show file:project` reports the schema-derived configuration type.
 
+Delivery is independent of source namespaces. Declare `project.ts.packs` with
+`id`, `include` patterns over canonical content IDs, `dependsOn`, `roots` and
+`optional`. Unassigned outputs belong to `base`; overlapping assignments and
+cross-pack references without a reachable dependency are errors. Required packs
+cannot depend on optional packs. Declare shared content explicitly instead of
+copying it into every region. A scene's streaming group stays within its pack;
+with explicit packs its runtime name is `<pack>/<local-group>`.
+
+`og cook --pack north --json` cooks north and its dependency closure. It checks
+project metadata globally but retains other packs' last cooked payloads, so it
+does not certify their current sources. Run a complete `og cook` before export.
+The report names the selected scope and lists each pack's directory, files,
+total bytes, initial payload bytes, streaming bytes and cross-pack references.
+`cooked/.cook.ogt` is the base runtime bundle; other bundles live under
+`cooked/delivery/<id>/`. Open one with `og.load.bundle`; its pinned dependencies
+open before it becomes ready. Bundle IDs are globally unique, never overlays.
+The Web boot fetches only base's dependency closure; other regions remain lazy.
+Small games omit `packs` and keep the same single-bundle layout.
+
 <a id="guide-start-2"></a>
 ### `start §2` The order of work
 

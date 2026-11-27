@@ -113,6 +113,29 @@ dates, no absolute paths, files in sorted order
   retained one, so the bytes are not savings), `removed_files` relative to
   `cooked/`, and `computed` loads (`source`, `line`, `prefix`, `reason`).
   The rules are the `assets` guide's (`og api show assets`).
+- `delivery` lists runtime bundle directories, their files relative to `cooked/`
+  and whether they belong to the base boot dependency closure. Cook build
+  intermediates and duplicate payloads are excluded from the export. Lazy
+  delivery files are excluded from boot progress and service-worker precaching.
+  Streaming groups in every delivery bundle appear under `stream.groups`, with
+  their full served path and pack-qualified name.
+
+### Delivery bundles
+
+`project.ts.packs` partitions the cook into ordinary runtime bundles. The base
+manifest is `cooked/.cook.ogt`; each other manifest is
+`cooked/delivery/<id>/.cook.ogt`. A manifest's `requires` entries name dependency
+manifests relative to its directory, with byte size, content hash and SHA-384
+integrity. Boot preloads the base dependency closure once and checks the pins.
+Later `og.load.bundle` and catalog loads use the same dependency loader. A bundle
+is not ready until its dependencies are ready; conflicts and cycles fail. An
+open dependent prevents releasing its required bundle. Asset IDs must be unique
+across open bundles, regardless of load order.
+
+Cross-pack validation follows the cook's conservative reference index. A
+declared reference to another delivered output requires a `dependsOn` path even
+when its cooker embeds that output's data. Source-only inputs without delivered
+outputs do not create delivery edges.
 
 ### Streaming groups
 

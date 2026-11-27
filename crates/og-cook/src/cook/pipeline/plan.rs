@@ -8,6 +8,7 @@ pub(crate) struct Cx<'a> {
     pub(crate) root: &'a Path,
     pub(crate) assets_dir: &'a Path,
     pub(crate) cooked_dir: &'a Path,
+    pub(crate) delivery: &'a super::delivery::Delivery<'a>,
     pub(crate) options: &'a CookOptions,
     pub(crate) sources: &'a [Source],
     pub(crate) rigs: &'a anim::Rigs,

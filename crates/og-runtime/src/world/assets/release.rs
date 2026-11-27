@@ -98,6 +98,16 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
         if a.default_bundle == Some(bundle) {
             return Err("the boot bundle cannot be released".into());
         }
+        if let Some((&dependent, _)) = a.required.iter().find(|(i, deps)| {
+            **i != bundle
+                && matches!(a.entries[**i].payload, Payload::Bundle { .. })
+                && deps.contains(&bundle)
+        }) {
+            return Err(format!(
+                "{} still requires this delivery bundle",
+                a.entries[dependent].path
+            ));
+        }
         let mut indices = BTreeSet::from([bundle]);
         let mut geometries = BTreeSet::new();
         let mut materials = BTreeSet::new();
@@ -503,6 +513,7 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
     }
     crate::world::stream::forget_bundle(eng, bundle);
     let mut a = eng.assets.borrow_mut();
+    a.required.remove(&bundle);
     let path = a.entries[bundle].path.clone();
     for &i in &indices {
         let e = &mut a.entries[i];

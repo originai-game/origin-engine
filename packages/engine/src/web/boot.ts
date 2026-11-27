@@ -271,7 +271,24 @@ export async function preloadBundle(
   received?: Received,
   manifestIntegrity?: string,
 ): Promise<Fetched> {
-  const dir = cookedDir(root);
+  return preloadDirectory(glue, cookedDir(root), progress, received, manifestIntegrity, new Map());
+}
+
+async function preloadDirectory(
+  glue: Pick<WebExtras, "og_web_put_file" | "og_web_fail_file" | "og_web_bundle_files" | "og_web_bundle_integrity">,
+  dir: string,
+  progress: (value: number, stage: string) => void,
+  received: Received | undefined,
+  manifestIntegrity: string | undefined,
+  seen: Map<string, { pin: string | undefined; active: boolean }>,
+): Promise<Fetched> {
+  const previous = seen.get(dir);
+  if (previous) {
+    if (previous.active) throw new Error(`${dir}: delivery dependency cycle`);
+    if (previous.pin && manifestIntegrity && previous.pin !== manifestIntegrity) throw new Error(`${dir}: conflicting delivery manifest pins`);
+    return { files: 0, failed: 0, streamed: 0, integrity: null };
+  }
+  seen.set(dir, { pin: manifestIntegrity, active: true });
   const manifestPath = `${dir}/.cook.ogt`;
   let manifest: string;
   try {
@@ -280,6 +297,7 @@ export async function preloadBundle(
     tellLoadFailure(manifestPath, e);
     const hint = manifestIntegrity ? "the asset base must serve this build's cooked/ (og-build.json `assets`)" : "run og cook and serve cooked/ next to the page";
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); ${hint}`);
+    seen.set(dir, { pin: manifestIntegrity, active: false });
     return { files: 0, failed: 1, streamed: 0, integrity: null };
   }
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
@@ -290,14 +308,26 @@ export async function preloadBundle(
     if (typeof listed["error"] === "string") throw new Error(`${manifestPath}: ${listed["error"]}`);
     integrity = listed;
   }
-  const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string; preload?: boolean }> | { error: string };
+  const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string; preload?: boolean; integrity?: string }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
+  let dependencyFiles = 0;
+  let dependencyFailures = 0;
+  let dependencyStreamed = 0;
+  for (const requirement of all.filter((o) => o.type === "og.Bundle")) {
+    if (!requirement.file.endsWith("/.cook.ogt") || requirement.file.startsWith("/") || /[:\\?#]/.test(requirement.file)) throw new Error(`${manifestPath}: invalid delivery manifest path ${requirement.file}`);
+    const url = new URL(requirement.file, new URL(`${dir}/`, "https://engine.invalid/"));
+    const path = dir.includes("://") ? url.href : dir.startsWith("/") ? url.pathname : url.pathname.slice(1);
+    const dependency = await preloadDirectory(glue, path.slice(0, -"/.cook.ogt".length), progress, received, requirement.integrity, seen);
+    dependencyFiles += dependency.files;
+    dependencyFailures += dependency.failed;
+    dependencyStreamed += dependency.streamed;
+  }
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
   // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
   // A font pack's faces (`<id>.face.ogb`, docs/ui.md §3.4) when the
   // locale's chain or a frame's text first needs them, unless the cook's
   // reference graph says the game may explicitly load them (before start).
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && o.type !== "og.VideoChunk" && !o.id.endsWith("#mips") && (!o.file.endsWith(".face.ogb") || o.preload === true));
+  const listed = all.filter((o) => o.type !== "og.Bundle" && o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && o.type !== "og.VideoChunk" && !o.id.endsWith("#mips") && (!o.file.endsWith(".face.ogb") || o.preload === true));
   const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;
@@ -323,7 +353,8 @@ export async function preloadBundle(
       while (next < files.length) await one(files[next++]!);
     }),
   );
-  return { files: files.length - failed, failed, streamed: all.length - listed.length, integrity };
+  seen.set(dir, { pin: manifestIntegrity, active: false });
+  return { files: files.length - failed + dependencyFiles, failed: failed + dependencyFailures, streamed: all.filter((o) => o.type !== "og.Bundle").length - listed.length + dependencyStreamed, integrity };
 }
 
 /**
@@ -578,4 +609,3 @@ export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_deco
   });
   return true;
 }
-

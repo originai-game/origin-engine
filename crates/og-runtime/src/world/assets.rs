@@ -20,6 +20,7 @@ use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod bindings;
+mod bundles;
 mod closure;
 mod models;
 mod recovery;
@@ -184,6 +185,8 @@ pub(crate) struct Assets {
     /// The integrity each og.load.pack bundle's manifest is read against,
     /// by entry: the one its catalog version lists.
     pub pinned: BTreeMap<usize, String>,
+    /// Pinned delivery dependencies. An open dependent keeps its bundles alive.
+    pub required: BTreeMap<usize, Vec<usize>>,
     /// The content base og.load.data reads catalogs from: a directory
     /// (native) or an https URL (web); empty: none.
     pub content: String,
@@ -310,50 +313,7 @@ impl Assets {
     /// is read against its catalog's integrity, its failures coded as
     /// og.load.data's.
     fn poll_bundle(&mut self, i: usize) {
-        let dir = join(&self.root, &self.entries[i].path);
-        let manifest = format!("{dir}/{MANIFEST}");
-        let pin = self.pinned.get(&i);
-        let code = |c: &str| {
-            if pin.is_some() {
-                format!("{c}: ")
-            } else {
-                String::new()
-            }
-        };
-        let got = match pin {
-            Some(integrity) => read_pinned(&manifest, integrity),
-            None => read(&manifest),
-        };
-        let entry = &mut self.entries[i];
-        match got {
-            Fetch::Pending => entry.status = Status::Pending,
-            Fetch::Failed(e) if pin.is_some() => entry.status = Status::Failed(e),
-            Fetch::Failed(e) => {
-                entry.status = Status::Failed(format!(
-                    "{manifest}: {e} (run `og cook` to write the cooked bundle)"
-                ))
-            }
-            Fetch::Ready(bytes) => match String::from_utf8(bytes)
-                .map_err(|e| e.to_string())
-                .and_then(|t| Bundle::from_manifest(&t).map_err(|e| e.to_string()))
-            {
-                Ok(bundle) => {
-                    if let Err(e) = self.stream.add_bundle(i, &bundle, &dir) {
-                        entry.status = Status::Failed(format!("{}{manifest}: {e}", code("failed")));
-                        return;
-                    }
-                    crate::world::needs::bundle(&bundle);
-                    entry.status = Status::Ready;
-                    entry.payload = Payload::Bundle {
-                        bundle: Box::new(bundle),
-                        dir,
-                    };
-                }
-                Err(e) => {
-                    entry.status = Status::Failed(format!("{}{manifest}: {e}", code("invalid")))
-                }
-            },
-        }
+        bundles::poll(self, i);
     }
 
     /// The entry of bundle directory `path` when it is open or opening:
@@ -441,7 +401,10 @@ impl Assets {
             if self.opening.contains_key(&i) {
                 self.settle_open(i, tick);
             } else if self.entries[i].status == Status::Pending
-                && matches!(self.entries[i].payload, Payload::None)
+                && matches!(
+                    self.entries[i].payload,
+                    Payload::None | Payload::Bundle { .. }
+                )
             {
                 self.poll_bundle(i);
             } else if matches!(self.entries[i].payload, Payload::ScenePending) {
@@ -466,20 +429,27 @@ impl Assets {
         }
     }
 
-    /// The requester's bundle first, then the boot bundle and open order.
-    pub(crate) fn source(&self, id: &str, owner: Option<usize>) -> Result<usize, String> {
-        let order = owner
-            .into_iter()
-            .chain(self.default_bundle)
-            .chain(0..self.entries.len());
+    /// Global asset identities never depend on requester or bundle open order.
+    pub(crate) fn source(&self, id: &str, _owner: Option<usize>) -> Result<usize, String> {
+        let mut found = None;
         let mut open = 0;
-        for i in order {
-            if let Payload::Bundle { bundle, .. } = &self.entries[i].payload {
+        for (i, entry) in self.entries.iter().enumerate() {
+            if entry.status != Status::Pending
+                && let Payload::Bundle { bundle, .. } = &entry.payload
+            {
                 open += 1;
                 if bundle.output(id).is_ok() {
-                    return Ok(i);
+                    if let Some(previous) = found {
+                        return Err(format!(
+                            "{id}: duplicate global asset identity in bundles {previous} and {i}"
+                        ));
+                    }
+                    found = Some(i);
                 }
             }
+        }
+        if let Some(i) = found {
+            return Ok(i);
         }
         if open == 0 {
             let why = self
@@ -683,17 +653,8 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
     // other assets read again after this compare against it.
     {
         let mut assets = eng.assets.borrow_mut();
-        for entry in &mut assets.entries {
-            let Payload::Bundle { bundle, dir } = &mut entry.payload else {
-                continue;
-            };
-            if let Fetch::Ready(bytes) = read(&format!("{dir}/{MANIFEST}"))
-                && let Ok(fresh) = String::from_utf8(bytes)
-                    .map_err(|e| e.to_string())
-                    .and_then(|t| Bundle::from_manifest(&t).map_err(|e| e.to_string()))
-            {
-                **bundle = fresh;
-            }
+        if let Err(error) = bundles::reload(&mut assets) {
+            return (Vec::new(), vec![error]);
         }
     }
     let (mut loaded, mut failed) = (Vec::new(), Vec::new());

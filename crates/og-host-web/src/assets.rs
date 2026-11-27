@@ -466,6 +466,13 @@ pub fn og_web_bundle_files(manifest: String) -> String {
                         json_string(&o.ty)
                     )
                 })
+                .chain(bundle.manifest().requires.iter().map(|r| {
+                    format!(
+                        "{{\"id\":\"\",\"type\":\"og.Bundle\",\"file\":{},\"integrity\":{}}}",
+                        json_string(&r.file),
+                        json_string(&r.integrity)
+                    )
+                }))
                 .collect();
             format!("[{}]", items.join(","))
         }
@@ -492,6 +499,7 @@ pub fn og_web_bundle_integrity(manifest: String) -> String {
         .outputs()
         .map(|o| (&o.file, &o.integrity))
         .chain(m.streams.iter().map(|g| (&g.file, &g.integrity)))
+        .chain(m.requires.iter().map(|f| (&f.file, &f.integrity)))
         .chain(m.motion.iter().map(|f| (&f.file, &f.integrity)));
     let items: std::collections::BTreeMap<_, _> = files.collect();
     let items: Vec<String> = items
