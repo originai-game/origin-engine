@@ -60,7 +60,7 @@ case "$1" in
         if [ "$file" = scripts/toolchain.test.ts ] && [[ "$RAN" == *' preflight '* ]]; then continue; fi
         script_tests+=("./$file")
       done < <(find scripts -name '*.test.ts' | sort)
-      bun test "${script_tests[@]}" && bun scripts/gate/bun.ts quick
+      bun test --timeout="$OG_BUN_TEST_TIMEOUT" "${script_tests[@]}" && bun scripts/gate/bun.ts quick
       rc=$?
     } ;;
   browser)
