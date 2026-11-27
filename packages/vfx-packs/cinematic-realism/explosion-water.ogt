@@ -43,11 +43,11 @@ mesh ring {
 shake {
   trauma 0.35
 }
-sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+sound "base/vfx/cinematic-realism/audio/blast-small" {
   volume 0.6
   playbackRate 0.6 0.7
 }
-sound "vfx/cinematic-realism/sounds/splash.ogt" {
+sound "base/vfx/cinematic-realism/audio/splash" {
   volume 1.2
   playbackRate 0.55 0.65
 }

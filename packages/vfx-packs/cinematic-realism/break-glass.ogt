@@ -12,5 +12,5 @@ emitter "vfx/cinematic-realism/emitters/glass-bits.ogt" {
 emitter "vfx/cinematic-realism/emitters/glints.ogt" {
   offset 0 0.6 0
 }
-sound "vfx/cinematic-realism/sounds/shatter.ogt" {
+sound "base/vfx/cinematic-realism/audio/shatter" {
 }

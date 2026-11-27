@@ -155,7 +155,7 @@ that wants marks to stay places its own og.Decal with the same textures.
 
 ## Sounds
 
-One-shot effects play a sound of the pack (`sounds/*.ogt`, `type sfx`:
+One-shot effects play a sound of the pack (`content/audio/*.ts`, `file.sfx`:
 oscillator and noise layers the cook synthesises; no recording ships).
 They are plain and dry so a game's own mix and reverb place them; a game
 with recorded audio plays its own and sets og.AudioSettings' sfx bus or

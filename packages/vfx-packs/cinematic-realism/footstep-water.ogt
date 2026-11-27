@@ -22,7 +22,7 @@ mesh ring {
   color 0.8 0.88 0.95
   blend alpha
 }
-sound "vfx/cinematic-realism/sounds/plip.ogt" {
+sound "base/vfx/cinematic-realism/audio/plip" {
   volume 0.7
   playbackRate 0.7 0.9
 }

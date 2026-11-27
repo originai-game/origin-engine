@@ -121,7 +121,7 @@ light {
   intensity curve 0 2.4 0.15 0.3 0.2 2 0.35 0.3 0.5 2.2 0.6 0.4 0.75 1.8 1 0.5
   distance 4
 }
-sound "vfx/cinematic-realism/sounds/zap.ogt" {
+sound "base/vfx/cinematic-realism/audio/zap" {
   volume 0.3
   playbackRate 1.4 1.8
 }

@@ -12,6 +12,6 @@ emitter "vfx/cinematic-realism/emitters/grit.ogt" {
 shake {
   trauma 0.12
 }
-sound "vfx/cinematic-realism/sounds/thud.ogt" {
+sound "base/vfx/cinematic-realism/audio/thud" {
   playbackRate 0.8 0.95
 }

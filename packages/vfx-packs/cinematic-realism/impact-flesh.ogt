@@ -15,7 +15,7 @@ emitter "vfx/cinematic-realism/emitters/cloth-dust.ogt" {
 emitter "vfx/cinematic-realism/emitters/fibres.ogt" {
   offset 0 0.03 0
 }
-sound "vfx/cinematic-realism/sounds/thud.ogt" {
+sound "base/vfx/cinematic-realism/audio/thud" {
   volume 0.8
   playbackRate 1.1 1.3
 }
