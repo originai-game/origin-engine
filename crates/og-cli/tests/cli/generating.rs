@@ -561,10 +561,11 @@ fn generated_effect_sources_cook_and_link() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Effects\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Effects","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'effects',entry:'src/main.ts'});").unwrap();
     let volume = "type effect-texture\nversion 1\n---\nmode explosion\nsize 8\nframes 3\ncolumns 2\ngrid 8\nsteps 1\ndt 0.04\npressure 4\nseed 17\nfrequency 3\nturbulence 0.03\nsource 0.43 0.38 0.5\nradius 0.3\ninject 0\ndensity 12\nheat 1\nbuoyancy 0.1\nexpansion 0.4\ndecay 0.5\ncooling 2\nabsorption 8\ncolor 0.4 0.45 0.5\nemission 1 0.2 0.01\n";
     let volume =
         format!("{volume}range 1\ndetail 0.8\nvorticity 2\nlight -1 2 -1\nambient 0.2\ndirect 1\n");
@@ -672,10 +673,11 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Graph\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Graph","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'graph',entry:'src/main.ts'});").unwrap();
     let model =
         std::fs::read(repo().join("tests/fixtures/anim-markers/assets/models/walker.glb")).unwrap();
     std::fs::write(assets.join("walker.glb"), &model).unwrap();
@@ -805,10 +807,11 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Field\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Field","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'field',entry:'src/main.ts'});").unwrap();
     std::fs::write(
         assets.join("source.ogt"),
         "type field\nversion 1\n---\ngenerate {\nscript \"field.ts\"\n}\n",
@@ -1450,10 +1453,11 @@ fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Map\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Map","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'map',entry:'src/main.ts'});").unwrap();
     std::fs::write(
         assets.join("tiles.ogt"),
         "type tileset\nversion 1\n---\ntexture \"\"\ngrid 8 8 3 1\n",
@@ -1524,10 +1528,11 @@ fn generated_pcm_cooks_as_an_authored_sound() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"PCM\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"PCM","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'pcm',entry:'src/main.ts'});").unwrap();
     std::fs::write(
         assets.join("made.ogt"),
         "type sound\nversion 1\n---\ngenerate {\nscript \"samples.ts\"\n}\n",
@@ -1638,10 +1643,11 @@ fn generated_mesh_cooks_with_attributes_and_placed_frames() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Mesh\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Mesh","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'mesh',entry:'src/main.ts'});").unwrap();
     std::fs::write(
         assets.join("mesh.ogt"),
         r#"type model
@@ -1853,10 +1859,11 @@ fn generated_scene_cooks_as_authored_declarations() {
     std::fs::create_dir_all(root.join("src")).unwrap();
     std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
     std::fs::write(
-        root.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Scene\"\n",
+        root.join("og-project.json"),
+        r#"{"version":1,"name":"Scene","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'scene',entry:'src/main.ts'});").unwrap();
     std::fs::write(
         assets.join("sub.ogt"),
         "type scene\nversion 1\n---\nentity \"nested\" {\n}\n",

@@ -155,7 +155,7 @@ function install(step: Step, work: string): string {
   // A dev build dev.<date>.<n> names the release it is based on and its exact commit (docs/release.md §1a).
   if (VERSION!.startsWith("dev.") && !(/^\d+\.\d+\.\d+$/.test(build.base ?? "") && /^[0-9a-f]{40}$/.test(build.revision))) step.fail(`a dev build's record names no base release or full revision: ${JSON.stringify(build)}`);
   if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
-  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
+  for (const f of ["overlay/og-project.json", "overlay/project.ts", "create/template/og-project.json", "create/template/project.ts", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
   }
   const list = run(step, [...ogCmd, "engine", "list"], work);
@@ -167,8 +167,8 @@ function install(step: Step, work: string): string {
 function scaffold(step: Step, work: string, name: string, ...args: string[]): string {
   run(step, [...ogCmd, "new", name, "--engine", VERSION!, ...args, "--no-prompt"], work);
   const game = join(work, name);
-  const pinned = /^engine\s+"([^"]+)"/m.exec(readFileSync(join(game, "project.ogt"), "utf8"))?.[1];
-  if (pinned !== VERSION) step.fail(`${name}/project.ogt pins engine "${pinned}", expected "${VERSION}"`);
+  const pinned = JSON.parse(readFileSync(join(game, "og-project.json"), "utf8")).engine;
+  if (pinned !== VERSION) step.fail(`${name}/og-project.json pins engine "${pinned}", expected "${VERSION}"`);
   const link = join(game, "node_modules", "@origingame", "engine");
   if (readdirSync(join(game, "node_modules")).join() !== "@origingame" || readdirSync(join(game, "node_modules", "@origingame")).join() !== "engine")
     step.fail(`${name}/node_modules holds more than the engine's link: nothing is installed into a game`);
@@ -200,7 +200,7 @@ function host(): void {
     // 2. The scaffold: og new, from the dist's create/.
     step = new Step("2 og new");
     const demo = scaffold(step, work, "demo", "--name", "Demo");
-    for (const f of ["project.ogt", "src/main.ts", "tests", "assets", ".gitignore", ".gitattributes"]) {
+    for (const f of ["og-project.json", "project.ts", "src/main.ts", "tests", "assets", ".gitignore", ".gitattributes"]) {
       if (!existsSync(join(demo, f))) step.fail(`the scaffold wrote no ${f}`);
     }
     if (!CORE && readFileSync(join(demo, "package.json"), "utf8").includes("@origingame/engine")) step.fail("the scaffold's package.json depends on @origingame/engine");
@@ -285,14 +285,14 @@ function host(): void {
       // 6. The view is a constraint, never a different skeleton.
       step = new Step("6 side-2d uses the same skeleton");
       const flat = scaffold(step, work, "demo-2d", "--name", "Demo 2D", "--view", "side-2d");
-      for (const f of ["project.ogt", "src/main.ts", "tests", "assets/.gitkeep", ".gitignore", ".gitattributes"]) {
+      for (const f of ["og-project.json", "project.ts", "src/main.ts", "tests", "assets/.gitkeep", ".gitignore", ".gitattributes"]) {
         if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
       }
-      const manifest2d = readFileSync(join(flat, "project.ogt"), "utf8");
-      if (!/^\s+view "side-2d"$/m.test(manifest2d) || /^profile /m.test(manifest2d)) step.fail("the 2D view must appear only in the create block");
+      const manifest2d = JSON.parse(og(step, flat, "project", ".", "--json").stdout);
+      if (manifest2d.input.create?.view !== "side-2d" || "profile" in manifest2d.input) step.fail("the 2D view must appear only in create");
       if (readFileSync(join(flat, "src/main.ts"), "utf8") !== readFileSync(join(demo, "src/main.ts"), "utf8")) step.fail("the view changed the skeleton's code");
-      const pinned2d = /^engine\s+"([^"]+)"/m.exec(manifest2d)?.[1];
-      if (pinned2d !== VERSION) step.fail(`the 2D scaffold's project.ogt pins engine "${pinned2d}", expected "${VERSION}"`);
+      const pinned2d = manifest2d.engine;
+      if (pinned2d !== VERSION) step.fail(`the 2D scaffold's og-project.json pins engine "${pinned2d}", expected "${VERSION}"`);
       og(step, flat, "check", ".");
       const test2d = og(step, flat, "test", ".");
       log(`   og test: ${test2d.stdout.trim().split("\n").slice(-2).join(" | ")}`);
@@ -316,7 +316,9 @@ function host(): void {
       if (!/text files: \d+/.test(mounted.stdout)) step.fail(`mount printed no summary:\n${mounted.stdout}`);
       run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg, "--check"], demo);
       if (existsSync(join(platform, "knowledge/game/skills/og-game"))) step.fail("the mount wrote an engine skill; the engine ships none");
-      if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
+      for (const file of ["og-project.json", "project.ts"]) {
+        if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts", file))) step.fail(`the mount wrote no scaffold ${file}`);
+      }
       if (!existsSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
     }
 

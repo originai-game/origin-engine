@@ -146,7 +146,8 @@ function stage(): void {
   if (existsSync(join(project, ".staged-1"))) return;
   mkdirSync(join(project, "assets", "terrain"), { recursive: true });
   mkdirSync(join(project, "assets", "textures"), { recursive: true });
-  writeFileSync(join(project, "project.ogt"), 'type project\nversion 1\n---\nname "Terrain fly bench"\nid "terrain-fly"\nengine "0.9.0"\nentry "main.ts"\ntick 60\nseed 1\n');
+  writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"Terrain fly bench","engine":"0.9.0"}\n');
+  writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"terrain-fly",entry:"main.ts",tick:60,seed:1});\n');
   writeFileSync(join(project, "main.ts"), '// Cooked for its assets only: bench/terrain-fly.ts drives the world.\nimport { og } from "@origingame/engine";\n\nexport default og.game();\n');
   writeFileSync(join(project, "assets", "textures", "grass.png"), texture([70, 104, 44], 3));
   writeFileSync(join(project, "assets", "textures", "rock.png"), texture([118, 110, 100], 5));

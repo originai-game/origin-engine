@@ -76,8 +76,8 @@ const catalogue = JSON.parse(readFileSync(join(repo, "packages/knowledge/looks/c
 const all = catalogue.styles.filter((s) => s.look.profiles.includes("3d")).flatMap((s) => [s.slug, ...(s.variants ?? []).map((v) => `${s.slug}:${v.name}`)]);
 const todo = !draw ? [] : names.length ? names : all;
 
-const look = /^look\s+"([^"]+)"/m.exec(readFileSync(join(project, "project.ogt"), "utf8"))?.[1];
-if (!look) throw new Error(`${project}/project.ogt names no look`);
+const metadata = JSON.parse(readFileSync(join(project, "og-project.json"), "utf8")) as { look: { $ogRef: string } };
+const look = `${metadata.look.$ogRef.replace(/^base\//, "")}.ogt`;
 const ownLook = readFileSync(join(project, "assets", look), "utf8");
 if (!/^extends\s+"[^"]+"\s*$/m.test(ownLook)) throw new Error(`${project}/assets/${look} extends no preset`);
 

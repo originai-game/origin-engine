@@ -146,7 +146,8 @@ function stage(): string {
   if (existsSync(mark)) return readFileSync(notes, "utf8");
   mkdirSync(join(project, "assets", "models"), { recursive: true });
   mkdirSync(join(project, "assets", "scenes"), { recursive: true });
-  writeFileSync(join(project, "project.ogt"), 'type project\nversion 1\n---\nname "HLOD town bench"\nid "hlod-town"\nengine "0.9.0"\nentry "main.ts"\ntick 60\nseed 1\n');
+  writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"HLOD town bench","engine":"0.9.0"}\n');
+  writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"hlod-town",entry:"main.ts",tick:60,seed:1});\n');
   writeFileSync(join(project, "main.ts"), '// Cooked for its assets only: bench/hlod-town.ts drives the world.\nimport { og } from "@origingame/engine";\n\nexport default og.game();\n');
   writeFileSync(
     join(project, "assets", "models", "ground.ogt"),

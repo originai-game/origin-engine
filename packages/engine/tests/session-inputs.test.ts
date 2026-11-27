@@ -24,7 +24,9 @@ test.skipIf(!clones(dir))("a cloned project past 512 MiB is admitted", () => {
   try {
     const project = join(dir, "project");
     mkdirSync(join(project, "cooked"), { recursive: true });
-    writeFileSync(join(project, "project.ogt"), "type project\n");
+    const metadata = '{"version":1,"name":"Clone","engine":"0.9.0"}\n';
+    writeFileSync(join(project, "og-project.json"), metadata);
+    writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"clone",entry:"src/main.ts"});\n');
     // Sparse: 600 MiB long, no blocks written.
     writeFileSync(join(project, "cooked", "big.ogb"), "");
     truncateSync(join(project, "cooked", "big.ogb"), 600 * 1024 * 1024);
@@ -32,7 +34,7 @@ test.skipIf(!clones(dir))("a cloned project past 512 MiB is admitted", () => {
     try {
       // Beside the project, on its volume, whatever volume the runs directory is on.
       expect(frozen.inputRoot!.startsWith(join(project, ".og", "session-inputs"))).toBe(true);
-      expect(readFileSync(join(frozen.inputRoot!, "project.ogt"), "utf8")).toBe("type project\n");
+      expect(readFileSync(join(frozen.inputRoot!, "og-project.json"), "utf8")).toBe(metadata);
     } finally {
       frozen.dispose();
     }

@@ -28,6 +28,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
+import { readProject } from "../../src/node/project.ts";
 import { createHash } from "node:crypto";
 import { compareFrames, CROSS_TOLERANCE, decodePng, type Image } from "../support/png.ts";
 import { cookProject } from "../support/og-bin.ts";
@@ -143,7 +144,7 @@ for (const c of cases) {
   try {
     const tab = await browser.open("about:blank", log);
     await tab.send("Emulation.setDeviceMetricsOverride", { width: c.width, height: c.height, deviceScaleFactor: 1, mobile: false });
-    await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/fork.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}` });
+    await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/fork.html?project=${encodeURIComponent(JSON.stringify(readProject(project)!.startup))}` });
     await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
     const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
     if (failed) throw new Error(`the engine did not start: ${failed}`);

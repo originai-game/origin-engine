@@ -2,7 +2,7 @@
 // crates/og-host-c/hermes's shell (og-hermes), which supplies
 // `__og_host` (every binding symbol), `__og_now`, `__og_print` and
 // `__og_env` (as node.ts reads its environment, with OG_BENCH_PROJECT=@<file>
-// for project.ogt's text). Built with the game by build.ts.
+// for checked ProjectStartup JSON). Built with the game by build.ts.
 
 import type { GameToken } from "../../src/runtime.ts";
 import { hermesBinding } from "../../src/hermes/index.ts";
@@ -20,7 +20,7 @@ export function main(game: GameToken): void {
       binding,
       game,
       ...(env.OG_BENCH_ROOT === undefined ? {} : { root: env.OG_BENCH_ROOT }),
-      ...(env.OG_BENCH_PROJECT === undefined ? {} : { project: env.OG_BENCH_PROJECT }),
+      ...(env.OG_BENCH_PROJECT === undefined ? {} : { project: JSON.parse(env.OG_BENCH_PROJECT) }),
       commands: commands(env.OG_BENCH_COMMANDS),
       now: __og_now,
       mode: (env.OG_BENCH_MODE ?? "totals") as Mode,

@@ -518,7 +518,7 @@ step_fixtures() {
   # templates/film: the skeleton `og create --genre interactive-film` writes over template/.
   for dir in packages/create/template templates/film tests/fixtures/*/; do
     dir="${dir%/}"
-    [ "$dir" = templates/film ] || { [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ]; } || continue
+    [ "$dir" = templates/film ] || { [ -f "$dir/og-project.json" ] && [ -d "$dir/tests" ]; } || continue
     name="${dir##*/}"
     [ "$dir" = templates/film ] && name=creation-film
     if skip_unchanged "fixture.$name" "fixture $name" "$(rule_fixture "$dir")"; then
@@ -611,7 +611,7 @@ step_showcase() {
   for dir in showcase/*/; do
     dir="${dir%/}"
     name="${dir##*/}"
-    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] || continue
+    [ -f "$dir/og-project.json" ] && [ -d "$dir/tests" ] || continue
     if skip_unchanged "showcase.$name" "showcase $name" "$(rule_fixture "$dir")"; then
       unchanged="$unchanged $name"
       continue

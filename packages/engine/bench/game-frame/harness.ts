@@ -12,7 +12,7 @@
 // add overhead, so it ranks the hot paths and `totals` gives the frame time.
 
 import type { Dispatcher, HostAbi } from "../../src/generated/abi.ts";
-import { type GameToken, type HostBinding, bindHost, createEngine } from "../../src/runtime.ts";
+import { type CreateOptions, type GameToken, type HostBinding, bindHost, createEngine } from "../../src/runtime.ts";
 import { systems } from "../../src/runtime/declare.ts";
 
 export type Mode = "totals" | "calls";
@@ -22,7 +22,7 @@ export interface Options {
   readonly game: GameToken;
   /** The project directory whose cooked/ the engine opens, if any. */
   readonly root?: string;
-  readonly project?: string;
+  readonly project?: CreateOptions["project"];
   /** Milliseconds, any monotonic origin. */
   readonly now: () => number;
   readonly mode: Mode;

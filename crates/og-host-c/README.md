@@ -67,8 +67,9 @@ H=hermes; clang++ -std=c++17 -O2 -I$H/API -I$H/API/jsi -I$H/public \
 # gives a loop's let and const one binding for the whole function)
 (cd packages/engine && bun bench/game-frame/build.ts ../../showcase/the-last-light /tmp/tll.js hermes)
 hermesc -O -Xes6-block-scoping -emit-binary -out /tmp/tll.hbc /tmp/tll.js
+target/debug/og project showcase/the-last-light --json | jq .startup > /tmp/tll-startup.json
 OG_RENDERER=none ./og-hermes /tmp/tll.hbc OG_BENCH_ROOT=showcase/the-last-light \
-  OG_BENCH_PROJECT=@showcase/the-last-light/project.ogt
+  OG_BENCH_PROJECT=@/tmp/tll-startup.json
 ```
 
 `OG_HERMES_PROFILE=<file>` writes Hermes's sampling profile (Chrome's trace

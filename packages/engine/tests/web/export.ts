@@ -124,7 +124,8 @@ const texturesDist = join(work, "textures");
     cpSync(join(stone, "stone.png"), join(project, "assets", "textures", `stone${i}.png`));
     ids.push(`textures/stone${i}.png`);
   }
-  writeFileSync(join(project, "project.ogt"), 'type project\nversion 1\n---\nname "Basis textures"\nid "basis-textures"\nengine "0.9.0"\nentry "src/main.ts"\n');
+  writeFileSync(join(project, "og-project.json"), '{"version":1,"name":"Basis textures","engine":"0.9.0"}\n');
+  writeFileSync(join(project, "project.ts"), 'import {defineProject} from "@origingame/engine/author"; export default defineProject({id:"basis-textures",entry:"src/main.ts"});\n');
   // The game loads them all at its start; its facts report the GPU bytes the renderer's
   // textures hold. A texture whose transcode is missing would be a 1×1 placeholder.
   writeFileSync(

@@ -60,10 +60,11 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
     std::fs::create_dir_all(project.join("src")).unwrap();
     std::fs::write(project.join("src/main.ts"), "export default 0;\n").unwrap();
     std::fs::write(
-        project.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+        project.join("og-project.json"),
+        r#"{"version":1,"name":"T","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(project.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'test',entry:'src/main.ts'});").unwrap();
     let tmp = dir.join("tmp");
     std::fs::create_dir_all(&tmp).unwrap();
     let channels = dir.join("channels");
@@ -211,10 +212,11 @@ fn check_reports_screen_facts_without_refusing_the_game() {
     let dir = TempDir::new("og-screen-check");
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
-        dir.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Screens\"\nentry \"src/main.tsx\"\n",
+        dir.join("og-project.json"),
+        r#"{"version":1,"name":"Screens","engine":"0.9.0"}"#,
     )
     .unwrap();
+    std::fs::write(dir.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'screens',entry:'src/main.tsx'});").unwrap();
     let check = |source: &str, json: bool| {
         std::fs::write(dir.join("src/main.tsx"), source).unwrap();
         let out = og()

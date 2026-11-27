@@ -65,7 +65,7 @@ else
   configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
     packages/engine/tsconfig.templates.json)
   for t in packages/create/template/ tests/fixtures/*/; do
-    [ -f "$t/project.ogt" ] || continue
+    [ -f "$t/og-project.json" ] || continue
     t="${t%/}"; w="$tmp/wrap/$t"
     mkdir -p "$w"
     cat > "$w/tsconfig.json" <<EOF

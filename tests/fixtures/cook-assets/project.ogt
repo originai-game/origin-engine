@@ -1,7 +1,0 @@
-type project
-version 1
----
-name "Cook loader fixture"
-id "cook-assets"
-engine "0.9.0"
-entry "src/main.ts"

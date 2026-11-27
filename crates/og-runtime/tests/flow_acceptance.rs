@@ -30,10 +30,9 @@ fn project() -> &'static Path {
             std::fs::write(p, bytes).unwrap();
         };
 
-        write(
-            "project.ogt",
-            "type project\nversion 1\n---\nname \"FlowAccept\"\n",
-        );
+        write("og-project.json", r#"{"version":1,"name":"FlowAccept","engine":"0.9.0"}"#);
+        write("project.ts", "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'flow-accept',entry:'src/main.ts'});");
+        write("src/main.ts", "export default {};\n");
         write(
             "assets/scenes/room.ogt",
             "type scene\nversion 1\n---\nentity \"stage\" {\n  og.Transform {\n    position 0 0 0\n  }\n}\n",
