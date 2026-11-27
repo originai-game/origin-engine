@@ -659,32 +659,71 @@ impl BlobKind for Hlod {
 // ── depth S7: baked lighting ─────────────────────────────────────────────
 
 row!(
-    /// The root of a lightmap blob (an `.ogt` of `type lightmap`).
-    LightmapMeta, "og.LightmapAsset", 1 {
-        /// Bytes of the canonical lightmap text in `text`.
-        text_bytes: u32,
+    /// Native scene lighting bindings and their captured KTX2 pages.
+    LightmapMeta, "og.LightmapAsset", 2 {
+        scene_offset: u32,
+        scene_len: u32,
+        scene_hash: u64,
+        source_offset: u32,
+        source_len: u32,
+        samples: u32,
+        seconds: f32,
         /// Bytes of the pages' KTX2 file in `pages`.
         pages_bytes: u32,
-        /// Static model entities drawn with it.
-        models: u32,
         /// Lightmap pages (array layers).
         pages: u32,
-        /// The pages' side in texels.
-        texels: u32,
-        /// Light volumes and their probes.
-        volumes: u32,
-        probes: u32,
+        width: u32,
+        height: u32,
     }
 );
 
-/// The lightmap blob: `text` holds the canonical lightmap file
-/// (`crate::lightmap::LightmapFile::to_text`), `pages` its pages (KTX2,
-/// RGBA16F array layers).
+row!(
+    /// Model binding, with a range in the ordered parts table.
+    LightmapModelRow, "og.LightmapModel", 1 {
+        entity_offset: u32, entity_len: u32,
+        asset_offset: u32, asset_len: u32,
+        hash: u64,
+        parts_start: u32, parts_count: u32,
+    }
+);
+row!(
+    /// Vertex remapping into the xref/UV and index tables.
+    LightmapPartRow, "og.LightmapPart", 1 {
+        vertices: u32,
+        xref_start: u32, xref_count: u32,
+        indices_start: u32, indices_count: u32,
+    }
+);
+row!(
+    /// A remapped source vertex and its UV/page coordinate.
+    LightmapVertexRow, "og.LightmapVertex", 1 {
+        xref: u32, u: f32, v: f32, page: f32,
+    }
+);
+row!(
+    /// Irradiance lattice in world metres, x-fastest probes.
+    LightmapVolumeRow, "og.LightmapVolume", 1 {
+        entity_offset: u32, entity_len: u32,
+        min_x: f32, min_y: f32, min_z: f32,
+        max_x: f32, max_y: f32, max_z: f32,
+        fade: f32,
+        count_x: u32, count_y: u32, count_z: u32,
+        probes_start: u32, probes_count: u32,
+    }
+);
+
+/// Native tables plus RGBA16F KTX2 pages. No embedded author document.
 pub struct Lightmap;
 impl BlobKind for Lightmap {
     const NAME: &'static str = "og.Lightmap";
     fn schemas() -> Vec<Schema> {
-        vec![LightmapMeta::schema()]
+        vec![
+            LightmapMeta::schema(),
+            LightmapModelRow::schema(),
+            LightmapPartRow::schema(),
+            LightmapVertexRow::schema(),
+            LightmapVolumeRow::schema(),
+        ]
     }
 }
 

@@ -9,7 +9,6 @@ use super::{
 };
 use crate::format::{self, Area, BlobKind};
 use crate::lightmap::{LightmapFile, pages_from_ktx2};
-use og_blob::BlobWriter;
 
 pub(crate) const LIGHTMAP_TYPE: &str = crate::lightmap::LIGHTMAP_TYPE;
 
@@ -50,30 +49,9 @@ pub(crate) fn cook_lightmap(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Stri
     })?;
     let (width, height, layers) =
         pages_from_ktx2(&pages).map_err(|e| CookError(format!("{rel}: {e}")))?;
-    let canonical = file.to_text();
     let probes: usize = file.volumes.iter().map(|v| v.probes.len()).sum();
-    let mut w = BlobWriter::new(
-        format::Lightmap::type_hash(),
-        format::Lightmap::schema_version(),
-        stamp,
-    );
-    w.table(
-        "meta",
-        &[format::LightmapMeta {
-            text_bytes: canonical.len() as u32,
-            pages_bytes: pages.len() as u32,
-            models: file.models.len() as u32,
-            pages: layers.len() as u32,
-            texels: width.max(height),
-            volumes: file.volumes.len() as u32,
-            probes: probes as u32,
-        }],
-        format::row_hash::<format::LightmapMeta>(),
-    )
-    .raw("text", canonical.into_bytes(), 16)
-    .raw("pages", pages, 16);
     Ok((
-        w.finish(),
+        file.to_blob(&pages, stamp).map_err(CookError)?,
         vec![format!(
             "lightmap of '{}': {} static model(s), {} page(s) of {width}x{height}, {} volume(s), {probes} probe(s)",
             file.scene,

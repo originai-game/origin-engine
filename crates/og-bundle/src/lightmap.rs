@@ -44,6 +44,8 @@
 use og_core::ogt::line::Line;
 use og_core::ogt::{Block, Document, Value};
 
+pub(crate) mod cooked;
+
 macro_rules! lines {
     ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
         &[$(Line::new($key, $args, $default, $doc, "")),*]
