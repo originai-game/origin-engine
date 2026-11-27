@@ -1,24 +1,115 @@
-type particles
-version 1
----
-# Effekseer node 0 "Node"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1
-duration 0.0167
-looping false
-lifetime 0.6667 0.6667
-speed 5.25 5.25
-speedOverLife 0 0.2582 0.125 0.0448 0.25 0.0091 0.375 0.1609 0.5 0.5001 0.625 1.0269 0.75 1.7411 1 3.6952
-size 1 1
-sizeOverLife 0 0 1 1
-colorOverLife {
-  key 0 0.2674 0.586 1 0
-  key 0.1 0.2674 0.586 1 1
-  key 0.95 0.2674 0.586 1 1
-  key 1 0.2674 0.586 1 0
-}
-texture "vfx/effekseer-starter/textures/Photon.png"
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.26739999651908875,
+        0.5860000252723694,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        0.26739999651908875,
+        0.5860000252723694,
+        1,
+        1
+      ]
+    ],
+    [
+      0.949999988079071,
+      [
+        0.26739999651908875,
+        0.5860000252723694,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.26739999651908875,
+        0.5860000252723694,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.666700005531311,
+    0.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    1,
+    1
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    5.25,
+    5.25
+  ],
+  "speedOverLife": [
+    [
+      0,
+      0.2581999897956848
+    ],
+    [
+      0.125,
+      0.04479999840259552
+    ],
+    [
+      0.25,
+      0.009100000374019146
+    ],
+    [
+      0.375,
+      0.16089999675750732
+    ],
+    [
+      0.5,
+      0.5001000165939331
+    ],
+    [
+      0.625,
+      1.026900053024292
+    ],
+    [
+      0.75,
+      1.7410999536514282
+    ],
+    [
+      1,
+      3.695199966430664
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Photon")
+});

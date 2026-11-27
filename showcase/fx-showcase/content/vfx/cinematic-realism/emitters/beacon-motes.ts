@@ -1,21 +1,76 @@
-type particles
-version 1
----
-# MIT Origin Engine. Motes carried up a marker's shaft of light.
-maxParticles 32
-shape box 0.2 0 0.2
-rate 10
-duration 2
-looping true
-lifetime 2 3
-speed 0.6 1
-size 0.012 0.025
-gravity 0 0 0
-noise 0.1 1 0.3
-blend additive
-colorOverLife {
-  key 0 0 0 0 0
-  key 0.15 2 1.5 0.6 1
-  key 0.7 1.4 0.9 0.3 0.8
-  key 1 0.2 0.1 0.03 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.15000000596046448,
+      [
+        2,
+        1.5,
+        0.6000000238418579,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1.399999976158142,
+        0.8999999761581421,
+        0.30000001192092896,
+        0.800000011920929
+      ]
+    ],
+    [
+      1,
+      [
+        0.20000000298023224,
+        0.10000000149011612,
+        0.029999999329447746,
+        0
+      ]
+    ]
+  ],
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    2,
+    3
+  ],
+  "maxParticles": 32,
+  "noise": {
+    "frequency": 1,
+    "scroll": 0.30000001192092896,
+    "strength": 0.10000000149011612
+  },
+  "rate": 10,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.20000000298023224,
+      0,
+      0.20000000298023224
+    ]
+  },
+  "size": [
+    0.012000000104308128,
+    0.02500000037252903
+  ],
+  "speed": [
+    0.6000000238418579,
+    1
+  ]
+});

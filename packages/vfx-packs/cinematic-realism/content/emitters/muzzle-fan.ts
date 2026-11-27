@@ -1,22 +1,83 @@
-type particles
-version 1
----
-# MIT Origin Engine. Gas thrown sideways from a heavy muzzle or its brake.
-maxParticles 12
-shape cone 80 0.02
-rate 0
-burst 0 9
-duration 0.05
-looping false
-lifetime 0.05 0.09
-speed 6 10
-size 0.1 0.17
-heightOverLife 0 2.5 1 1
-sizeOverLife 0 1 1 0.2
-align velocity 0.035
-gravity 0 0 0
-blend additive
-colorOverLife {
-  key 0 2.6 1.6 0.7 1
-  key 1 0.8 0.2 0.03 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.03500000014901161
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 9,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        2.5999999046325684,
+        1.600000023841858,
+        0.699999988079071,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.800000011920929,
+        0.20000000298023224,
+        0.029999999329447746,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      2.5
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "lifetime": [
+    0.05000000074505806,
+    0.09000000357627869
+  ],
+  "looping": false,
+  "maxParticles": 12,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 80,
+    "radius": 0.019999999552965164
+  },
+  "size": [
+    0.10000000149011612,
+    0.17000000178813934
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0.20000000298023224
+    ]
+  ],
+  "speed": [
+    6,
+    10
+  ]
+});

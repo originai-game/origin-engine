@@ -75,7 +75,7 @@ fn checked_fx_fields_round_trip_and_bind_typed_resources() {
     assert!(bad.to_bytes().is_err());
 
     let input = ParticlesInput::schema().decode(json!({
-        "maxParticles":257,"rate":19,"lifetime":[0.3,1.7],
+        "maxParticles":257,"rate":19,"lifetime":[0.3,1.7],"lit":true,"translucency":0.37,
         "texture":reference,"render":{"kind":"mesh","mesh":{"$ogRef":"north/model"}},
         "shape":{"kind":"mesh","mesh":"sphere"},"effect":{"$ogRef":"north/material"},
         "subEmitters":[{"trigger":"death","emitter":{"$ogRef":"north/child"},"count":3,"inheritVelocity":0.7}],
@@ -134,6 +134,7 @@ fn checked_fx_fields_round_trip_and_bind_typed_resources() {
         }
     );
     assert_eq!(emitter.effect, Some(r::EffectMaterialHandle(83)));
+    assert_eq!(emitter.translucency, 0.37);
     assert_eq!(emitter.sub_emitters[0].emitter, r::EmitterHandle(71));
     assert_eq!(emitter.sub_emitters[0].count, 3);
     assert_eq!(emitter.sub_emitters[0].inherit_velocity, 0.7);

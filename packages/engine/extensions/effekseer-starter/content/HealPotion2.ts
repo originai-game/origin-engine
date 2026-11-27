@@ -1,32 +1,200 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 1.63
-impact 0.5833
-emitter "vfx/effekseer-starter/HealPotion2/n0.emitter.ogt" {
-  at 0
-  offset 0 3 0
-  rotate 0 0 180
-}
-emitter "vfx/effekseer-starter/HealPotion2/n0-0.emitter.ogt" {
-  at 0
-  offset 0 3 0
-  move 0 -5.25 0
-}
-emitter "vfx/effekseer-starter/HealPotion2/n1.emitter.ogt" {
-  at 0.6667
-}
-mesh quad {
-  at 0.5833
-  rotate -90 0 0
-  life 0.3333
-  effect "vfx/effekseer-starter/HealPotion2/n2.effect.ogt"
-  scale curve 0 0 0.2656 0.9152 0.5 2.1494 0.75 3.9497 1 6.2498
-  color 0.586 0.7969 1 1
-  blend additive
-}
-emitter "vfx/effekseer-starter/HealPotion2/n3.emitter.ogt" {
-  at 0.6667
-}
-# effekseer: node 2 "衝撃波": a sprite scaled unevenly: drawn square at its mean
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 1.6299999952316284,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.583299994468689
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        3,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        180
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HealPotion2/n0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        3,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -5.25,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HealPotion2/n0-0.emitter")
+      }
+    },
+    {
+      "at": 0.666700005531311,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HealPotion2/n1.emitter")
+      }
+    },
+    {
+      "at": 0.583299994468689,
+      "life": 0.33329999446868896,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          0.5860000252723694,
+          0.7968999743461609,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HealPotion2/n2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              0.2655999958515167,
+              0.9151999950408936
+            ],
+            [
+              0.5,
+              2.149399995803833
+            ],
+            [
+              0.75,
+              3.949700117111206
+            ],
+            [
+              1,
+              6.249800205230713
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.666700005531311,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HealPotion2/n3.emitter")
+      }
+    }
+  ]
+});

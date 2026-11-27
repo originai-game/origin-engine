@@ -1,21 +1,87 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.0.0.0.0.0.0.0 "LineMain"
-maxParticles 63
-shape point
-spread 0
-rate 1200
-duration 0.0417
-looping false
-lifetime 0.5833 0.5833
-speed 0.082 0.1367
-speedOverLife 0 5.1527 0.2031 2.1366 0.2969 1.1693 0.4062 0.4066 0.5469 0.0048 0.7031 0.322 0.7344 0 1 0
-size 0.0911 0.0911
-align upright 0 1 0
-colorOverLife {
-  key 0 1 1 1 0.251
-  key 1 1 1 1 0.251
-}
-texture "vfx/effekseer-starter/textures/Line01-d5bd32db.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.25099998712539673
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0.25099998712539673
+      ]
+    ]
+  ],
+  "duration": 0.04170000180602074,
+  "lifetime": [
+    0.583299994468689,
+    0.583299994468689
+  ],
+  "looping": false,
+  "maxParticles": 63,
+  "rate": 1200,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.09109999984502792,
+    0.09109999984502792
+  ],
+  "speed": [
+    0.0820000022649765,
+    0.13670000433921814
+  ],
+  "speedOverLife": [
+    [
+      0,
+      5.152699947357178
+    ],
+    [
+      0.20309999585151672,
+      2.1366000175476074
+    ],
+    [
+      0.2969000041484833,
+      1.1692999601364136
+    ],
+    [
+      0.40619999170303345,
+      0.4065999984741211
+    ],
+    [
+      0.5468999743461609,
+      0.004800000227987766
+    ],
+    [
+      0.7031000256538391,
+      0.32199999690055847
+    ],
+    [
+      0.7343999743461609,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Line01-d5bd32db")
+});

@@ -1,9 +1,25 @@
-type effect
-version 1
----
-# Effekseer node 0.1.4.0.1 "EmberVariation"
-main "vfx/effekseer-starter/textures/Splash.png" rgba {
-  tile 0.5 0.5
-  offset 0.5 0.5
-}
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "alpha",
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/Splash"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0.5,
+        0.5
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        0.5,
+        0.5
+      ],
+      "rotate": 0
+    }
+  }
+});

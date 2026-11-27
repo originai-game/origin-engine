@@ -1,9 +1,39 @@
-type vfx
-version 2
----
-# Dust hanging in still air, realistic and looping: motes catching the light in a 4 x 2 x 4 m volume. It plays about its origin: spawn it at the middle of the room or the sunbeam.
-duration 8
-loop true
-emitter "vfx/realistic-starter/ambient-dust/motes.emitter.ogt" {
-  at 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 8,
+  "looping": true,
+  "events": [],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/realistic-starter/ambient-dust/motes.emitter")
+      }
+    }
+  ]
+});

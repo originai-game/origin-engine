@@ -1,15 +1,38 @@
-type particles
-version 1
----
-# Effekseer node 0 "連撃処理"
-maxParticles 12
-shape point
-spread 0
-rate 0
-burst 0 1 9 0.1167
-duration 0.95
-looping false
-lifetime 1.6667 1.6667
-speed 0 0
-size 0
-subEmitter life "vfx/effekseer-starter/Blow8/n0-2-0-0.emitter.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 9,
+      "interval": 0.11670000106096268,
+      "time": 0
+    }
+  ],
+  "duration": 0.949999988079071,
+  "lifetime": [
+    1.666700005531311,
+    1.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 12,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0,
+    0
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "subEmitters": [
+    {
+      "emitter": ref("base/vfx/effekseer-starter/Blow8/n0-2-0-0.emitter"),
+      "inheritVelocity": 0,
+      "trigger": "life"
+    }
+  ]
+});

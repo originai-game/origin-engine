@@ -1,29 +1,108 @@
-type particles
-version 1
----
-# MIT Origin Engine. A body going to ash: dark flakes shed from its whole
-# height, lifted and carried off.
-maxParticles 160
-shape box 0.28 0.8 0.2
-spread 180
-rate 110
-duration 1.2
-looping false
-rateOverTime 0 0.4 0.5 1 1 0.6
-lifetime 1 2
-speed 0.1 0.5
-size 0.03 0.06
-rotation 0 360
-angularVelocity -200 200
-gravity 0 0.5 0
-drag 1
-wind 1
-noise 0.5 0.8 0.4
-blend alpha
-color 0.08 0.075 0.07
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.1 1 1 1 0.9
-  key 0.7 1 1 1 0.7
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -200,
+    200
+  ],
+  "blend": "alpha",
+  "color": [
+    0.07999999821186066,
+    0.07500000298023224,
+    0.07000000029802322,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        1,
+        1,
+        1,
+        0.8999999761581421
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1,
+        1,
+        1,
+        0.699999988079071
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 1,
+  "duration": 1.2000000476837158,
+  "gravity": [
+    0,
+    0.5,
+    0
+  ],
+  "lifetime": [
+    1,
+    2
+  ],
+  "looping": false,
+  "maxParticles": 160,
+  "noise": {
+    "frequency": 0.800000011920929,
+    "scroll": 0.4000000059604645,
+    "strength": 0.5
+  },
+  "rate": 110,
+  "rateOverTime": [
+    [
+      0,
+      0.4000000059604645
+    ],
+    [
+      0.5,
+      1
+    ],
+    [
+      1,
+      0.6000000238418579
+    ]
+  ],
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.2800000011920929,
+      0.800000011920929,
+      0.20000000298023224
+    ]
+  },
+  "size": [
+    0.029999999329447746,
+    0.05999999865889549
+  ],
+  "speed": [
+    0.10000000149011612,
+    0.5
+  ],
+  "spread": 180,
+  "wind": 1
+});

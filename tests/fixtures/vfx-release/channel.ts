@@ -29,7 +29,7 @@ const vfx = writeVfxArchives(dir, version, import.meta.dir);
 if (evil) {
   const file = join(dir, "vfx/spark-pack.tar.gz");
   const tar = gunzipSync(readFileSync(file));
-  const victim = "spark-pack/glint.ogt";
+  const victim = "spark-pack/content/glint.ts";
   let at = 0;
   while (tar.subarray(at, at + victim.length + 1).toString("latin1") !== `${victim}\0`) at += 512;
   const h = tar.subarray(at, at + 512);

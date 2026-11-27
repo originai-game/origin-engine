@@ -1,24 +1,115 @@
-type particles
-version 1
----
-# Effekseer node 0.0.2 "Ray"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1 3 0.0167
-duration 0.05
-looping false
-lifetime 0.5167 0.5167
-speed 0 0
-size 14.524 14.524
-sizeOverLife 0 0.1377 0.25 0.3905 0.5 0.6185 0.75 0.8216 1 1
-heightOverLife 0 0.0689 0.25 0.1189 0.5 0.1441 0.75 0.1445 1 0.1201
-colorOverLife {
-  key 0 1 0.2195 0.0478 0
-  key 0.3871 1 0.2195 0.0478 1
-  key 0.4194 1 0.2195 0.0478 1
-  key 1 1 0.2195 0.0478 0
-}
-texture "vfx/effekseer-starter/textures/star.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 3,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        0
+      ]
+    ],
+    [
+      0.3871000111103058,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        1
+      ]
+    ],
+    [
+      0.41940000653266907,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "heightOverLife": [
+    [
+      0,
+      0.06889999657869339
+    ],
+    [
+      0.25,
+      0.11890000104904175
+    ],
+    [
+      0.5,
+      0.14409999549388885
+    ],
+    [
+      0.75,
+      0.1445000022649765
+    ],
+    [
+      1,
+      0.1200999990105629
+    ]
+  ],
+  "lifetime": [
+    0.516700029373169,
+    0.516700029373169
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    14.52400016784668,
+    14.52400016784668
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.13770000636577606
+    ],
+    [
+      0.25,
+      0.390500009059906
+    ],
+    [
+      0.5,
+      0.6184999942779541
+    ],
+    [
+      0.75,
+      0.8216000199317932
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/star")
+});

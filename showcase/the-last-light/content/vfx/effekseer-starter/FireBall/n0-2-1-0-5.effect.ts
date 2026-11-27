@@ -1,9 +1,25 @@
-type effect
-version 1
----
-# Effekseer node 0.2.1.0.5 "FireVariation"
-main "vfx/effekseer-starter/textures/Fire_Blur.png" rgba {
-  tile 0.5 0.5
-  offset 0.5 0.5
-}
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/Fire_Blur"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0.5,
+        0.5
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        0.5,
+        0.5
+      ],
+      "rotate": 0
+    }
+  }
+});

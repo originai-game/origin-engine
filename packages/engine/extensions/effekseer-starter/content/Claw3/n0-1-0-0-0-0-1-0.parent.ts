@@ -1,15 +1,38 @@
-type particles
-version 1
----
-# Effekseer node 0.1.0 "ｉｎｔｅｒｖａｌ"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1 2 0.1667
-duration 0.1833
-looping false
-lifetime 1.6667 1.6667
-speed 0 0
-size 0
-subEmitter life "vfx/effekseer-starter/Claw3/n0-1-0-0-0-0-1-0.emitter.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 2,
+      "interval": 0.16670000553131104,
+      "time": 0
+    }
+  ],
+  "duration": 0.18330000340938568,
+  "lifetime": [
+    1.666700005531311,
+    1.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0,
+    0
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "subEmitters": [
+    {
+      "emitter": ref("base/vfx/effekseer-starter/Claw3/n0-1-0-0-0-0-1-0.emitter"),
+      "inheritVelocity": 0,
+      "trigger": "life"
+    }
+  ]
+});

@@ -1,64 +1,446 @@
-type vfx
-version 2
----
-duration 12
-impact 0
-param mark 1
-emitter "vfx/cinematic-realism/emitters/fireball-small.ogt" {
-  offset 0 0.7 0
-}
-emitter "vfx/cinematic-realism/emitters/smoke-puff.ogt" {
-  offset 0 0.8 0
-}
-emitter "vfx/cinematic-realism/emitters/dust-ring.ogt" {
-  offset 0 0.1 0
-}
-emitter "vfx/cinematic-realism/emitters/debris.ogt" {
-  offset 0 0.15 0
-}
-emitter "vfx/cinematic-realism/emitters/sparks.ogt" {
-  offset 0 0.3 0
-}
-glow {
-  life 0.14
-  offset 0 0.5 0
-  size curve 0 0.8 0.3 1.7 1 1
-  color 2.2 1.1 0.4 0.7
-}
-light {
-  life 0.4
-  offset 0 0.7 0
-  color 1 0.5 0.18
-  intensity curve 0 4 0.15 2.5 1 0
-  distance 5
-}
-shake {
-  trauma 0.25
-}
-decal {
-  at 0.04
-  until 12
-  fade 4
-  when mark
-  texture "vfx/cinematic-realism/textures/scorch.png"
-  normal "vfx/cinematic-realism/textures/scorch-normal.png"
-  size 3 0.8 3
-  roughness 0.96
-  angleFade 80
-  turn 0 360
-}
-decal {
-  at 0.1
-  life 4
-  fade 3.6
-  when mark
-  texture "vfx/cinematic-realism/textures/embers.png"
-  size 1.4 0.8 1.4
-  color 0.06 0.05 0.045 1
-  emissive 3 1.7 0.9
-  angleFade 80
-  turn 0 360
-}
-sound "base/vfx/cinematic-realism/audio/blast-small" {
-  playbackRate 0.95 1.05
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 12,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [
+    {
+      "default": 1,
+      "name": "mark"
+    }
+  ],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.699999988079071,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/fireball-small")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.800000011920929,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/smoke-puff")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.10000000149011612,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/dust-ring")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.15000000596046448,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/debris")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.30000001192092896,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/sparks")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.14000000059604645,
+      "offset": [
+        0,
+        0.5,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          2.200000047683716,
+          1.100000023841858,
+          0.4000000059604645,
+          0.699999988079071
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.800000011920929
+            ],
+            [
+              0.30000001192092896,
+              1.7000000476837158
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.4000000059604645,
+      "offset": [
+        0,
+        0.699999988079071,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          1,
+          0.5,
+          0.18000000715255737
+        ],
+        "distance": 5,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              4
+            ],
+            [
+              0.15000000596046448,
+              2.5
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "shake",
+        "trauma": 0.25
+      }
+    },
+    {
+      "at": 0.03999999910593033,
+      "life": 11.960000038146973,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "decal",
+        "angleFade": 80,
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "fade": 4,
+        "normal": ref("base/vfx/cinematic-realism/textures/scorch-normal"),
+        "normalScale": 1,
+        "roughness": 0.9599999785423279,
+        "size": [
+          3,
+          0.800000011920929,
+          3
+        ],
+        "texture": ref("base/vfx/cinematic-realism/textures/scorch"),
+        "turn": [
+          0,
+          360
+        ],
+        "uv": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "wet": false
+      },
+      "when": "mark"
+    },
+    {
+      "at": 0.10000000149011612,
+      "life": 4,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "decal",
+        "angleFade": 80,
+        "color": [
+          0.05999999865889549,
+          0.05000000074505806,
+          0.04500000178813934,
+          1
+        ],
+        "emissive": [
+          3,
+          1.7000000476837158,
+          0.8999999761581421
+        ],
+        "fade": 3.5999999046325684,
+        "normalScale": 1,
+        "size": [
+          1.399999976158142,
+          0.800000011920929,
+          1.399999976158142
+        ],
+        "texture": ref("base/vfx/cinematic-realism/textures/embers"),
+        "turn": [
+          0,
+          360
+        ],
+        "uv": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "wet": false
+      },
+      "when": "mark"
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          0.949999988079071,
+          1.0499999523162842
+        ],
+        "volume": 1,
+        "asset": ref("base/vfx/cinematic-realism/audio/blast-small")
+      }
+    }
+  ]
+});

@@ -2,10 +2,10 @@ import { og, type ParticleEmitter } from "@origingame/engine";
 import { For, Particles, Show, Text, View, t, useWorld, packClass } from "@origingame/engine/ui";
 import "./celebration.en.strings.ts";
 import { Flourish } from "./flourish";
-import confetti from "./fx/confetti.ogt";
-import embers from "./fx/embers.ogt";
-import firework from "./fx/firework.ogt";
-import sparks from "./fx/sparks.ogt";
+import confetti from "./fx/confetti.particles.ts?asset";
+import embers from "./fx/embers.particles.ts?asset";
+import firework from "./fx/firework.particles.ts?asset";
+import sparks from "./fx/sparks.particles.ts?asset";
 
 export interface CelebrationProps {
   /** Which one: confetti (falling over its box from the top edge), burst (a ring and sparks thrown from its centre), levelUp (a ring of light behind the title and the new level, embers rising under them) or fireworks (shells bursting across its top). */
@@ -40,7 +40,7 @@ const SHELLS = [
  * runs once per shot, with the pack's reward sound; a level-up's light
  * (a column, a wash, rays and rising stars) is Flourish's, which sounds
  * levelup. The particles are the engine's emitters drawn by `Particles`
- * (./fx/*.ogt), one node per ink, so a pack's roles colour them; reduced
+ * (./fx/*.particles.ts), one node per ink, so a pack's roles colour them; reduced
  * motion draws none.
  */
 export function Celebration(props: CelebrationProps) {

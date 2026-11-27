@@ -250,9 +250,9 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // A component's string table resolves here, ahead of the cache's
       // catch-all: an import that catch-all resolves (returning nothing) is
       // dropped from the bundle as unused, and its strings() call with it.
-      build.onResolve({ filter: /\.(?:ogt|ts)$/ }, (a) => {
-        const file = resolve(a.resolveDir || process.cwd(), a.path);
-        if (!a.path.endsWith(".ogt") && !a.path.endsWith(".strings.ts") && !localeIds.has(file)) return undefined;
+      build.onResolve({ filter: /\.(?:ogt|ts)(?:\?asset)?$/ }, (a) => {
+        const file = resolve(a.resolveDir || process.cwd(), a.path.replace(/\?asset$/, ""));
+        if (!a.path.endsWith(".ogt") && !a.path.endsWith(".strings.ts") && !a.path.endsWith(".particles.ts?asset") && !localeIds.has(file)) return undefined;
         if (cacheInputs && !(existsSync(file) && cacheInputs.has(realpathSync(file)))) cacheable = false;
         return { path: file };
       });
@@ -276,21 +276,22 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // bundle records only the table's id, which the UI renderer sends the
       // host to register. An engine table's id is `@ui/<path under src/ui>`
       // (the cook bundles them for a game using the built-in components), a
-      // game's its canonical content ID. An emitter (`type particles`, an
+      // game's its canonical content ID. A file.particles declaration (an
       // engine component's built-in effect) has nothing to register: its
       // import's default is its id, which og.load.emitter loads.
       const engineUi = join(ENGINE_ROOT, "src", "ui") + sep;
       const assets = join(project, "assets") + sep;
       build.onLoad({ filter: /\.(?:ogt|ts)$/, namespace: "file" }, (a) => {
         const engineTable = a.path.startsWith(engineUi) && a.path.endsWith(".strings.ts");
-        if (!a.path.endsWith(".ogt") && !engineTable && !localeIds.has(a.path)) return undefined;
+        const engineEmitter = a.path.startsWith(engineUi) && a.path.endsWith(".particles.ts");
+        if (!a.path.endsWith(".ogt") && !engineTable && !engineEmitter && !localeIds.has(a.path)) return undefined;
         const id = a.path.startsWith(engineUi)
           ? `@ui/${a.path.slice(engineUi.length)}`
           : localeIds.get(a.path) ?? relative(a.path.startsWith(assets) ? assets : project, a.path);
         const name = JSON.stringify(id.split(sep).join("/"));
+        if (engineEmitter) return { contents: `export default ${name};\n`, loader: "js" };
         if (a.path.endsWith(".ogt")) {
-          if (/^type particles\s*$/m.test(readFileSync(a.path, "utf8").split("---", 1)[0]!)) return { contents: `export default ${name};\n`, loader: "js" };
-          throw new Error(`${a.path}: OGT string imports are removed; import a file.strings declaration under content/`);
+          throw new Error(`${a.path}: OGT author imports are removed; import a checked TS declaration under content/`);
         }
         // An engine table's translations (`x.zh-CN.strings.ts` beside `x.en.strings.ts`)
         // come with it: bundled with it, and registered as translations of it.

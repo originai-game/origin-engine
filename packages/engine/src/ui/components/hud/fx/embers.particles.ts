@@ -1,25 +1,83 @@
-type particles
-version 1
----
-# Embers for a `<Particles>` node (1 unit a CSS px, +y up): round glints
-# rising from along the node's box, shrinking as they fade. White: the
-# node's ink (text-<colour>) colours it.
-maxParticles 48
-shape box 1 1 0
-spread 28
-rate 14
-burst 0 10
-duration 1.6
-looping false
-lifetime 0.9 1.2
-speed 40 110
-size 3 5
-sizeOverLife 0 1 1 0.2
-round true
-gravity 0 30 0
-drag 0.4
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.5 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 10,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.5,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.4000000059604645,
+  "duration": 1.600000023841858,
+  "gravity": [
+    0,
+    30,
+    0
+  ],
+  "lifetime": [
+    0.8999999761581421,
+    1.2000000476837158
+  ],
+  "looping": false,
+  "maxParticles": 48,
+  "rate": 14,
+  "round": true,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1,
+      1,
+      0
+    ]
+  },
+  "size": [
+    3,
+    5
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0.20000000298023224
+    ]
+  ],
+  "speed": [
+    40,
+    110
+  ],
+  "spread": 28
+});

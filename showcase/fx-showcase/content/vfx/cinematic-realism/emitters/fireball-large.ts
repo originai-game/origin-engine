@@ -1,28 +1,99 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs Explosion02; MIT composition. A large
-# blast's fireball: three bodies of fire rolling into each other, then two
-# more through them.
-maxParticles 5
-shape sphere 1.2
-rate 0
-burst 0 3
-burst 0.12 2
-duration 0.2
-looping false
-lifetime 3.4 4.2
-speed 0.2 0.8
-size 4.2 5.4
-rotation 0 360
-gravity 0 0.5 0
-texture "vfx/cinematic-realism/textures/explosion.png"
-sheet 5 5 25 life 1 blend
-blend alpha
-softDistance 0.6
-colorOverLife {
-  key 0 0.65 0.65 0.65 1
-  key 0.2 0.85 0.85 0.85 1
-  key 0.7 1 1 1 0.9
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 3,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    },
+    {
+      "count": 2,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.11999999731779099
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.6499999761581421,
+        0.6499999761581421,
+        0.6499999761581421,
+        1
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        0.8500000238418579,
+        0.8500000238418579,
+        0.8500000238418579,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1,
+        1,
+        1,
+        0.8999999761581421
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.20000000298023224,
+  "gravity": [
+    0,
+    0.5,
+    0
+  ],
+  "lifetime": [
+    3.4000000953674316,
+    4.199999809265137
+  ],
+  "looping": false,
+  "maxParticles": 5,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "sphere",
+    "radius": 1.2000000476837158,
+    "surface": false
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 5,
+    "frames": 25,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 5
+  },
+  "size": [
+    4.199999809265137,
+    5.400000095367432
+  ],
+  "softDistance": 0.6000000238418579,
+  "speed": [
+    0.20000000298023224,
+    0.800000011920929
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/explosion")
+});

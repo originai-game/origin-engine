@@ -1,19 +1,51 @@
-type particles
-version 1
----
-# A highlighted button's twinkle for a `<Particles>` node: a few
-# four-point stars popping in and out over the node's box, for as long
-# as it shows. White: the node's ink colours them.
-maxParticles 8
-shape box 1 1 0
-spread 180
-rate 5
-duration 1
-looping true
-lifetime 0.6 0.9
-speed 0 6
-size 12 20
-sizeOverLife 0 0 0.4 1 1 0
-rotation 0 45
-gravity 0 0 0
-texture "@styles/shared/fx/sparkle.png"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.6000000238418579,
+    0.8999999761581421
+  ],
+  "maxParticles": 8,
+  "rate": 5,
+  "rotation": [
+    0,
+    45
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1,
+      1,
+      0
+    ]
+  },
+  "size": [
+    12,
+    20
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0
+    ],
+    [
+      0.4000000059604645,
+      1
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    0,
+    6
+  ],
+  "spread": 180,
+  "texture": ref("@styles/shared/fx/sparkle.png")
+});

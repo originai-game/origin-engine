@@ -1,22 +1,72 @@
-type particles
-version 1
----
-# Effekseer node 2 "Big Flash"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1
-duration 0.0167
-looping false
-lifetime 0.1167 0.1833
-speed 0 0
-size 13.25 13.25
-sizeOverLife 0 0.1509 1 1
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.6667 1 1 1 1
-  key 1 1 1 1 0
-}
-texture "vfx/effekseer-starter/textures/burst02_red.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.666700005531311,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.11670000106096268,
+    0.18330000340938568
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    13.25,
+    13.25
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.1509000062942505
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/burst02_red")
+});

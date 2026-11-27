@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "README.md",
-      "sha256": "324ce959a23451c0ddf351f4452ef78dc3b5fd2d38b850cf5a2a22c226a13fb2",
+      "sha256": "a0fc40c7fce75ab7103c37b39bd2c3da6ebab0553ebbc571f01255b9c04a2524",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2557,7 +2557,7 @@
         "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/DiscSmoke01/DiscSmoke01-flipbooks.zip",
         "file": "DiscSmoke01_16x4.tga"
       },
-      "credit": "Thomas Iché / Unity Labs Paris",
+      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
       "derived": "Archive SHA256 e749a28e436c592f35b40a1da47a761602b3323c7d34f72965e6b2b63c7a6723; Pillow RGBA Lanczos resize 2048x1024 to 1024x512, original 16x4 layout. Per-cell elliptical alpha feather: radius normalized by half-extent minus 2px; alpha times 1-smoothstep(0.65,1,r), giving a transparent 2px gutter. RGB unchanged."
     },
     {
@@ -2579,7 +2579,7 @@
         "url": "https://unity3d.com/files/labs/downloads/vfx/assets01/Explosion02/Explosion02-flipbooks.zip",
         "file": "Explosion02_5x5.exr"
       },
-      "credit": "Thomas Iché / Unity Labs Paris",
+      "credit": "Thomas Ich\u00e9 / Unity Labs Paris",
       "derived": "Archive SHA256 1426be2dcfc9008b8b8f0c7d54a241da3f611725aa3c84fc33f919f56036f538; ImageMagick linear HDR RGB clamped nonnegative and divided by 1 + max(R,G,B), encoded sRGB PNG RGBA, resized 1024x1024 to 1000x1000 (25 integral 200x200 cells); alpha preserved."
     },
     {

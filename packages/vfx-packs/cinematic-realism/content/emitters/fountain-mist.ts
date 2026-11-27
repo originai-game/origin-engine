@@ -1,27 +1,93 @@
-type particles
-version 1
----
-# MIT Origin Engine. Fine spray drifting off the top of a jet.
-maxParticles 16
-shape sphere 0.15
-rate 6
-duration 2
-looping true
-lifetime 1.5 2.5
-speed 0.1 0.4
-size 0.4 0.6
-sizeOverLife 0 0.5 1 2
-rotation 0 360
-gravity 0 -0.2 0
-drag 1.5
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-color 0.95 1.08 1.2
-softDistance 0.2
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.2 1 1 1 0.2
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "color": [
+    0.949999988079071,
+    1.0800000429153442,
+    1.2000000476837158,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        1,
+        1,
+        1,
+        0.20000000298023224
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.5,
+  "duration": 2,
+  "gravity": [
+    0,
+    -0.20000000298023224,
+    0
+  ],
+  "lifetime": [
+    1.5,
+    2.5
+  ],
+  "maxParticles": 16,
+  "rate": 6,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.15000000596046448,
+    "surface": false
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.4000000059604645,
+    0.6000000238418579
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "softDistance": 0.20000000298023224,
+  "speed": [
+    0.10000000149011612,
+    0.4000000059604645
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

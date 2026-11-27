@@ -1,23 +1,71 @@
-type particles
-version 1
----
-# Unburnt powder grains: a few hot streaks.
-maxParticles 16
-shape cone 14 0.02
-spread 6
-rate 0
-burst 0 8
-duration 0.05
-looping false
-lifetime 0.08 0.16
-speed 12 22
-size 0.008 0.014
-gravity 0 -9.8 0
-drag 2
-align velocity 0.03
-color 6 3.2 1.2
-colorOverLife {
-  key 0 1 1 1 1
-  key 1 1 0.4 0.1 0
-}
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.029999999329447746
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    6,
+    3.200000047683716,
+    1.2000000476837158,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.4000000059604645,
+        0.10000000149011612,
+        0
+      ]
+    ]
+  ],
+  "drag": 2,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "lifetime": [
+    0.07999999821186066,
+    0.1599999964237213
+  ],
+  "looping": false,
+  "maxParticles": 16,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 14,
+    "radius": 0.019999999552965164
+  },
+  "size": [
+    0.00800000037997961,
+    0.014000000432133675
+  ],
+  "speed": [
+    12,
+    22
+  ],
+  "spread": 6
+});

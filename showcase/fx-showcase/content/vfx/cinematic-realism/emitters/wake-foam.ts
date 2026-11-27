@@ -1,29 +1,116 @@
-type particles
-version 1
----
-# MIT Origin Engine. White water spreading flat behind a hull.
-maxParticles 110
-shape box 0.5 0 0.15
-spread 90
-rate 36
-duration 2
-looping true
-lifetime 2 3.2
-speed 0.2 0.6
-size 0.55 0.9
-sizeOverLife 0 0.5 1 2.6
-rotation 0 360
-angularVelocity -20 20
-gravity 0 0 0
-drag 1.5
-align facing 0 1 0
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-color 1.8 1.86 1.92
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.08 1 1 1 0.6
-  key 0.6 1 1 1 0.34
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      1,
+      0
+    ]
+  },
+  "angularVelocity": [
+    -20,
+    20
+  ],
+  "blend": "alpha",
+  "color": [
+    1.7999999523162842,
+    1.8600000143051147,
+    1.9199999570846558,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.07999999821186066,
+      [
+        1,
+        1,
+        1,
+        0.6000000238418579
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.3400000035762787
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.5,
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    2,
+    3.200000047683716
+  ],
+  "maxParticles": 110,
+  "rate": 36,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.5,
+      0,
+      0.15000000596046448
+    ]
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.550000011920929,
+    0.8999999761581421
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      2.5999999046325684
+    ]
+  ],
+  "speed": [
+    0.20000000298023224,
+    0.6000000238418579
+  ],
+  "spread": 90,
+  "texture": ref("base/vfx/cinematic-realism/textures/dust")
+});

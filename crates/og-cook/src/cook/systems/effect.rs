@@ -1,307 +1,313 @@
-//! Effect materials (`type effect`, `og_bundle::effect`): the cook checks
-//! the file with the runtime's parser and that every texture and shader it
-//! names is an asset, and stores the text, which the runtime parses again
-//! with the bundle's handles.
-
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, fx_field, stamp};
+//! Checked FX declarations compile to native fields and typed resource tables.
+//! Runtime loading only binds those resources to host handles.
+use super::fx_field;
+use super::*;
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
+use og_bundle::fx::cooked::{Effect, Emitter, Resource};
 
 /// Native boundary shared by checked author inputs and external importers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Prepared {
-    Emitter(og_bundle::fx::cooked::Emitter),
-    Effect(og_bundle::fx::cooked::Effect),
+    Emitter(Emitter),
+    Effect(Effect),
     Vfx(og_bundle::vfx::Vfx),
 }
 
-/// Generated declarations use the same parsers and links as authored effects.
-/// The executor owns source/input hashing, budgets and its BLAKE3 cache.
-pub(crate) fn expand(sources: &mut [Source]) {
-    for s in sources {
-        if ![&EMITTER, &EFFECT, &super::vfx::VFX].contains(&s.kind) || s.error.is_some() {
-            continue;
+impl Prepared {
+    fn bytes(&self) -> Result<Vec<u8>, String> {
+        match self {
+            Self::Emitter(v) => v.to_bytes(),
+            Self::Effect(v) => v.to_bytes(),
+            Self::Vfx(v) => v.to_bytes(),
         }
-        let result = (|| -> Result<Option<String>, String> {
-            let doc = og_core::ogt::Document::parse(&String::from_utf8_lossy(&s.bytes))
-                .map_err(|e| e.to_string())?;
-            let Some(entry) = doc.body.get("generate") else {
-                return Ok(None);
-            };
-            if doc.body.entries.len() != 1 || !entry.values.is_empty() {
-                return Err("effect generation takes one exclusive generate block".into());
+    }
+
+    fn references(&self) -> Vec<String> {
+        match self {
+            Self::Emitter(v) => v
+                .resources
+                .iter()
+                .filter_map(Resource::asset)
+                .map(str::to_owned)
+                .collect(),
+            Self::Effect(v) => v
+                .resources
+                .iter()
+                .filter_map(Resource::asset)
+                .map(str::to_owned)
+                .collect(),
+            Self::Vfx(v) => {
+                let r = v.references();
+                [
+                    r.emitters,
+                    r.effects,
+                    r.models,
+                    r.sounds,
+                    r.flipbooks,
+                    r.textures,
+                ]
+                .concat()
             }
-            let spec = crate::cook::generator::Spec::standalone(
-                entry.block.as_ref().ok_or("generate is a block")?,
-            )?;
-            #[derive(serde::Deserialize)]
-            #[serde(deny_unknown_fields)]
-            struct Declarations {
-                text: String,
-            }
-            let output: Declarations = serde_json::from_value(
-                crate::cook::generator::Program::prepare(
-                    &crate::cook::assets_root(s),
-                    &s.rel,
-                    &spec,
-                )?
-                .run()?,
-            )
-            .map_err(|e| e.to_string())?;
-            let text = format!(
-                "type {}\nversion {}\n---\n{}\n",
-                doc.ty, doc.version, output.text
-            );
-            let generated = og_core::ogt::Document::parse(&text).map_err(|e| e.to_string())?;
-            if generated.body.get("generate").is_some() {
-                return Err("generated effect declarations cannot generate recursively".into());
-            }
-            Ok(Some(text))
-        })();
-        match result {
-            Ok(Some(text)) => s.bytes = text.into_bytes(),
-            Ok(None) => {}
-            Err(e) => s.error = Some(e),
         }
     }
 }
 
-pub(crate) fn cook_effect(
-    s: &Source,
-    known: &dyn Fn(&str) -> bool,
-    stamp: u64,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError("an effect material is text (UTF-8)".into()))?;
-    let missing = std::cell::RefCell::new(Vec::new());
-    let check = |id: &str| {
-        if !known(crate::runtime::asset_id(id)) {
-            missing.borrow_mut().push(id.to_string());
+/// Build after the complete content graph and field snapshots are available.
+/// Imported FX already carry native fields and need no author evaluation.
+pub(crate) fn prepare(sources: &mut [Source], graph: &source_content::Graph) -> Result<(), String> {
+    use source_schemas::procedural::{EffectInput, ParticlesInput, VfxInput};
+    let builtins: BTreeSet<_> = sources
+        .iter()
+        .filter(|s| s.rel.starts_with('@'))
+        .map(|s| s.rel.clone())
+        .collect();
+    let asset = |id: &str| {
+        if id.starts_with('@') {
+            return builtins
+                .get(id)
+                .cloned()
+                .ok_or_else(|| format!("FX reference '{id}' has no built-in output"));
         }
+        graph
+            .outputs
+            .get(id)
+            .map(|o| o.asset.clone())
+            .ok_or_else(|| format!("FX reference '{id}' has no checked output"))
     };
-    let m = og_bundle::effect::parse_effect(
-        text,
-        &mut og_bundle::effect::EffectLinks {
-            texture: &mut |id| {
-                check(id);
-                Ok(None)
-            },
-            shader: &mut |id| {
-                check(id);
-                Ok(None)
-            },
-        },
-    )
-    .map_err(CookError)?;
-    let missing = missing.into_inner();
-    if !missing.is_empty() {
-        return Err(CookError(format!(
-            "the effect names asset(s) not under assets/ (a texture or shader): {}",
-            missing.join(", ")
-        )));
+    for i in 0..sources.len() {
+        let s = &sources[i];
+        if s.fx.is_some() || ![&EMITTER, &EFFECT, &vfx::VFX].contains(&s.kind) {
+            continue;
+        }
+        let prepared = (|| {
+            let mut value = if s.kind == &EMITTER {
+                let input: ParticlesInput = s.input()?;
+                Prepared::Emitter(Emitter::capture(|links| {
+                    input.build(links, &|r, strength, size| {
+                        let output = graph
+                            .outputs
+                            .get(&r.id)
+                            .ok_or_else(|| format!("field '{}' has no checked output", r.id))?;
+                        fx_field::bake(sources, &s.fields, output, strength, size)
+                    })
+                })?)
+            } else if s.kind == &EFFECT {
+                let input: EffectInput = s.input()?;
+                Prepared::Effect(Effect::capture(|links| input.build(links), &|id| {
+                    let id = asset(id)?;
+                    let shader = sources.iter().find(|s| s.rel == id).ok_or_else(|| {
+                        format!("effect shader '{id}' has no checked declaration")
+                    })?;
+                    Ok(shader_check::material_shader(&id, shader.input()?)?.params)
+                })?)
+            } else {
+                Prepared::Vfx(s.input::<VfxInput>()?.build()?)
+            };
+            match &mut value {
+                Prepared::Emitter(v) => bind_resources(&mut v.resources, &asset)?,
+                Prepared::Effect(v) => bind_resources(&mut v.resources, &asset)?,
+                Prepared::Vfx(v) => {
+                    use og_bundle::vfx::{VfxKind as K, VfxShape};
+                    for e in &mut v.elements {
+                        match &mut e.kind {
+                            K::Emitter { id, .. }
+                            | K::Sound { id, .. }
+                            | K::Flipbook { id, .. } => *id = asset(id)?,
+                            K::Mesh { shape, effect, .. } => {
+                                *effect = asset(effect)?;
+                                if let VfxShape::Model(id) = shape {
+                                    *id = asset(id)?;
+                                }
+                            }
+                            K::Trail { effect, .. } | K::Beam { effect, .. } => {
+                                if let Some(id) = effect {
+                                    *id = asset(id)?;
+                                }
+                            }
+                            K::Decal {
+                                texture, normal, ..
+                            } => {
+                                for id in [texture, normal].into_iter().flatten() {
+                                    *id = asset(id)?;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            Ok(value)
+        })()
+        .map_err(|e: String| format!("{}: {e}", s.path.display()))?;
+        sources[i].fx = Some(prepared);
     }
-    let mut w = BlobWriter::new(
-        format::Effect::type_hash(),
-        format::Effect::schema_version(),
-        stamp,
-    );
-    w.table(
-        "meta",
-        &[format::EffectMeta {
-            text_bytes: text.len() as u32,
-        }],
-        format::row_hash::<format::EffectMeta>(),
-    )
-    .raw("text", text.as_bytes().to_vec(), 16);
-    let parts = [
-        m.ramp.is_some().then_some("ramp"),
-        m.mask.is_some().then_some("mask"),
-        m.erosion.is_some().then_some("erosion"),
-        m.flow.is_some().then_some("flow"),
-        m.fresnel.is_some().then_some("fresnel"),
-        m.shader.is_some().then_some("hook"),
-    ];
-    let parts: Vec<&str> = parts.into_iter().flatten().collect();
-    Ok((
-        w.finish(),
-        vec![format!("effect material: {}", parts.join(", "))],
-    ))
+    Ok(())
+}
+
+fn bind_resources(
+    resources: &mut [Resource],
+    asset: &dyn Fn(&str) -> Result<String, String>,
+) -> Result<(), String> {
+    for resource in resources {
+        let id = match resource {
+            Resource::Builtin(_) => continue,
+            Resource::Texture(id)
+            | Resource::Array(id)
+            | Resource::Model(id)
+            | Resource::Emitter(id)
+            | Resource::Effect(id)
+            | Resource::Shader(id) => id,
+        };
+        *id = asset(id)?;
+    }
+    Ok(())
 }
 
 pub(crate) static EMITTER: KindDef = KindDef {
     name: "emitter",
     extensions: &[],
-    types: &[crate::fx::EMITTER_TYPE],
+    types: &[],
     by_content: true,
     streams: false,
-    plan: plan_emitter,
+    plan,
 };
-
-fn plan_emitter<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { known, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let text = String::from_utf8_lossy(&s.bytes);
-    let refs: Vec<String> = crate::fx::emitter_references(&text)
-        .into_iter()
-        .inspect(|r| {
-            parsed_refs
-                .entry(s.rel.clone())
-                .or_default()
-                .insert(r.clone());
-        })
-        .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
-        .collect();
-    let fields = fx_field::stamp(s, &text);
-    let st = stamp(
-        &[Area::Effect],
-        &[
-            b"emitter",
-            &hash,
-            refs.join("\n").as_bytes(),
-            fields.as_bytes(),
-        ],
-    );
-    outs.push((
-        s.rel.clone(),
-        format::Emitter::NAME,
-        st,
-        Box::new(EmitterJob(s)),
-    ));
-}
-
-/// An emitter's one output.
-struct EmitterJob<'a>(&'a Source);
-
-impl Job for EmitterJob<'_> {
-    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let EmitterJob(s) = self;
-        let Exec { known, .. } = ex;
-        let text = std::str::from_utf8(&s.bytes)
-            .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
-        let baked = fx_field::bake(s, text).map_err(CookError)?;
-        let text = baked.as_str();
-        let missing = std::cell::RefCell::new(Vec::new());
-        let check = |id: &str| {
-            if !known.contains(crate::runtime::asset_id(id)) {
-                missing.borrow_mut().push(id.to_string());
-            }
-        };
-        let em = crate::fx::parse_emitter_linked(
-            text,
-            &mut crate::fx::EmitterLinks {
-                texture: &mut |id| {
-                    check(id);
-                    Ok(None)
-                },
-                array: &mut |id| {
-                    check(id);
-                    Ok(None)
-                },
-                mesh: &mut |m| {
-                    if let crate::fx::ParticleMesh::Asset(id) = m {
-                        check(id);
-                    }
-                    Ok(None)
-                },
-                emitter: &mut |id| {
-                    check(id);
-                    Ok(None)
-                },
-                effect: &mut |id| {
-                    check(id);
-                    Ok(None)
-                },
-            },
-        )
-        .map_err(CookError)?;
-        let missing = missing.into_inner();
-        if !missing.is_empty() {
-            return Err(CookError(format!(
-                "the emitter names asset(s) not under assets/ (a texture, texture array, mesh model or sub-emitter): {}",
-                missing.join(", ")
-            )));
-        }
-        let mut w = og_blob::BlobWriter::new(
-            format::Emitter::type_hash(),
-            format::Emitter::schema_version(),
-            p.stamp,
-        );
-        w.table(
-            "meta",
-            &[format::EmitterMeta {
-                text_bytes: text.len() as u32,
-            }],
-            format::row_hash::<format::EmitterMeta>(),
-        )
-        .raw("text", text.as_bytes().to_vec(), 16);
-        Ok((
-            w.finish(),
-            vec![format!(
-                "{} particles, {} burst(s)",
-                em.max_particles,
-                em.bursts.len()
-            )],
-        ))
-    }
-}
-
 pub(crate) static EFFECT: KindDef = KindDef {
     name: "effect",
     extensions: &[],
-    types: &[og_bundle::effect::EFFECT_TYPE],
+    types: &[],
     by_content: false,
     streams: false,
-    plan: plan_effect,
+    plan,
 };
+pub(crate) static KINDS: &[&KindDef] = &[&EMITTER, &EFFECT];
 
-fn plan_effect<'a>(
+pub(crate) fn plan<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { known, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let text = String::from_utf8_lossy(&s.bytes);
-    let refs: Vec<String> = og_bundle::effect::effect_references(&text)
-        .into_iter()
-        .inspect(|r| {
-            parsed_refs
+    let prepared = s.fx.as_ref();
+    let data = prepared
+        .ok_or_else(|| "FX source has no prepared native fields".to_string())
+        .and_then(Prepared::bytes);
+    let mut references = String::new();
+    if let Some(value) = prepared {
+        for id in value.references() {
+            state
+                .parsed_refs
                 .entry(s.rel.clone())
                 .or_default()
-                .insert(r.clone());
-        })
-        .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
-        .collect();
+                .insert(id.clone());
+            references.push_str(&format!("{id}={}\n", cx.known.contains(&id)));
+        }
+    }
+    let ty = if s.kind == &EMITTER {
+        format::Emitter::NAME
+    } else if s.kind == &EFFECT {
+        format::Effect::NAME
+    } else {
+        format::Vfx::NAME
+    };
     let st = stamp(
         &[Area::Effect],
-        &[b"effect", &hash, refs.join("\n").as_bytes()],
+        &[
+            ty.as_bytes(),
+            &hash,
+            data.as_ref().map_or(&[], Vec::as_slice),
+            references.as_bytes(),
+        ],
     );
-    outs.push((
-        s.rel.clone(),
-        format::Effect::NAME,
-        st,
-        Box::new(EffectJob(s)),
-    ));
+    outs.push((s.rel.clone(), ty, st, Box::new(FxJob { prepared, data })));
 }
 
-/// An effect's one output.
-struct EffectJob<'a>(&'a Source);
-
-impl Job for EffectJob<'_> {
+struct FxJob<'a> {
+    prepared: Option<&'a Prepared>,
+    data: Result<Vec<u8>, String>,
+}
+impl Job for FxJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let EffectJob(s) = self;
-        let Exec { known, .. } = ex;
-        cook_effect(s, &|id| known.contains(id), p.stamp)
+        let data = self.data.as_ref().map_err(|e| CookError(e.clone()))?;
+        let prepared = self.prepared.expect("encoded native FX");
+        let missing: Vec<_> = prepared
+            .references()
+            .into_iter()
+            .filter(|id| !ex.known.contains(id))
+            .collect();
+        if !missing.is_empty() {
+            return Err(CookError(format!(
+                "FX references missing assets: {}",
+                missing.join(", ")
+            )));
+        }
+        let (mut writer, notes) = match prepared {
+            Prepared::Emitter(v) => {
+                let mut w = BlobWriter::new(
+                    format::Emitter::type_hash(),
+                    format::Emitter::schema_version(),
+                    p.stamp,
+                );
+                w.table(
+                    "meta",
+                    &[format::EmitterMeta {
+                        data_bytes: data.len() as u32,
+                    }],
+                    format::row_hash::<format::EmitterMeta>(),
+                );
+                (
+                    w,
+                    format!(
+                        "{} particles, {} bursts",
+                        v.data.max_particles,
+                        v.data.bursts.len()
+                    ),
+                )
+            }
+            Prepared::Effect(v) => {
+                let mut w = BlobWriter::new(
+                    format::Effect::type_hash(),
+                    format::Effect::schema_version(),
+                    p.stamp,
+                );
+                w.table(
+                    "meta",
+                    &[format::EffectMeta {
+                        data_bytes: data.len() as u32,
+                    }],
+                    format::row_hash::<format::EffectMeta>(),
+                );
+                (
+                    w,
+                    format!("effect material, {} resources", v.resources.len()),
+                )
+            }
+            Prepared::Vfx(v) => {
+                let mut w = BlobWriter::new(
+                    format::Vfx::type_hash(),
+                    format::Vfx::schema_version(),
+                    p.stamp,
+                );
+                w.table(
+                    "meta",
+                    &[format::VfxMeta {
+                        data_bytes: data.len() as u32,
+                    }],
+                    format::row_hash::<format::VfxMeta>(),
+                );
+                (
+                    w,
+                    format!(
+                        "vfx: {} s, {} elements, {} events",
+                        v.duration,
+                        v.elements.len(),
+                        v.events.len()
+                    ),
+                )
+            }
+        };
+        writer.raw("data", data.clone(), 16);
+        Ok((writer.finish(), vec![notes]))
     }
 }
-
-/// The kinds this module cooks.
-pub(crate) static KINDS: &[&KindDef] = &[&EMITTER, &EFFECT];

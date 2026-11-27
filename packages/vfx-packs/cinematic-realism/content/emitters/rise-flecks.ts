@@ -1,24 +1,92 @@
-type particles
-version 1
----
-# MIT Origin Engine. Flecks of light lifting off the ground around a
-# figure.
-maxParticles 64
-shape box 0.35 0.05 0.35
-rate 50
-duration 0.9
-looping false
-rateOverTime 0 1 0.6 0.7 1 0
-lifetime 0.6 1.3
-speed 0.8 2.2
-size 0.02 0.04
-gravity 0 0 0
-drag 0.6
-noise 0.2 1.2 0.4
-blend additive
-colorOverLife {
-  key 0 0 0 0 0
-  key 0.15 1.6 1.6 1.6 1
-  key 0.7 1 1 1 0.8
-  key 1 0.2 0.2 0.2 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.15000000596046448,
+      [
+        1.600000023841858,
+        1.600000023841858,
+        1.600000023841858,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1,
+        1,
+        1,
+        0.800000011920929
+      ]
+    ],
+    [
+      1,
+      [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.6000000238418579,
+  "duration": 0.8999999761581421,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.6000000238418579,
+    1.2999999523162842
+  ],
+  "looping": false,
+  "maxParticles": 64,
+  "noise": {
+    "frequency": 1.2000000476837158,
+    "scroll": 0.4000000059604645,
+    "strength": 0.20000000298023224
+  },
+  "rate": 50,
+  "rateOverTime": [
+    [
+      0,
+      1
+    ],
+    [
+      0.6000000238418579,
+      0.699999988079071
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.3499999940395355,
+      0.05000000074505806,
+      0.3499999940395355
+    ]
+  },
+  "size": [
+    0.019999999552965164,
+    0.03999999910593033
+  ],
+  "speed": [
+    0.800000011920929,
+    2.200000047683716
+  ]
+});

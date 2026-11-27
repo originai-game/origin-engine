@@ -1,29 +1,96 @@
-type particles
-version 1
----
-# MIT Origin Engine. Bright discs thrown up in a short fountain; they
-# spin, fall and settle.
-maxParticles 24
-shape cone 28 0.05
-rate 40
-duration 0.5
-looping false
-lifetime 1.4 1.8
-speed 3 5
-size 0.04 0.05
-heightOverLife 0 0.16 1 0.16
-rotation 0 360
-angularVelocity -900 900
-gravity 0 -9.8 0
-drag 0.2
-render mesh sphere
-lit true
-roughness 0.3
-blend alpha
-color 0.95 0.72 0.2
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.9 1 1 1 1
-  key 1 1 1 1 0
-}
-collision 0.35 0.5 depth
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -900,
+    900
+  ],
+  "blend": "alpha",
+  "collision": {
+    "against": "depth",
+    "bounce": 0.3499999940395355,
+    "die": false,
+    "friction": 0.5
+  },
+  "color": [
+    0.949999988079071,
+    0.7200000286102295,
+    0.20000000298023224,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.8999999761581421,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.20000000298023224,
+  "duration": 0.5,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      0.1599999964237213
+    ],
+    [
+      1,
+      0.1599999964237213
+    ]
+  ],
+  "lifetime": [
+    1.399999976158142,
+    1.7999999523162842
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 24,
+  "render": {
+    "kind": "mesh",
+    "mesh": "sphere"
+  },
+  "rotation": [
+    0,
+    360
+  ],
+  "roughness": 0.30000001192092896,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 28,
+    "radius": 0.05000000074505806
+  },
+  "size": [
+    0.03999999910593033,
+    0.05000000074505806
+  ],
+  "speed": [
+    3,
+    5
+  ]
+});

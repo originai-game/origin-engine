@@ -1,27 +1,113 @@
-type particles
-version 1
----
-# Effekseer node 0.2.1.0.6 "SmokeVariation"
-maxParticles 135
-shape box 3.2 3.2 3.2
-spread 180
-rate 0
-burst 0 27 2 0.0833
-duration 0.1
-looping false
-lifetime 0.9167 1.5833
-speed 0.864 1.056
-size 17.16 20.28
-sizeOverLife 0 0.5128 0.25 0.5445 0.5 0.6362 0.75 0.7881 1 1
-colorOverLife {
-  key 0 0.0037 0.0023 0.0017 0
-  key 0.2 0.0037 0.0023 0.0017 0.0471
-  key 0.4 0.0037 0.0023 0.0017 0.0706
-  key 1 0.0037 0.0023 0.0017 0
-}
-rotation -360 360
-angularVelocity -120 120
-gravity 0 8.64 0
-texture "vfx/effekseer-starter/textures/Smoke.png"
-blend alpha
-effect "vfx/effekseer-starter/FireBall/n0-2-1-0-6.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -120,
+    120
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 27,
+      "cycles": 2,
+      "interval": 0.08330000191926956,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.003700000001117587,
+        0.002300000051036477,
+        0.0017000000225380063,
+        0
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        0.003700000001117587,
+        0.002300000051036477,
+        0.0017000000225380063,
+        0.0471000000834465
+      ]
+    ],
+    [
+      0.4000000059604645,
+      [
+        0.003700000001117587,
+        0.002300000051036477,
+        0.0017000000225380063,
+        0.0706000030040741
+      ]
+    ],
+    [
+      1,
+      [
+        0.003700000001117587,
+        0.002300000051036477,
+        0.0017000000225380063,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.10000000149011612,
+  "effect": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-6.effect"),
+  "gravity": [
+    0,
+    8.640000343322754,
+    0
+  ],
+  "lifetime": [
+    0.916700005531311,
+    1.583299994468689
+  ],
+  "looping": false,
+  "maxParticles": 135,
+  "rate": 0,
+  "rotation": [
+    -360,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      3.200000047683716,
+      3.200000047683716,
+      3.200000047683716
+    ]
+  },
+  "size": [
+    17.15999984741211,
+    20.280000686645508
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5127999782562256
+    ],
+    [
+      0.25,
+      0.5444999933242798
+    ],
+    [
+      0.5,
+      0.6362000107765198
+    ],
+    [
+      0.75,
+      0.788100004196167
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0.8640000224113464,
+    1.055999994277954
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/Smoke")
+});

@@ -1,25 +1,76 @@
-type particles
-version 1
----
-# MIT Origin Engine. Flecks of charge thrown off a shocked body, a spray
-# with each arc of shocked's 0.6 s loop.
-maxParticles 48
-shape sphere 0.25
-rate 0
-burst 0 10
-burst 0.12 8
-burst 0.3 10
-burst 0.44 8
-duration 0.6
-looping true
-lifetime 0.12 0.3
-speed 1.2 3
-size 0.012 0.024
-align velocity 0.03
-gravity 0 -2 0
-drag 4
-blend additive
-colorOverLife {
-  key 0 1.4 2.4 4 1
-  key 1 0.1 0.3 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.029999999329447746
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 10,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    },
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.11999999731779099
+    },
+    {
+      "count": 10,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.30000001192092896
+    },
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.4399999976158142
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1.399999976158142,
+        2.4000000953674316,
+        4,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.10000000149011612,
+        0.30000001192092896,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 4,
+  "duration": 0.6000000238418579,
+  "lifetime": [
+    0.11999999731779099,
+    0.30000001192092896
+  ],
+  "maxParticles": 48,
+  "rate": 0,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.25,
+    "surface": false
+  },
+  "size": [
+    0.012000000104308128,
+    0.024000000208616257
+  ],
+  "speed": [
+    1.2000000476837158,
+    3
+  ]
+});

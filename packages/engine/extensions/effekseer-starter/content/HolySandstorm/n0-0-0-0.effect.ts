@@ -1,9 +1,25 @@
-type effect
-version 1
----
-# Effekseer node 0.0.0.0 "Smoke"
-main "vfx/effekseer-starter/textures/Smoke-037c8d34.png" rgba {
-  tile 0.5 0.5
-  offset 0 0.5
-}
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/Smoke-037c8d34"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0.5
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        0.5,
+        0.5
+      ],
+      "rotate": 0
+    }
+  }
+});

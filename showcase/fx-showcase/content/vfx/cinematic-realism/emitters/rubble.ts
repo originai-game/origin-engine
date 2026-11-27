@@ -1,31 +1,106 @@
-type particles
-version 1
----
-# MIT Origin Engine. Blocks of broken masonry: heavy, tumbling slowly,
-# hardly bouncing.
-maxParticles 20
-shape sphere 0.4
-spread 120
-rate 0
-burst 0 18
-duration 0.05
-looping false
-lifetime 2 3
-speed 1.5 5
-size 0.07 0.22
-heightOverLife 0 0.55 1 0.55
-rotation 0 360
-angularVelocity -200 200
-gravity 0 -9.8 0
-drag 0.2
-render mesh box
-lit true
-roughness 0.95
-blend alpha
-color 0.45 0.44 0.42
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.9 1 1 1 1
-  key 1 1 1 1 0
-}
-collision 0.2 0.8 depth
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -200,
+    200
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 18,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0.20000000298023224,
+    "die": false,
+    "friction": 0.800000011920929
+  },
+  "color": [
+    0.44999998807907104,
+    0.4399999976158142,
+    0.41999998688697815,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.8999999761581421,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.20000000298023224,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      0.550000011920929
+    ],
+    [
+      1,
+      0.550000011920929
+    ]
+  ],
+  "lifetime": [
+    2,
+    3
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 20,
+  "rate": 0,
+  "render": {
+    "kind": "mesh",
+    "mesh": "box"
+  },
+  "rotation": [
+    0,
+    360
+  ],
+  "roughness": 0.949999988079071,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.4000000059604645,
+    "surface": false
+  },
+  "size": [
+    0.07000000029802322,
+    0.2199999988079071
+  ],
+  "speed": [
+    1.5,
+    5
+  ],
+  "spread": 120
+});

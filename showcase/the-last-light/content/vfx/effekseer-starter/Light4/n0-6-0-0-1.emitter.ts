@@ -1,25 +1,120 @@
-type particles
-version 1
----
-# Effekseer node 0.6.0.0.1 "下半分"
-maxParticles 6
-shape box 5 1 0.001
-spread 0
-rate 0
-burst 0 1 6 0.1167
-duration 0.6
-looping false
-lifetime 0.4167 0.4167
-speed 22.9412 30
-speedOverLife 0 1.0207 0.1719 0.8629 0.3438 1.172 0.5156 1.9573 0.6719 3.0845 0.6875 0.0631 0.7031 0 1 0
-size 0.375 0.375
-heightOverLife 0 2.6667 1 2.6667
-align upright 0 1 0
-colorOverLife {
-  key 0 1 1 1 0.7765
-  key 0.6 1 1 1 0.7765
-  key 1 1 1 1 0
-}
-texture "vfx/effekseer-starter/textures/hisigata1.png"
-blend additive
-effect "vfx/effekseer-starter/Light4/n0-6-0-0-1.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 6,
+      "interval": 0.11670000106096268,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.7764999866485596
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.7764999866485596
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.6000000238418579,
+  "effect": ref("base/vfx/effekseer-starter/Light4/n0-6-0-0-1.effect"),
+  "heightOverLife": [
+    [
+      0,
+      2.6666998863220215
+    ],
+    [
+      1,
+      2.6666998863220215
+    ]
+  ],
+  "lifetime": [
+    0.41670000553131104,
+    0.41670000553131104
+  ],
+  "looping": false,
+  "maxParticles": 6,
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      5,
+      1,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    0.375,
+    0.375
+  ],
+  "speed": [
+    22.941200256347656,
+    30
+  ],
+  "speedOverLife": [
+    [
+      0,
+      1.0206999778747559
+    ],
+    [
+      0.17190000414848328,
+      0.8629000186920166
+    ],
+    [
+      0.34380000829696655,
+      1.1720000505447388
+    ],
+    [
+      0.5156000256538391,
+      1.9572999477386475
+    ],
+    [
+      0.6718999743461609,
+      3.0845000743865967
+    ],
+    [
+      0.6875,
+      0.06310000270605087
+    ],
+    [
+      0.7031000256538391,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/hisigata1")
+});

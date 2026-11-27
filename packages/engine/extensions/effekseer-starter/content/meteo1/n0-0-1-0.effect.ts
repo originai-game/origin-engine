@@ -1,9 +1,26 @@
-type effect
-version 1
----
-# Effekseer node 0.0.1.0 "Node"
-main "vfx/effekseer-starter/textures/ShockWave5.png" rgba {
-  scroll 0 0.9375
-}
-blend additive
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "doubleSided": true,
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/ShockWave5"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0.9375
+      ],
+      "tile": [
+        1,
+        1
+      ],
+      "rotate": 0
+    }
+  }
+});

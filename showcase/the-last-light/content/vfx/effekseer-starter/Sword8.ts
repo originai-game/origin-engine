@@ -1,79 +1,584 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 1.4167
-impact 0.6667
-mesh quad {
-  at 0
-  life 1.25
-  effect "vfx/effekseer-starter/Sword8/n0-0-0.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
-  color 2.7968 0.0833 0.0833 1
-  blend additive
-}
-mesh quad {
-  at 0
-  rotate 0 0 90
-  life 1.25
-  effect "vfx/effekseer-starter/Sword8/n0-0-1.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
-  color 2.7968 0.0833 0.0833 1
-  blend additive
-}
-mesh quad {
-  at 0.0667
-  life 1.25
-  effect "vfx/effekseer-starter/Sword8/n1-0-0.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
-  color 2.7968 0.0833 0.0833 1
-  blend additive
-}
-mesh quad {
-  at 0.0667
-  rotate 0 0 90
-  life 1.25
-  effect "vfx/effekseer-starter/Sword8/n1-0-1.effect.ogt"
-  scale curve 0 3.873 0.0938 4.3617 0.2031 4.466 0.5 3.691 0.8906 1.7135 0.9688 0.9281 0.9844 0.6586 1 0
-  color 2.7968 0.0833 0.0833 1
-  blend additive
-}
-mesh ring {
-  at 0.6667
-  rotate -78.8298 -28.0243 -67.2041
-  inner 0.7501
-  band 0.45
-  colors 1 0.006 0.006 0 1 0.0278 0.0278 1 1 0.006 0.006 0
-  life 0.75
-  effect "vfx/effekseer-starter/Sword8/n2.effect.ogt"
-  scale curve 0 4 0.0781 4.6591 0.1719 5.2795 0.2656 5.7373 0.375 6.0989 0.5781 6.4061 1 6.5
-  spin 0 0 960
-  color 5 5 5 1
-  blend additive
-}
-mesh ring {
-  at 0.6667
-  rotate -78.8298 28.0243 -112.7959
-  inner 0.7501
-  band 0.45
-  colors 1 0.006 0.006 0 1 0.0278 0.0278 1 1 0.006 0.006 0
-  life 0.75
-  effect "vfx/effekseer-starter/Sword8/n3.effect.ogt"
-  scale curve 0 4 0.0781 4.6591 0.1719 5.2795 0.2656 5.7373 0.375 6.0989 0.5781 6.4061 1 6.5
-  spin 0 0 -960
-  color 5 5 5 1
-  blend additive
-}
-emitter "vfx/effekseer-starter/Sword8/n4-0.emitter.ogt" {
-  at 0.6667
-  offset 2 0 0
-  rotate 0 0 -90
-}
-# effekseer: node 0.0.0 "縦軸": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 0.0.1 "横軸": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.0 "縦軸": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 1.0.1 "横軸": a sprite scaled unevenly: drawn square at its mean
-# effekseer: node 2 "リング斜め右上": ring 5 instances: the first 4 drawn
-# effekseer: node 2 "リング斜め右上": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 3 "リング斜め左上": ring 5 instances: the first 4 drawn
-# effekseer: node 3 "リング斜め左上": a ring whose thickness changes over its life: its middle thickness kept
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 1.416700005531311,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.666700005531311
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 1.25,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.796799898147583,
+          0.08330000191926956,
+          0.08330000191926956,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              3.872999906539917
+            ],
+            [
+              0.09380000084638596,
+              4.361700057983398
+            ],
+            [
+              0.20309999585151672,
+              4.466000080108643
+            ],
+            [
+              0.5,
+              3.690999984741211
+            ],
+            [
+              0.8906000256538391,
+              1.7135000228881836
+            ],
+            [
+              0.9688000082969666,
+              0.9280999898910522
+            ],
+            [
+              0.9843999743461609,
+              0.6585999727249146
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.25,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.796799898147583,
+          0.08330000191926956,
+          0.08330000191926956,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n0-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              3.872999906539917
+            ],
+            [
+              0.09380000084638596,
+              4.361700057983398
+            ],
+            [
+              0.20309999585151672,
+              4.466000080108643
+            ],
+            [
+              0.5,
+              3.690999984741211
+            ],
+            [
+              0.8906000256538391,
+              1.7135000228881836
+            ],
+            [
+              0.9688000082969666,
+              0.9280999898910522
+            ],
+            [
+              0.9843999743461609,
+              0.6585999727249146
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.06669999659061432,
+      "life": 1.25,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.796799898147583,
+          0.08330000191926956,
+          0.08330000191926956,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n1-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              3.872999906539917
+            ],
+            [
+              0.09380000084638596,
+              4.361700057983398
+            ],
+            [
+              0.20309999585151672,
+              4.466000080108643
+            ],
+            [
+              0.5,
+              3.690999984741211
+            ],
+            [
+              0.8906000256538391,
+              1.7135000228881836
+            ],
+            [
+              0.9688000082969666,
+              0.9280999898910522
+            ],
+            [
+              0.9843999743461609,
+              0.6585999727249146
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.06669999659061432,
+      "life": 1.25,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.796799898147583,
+          0.08330000191926956,
+          0.08330000191926956,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n1-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              3.872999906539917
+            ],
+            [
+              0.09380000084638596,
+              4.361700057983398
+            ],
+            [
+              0.20309999585151672,
+              4.466000080108643
+            ],
+            [
+              0.5,
+              3.690999984741211
+            ],
+            [
+              0.8906000256538391,
+              1.7135000228881836
+            ],
+            [
+              0.9688000082969666,
+              0.9280999898910522
+            ],
+            [
+              0.9843999743461609,
+              0.6585999727249146
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.666700005531311,
+      "life": 0.75,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -78.82980346679688,
+        -28.02429962158203,
+        -67.2041015625
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          5,
+          5,
+          5,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              4
+            ],
+            [
+              0.07810000330209732,
+              4.65910005569458
+            ],
+            [
+              0.17190000414848328,
+              5.2795000076293945
+            ],
+            [
+              0.2655999958515167,
+              5.737299919128418
+            ],
+            [
+              0.375,
+              6.098899841308594
+            ],
+            [
+              0.5781000256538391,
+              6.406099796295166
+            ],
+            [
+              1,
+              6.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.44999998807907104,
+            "colors": [
+              [
+                1,
+                0.006000000052154064,
+                0.006000000052154064,
+                0
+              ],
+              [
+                1,
+                0.027799999341368675,
+                0.027799999341368675,
+                1
+              ],
+              [
+                1,
+                0.006000000052154064,
+                0.006000000052154064,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.7501000165939331,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          960
+        ]
+      }
+    },
+    {
+      "at": 0.666700005531311,
+      "life": 0.75,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -78.82980346679688,
+        28.02429962158203,
+        -112.7958984375
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          5,
+          5,
+          5,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword8/n3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              4
+            ],
+            [
+              0.07810000330209732,
+              4.65910005569458
+            ],
+            [
+              0.17190000414848328,
+              5.2795000076293945
+            ],
+            [
+              0.2655999958515167,
+              5.737299919128418
+            ],
+            [
+              0.375,
+              6.098899841308594
+            ],
+            [
+              0.5781000256538391,
+              6.406099796295166
+            ],
+            [
+              1,
+              6.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.44999998807907104,
+            "colors": [
+              [
+                1,
+                0.006000000052154064,
+                0.006000000052154064,
+                0
+              ],
+              [
+                1,
+                0.027799999341368675,
+                0.027799999341368675,
+                1
+              ],
+              [
+                1,
+                0.006000000052154064,
+                0.006000000052154064,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.7501000165939331,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          -960
+        ]
+      }
+    },
+    {
+      "at": 0.666700005531311,
+      "life": 0,
+      "offset": [
+        2,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Sword8/n4-0.emitter")
+      }
+    }
+  ]
+});

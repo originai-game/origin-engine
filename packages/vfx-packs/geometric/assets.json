@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "README.md",
-      "sha256": "f2449cf402cffb77d5989cf300b924bad7ee8fdd222ce5c63e81ff9d1186ba66",
+      "sha256": "74d2201087cdc90a8d1e5bc78b67325e8ea40e6ac75dbf7e4a6a90b9de15dffd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -16,114 +16,184 @@
       "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
     },
     {
-      "path": "celebration.ogt",
-      "sha256": "1fe1036770f06a2a74a5a423822b8c06a61802e607b9b3a7b79f62f4fe38a5f9",
+      "path": "content/celebration.ts",
+      "sha256": "f803058e1ba1889ec7026794dd9bf9175350568b70dbb7fdfed67bf2b9045cd7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "dust.ogt",
-      "sha256": "495e04abba1a71089a8ea3b4add77fbef548a0602343745319ecf0de71db5d79",
+      "path": "content/dust.ts",
+      "sha256": "efa16f1fef3015eb517a500b84257dc42947a94e447c87a3cf8cb56cb0fd5989",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/chips.ogt",
-      "sha256": "e71d3553d35bc02f816e02ff539bba4b00bca85c6600842c49abb62600095d54",
+      "path": "content/emitters/chips.ts",
+      "sha256": "afd8cb763135965846d2c4e2eeb08cbd72875670955a23f06bb19dd403155c9f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/confetti.ogt",
-      "sha256": "701aa61da84c8c7ae0efba051f1582352a25b71829203144622c6d2b24e62f2e",
+      "path": "content/emitters/confetti.ts",
+      "sha256": "6208da84bc2e7d57ee0fd62a1731ecd3160941121a325ef1a5d02f6e5544af1d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/dust.ogt",
-      "sha256": "f5697534d849363555c49942fac931d610dd8717ba11dcb3764757510211906e",
+      "path": "content/emitters/dust.ts",
+      "sha256": "33df8ce77d967f8d9035f388daf8ad1f27ac9ed618ee91d3dd0b2c4e7cecb496",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/fragments.ogt",
-      "sha256": "fa2682366727929f141723a1d7284560215527d42d34c72981baade0b0a9baaa",
+      "path": "content/emitters/fragments.ts",
+      "sha256": "01d5b139eb9501da08236092f28af891f09850e1687bb9a262be3e71279946fd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/pickup.ogt",
-      "sha256": "f29f41cf0a81f20c0730379846c28b448845a420019063eed0a4bf109c32ad09",
+      "path": "content/emitters/pickup.ts",
+      "sha256": "5adbafc19df96c5b9513c68b0014a144bbac889f2e4487c4fca7bfa874f6656d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/pulse.ogt",
-      "sha256": "fccf67d33d265d4a1980c96d04abfc6d03db57b563ede46c7ccf475553ddd98d",
+      "path": "content/emitters/pulse.ts",
+      "sha256": "bb5c617a74ba457ebcb305651fbd9d1bca4cc4f035562df72c54ced2e63ed880",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/splash.ogt",
-      "sha256": "d42cddc6df72d9541f5b34ef58d9cd7c65521e6669d91f2bf9161cf2e87c8359",
+      "path": "content/emitters/splash.ts",
+      "sha256": "94895f8436b3a6e40676ae9836ceeefc8604fcbb44a0d506336edfd05d0b57c7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "emitters/trail.ogt",
-      "sha256": "e537029f50fe0513d9413b6b7c1c94d24c9aa9107aa8ba01499937801872f8f1",
+      "path": "content/emitters/trail.ts",
+      "sha256": "6eb64280576b3a09b1ead61d07e05a53baf12049c2903b5c13f4b4283c5ef520",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
-      "path": "explosion.ogt",
-      "sha256": "a8b0b15d8cac173d84547fc7062688facf87bcff92cdbb231787bd9483f0d0c4",
+      "path": "content/explosion.ts",
+      "sha256": "7bb029249f16f8564ee57eef027816b3497ebb63f5316bc4691faa7daeb08abe",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/flat.ts",
+      "sha256": "d3948d547768b3bc342be8bb55ce6888526ebaa54f287279300fcc4e8b407639",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/impact.ts",
+      "sha256": "ada8322f7ffa3107a7cf0c7c75dddc7c8e5da4892b674a7c597690a5584d0a5a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/magic.ts",
+      "sha256": "d0a2db21c23d81f32d7773c7616b4a2d8eed48a17aeedfc4db4d3c94333500f2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle.ts",
+      "sha256": "979480fb3ee99e6823e326a88326b3100a6076c160fefedf1539dbd1fd9836a4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/pickup.ts",
+      "sha256": "1055c9df0197565dfae483dc64a81fcafd6dda28707600fe712273bcd66437d6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/splash.ts",
+      "sha256": "a8393c334f61986f371544efe6e0f4aa877b84611d83bbcbd7635926f05e8c3a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/trail.ts",
+      "sha256": "abe22fbf6cba7e51c75cb34463189c926e9a6bf7f0b955a31944b9576455234b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code.; represented as checked TypeScript FX data"
     },
     {
       "path": "extension.json",
@@ -134,85 +204,15 @@
       },
       "credit": "Origin Engine",
       "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "flat.ogt",
-      "sha256": "d7c8f67a7520bea7ff5bc7728313020b5e346cff7977f4134072755cfd94c20b",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "impact.ogt",
-      "sha256": "276e075a2818566b6cebad4acc22f3e1cf7b5b16ff299638b4e8765cd3563862",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "magic.ogt",
-      "sha256": "532ad8ef54e216686e31558354350ae7fbe255adfe13abcc443144e3d8863ecb",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "muzzle.ogt",
-      "sha256": "69c09ec753583532dd5e851975e44dfd0de9dcfe9a03d1af6cf22326c8f69e3b",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "pickup.ogt",
-      "sha256": "d2e6b83f35aeb72a624d002a3fde927d2be9663ef0908e656281ab02ad828f6d",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "splash.ogt",
-      "sha256": "00c02b0d8ebf9391cdbfc2def6d1d18ce1232005a0158fe9a719f274e1744f20",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
-    },
-    {
-      "path": "trail.ogt",
-      "sha256": "7c1f452dd10b9559203ced4aac5c89a802225d7d5d5f9647cb8d2c7c2e5d3a96",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original texture-free native mesh-particle and polygon-ring composition. No external models, textures or code."
     }
   ],
   "effects": [
     {
-      "path": "celebration.ogt",
+      "path": "content/celebration.ts",
       "type": "vfx",
       "title": "Coral Confetti",
       "loop": false,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": true,
       "category": "ui",
       "keywords": [
@@ -220,7 +220,7 @@
       ]
     },
     {
-      "path": "dust.ogt",
+      "path": "content/dust.ts",
       "type": "vfx",
       "title": "Slate Dust",
       "loop": false,
@@ -233,7 +233,7 @@
       "element": "earth"
     },
     {
-      "path": "explosion.ogt",
+      "path": "content/explosion.ts",
       "type": "vfx",
       "title": "Facet Burst",
       "loop": false,
@@ -245,7 +245,7 @@
       ]
     },
     {
-      "path": "impact.ogt",
+      "path": "content/impact.ts",
       "type": "vfx",
       "title": "Angular Impact",
       "loop": false,
@@ -257,7 +257,7 @@
       ]
     },
     {
-      "path": "magic.ogt",
+      "path": "content/magic.ts",
       "type": "vfx",
       "title": "Open Triangles",
       "loop": false,
@@ -269,7 +269,7 @@
       ]
     },
     {
-      "path": "muzzle.ogt",
+      "path": "content/muzzle.ts",
       "type": "vfx",
       "title": "Geometric Pulse",
       "loop": false,
@@ -281,11 +281,11 @@
       ]
     },
     {
-      "path": "pickup.ogt",
+      "path": "content/pickup.ts",
       "type": "vfx",
       "title": "Rising Cubes",
       "loop": false,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": true,
       "category": "buff",
       "keywords": [
@@ -293,7 +293,7 @@
       ]
     },
     {
-      "path": "splash.ogt",
+      "path": "content/splash.ts",
       "type": "vfx",
       "title": "Facet Splash",
       "loop": false,
@@ -306,11 +306,11 @@
       "element": "water"
     },
     {
-      "path": "trail.ogt",
+      "path": "content/trail.ts",
       "type": "vfx",
       "title": "Facet Trail",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [

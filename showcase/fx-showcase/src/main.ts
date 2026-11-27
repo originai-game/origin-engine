@@ -47,7 +47,7 @@ function play(world: World, index: number): void {
   const entry = ENTRIES[((index % n) + n) % n]!;
   const e = entry.e;
   const rad = 0.017453292519943295;
-  const asset = must(og.load.vfx(world, `vfx/${entry.pack}/${e.name}.ogt`));
+  const asset = must(og.load.vfx(world, `base/vfx/${entry.pack}/${e.name}`));
   s.shown = must(og.vfx.spawn(world, {
     asset, position: { x: e.fly ? -e.fly / 20 : 0, y: e.y, z: 0 }, seed: 37,
     quaternion: quat.fromEuler({ x: e.rot[0] * rad, y: e.rot[1] * rad, z: e.rot[2] * rad }),

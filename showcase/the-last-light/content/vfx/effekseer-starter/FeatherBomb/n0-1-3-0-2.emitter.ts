@@ -1,30 +1,142 @@
-type particles
-version 1
----
-# Effekseer node 0.1.3.0.2 "FireVariation"
-maxParticles 65
-shape box 0.675 1.125 0.675
-spread 18.1561
-rate 0
-burst 0 26
-duration 0.0167
-looping false
-lifetime 0.5167 0.6833
-speed 34.4923 52.8788
-speedOverLife 0 1.3054 0.5156 0.9741 1 0.7628
-size 7.125 7.125
-sizeOverLife 0 0.8 1 1
-heightOverLife 0 0.25 1 1.25
-align facing 0 0 1
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.0938 1 1 1 0.0864
-  key 0.1667 1 1 1 0.1927
-  key 0.2188 1 1 1 0.2907
-  key 0.2778 1 1 1 0.435
-  key 1 1 1 1 0
-}
-rotation -6 6
-texture "vfx/effekseer-starter/textures/Fire_Blur.png"
-blend alpha
-effect "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-2.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      0,
+      1
+    ]
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 26,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.09380000084638596,
+      [
+        1,
+        1,
+        1,
+        0.08640000224113464
+      ]
+    ],
+    [
+      0.16670000553131104,
+      [
+        1,
+        1,
+        1,
+        0.19269999861717224
+      ]
+    ],
+    [
+      0.21879999339580536,
+      [
+        1,
+        1,
+        1,
+        0.2906999886035919
+      ]
+    ],
+    [
+      0.2777999937534332,
+      [
+        1,
+        1,
+        1,
+        0.4350000023841858
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "effect": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-2.effect"),
+  "heightOverLife": [
+    [
+      0,
+      0.25
+    ],
+    [
+      1,
+      1.25
+    ]
+  ],
+  "lifetime": [
+    0.516700029373169,
+    0.6833000183105469
+  ],
+  "looping": false,
+  "maxParticles": 65,
+  "rate": 0,
+  "rotation": [
+    -6,
+    6
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.675000011920929,
+      1.125,
+      0.675000011920929
+    ]
+  },
+  "size": [
+    7.125,
+    7.125
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.800000011920929
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    34.4922981262207,
+    52.87879943847656
+  ],
+  "speedOverLife": [
+    [
+      0,
+      1.305400013923645
+    ],
+    [
+      0.5156000256538391,
+      0.9740999937057495
+    ],
+    [
+      1,
+      0.7627999782562256
+    ]
+  ],
+  "spread": 18.156099319458008,
+  "texture": ref("base/vfx/effekseer-starter/textures/Fire_Blur")
+});

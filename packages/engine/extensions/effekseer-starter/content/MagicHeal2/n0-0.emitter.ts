@@ -1,28 +1,125 @@
-type particles
-version 1
----
-# Effekseer node 0.0 "柱"
-maxParticles 12
-shape point
-spread 0
-rate 0
-burst 0 1 9 0.1667
-duration 1.35
-looping false
-lifetime 2.5 2.5
-speed 2.8 2.8
-size 1 1
-heightOverLife 0 1 1 16
-align upright 0 1 0
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.0667 0.9404 1 0.9404 1
-  key 0.1875 0.884 1 0.884 1
-  key 0.4688 0.8431 1 0.8431 1
-  key 0.5938 0.7915 1 0.7915 1
-  key 0.7344 0.6622 1 0.6622 1
-  key 0.8667 0.4629 1 0.4629 1
-  key 1 0.2195 1 0.2195 0
-}
-texture "vfx/effekseer-starter/textures/Line01.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 9,
+      "interval": 0.16670000553131104,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.06669999659061432,
+      [
+        0.9404000043869019,
+        1,
+        0.9404000043869019,
+        1
+      ]
+    ],
+    [
+      0.1875,
+      [
+        0.8840000033378601,
+        1,
+        0.8840000033378601,
+        1
+      ]
+    ],
+    [
+      0.46880000829696655,
+      [
+        0.8431000113487244,
+        1,
+        0.8431000113487244,
+        1
+      ]
+    ],
+    [
+      0.5938000082969666,
+      [
+        0.7914999723434448,
+        1,
+        0.7914999723434448,
+        1
+      ]
+    ],
+    [
+      0.7343999743461609,
+      [
+        0.6621999740600586,
+        1,
+        0.6621999740600586,
+        1
+      ]
+    ],
+    [
+      0.8666999936103821,
+      [
+        0.4629000127315521,
+        1,
+        0.4629000127315521,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.21950000524520874,
+        1,
+        0.21950000524520874,
+        0
+      ]
+    ]
+  ],
+  "duration": 1.350000023841858,
+  "heightOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      16
+    ]
+  ],
+  "lifetime": [
+    2.5,
+    2.5
+  ],
+  "looping": false,
+  "maxParticles": 12,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    1,
+    1
+  ],
+  "speed": [
+    2.799999952316284,
+    2.799999952316284
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Line01")
+});

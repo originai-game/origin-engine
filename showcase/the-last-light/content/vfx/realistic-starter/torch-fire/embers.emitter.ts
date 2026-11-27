@@ -1,27 +1,101 @@
-type particles
-version 1
----
-# Embers lifted by the heat, wandering, from orange to deep red.
-maxParticles 24
-shape sphere 0.07
-spread 25
-rate 7
-lifetime 0.9 1.7
-speed 0.6 1.2
-size 0.008 0.016
-gravity 0 0.5 0
-noise 1 1.5 0.6
-drag 1
-wind 1
-color 4 2 0.6
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.1 1.3 1 0.8 1
-  key 1 0.7 0.3 0.1 0
-}
-randomColorOverLife {
-  key 0 0.8 0.4 0.2 0
-  key 0.1 0.9 0.35 0.1 1
-  key 1 0.5 0.1 0.02 0
-}
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "color": [
+    4,
+    2,
+    0.6000000238418579,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        1.2999999523162842,
+        1,
+        0.800000011920929,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.699999988079071,
+        0.30000001192092896,
+        0.10000000149011612,
+        0
+      ]
+    ]
+  ],
+  "drag": 1,
+  "gravity": [
+    0,
+    0.5,
+    0
+  ],
+  "lifetime": [
+    0.8999999761581421,
+    1.7000000476837158
+  ],
+  "maxParticles": 24,
+  "noise": {
+    "frequency": 1.5,
+    "scroll": 0.6000000238418579,
+    "strength": 1
+  },
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        0.800000011920929,
+        0.4000000059604645,
+        0.20000000298023224,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        0.8999999761581421,
+        0.3499999940395355,
+        0.10000000149011612,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.5,
+        0.10000000149011612,
+        0.019999999552965164,
+        0
+      ]
+    ]
+  ],
+  "rate": 7,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.07000000029802322,
+    "surface": false
+  },
+  "size": [
+    0.00800000037997961,
+    0.01600000075995922
+  ],
+  "speed": [
+    0.6000000238418579,
+    1.2000000476837158
+  ],
+  "spread": 25,
+  "wind": 1
+});

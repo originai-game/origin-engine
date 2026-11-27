@@ -22,7 +22,7 @@ pub struct CodeGraph {
     /// The engine declarations the bundle holds, by the id the bundle names
     /// them by (`@ui/components/hud/bar.en.strings.ts`), with the file each is
     /// read from: its components' string tables, and the emitters they
-    /// draw (`@ui/components/hud/fx/sparks.ogt`, a `type particles`).
+    /// draw (`@ui/components/hud/fx/sparks.particles.ts`).
     pub tables: BTreeMap<String, PathBuf>,
     /// The built-in `@ui/` documents and `@styles/` files the code names by
     /// id.
@@ -80,8 +80,8 @@ impl CodeGraph {
         for file in reached.files {
             if let Ok(rel) = file.strip_prefix(&ui) {
                 graph.tsx = true;
-                if rel.extension().is_some_and(|e| e == "ogt")
-                    || rel.to_string_lossy().ends_with(".strings.ts")
+                if rel.to_string_lossy().ends_with(".strings.ts")
+                    || rel.to_string_lossy().ends_with(".particles.ts")
                 {
                     let id = format!("{TABLE_PREFIX}{}", rel.to_string_lossy().replace('\\', "/"));
                     graph.tables.insert(id, file);

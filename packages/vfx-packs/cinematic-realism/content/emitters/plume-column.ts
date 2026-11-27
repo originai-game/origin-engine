@@ -1,33 +1,112 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. Smoke from a
-# wreck or a distant fire: a column that climbs, leans with the wind and
-# spreads.
-maxParticles 96
-shape sphere 0.4
-rate 9
-duration 2
-looping true
-lifetime 6 9
-speed 0.6 1.2
-size 1.2 1.8
-sizeOverLife 0 0.5 1 4
-rotation 0 360
-angularVelocity -8 8
-gravity 0 0.5 0
-drag 0.4
-wind 1
-noise 0.3 0.3 0.2
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.15 0.14 0.14
-softDistance 0.8
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.08 1 1 1 0.8
-  key 0.6 1 1 1 0.5
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -8,
+    8
+  ],
+  "blend": "alpha",
+  "color": [
+    0.15000000596046448,
+    0.14000000059604645,
+    0.14000000059604645,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.07999999821186066,
+      [
+        1,
+        1,
+        1,
+        0.800000011920929
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.5
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.4000000059604645,
+  "duration": 2,
+  "gravity": [
+    0,
+    0.5,
+    0
+  ],
+  "lifetime": [
+    6,
+    9
+  ],
+  "lit": true,
+  "maxParticles": 96,
+  "noise": {
+    "frequency": 0.30000001192092896,
+    "scroll": 0.20000000298023224,
+    "strength": 0.30000001192092896
+  },
+  "rate": 9,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.4000000059604645,
+    "surface": false
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    1.2000000476837158,
+    1.7999999523162842
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      4
+    ]
+  ],
+  "softDistance": 0.800000011920929,
+  "speed": [
+    0.6000000238418579,
+    1.2000000476837158
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

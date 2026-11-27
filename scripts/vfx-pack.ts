@@ -2,7 +2,7 @@
 // docs/vfx-packs.md).
 //
 //   bun scripts/vfx-pack.ts manifest <pack> --spec <spec.json> [--revision SHA]
-//   bun scripts/vfx-pack.ts preview <pack> [--og target/debug/og] [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,b.ogt>] [--keep] [--skip-failed]
+//   bun scripts/vfx-pack.ts preview <pack> [--og target/debug/og] [--stage dusk|day] [--cover <content/effect.ts>] [--cover-frame 0..5] [--only <content/a.ts,content/b.ts>] [--keep] [--skip-failed]
 //
 // `manifest` writes the pack's assets.json (every installed file with its
 // sha256 and provenance, every top-level effect with its timing) and the
@@ -15,7 +15,7 @@
 //       {"glob": "*.json", "licence": "custom", "licenceText": "...",
 //        "source": {"url": "https://..."}, "credit": "...", "derived": "copied"}
 //     ],
-//     "effects": {"<path.ogt>": {"title": "...", "category": "fire", "element": "fire",
+//     "effects": {"content/<path>.ts": {"title": "...", "category": "fire", "element": "fire",
 //                                 "keywords": ["..."]}}
 //   }
 //
@@ -98,23 +98,14 @@ function walk(dir: string): string[] {
   return out;
 }
 
-function ogtType(path: string): string | undefined {
-  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
-    if (line.startsWith("type ")) return line.split(/\s+/)[1];
-  }
-}
-
-/** The top-level effects: `type vfx` files no other vfx names, and every vfx2d. */
+/** Spawnable checked declarations; emitters and materials are dependencies. */
 function effectsOf(pack: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const rel of walk(pack)) {
     if (rel.startsWith("content/") && rel.endsWith(".ts")) {
-      if (/\bfile\.vfx2d\s*\(/.test(readFileSync(join(pack, rel), "utf8"))) found.set(rel, "vfx2d");
-      continue;
+      const kind = /\bfile\.(vfx2d|vfx)\s*\(/.exec(readFileSync(join(pack, rel), "utf8"))?.[1];
+      if (kind) found.set(rel, kind);
     }
-    if (!rel.endsWith(".ogt") || rel.startsWith("preview/")) continue;
-    const t = ogtType(join(pack, rel));
-    if (t === "vfx") found.set(rel, t);
   }
   return found;
 }
@@ -327,9 +318,7 @@ function preview(args: PreviewArgs) {
   }
   const { root, game, name } = scratchGame(pack, og);
   const work = join(root, "out");
-  const id = (rel: string) => rel.startsWith("content/")
-    ? `base/vfx/${name}/${rel.slice("content/".length, -3)}`
-    : `vfx/${name}/${rel}`;
+  const id = (rel: string) => `base/vfx/${name}/${rel.slice("content/".length, -3)}`;
   const stage = ["--stage", args.stage];
   try {
     // The shots, the pack's effects in one call (the command runs them a
@@ -359,8 +348,8 @@ function preview(args: PreviewArgs) {
       // Every GPU slot for one effect's timed run at a time.
       const err = ogPreview(og, game, work, [id(rel)], ["--cost-only", ...stage], "_all", `vfx-pack cost ${name}/${rel}`);
       if (err !== null) fail(`${rel}: ${err}`);
-      const stem = rel.slice(0, -4);
-      const record = readJson(join(work, id(rel).slice(0, -4) + ".json"));
+      const stem = rel.slice("content/".length, -3);
+      const record = readJson(join(work, id(rel) + ".json"));
       records.set(rel, record);
       const target = join(out, `${stem}.png`);
       mkdirSync(dirname(target), { recursive: true });
@@ -423,7 +412,7 @@ function preview(args: PreviewArgs) {
 
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
-  const usage = "usage: bun scripts/vfx-pack.ts manifest <pack> --spec <spec.json> [--revision SHA] | preview <pack> [--og <og>] [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,...>] [--keep] [--skip-failed]";
+  const usage = "usage: bun scripts/vfx-pack.ts manifest <pack> --spec <spec.json> [--revision SHA] | preview <pack> [--og <og>] [--stage dusk|day] [--cover <content/effect.ts>] [--cover-frame 0..5] [--only <content/a.ts,...>] [--keep] [--skip-failed]";
   const flags = new Map<string, string | true>();
   const positional: string[] = [];
   for (let i = 0; i < rest.length; i++) {

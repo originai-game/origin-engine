@@ -1,26 +1,105 @@
-type particles
-version 1
----
-# MIT Origin Engine. Fireflies: slow wanderers that light and go dark.
-maxParticles 24
-shape box 1.5 0.5 1.5
-spread 180
-rate 3
-duration 2
-looping true
-lifetime 4 7
-speed 0.1 0.3
-size 0.04 0.06
-gravity 0 0 0
-drag 0.3
-noise 0.5 0.4 0.3
-blend additive
-colorOverLife {
-  key 0 0 0 0 0
-  key 0.1 2.1 3 0.6 1
-  key 0.3 0.2 0.3 0.06 0.3
-  key 0.45 2.1 3 0.6 1
-  key 0.6 0 0 0 0
-  key 0.8 2.1 3 0.6 1
-  key 1 0 0 0 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        2.0999999046325684,
+        3,
+        0.6000000238418579,
+        1
+      ]
+    ],
+    [
+      0.30000001192092896,
+      [
+        0.20000000298023224,
+        0.30000001192092896,
+        0.05999999865889549,
+        0.30000001192092896
+      ]
+    ],
+    [
+      0.44999998807907104,
+      [
+        2.0999999046325684,
+        3,
+        0.6000000238418579,
+        1
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        2.0999999046325684,
+        3,
+        0.6000000238418579,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.30000001192092896,
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    4,
+    7
+  ],
+  "maxParticles": 24,
+  "noise": {
+    "frequency": 0.4000000059604645,
+    "scroll": 0.30000001192092896,
+    "strength": 0.5
+  },
+  "rate": 3,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1.5,
+      0.5,
+      1.5
+    ]
+  },
+  "size": [
+    0.03999999910593033,
+    0.05999999865889549
+  ],
+  "speed": [
+    0.10000000149011612,
+    0.30000001192092896
+  ],
+  "spread": 180
+});

@@ -1,6 +1,6 @@
-type effect
-version 1
----
-# Effekseer node 4 "StarBlack"
-blend alpha
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "alpha",
+  "doubleSided": true
+});

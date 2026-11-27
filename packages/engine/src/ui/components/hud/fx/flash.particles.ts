@@ -1,22 +1,67 @@
-type particles
-version 1
----
-# A flash for a `<Particles>` node: one soft glow swelling at the centre
-# and fading fast, the light a reward or a reveal starts with. White: the
-# node's ink colours it.
-maxParticles 2
-shape point
-rate 0
-burst 0 1
-duration 0.1
-looping false
-lifetime 0.5
-speed 0
-size 260
-sizeOverLife 0 0.4 1 1
-gravity 0 0 0
-texture "@styles/shared/fx/glint.png"
-colorOverLife {
-  key 0 1 1 1 0.9
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.8999999761581421
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.10000000149011612,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.5,
+    0.5
+  ],
+  "looping": false,
+  "maxParticles": 2,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    260,
+    260
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.4000000059604645
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("@styles/shared/fx/glint.png")
+});

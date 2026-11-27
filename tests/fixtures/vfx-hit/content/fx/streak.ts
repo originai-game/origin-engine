@@ -1,11 +1,32 @@
-type effect
-version 1
----
-# The heal's spiralling trails: a bright streak scrolling along each.
-main "textures/noise.png" red {
-  tile 3 1
-  scroll -2 0
-}
-color 0.8 4 1.6 1
-intensity 1.5
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "color": [
+    0.800000011920929,
+    4,
+    1.600000023841858,
+    1
+  ],
+  "intensity": 1.5,
+  "main": {
+    "texture": ref("base/textures/noise"),
+    "channel": "red",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        -2,
+        0
+      ],
+      "tile": [
+        3,
+        1
+      ],
+      "rotate": 0
+    }
+  }
+});

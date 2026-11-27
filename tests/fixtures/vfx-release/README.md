@@ -4,9 +4,9 @@ A downloadable effect pack and the release around it, for the tests of
 `og vfx add <pack>`'s download (docs/vfx-packs.md §5). Not a project: the
 fixtures step never runs it.
 
-- `spark-pack/`: a `kind vfx` pack of two tiny effects (`burst.ogt`, a
-  flash and an emitter; `glint.ogt`, a flash), their particles
-  (`sparks.ogt`) and one texture (`spark.png`, vfx-hit's), and a
+- `spark-pack/`: a `kind vfx` pack of two checked effects (`content/burst.ts`, a
+  flash and an emitter; `content/glint.ts`, a flash), their particles
+  (`content/sparks.ts`) and one texture (`spark.png`, vfx-hit's), and a
   `preview/` that no archive or game may carry.
 - `channel.ts <downloads> <version> [--evil traversal|symlink]`: a
   downloads tree holding that version's `vfx/spark-pack.tar.gz`,

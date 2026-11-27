@@ -1,8 +1,8 @@
 # realistic-starter
 
 Seven realistic effects for 3D games, written by hand for Origin Engine as
-`type vfx` files with their emitters (`type particles`) and one effect
-material (`type effect`):
+`file.vfx` declarations with their emitters (`file.particles`) and one effect
+material (`file.effect`):
 
 | Effect | What | Spawn it |
 |---|---|---|

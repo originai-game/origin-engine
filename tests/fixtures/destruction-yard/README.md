@@ -2,8 +2,8 @@
 
 og.destruction on three props a game breaks: a brick wall (a charge at its
 foot, `boom`), a concrete pillar (a blow, `strike`) and a glass pane (a
-thrown ball, `throw`), on a static slab, with dust (`assets/fx/dust.ogt`).
-Every asset is `.ogt` text; the fracture runs in the cook.
+thrown ball, `throw`), on a static slab, with dust (`content/fx/dust.ts`).
+Checked TypeScript declarations cook the models, fractures and effects.
 
 What it checks:
 

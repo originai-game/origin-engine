@@ -1,8 +1,26 @@
-type effect
-version 1
----
-# Effekseer node 0.0.1 "軌跡"
-main "vfx/effekseer-starter/textures/rainnaka.png" rgba {
-}
-blend additive
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "doubleSided": true,
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/rainnaka"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        1,
+        1
+      ],
+      "rotate": 0
+    }
+  }
+});

@@ -19,7 +19,7 @@ export default file.timeline({
     ] },
     { kind: "caption", imports: [{ source: "assets/timelines/narration.srt" }] },
     { kind: "audio", keys: [
-      { time: 1, value: { sound: ref("base/audio/blip"), volume: 0.6 } },
+      { time: 1, value: { sound: ref("base/audio/blip-sampled"), volume: 0.6 } },
       { time: 5, value: { sound: ref("base/audio/click") } },
     ] },
     { kind: "music", keys: [{ time: 6, value: { sound: ref("base/audio/sting"), volume: 0.7, fadeIn: 0.3, fadeOut: 1, end: 9.5, loop: true } }] },

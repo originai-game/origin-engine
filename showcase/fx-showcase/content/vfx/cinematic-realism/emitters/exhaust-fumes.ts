@@ -1,29 +1,94 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. A road
-# engine's exhaust: thin grey fumes that rise and spread.
-maxParticles 48
-shape cone 12 0.02
-rate 20
-duration 2
-looping true
-lifetime 1 1.8
-speed 0.6 1.2
-size 0.1 0.16
-sizeOverLife 0 0.6 1 4
-rotation 0 360
-gravity 0 0.25 0
-drag 2
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.95 0.95 0.98
-softDistance 0.1
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.15 1 1 1 0.2
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "color": [
+    0.949999988079071,
+    0.949999988079071,
+    0.9800000190734863,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.15000000596046448,
+      [
+        1,
+        1,
+        1,
+        0.20000000298023224
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 2,
+  "duration": 2,
+  "gravity": [
+    0,
+    0.25,
+    0
+  ],
+  "lifetime": [
+    1,
+    1.7999999523162842
+  ],
+  "lit": true,
+  "maxParticles": 48,
+  "rate": 20,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 12,
+    "radius": 0.019999999552965164
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.10000000149011612,
+    0.1599999964237213
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      4
+    ]
+  ],
+  "softDistance": 0.10000000149011612,
+  "speed": [
+    0.6000000238418579,
+    1.2000000476837158
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

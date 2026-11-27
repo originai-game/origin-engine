@@ -1,25 +1,84 @@
-type particles
-version 1
----
-# MIT Origin Engine. A firework's burst: stars thrown out as a sphere,
-# slowing, drooping, each drawing a tail.
-maxParticles 100
-shape sphere 0.1
-spread 180
-rate 0
-burst 0 90
-duration 0.05
-looping false
-lifetime 1.4 2.2
-speed 7 11
-size 0.1 0.16
-gravity 0 -2.5 0
-drag 1.6
-trail 0.4 0.6
-blend additive
-colorOverLife {
-  key 0 3 2.6 1.6 1
-  key 0.3 2.6 1.6 0.5 1
-  key 0.8 1.6 0.5 0.12 0.8
-  key 1 0.3 0.05 0.01 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 90,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        3,
+        2.5999999046325684,
+        1.600000023841858,
+        1
+      ]
+    ],
+    [
+      0.30000001192092896,
+      [
+        2.5999999046325684,
+        1.600000023841858,
+        0.5,
+        1
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        1.600000023841858,
+        0.5,
+        0.11999999731779099,
+        0.800000011920929
+      ]
+    ],
+    [
+      1,
+      [
+        0.30000001192092896,
+        0.05000000074505806,
+        0.009999999776482582,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.600000023841858,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -2.5,
+    0
+  ],
+  "lifetime": [
+    1.399999976158142,
+    2.200000047683716
+  ],
+  "looping": false,
+  "maxParticles": 100,
+  "rate": 0,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.10000000149011612,
+    "surface": false
+  },
+  "size": [
+    0.10000000149011612,
+    0.1599999964237213
+  ],
+  "speed": [
+    7,
+    11
+  ],
+  "spread": 180,
+  "trail": {
+    "head": true,
+    "lifetime": 0.4000000059604645,
+    "width": 0.6000000238418579
+  }
+});

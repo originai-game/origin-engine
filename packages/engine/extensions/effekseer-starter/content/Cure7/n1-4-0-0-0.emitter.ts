@@ -1,24 +1,154 @@
-type particles
-version 1
----
-# Effekseer node 1.4.0.0.0 "星グロー"
-maxParticles 63
-shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
-spread 0
-rate 0
-burst 0 2
-duration 0.0167
-looping false
-lifetime 0.6667 0.6667
-speed 0.1406 2.4844
-speedOverLife 0 2.1308 0.25 1.3814 0.5 0.8473 0.75 0.5423 1 0.4657
-size 0.7812 0.7812
-sizeOverLife 0 0 0.25 1 0.5 0 1 0
-colorOverLife {
-  key 0 1 1 0.3112 0
-  key 0.25 1 1 0.4368 0.1961
-  key 0.5 1 1 0.586 0
-  key 1 1 1 0.586 0
-}
-texture "vfx/effekseer-starter/textures/Particle02-b223f51c.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 2,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        0.31119999289512634,
+        0
+      ]
+    ],
+    [
+      0.25,
+      [
+        1,
+        1,
+        0.4368000030517578,
+        0.19609999656677246
+      ]
+    ],
+    [
+      0.5,
+      [
+        1,
+        1,
+        0.5860000252723694,
+        0
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        0.5860000252723694,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.666700005531311,
+    0.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 63,
+  "rate": 0,
+  "shape": {
+    "kind": "spline",
+    "closed": true,
+    "points": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "size": [
+    0.7811999917030334,
+    0.7811999917030334
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0
+    ],
+    [
+      0.25,
+      1
+    ],
+    [
+      0.5,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    0.14059999585151672,
+    2.4844000339508057
+  ],
+  "speedOverLife": [
+    [
+      0,
+      2.1308000087738037
+    ],
+    [
+      0.25,
+      1.3813999891281128
+    ],
+    [
+      0.5,
+      0.8472999930381775
+    ],
+    [
+      0.75,
+      0.5422999858856201
+    ],
+    [
+      1,
+      0.4657000005245209
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle02-b223f51c")
+});

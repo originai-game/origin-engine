@@ -1,25 +1,92 @@
-type particles
-version 1
----
-# Effekseer node 0.1 "光メイン左下"
-maxParticles 7
-shape point
-spread 0
-rate 0
-burst 0 5
-duration 0.0167
-looping false
-lifetime 0.5 0.5
-speed 2.8284 2.8284
-size 0.75 0.75
-align facing 0 0 1
-colorOverLife {
-  key 0 0.8994 0.8355 0.0738 0.7843
-  key 0.2656 0.9255 0.8776 0.2084 0.6281
-  key 0.5156 0.9505 0.9183 0.4059 0.481
-  key 0.7656 0.9759 0.96 0.6766 0.3339
-  key 1 1 1 1 0.1961
-}
-rotation -360 360
-texture "vfx/effekseer-starter/textures/Particle02-b223f51c.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      0,
+      1
+    ]
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 5,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.899399995803833,
+        0.8355000019073486,
+        0.0737999975681305,
+        0.7843000292778015
+      ]
+    ],
+    [
+      0.2655999958515167,
+      [
+        0.9254999756813049,
+        0.8776000142097473,
+        0.20839999616146088,
+        0.6280999779701233
+      ]
+    ],
+    [
+      0.5156000256538391,
+      [
+        0.9505000114440918,
+        0.9182999730110168,
+        0.4059000015258789,
+        0.48100000619888306
+      ]
+    ],
+    [
+      0.7656000256538391,
+      [
+        0.9758999943733215,
+        0.9599999785423279,
+        0.6765999794006348,
+        0.33390000462532043
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0.19609999656677246
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.5,
+    0.5
+  ],
+  "looping": false,
+  "maxParticles": 7,
+  "rate": 0,
+  "rotation": [
+    -360,
+    360
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.75,
+    0.75
+  ],
+  "speed": [
+    2.828399896621704,
+    2.828399896621704
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle02-b223f51c")
+});

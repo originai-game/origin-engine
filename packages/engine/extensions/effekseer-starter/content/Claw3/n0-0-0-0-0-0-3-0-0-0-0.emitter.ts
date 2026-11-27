@@ -1,21 +1,94 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.0.0.0.3.0.0.0.0 "LineMain"
-maxParticles 125
-shape box 0.001 0.0312 0.001
-spread 180
-rate 1200
-duration 0.0833
-looping false
-lifetime 0.5833 0.5833
-speed 0.041 0.2285
-speedOverLife 0 7.3132 0.5156 0.0303 0.7031 2.3581 0.7344 3.7957 0.8438 4.8604 0.8594 1.7763 0.875 0 1 0
-size 0.1172 0.1172
-colorOverLife {
-  key 0 1 1 1 0.251
-  key 0.8571 1 1 1 0.251
-  key 1 1 1 1 0
-}
-texture "vfx/effekseer-starter/textures/Particle01-8c6ffbd0.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.25099998712539673
+      ]
+    ],
+    [
+      0.8571000099182129,
+      [
+        1,
+        1,
+        1,
+        0.25099998712539673
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.08330000191926956,
+  "lifetime": [
+    0.583299994468689,
+    0.583299994468689
+  ],
+  "looping": false,
+  "maxParticles": 125,
+  "rate": 1200,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.0010000000474974513,
+      0.031199999153614044,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    0.11720000207424164,
+    0.11720000207424164
+  ],
+  "speed": [
+    0.04100000113248825,
+    0.22849999368190765
+  ],
+  "speedOverLife": [
+    [
+      0,
+      7.313199996948242
+    ],
+    [
+      0.5156000256538391,
+      0.030300000682473183
+    ],
+    [
+      0.7031000256538391,
+      2.358099937438965
+    ],
+    [
+      0.7343999743461609,
+      3.7957000732421875
+    ],
+    [
+      0.8438000082969666,
+      4.860400199890137
+    ],
+    [
+      0.8593999743461609,
+      1.7762999534606934
+    ],
+    [
+      0.875,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle01-8c6ffbd0")
+});

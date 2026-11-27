@@ -1,32 +1,120 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01, retimed as ground dust that
-# rolls out along the surface before it lifts and thins.
-maxParticles 14
-shape cone 84 0.15
-rate 0
-burst 0 12
-duration 0.05
-looping false
-lifetime 1.8 2.6
-speed 1.2 2.2
-size 0.45 0.8
-sizeOverLife 0 0.45 0.5 1.1 1 1.5
-gravity 0 0.12 0
-drag 2.2
-wind 1
-rotation 0 360
-angularVelocity -20 20
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 1 0.92 0.78
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.08 1 1 1 0.75
-  key 0.6 1 1 1 0.45
-  key 1 1 1 1 0
-}
-softDistance 0.25
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -20,
+    20
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 12,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    1,
+    0.9200000166893005,
+    0.7799999713897705,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.07999999821186066,
+      [
+        1,
+        1,
+        1,
+        0.75
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.44999998807907104
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 2.200000047683716,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.11999999731779099,
+    0
+  ],
+  "lifetime": [
+    1.7999999523162842,
+    2.5999999046325684
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 14,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 84,
+    "radius": 0.15000000596046448
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.44999998807907104,
+    0.800000011920929
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.44999998807907104
+    ],
+    [
+      0.5,
+      1.100000023841858
+    ],
+    [
+      1,
+      1.5
+    ]
+  ],
+  "softDistance": 0.25,
+  "speed": [
+    1.2000000476837158,
+    2.200000047683716
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

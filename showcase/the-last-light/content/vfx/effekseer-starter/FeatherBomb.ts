@@ -1,154 +1,817 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 13.006
-impact 0
-mesh ring {
-  at 0.0833
-  rotate 100.3141 17.2294 -141.5667
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 1 1 0.1882 1 1 1 0.7529 1 1 1 0.1882
-  life 0.45
-  effect "vfx/effekseer-starter/FeatherBomb/n0-0.effect.ogt"
-  scale curve 0 1.125 1 11.25
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend alpha
-}
-mesh ring {
-  at 0.0888
-  rotate 90 0 0
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 1 1 0.1882 1 1 1 0.7529 1 1 1 0.1882
-  life 0.45
-  effect "vfx/effekseer-starter/FeatherBomb/n0-0.effect.ogt"
-  scale curve 0 1.125 1 11.25
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend alpha
-}
-mesh ring {
-  at 0.0943
-  rotate 79.6859 17.2294 141.5667
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 1 1 0.1882 1 1 1 0.7529 1 1 1 0.1882
-  life 0.45
-  effect "vfx/effekseer-starter/FeatherBomb/n0-0.effect.ogt"
-  scale curve 0 1.125 1 11.25
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend alpha
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-0-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-1-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-2-0-0.parent.ogt" {
-  at 0.35
-  offset 0 0 1.125
-  rotate 14.0362 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-2-1.emitter.ogt" {
-  at 0.35
-  offset 0 0 1.125
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-2-2.emitter.ogt" {
-  at 0.4833
-  offset 0 0 1.125
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-2-3.emitter.ogt" {
-  at 0.6167
-  offset 0 0 1.125
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-2-4.emitter.ogt" {
-  at 0.75
-  offset 0 0 1.125
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-1.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-2.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-3.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-4.emitter.ogt" {
-  at 0.6042
-  offset 0 2.0434 2.9182
-  rotate 55 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-5.emitter.ogt" {
-  at 0.7042
-  offset 0 2.0434 2.9182
-  rotate 55 0 0
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-4-0-0.parent.ogt" {
-  at 0.5167
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-1-4-0-1.parent.ogt" {
-  at 0.5167
-}
-emitter "vfx/effekseer-starter/FeatherBomb/n0-2.emitter.ogt" {
-  at 0
-}
-light {
-  at 0
-  life 0.3
-  color 1 1 1
-  intensity curve 0 8 1 0
-  distance 12
-}
-shake {
-  at 0
-  trauma 0.4
-}
-# effekseer: node 0.0 "Wind": ring 3 instances: the first 4 drawn
-# effekseer: node 0.0 "Wind": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.0.0 "SparkEmitter": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.0.0 "SparkEmitter": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.2.0.0 "SparkEmitter": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 0.1.2.1 "FireVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.2.2 "FireVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.2.3 "FireVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.2.4 "FireVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.4 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.0 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.1 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.2 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.3 "FireVariation": nested generation: 13 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.4 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.3.0.4 "EmberVariation": nested generation: 52 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.3.0.5 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.3.0.5 "EmberVariation": nested generation: 52 instances above its generator folded into one emitter
-# effekseer: node 0.1.3.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.4.0.0 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.4.0.0 "EmberVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.4.0.0 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.4.0.1 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.4.0.1 "EmberVariation": nested generation: 26 instances above its generator folded into one emitter
-# effekseer: node 0.1.4.0.1 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 13.005999565124512,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0.08330000191926956,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        100.31410217285156,
+        17.229400634765625,
+        -141.5666961669922
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FeatherBomb/n0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.125
+            ],
+            [
+              1,
+              11.25
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ],
+              [
+                1,
+                1,
+                1,
+                0.7529000043869019
+              ],
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.08879999816417694,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FeatherBomb/n0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.125
+            ],
+            [
+              1,
+              11.25
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ],
+              [
+                1,
+                1,
+                1,
+                0.7529000043869019
+              ],
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.09430000185966492,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        79.68589782714844,
+        17.229400634765625,
+        141.5666961669922
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FeatherBomb/n0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.125
+            ],
+            [
+              1,
+              11.25
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ],
+              [
+                1,
+                1,
+                1,
+                0.7529000043869019
+              ],
+              [
+                1,
+                1,
+                1,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-0-0.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-1-0.parent")
+      }
+    },
+    {
+      "at": 0.3499999940395355,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        1.125
+      ],
+      "rotate": [
+        14.036199569702148,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-2-0-0.parent")
+      }
+    },
+    {
+      "at": 0.3499999940395355,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        1.125
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-2-1.emitter")
+      }
+    },
+    {
+      "at": 0.48330000042915344,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        1.125
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-2-2.emitter")
+      }
+    },
+    {
+      "at": 0.6166999936103821,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        1.125
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-2-3.emitter")
+      }
+    },
+    {
+      "at": 0.75,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        1.125
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-2-4.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-0.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-1.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-2.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-3.parent")
+      }
+    },
+    {
+      "at": 0.604200005531311,
+      "life": 0,
+      "offset": [
+        0,
+        2.0434000492095947,
+        2.9182000160217285
+      ],
+      "rotate": [
+        55,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-4.emitter")
+      }
+    },
+    {
+      "at": 0.704200029373169,
+      "life": 0,
+      "offset": [
+        0,
+        2.0434000492095947,
+        2.9182000160217285
+      ],
+      "rotate": [
+        55,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-5.emitter")
+      }
+    },
+    {
+      "at": 0.516700029373169,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-4-0-0.parent")
+      }
+    },
+    {
+      "at": 0.516700029373169,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-4-0-1.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FeatherBomb/n0-2.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.30000001192092896,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "distance": 12,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              8
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "shake",
+        "trauma": 0.4000000059604645
+      }
+    }
+  ]
+});

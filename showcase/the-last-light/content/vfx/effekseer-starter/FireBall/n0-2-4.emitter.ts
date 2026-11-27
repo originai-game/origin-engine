@@ -1,25 +1,91 @@
-type particles
-version 1
----
-# Effekseer node 0.2.4 "HeatHaze"
-maxParticles 12
-shape box 0.25 0.25 0.25
-spread 0
-rate 0
-burst 0 9
-duration 0.0167
-looping false
-lifetime 1.4667 2.2667
-speed 1.8 1.8
-size 27 27
-sizeOverLife 0 1 1 0.6667
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.2679 1 1 1 0.3765
-  key 0.4643 1 1 1 0.3765
-  key 1 1 1 1 0
-}
-rotation -360 360
-texture "vfx/effekseer-starter/textures/ExperimentalNoise.png"
-blend alpha
-distortion 0.02
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 9,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.2678999900817871,
+      [
+        1,
+        1,
+        1,
+        0.3765000104904175
+      ]
+    ],
+    [
+      0.4643000066280365,
+      [
+        1,
+        1,
+        1,
+        0.3765000104904175
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "distortion": 0.019999999552965164,
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    1.4666999578475952,
+    2.266700029373169
+  ],
+  "looping": false,
+  "maxParticles": 12,
+  "rate": 0,
+  "rotation": [
+    -360,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.25,
+      0.25,
+      0.25
+    ]
+  },
+  "size": [
+    27,
+    27
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0.666700005531311
+    ]
+  ],
+  "speed": [
+    1.7999999523162842,
+    1.7999999523162842
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/ExperimentalNoise")
+});

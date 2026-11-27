@@ -1,26 +1,89 @@
-type particles
-version 1
----
-# MIT Origin Engine. Sparks spat now and then from damage or a fire,
-# falling and bouncing.
-maxParticles 32
-shape cone 60 0.05
-rate 0
-burst 0.3 5
-burst 1.4 7
-duration 2
-looping true
-lifetime 0.4 0.9
-speed 1.5 4
-size 0.01 0.02
-gravity 0 -9.8 0
-drag 0.8
-align velocity 0.025
-trail 0.06 0.35 only
-blend additive
-colorOverLife {
-  key 0 2 1.2 0.45 1
-  key 0.5 1.2 0.4 0.08 1
-  key 1 0.3 0.06 0.01 0
-}
-collision 0.35 0.3 depth
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.02500000037252903
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 5,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.30000001192092896
+    },
+    {
+      "count": 7,
+      "cycles": 1,
+      "interval": 0,
+      "time": 1.399999976158142
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0.3499999940395355,
+    "die": false,
+    "friction": 0.30000001192092896
+  },
+  "colorOverLife": [
+    [
+      0,
+      [
+        2,
+        1.2000000476837158,
+        0.44999998807907104,
+        1
+      ]
+    ],
+    [
+      0.5,
+      [
+        1.2000000476837158,
+        0.4000000059604645,
+        0.07999999821186066,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.30000001192092896,
+        0.05999999865889549,
+        0.009999999776482582,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.800000011920929,
+  "duration": 2,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "lifetime": [
+    0.4000000059604645,
+    0.8999999761581421
+  ],
+  "maxParticles": 32,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 60,
+    "radius": 0.05000000074505806
+  },
+  "size": [
+    0.009999999776482582,
+    0.019999999552965164
+  ],
+  "speed": [
+    1.5,
+    4
+  ],
+  "trail": {
+    "head": false,
+    "lifetime": 0.05999999865889549,
+    "width": 0.3499999940395355
+  }
+});

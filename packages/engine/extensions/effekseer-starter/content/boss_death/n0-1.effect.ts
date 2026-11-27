@@ -1,6 +1,6 @@
-type effect
-version 1
----
-# Effekseer node 0.1 "Ambient Glow"
-blend additive
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "doubleSided": true
+});

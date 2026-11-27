@@ -1,21 +1,130 @@
-type particles
-version 1
----
-# Effekseer node 0.1.0.2.0.0.0 "particleMain"
-maxParticles 250
-shape spline 0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0 closed
-spread 0
-rate 2400
-duration 0.0417
-looping false
-lifetime 0.8333 0.8333
-speed 0.8571 2.5714
-speedOverLife 0 3.0388 0.1562 2.1588 0.2969 1.495 0.4844 0.8319 0.6875 0.3997 0.7031 0.1158 0.7188 0 1 0
-size 0.5 0.5
-align upright 0 1 0
-colorOverLife {
-  key 0 0.2195 0 1 0.251
-  key 1 0.2195 0 1 0.251
-}
-texture "vfx/effekseer-starter/textures/Particle01-8c6ffbd0.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.21950000524520874,
+        0,
+        1,
+        0.25099998712539673
+      ]
+    ],
+    [
+      1,
+      [
+        0.21950000524520874,
+        0,
+        1,
+        0.25099998712539673
+      ]
+    ]
+  ],
+  "duration": 0.04170000180602074,
+  "lifetime": [
+    0.833299994468689,
+    0.833299994468689
+  ],
+  "looping": false,
+  "maxParticles": 250,
+  "rate": 2400,
+  "shape": {
+    "kind": "spline",
+    "closed": true,
+    "points": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "size": [
+    0.5,
+    0.5
+  ],
+  "speed": [
+    0.8571000099182129,
+    2.5713999271392822
+  ],
+  "speedOverLife": [
+    [
+      0,
+      3.038800001144409
+    ],
+    [
+      0.15620000660419464,
+      2.158799886703491
+    ],
+    [
+      0.2969000041484833,
+      1.4950000047683716
+    ],
+    [
+      0.4844000041484833,
+      0.8319000005722046
+    ],
+    [
+      0.6875,
+      0.39969998598098755
+    ],
+    [
+      0.7031000256538391,
+      0.11580000072717667
+    ],
+    [
+      0.7188000082969666,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle01-8c6ffbd0")
+});

@@ -1,47 +1,265 @@
-type vfx
-version 2
----
-duration 1.6
-impact 0.2
-trail {
-  life 0.9
-  offset 0 1.9 0
-  orbit 0.45 -1.2
-  rise -1.8
-  width 0.035 0
-  lifetime 0.45
-  effect "vfx/cinematic-realism/tracer-body.ogt"
-  color 1.2 0.5 1.8 1
-}
-trail {
-  life 0.9
-  offset 0 1.9 0
-  rotate 0 180 0
-  orbit 0.45 -1.2
-  rise -1.8
-  width 0.035 0
-  lifetime 0.45
-  effect "vfx/cinematic-realism/tracer-body.ogt"
-  color 1.2 0.5 1.8 1
-}
-emitter "vfx/cinematic-realism/emitters/frost-mist.ogt" {
-  offset 0 0.9 0
-  until 1
-}
-glow {
-  at 0.5
-  life 0.5
-  offset 0 0.3 0
-  size curve 0 0.3 0.4 0.9 1 0.4
-  color 0.9 0.35 1.4 0.45
-}
-light {
-  life 1.2
-  offset 0 0.8 0
-  color 0.7 0.4 1
-  intensity curve 0 0 0.4 1.2 1 0
-  distance 4
-}
-sound "base/vfx/cinematic-realism/audio/swell" {
-  playbackRate 0.55 0.6
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 1.600000023841858,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.20000000298023224
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0.8999999761581421,
+      "offset": [
+        0,
+        1.899999976158142,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1.2000000476837158,
+          0.5,
+          1.7999999523162842,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/tracer-body"),
+        "lifetime": 0.44999998807907104,
+        "orbit": [
+          0.44999998807907104,
+          -1.2000000476837158
+        ],
+        "rise": -1.7999999523162842,
+        "width": [
+          0.03500000014901161,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.8999999761581421,
+      "offset": [
+        0,
+        1.899999976158142,
+        0
+      ],
+      "rotate": [
+        0,
+        180,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1.2000000476837158,
+          0.5,
+          1.7999999523162842,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/tracer-body"),
+        "lifetime": 0.44999998807907104,
+        "orbit": [
+          0.44999998807907104,
+          -1.2000000476837158
+        ],
+        "rise": -1.7999999523162842,
+        "width": [
+          0.03500000014901161,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 1,
+      "offset": [
+        0,
+        0.8999999761581421,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/frost-mist")
+      }
+    },
+    {
+      "at": 0.5,
+      "life": 0.5,
+      "offset": [
+        0,
+        0.30000001192092896,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          0.8999999761581421,
+          0.3499999940395355,
+          1.399999976158142,
+          0.44999998807907104
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.30000001192092896
+            ],
+            [
+              0.4000000059604645,
+              0.8999999761581421
+            ],
+            [
+              1,
+              0.4000000059604645
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.2000000476837158,
+      "offset": [
+        0,
+        0.800000011920929,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          0.699999988079071,
+          0.4000000059604645,
+          1
+        ],
+        "distance": 4,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              0.4000000059604645,
+              1.2000000476837158
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          0.550000011920929,
+          0.6000000238418579
+        ],
+        "volume": 1,
+        "asset": ref("base/vfx/cinematic-realism/audio/swell")
+      }
+    }
+  ]
+});

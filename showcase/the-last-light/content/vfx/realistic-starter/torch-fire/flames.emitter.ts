@@ -1,28 +1,117 @@
-type particles
-version 1
----
-# The flames: tall tongues standing upright, licking up and cooling at their tips.
-maxParticles 32
-shape cone 8 0.06
-spread 0
-rate 34
-lifetime 0.35 0.6
-speed 0.5 0.9
-size 0.14 0.22
-sizeOverLife 0 0.6 0.3 1 1 0.35
-heightOverLife 0 1.3 1 1.9
-gravity 0 1.2 0
-noise 0.35 2 1.2
-drag 0.5
-wind 0.4
-align upright
-color 1 1 1
-colorOverLife {
-  key 0 1.6 0.9 0.4 0
-  key 0.12 2.4 1.25 0.45 1
-  key 0.55 1.6 0.6 0.14 0.8
-  key 1 0.8 0.15 0.02 0
-}
-texture "vfx/realistic-starter/textures/flame.png"
-sheet 2 2 4 life 1 blend
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1.600000023841858,
+        0.8999999761581421,
+        0.4000000059604645,
+        0
+      ]
+    ],
+    [
+      0.11999999731779099,
+      [
+        2.4000000953674316,
+        1.25,
+        0.44999998807907104,
+        1
+      ]
+    ],
+    [
+      0.550000011920929,
+      [
+        1.600000023841858,
+        0.6000000238418579,
+        0.14000000059604645,
+        0.800000011920929
+      ]
+    ],
+    [
+      1,
+      [
+        0.800000011920929,
+        0.15000000596046448,
+        0.019999999552965164,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.5,
+  "gravity": [
+    0,
+    1.2000000476837158,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      1.2999999523162842
+    ],
+    [
+      1,
+      1.899999976158142
+    ]
+  ],
+  "lifetime": [
+    0.3499999940395355,
+    0.6000000238418579
+  ],
+  "maxParticles": 32,
+  "noise": {
+    "frequency": 2,
+    "scroll": 1.2000000476837158,
+    "strength": 0.3499999940395355
+  },
+  "rate": 34,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 8,
+    "radius": 0.05999999865889549
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 2,
+    "frames": 4,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 2
+  },
+  "size": [
+    0.14000000059604645,
+    0.2199999988079071
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      0.30000001192092896,
+      1
+    ],
+    [
+      1,
+      0.3499999940395355
+    ]
+  ],
+  "speed": [
+    0.5,
+    0.8999999761581421
+  ],
+  "texture": ref("base/vfx/realistic-starter/textures/flame"),
+  "wind": 0.4000000059604645
+});

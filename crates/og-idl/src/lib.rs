@@ -532,8 +532,8 @@ pub const UI_SOURCE: &str = "packages/engine/src/ui/index.ts";
 /// `@origingame/engine/ui` as a game's type check reads it: the declarations
 /// tsrs (`tsrs`, the pinned checker) emits from [`UI_SOURCE`] and the modules
 /// it imports, as `packages/engine/types/ui.d.ts` and `types/ui/<name>.d.ts`,
-/// with `types/ui/ogt.d.ts` declaring the `*.ogt` imports a component makes
-/// for its not-yet-migrated particle assets. Typed locale imports need no
+/// with `types/ui/assets.d.ts` declaring particle asset-ID imports.
+/// Typed locale imports need no
 /// ambient declaration. What is marked `@internal` is left out; an import of
 /// anything outside `src/ui/`, which would put the engine's host code in a
 /// game's check, is an error.
@@ -614,7 +614,7 @@ pub fn ui_declarations(root: &Path, tsrs: &Path) -> Result<Vec<Generated>, Strin
             }
             body.push_str(rest);
             let reference = if name == "index" {
-                "/// <reference path=\"./ui/ogt.d.ts\" />\n"
+                "/// <reference path=\"./ui/assets.d.ts\" />\n"
             } else {
                 ""
             };
@@ -624,8 +624,8 @@ pub fn ui_declarations(root: &Path, tsrs: &Path) -> Result<Vec<Generated>, Strin
             });
         }
         files.push(Generated {
-            path: "packages/engine/types/ui/ogt.d.ts".into(),
-            contents: format!("{HEADER}// Only not-yet-migrated particle imports need this declaration:\n// `import sparks from \"./fx/sparks.ogt\"` gives the cooked emitter ID.\n// Locale tables are typed TS declarations, not OGT imports.\ndeclare module \"*.ogt\" {{\n  const id: string;\n  export default id;\n}}\n"),
+            path: "packages/engine/types/ui/assets.d.ts".into(),
+            contents: format!("{HEADER}// The bundler records the checked engine declaration in the cook graph.\n// Its runtime import is the built-in emitter ID, not author data.\ndeclare module \"*.particles.ts?asset\" {{\n  const id: string;\n  export default id;\n}}\n"),
         });
         files.sort_by(|a, b| a.path.cmp(&b.path));
         Ok(files)

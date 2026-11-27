@@ -1,15 +1,38 @@
-type particles
-version 1
----
-# Effekseer node 0.1 "MainFireGenerator"
-maxParticles 33
-shape point
-spread 0
-rate 0
-burst 0 26
-duration 0.0167
-looping false
-lifetime 0.9833 1.0167
-speed 0 0
-size 0
-subEmitter life "vfx/effekseer-starter/FeatherBomb/n0-1-3-0-0.emitter.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 26,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.983299970626831,
+    1.016700029373169
+  ],
+  "looping": false,
+  "maxParticles": 33,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0,
+    0
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "subEmitters": [
+    {
+      "emitter": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-3-0-0.emitter"),
+      "inheritVelocity": 0,
+      "trigger": "life"
+    }
+  ]
+});

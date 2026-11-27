@@ -1,22 +1,70 @@
-type particles
-version 1
----
-# MIT Origin Engine. The glowing gas an afterburner leaves in the world
-# behind a moving craft.
-maxParticles 96
-shape cone 7 0.1
-rate 50
-duration 2
-looping true
-lifetime 0.5 1
-speed 3 5
-size 0.3 0.45
-sizeOverLife 0 0.6 1 2.4
-gravity 0 0 0
-drag 1.5
-blend additive
-colorOverLife {
-  key 0 0.8 0.4 0.12 0.4
-  key 0.4 0.35 0.14 0.04 0.25
-  key 1 0.05 0.02 0.01 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.800000011920929,
+        0.4000000059604645,
+        0.11999999731779099,
+        0.4000000059604645
+      ]
+    ],
+    [
+      0.4000000059604645,
+      [
+        0.3499999940395355,
+        0.14000000059604645,
+        0.03999999910593033,
+        0.25
+      ]
+    ],
+    [
+      1,
+      [
+        0.05000000074505806,
+        0.019999999552965164,
+        0.009999999776482582,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.5,
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.5,
+    1
+  ],
+  "maxParticles": 96,
+  "rate": 50,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 7,
+    "radius": 0.10000000149011612
+  },
+  "size": [
+    0.30000001192092896,
+    0.44999998807907104
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      2.4000000953674316
+    ]
+  ],
+  "speed": [
+    3,
+    5
+  ]
+});

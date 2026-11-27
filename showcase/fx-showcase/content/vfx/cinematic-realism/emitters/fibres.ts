@@ -1,29 +1,99 @@
-type particles
-version 1
----
-# MIT Origin Engine. Threads and scraps torn from cloth, drifting down.
-maxParticles 10
-shape cone 55 0.02
-rate 0
-burst 0 8
-duration 0.05
-looping false
-lifetime 0.8 1.4
-speed 0.8 2.4
-size 0.002 0.004
-heightOverLife 0 6 1 6
-rotation 0 360
-angularVelocity -300 300
-gravity 0 -3 0
-drag 2.5
-wind 1
-render mesh box
-lit true
-roughness 1
-blend alpha
-color 0.3 0.29 0.27
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.8 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -300,
+    300
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.30000001192092896,
+    0.28999999165534973,
+    0.27000001072883606,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 2.5,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -3,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      6
+    ],
+    [
+      1,
+      6
+    ]
+  ],
+  "lifetime": [
+    0.800000011920929,
+    1.399999976158142
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 10,
+  "rate": 0,
+  "render": {
+    "kind": "mesh",
+    "mesh": "box"
+  },
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 55,
+    "radius": 0.019999999552965164
+  },
+  "size": [
+    0.0020000000949949026,
+    0.004000000189989805
+  ],
+  "speed": [
+    0.800000011920929,
+    2.4000000953674316
+  ],
+  "wind": 1
+});

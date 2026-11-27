@@ -3,8 +3,8 @@
 Effect content (converted Effekseer samples, the Kenney-based starter sets,
 the Pixel VFX Forge library) lives in the platform's asset library; the
 engine's own packs ship with its releases, a few bundled and the rest
-downloadable (§5). The engine owns the formats (`type
-vfx`, `file.vfx2d`, `type particles`, `type effect`), the `vfx` extension
+downloadable (§5). The engine owns the checked TS factories (`file.vfx`,
+`file.vfx2d`, `file.particles`, `file.effect`), the `vfx` extension
 kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.ts`.
 This is the contract agreed with the platform's importer
 (`origingame` packages/asset-admin, `vfx:import`).
@@ -12,7 +12,7 @@ This is the contract agreed with the platform's importer
 ## 1. The pack
 
 One directory, named as the pack, which `og vfx add <dir> [project]`
-installs into `assets/vfx/<name>/` and `content/vfx/<name>/` (hidden files skipped, symlinks refused, either existing root refuses the whole install). A pack's `content/` subtree contains checked TS declarations and is installed under the content root; other files stay under the assets root. Installation rolls back both roots on failure. Pixel effects load by canonical ID `base/vfx/<name>/<content-relative-stem>`; 3D FX author formats are still awaiting their cutover.
+installs into `assets/vfx/<name>/` and `content/vfx/<name>/` (hidden files skipped, symlinks refused, either existing root refuses the whole install). A pack's `content/` subtree contains checked TS declarations and is installed under the content root; raw textures and models stay under the assets root. Installation rolls back both roots on failure. Every effect loads by canonical ID `base/vfx/<name>/<content-relative-stem>`; references use `ref(...)`, never sibling-file guessing. One `content/<stem>.ts` owns one declaration. The cook evaluates its checked data directly to native fields and resource bindings, without OGT text.
 
 A pack is whole in its directory: nothing it draws or plays needs a line
 in the game. The marks its effects leave (a scorch, a bullet hole, a wet
@@ -47,10 +47,14 @@ Beside `extension.json`, `format` 1:
   optional for authored files), `credit` and `derived` (how this file was
   made from the source). The importer refuses unlisted, missing or changed
   files.
-- `effects`: one per effect a game spawns (`type vfx` or `vfx2d`, not its
+- `effects`: one per effect a game spawns (`file.vfx` or `file.vfx2d`, not its
   emitters or materials): `path`, `type`, `title`, `loop`,
   `durationSeconds`, `impact` (whether it sends one), `category`,
   `element` (optional: omitted when an effect has none), `keywords`.
+
+An effect's `path` is `content/<stem>.ts` and its `type` is `vfx` or
+`vfx2d`. Preview files use the content-relative stem, without `content/`
+or `.ts`, so `content/hit.ts` has `preview/hit.cost.json`.
 
 The platform computes the pack's content hash (sha256 over the lines
 `<path>\0<sha256>\n` sorted by path).
@@ -93,7 +97,7 @@ Inside the pack, stored by the library and never installed:
 
 ```sh
 bun scripts/vfx-pack.ts manifest <pack> --spec <spec.json>   # assets.json, catalog fields
-bun scripts/vfx-pack.ts preview <pack> [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
+bun scripts/vfx-pack.ts preview <pack> [--stage dusk|day] [--cover <content/effect.ts>] [--cover-frame 0..5] [--only <content/a.ts,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
 ```
 
 The spec names the provenance of each file by glob and each effect's
@@ -115,7 +119,7 @@ timing, measured bounds, shots, cost):
    next effect.
 
 A game previews its own effects the same way:
-`og vfx preview fx/hit.ogt` writes the sheet and the numbers to
+`og vfx preview base/fx/hit` writes the sheet and the numbers to
 `og-out/vfx-preview/`.
 
 ## 5. The engine's packs: bundled and downloadable

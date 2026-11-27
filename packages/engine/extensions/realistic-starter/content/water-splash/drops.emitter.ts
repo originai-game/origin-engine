@@ -1,27 +1,80 @@
-type particles
-version 1
----
-# The crown of droplets: lit, streaked by their speed, gone where they fall back.
-maxParticles 64
-shape cone 22 0.12
-spread 12
-rate 0
-burst 0 48
-duration 0.05
-looping false
-lifetime 0.5 0.95
-speed 2.5 5.5
-size 0.02 0.045
-gravity 0 -9.8 0
-drag 0.3
-collision 0 0 die
-align velocity 0.03
-color 0.75 0.85 0.95
-colorOverLife {
-  key 0 1 1 1 0.9
-  key 1 1 1 1 0.7
-}
-round true
-blend alpha
-lit true
-roughness 0.15
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.029999999329447746
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 48,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0,
+    "die": true,
+    "friction": 0
+  },
+  "color": [
+    0.75,
+    0.8500000238418579,
+    0.949999988079071,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.8999999761581421
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0.699999988079071
+      ]
+    ]
+  ],
+  "drag": 0.30000001192092896,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "lifetime": [
+    0.5,
+    0.949999988079071
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 64,
+  "rate": 0,
+  "roughness": 0.15000000596046448,
+  "round": true,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 22,
+    "radius": 0.11999999731779099
+  },
+  "size": [
+    0.019999999552965164,
+    0.04500000178813934
+  ],
+  "speed": [
+    2.5,
+    5.5
+  ],
+  "spread": 12
+});

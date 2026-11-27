@@ -1,19 +1,88 @@
-type particles
-version 1
----
-# Effekseer node 6.0.1 "Inner Symbol"
-maxParticles 20
-shape spline 0 0.95 0  -0.6718 0.6718 0  -0.95 0 0  -0.6718 -0.6718 0  0 -0.95 0  0.6718 -0.6718 0  0.95 0 0  0.6718 0.6718 0 closed
-spread 0
-rate 600
-duration 0.0267
-looping false
-lifetime 1.6667 1.6667
-speed 0 0
-size 0.175 0.175
-colorOverLife {
-  key 0 1 1 1 1
-  key 1 1 1 1 1
-}
-texture "vfx/effekseer-starter/textures/starpart_.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ]
+  ],
+  "duration": 0.02669999934732914,
+  "lifetime": [
+    1.666700005531311,
+    1.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 20,
+  "rate": 600,
+  "shape": {
+    "kind": "spline",
+    "closed": true,
+    "points": [
+      [
+        0,
+        0.949999988079071,
+        0
+      ],
+      [
+        -0.6718000173568726,
+        0.6718000173568726,
+        0
+      ],
+      [
+        -0.949999988079071,
+        0,
+        0
+      ],
+      [
+        -0.6718000173568726,
+        -0.6718000173568726,
+        0
+      ],
+      [
+        0,
+        -0.949999988079071,
+        0
+      ],
+      [
+        0.6718000173568726,
+        -0.6718000173568726,
+        0
+      ],
+      [
+        0.949999988079071,
+        0,
+        0
+      ],
+      [
+        0.6718000173568726,
+        0.6718000173568726,
+        0
+      ]
+    ]
+  },
+  "size": [
+    0.17499999701976776,
+    0.17499999701976776
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/starpart_")
+});

@@ -66,7 +66,7 @@ export const reelCommands = {
     const ahead = Number(args[2] ?? 4), side = Number(args[3] ?? 0), s = Number(args[4] ?? 1), up = Number(args[5] ?? 0);
     const f = { x: math.sin(h), z: math.cos(h) };
     const at = { x: p.x + f.x * ahead - f.z * side, y: p.y + up, z: p.z + f.z * ahead + f.x * side };
-    must(og.vfx.spawn(world, { asset: must(og.load.vfx(world, `vfx/${args[0]}/${args[1]}.ogt`)), position: at, scale: s }));
+    must(og.vfx.spawn(world, { asset: must(og.load.vfx(world, `base/vfx/${args[0]}/${args[1]}`)), position: at, scale: s }));
   },
   mode: (world: World, args: readonly string[]) => {
     assets(world).cards = args[0] === "cards" ? 1 : 0;

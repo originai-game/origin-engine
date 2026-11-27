@@ -1,27 +1,91 @@
-type particles
-version 1
----
-# Effekseer node 5 "Lines"
-maxParticles 10
-shape point
-spread 0
-rate 0
-burst 0 1 15 0.0167
-duration 0.25
-looping false
-lifetime 0.1167 0.1167
-speed 0 0
-size 2 6
-heightOverLife 0 0.125 1 0.125
-colorOverLife {
-  key 0 1 0.3537 0.3537 0.2196
-  key 1 1 0.3537 0.3537 0
-}
-randomColorOverLife {
-  key 0 1 0.7445 0.7445 0.4392
-  key 1 1 0.7445 0.7445 0
-}
-rotation -180 180
-angularVelocity -120 120
-texture "vfx/effekseer-starter/textures/ShockWave3.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -120,
+    120
+  ],
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 15,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.35370001196861267,
+        0.35370001196861267,
+        0.21960000693798065
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.35370001196861267,
+        0.35370001196861267,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.25,
+  "heightOverLife": [
+    [
+      0,
+      0.125
+    ],
+    [
+      1,
+      0.125
+    ]
+  ],
+  "lifetime": [
+    0.11670000106096268,
+    0.11670000106096268
+  ],
+  "looping": false,
+  "maxParticles": 10,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.7444999814033508,
+        0.7444999814033508,
+        0.4392000138759613
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.7444999814033508,
+        0.7444999814033508,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "rotation": [
+    -180,
+    180
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    2,
+    6
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/ShockWave3")
+});

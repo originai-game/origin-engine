@@ -25,27 +25,27 @@ fn project() -> &'static Path {
         let _ = std::fs::remove_dir_all(&root);
         crate::init_project(&root);
         let write = |path: &str, bytes: &str| {
-            let p = root.join("assets").join(path);
+            let p = root.join("content").join(path);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-            std::fs::write(p, bytes).unwrap();
+            std::fs::write(p, format!("import {{file,ref}} from '@origingame/engine/author';\nexport default {bytes};\n")).unwrap();
         };
         write(
-            "fx/sparks.ogt",
-            "type particles\nversion 1\n---\nrate 40\nlifetime 0.2\nspeed 2\n",
+            "fx/sparks.ts",
+            "file.particles({rate:40,lifetime:[0.2,0.2],speed:[2,2]})",
         );
         write(
-            "fx/shock.ogt",
-            "type effect\nversion 1\n---\nfresnel 2\nalpha curve 0 1 1 0\n",
+            "fx/shock.ts",
+            "file.effect({fresnel:{power:2},alpha:{kind:'curve',keys:[[0,1],[1,0]]}})",
         );
         // 0.5 s: sparks for its first 0.2 s, an impact at 0.1 s with a ring,
         // a light and a shake, a second event at 0.3 s.
         write(
-            "fx/hit.ogt",
-            "type vfx\nversion 1\n---\nduration 0.5\nimpact 0.1\nevent 0.3 \"linger\"\n\
-             emitter \"fx/sparks.ogt\" {\n  at 0\n  until 0.2\n}\n\
-             mesh ring {\n  at 0.1\n  life 0.2\n  effect \"fx/shock.ogt\"\n  scale curve 0 0.5 1 2\n}\n\
-             light {\n  at 0.1\n  life 0.2\n  intensity curve 0 10 1 0\n}\n\
-             shake {\n  at 0.1\n  trauma 0.2\n}\n",
+            "fx/hit.ts",
+            "file.vfx({duration:0.5,events:[{time:0.1,name:'impact'},{time:0.3,name:'linger'}],elements:[
+             {life:0.2,node:{kind:'emitter',asset:ref('base/fx/sparks')}},
+             {at:0.1,life:0.2,node:{kind:'mesh',shape:{kind:'ring'},effect:ref('base/fx/shock'),scale:{kind:'curve',keys:[[0,0.5],[1,2]]}}},
+             {at:0.1,life:0.2,node:{kind:'light',intensity:{kind:'curve',keys:[[0,10],[1,0]]}}},
+             {at:0.1,node:{kind:'shake',trauma:0.2}}]})",
         );
         // A checked pixel effect: 6 frames at 12 fps, its impact on
         // frame 3 (0.25 s), played 0.1 s into a composed effect.
@@ -56,8 +56,8 @@ fn project() -> &'static Path {
         )
         .unwrap();
         write(
-            "fx/pixel.ogt",
-            "type vfx\nversion 1\n---\nduration 1\nflipbook \"base/fx/burst\" {\n  at 0.1\n  size 2\n}\n",
+            "fx/pixel.ts",
+            "file.vfx({duration:1,elements:[{at:0.1,node:{kind:'flipbook',asset:ref('base/fx/burst'),size:2}}]})",
         );
         // A sound 0.1 s in, its playback rate picked from a range.
         let pcm: Vec<f32> = (0..2400)
@@ -67,29 +67,27 @@ fn project() -> &'static Path {
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
         std::fs::write(p, og_audio::wav(&pcm, 1, 48_000)).unwrap();
         write(
-            "fx/loud.ogt",
-            "type vfx\nversion 1\n---\nduration 0.4\nsound \"sfx/blip.wav\" {\n  at 0.1\n  volume 0.8\n  playbackRate 0.9 1.1\n}\n",
+            "fx/loud.ts",
+            "file.vfx({duration:0.4,elements:[{at:0.1,node:{kind:'sound',asset:ref('base/sfx/blip'),volume:0.8,pitch:[0.9,1.1]}}]})",
         );
         // A ring only in a critical instance (its param above 0).
         write(
-            "fx/crit.ogt",
-            "type vfx\nversion 2\n---\nduration 0.4\nparam crit 0\n\
-             mesh ring {\n  life 0.4\n  effect \"fx/shock.ogt\"\n  when crit\n}\n\
-             light {\n  life 0.4\n}\n",
+            "fx/crit.ts",
+            "file.vfx({duration:0.4,params:[{name:'crit',default:0}],elements:[{life:0.4,when:'crit',node:{kind:'mesh',shape:{kind:'ring'},effect:ref('base/fx/shock')}},{life:0.4,node:{kind:'light'}}]})",
         );
         // RenderSettings.maxVfx's effects: 100 particle slots each, two
         // seconds one-shot or looping every second.
         write(
-            "fx/ember.ogt",
-            "type particles\nversion 1\n---\nmaxParticles 100\nrate 20\nlifetime 1\n",
+            "fx/ember.ts",
+            "file.particles({maxParticles:100,rate:20,lifetime:[1,1]})",
         );
         write(
-            "fx/pop.ogt",
-            "type vfx\nversion 1\n---\nduration 2\nemitter \"fx/ember.ogt\" {\n  at 0\n}\n",
+            "fx/pop.ts",
+            "file.vfx({duration:2,elements:[{node:{kind:'emitter',asset:ref('base/fx/ember')}}]})",
         );
         write(
-            "fx/hum.ogt",
-            "type vfx\nversion 1\n---\nduration 1\nloop true\nemitter \"fx/ember.ogt\" {\n  at 0\n}\n",
+            "fx/hum.ts",
+            "file.vfx({duration:1,looping:true,elements:[{node:{kind:'emitter',asset:ref('base/fx/ember')}}]})",
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -210,7 +208,7 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
 
     let hit = value(og_runtime::host_impl::answer(og_load_vfx(
         engine,
-        "fx/hit.ogt".into(),
+        "base/fx/hit".into(),
     )));
     let info = value(og_runtime::host_impl::answer(og_vfx_info(
         engine,

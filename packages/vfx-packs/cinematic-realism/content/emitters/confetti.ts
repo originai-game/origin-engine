@@ -1,32 +1,132 @@
-type particles
-version 1
----
-maxParticles 80
-shape cone 40 0.1
-rate 0
-burst 0 72
-duration 0.05
-looping false
-lifetime 1.8 2.8
-speed 1.8 3.2
-size 0.04 0.07
-heightOverLife 0 0.12 1 0.12
-rotation 0 360
-angularVelocity -240 240
-gravity 0 -2.5 0
-drag 0.8
-noise 0.2 1 0.3
-render mesh box
-blend alpha
-lit true
-colorOverLife {
-  key 0 0.8 0.55 0.18 1
-  key 0.7 0.8 0.55 0.18 1
-  key 1 0.8 0.55 0.18 0
-}
-randomColorOverLife {
-  key 0 0.5 0.6 0.65 1
-  key 0.7 0.5 0.6 0.65 1
-  key 1 0.5 0.6 0.65 0
-}
-collision 0.05 0.9 depth
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -240,
+    240
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 72,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0.05000000074505806,
+    "die": false,
+    "friction": 0.8999999761581421
+  },
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.800000011920929,
+        0.550000011920929,
+        0.18000000715255737,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        0.800000011920929,
+        0.550000011920929,
+        0.18000000715255737,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.800000011920929,
+        0.550000011920929,
+        0.18000000715255737,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.800000011920929,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -2.5,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      0.11999999731779099
+    ],
+    [
+      1,
+      0.11999999731779099
+    ]
+  ],
+  "lifetime": [
+    1.7999999523162842,
+    2.799999952316284
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 80,
+  "noise": {
+    "frequency": 1,
+    "scroll": 0.30000001192092896,
+    "strength": 0.20000000298023224
+  },
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        0.5,
+        0.6000000238418579,
+        0.6499999761581421,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        0.5,
+        0.6000000238418579,
+        0.6499999761581421,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.5,
+        0.6000000238418579,
+        0.6499999761581421,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "render": {
+    "kind": "mesh",
+    "mesh": "box"
+  },
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 40,
+    "radius": 0.10000000149011612
+  },
+  "size": [
+    0.03999999910593033,
+    0.07000000029802322
+  ],
+  "speed": [
+    1.7999999523162842,
+    3.200000047683716
+  ]
+});

@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "README.md",
-      "sha256": "f2449cf402cffb77d5989cf300b924bad7ee8fdd222ce5c63e81ff9d1186ba66",
+      "sha256": "74d2201087cdc90a8d1e5bc78b67325e8ea40e6ac75dbf7e4a6a90b9de15dffd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -212,7 +212,7 @@
       "type": "vfx",
       "title": "Coral Confetti",
       "loop": false,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": true,
       "category": "ui",
       "keywords": [
@@ -285,7 +285,7 @@
       "type": "vfx",
       "title": "Rising Cubes",
       "loop": false,
-      "durationSeconds": 1.0,
+      "durationSeconds": 1,
       "impact": true,
       "category": "buff",
       "keywords": [
@@ -310,7 +310,7 @@
       "type": "vfx",
       "title": "Facet Trail",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "ambient",
       "keywords": [

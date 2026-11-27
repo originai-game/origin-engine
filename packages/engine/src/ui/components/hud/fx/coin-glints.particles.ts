@@ -1,20 +1,77 @@
-type particles
-version 1
----
-# Light catching a purchase's coins, for a `<Particles>` node: four-point
-# stars thrown on the coins' own arcs, flickering. White: the ink colours
-# them.
-maxParticles 12
-shape cone 30 4
-spread 0
-rate 0
-burst 0 8
-duration 0.1
-looping false
-lifetime 1.0 1.4
-speed 420 620
-size 12 20
-sizeOverLife 0 0 0.1 1 0.2 0.2 0.35 1 0.5 0.2 0.65 1 0.8 0.2 1 0
-rotation 0 45
-gravity 0 -1300 0
-texture "@styles/shared/fx/sparkle.png"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "duration": 0.10000000149011612,
+  "gravity": [
+    0,
+    -1300,
+    0
+  ],
+  "lifetime": [
+    1,
+    1.399999976158142
+  ],
+  "looping": false,
+  "maxParticles": 12,
+  "rate": 0,
+  "rotation": [
+    0,
+    45
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 30,
+    "radius": 4
+  },
+  "size": [
+    12,
+    20
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0
+    ],
+    [
+      0.10000000149011612,
+      1
+    ],
+    [
+      0.20000000298023224,
+      0.20000000298023224
+    ],
+    [
+      0.3499999940395355,
+      1
+    ],
+    [
+      0.5,
+      0.20000000298023224
+    ],
+    [
+      0.6499999761581421,
+      1
+    ],
+    [
+      0.800000011920929,
+      0.20000000298023224
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    420,
+    620
+  ],
+  "texture": ref("@styles/shared/fx/sparkle.png")
+});

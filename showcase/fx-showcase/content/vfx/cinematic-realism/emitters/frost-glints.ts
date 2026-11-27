@@ -1,20 +1,63 @@
-type particles
-version 1
----
-# MIT Origin Engine. Ice crystals flashing on a frozen figure.
-maxParticles 40
-shape box 0.3 0.8 0.25
-rate 22
-duration 2
-looping true
-lifetime 0.25 0.6
-speed 0
-size 0.012 0.03
-gravity 0 0 0
-space local
-blend additive
-colorOverLife {
-  key 0 0 0 0 0
-  key 0.3 1.6 2 2.6 1
-  key 1 0 0 0 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.30000001192092896,
+      [
+        1.600000023841858,
+        2,
+        2.5999999046325684,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  ],
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.25,
+    0.6000000238418579
+  ],
+  "maxParticles": 40,
+  "rate": 22,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.30000001192092896,
+      0.800000011920929,
+      0.25
+    ]
+  },
+  "size": [
+    0.012000000104308128,
+    0.029999999329447746
+  ],
+  "space": "local",
+  "speed": [
+    0,
+    0
+  ]
+});

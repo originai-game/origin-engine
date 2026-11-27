@@ -1,127 +1,690 @@
-type vfx
-version 2
----
-duration 2
-loop true
-beam {
-  at 0
-  life 0.1
-  to 0.32 0.16 0.1
-  segments 10
-  jitter 0.05
-  width 0.022
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-beam {
-  at 0.04
-  life 0.07
-  to -0.2 0.28 0.12
-  segments 10
-  jitter 0.05
-  width 0.018
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-beam {
-  at 0.1
-  life 0.08
-  to 0.12 0.3 -0.26
-  segments 10
-  jitter 0.05
-  width 0.02
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-beam {
-  at 0.6
-  life 0.06
-  to -0.16 0.18 -0.1
-  segments 10
-  jitter 0.05
-  width 0.015
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-beam {
-  at 1.1
-  life 0.1
-  to 0.18 0.26 -0.28
-  segments 10
-  jitter 0.05
-  width 0.022
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-beam {
-  at 1.15
-  life 0.07
-  to -0.3 0.14 0.08
-  segments 10
-  jitter 0.05
-  width 0.018
-  effect "vfx/cinematic-realism/beam.ogt"
-  color 2.6 3.8 6.4 1
-}
-emitter "vfx/cinematic-realism/emitters/arc-sparks.ogt" {
-}
-glow {
-  at 0
-  life 0.16
-  offset 0 0.08 0
-  size curve 0 0.4 1 0.08
-  color 1.4 2 3.4 0.7
-}
-glow {
-  at 0.6
-  life 0.08
-  offset 0 0.08 0
-  size curve 0 0.22 1 0.08
-  color 1.4 2 3.4 0.7
-}
-glow {
-  at 1.1
-  life 0.16
-  offset 0 0.08 0
-  size curve 0 0.4 1 0.08
-  color 1.4 2 3.4 0.7
-}
-light {
-  at 0
-  life 0.18
-  offset 0 0.3 0
-  color 0.6 0.8 1
-  intensity curve 0 1.2 0.3 0.3 0.5 0.96 1 0
-  distance 3.5
-}
-light {
-  at 0.6
-  life 0.08
-  offset 0 0.3 0
-  color 0.6 0.8 1
-  intensity curve 0 0.6 0.3 0.15 0.5 0.48 1 0
-  distance 3.5
-}
-light {
-  at 1.1
-  life 0.18
-  offset 0 0.3 0
-  color 0.6 0.8 1
-  intensity curve 0 1.2 0.3 0.3 0.5 0.96 1 0
-  distance 3.5
-}
-sound "base/vfx/cinematic-realism/audio/zap" {
-  at 0
-  volume 0.35
-  playbackRate 1.3 1.6
-}
-sound "base/vfx/cinematic-realism/audio/zap" {
-  at 0.6
-  volume 0.2
-  playbackRate 1.6 1.9
-}
-sound "base/vfx/cinematic-realism/audio/zap" {
-  at 1.1
-  volume 0.35
-  playbackRate 1.4 1.7
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 2,
+  "looping": true,
+  "events": [],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0.10000000149011612,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          0.3199999928474426,
+          0.1599999964237213,
+          0.10000000149011612
+        ],
+        "width": 0.02199999988079071
+      }
+    },
+    {
+      "at": 0.03999999910593033,
+      "life": 0.07000000029802322,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          -0.20000000298023224,
+          0.2800000011920929,
+          0.11999999731779099
+        ],
+        "width": 0.017999999225139618
+      }
+    },
+    {
+      "at": 0.10000000149011612,
+      "life": 0.07999999821186066,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          0.11999999731779099,
+          0.30000001192092896,
+          -0.25999999046325684
+        ],
+        "width": 0.019999999552965164
+      }
+    },
+    {
+      "at": 0.6000000238418579,
+      "life": 0.05999999865889549,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          -0.1599999964237213,
+          0.18000000715255737,
+          -0.10000000149011612
+        ],
+        "width": 0.014999999664723873
+      }
+    },
+    {
+      "at": 1.100000023841858,
+      "life": 0.10000000149011612,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          0.18000000715255737,
+          0.25999999046325684,
+          -0.2800000011920929
+        ],
+        "width": 0.02199999988079071
+      }
+    },
+    {
+      "at": 1.149999976158142,
+      "life": 0.07000000029802322,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "beam",
+        "color": [
+          2.5999999046325684,
+          3.799999952316284,
+          6.400000095367432,
+          1
+        ],
+        "effect": ref("base/vfx/cinematic-realism/beam"),
+        "jitter": 0.05000000074505806,
+        "segments": 10,
+        "to": [
+          -0.30000001192092896,
+          0.14000000059604645,
+          0.07999999821186066
+        ],
+        "width": 0.017999999225139618
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/arc-sparks")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.1599999964237213,
+      "offset": [
+        0,
+        0.07999999821186066,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          1.399999976158142,
+          2,
+          3.4000000953674316,
+          0.699999988079071
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.4000000059604645
+            ],
+            [
+              1,
+              0.07999999821186066
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0.6000000238418579,
+      "life": 0.07999999821186066,
+      "offset": [
+        0,
+        0.07999999821186066,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          1.399999976158142,
+          2,
+          3.4000000953674316,
+          0.699999988079071
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.2199999988079071
+            ],
+            [
+              1,
+              0.07999999821186066
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 1.100000023841858,
+      "life": 0.1599999964237213,
+      "offset": [
+        0,
+        0.07999999821186066,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          1.399999976158142,
+          2,
+          3.4000000953674316,
+          0.699999988079071
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.4000000059604645
+            ],
+            [
+              1,
+              0.07999999821186066
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.18000000715255737,
+      "offset": [
+        0,
+        0.30000001192092896,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          0.6000000238418579,
+          0.800000011920929,
+          1
+        ],
+        "distance": 3.5,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.2000000476837158
+            ],
+            [
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            [
+              0.5,
+              0.9599999785423279
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0.6000000238418579,
+      "life": 0.07999999821186066,
+      "offset": [
+        0,
+        0.30000001192092896,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          0.6000000238418579,
+          0.800000011920929,
+          1
+        ],
+        "distance": 3.5,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.6000000238418579
+            ],
+            [
+              0.30000001192092896,
+              0.15000000596046448
+            ],
+            [
+              0.5,
+              0.47999998927116394
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 1.100000023841858,
+      "life": 0.18000000715255737,
+      "offset": [
+        0,
+        0.30000001192092896,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          0.6000000238418579,
+          0.800000011920929,
+          1
+        ],
+        "distance": 3.5,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.2000000476837158
+            ],
+            [
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            [
+              0.5,
+              0.9599999785423279
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          1.2999999523162842,
+          1.600000023841858
+        ],
+        "volume": 0.3499999940395355,
+        "asset": ref("base/vfx/cinematic-realism/audio/zap")
+      }
+    },
+    {
+      "at": 0.6000000238418579,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          1.600000023841858,
+          1.899999976158142
+        ],
+        "volume": 0.20000000298023224,
+        "asset": ref("base/vfx/cinematic-realism/audio/zap")
+      }
+    },
+    {
+      "at": 1.100000023841858,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          1.399999976158142,
+          1.7000000476837158
+        ],
+        "volume": 0.3499999940395355,
+        "asset": ref("base/vfx/cinematic-realism/audio/zap")
+      }
+    }
+  ]
+});

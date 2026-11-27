@@ -1,23 +1,64 @@
-type particles
-version 1
----
-# Effekseer node 0.3 "Twinkle"
-maxParticles 127
-shape point
-spread 180
-rate 60
-duration 1
-looping true
-lifetime 1.6667 1.6667
-speed 1.2728 5.0912
-size 0.25 0.75
-colorOverLife {
-  key 0 0 0.2195 0.5356 1
-  key 1 0 0.2195 0.5356 1
-}
-randomColorOverLife {
-  key 0 0.2158 0.2195 0.5356 1
-  key 1 0.2158 0.2195 0.5356 1
-}
-texture "vfx/effekseer-starter/textures/Particle01.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0.21950000524520874,
+        0.5356000065803528,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0,
+        0.21950000524520874,
+        0.5356000065803528,
+        1
+      ]
+    ]
+  ],
+  "lifetime": [
+    1.666700005531311,
+    1.666700005531311
+  ],
+  "maxParticles": 127,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        0.21580000221729279,
+        0.21950000524520874,
+        0.5356000065803528,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.21580000221729279,
+        0.21950000524520874,
+        0.5356000065803528,
+        1
+      ]
+    ]
+  ],
+  "rate": 60,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.25,
+    0.75
+  ],
+  "speed": [
+    1.2727999687194824,
+    5.09119987487793
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle01")
+});

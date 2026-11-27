@@ -1,24 +1,85 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0 "光追走"
-maxParticles 757
-shape point
-spread 180
-rate 240
-duration 1
-looping true
-lifetime 0.25 0.75
-speed 1.4614 5.8457
-size 0.5625 0.5625
-sizeOverLife 0 1 1 0
-colorOverLife {
-  key 0 0.8832 0.9323 0.2508 0.2941
-  key 0.25 0.9116 0.949 0.3876 0.2206
-  key 0.5 0.9406 0.9658 0.5574 0.1471
-  key 0.75 0.9701 0.9828 0.7612 0.0735
-  key 1 1 1 1 0
-}
-angularVelocity -360 360
-texture "vfx/effekseer-starter/textures/star.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -360,
+    360
+  ],
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.8831999897956848,
+        0.9322999715805054,
+        0.2508000135421753,
+        0.29409998655319214
+      ]
+    ],
+    [
+      0.25,
+      [
+        0.9115999937057495,
+        0.9490000009536743,
+        0.38760000467300415,
+        0.22059999406337738
+      ]
+    ],
+    [
+      0.5,
+      [
+        0.9405999779701233,
+        0.9657999873161316,
+        0.5573999881744385,
+        0.14710000157356262
+      ]
+    ],
+    [
+      0.75,
+      [
+        0.9700999855995178,
+        0.9828000068664551,
+        0.7612000107765198,
+        0.07349999994039536
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "lifetime": [
+    0.25,
+    0.75
+  ],
+  "maxParticles": 757,
+  "rate": 240,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.5625,
+    0.5625
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    1.461400032043457,
+    5.845699787139893
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/star")
+});

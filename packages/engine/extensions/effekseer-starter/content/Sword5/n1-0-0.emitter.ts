@@ -1,23 +1,107 @@
-type particles
-version 1
----
-# Effekseer node 1.0.0 "冷気"
-maxParticles 1250
-shape box 0.001 0.25 0.001
-spread 0
-rate 29999.998
-duration 0.0333
-looping false
-lifetime 0.0833 0.4167
-speed 13 31
-speedOverLife 0 2.1267 0.25 1.2147 0.375 0.9107 0.5 0.7139 0.625 0.6245 0.75 0.6424 1 0.9911
-size 6 6
-sizeOverLife 0 0.1667 1 1
-align facing 0 0 1
-colorOverLife {
-  key 0 0.3112 1 1 0.0784
-  key 0.2 0.3112 1 1 0.0863
-  key 1 0.3112 1 1 0
-}
-texture "vfx/effekseer-starter/textures/Fog3001.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      0,
+      1
+    ]
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.31119999289512634,
+        1,
+        1,
+        0.07840000092983246
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        0.31119999289512634,
+        1,
+        1,
+        0.08630000054836273
+      ]
+    ],
+    [
+      1,
+      [
+        0.31119999289512634,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.0333000011742115,
+  "lifetime": [
+    0.08330000191926956,
+    0.41670000553131104
+  ],
+  "looping": false,
+  "maxParticles": 1250,
+  "rate": 29999.998046875,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.0010000000474974513,
+      0.25,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    6,
+    6
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.16670000553131104
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    13,
+    31
+  ],
+  "speedOverLife": [
+    [
+      0,
+      2.126699924468994
+    ],
+    [
+      0.25,
+      1.2146999835968018
+    ],
+    [
+      0.375,
+      0.9107000231742859
+    ],
+    [
+      0.5,
+      0.7139000296592712
+    ],
+    [
+      0.625,
+      0.6244999766349792
+    ],
+    [
+      0.75,
+      0.6424000263214111
+    ],
+    [
+      1,
+      0.991100013256073
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Fog3001")
+});

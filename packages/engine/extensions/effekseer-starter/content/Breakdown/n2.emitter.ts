@@ -1,29 +1,109 @@
-type particles
-version 1
----
-# Effekseer node 2 "LightLine1"
-maxParticles 14
-shape point
-spread 0
-rate 0
-burst 0 1 15 0.0167
-duration 0.25
-looping false
-lifetime 0.05 0.2833
-speed 0 0
-size 6 10
-heightOverLife 0 0.0625 1 0.0625
-colorOverLife {
-  key 0 0.2508 0 0.2508 0.502
-  key 0.6 0.2508 0 0.2508 0.502
-  key 1 0.2508 0 0.2508 0
-}
-randomColorOverLife {
-  key 0 0.9406 1 0.9406 0.502
-  key 0.6 0.9406 1 0.9406 0.502
-  key 1 0.9406 1 0.9406 0
-}
-rotation -180 180
-angularVelocity -120 120
-texture "vfx/effekseer-starter/textures/ShockWave3.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -120,
+    120
+  ],
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 15,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.2508000135421753,
+        0,
+        0.2508000135421753,
+        0.5019999742507935
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        0.2508000135421753,
+        0,
+        0.2508000135421753,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        0.2508000135421753,
+        0,
+        0.2508000135421753,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.25,
+  "heightOverLife": [
+    [
+      0,
+      0.0625
+    ],
+    [
+      1,
+      0.0625
+    ]
+  ],
+  "lifetime": [
+    0.05000000074505806,
+    0.2833000123500824
+  ],
+  "looping": false,
+  "maxParticles": 14,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        0.9405999779701233,
+        1,
+        0.9405999779701233,
+        0.5019999742507935
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        0.9405999779701233,
+        1,
+        0.9405999779701233,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        0.9405999779701233,
+        1,
+        0.9405999779701233,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "rotation": [
+    -180,
+    180
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    6,
+    10
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/ShockWave3")
+});

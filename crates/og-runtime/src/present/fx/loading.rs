@@ -65,17 +65,17 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     if eng.render.borrow().fx.loading.contains(&id) {
         return Err(format!("{id}: a sub-emitter cycle ({id} fires itself)"));
     }
-    let (text, owner) = {
+    let (native, owner) = {
         let assets = eng.assets.borrow();
         let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        let text = bundle
-            .emitter_text(&id, bytes.bytes())
+        let native = bundle
+            .emitter(&id, bytes.bytes())
             .map_err(|e| e.to_string())?;
-        (text, owner)
+        (native, owner)
     };
     eng.render.borrow_mut().fx.loading.push(id.clone());
-    let parsed = parse_linked(eng, &text);
+    let parsed = bind_emitter(eng, &native);
     eng.render.borrow_mut().fx.loading.pop();
     let (emitter, array) = parsed.map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
@@ -119,38 +119,35 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     Ok(i)
 }
 
-/// An emitter's text with every reference loaded: the emitter and the load
+/// Native emitter fields with every reference loaded: the emitter and the load
 /// index of the texture array it draws from.
-fn parse_linked(
+fn bind_emitter(
     eng: &crate::engine::Engine,
-    text: &str,
+    native: &og_bundle::fx::cooked::Emitter,
 ) -> Result<(og_render::ParticleEmitter, Option<usize>), String> {
     let mut array = None;
-    let emitter = og_bundle::fx::parse_emitter_linked(
-        text,
-        &mut og_bundle::fx::EmitterLinks {
-            texture: &mut |tex| {
-                let i = crate::world::assets::load_texture(eng, tex)?;
-                Ok(eng.render.borrow().textures.get(i).copied())
-            },
-            array: &mut |a| {
-                let i = crate::world::assets::load_texture_array_index(eng, a)?;
-                array = Some(i);
-                Ok(eng
-                    .render
-                    .borrow()
-                    .texture_arrays
-                    .get(i)
-                    .and_then(|a| a.handle))
-            },
-            mesh: &mut |m| particle_mesh(eng, m).map(Some),
-            emitter: &mut |e| {
-                let i = load_emitter(eng, e)?;
-                Ok(eng.render.borrow().fx.emitters.get(i).copied())
-            },
-            effect: &mut |id| crate::present::effect::load_effect(eng, id).map(Some),
+    let emitter = native.bind(&mut og_bundle::fx::EmitterLinks {
+        texture: &mut |tex| {
+            let i = crate::world::assets::load_texture(eng, tex)?;
+            Ok(eng.render.borrow().textures.get(i).copied())
         },
-    )?;
+        array: &mut |a| {
+            let i = crate::world::assets::load_texture_array_index(eng, a)?;
+            array = Some(i);
+            Ok(eng
+                .render
+                .borrow()
+                .texture_arrays
+                .get(i)
+                .and_then(|a| a.handle))
+        },
+        mesh: &mut |m| particle_mesh(eng, m).map(Some),
+        emitter: &mut |e| {
+            let i = load_emitter(eng, e)?;
+            Ok(eng.render.borrow().fx.emitters.get(i).copied())
+        },
+        effect: &mut |id| crate::present::effect::load_effect(eng, id).map(Some),
+    })?;
     Ok((emitter, array))
 }
 

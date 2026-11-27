@@ -50,7 +50,7 @@ pub fn markdown(root: &Path) -> String {
     let mut out = String::from(
         "<!-- Generated from the vfx packs' extension.json, assets.json and preview/*.cost.json (packages/engine/extensions/, packages/vfx-packs/) by `og api gen`. Do not edit: `og api check` fails on any difference. -->\n\
 # The effect packs\n\n\
-Ready-made effects a game installs with `og vfx add <pack>`: converted Effekseer samples (`type vfx`, 3D) and checked pixel-art recipes (`file.vfx2d`, 2D), each listed with its tags, keywords and effects. A bundled pack ships with the engine; a downloadable one comes with each release and `og vfx add` fetches it. Pixel effects install under content/ and load by `base/vfx/<pack>/<effect>`; 3D effects retain their asset paths (`og api show vfx`; the `pixel-vfx` guide for `file.vfx2d`). The pack format is docs/vfx-packs.md.\n\n\
+Ready-made effects a game installs with `og vfx add <pack>`: checked 3D timelines (`file.vfx`) and pixel-art recipes (`file.vfx2d`), each listed with its tags, keywords and effects. A bundled pack ships with the engine; a downloadable one comes with each release and `og vfx add` fetches it. Effects install under content/ and load by `base/vfx/<pack>/<effect>` (`og api show vfx`; the `pixel-vfx` guide for `file.vfx2d`). The pack format is docs/vfx-packs.md.\n\n\
 The last four columns are what `og vfx preview` measured, on the device each pack names: Size is the box the effect reaches in metres (x × y × z, y up), Anchor `ground` means it stands on its origin and `centre` that it plays about it (a ring, a shield: raise it to stand on the ground), GPU ms its peak frame time over an empty frame, Draws the most draw calls of one of its frames. An empty cell is not measured yet.\n",
     );
     let mut n = 0;
@@ -104,7 +104,7 @@ The last four columns are what `og vfx preview` measured, on the device each pac
                 .iter()
                 .map(|e| {
                     let rel = e["path"].as_str().unwrap_or_default();
-                    let stem = rel.strip_suffix(".ogt").unwrap_or(rel);
+                    let stem = rel.trim_start_matches("content/").trim_end_matches(".ts");
                     json(&pack.join("preview").join(format!("{stem}.cost.json")))
                 })
                 .collect();
@@ -162,8 +162,14 @@ The last four columns are what `og vfx preview` measured, on the device each pac
                     .unwrap_or_default();
                 let _ = writeln!(
                     out,
-                    "| `vfx/{name}/{}` | {} | {} | {} | {secs} | {size} | {} | {ms} | {draws} |",
-                    cell(e["path"].as_str().unwrap_or_default()),
+                    "| `base/vfx/{name}/{}` | {} | {} | {} | {secs} | {size} | {} | {ms} | {draws} |",
+                    cell(
+                        e["path"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .trim_start_matches("content/")
+                            .trim_end_matches(".ts")
+                    ),
                     cell(e["title"].as_str().unwrap_or_default()),
                     e["category"].as_str().unwrap_or_default(),
                     e["element"].as_str().unwrap_or_default(),
@@ -191,7 +197,12 @@ The last four columns are what `og vfx preview` measured, on the device each pac
         for (pack, effects) in packs {
             let list = effects
                 .iter()
-                .map(|(path, title)| format!("`vfx/{pack}/{path}` ({title})"))
+                .map(|(path, title)| {
+                    format!(
+                        "`base/vfx/{pack}/{}` ({title})",
+                        path.trim_start_matches("content/").trim_end_matches(".ts")
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             let _ = writeln!(out, "- {pack}: {list}");

@@ -322,16 +322,17 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
     let (code, out) = add("good", "spark-pack", Some(&key));
     assert_eq!(code, Some(0), "{out}");
     let installed = project.join("assets/vfx/spark-pack");
-    for f in [
-        "extension.json",
-        "burst.ogt",
-        "glint.ogt",
-        "sparks.ogt",
-        "spark.png",
-    ] {
+    for f in ["extension.json", "spark.png"] {
         assert_eq!(
             std::fs::read(installed.join(f)).unwrap(),
             std::fs::read(fixture.join("spark-pack").join(f)).unwrap(),
+            "{f}"
+        );
+    }
+    for f in ["burst.ts", "glint.ts", "sparks.ts"] {
+        assert_eq!(
+            std::fs::read(project.join("content/vfx/spark-pack").join(f)).unwrap(),
+            std::fs::read(fixture.join("spark-pack/content").join(f)).unwrap(),
             "{f}"
         );
     }
@@ -386,7 +387,7 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
 
     for (case, want) in [
         ("traversal", "the unsafe path \"spark-pack/../glint.ogt\""),
-        ("symlink", "spark-pack/glint.ogt is a symlink"),
+        ("symlink", "spark-pack/content/glint.ts is a symlink"),
     ] {
         let key = channel(case, &["--evil", case]);
         let (code, out) = add(case, "spark-pack", Some(&key));

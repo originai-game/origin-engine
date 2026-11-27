@@ -1,31 +1,107 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. Dust a wheel
-# throws up from a loose surface.
-maxParticles 80
-shape cone 55 0.12
-rate 36
-duration 2
-looping true
-lifetime 1 1.8
-speed 0.8 2
-size 0.35 0.6
-sizeOverLife 0 0.5 1 2.4
-rotation 0 360
-angularVelocity -20 20
-gravity 0 0.15 0
-drag 2
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 1 0.92 0.78
-softDistance 0.3
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.1 1 1 1 0.4
-  key 0.6 1 1 1 0.22
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -20,
+    20
+  ],
+  "blend": "alpha",
+  "color": [
+    1,
+    0.9200000166893005,
+    0.7799999713897705,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        1,
+        1,
+        1,
+        0.4000000059604645
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.2199999988079071
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 2,
+  "duration": 2,
+  "gravity": [
+    0,
+    0.15000000596046448,
+    0
+  ],
+  "lifetime": [
+    1,
+    1.7999999523162842
+  ],
+  "lit": true,
+  "maxParticles": 80,
+  "rate": 36,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 55,
+    "radius": 0.11999999731779099
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.3499999940395355,
+    0.6000000238418579
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      2.4000000953674316
+    ]
+  ],
+  "softDistance": 0.30000001192092896,
+  "speed": [
+    0.800000011920929,
+    2
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

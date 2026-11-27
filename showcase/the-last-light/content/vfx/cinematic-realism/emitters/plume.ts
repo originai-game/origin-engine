@@ -1,22 +1,66 @@
-type particles
-version 1
----
-# MIT Origin Engine. The cooler plume around the jet, left in the world
-# so a moving craft draws a fading wake.
-maxParticles 96
-shape cone 9 0.06
-rate 60
-duration 2
-looping true
-lifetime 0.4 0.8
-speed 1.5 2.5
-size 0.1 0.16
-sizeOverLife 0 0.6 1 2
-gravity 0 0 0
-drag 1.5
-blend additive
-colorOverLife {
-  key 0 0.25 0.4 0.9 0.5
-  key 0.4 0.12 0.22 0.55 0.3
-  key 1 0.02 0.04 0.12 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.25,
+        0.4000000059604645,
+        0.8999999761581421,
+        0.5
+      ]
+    ],
+    [
+      0.4000000059604645,
+      [
+        0.11999999731779099,
+        0.2199999988079071,
+        0.550000011920929,
+        0.30000001192092896
+      ]
+    ],
+    [
+      1,
+      [
+        0.019999999552965164,
+        0.03999999910593033,
+        0.11999999731779099,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.5,
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.4000000059604645,
+    0.800000011920929
+  ],
+  "maxParticles": 96,
+  "rate": 60,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 9,
+    "radius": 0.05999999865889549
+  },
+  "size": [
+    0.10000000149011612,
+    0.1599999964237213
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      2
+    ]
+  ]
+});

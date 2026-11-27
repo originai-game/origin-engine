@@ -1,22 +1,93 @@
-type particles
-version 1
----
-# Effekseer node 1.4.1.2.0 "粒子グロー"
-maxParticles 32
-shape box 0.001 0.25 0.001
-spread 180
-rate 240
-duration 0.1042
-looping false
-lifetime 0.5833 0.5833
-speed 0.05 0.35
-speedOverLife 0 2.4833 0.2031 1.6514 0.3906 1.0794 0.6094 0.6707 0.8438 0.5418 0.8594 0.1941 0.875 0 1 0
-size 0.125 0.125
-colorOverLife {
-  key 0 1 1 0.1275 0.5882
-  key 1 1 1 0.1275 0.5882
-}
-rotation 45 45
-angularVelocity 308.5714 617.1428
-texture "vfx/effekseer-starter/textures/Particle01-b96f716d.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    308.5714111328125,
+    617.142822265625
+  ],
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        0.1274999976158142,
+        0.5881999731063843
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        0.1274999976158142,
+        0.5881999731063843
+      ]
+    ]
+  ],
+  "duration": 0.10419999808073044,
+  "lifetime": [
+    0.583299994468689,
+    0.583299994468689
+  ],
+  "looping": false,
+  "maxParticles": 32,
+  "rate": 240,
+  "rotation": [
+    45,
+    45
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.0010000000474974513,
+      0.25,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    0.125,
+    0.125
+  ],
+  "speed": [
+    0.05000000074505806,
+    0.3499999940395355
+  ],
+  "speedOverLife": [
+    [
+      0,
+      2.483299970626831
+    ],
+    [
+      0.20309999585151672,
+      1.6513999700546265
+    ],
+    [
+      0.3905999958515167,
+      1.0793999433517456
+    ],
+    [
+      0.6093999743461609,
+      0.6707000136375427
+    ],
+    [
+      0.8438000082969666,
+      0.5418000221252441
+    ],
+    [
+      0.8593999743461609,
+      0.1941000074148178
+    ],
+    [
+      0.875,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle01-b96f716d")
+});

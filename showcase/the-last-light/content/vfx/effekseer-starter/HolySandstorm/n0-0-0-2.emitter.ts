@@ -1,25 +1,99 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.2 "Wind_Sprite"
-maxParticles 215
-shape box 1.2 1.2 1.2
-spread 0
-rate 0
-burst 0 2 240 0.0167
-duration 4
-looping false
-lifetime 1.3333 1.5
-speed 0.6 1.8
-size 27.5 27.5
-sizeOverLife 0 0.0727 1 1
-align facing 0 1 0
-colorOverLife {
-  key 0 0.5356 0.4423 0.2195 0
-  key 0.0588 0.5356 0.4423 0.2195 1
-  key 0.1765 0.5356 0.4423 0.2195 1
-  key 1 0.5356 0.4423 0.2195 0
-}
-gravity 13.9762 0 52.16
-texture "vfx/effekseer-starter/textures/Wind.png"
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 2,
+      "cycles": 240,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0
+      ]
+    ],
+    [
+      0.058800000697374344,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        1
+      ]
+    ],
+    [
+      0.17649999260902405,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0
+      ]
+    ]
+  ],
+  "duration": 4,
+  "gravity": [
+    13.976200103759766,
+    0,
+    52.15999984741211
+  ],
+  "lifetime": [
+    1.333299994468689,
+    1.5
+  ],
+  "looping": false,
+  "maxParticles": 215,
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1.2000000476837158,
+      1.2000000476837158,
+      1.2000000476837158
+    ]
+  },
+  "size": [
+    27.5,
+    27.5
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.07270000129938126
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0.6000000238418579,
+    1.7999999523162842
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Wind")
+});

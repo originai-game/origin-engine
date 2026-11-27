@@ -1,26 +1,90 @@
-type particles
-version 1
----
-# Confetti for a `<Particles>` node (1 unit a CSS px, +y up): paper thrown
-# from all along the node's box (a strip at the top of what it falls over),
-# tumbling as it falls. White: the node's ink (text-<colour>) colours it.
-maxParticles 128
-shape box 1 1 0
-spread 180
-rate 18
-burst 0 28
-duration 1.4
-looping false
-lifetime 1.8 2.6
-speed 40 260
-size 7 11
-heightOverLife 0 0.6 1 0.6
-rotation 0 360
-angularVelocity -360 360
-gravity 0 -520 0
-drag 0.8
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.8 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -360,
+    360
+  ],
+  "bursts": [
+    {
+      "count": 28,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.800000011920929,
+  "duration": 1.399999976158142,
+  "gravity": [
+    0,
+    -520,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      0.6000000238418579
+    ]
+  ],
+  "lifetime": [
+    1.7999999523162842,
+    2.5999999046325684
+  ],
+  "looping": false,
+  "maxParticles": 128,
+  "rate": 18,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1,
+      1,
+      0
+    ]
+  },
+  "size": [
+    7,
+    11
+  ],
+  "speed": [
+    40,
+    260
+  ],
+  "spread": 180
+});

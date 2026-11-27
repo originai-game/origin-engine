@@ -1,26 +1,94 @@
-type particles
-version 1
----
-# The burnt patch it leaves on the ground.
-maxParticles 1
-shape point
-spread 0
-rate 0
-burst 0 1
-duration 0.05
-looping false
-lifetime 3.8
-speed 0
-size 3.2
-rotation 0 360
-gravity 0 0 0
-align facing 0 1 0
-color 0.04 0.035 0.03
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.03 1 1 1 0.8
-  key 0.75 1 1 1 0.8
-  key 1 1 1 1 0
-}
-texture "vfx/realistic-starter/textures/scorch.png"
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.03999999910593033,
+    0.03500000014901161,
+    0.029999999329447746,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.029999999329447746,
+      [
+        1,
+        1,
+        1,
+        0.800000011920929
+      ]
+    ],
+    [
+      0.75,
+      [
+        1,
+        1,
+        1,
+        0.800000011920929
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    3.799999952316284,
+    3.799999952316284
+  ],
+  "looping": false,
+  "maxParticles": 1,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    3.200000047683716,
+    3.200000047683716
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/realistic-starter/textures/scorch")
+});

@@ -1,20 +1,20 @@
 import { og, type ParticleEmitter } from "@origingame/engine";
 import { For, Icon, Particles, Show, Text, View, useWorld } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
-import charge from "./fx/charge.ogt";
-import chargeGlow from "./fx/charge-glow.ogt";
-import coinGlints from "./fx/coin-glints.ogt";
-import coins from "./fx/coins.ogt";
-import flash from "./fx/flash.ogt";
-import glints from "./fx/glints.ogt";
-import lightColumn from "./fx/light-column.ogt";
-import motes from "./fx/motes.ogt";
-import rays from "./fx/rays.ogt";
-import rise from "./fx/rise.ogt";
-import shards from "./fx/shards.ogt";
-import shockRing from "./fx/shock-ring.ogt";
-import twinkle from "./fx/twinkle.ogt";
-import wash from "./fx/wash.ogt";
+import charge from "./fx/charge.particles.ts?asset";
+import chargeGlow from "./fx/charge-glow.particles.ts?asset";
+import coinGlints from "./fx/coin-glints.particles.ts?asset";
+import coins from "./fx/coins.particles.ts?asset";
+import flash from "./fx/flash.particles.ts?asset";
+import glints from "./fx/glints.particles.ts?asset";
+import lightColumn from "./fx/light-column.particles.ts?asset";
+import motes from "./fx/motes.particles.ts?asset";
+import rays from "./fx/rays.particles.ts?asset";
+import rise from "./fx/rise.particles.ts?asset";
+import shards from "./fx/shards.particles.ts?asset";
+import shockRing from "./fx/shock-ring.particles.ts?asset";
+import twinkle from "./fx/twinkle.particles.ts?asset";
+import wash from "./fx/wash.particles.ts?asset";
 
 export interface FlourishProps {
   /** Which one: reward (stars, rays and a ring of light thrown from it), levelUp (a column of light, a screen wash, stars rising and a ring), purchase (a fountain of spinning coins, the target popping), reveal (a charge drawn in, then a rarity's burst: richer from common to legendary), collect (coins flying from `from` into it, a counter, which flashes as they land) or highlight (an aura in the pack's primary colour pulsing, a sheen sweeping it and stars twinkling, while it shows). */
@@ -66,7 +66,7 @@ const BURST = 0.24;
  * button's aura in the pack's primary colour, sweeping sheen and twinkling
  * stars. Each play runs once per shot with its pack sound (highlight runs
  * while it shows, silent). The particles are the engine's emitters
- * (./fx/*.ogt) with the shared textures (`@styles/shared/fx/`), drawn by
+ * (./fx/*.particles.ts) with the shared textures (`@styles/shared/fx/`), drawn by
  * `Particles`, one node per ink, so a pack's colour roles colour them;
  * reduced motion draws none.
  */

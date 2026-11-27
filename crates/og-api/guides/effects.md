@@ -10,8 +10,8 @@ The API: `og api show vfx`, `og api show og.ParticleSystem`, `og api show og.Dec
 |---|---|---|
 | a common effect (a hit, an explosion, a heal, a level-up, fire, a portal) | an effect pack: `og vfx add <pack>`, then og.load.vfx and og.vfx.spawn | ready-made and measured; `effect-packs` lists each with its size, anchor and cost |
 | a 2D game's effect | a pixel effect (`file.vfx2d`, `pixel-vfx`), or a `flipbook` element in a composed effect | baked into a sheet at cook: hard pixels, no per-frame simulation |
-| a 3D effect with parts in time (sparks, then a ring, a light, a scorch, a shake) | a composed effect (`type vfx`, §2) | one timeline, one spawn, events back to the game |
-| a lasting source (a torch, smoke from a chimney, rain round the camera) | one emitter (`type particles`) on an og.ParticleSystem | no timeline needed; it runs while the entity lives |
+| a 3D effect with parts in time (sparks, then a ring, a light, a scorch, a shake) | a composed effect (`file.vfx`, §2) | one timeline, one spawn, events back to the game |
+| a lasting source (a torch, smoke from a chimney, rain round the camera) | one emitter (`file.particles`) on an og.ParticleSystem | no timeline needed; it runs while the entity lives |
 | a streak behind a moving thing (a sword, a dash, a projectile) | og.Trail (its `effect` an effect material for a scrolling slash), or a `trail` element | the positions it passed through, faded by age |
 | a line between two points (a laser, a tether, lightning) | og.Beam, or a `beam` element; og.render.ribbon through your own points | scrolls and jitters on the tick |
 | a shaped glow that lasts (a shield dome, a portal's swirl, a slash arc held on a weapon) | og.EffectMesh with an effect material (og.load.effect), or a `mesh` element | a mesh the game owns, its scrolling, eroding and fresnel look run on `life` |
@@ -47,11 +47,11 @@ whole fight), the element for a part of one effect (a dash's trail for its
 - A 3D effect plays under an orthographic camera (a 2D game with a 3D
   stage, a side view) as it does in perspective, its metres the camera's
   metres (Camera.height across the view). What lies flat on the ground (a
-  `mesh ring` laid down, a `decal`, `align facing 0 1 0` ripples and
+  ring mesh laid down, a `decal`, facing-aligned ripples and
   scorches) is edge on to a level side view and disappears: tilt the
   camera down, or stand the part up. A level view sees the ground edge on
   too, so `collision` off the drawn depth misses it and sparks fall
-  through: give them `collision colliders` or `die`. A pixel game's
+  through: select collider collision with bounce or die response. A pixel game's
   effects are `pixel-vfx`.
 - Ground markers are world drawing, not UI: the UI draws over the frame
   and never on the ground.
@@ -76,104 +76,64 @@ whole fight), the element for a part of one effect (a dash's trail for its
 
 ## 2. A composed effect from nothing
 
-An `.ogt` under `assets/`. Each element starts `at` a time and lasts a
-`life`; `impact` is the moment the game hears:
+Export one checked declaration from `content/fx/hit.ts`. Each element starts `at` a time and lasts a `life`; the impact event is the moment the game hears:
 
-```text
-type vfx
-version 2
----
-duration 0.7
-impact 0.05
-glow {
-  at 0
-  life 0.2
-  offset 0 0.4 0
-  size curve 0 0.6 1 1.6
-  color 3 1.6 0.6
-}
-emitter "fx/sparks.ogt" {
-  at 0
-  offset 0 0.3 0
-}
-mesh ring {
-  at 0
-  life 0.4
-  rotate -90 0 0
-  effect "fx/shock.ogt"
-  scale curve 0 0.4 1 3
-}
-light {
-  at 0
-  life 0.4
-  offset 0 0.6 0
-  color 1 0.6 0.25
-  intensity curve 0 20 1 0
-  distance 6
-}
-shake {
-  at 0.05
-  trauma 0.3
-}
+```ts
+import { file, ref } from '@origingame/engine/author';
+export default file.vfx({
+  duration: 0.7, events: [{time: 0.05, name: 'impact'}],
+  elements: [
+    {life: 0.2, offset: [0,0.4,0], node: {kind: 'glow', size: {kind: 'curve', keys: [[0,0.6],[1,1.6]]}, color: [3,1.6,0.6,1]}},
+    {offset: [0,0.3,0], node: {kind: 'emitter', asset: ref('base/fx/sparks')}},
+    {life: 0.4, rotate: [-90,0,0], node: {kind: 'mesh', shape: {kind: 'ring'}, effect: ref('base/fx/shock'), scale: {kind: 'curve', keys: [[0,0.4],[1,3]]}}},
+    {life: 0.4, offset: [0,0.6,0], node: {kind: 'light', color: [1,0.6,0.25], intensity: {kind: 'curve', keys: [[0,20],[1,0]]}, distance: 6}},
+    {at: 0.05, node: {kind: 'shake', trauma: 0.3}},
+  ],
+});
 ```
 
-`fx/sparks.ogt`, the emitter it names:
+`content/fx/sparks.ts`, the emitter it names:
 
-```text
-type particles
-version 1
----
-maxParticles 128
-shape sphere 0.1
-spread 180
-rate 0
-burst 0 60
-looping false
-lifetime 0.3 0.6
-speed 4 8
-size 0.03 0.06
-gravity 0 -9.8 0
-drag 1.5
-collision 0.3 0.2
-align velocity 0.08
-color 4 2 0.6
+```ts
+import { file } from '@origingame/engine/author';
+export default file.particles({
+  maxParticles: 128, shape: {kind: 'sphere', radius: 0.1}, spread: 180,
+  rate: 0, bursts: [{time: 0, count: 60}], looping: false,
+  lifetime: [0.3,0.6], speed: [4,8], size: [0.03,0.06],
+  gravity: [0,-9.8,0], drag: 1.5, collision: {bounce: 0.3, friction: 0.2},
+  align: {kind: 'velocity', stretch: 0.08}, color: [4,2,0.6,1],
+});
 ```
 
-`fx/shock.ogt`, the ring's effect material:
+`content/fx/shock.ts`, the ring's effect material:
 
-```text
-type effect
-version 1
----
-color 3 2 1
-alpha curve 0 1 1 0
-fresnel 2 1 invert
-blend additive
+```ts
+import { file } from '@origingame/engine/author';
+export default file.effect({color: [3,2,1,1], alpha: {kind: 'curve', keys: [[0,1],[1,0]]}, fresnel: {power: 2, strength: 1, invert: true}, blend: 'additive'});
 ```
 
 Then play it where the hit lands:
 
 ```ts
-const hit = must(og.load.vfx(world, "fx/hit.ogt"));
+const hit = must(og.load.vfx(world, "base/fx/hit"));
 must(og.vfx.spawn(world, { asset: hit, position: at }));
 ```
 
-- `og cook` refuses a line a file does not take and names the ones it
-  does; `effect-files` lists them all with their defaults.
-- Look at it before playing it in the game: `og vfx preview fx/hit.ogt`
+- `og cook` checks the schema, native constraints and actual referenced outputs; `og api show file:vfx` lists its complete input.
+- Look at it before playing it in the game: `og vfx preview base/fx/hit`
   writes six frames in time order, the impact among them, and prints its
   measured size, anchor, draw calls and peak GPU milliseconds (§4), and
   the engine's warnings about it. Judge its frames as `art-review §7`
   says, and capture it in the game as `captures §6` says.
 - The stage is a dark ground at dusk, where what glows reads. An effect
   that is lit instead (smoke, dust, debris, a mark on the ground) is near
-  black there: `og vfx preview fx/dust.ogt --stage day` shows it on a grey
+  black there: `og vfx preview base/fx/dust --stage day` shows it on a grey
   ground under an overcast day. The measured numbers are the same.
 - An effect that leaves a mark (a `decal`) lasts as long as the mark, so
   its six frames are taken over the time it drew anything else and a
   quarter more: the last shows the mark alone, the others what left it.
   The record's `frameSeconds` says when each frame was taken.
-- For context, `og vfx preview fx/hit.ogt --project-look --scene scenes/courtyard.ogt --position 2,0.5,-1 --camera 2,2,6,2,1,-1,50`
+- For context, `og vfx preview base/fx/hit --project-look --scene base/scenes/courtyard --position 2,0.5,-1 --camera 2,2,6,2,1,-1,50`
   checks the same six moments in the project's look and a cooked scene instead. Fog, exposure and grading stay active; scene resources apply after the look. Use `--look looks/alternate.ogt` instead of `--project-look` to compare an explicit look. The position is exact (no automatic ground lift); the camera is world-space, or without `--camera` it auto-frames at that position. Bounds remain an isolated black-stage measurement, while draws and GPU growth are measured in the selected scene. No game entry or gameplay system runs in this preview.
 - Read og.VfxEvent for the frame the hit lands; the drawn parts never
   feed gameplay.
@@ -186,7 +146,7 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
 - A burst of light reads from a `glow` (a soft sphere facing the eye), a
   `light` (what it lights around it) and bloom, not from a hundred white
   particles: three cheap things instead of one expensive one.
-- Sparks are small, fast and few: `align velocity` streaks them, `drag`
+- Sparks are small, fast and few: velocity alignment streaks them, `drag`
   slows them, `gravity` drops them. Smoke is large, slow and alpha
   blended, with `wind` and a soft fade (`softDistance`).
 - A ring or a shock wave is a `mesh ring` with an effect material, not
@@ -199,8 +159,8 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
 - One effect, several variants: spawn the same file with `hue` (a fire
   turned blue for ice, about 3.1), `tint` (darker, brighter) and
   `emission` (fewer particles), not a copy of it per colour. What the
-  variants add or remove is a `param`: `param crit 0` in the file, `when
-  crit` on the extra burst, `amount power` on the light and the shake,
+  variants add or remove is a parameter: `params: [{name: 'crit', default: 0}, {name: 'power', default: 1}]` in the declaration, `when: 'crit'`
+  on the extra burst, `amount: 'power'` on the light and the shake,
   and og.vfx.spawn's `params: [1, 1.5]` picks them per instance. The hue
   turns the whole drawn colour of particles, meshes and glows, textures
   included; a trail's, beam's or decal's colour turns, but a coloured
@@ -220,7 +180,7 @@ is measured:
 | a looping effect (a torch, an aura, weather), all the time | 0.2 ms |
 | every effect on screen at once | 1.5 to 2 ms |
 
-- `og vfx preview --together a.ogt b.ogt ...` plays several at once on a
+- `og vfx preview --together base/fx/a base/fx/b ...` plays several at once on a
   grid and reports the frame's and each pass's milliseconds on the GPU,
   and the CPU's for recording them (`cpu`): the on-screen total.
 - For scale: the twenty starter effects playing at once on the reference
@@ -244,7 +204,7 @@ is measured:
   still come. The probe's dump_render counts them (`vfx.dropped`): a
   dropped effect means a burst of them outlived the budget, so shorten
   their life or lower the slots their emitters hold (`maxParticles`).
-- An emitter with `subEmitter` lines runs on the CPU; one with `events`
+- An emitter with `subEmitters` runs on the CPU; one with `events`
   is stepped in the tick. Keep both to the effects that need them.
 - The frame as a whole is `testing §6`.
 
@@ -252,11 +212,11 @@ is measured:
 
 `file["effect-texture"]({...})` in a module's `content/` simulates and renders a source volume during cook, never in a game tick. `og api show file:effect-texture` lists the reflected TS input, parameters, units and ranges; there is no OGT source path for this domain. `smoke` and `fire` transport the authored density and heat while the source is active; neither chooses colours or emission for the author. `explosion` injects once and gives it the authored radial velocity. The solver uses semi-Lagrangian advection, a pressure projection, buoyancy, seeded curl forcing and vorticity confinement. Seeded detail modulates the source boundary; a directional Beer-Lambert sweep supplies self-shadowing from the authored light direction and ambient/direct strengths. It then integrates scattering/thermal emission through the cube along +Z. It is a coarse inviscid volume, not combustion or a compressible blast. The implementation's source and MIT licence are recorded under `third_party/stable-fluids`.
 
-The canonical asset id is its RGBA scattering sheet: `content/puff.ts` in the base module produces `base/puff`. `<id>#emission` is the corresponding thermal emission sheet, `<id>#array` and `<id>#emission#array` their chronological texture arrays. RGB is sRGB, alpha is straight coverage, empty cells and volume boundaries transparent. Sheet columns and rows are explicit/ceil(frames/columns); use that exact layout in `sheet` and give `frames` so unused cells never play. For example `texture "base/puff"` plus `sheet 2 2 3 life 1 blend`, or `array "base/puff#array" 3 life 1` in sprite mode. Use the emission output on an additive emitter with the same placement/timing and an authored intensity; it is not silently mixed into lit smoke. Frame interpolation is available on sheets; texture arrays retain the normal array playback semantics. No normal or motion map is needed by this camera-facing integration. Leave room in the unit cube for the whole plume: material escaping the open boundary is lost, not automatically fitted into the frame.
+The canonical asset id is its RGBA scattering sheet: `content/puff.ts` in the base module produces `base/puff`. `<id>#emission` is the corresponding thermal emission sheet, `<id>#array` and `<id>#emission#array` their chronological texture arrays. RGB is sRGB, alpha is straight coverage, empty cells and volume boundaries transparent. Sheet columns and rows are explicit/ceil(frames/columns); use that exact layout in `sheet` and give `frames` so unused cells never play. For example `texture: ref('base/puff')` plus `sheet: {columns: 2, rows: 2, frames: 3, mode: {kind: 'life', cycles: 1}, blend: true}`, or `array: {asset: ref('base/puff#array'), layers: 3, mode: {kind: 'life', cycles: 1}}` in sprite mode. Use the emission output on an additive emitter with the same placement/timing and an authored intensity; it is not silently mixed into lit smoke. Frame interpolation is available on sheets; texture arrays retain the normal array playback semantics. No normal or motion map is needed by this camera-facing integration. Leave room in the unit cube for the whole plume: material escaping the open boundary is lost, not automatically fitted into the frame.
 
 `noise`, `worley` and `curl` use the same Rust kernels as `og.procgen`, not a second noise library. Their output is linear data: noise/curl map the authored -range..range to 0..1; Worley maps first-site distance 0..range to 0..1. Values outside that range clamp. Curl encodes its three vector lanes in RGB around 0.5; increase `range` when high-frequency derivatives would otherwise saturate the encoding. Use them as `noise` for erosion/dissolve or `flowMap` for UV distortion. Coordinates span the unit square; `frequency` gives cycles per cube, `turbulence` its Z travel speed. These textures are not promised tileable. Fluid-only parameters are still explicit but unused in these modes; `range` is unused for volumes. Generation and texture encoding use the cook's BLAKE3 action/content cache; source parameters, engine identity and texture options invalidate it. Nothing writes images into assets/.
 
-Each of `particles`, `effect` and `vfx` can instead contain one exclusive `generate { script "...ts"; seed ...; params {...}; input "name" "path" }` block (write each field on its own line). The existing restricted executor returns `EffectSource {text}`: body declarations without a type/version/header. The regular parser, linked asset checks and field baking process that body at the file's declared version. Recursive generation and mixing authored lines with generation are refused. Static imports, input bytes and parameters are tracked exactly as in `generating`; no filesystem, process or network is exposed. One module can generate a family by each file's explicit parameters, without another executor or a second effect schema.
+Each emitter, material and composition exports `file.particles`, `file.effect` or `file.vfx` directly. Pure TS helpers may share a family of inputs; static imports and explicit input bytes are tracked as in `generating`. The closed evaluator exposes no filesystem, process or network. There is no generated body text or OGT parser.
 
 This recipe cooks a small asymmetric three-frame volume, composes the three generated effect types and loads both sheet/array paths. Its dimensions keep the guide check short; choose resolution, steps and pressure iterations for the final asset, inspect every frame and check it in the project's own look (§2).
 
@@ -267,8 +227,8 @@ export default og.game({ start(world) {
   const sheet = og.load.texture(world, "base/puff");
   const array = og.load.textureArray(world, "base/puff#array");
   const emission = og.load.texture(world, "base/puff#emission");
-  const material = og.load.effect(world, "surface.ogt");
-  const effect = og.load.vfx(world, "composed.ogt");
+  const material = og.load.effect(world, "base/surface");
+  const effect = og.load.vfx(world, "base/composed");
   og.assert.always(sheet.ok && array.ok && emission.ok && material.ok && effect.ok, "generated source outputs and linked effect load", {});
   if (!effect.ok) throw new Error(effect.reason);
   const info = og.vfx.info(world, effect.value);
@@ -292,53 +252,23 @@ export default file["effect-texture"]({
 });
 ```
 
-```ogt recipe file=assets/surface.ogt
-type effect
-version 1
----
-generate {
-  script "effect.ts"
-  params {
-    kind surface
-  }
-}
+```ts recipe file=content/surface.ts
+import { file } from '@origingame/engine/author';
+export default file.effect({softDepth: 0.15, blend: 'alpha'});
 ```
 
-```ogt recipe file=assets/emitter.ogt
-type particles
-version 1
----
-generate {
-  script "effect.ts"
-  params {
-    kind emitter
-  }
-}
+```ts recipe file=content/emitter.ts
+import { file, ref } from '@origingame/engine/author';
+export default file.particles({
+  maxParticles: 1, rate: 0, bursts: [{time: 0, count: 1}], looping: false,
+  lifetime: [0.75,0.75], speed: [0,0], size: [1.5,1.5], texture: ref('base/puff'),
+  sheet: {columns: 2, rows: 2, frames: 3, mode: {kind: 'life', cycles: 1}, blend: true},
+  effect: ref('base/surface'),
+  colorOverLife: [[0,[1,1,1,0]],[0.15,[1,1,1,1]],[0.8,[1,1,1,0.7]],[1,[1,1,1,0]]],
+});
 ```
 
-```ogt recipe file=assets/composed.ogt
-type vfx
-version 2
----
-generate {
-  script "effect.ts"
-  params {
-    kind composition
-  }
-}
-```
-
-```ts recipe file=assets/effect.ts
-import type { EffectSource, GeneratorContext } from "@origingame/engine/generate";
-
-export default function effect(ctx: GeneratorContext<{kind: string}>): EffectSource {
-  if (ctx.params.kind === "surface") return { text: 'main\nsoftDepth 0.15\nblend alpha\n' };
-  if (ctx.params.kind === "emitter") return { text: [
-    'maxParticles 1', 'rate 0', 'burst 0 1', 'looping false',
-    'lifetime 0.75', 'speed 0', 'size 1.5', 'texture "base/puff"',
-    'sheet 2 2 3 life 1 blend', 'effect "surface.ogt"',
-    'colorOverLife {\nkey 0 1 1 1 0\nkey 0.15 1 1 1 1\nkey 0.8 1 1 1 0.7\nkey 1 1 1 1 0\n}',
-  ].join('\n') };
-  return { text: 'duration 0.75\nemitter "emitter.ogt" {\nat 0\n}\n' };
-}
+```ts recipe file=content/composed.ts
+import { file, ref } from '@origingame/engine/author';
+export default file.vfx({duration: 0.75, elements: [{node: {kind: 'emitter', asset: ref('base/emitter')}}]});
 ```

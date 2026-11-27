@@ -1,22 +1,67 @@
-type particles
-version 1
----
-# Fine grit pattering down after it.
-maxParticles 64
-shape box 0.9 0.2 0.9
-spread 25
-rate 0
-burst 0.1 40
-duration 0.05
-looping false
-lifetime 0.8 1.4
-speed 0.5 2
-size 0.012 0.025
-gravity 0 -9.8 0
-drag 0.5
-collision 0.1 0.8 die
-color 0.4 0.36 0.3
-texture "vfx/realistic-starter/textures/dirt.png"
-sheet 3 1 3 random
-blend alpha
-lit true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 40,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.10000000149011612
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0.10000000149011612,
+    "die": true,
+    "friction": 0.800000011920929
+  },
+  "color": [
+    0.4000000059604645,
+    0.36000001430511475,
+    0.30000001192092896,
+    1
+  ],
+  "drag": 0.5,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "lifetime": [
+    0.800000011920929,
+    1.399999976158142
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 64,
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.8999999761581421,
+      0.20000000298023224,
+      0.8999999761581421
+    ]
+  },
+  "sheet": {
+    "blend": false,
+    "columns": 3,
+    "frames": 3,
+    "mode": {
+      "kind": "random"
+    },
+    "rows": 1
+  },
+  "size": [
+    0.012000000104308128,
+    0.02500000037252903
+  ],
+  "speed": [
+    0.5,
+    2
+  ],
+  "spread": 25,
+  "texture": ref("base/vfx/realistic-starter/textures/dirt")
+});

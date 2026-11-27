@@ -1,65 +1,452 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 0.5333
-impact 0
-mesh ring {
-  at 0
-  rotate 63.4349 37.7612 -50.7685
-  inner 0.9747
-  band 0.75
-  colors 1 0 0 0 1 0.0367 0.0367 0.3045 1 0 0 0
-  life 0.5333
-  effect "vfx/effekseer-starter/Blow2/n0.effect.ogt"
-  scale curve 0 2.5 0.1406 5.4748 0.2344 7.2536 0.3281 8.6739 0.4219 9.6894 0.5156 10.3254 0.6094 10.6531 1 11
-  color 3 3 3 1
-  blend additive
-}
-mesh quad {
-  at 0
-  offset 0.5 0 -0.866
-  rotate 63.4349 37.7612 -50.7685
-  move 4 0 -6.9282
-  life 0.5
-  effect "vfx/effekseer-starter/Blow2/n1-0.effect.ogt"
-  scale curve 0 4 0.0781 3.3835 0.1562 2.8658 0.2344 2.4335 0.3281 2.0094 0.4688 1.5194 0.8281 0.5755 1 0
-  color 0.047 0.047 0.047 0.7843
-  blend additive
-}
-emitter "vfx/effekseer-starter/Blow2/n2-0.emitter.ogt" {
-  at 0
-  offset 1 0 0
-  rotate 0 0 -90
-}
-mesh ring {
-  at 0
-  rotate 63.4349 37.7612 -50.7685
-  inner 0.7875
-  band 0.75
-  colors 1 0 0 0 1 0.0367 0.0367 0.3045 1 0 0 0
-  life 0.5333
-  effect "vfx/effekseer-starter/Blow2/n3.effect.ogt"
-  scale curve 0 2.5 0.1406 5.4748 0.2344 7.2536 0.3281 8.6739 0.4219 9.6894 0.5156 10.3254 0.6094 10.6531 1 11
-  color 2 2 2 1
-  blend additive
-}
-emitter "vfx/effekseer-starter/Blow2/n4-0-0.emitter.ogt" {
-  at 0
-  offset 2 0 0
-  rotate 0 0 -90
-}
-light {
-  at 0
-  life 0.3
-  offset 0.6241 0 -0.0005
-  color 1 0.6657 0.6608
-  intensity curve 0 8 1 0
-  distance 12
-}
-shake {
-  at 0
-  trauma 0.4
-}
-# effekseer: node 0 "大リング": a ring whose thickness changes over its life: its middle thickness kept
-# effekseer: node 3 "大リング": a ring whose thickness changes over its life: its middle thickness kept
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 0.53329998254776,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0.53329998254776,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        63.434898376464844,
+        37.761199951171875,
+        -50.76850128173828
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          3,
+          3,
+          3,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Blow2/n0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.14059999585151672,
+              5.474800109863281
+            ],
+            [
+              0.23440000414848328,
+              7.253600120544434
+            ],
+            [
+              0.3280999958515167,
+              8.67389965057373
+            ],
+            [
+              0.4219000041484833,
+              9.689399719238281
+            ],
+            [
+              0.5156000256538391,
+              10.325400352478027
+            ],
+            [
+              0.6093999743461609,
+              10.65310001373291
+            ],
+            [
+              1,
+              11
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.75,
+            "colors": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                0.03669999912381172,
+                0.03669999912381172,
+                0.304500013589859
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.9746999740600586,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.5,
+      "offset": [
+        0.5,
+        0,
+        -0.8659999966621399
+      ],
+      "rotate": [
+        63.434898376464844,
+        37.761199951171875,
+        -50.76850128173828
+      ],
+      "velocity": [
+        4,
+        0,
+        -6.928199768066406
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          0.04699999839067459,
+          0.04699999839067459,
+          0.04699999839067459,
+          0.7843000292778015
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Blow2/n1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              4
+            ],
+            [
+              0.07810000330209732,
+              3.383500099182129
+            ],
+            [
+              0.15620000660419464,
+              2.865799903869629
+            ],
+            [
+              0.23440000414848328,
+              2.433500051498413
+            ],
+            [
+              0.3280999958515167,
+              2.009399890899658
+            ],
+            [
+              0.46880000829696655,
+              1.5194000005722046
+            ],
+            [
+              0.8281000256538391,
+              0.5755000114440918
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        1,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Blow2/n2-0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.53329998254776,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        63.434898376464844,
+        37.761199951171875,
+        -50.76850128173828
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2,
+          2,
+          2,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Blow2/n3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.14059999585151672,
+              5.474800109863281
+            ],
+            [
+              0.23440000414848328,
+              7.253600120544434
+            ],
+            [
+              0.3280999958515167,
+              8.67389965057373
+            ],
+            [
+              0.4219000041484833,
+              9.689399719238281
+            ],
+            [
+              0.5156000256538391,
+              10.325400352478027
+            ],
+            [
+              0.6093999743461609,
+              10.65310001373291
+            ],
+            [
+              1,
+              11
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.75,
+            "colors": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                0.03669999912381172,
+                0.03669999912381172,
+                0.304500013589859
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.7875000238418579,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        2,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Blow2/n4-0-0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.30000001192092896,
+      "offset": [
+        0.6241000294685364,
+        0,
+        -0.0005000000237487257
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          1,
+          0.6657000184059143,
+          0.6607999801635742
+        ],
+        "distance": 12,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              8
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "shake",
+        "trauma": 0.4000000059604645
+      }
+    }
+  ]
+});

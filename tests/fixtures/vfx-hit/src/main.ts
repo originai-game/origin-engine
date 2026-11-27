@@ -59,8 +59,8 @@ export default og.game({
   systems: [Watch],
   start: build,
   commands: {
-    hit: (world) => play(world, "fx/hit.ogt", HIT),
-    heal: (world) => play(world, "fx/heal.ogt", HEAL),
+    hit: (world) => play(world, "base/fx/hit", HIT),
+    heal: (world) => play(world, "base/fx/heal", HEAL),
   },
   commandHelp: {
     hit: { usage: "", doc: "A heavy hit on the ground." },

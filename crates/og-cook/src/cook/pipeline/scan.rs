@@ -219,8 +219,7 @@ pub(crate) fn scan_with(
     }
     let mut warnings: Vec<String> = Vec::new();
     // The engine string tables and emitters the bundle holds (its
-    // components'), read from the files the bundler resolved; each cooks
-    // by its own `type`.
+    // components'), read from the declarations the bundler resolved.
     let mut table_inputs = Vec::new();
     for (id, path) in &code.tables {
         match std::fs::read(path) {
@@ -420,7 +419,8 @@ pub(crate) fn scan_with(
             (None, "ts")
                 if (rel.starts_with("@styles/")
                     || rel.starts_with("@fonts/")
-                    || rel.starts_with("@ui/") && rel.ends_with(".strings.ts"))
+                    || rel.starts_with("@ui/")
+                        && (rel.ends_with(".strings.ts") || rel.ends_with(".particles.ts")))
                     && builtins.contains_key(rel) =>
             {
                 let file = rel

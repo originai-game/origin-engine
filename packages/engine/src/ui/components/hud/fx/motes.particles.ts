@@ -1,18 +1,46 @@
-type particles
-version 1
----
-# Motes for a `<Particles>` node: slow glints drifting up around the
-# centre after a burst, the light lingering as it settles. White: the ink
-# colours them.
-maxParticles 48
-shape sphere 110
-spread 180
-rate 20
-duration 1.4
-looping false
-lifetime 1.2 2.0
-speed 10 40
-size 6 12
-sizeOverLife 0 0 0.2 1 1 0
-gravity 0 40 0
-texture "@styles/shared/fx/glint.png"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "duration": 1.399999976158142,
+  "gravity": [
+    0,
+    40,
+    0
+  ],
+  "lifetime": [
+    1.2000000476837158,
+    2
+  ],
+  "looping": false,
+  "maxParticles": 48,
+  "rate": 20,
+  "shape": {
+    "kind": "sphere",
+    "radius": 110,
+    "surface": false
+  },
+  "size": [
+    6,
+    12
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0
+    ],
+    [
+      0.20000000298023224,
+      1
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    10,
+    40
+  ],
+  "spread": 180,
+  "texture": ref("@styles/shared/fx/glint.png")
+});

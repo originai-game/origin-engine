@@ -1,26 +1,91 @@
-type particles
-version 1
----
-# MIT Origin Engine. The sheet of drops thrown out around a blast's
-# column.
-maxParticles 200
-shape cone 35 0.8
-rate 0
-burst 0.02 120
-burst 0.12 60
-duration 0.2
-looping false
-lifetime 1 2
-speed 6 12
-size 0.02 0.05
-align velocity 0.02
-gravity 0 -9.8 0
-drag 0.25
-blend alpha
-color 0.88 0.94 1
-colorOverLife {
-  key 0 1 1 1 0.85
-  key 0.8 1 1 1 0.65
-  key 1 1 1 1 0
-}
-collision 0 0 depth die
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.019999999552965164
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 120,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.019999999552965164
+    },
+    {
+      "count": 60,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0.11999999731779099
+    }
+  ],
+  "collision": {
+    "against": "depth",
+    "bounce": 0,
+    "die": true,
+    "friction": 0
+  },
+  "color": [
+    0.8799999952316284,
+    0.9399999976158142,
+    1,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.8500000238418579
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        1,
+        1,
+        1,
+        0.6499999761581421
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.25,
+  "duration": 0.20000000298023224,
+  "gravity": [
+    0,
+    -9.800000190734863,
+    0
+  ],
+  "lifetime": [
+    1,
+    2
+  ],
+  "looping": false,
+  "maxParticles": 200,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 35,
+    "radius": 0.800000011920929
+  },
+  "size": [
+    0.019999999552965164,
+    0.05000000074505806
+  ],
+  "speed": [
+    6,
+    12
+  ]
+});

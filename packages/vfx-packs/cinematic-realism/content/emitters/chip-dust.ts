@@ -1,30 +1,103 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. Pulverised
-# masonry jetting back along the surface's normal.
-maxParticles 10
-shape cone 25 0.03
-rate 0
-burst 0 8
-duration 0.05
-looping false
-lifetime 0.7 1.3
-speed 0.15 2
-size 0.12 0.24
-sizeOverLife 0 0.5 1 2.6
-rotation 0 360
-gravity 0 0.1 0
-drag 5
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 1.1 1.07 1.02
-softDistance 0.12
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.08 1 1 1 0.6
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 8,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    1.100000023841858,
+    1.0700000524520874,
+    1.0199999809265137,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.07999999821186066,
+      [
+        1,
+        1,
+        1,
+        0.6000000238418579
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 5,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.10000000149011612,
+    0
+  ],
+  "lifetime": [
+    0.699999988079071,
+    1.2999999523162842
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 10,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 25,
+    "radius": 0.029999999329447746
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.11999999731779099,
+    0.23999999463558197
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      2.5999999046325684
+    ]
+  ],
+  "softDistance": 0.11999999731779099,
+  "speed": [
+    0.15000000596046448,
+    2
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

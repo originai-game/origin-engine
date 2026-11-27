@@ -1,45 +1,243 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 66.6667
-impact 0
-mesh ring {
-  at 0
-  inner 0.8
-  band 0.5
-  colors 1 0 1 0.0392 1 0 1 0.0392 1 0 0 0.0392
-  life 66.6667
-  effect "vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-0.effect.ogt"
-  scale 2
-  color 10 10 10 1
-  blend additive
-}
-mesh ring {
-  at 0
-  inner 0.7143
-  band 0.5
-  colors 1 0.2195 0.0478 0.251 1 0.2195 0.0478 0.251 0.9658 0.6187 0.2508 0.251
-  life 66.6667
-  effect "vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-1.effect.ogt"
-  scale 1.4
-  color 10 10 10 1
-  blend additive
-}
-mesh ring {
-  at 0
-  inner 0.125
-  band 0.5
-  colors 1 0 0 1 1 0.2195 0.0478 1 0.9658 0.6187 0.2508 1
-  life 66.6667
-  effect "vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-2.effect.ogt"
-  scale 0.8
-  color 10 10 10 1
-  blend additive
-}
-# effekseer: node 0.0.0.0 "Ring Outer": ring 10 instances: the first 4 drawn
-# effekseer: node 0.0.0.0 "Ring Outer": nested generation: 12 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1 "Ring Center": ring 10 instances: the first 4 drawn
-# effekseer: node 0.0.0.1 "Ring Center": nested generation: 12 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.2 "Ring Inner": ring 10 instances: the first 4 drawn
-# effekseer: node 0.0.0.2 "Ring Inner": nested generation: 12 instances above its generator folded into one emitter
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 66.66670227050781,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 66.66670227050781,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          10,
+          10,
+          10,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-0.effect"),
+        "faceCamera": false,
+        "scale": 2,
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0,
+                1,
+                0.03920000046491623
+              ],
+              [
+                1,
+                0,
+                1,
+                0.03920000046491623
+              ],
+              [
+                1,
+                0,
+                0,
+                0.03920000046491623
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.800000011920929,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 66.66670227050781,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          10,
+          10,
+          10,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-1.effect"),
+        "faceCamera": false,
+        "scale": 1.399999976158142,
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.21950000524520874,
+                0.04780000075697899,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.04780000075697899,
+                0.25099998712539673
+              ],
+              [
+                0.9657999873161316,
+                0.6187000274658203,
+                0.2508000135421753,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.7142999768257141,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 66.66670227050781,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          10,
+          10,
+          10,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/smallTexturesSquareWave_orbital/n0-0-0-2.effect"),
+        "faceCamera": false,
+        "scale": 0.800000011920929,
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.04780000075697899,
+                1
+              ],
+              [
+                0.9657999873161316,
+                0.6187000274658203,
+                0.2508000135421753,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.125,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+});

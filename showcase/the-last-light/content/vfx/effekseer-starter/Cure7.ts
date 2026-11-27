@@ -1,135 +1,920 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 2.6
-impact 0
-emitter "vfx/effekseer-starter/Cure7/n0-0-0-0.emitter.ogt" {
-  at 0
-  offset 1 0 3
-  rotate -90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n0-0-0-1.emitter.ogt" {
-  at 0
-  offset 1 0 3
-  rotate -90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n0-0-0-2.emitter.ogt" {
-  at 0
-  offset 1 0 3
-  rotate -90 0 0
-}
-mesh quad {
-  at 0
-  life 0.8333
-  effect "vfx/effekseer-starter/Cure7/n1-0.effect.ogt"
-  scale curve 0 1 0.0938 1.7445 0.2031 2.4732 0.3125 3.0695 0.4219 3.5527 0.6562 4.296 1 5
-  color 2 2 2 1
-  blend additive
-}
-mesh ring {
-  at 0.4167
-  inner 0
-  band 1
-  colors 1 1 1 0 1 1 1 0.8 1 1 1 0
-  life 0.8333
-  effect "vfx/effekseer-starter/Cure7/n1-1.effect.ogt"
-  scale curve 0 1 0.0781 1.2636 0.1719 1.5118 0.2656 1.6949 0.375 1.8395 0.5781 1.9625 1 2
-  color 3 3 3 1
-  blend additive
-}
-mesh ring {
-  at 0.4167
-  inner 0.8845
-  band 1
-  colors 1 1 0.586 0 1 1 0.4151 0.8 1 1 0.586 0
-  life 0.8333
-  effect "vfx/effekseer-starter/Cure7/n1-2.effect.ogt"
-  scale curve 0 1 0.0781 1.2636 0.1719 1.5118 0.2656 1.6949 0.375 1.8395 0.5781 1.9625 1 2
-  color 1 1 1 1
-  blend additive
-}
-mesh ring {
-  at 0.4167
-  inner 0.5
-  band 0
-  height 1.8236 0
-  colors 1 1 1 0 1 1 0.9345 0.1406 1 1 1 0
-  life 0.6667
-  effect "vfx/effekseer-starter/Cure7/n1-3.effect.ogt"
-  scale curve 0 2 0.2031 1.8159 0.4219 1.6809 1 1.5
-  color 1 1 1 1
-  blend additive
-}
-mesh quad {
-  at 0.4167
-  life 0.6667
-  effect "vfx/effekseer-starter/Cure7/n1-3-0.effect.ogt"
-  scale curve 0 0 0.0938 0.6514 0.2031 1.289 0.3125 1.8108 0.4219 2.2336 0.5312 2.5741 0.6562 2.884 1 3.5
-  color 1 1 0.586 1
-  blend additive
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-0-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-1.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-1-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-2.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-0-2-0.parent.ogt" {
-  at 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-0.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-0-0.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-1.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-1-0.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-2.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-emitter "vfx/effekseer-starter/Cure7/n1-4-1-2-0.emitter.ogt" {
-  at 0.4167
-  offset 0 0 0.5
-  rotate 90 0 0
-}
-# effekseer: node 1.0 "グロー": a mesh's colour over its life: its brightest kept, alpha over life kept
-# effekseer: node 1.2 "地面リンググロー": a UV region of a texture whose size is not known (not a PNG)
-# effekseer: node 1.3 "地面リング": a ring whose height changes over its life: its middle height kept
-# effekseer: node 1.3.0 "Glow": a mesh's colour over its life: its brightest kept, alpha over life kept
-# effekseer: node 1.4.0.0 "星": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.0 "星": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.4.0.0.0 "星グロー": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.0.0 "星グロー": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.4.0.1 "星反転": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.1 "星反転": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.4.0.1.0 "星グロー": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.1.0 "星グロー": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.4.0.2 "粒子": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.2 "粒子": a child of an instanced parent: its motion drawn up the world's y
-# effekseer: node 1.4.0.2.0 "粒子グロー": motion out from a circle: approximated along one direction
-# effekseer: node 1.4.0.2.0 "粒子グロー": a child of an instanced parent: its motion drawn up the world's y
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 2.5999999046325684,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        1,
+        0,
+        3
+      ],
+      "rotate": [
+        -90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n0-0-0-0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        1,
+        0,
+        3
+      ],
+      "rotate": [
+        -90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n0-0-0-1.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        1,
+        0,
+        3
+      ],
+      "rotate": [
+        -90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n0-0-0-2.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.833299994468689,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2,
+          2,
+          2,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Cure7/n1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1
+            ],
+            [
+              0.09380000084638596,
+              1.7445000410079956
+            ],
+            [
+              0.20309999585151672,
+              2.4732000827789307
+            ],
+            [
+              0.3125,
+              3.069499969482422
+            ],
+            [
+              0.4219000041484833,
+              3.5527000427246094
+            ],
+            [
+              0.6561999917030334,
+              4.296000003814697
+            ],
+            [
+              1,
+              5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0.833299994468689,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          3,
+          3,
+          3,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Cure7/n1-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1
+            ],
+            [
+              0.07810000330209732,
+              1.2635999917984009
+            ],
+            [
+              0.17190000414848328,
+              1.5118000507354736
+            ],
+            [
+              0.2655999958515167,
+              1.6949000358581543
+            ],
+            [
+              0.375,
+              1.8394999504089355
+            ],
+            [
+              0.5781000256538391,
+              1.962499976158142
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 1,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                1,
+                0.800000011920929
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0.833299994468689,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Cure7/n1-2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1
+            ],
+            [
+              0.07810000330209732,
+              1.2635999917984009
+            ],
+            [
+              0.17190000414848328,
+              1.5118000507354736
+            ],
+            [
+              0.2655999958515167,
+              1.6949000358581543
+            ],
+            [
+              0.375,
+              1.8394999504089355
+            ],
+            [
+              0.5781000256538391,
+              1.962499976158142
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 1,
+            "colors": [
+              [
+                1,
+                1,
+                0.5860000252723694,
+                0
+              ],
+              [
+                1,
+                1,
+                0.41510000824928284,
+                0.800000011920929
+              ],
+              [
+                1,
+                1,
+                0.5860000252723694,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.8845000267028809,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0.666700005531311,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Cure7/n1-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2
+            ],
+            [
+              0.20309999585151672,
+              1.8158999681472778
+            ],
+            [
+              0.4219000041484833,
+              1.680899977684021
+            ],
+            [
+              1,
+              1.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                0.934499979019165,
+                0.14059999585151672
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              1.8236000537872314,
+              0
+            ],
+            "inner": 0.5,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0.666700005531311,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          0.5860000252723694,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Cure7/n1-3-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              0.09380000084638596,
+              0.6514000296592712
+            ],
+            [
+              0.20309999585151672,
+              1.2890000343322754
+            ],
+            [
+              0.3125,
+              1.8107999563217163
+            ],
+            [
+              0.4219000041484833,
+              2.233599901199341
+            ],
+            [
+              0.5311999917030334,
+              2.5741000175476074
+            ],
+            [
+              0.6561999917030334,
+              2.884000062942505
+            ],
+            [
+              1,
+              3.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "quad"
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-0.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-0-0.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-1.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-1-0.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-2.parent")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-0-2-0.parent")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-0.emitter")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-0-0.emitter")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-1.emitter")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-1-0.emitter")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-2.emitter")
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0.5
+      ],
+      "rotate": [
+        90,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Cure7/n1-4-1-2-0.emitter")
+      }
+    }
+  ]
+});

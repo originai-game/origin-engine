@@ -1,30 +1,127 @@
-type particles
-version 1
----
-# Effekseer node 0 "Particle"
-maxParticles 50
-shape box 1.2 0.5 1.2
-spread 0
-rate 0
-burst 0 1 40 0.0167
-duration 0.6667
-looping false
-lifetime 1.1667 1.5
-speed 0.6 1.8
-size 1 1
-align upright 0 1 0
-colorOverLife {
-  key 0 1 0.5356 0 0
-  key 0.025 1 0.5356 0 1
-  key 0.875 1 0.5356 0 1
-  key 1 1 0.5356 0 0
-}
-randomColorOverLife {
-  key 0 1 1 0 0
-  key 0.025 1 1 0 1
-  key 0.875 1 1 0 1
-  key 1 1 1 0 0
-}
-gravity 0 0.72 0
-texture "vfx/effekseer-starter/textures/particle4.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 40,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.5356000065803528,
+        0,
+        0
+      ]
+    ],
+    [
+      0.02500000037252903,
+      [
+        1,
+        0.5356000065803528,
+        0,
+        1
+      ]
+    ],
+    [
+      0.875,
+      [
+        1,
+        0.5356000065803528,
+        0,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.5356000065803528,
+        0,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.666700005531311,
+  "gravity": [
+    0,
+    0.7200000286102295,
+    0
+  ],
+  "lifetime": [
+    1.166700005531311,
+    1.5
+  ],
+  "looping": false,
+  "maxParticles": 50,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        0,
+        0
+      ]
+    ],
+    [
+      0.02500000037252903,
+      [
+        1,
+        1,
+        0,
+        1
+      ]
+    ],
+    [
+      0.875,
+      [
+        1,
+        1,
+        0,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        0,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1.2000000476837158,
+      0.5,
+      1.2000000476837158
+    ]
+  },
+  "size": [
+    1,
+    1
+  ],
+  "speed": [
+    0.6000000238418579,
+    1.7999999523162842
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/particle4")
+});

@@ -761,8 +761,7 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             )
         }
         "og.ParticleEmitter" => {
-            let text = bundle.emitter_text(id, &bytes()?).map_err(e)?;
-            let p = crate::fx::parse_emitter(&text, &mut |_| Ok(None))?;
+            let p = bundle.emitter(id, &bytes()?).map_err(e)?.data;
             (
                 "emitter",
                 json!({

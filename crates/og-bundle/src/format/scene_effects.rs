@@ -299,26 +299,26 @@ impl BlobKind for Lut {
 }
 
 row!(
-    /// The root of a particle emitter blob (an `.ogt` of `type particles`).
-    EmitterMeta, "og.ParticleEmitter", 1 {
-        /// Bytes of the validated emitter text in `text`.
-        text_bytes: u32,
+    /// Native particle fields and their typed resource table.
+    EmitterMeta, "og.ParticleEmitter", 2 {
+        /// Bytes of native fields in `data`.
+        data_bytes: u32,
     }
 );
 
 row!(
-    /// The root of an effect material blob (an `.ogt` of `type effect`).
-    EffectMeta, "og.EffectMaterial", 1 {
-        /// Bytes of the validated effect text in `text`.
-        text_bytes: u32,
+    /// Native effect material fields and their typed resource table.
+    EffectMeta, "og.EffectMaterial", 2 {
+        /// Bytes of native fields in `data`.
+        data_bytes: u32,
     }
 );
 
 row!(
-    /// The root of a composed effect blob (an `.ogt` of `type vfx`).
-    VfxMeta, "og.Vfx", 1 {
-        /// Bytes of the validated vfx text in `text`.
-        text_bytes: u32,
+    /// Native composed effect timeline, events and elements.
+    VfxMeta, "og.Vfx", 2 {
+        /// Bytes of native fields in `data`.
+        data_bytes: u32,
     }
 );
 
@@ -470,9 +470,8 @@ impl BlobKind for RiveArtboard {
     }
 }
 
-/// The effect material blob: `text` holds the effect file the cook
-/// validated (`crate::effect`), parsed again at load with the bundle's
-/// textures and shaders.
+/// The effect material blob: `data` holds native fields and typed resource
+/// identities, bound to the bundle's textures and shaders at load.
 pub struct Effect;
 impl BlobKind for Effect {
     const NAME: &'static str = "og.EffectMaterial";
@@ -481,8 +480,8 @@ impl BlobKind for Effect {
     }
 }
 
-/// The composed effect blob: `text` holds the vfx file the cook validated
-/// (`crate::vfx`), parsed again at load.
+/// The composed effect blob: `data` holds the native timeline, events and
+/// elements (`crate::vfx`), decoded without an author parser.
 pub struct Vfx;
 impl BlobKind for Vfx {
     const NAME: &'static str = "og.Vfx";
@@ -491,8 +490,8 @@ impl BlobKind for Vfx {
     }
 }
 
-/// The particle emitter blob: `text` holds the emitter file the cook
-/// validated (`crate::fx`), parsed again at load with the bundle's textures.
+/// The particle emitter blob: `data` holds native fields and typed resource
+/// identities, bound to the bundle's textures at load.
 pub struct Emitter;
 impl BlobKind for Emitter {
     const NAME: &'static str = "og.ParticleEmitter";

@@ -1,23 +1,84 @@
-type particles
-version 1
----
-maxParticles 20
-shape sphere 0.25
-spread 180
-rate 0
-burst 0 18
-duration 0.05
-looping false
-lifetime 0.6 1.1
-speed 0.25 0.65
-size 0.035 0.065
-gravity 0 0.5 0
-drag 1
-noise 0.15 2 0.3
-blend additive
-colorOverLife {
-  key 0 1.2 0.7 0.18 0.4
-  key 0.12 2.6 1.5 0.35 1
-  key 0.55 1.8 0.9 0.2 1
-  key 1 0.5 0.25 0.08 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 18,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1.2000000476837158,
+        0.699999988079071,
+        0.18000000715255737,
+        0.4000000059604645
+      ]
+    ],
+    [
+      0.11999999731779099,
+      [
+        2.5999999046325684,
+        1.5,
+        0.3499999940395355,
+        1
+      ]
+    ],
+    [
+      0.550000011920929,
+      [
+        1.7999999523162842,
+        0.8999999761581421,
+        0.20000000298023224,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.5,
+        0.25,
+        0.07999999821186066,
+        0
+      ]
+    ]
+  ],
+  "drag": 1,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.5,
+    0
+  ],
+  "lifetime": [
+    0.6000000238418579,
+    1.100000023841858
+  ],
+  "looping": false,
+  "maxParticles": 20,
+  "noise": {
+    "frequency": 2,
+    "scroll": 0.30000001192092896,
+    "strength": 0.15000000596046448
+  },
+  "rate": 0,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.25,
+    "surface": false
+  },
+  "size": [
+    0.03500000014901161,
+    0.06499999761581421
+  ],
+  "speed": [
+    0.25,
+    0.6499999761581421
+  ],
+  "spread": 180
+});

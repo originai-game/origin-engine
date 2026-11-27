@@ -1,221 +1,1427 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 6.7334
-impact 1.25
-emitter "vfx/effekseer-starter/HolySandstorm/n0-0-0-0.emitter.ogt" {
-  at 1.25
-  offset 1.7412 3 1.0341
-  rotate -90 0 -165
-}
-mesh ring {
-  at 1.25
-  offset 2 3 2
-  rotate -180 -15 -90
-  inner 1
-  band 0.5
-  height 0 0.5536
-  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
-  life 1.4167
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect.ogt"
-  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 1.2667
-  offset 2 3 2
-  rotate -180 -15 90
-  inner 1
-  band 0.5
-  height 0 0.5536
-  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
-  life 1.4167
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect.ogt"
-  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 1.2833
-  offset 2 3 2
-  rotate -180 -15 -90
-  inner 1
-  band 0.5
-  height 0 0.5536
-  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
-  life 1.4167
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect.ogt"
-  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 1.3
-  offset 2 3 2
-  rotate -180 -15 90
-  inner 1
-  band 0.5
-  height 0 0.5536
-  colors 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1 0.5356 0.4423 0.2195 1
-  life 1.4167
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect.ogt"
-  scale curve 0 1.5 0.2344 3.002 0.4688 5.1558 0.7188 8.0751 1 12
-  color 1 1 1 1
-  blend alpha
-}
-emitter "vfx/effekseer-starter/HolySandstorm/n0-0-0-2.emitter.ogt" {
-  at 1.25
-  offset 1.7412 3 1.0341
-  rotate 90 0 165
-}
-emitter "vfx/effekseer-starter/HolySandstorm/n0-0-0-3.emitter.ogt" {
-  at 1.25
-  offset -4.0544 3 2.587
-  rotate -90 0 -165
-}
-mesh ring {
-  at 0.0333
-  offset 2 3 2
-  rotate -180 -15 -90
-  inner 1
-  band 0.5
-  height 1.5805 0
-  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
-  life 1.5
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect.ogt"
-  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.0833
-  offset 2 3 2
-  rotate -180 -15 90
-  inner 1
-  band 0.5
-  height 1.5805 0
-  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
-  life 1.5
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect.ogt"
-  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.1333
-  offset 2 3 2
-  rotate -180 -15 -90
-  inner 1
-  band 0.5
-  height 1.5805 0
-  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
-  life 1.5
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect.ogt"
-  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.1833
-  offset 2 3 2
-  rotate -180 -15 90
-  inner 1
-  band 0.5
-  height 1.5805 0
-  colors 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251 0.7519 0.6388 0.4423 0.251
-  life 1.5
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect.ogt"
-  scale curve 0 2.5 0.1094 1.7659 0.2344 1.0455 0.3438 0.519 0.4688 0.036 0.75 0.5881 0.875 0.6598 1 0.605
-  color 1 1 1 1
-  blend alpha
-}
-emitter "vfx/effekseer-starter/HolySandstorm/n0-0-1-1.emitter.ogt" {
-  at 0
-  offset 1.6894 3 0.8409
-  rotate -90 0 -165
-}
-mesh ring {
-  at 0
-  offset 2.0026 3 2.0097
-  rotate 180 -15 45
-  move 0.4659 0 1.7387
-  inner 1
-  band 0.5
-  height 0 2
-  colors 1 1 1 0 1 1 1 1 1 1 1 0
-  life 1.6667
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect.ogt"
-  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
-  spin 0 0 120
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.2
-  offset 2.0026 3 2.0097
-  rotate -180 -15 135
-  move 0.4659 0 1.7387
-  inner 1
-  band 0.5
-  height 0 2
-  colors 1 1 1 0 1 1 1 1 1 1 1 0
-  life 1.6667
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect.ogt"
-  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
-  spin 0 0 120
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.4
-  offset 2.0026 3 2.0097
-  rotate 180 -15 -135
-  move 0.4659 0 1.7387
-  inner 1
-  band 0.5
-  height 0 2
-  colors 1 1 1 0 1 1 1 1 1 1 1 0
-  life 1.6667
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect.ogt"
-  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
-  spin 0 0 120
-  color 1 1 1 1
-  blend alpha
-}
-mesh ring {
-  at 0.6
-  offset 2.0026 3 2.0097
-  rotate -180 -15 -45
-  move 0.4659 0 1.7387
-  inner 1
-  band 0.5
-  height 0 2
-  colors 1 1 1 0 1 1 1 1 1 1 1 0
-  life 1.6667
-  effect "vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect.ogt"
-  scale curve 0 0.02 0.125 0.6197 0.25 1.1725 0.375 1.6784 0.5 2.1375 0.625 2.5497 0.75 2.915 1 3.505
-  spin 0 0 120
-  color 1 1 1 1
-  blend alpha
-}
-# effekseer: node 0.0.0.0 "Smoke": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.0 "Smoke": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1 "Wind_Ring": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.1 "Wind_Ring": ring 240 instances: the first 4 drawn
-# effekseer: node 0.0.0.1 "Wind_Ring": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.1 "Wind_Ring": a ring whose height changes over its life: its middle height kept
-# effekseer: node 0.0.0.2 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.2 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.0.3 "Particle": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0.3 "Particle": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.0 "Wind_Ring": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.1.0 "Wind_Ring": ring 15 instances: the first 4 drawn
-# effekseer: node 0.0.1.0 "Wind_Ring": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.0 "Wind_Ring": a ring whose height changes over its life: its middle height kept
-# effekseer: node 0.0.1.1 "Wind_Sprite": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.1.1 "Wind_Sprite": nested generation: 2 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.2 "Distortion": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.1.2 "Distortion": ring 10 instances: the first 4 drawn
-# effekseer: node 0.0.1.2 "Distortion": nested generation: 2 instances above its generator folded into one emitter
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 6.733399868011475,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 1.25
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 1.25,
+      "life": 0,
+      "offset": [
+        1.7411999702453613,
+        3,
+        1.03410005569458
+      ],
+      "rotate": [
+        -90,
+        0,
+        -165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-0.emitter")
+      }
+    },
+    {
+      "at": 1.25,
+      "life": 1.416700005531311,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              0.23440000414848328,
+              3.002000093460083
+            ],
+            [
+              0.46880000829696655,
+              5.155799865722656
+            ],
+            [
+              0.7188000082969666,
+              8.07509994506836
+            ],
+            [
+              1,
+              12
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0.553600013256073
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 1.266700029373169,
+      "life": 1.416700005531311,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              0.23440000414848328,
+              3.002000093460083
+            ],
+            [
+              0.46880000829696655,
+              5.155799865722656
+            ],
+            [
+              0.7188000082969666,
+              8.07509994506836
+            ],
+            [
+              1,
+              12
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0.553600013256073
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 1.2833000421524048,
+      "life": 1.416700005531311,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              0.23440000414848328,
+              3.002000093460083
+            ],
+            [
+              0.46880000829696655,
+              5.155799865722656
+            ],
+            [
+              0.7188000082969666,
+              8.07509994506836
+            ],
+            [
+              1,
+              12
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0.553600013256073
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 1.2999999523162842,
+      "life": 1.416700005531311,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              0.23440000414848328,
+              3.002000093460083
+            ],
+            [
+              0.46880000829696655,
+              5.155799865722656
+            ],
+            [
+              0.7188000082969666,
+              8.07509994506836
+            ],
+            [
+              1,
+              12
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ],
+              [
+                0.5356000065803528,
+                0.4422999918460846,
+                0.21950000524520874,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0.553600013256073
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 1.25,
+      "life": 0,
+      "offset": [
+        1.7411999702453613,
+        3,
+        1.03410005569458
+      ],
+      "rotate": [
+        90,
+        0,
+        165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-2.emitter")
+      }
+    },
+    {
+      "at": 1.25,
+      "life": 0,
+      "offset": [
+        -4.0543999671936035,
+        3,
+        2.5869998931884766
+      ],
+      "rotate": [
+        -90,
+        0,
+        -165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-3.emitter")
+      }
+    },
+    {
+      "at": 0.0333000011742115,
+      "life": 1.5,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.10939999669790268,
+              1.7659000158309937
+            ],
+            [
+              0.23440000414848328,
+              1.0455000400543213
+            ],
+            [
+              0.34380000829696655,
+              0.5189999938011169
+            ],
+            [
+              0.46880000829696655,
+              0.035999998450279236
+            ],
+            [
+              0.75,
+              0.588100016117096
+            ],
+            [
+              0.875,
+              0.6597999930381775
+            ],
+            [
+              1,
+              0.6050000190734863
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              1.5805000066757202,
+              0
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.08330000191926956,
+      "life": 1.5,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.10939999669790268,
+              1.7659000158309937
+            ],
+            [
+              0.23440000414848328,
+              1.0455000400543213
+            ],
+            [
+              0.34380000829696655,
+              0.5189999938011169
+            ],
+            [
+              0.46880000829696655,
+              0.035999998450279236
+            ],
+            [
+              0.75,
+              0.588100016117096
+            ],
+            [
+              0.875,
+              0.6597999930381775
+            ],
+            [
+              1,
+              0.6050000190734863
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              1.5805000066757202,
+              0
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.13330000638961792,
+      "life": 1.5,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.10939999669790268,
+              1.7659000158309937
+            ],
+            [
+              0.23440000414848328,
+              1.0455000400543213
+            ],
+            [
+              0.34380000829696655,
+              0.5189999938011169
+            ],
+            [
+              0.46880000829696655,
+              0.035999998450279236
+            ],
+            [
+              0.75,
+              0.588100016117096
+            ],
+            [
+              0.875,
+              0.6597999930381775
+            ],
+            [
+              1,
+              0.6050000190734863
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              1.5805000066757202,
+              0
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.18330000340938568,
+      "life": 1.5,
+      "offset": [
+        2,
+        3,
+        2
+      ],
+      "rotate": [
+        -180,
+        -15,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.5
+            ],
+            [
+              0.10939999669790268,
+              1.7659000158309937
+            ],
+            [
+              0.23440000414848328,
+              1.0455000400543213
+            ],
+            [
+              0.34380000829696655,
+              0.5189999938011169
+            ],
+            [
+              0.46880000829696655,
+              0.035999998450279236
+            ],
+            [
+              0.75,
+              0.588100016117096
+            ],
+            [
+              0.875,
+              0.6597999930381775
+            ],
+            [
+              1,
+              0.6050000190734863
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ],
+              [
+                0.7519000172615051,
+                0.6388000249862671,
+                0.4422999918460846,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              1.5805000066757202,
+              0
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        1.6893999576568604,
+        3,
+        0.8409000039100647
+      ],
+      "rotate": [
+        -90,
+        0,
+        -165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-1.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.666700005531311,
+      "offset": [
+        2.0025999546051025,
+        3,
+        2.009700059890747
+      ],
+      "rotate": [
+        180,
+        -15,
+        45
+      ],
+      "velocity": [
+        0.4659000039100647,
+        0,
+        1.738700032234192
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.019999999552965164
+            ],
+            [
+              0.125,
+              0.619700014591217
+            ],
+            [
+              0.25,
+              1.1725000143051147
+            ],
+            [
+              0.375,
+              1.6784000396728516
+            ],
+            [
+              0.5,
+              2.137500047683716
+            ],
+            [
+              0.625,
+              2.5497000217437744
+            ],
+            [
+              0.75,
+              2.9149999618530273
+            ],
+            [
+              1,
+              3.505000114440918
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              2
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          120
+        ]
+      }
+    },
+    {
+      "at": 0.20000000298023224,
+      "life": 1.666700005531311,
+      "offset": [
+        2.0025999546051025,
+        3,
+        2.009700059890747
+      ],
+      "rotate": [
+        -180,
+        -15,
+        135
+      ],
+      "velocity": [
+        0.4659000039100647,
+        0,
+        1.738700032234192
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.019999999552965164
+            ],
+            [
+              0.125,
+              0.619700014591217
+            ],
+            [
+              0.25,
+              1.1725000143051147
+            ],
+            [
+              0.375,
+              1.6784000396728516
+            ],
+            [
+              0.5,
+              2.137500047683716
+            ],
+            [
+              0.625,
+              2.5497000217437744
+            ],
+            [
+              0.75,
+              2.9149999618530273
+            ],
+            [
+              1,
+              3.505000114440918
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              2
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          120
+        ]
+      }
+    },
+    {
+      "at": 0.4000000059604645,
+      "life": 1.666700005531311,
+      "offset": [
+        2.0025999546051025,
+        3,
+        2.009700059890747
+      ],
+      "rotate": [
+        180,
+        -15,
+        -135
+      ],
+      "velocity": [
+        0.4659000039100647,
+        0,
+        1.738700032234192
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.019999999552965164
+            ],
+            [
+              0.125,
+              0.619700014591217
+            ],
+            [
+              0.25,
+              1.1725000143051147
+            ],
+            [
+              0.375,
+              1.6784000396728516
+            ],
+            [
+              0.5,
+              2.137500047683716
+            ],
+            [
+              0.625,
+              2.5497000217437744
+            ],
+            [
+              0.75,
+              2.9149999618530273
+            ],
+            [
+              1,
+              3.505000114440918
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              2
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          120
+        ]
+      }
+    },
+    {
+      "at": 0.6000000238418579,
+      "life": 1.666700005531311,
+      "offset": [
+        2.0025999546051025,
+        3,
+        2.009700059890747
+      ],
+      "rotate": [
+        -180,
+        -15,
+        -45
+      ],
+      "velocity": [
+        0.4659000039100647,
+        0,
+        1.738700032234192
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-1-2.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.019999999552965164
+            ],
+            [
+              0.125,
+              0.619700014591217
+            ],
+            [
+              0.25,
+              1.1725000143051147
+            ],
+            [
+              0.375,
+              1.6784000396728516
+            ],
+            [
+              0.5,
+              2.137500047683716
+            ],
+            [
+              0.625,
+              2.5497000217437744
+            ],
+            [
+              0.75,
+              2.9149999618530273
+            ],
+            [
+              1,
+              3.505000114440918
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                1,
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              2
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          120
+        ]
+      }
+    }
+  ]
+});

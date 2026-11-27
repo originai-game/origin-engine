@@ -1,39 +1,11 @@
-//! Composed effects as text: a file of `type vfx`, one effect as a timeline
-//! of elements the runtime plays from an og.Vfx's start tick. The cook
-//! checks it with this parser (and that what it names is in the bundle);
-//! the runtime loads it with it.
-//!
-//! Its lines are the rows of [`VFX_LINES`] (the header lines and the
-//! elements) and [`ELEMENT_LINES`] (an element's block, with the elements
-//! that take each), which the parser holds every line to and `og api gen`
-//! writes into the `effect-files` guide.
-//!
-//! Every element takes `at`, `offset`, `rotate`, `move` and `accelerate`
-//! (its offset moves from its start: an emitter spawns along the path, a
-//! mesh, trail or light goes with it); those that last take
-//! `life` (seconds) or `until` (an end time). A value is a number,
-//! `random <min> <max>` (fixed per effect instance) or `curve <t> <v> ...`
-//! (over the element's life, at most 8 keys). Times are seconds from the
-//! effect's start; the tick they land on is `start + round(time × rate)`.
-//! The shared lines (`duration`, `loop`, `event`, `impact`) mean the same in
-//! a `type vfx2d` pixel effect. Every og.FlipbookEvent a `flipbook`
-//! element's clip fires (a vfx2d's `impact`) is passed on as an
-//! og.VfxEvent of the effect with the same name, so a file whose impact a
-//! pixel effect carries needs no `impact` line of its own.
+//! Native composed effects and deterministic timeline playback.
 
 mod cooked;
-mod lines;
-mod parse;
 mod play;
 
-pub use lines::{ELEMENT_LINES, VFX_LINES};
-pub use parse::parse_vfx;
 pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, hue_rotated, random};
 
 use og_render_data::{EffectValue, ParticleBlend};
-
-/// The `.ogt` type of a composed effect file.
-pub const VFX_TYPE: &str = "vfx";
 
 /// The `type vfx` version this engine writes; it reads every version from
 /// 1 (whose `flash` element is version 2's `glow`).

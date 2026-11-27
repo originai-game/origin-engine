@@ -1,31 +1,103 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. Thin grey
-# smoke off a small clean fire.
-maxParticles 24
-shape sphere 0.1
-rate 5
-duration 2
-looping true
-lifetime 2.5 3.5
-speed 0.3 0.6
-size 0.3 0.45
-sizeOverLife 0 0.6 1 2.8
-rotation 0 360
-angularVelocity -15 15
-gravity 0 0.8 0
-drag 0.6
-wind 1
-noise 0.2 0.6 0.3
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.4 0.39 0.38
-softDistance 0.2
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.15 1 1 1 0.22
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -15,
+    15
+  ],
+  "blend": "alpha",
+  "color": [
+    0.4000000059604645,
+    0.38999998569488525,
+    0.3799999952316284,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.15000000596046448,
+      [
+        1,
+        1,
+        1,
+        0.2199999988079071
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.6000000238418579,
+  "duration": 2,
+  "gravity": [
+    0,
+    0.800000011920929,
+    0
+  ],
+  "lifetime": [
+    2.5,
+    3.5
+  ],
+  "lit": true,
+  "maxParticles": 24,
+  "noise": {
+    "frequency": 0.6000000238418579,
+    "scroll": 0.30000001192092896,
+    "strength": 0.20000000298023224
+  },
+  "rate": 5,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.10000000149011612,
+    "surface": false
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.30000001192092896,
+    0.44999998807907104
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      2.799999952316284
+    ]
+  ],
+  "softDistance": 0.20000000298023224,
+  "speed": [
+    0.30000001192092896,
+    0.6000000238418579
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

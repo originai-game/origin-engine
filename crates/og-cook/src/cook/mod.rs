@@ -154,8 +154,7 @@ pub(crate) struct Source {
     font_pack: Option<font_pack::Prepared>,
     /// Checked lattices shared with terrain and particle consumers for this cook.
     fields: std::sync::Arc<field::Fields>,
-    /// Native importer boundary; the following FX cutover wires its writer.
-    #[expect(dead_code, reason = "staged native FX importer boundary")]
+    /// Native FX fields shared by checked declarations and external importers.
     fx: Option<effect::Prepared>,
     /// Checked terrain surfaces shared by their writer, navigation and scatter.
     terrains: std::sync::Arc<terrain::Terrains>,

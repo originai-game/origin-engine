@@ -1,21 +1,62 @@
-type particles
-version 1
----
-# Effekseer node 6 "Bloom"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1
-duration 0.0167
-looping false
-lifetime 0.25 0.25
-speed 0 0
-size 2 2
-colorOverLife {
-  key 0 1 1 1 0.502
-  key 0.7333 1 1 1 0.502
-  key 1 1 1 1 0
-}
-texture "vfx/effekseer-starter/textures/particle.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.5019999742507935
+      ]
+    ],
+    [
+      0.733299970626831,
+      [
+        1,
+        1,
+        1,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "lifetime": [
+    0.25,
+    0.25
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    2,
+    2
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/particle")
+});

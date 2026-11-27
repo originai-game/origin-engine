@@ -252,40 +252,6 @@ pub fn markdown() -> Result<String, String> {
                     }
                 }
             }
-            "particles" | "effect" | "vfx" => {
-                out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");
-                out.push_str("Alternatively, one exclusive generate block returns EffectSource {text}: the body declarations without type/version/header. The ordinary parser and asset links validate the result.\n\n");
-                block(
-                    &mut out,
-                    &format!("{ty}.generate"),
-                    super::generator::SCRIPT_LINES,
-                );
-                table(
-                    &mut out,
-                    match ty {
-                        "particles" => crate::fx::EMITTER_LINES,
-                        "effect" => crate::effect::EFFECT_LINES,
-                        _ => crate::vfx::VFX_LINES,
-                    },
-                );
-                if ty == "effect" {
-                    block(&mut out, "effect.texture", crate::effect::UV_LINES);
-                }
-                if ty == "vfx" {
-                    let kinds: BTreeSet<_> = crate::vfx::ELEMENT_LINES
-                        .iter()
-                        .flat_map(|f| f.within.iter().copied())
-                        .collect();
-                    for kind in kinds {
-                        let fields: Vec<_> = crate::vfx::ELEMENT_LINES
-                            .iter()
-                            .filter(|f| f.within.is_empty() || f.within.contains(&kind))
-                            .copied()
-                            .collect();
-                        block(&mut out, &format!("vfx.{kind}"), &fields);
-                    }
-                }
-            }
             _ => return Err(format!("cook type '{ty}' has no file field catalogue")),
         }
         out.push('\n');

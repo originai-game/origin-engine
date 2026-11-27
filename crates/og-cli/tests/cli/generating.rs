@@ -2264,37 +2264,23 @@ export default file['effect-texture']({
     vorticity:2, light:[-1,2,-1], ambient:0.2, direct:1,
 });"#;
     std::fs::write(root.join("content/volume.ts"), volume).unwrap();
-    for (name, ty, body) in [
+    for (name, declaration) in [
         (
             "surface",
-            "effect",
-            "main \"base/volume#emission\"\nblend additive\n",
+            "file.effect({main:{texture:ref('base/volume#emission')},blend:'additive'})",
         ),
         (
             "emitter",
-            "particles",
-            "maxParticles 1\nrate 0\nburst 0 1\nrender sprite\narray \"base/volume#array\" 3 life 1\neffect \"surface.ogt\"\n",
+            "file.particles({maxParticles:1,rate:0,bursts:[{time:0,count:1}],render:{kind:'sprite'},array:{asset:ref('base/volume#array'),layers:3,mode:{kind:'life',cycles:1}},effect:ref('base/surface')})",
         ),
         (
             "composed",
-            "vfx",
-            "duration 0.75\nemitter \"emitter.ogt\" {\nat 0\n}\n",
+            "file.vfx({duration:0.75,elements:[{node:{kind:'emitter',asset:ref('base/emitter')}}]})",
         ),
     ] {
         std::fs::write(
-            assets.join(format!("{name}.ogt")),
-            format!(
-                "type {ty}\nversion {}\n---\ngenerate {{\nscript \"{name}.ts\"\n}}\n",
-                if ty == "vfx" { 2 } else { 1 }
-            ),
-        )
-        .unwrap();
-        std::fs::write(
-            assets.join(format!("{name}.ts")),
-            format!(
-                "export default () => ({{text: {}}});",
-                serde_json::to_string(body).unwrap()
-            ),
+            root.join(format!("content/{name}.ts")),
+            format!("import {{file,ref}} from '@origingame/engine/author'; export default {declaration};"),
         )
         .unwrap();
     }
@@ -2318,10 +2304,10 @@ export default file['effect-texture']({
     );
     assert_eq!(array.layers[2], "base/volume#array#layer2");
     assert!(bundle.load_texture("base/volume#emission").is_ok());
-    let bytes = bundle.read("composed.ogt").unwrap();
-    let vfx = og_cook::vfx::parse_vfx(&bundle.vfx_text("composed.ogt", &bytes).unwrap()).unwrap();
+    let bytes = bundle.read("base/composed").unwrap();
+    let vfx = bundle.vfx("base/composed", &bytes).unwrap();
     assert_eq!(vfx.duration, 0.75);
-    assert_eq!(vfx.references().emitters, ["emitter.ogt"]);
+    assert_eq!(vfx.references().emitters, ["base/emitter"]);
     let first = bundle.read("base/volume#array#layer1").unwrap().to_vec();
     let pixels = bundle
         .load_texture("base/volume#array#layer1")
@@ -2379,14 +2365,14 @@ export default file['effect-texture']({
         text(&out)
     );
     std::fs::remove_file(assets.join("volume.ogt")).unwrap();
-    // The same ordinary target parser must reject malformed generated text.
+    // Checked input rejects unknown fields without a body-text bridge.
     std::fs::write(
-        assets.join("surface.ts"),
-        "export default () => ({text:'notAnEffectField 3'});",
+        root.join("content/surface.ts"),
+        "import {file} from '@origingame/engine/author'; export default file.effect({notAnEffectField:3});",
     )
     .unwrap();
     let out = cook("off");
-    assert!(!out.status.success(), "invalid generated material accepted");
+    assert!(!out.status.success(), "invalid material accepted");
 }
 
 /// A graph asset resolves clip names at cook, keeps bindings in its
@@ -2628,8 +2614,8 @@ fn generated_fields_load_losslessly_and_feed_particles() {
     std::fs::write(root.join("content/source.ts"), "import {file,input} from '@origingame/engine/author'; import {samples} from '../lib/field.ts'; export default file.field({dimensions: [2, 2, 2], channels: 3, origin: [-3, 2, 7], spacing: [0.5, 2, 3], values: samples(input.bytes('assets/input.bin')[0])});").unwrap();
     std::fs::write(assets.join("input.bin"), [7]).unwrap();
     std::fs::write(
-        assets.join("particles.ogt"),
-        "type particles\nversion 1\n---\nfield \"base/source\" 0.25 9\n",
+        root.join("content/particles.ts"),
+        "import {file,ref} from '@origingame/engine/author';export default file.particles({field:{kind:'asset',asset:ref('base/source'),strength:0.25,size:9}});",
     )
     .unwrap();
     let cook = || {
@@ -2653,9 +2639,8 @@ fn generated_fields_load_losslessly_and_feed_particles() {
             .map(|i| f32::from(amplitude) + i as f32 / divisor as f32)
             .collect();
         assert_eq!(field.values, expected);
-        let bytes = bundle.read("particles.ogt").unwrap();
-        let emitter_text = bundle.emitter_text("particles.ogt", &bytes).unwrap();
-        let emitter = og_cook::fx::parse_emitter(&emitter_text, &mut |_| Ok(None)).unwrap();
+        let bytes = bundle.read("base/particles").unwrap();
+        let emitter = bundle.emitter("base/particles", &bytes).unwrap().data;
         let og_render_data::VectorField::Grid {
             strength,
             size,
@@ -2679,13 +2664,13 @@ fn generated_fields_load_losslessly_and_feed_particles() {
         assert!(out.status.success(), "{}", text(&out));
         let warm = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
         assert_eq!(&*warm.read("base/source").unwrap(), cold_field);
-        assert_eq!(&*warm.read("particles.ogt").unwrap(), cold_emitter);
+        assert_eq!(&*warm.read("base/particles").unwrap(), cold_emitter);
         std::fs::remove_dir_all(root.join("cooked")).unwrap();
         let out = cook();
         assert!(out.status.success(), "{}", text(&out));
         let restored = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
         assert_eq!(&*restored.read("base/source").unwrap(), cold_field);
-        assert_eq!(&*restored.read("particles.ogt").unwrap(), cold_emitter);
+        assert_eq!(&*restored.read("base/particles").unwrap(), cold_emitter);
     }
     // A rectangular scalar lattice is valid by itself, not a particle grid.
     std::fs::write(root.join("content/source.ts"), "import {file} from '@origingame/engine/author';export default file.field({dimensions: [3, 2, 1], channels: 1, values: [117, -2, 0.125, 4, 9, 0]});").unwrap();
@@ -2696,7 +2681,7 @@ fn generated_fields_load_losslessly_and_feed_particles() {
         "{}",
         text(&out)
     );
-    std::fs::remove_file(assets.join("particles.ogt")).unwrap();
+    std::fs::remove_file(root.join("content/particles.ts")).unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
@@ -3594,8 +3579,9 @@ fn generated_pcm_cooks_as_an_authored_sound() {
         .unwrap();
     assert_eq!(decoded(), silence.samples);
 
-    // The CLI's author declaration and listening WAV describe the same sound.
-    for out in ["content/preset.ts", "assets/preset.wav"] {
+    // Distinct canonical IDs let the generated declaration and listening WAV
+    // coexist while describing the same sound.
+    for out in ["content/preset.ts", "assets/listening-preset.wav"] {
         let generated = og()
             .args([
                 "sfx", "laser", "--seed", "23", "--pitch", "1.17", "--length", "0.6", "--volume",
@@ -3617,7 +3603,7 @@ fn generated_pcm_cooks_as_an_authored_sound() {
             .unwrap()
             .samples,
         bundle
-            .load_sound("preset.wav")
+            .load_sound("listening-preset.wav")
             .unwrap()
             .decode()
             .unwrap()

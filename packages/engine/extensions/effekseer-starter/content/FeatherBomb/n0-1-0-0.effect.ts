@@ -1,9 +1,25 @@
-type effect
-version 1
----
-# Effekseer node 0.1.0.0 "Feather"
-main "vfx/effekseer-starter/textures/Feather.png" rgba {
-  tile 0.25 0.25
-  offset 0 0.5
-}
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "alpha",
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/Feather"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0.5
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        0.25,
+        0.25
+      ],
+      "rotate": 0
+    }
+  }
+});

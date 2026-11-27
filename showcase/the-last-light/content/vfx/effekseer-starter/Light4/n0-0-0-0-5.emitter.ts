@@ -1,25 +1,157 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.0.5 "消滅柱"
-maxParticles 5
-shape box 5 1 0.001
-spread 0
-rate 0
-burst 0 1 6 0.1167
-duration 0.6
-looping false
-lifetime 0.2667 0.2667
-speed 22.9412 30
-speedOverLife 0 0.7442 0.25 0.6243 0.5 0.8001 0.75 1.2758 1 2.0369
-size 1 1
-sizeOverLife 0 1 0.0938 0.8139 0.2031 0.6317 0.3125 0.4826 0.4219 0.3618 0.5312 0.2645 0.6562 0.176 1 0
-heightOverLife 0 1 0.0938 2.6751 0.2031 4.3147 0.3125 5.6564 0.4219 6.7435 0.5312 7.6191 0.6562 8.4161 1 10
-align upright 0 -1 0
-colorOverLife {
-  key 0 1 1 1 1
-  key 1 1 1 1 1
-}
-texture "vfx/effekseer-starter/textures/Particle02-b223f51c.png"
-blend additive
-effect "vfx/effekseer-starter/Light4/n0-0-0-0-5.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "upright",
+    "axis": [
+      0,
+      -1,
+      0
+    ]
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 6,
+      "interval": 0.11670000106096268,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ]
+  ],
+  "duration": 0.6000000238418579,
+  "effect": ref("base/vfx/effekseer-starter/Light4/n0-0-0-0-5.effect"),
+  "heightOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      0.09380000084638596,
+      2.675100088119507
+    ],
+    [
+      0.20309999585151672,
+      4.314700126647949
+    ],
+    [
+      0.3125,
+      5.656400203704834
+    ],
+    [
+      0.4219000041484833,
+      6.743500232696533
+    ],
+    [
+      0.5311999917030334,
+      7.619100093841553
+    ],
+    [
+      0.6561999917030334,
+      8.416099548339844
+    ],
+    [
+      1,
+      10
+    ]
+  ],
+  "lifetime": [
+    0.26669999957084656,
+    0.26669999957084656
+  ],
+  "looping": false,
+  "maxParticles": 5,
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      5,
+      1,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    1,
+    1
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      0.09380000084638596,
+      0.8138999938964844
+    ],
+    [
+      0.20309999585151672,
+      0.6316999793052673
+    ],
+    [
+      0.3125,
+      0.48260000348091125
+    ],
+    [
+      0.4219000041484833,
+      0.3617999851703644
+    ],
+    [
+      0.5311999917030334,
+      0.2644999921321869
+    ],
+    [
+      0.6561999917030334,
+      0.17599999904632568
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    22.941200256347656,
+    30
+  ],
+  "speedOverLife": [
+    [
+      0,
+      0.7441999912261963
+    ],
+    [
+      0.25,
+      0.6243000030517578
+    ],
+    [
+      0.5,
+      0.8001000285148621
+    ],
+    [
+      0.75,
+      1.2757999897003174
+    ],
+    [
+      1,
+      2.036900043487549
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle02-b223f51c")
+});

@@ -1,25 +1,106 @@
-type particles
-version 1
----
-# A purchase's coins for a `<Particles>` node: coins thrown up from the
-# centre in a fountain, spinning (their height swings) as they fall. Grey
-# shading: the node's ink (text-gold) gilds them.
-maxParticles 40
-shape cone 30 4
-spread 0
-rate 0
-burst 0 26
-duration 0.1
-looping false
-lifetime 1.3 1.7
-speed 420 620
-size 18 26
-heightOverLife 0 1 0.14 0.2 0.28 1 0.42 0.2 0.56 1 0.7 0.2 0.84 1 1 0.2
-rotation -20 20
-gravity 0 -1300 0
-texture "@styles/shared/fx/coin.png"
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.8 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 26,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.800000011920929,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.10000000149011612,
+  "gravity": [
+    0,
+    -1300,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      0.14000000059604645,
+      0.20000000298023224
+    ],
+    [
+      0.2800000011920929,
+      1
+    ],
+    [
+      0.41999998688697815,
+      0.20000000298023224
+    ],
+    [
+      0.5600000023841858,
+      1
+    ],
+    [
+      0.699999988079071,
+      0.20000000298023224
+    ],
+    [
+      0.8399999737739563,
+      1
+    ],
+    [
+      1,
+      0.20000000298023224
+    ]
+  ],
+  "lifetime": [
+    1.2999999523162842,
+    1.7000000476837158
+  ],
+  "looping": false,
+  "maxParticles": 40,
+  "rate": 0,
+  "rotation": [
+    -20,
+    20
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 30,
+    "radius": 4
+  },
+  "size": [
+    18,
+    26
+  ],
+  "speed": [
+    420,
+    620
+  ],
+  "texture": ref("@styles/shared/fx/coin.png")
+});

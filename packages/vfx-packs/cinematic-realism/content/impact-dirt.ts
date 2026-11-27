@@ -1,27 +1,172 @@
-type vfx
-version 2
----
-duration 10
-impact 0
-param mark 1
-emitter "vfx/cinematic-realism/emitters/dirt-spray.ogt" {
-  offset 0 0.04 0
-}
-emitter "vfx/cinematic-realism/emitters/clods.ogt" {
-  offset 0 0.03 0
-}
-decal {
-  until 10
-  fade 3
-  when mark
-  texture "vfx/cinematic-realism/textures/scorch.png"
-  normal "vfx/cinematic-realism/textures/scorch-normal.png"
-  normalScale 1.6
-  size 0.4 0.25 0.4
-  color 0.6 0.48 0.36 0.85
-  roughness 1
-  turn 0 360
-}
-sound "base/vfx/cinematic-realism/audio/thud" {
-  playbackRate 0.9 1.1
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 10,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [
+    {
+      "default": 1,
+      "name": "mark"
+    }
+  ],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.03999999910593033,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/dirt-spray")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.029999999329447746,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/clods")
+      }
+    },
+    {
+      "at": 0,
+      "life": 10,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "decal",
+        "angleFade": 75,
+        "color": [
+          0.6000000238418579,
+          0.47999998927116394,
+          0.36000001430511475,
+          0.8500000238418579
+        ],
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "fade": 3,
+        "normal": ref("base/vfx/cinematic-realism/textures/scorch-normal"),
+        "normalScale": 1.600000023841858,
+        "roughness": 1,
+        "size": [
+          0.4000000059604645,
+          0.25,
+          0.4000000059604645
+        ],
+        "texture": ref("base/vfx/cinematic-realism/textures/scorch"),
+        "turn": [
+          0,
+          360
+        ],
+        "uv": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "wet": false
+      },
+      "when": "mark"
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "sound",
+        "pitch": [
+          0.8999999761581421,
+          1.100000023841858
+        ],
+        "volume": 1,
+        "asset": ref("base/vfx/cinematic-realism/audio/thud")
+      }
+    }
+  ]
+});

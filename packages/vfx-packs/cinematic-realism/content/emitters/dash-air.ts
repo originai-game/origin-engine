@@ -1,24 +1,77 @@
-type particles
-version 1
----
-# MIT Origin Engine. The air a dash displaces: billboards that only bend
-# the scene.
-maxParticles 4
-shape cone 10 0.2
-rate 0
-burst 0 4
-duration 0.05
-looping false
-lifetime 0.25 0.4
-speed 2 5
-size 0.6 0.9
-sizeOverLife 0 0.6 1 1.5
-gravity 0 0 0
-drag 3
-blend alpha
-distortion 0.01
-color 1 1 1 0
-colorOverLife {
-  key 0 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 4,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    1,
+    1,
+    1,
+    0
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "distortion": 0.009999999776482582,
+  "drag": 3,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.25,
+    0.4000000059604645
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 10,
+    "radius": 0.20000000298023224
+  },
+  "size": [
+    0.6000000238418579,
+    0.8999999761581421
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      1.5
+    ]
+  ],
+  "speed": [
+    2,
+    5
+  ]
+});

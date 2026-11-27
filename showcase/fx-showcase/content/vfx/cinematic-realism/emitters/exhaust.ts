@@ -1,24 +1,97 @@
-type particles
-version 1
----
-# MIT Origin Engine. Ion engine core: a tight hot jet.
-maxParticles 96
-shape cone 5 0.04
-rate 160
-duration 2
-looping true
-lifetime 0.12 0.28
-speed 3 5
-size 0.07 0.12
-sizeOverLife 0 0.7 0.3 1 1 0.2
-heightOverLife 0 2.2 1 0.8
-align velocity 0.02
-gravity 0 0 0
-space local
-blend additive
-colorOverLife {
-  key 0 1.6 1.9 2.6 1
-  key 0.25 0.6 0.95 2 0.8
-  key 0.7 0.12 0.3 0.9 0.35
-  key 1 0.03 0.08 0.25 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.019999999552965164
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1.600000023841858,
+        1.899999976158142,
+        2.5999999046325684,
+        1
+      ]
+    ],
+    [
+      0.25,
+      [
+        0.6000000238418579,
+        0.949999988079071,
+        2,
+        0.800000011920929
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        0.11999999731779099,
+        0.30000001192092896,
+        0.8999999761581421,
+        0.3499999940395355
+      ]
+    ],
+    [
+      1,
+      [
+        0.029999999329447746,
+        0.07999999821186066,
+        0.25,
+        0
+      ]
+    ]
+  ],
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      2.200000047683716
+    ],
+    [
+      1,
+      0.800000011920929
+    ]
+  ],
+  "lifetime": [
+    0.11999999731779099,
+    0.2800000011920929
+  ],
+  "maxParticles": 96,
+  "rate": 160,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 5,
+    "radius": 0.03999999910593033
+  },
+  "size": [
+    0.07000000029802322,
+    0.11999999731779099
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.699999988079071
+    ],
+    [
+      0.30000001192092896,
+      1
+    ],
+    [
+      1,
+      0.20000000298023224
+    ]
+  ],
+  "space": "local",
+  "speed": [
+    3,
+    5
+  ]
+});

@@ -1,24 +1,71 @@
-type particles
-version 1
----
-# Effekseer node 0.1.1.0 "Feather"
-maxParticles 33
-shape point
-spread 0
-rate 0
-burst 0 2
-duration 0.0167
-looping false
-lifetime 0.3333 1
-speed 0 0
-size 4.5 4.5
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.325 1 1 1 1
-  key 1 1 1 1 0
-}
-rotation -360 360
-angularVelocity -240 240
-texture "vfx/effekseer-starter/textures/Feather.png"
-blend alpha
-effect "vfx/effekseer-starter/FeatherBomb/n0-1-1-0.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -240,
+    240
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 2,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.32499998807907104,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.016699999570846558,
+  "effect": ref("base/vfx/effekseer-starter/FeatherBomb/n0-1-1-0.effect"),
+  "lifetime": [
+    0.33329999446868896,
+    1
+  ],
+  "looping": false,
+  "maxParticles": 33,
+  "rate": 0,
+  "rotation": [
+    -360,
+    360
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    4.5,
+    4.5
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Feather")
+});

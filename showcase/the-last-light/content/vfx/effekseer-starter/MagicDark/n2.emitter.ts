@@ -1,25 +1,106 @@
-type particles
-version 1
----
-# Effekseer node 2 "moya"
-maxParticles 25
-shape box 1 2 1
-spread 180
-rate 0
-burst 0 1 20 0.0167
-duration 0.3333
-looping false
-lifetime 0.6667 0.6667
-speed 2.1866 8.7464
-size 3 3
-sizeOverLife 0 0.3333 1 1
-heightOverLife 0 0.3333 1 0.6667
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.125 1 1 1 0.2737
-  key 0.25 1 1 1 0.4827
-  key 0.6719 1 1 1 0.2437
-  key 1 1 1 1 0
-}
-texture "vfx/effekseer-starter/textures/Fog3001.png"
-blend subtractive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "subtractive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 20,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.125,
+      [
+        1,
+        1,
+        1,
+        0.2736999988555908
+      ]
+    ],
+    [
+      0.25,
+      [
+        1,
+        1,
+        1,
+        0.482699990272522
+      ]
+    ],
+    [
+      0.6718999743461609,
+      [
+        1,
+        1,
+        1,
+        0.24369999766349792
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.33329999446868896,
+  "heightOverLife": [
+    [
+      0,
+      0.33329999446868896
+    ],
+    [
+      1,
+      0.666700005531311
+    ]
+  ],
+  "lifetime": [
+    0.666700005531311,
+    0.666700005531311
+  ],
+  "looping": false,
+  "maxParticles": 25,
+  "rate": 0,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1,
+      2,
+      1
+    ]
+  },
+  "size": [
+    3,
+    3
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.33329999446868896
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    2.1865999698638916,
+    8.746399879455566
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/Fog3001")
+});

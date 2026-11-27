@@ -1,33 +1,121 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. The dark puff
-# an airburst hangs in the sky.
-maxParticles 8
-shape sphere 0.4
-spread 180
-rate 0
-burst 0 7
-duration 0.05
-looping false
-lifetime 3 4.5
-speed 0.6 1.6
-size 0.9 1.4
-sizeOverLife 0 0.6 0.2 1 1 1.7
-rotation 0 360
-angularVelocity -12 12
-gravity 0 0.05 0
-drag 2.5
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.2 0.19 0.19
-softDistance 0.4
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.06 1 1 1 0.85
-  key 0.6 1 1 1 0.5
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -12,
+    12
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 7,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.20000000298023224,
+    0.1899999976158142,
+    0.1899999976158142,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.05999999865889549,
+      [
+        1,
+        1,
+        1,
+        0.8500000238418579
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.5
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 2.5,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.05000000074505806,
+    0
+  ],
+  "lifetime": [
+    3,
+    4.5
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 8,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.4000000059604645,
+    "surface": false
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.8999999761581421,
+    1.399999976158142
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      0.20000000298023224,
+      1
+    ],
+    [
+      1,
+      1.7000000476837158
+    ]
+  ],
+  "softDistance": 0.4000000059604645,
+  "speed": [
+    0.6000000238418579,
+    1.600000023841858
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

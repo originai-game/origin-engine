@@ -37,7 +37,7 @@ function find(world: World, name: string): Entity {
 }
 
 function build(world: World): void {
-  const dust = must(og.load.emitter(world, "fx/dust.ogt"));
+  const dust = must(og.load.emitter(world, "base/fx/dust"));
   const material = (kind: number) => must(og.destruction.material(world, kind));
   const prop = (model: string, name: string, at: { x: number; y: number; z: number }, d: Partial<Destructible>) => {
     const e = must(world.instantiate(must(og.load.gltf(world, model)), { name, position: at }));

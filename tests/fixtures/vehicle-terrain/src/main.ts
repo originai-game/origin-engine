@@ -98,7 +98,7 @@ function build(world: World): void {
   }
   must(world.insert(car, og.AudioSource, { sound: engineTone(world), bus: "sfx", loop: true, volume: 0.4, playbackRate: 0.6 }));
 
-  const smoke = must(og.load.emitter(world, "fx/smoke.ogt"));
+  const smoke = must(og.load.emitter(world, "base/fx/smoke"));
   for (const side of [-1, 1]) {
     const e = must(world.spawn({ name: `smoke-${side < 0 ? "l" : "r"}`, parent: car, position: { x: side * 0.85, y: -0.4, z: -1.3 } }));
     // Not emitting until a slide starts (stopTick before startTick).

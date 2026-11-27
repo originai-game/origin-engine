@@ -1,6 +1,6 @@
-type effect
-version 1
----
-# MIT Origin Engine. Solid unlit colour; geometric shapes supply the edge.
-blend alpha
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "alpha",
+  "doubleSided": true
+});

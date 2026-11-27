@@ -1,20 +1,64 @@
-type particles
-version 1
----
-# MIT Origin Engine. Motes lifting off a drawn circle.
-maxParticles 48
-shape sphere 1 surface
-rate 20
-duration 2
-looping true
-lifetime 0.8 1.4
-speed 0
-size 0.012 0.024
-gravity 0 0.8 0
-noise 0.15 1 0.3
-blend additive
-colorOverLife {
-  key 0 0 0 0 0
-  key 0.2 0.6 1.3 2.8 1
-  key 1 0.1 0.3 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        0.6000000238418579,
+        1.2999999523162842,
+        2.799999952316284,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.10000000149011612,
+        0.30000001192092896,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 2,
+  "gravity": [
+    0,
+    0.800000011920929,
+    0
+  ],
+  "lifetime": [
+    0.800000011920929,
+    1.399999976158142
+  ],
+  "maxParticles": 48,
+  "noise": {
+    "frequency": 1,
+    "scroll": 0.30000001192092896,
+    "strength": 0.15000000596046448
+  },
+  "rate": 20,
+  "shape": {
+    "kind": "sphere",
+    "radius": 1,
+    "surface": true
+  },
+  "size": [
+    0.012000000104308128,
+    0.024000000208616257
+  ],
+  "speed": [
+    0,
+    0
+  ]
+});

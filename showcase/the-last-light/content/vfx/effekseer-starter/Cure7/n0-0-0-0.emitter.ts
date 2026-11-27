@@ -1,21 +1,69 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.0 "星"
-maxParticles 102
-shape box 0.75 1 0.001
-spread 0
-rate 240
-duration 0.4167
-looping false
-lifetime 0.3333 0.3333
-speed 1.5 3
-speedOverLife 0 0.8568 1 1.1815
-size 0.375 0.375
-colorOverLife {
-  key 0 1 1 1 0.1961
-  key 0.5 1 1 1 0.7843
-  key 1 1 1 1 0.1961
-}
-texture "vfx/effekseer-starter/textures/star.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.19609999656677246
+      ]
+    ],
+    [
+      0.5,
+      [
+        1,
+        1,
+        1,
+        0.7843000292778015
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0.19609999656677246
+      ]
+    ]
+  ],
+  "duration": 0.41670000553131104,
+  "lifetime": [
+    0.33329999446868896,
+    0.33329999446868896
+  ],
+  "looping": false,
+  "maxParticles": 102,
+  "rate": 240,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.75,
+      1,
+      0.0010000000474974513
+    ]
+  },
+  "size": [
+    0.375,
+    0.375
+  ],
+  "speed": [
+    1.5,
+    3
+  ],
+  "speedOverLife": [
+    [
+      0,
+      0.8568000197410583
+    ],
+    [
+      1,
+      1.18149995803833
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/star")
+});

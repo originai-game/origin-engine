@@ -863,43 +863,37 @@ impl Bundle {
         })
     }
 
-    /// The validated text of a particle emitter blob (parse it with
-    /// [`crate::fx::parse_emitter`] and the bundle's textures).
-    pub fn emitter_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// Native emitter fields and blob-local resource bindings.
+    pub fn emitter(&self, id: &str, bytes: &[u8]) -> Result<crate::fx::cooked::Emitter, LoadError> {
         let blob = self.blob::<format::Emitter>(id, bytes)?;
         let meta = one::<format::EmitterMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the emitter text is cut short"));
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(&blob, "the emitter data length is invalid"));
         }
-        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
-            .map_err(|_| invalid(&blob, "the emitter text is not UTF-8"))
+        crate::fx::cooked::Emitter::from_bytes(data).map_err(|e| invalid(&blob, &e))
     }
 
-    /// The validated text of an effect material blob (parse it with
-    /// [`crate::effect::parse_effect`] and the bundle's textures).
-    pub fn effect_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// Native effect material fields and blob-local resource bindings.
+    pub fn effect(&self, id: &str, bytes: &[u8]) -> Result<crate::fx::cooked::Effect, LoadError> {
         let blob = self.blob::<format::Effect>(id, bytes)?;
         let meta = one::<format::EffectMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the effect text is cut short"));
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(&blob, "the effect data length is invalid"));
         }
-        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
-            .map_err(|_| invalid(&blob, "the effect text is not UTF-8"))
+        crate::fx::cooked::Effect::from_bytes(data).map_err(|e| invalid(&blob, &e))
     }
 
-    /// The validated text of a composed effect blob (parse it with
-    /// [`crate::vfx::parse_vfx`]).
-    pub fn vfx_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+    /// Native composed-effect timeline.
+    pub fn vfx(&self, id: &str, bytes: &[u8]) -> Result<crate::vfx::Vfx, LoadError> {
         let blob = self.blob::<format::Vfx>(id, bytes)?;
         let meta = one::<format::VfxMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the vfx text is cut short"));
+        let data = blob.raw("data")?;
+        if data.len() != meta.data_bytes as usize {
+            return Err(invalid(&blob, "the vfx data length is invalid"));
         }
-        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
-            .map_err(|_| invalid(&blob, "the vfx text is not UTF-8"))
+        crate::vfx::Vfx::from_bytes(data).map_err(|e| invalid(&blob, &e))
     }
 
     /// The material shader of a shader blob.

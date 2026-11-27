@@ -1,9 +1,26 @@
-type effect
-version 1
----
-# Effekseer node 2 "Whirl"
-main "vfx/effekseer-starter/textures/drillshi.png" rgba {
-  tile 4 1
-}
-blend additive
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "doubleSided": true,
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/drillshi"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        4,
+        1
+      ],
+      "rotate": 0
+    }
+  }
+});

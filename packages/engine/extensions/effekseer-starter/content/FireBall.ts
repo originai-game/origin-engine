@@ -1,440 +1,2104 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 5.5167
-impact 2.5
-mesh ring {
-  at 0
-  offset 0 4 -0.2
-  rotate 90 45 -135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.1166 0.0104 0.1882 1 0.1166 0.0104 1 1 0.1166 0.0104 0.1882
-  life 0.75
-  effect "vfx/effekseer-starter/FireBall/n0-0-0.effect.ogt"
-  scale curve 0 0 1 3
-  spin 0 0 540
-  color 2.25 2.25 2.25 1
-  blend additive
-}
-mesh ring {
-  at 0.0055
-  offset 0 4 -0.2
-  rotate 90 -15 75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.1166 0.0104 0.1882 1 0.1166 0.0104 1 1 0.1166 0.0104 0.1882
-  life 0.75
-  effect "vfx/effekseer-starter/FireBall/n0-0-0.effect.ogt"
-  scale curve 0 0 1 3
-  spin 0 0 540
-  color 2.25 2.25 2.25 1
-  blend additive
-}
-mesh ring {
-  at 0.011
-  offset 0 4 -0.2
-  rotate 90 -15 -75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.1166 0.0104 0.1882 1 0.1166 0.0104 1 1 0.1166 0.0104 0.1882
-  life 0.75
-  effect "vfx/effekseer-starter/FireBall/n0-0-0.effect.ogt"
-  scale curve 0 0 1 3
-  spin 0 0 540
-  color 2.25 2.25 2.25 1
-  blend additive
-}
-mesh ring {
-  at 0.0165
-  offset 0 4 -0.2
-  rotate 90 45 135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.1166 0.0104 0.1882 1 0.1166 0.0104 1 1 0.1166 0.0104 0.1882
-  life 0.75
-  effect "vfx/effekseer-starter/FireBall/n0-0-0.effect.ogt"
-  scale curve 0 0 1 3
-  spin 0 0 540
-  color 2.25 2.25 2.25 1
-  blend additive
-}
-trail {
-  at 0.15
-  offset 0 3.7802 0.6736
-  move 0 -1.4655 5.8237
-  life 1.4833
-  effect "vfx/effekseer-starter/FireBall/n0-0-1-0-0.effect.ogt"
-  width 0 0
-  lifetime 0.0333
-  color 1 0.5356 0.2195 0.0714
-}
-emitter "vfx/effekseer-starter/FireBall/n0-0-2.emitter.ogt" {
-  at 0
-  offset 0 4 -0.2
-  move 0 -1.4655 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-0-3.emitter.ogt" {
-  at 0
-  offset 0 4.5 -0.2
-  move 0 -1.4655 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-0-4.emitter.ogt" {
-  at 0
-  offset 0 4.5 -0.2
-  move 0 -1.4655 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-1-0-0-0.emitter.ogt" {
-  at 0.15
-  offset 0 4.2302 0.6736
-  move 0 -0.8303 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-1-0-0-1.emitter.ogt" {
-  at 0.15
-  offset 0 3.0302 0.6736
-  move 0 -0.8303 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-1-0-0-2.emitter.ogt" {
-  at 0.25
-  offset 0 2.9471 1.2559
-  move 0 -0.8303 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-1-0-0-3.emitter.ogt" {
-  at 0.35
-  offset 0 2.8641 1.8383
-  move 0 -0.8303 5.8237
-}
-emitter "vfx/effekseer-starter/FireBall/n0-1-0-0-4.emitter.ogt" {
-  at 0.45
-  offset 0 2.5905 2.4207
-  move 0 -1.4655 5.8237
-}
-mesh ring {
-  at 0.15
-  offset 0 3.7802 0.6736
-  rotate 90 45 -135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.1255 1 0.1166 0.0104 0.502 1 0.1166 0.0104 0.1255
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-1.effect.ogt"
-  scale curve 0 0.75 1 1.65
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 0.1583
-  offset 0 3.7802 0.6736
-  rotate 90 -15 75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.1255 1 0.1166 0.0104 0.502 1 0.1166 0.0104 0.1255
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-1.effect.ogt"
-  scale curve 0 0.75 1 1.65
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 0.1667
-  offset 0 3.7802 0.6736
-  rotate 90 -15 -75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.1255 1 0.1166 0.0104 0.502 1 0.1166 0.0104 0.1255
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-1.effect.ogt"
-  scale curve 0 0.75 1 1.65
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 0.175
-  offset 0 3.7802 0.6736
-  rotate 90 45 135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.1255 1 0.1166 0.0104 0.502 1 0.1166 0.0104 0.1255
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-1.effect.ogt"
-  scale curve 0 0.75 1 1.65
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-trail {
-  at 0.3125
-  offset 0 3.542 1.6199
-  move 0 -1.4655 5.8237
-  life 1.4833
-  effect "vfx/effekseer-starter/FireBall/n0-1-2-0-0.effect.ogt"
-  width 0 0
-  lifetime 0.0333
-  color 1 0.5356 0.2195 0.0714
-}
-mesh ring {
-  at 0.9
-  offset 0 2.681 5.0413
-  rotate 90 45 -135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.2195 0.0254 0.251 1 0.2195 0.0254 1 1 0.2195 0.0254 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-3.effect.ogt"
-  scale curve 0 0 1 4.5
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 1.05
-  offset 0 2.681 5.0413
-  rotate 90 -15 75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.2195 0.0254 0.251 1 0.2195 0.0254 1 1 0.2195 0.0254 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-3.effect.ogt"
-  scale curve 0 0 1 4.5
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 1.2
-  offset 0 2.681 5.0413
-  rotate 90 -15 -75
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.2195 0.0254 0.251 1 0.2195 0.0254 1 1 0.2195 0.0254 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-3.effect.ogt"
-  scale curve 0 0 1 4.5
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 1.35
-  offset 0 2.681 5.0413
-  rotate 90 45 135
-  move 0 -1.4655 5.8237
-  inner 1
-  band 0.5
-  height -0.3 0.3
-  colors 1 0.2195 0.0254 0.251 1 0.2195 0.0254 1 1 0.2195 0.0254 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-1-3.effect.ogt"
-  scale curve 0 0 1 4.5
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 2.5333
-  offset 0 4 -0.2
-  rotate 105 0 165
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.251 1 0.1166 0.0104 0.7529 1 0.1166 0.0104 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-2-0.effect.ogt"
-  scale curve 0 1.5 1 15
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-mesh ring {
-  at 2.5388
-  offset 0 4 -0.2
-  rotate 75 0 -165
-  inner 1
-  band 0.5
-  height -0.25 0.25
-  colors 1 0.1166 0.0104 0.251 1 0.1166 0.0104 0.7529 1 0.1166 0.0104 0.251
-  life 0.45
-  effect "vfx/effekseer-starter/FireBall/n0-2-0.effect.ogt"
-  scale curve 0 1.5 1 15
-  spin 0 0 360
-  color 1 1 1 0.8
-  blend additive
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-0.emitter.ogt" {
-  at 2.7
-  offset 0 4 1.3
-  rotate 11.5346 0 0
-}
-trail {
-  at 2.85
-  offset 0 4 1.3
-  rotate 25 90 0
-  life 1.4833
-  effect "vfx/effekseer-starter/FireBall/n0-2-1-0-1-0-0.effect.ogt"
-  width 0 0
-  lifetime 0.0333
-  color 1 0.5356 0.2195 0.0714
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-2.emitter.ogt" {
-  at 2.7
-  offset 0 4 1.3
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-3.emitter.ogt" {
-  at 2.8333
-  offset 0 4 1.3
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-4.emitter.ogt" {
-  at 2.9667
-  offset 0 4 1.3
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-5.emitter.ogt" {
-  at 3.1
-  offset 0 4 1.3
-  rotate 11.5346 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-0-6.parent.ogt" {
-  at 2.7
-  offset 0 4 1.3
-  rotate 14.0362 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-0.parent.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-1.parent.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-2.parent.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-3.parent.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-4.emitter.ogt" {
-  at 3.1042
-  offset 0 6.7245 3.691
-  rotate 55 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-1-0-5.emitter.ogt" {
-  at 3.2042
-  offset 0 6.7245 3.691
-  rotate 55 0 0
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-2-0-0.parent.ogt" {
-  at 3.0167
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-1-2-0-1.parent.ogt" {
-  at 3.0167
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-2.emitter.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-3.emitter.ogt" {
-  at 2.5
-  offset 0 4 -0.2
-}
-emitter "vfx/effekseer-starter/FireBall/n0-2-4.emitter.ogt" {
-  at 2.75
-  offset 0 4 -0.2
-}
-# effekseer: node 0.0.0 "Wind": ring 9 instances: the first 4 drawn
-# effekseer: node 0.0.0 "Wind": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.0.1.0.0 "Tracker": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.1.0.0 "Tracker": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.0 "Light": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.1 "FireVariation": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.0.0.2 "FireVariation": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.0.0.3 "FireVariation": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.0.0.4 "FireVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.0.0.4 "FireVariation": nested generation: 24 instances above its generator folded into one emitter
-# effekseer: node 0.1.0.0.4 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.1.1 "Wind": ring unlimited instances: the first 4 drawn
-# effekseer: node 0.1.1 "Wind": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.1.2.0.0 "Tracker": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.1.2.0.0 "Tracker": nested generation: 64 instances above its generator folded into one emitter
-# effekseer: node 0.1.3 "Wind": ring unlimited instances: the first 4 drawn
-# effekseer: node 0.1.3 "Wind": nested generation: 8 instances above its generator folded into one emitter
-# effekseer: node 0.2.0 "Wind": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.0 "Wind": ring 2 instances: the first 4 drawn
-# effekseer: node 0.2.0 "Wind": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.0 "Light": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.0 "Light": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.1.0.0 "Tracker": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.1.0.0 "Tracker": nested generation: 54 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.2 "FireVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.2 "FireVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.0.3 "FireVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.3 "FireVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.0.4 "FireVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.4 "FireVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.4 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.0.5 "FireVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.0.5 "FireVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0.5 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.0.6 "SmokeVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.0 "FireEmitter": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.1.0.0 "FireVariation": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.2.1 "MainFireGenerator": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.1.0.0 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.1.0.1 "FireVariation": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.1.0.1 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.1.0.2 "FireVariation": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.1.0.2 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.1.0.3 "FireVariation": nested generation: 9 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.1.0.3 "FireVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.1.0.4 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.1.0.4 "EmberVariation": nested generation: 54 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.1.0.4 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.1.0.5 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.1.0.5 "EmberVariation": nested generation: 54 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.1.0.5 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.2.0.0 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.2.0.0 "EmberVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.2 "FireGenerator": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.2.0.0 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.1.2.0.1 "EmberVariation": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.1.2.0.1 "EmberVariation": nested generation: 27 instances above its generator folded into one emitter
-# effekseer: node 0.2.1.2.0.1 "EmberVariation": a fixed sprite turned at random: its mean plane drawn
-# effekseer: node 0.2.2 "Flash": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.3 "Flash": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.2.4 "HeatHaze": a moving ancestor: its descendants are placed where it starts
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 5.51669979095459,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 2.5
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0.75,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        90,
+        45,
+        -135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.25,
+          2.25,
+          2.25,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                1
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          540
+        ]
+      }
+    },
+    {
+      "at": 0.005499999970197678,
+      "life": 0.75,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        90,
+        -15,
+        75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.25,
+          2.25,
+          2.25,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                1
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          540
+        ]
+      }
+    },
+    {
+      "at": 0.010999999940395355,
+      "life": 0.75,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        90,
+        -15,
+        -75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.25,
+          2.25,
+          2.25,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                1
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          540
+        ]
+      }
+    },
+    {
+      "at": 0.016499999910593033,
+      "life": 0.75,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        90,
+        45,
+        135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          2.25,
+          2.25,
+          2.25,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                1
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.1881999969482422
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          540
+        ]
+      }
+    },
+    {
+      "at": 0.15000000596046448,
+      "life": 1.483299970626831,
+      "offset": [
+        0,
+        3.7802000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1,
+          0.5356000065803528,
+          0.21950000524520874,
+          0.0714000016450882
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-0-1-0-0.effect"),
+        "lifetime": 0.0333000011742115,
+        "orbit": [
+          0,
+          0
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-0-2.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        4.5,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-0-3.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        4.5,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-0-4.emitter")
+      }
+    },
+    {
+      "at": 0.15000000596046448,
+      "life": 0,
+      "offset": [
+        0,
+        4.230199813842773,
+        0.6736000180244446
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -0.830299973487854,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-1-0-0-0.emitter")
+      }
+    },
+    {
+      "at": 0.15000000596046448,
+      "life": 0,
+      "offset": [
+        0,
+        3.0302000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -0.830299973487854,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-1-0-0-1.emitter")
+      }
+    },
+    {
+      "at": 0.25,
+      "life": 0,
+      "offset": [
+        0,
+        2.9470999240875244,
+        1.2559000253677368
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -0.830299973487854,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-1-0-0-2.emitter")
+      }
+    },
+    {
+      "at": 0.3499999940395355,
+      "life": 0,
+      "offset": [
+        0,
+        2.8640999794006348,
+        1.8382999897003174
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -0.830299973487854,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-1-0-0-3.emitter")
+      }
+    },
+    {
+      "at": 0.44999998807907104,
+      "life": 0,
+      "offset": [
+        0,
+        2.5905001163482666,
+        2.4207000732421875
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-1-0-0-4.emitter")
+      }
+    },
+    {
+      "at": 0.15000000596046448,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        3.7802000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        90,
+        45,
+        -135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.75
+            ],
+            [
+              1,
+              1.649999976158142
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.5019999742507935
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.1582999974489212,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        3.7802000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        90,
+        -15,
+        75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.75
+            ],
+            [
+              1,
+              1.649999976158142
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.5019999742507935
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.16670000553131104,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        3.7802000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        90,
+        -15,
+        -75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.75
+            ],
+            [
+              1,
+              1.649999976158142
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.5019999742507935
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.17499999701976776,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        3.7802000045776367,
+        0.6736000180244446
+      ],
+      "rotate": [
+        90,
+        45,
+        135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-1.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.75
+            ],
+            [
+              1,
+              1.649999976158142
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.5019999742507935
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.12549999356269836
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 0.3125,
+      "life": 1.483299970626831,
+      "offset": [
+        0,
+        3.5420000553131104,
+        1.6198999881744385
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1,
+          0.5356000065803528,
+          0.21950000524520874,
+          0.0714000016450882
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-2-0-0.effect"),
+        "lifetime": 0.0333000011742115,
+        "orbit": [
+          0,
+          0
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.8999999761581421,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        2.680999994277954,
+        5.041299819946289
+      ],
+      "rotate": [
+        90,
+        45,
+        -135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              4.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                1
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 1.0499999523162842,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        2.680999994277954,
+        5.041299819946289
+      ],
+      "rotate": [
+        90,
+        -15,
+        75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              4.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                1
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 1.2000000476837158,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        2.680999994277954,
+        5.041299819946289
+      ],
+      "rotate": [
+        90,
+        -15,
+        -75
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              4.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                1
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 1.350000023841858,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        2.680999994277954,
+        5.041299819946289
+      ],
+      "rotate": [
+        90,
+        45,
+        135
+      ],
+      "velocity": [
+        0,
+        -1.465499997138977,
+        5.823699951171875
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-1-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              4.5
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                1
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0.02539999969303608,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.30000001192092896,
+              0.30000001192092896
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 2.5332999229431152,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        105,
+        0,
+        165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-2-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              1,
+              15
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 2.538800001144409,
+      "life": 0.44999998807907104,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        75,
+        0,
+        -165
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          0.800000011920929
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-2-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1.5
+            ],
+            [
+              1,
+              15
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.25099998712539673
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0.11659999936819077,
+                0.010400000028312206,
+                0.25099998712539673
+              ]
+            ],
+            "height": [
+              -0.25,
+              0.25
+            ],
+            "inner": 1,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          360
+        ]
+      }
+    },
+    {
+      "at": 2.700000047683716,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-0.emitter")
+      }
+    },
+    {
+      "at": 2.8499999046325684,
+      "life": 1.483299970626831,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        25,
+        90,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1,
+          0.5356000065803528,
+          0.21950000524520874,
+          0.0714000016450882
+        ],
+        "effect": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-1-0-0.effect"),
+        "lifetime": 0.0333000011742115,
+        "orbit": [
+          0,
+          0
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 2.700000047683716,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-2.emitter")
+      }
+    },
+    {
+      "at": 2.8333001136779785,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-3.emitter")
+      }
+    },
+    {
+      "at": 2.9667000770568848,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-4.emitter")
+      }
+    },
+    {
+      "at": 3.0999999046325684,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        11.534600257873535,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-5.emitter")
+      }
+    },
+    {
+      "at": 2.700000047683716,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        1.2999999523162842
+      ],
+      "rotate": [
+        14.036199569702148,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-0-6.parent")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-0.parent")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-1.parent")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-2.parent")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-3.parent")
+      }
+    },
+    {
+      "at": 3.1041998863220215,
+      "life": 0,
+      "offset": [
+        0,
+        6.7245001792907715,
+        3.690999984741211
+      ],
+      "rotate": [
+        55,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-4.emitter")
+      }
+    },
+    {
+      "at": 3.204200029373169,
+      "life": 0,
+      "offset": [
+        0,
+        6.7245001792907715,
+        3.690999984741211
+      ],
+      "rotate": [
+        55,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-1-0-5.emitter")
+      }
+    },
+    {
+      "at": 3.016700029373169,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-2-0-0.parent")
+      }
+    },
+    {
+      "at": 3.016700029373169,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-1-2-0-1.parent")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-2.emitter")
+      }
+    },
+    {
+      "at": 2.5,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-3.emitter")
+      }
+    },
+    {
+      "at": 2.75,
+      "life": 0,
+      "offset": [
+        0,
+        4,
+        -0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/FireBall/n0-2-4.emitter")
+      }
+    }
+  ]
+});

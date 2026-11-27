@@ -1,25 +1,97 @@
-type particles
-version 1
----
-# MIT Origin Engine. An afterburner's flame, carried with the nozzle: blue
-# at the root, orange down its length.
-maxParticles 128
-shape cone 3 0.07
-rate 200
-duration 2
-looping true
-lifetime 0.14 0.24
-speed 10 15
-size 0.13 0.19
-sizeOverLife 0 0.9 0.4 1 1 0.3
-heightOverLife 0 2.4 1 1
-align velocity 0.02
-gravity 0 0 0
-space local
-blend additive
-colorOverLife {
-  key 0 0.5 0.7 1.3 1
-  key 0.15 1.1 0.75 0.4 0.9
-  key 0.55 0.7 0.28 0.07 0.5
-  key 1 0.1 0.02 0.005 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.019999999552965164
+  },
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.5,
+        0.699999988079071,
+        1.2999999523162842,
+        1
+      ]
+    ],
+    [
+      0.15000000596046448,
+      [
+        1.100000023841858,
+        0.75,
+        0.4000000059604645,
+        0.8999999761581421
+      ]
+    ],
+    [
+      0.550000011920929,
+      [
+        0.699999988079071,
+        0.2800000011920929,
+        0.07000000029802322,
+        0.5
+      ]
+    ],
+    [
+      1,
+      [
+        0.10000000149011612,
+        0.019999999552965164,
+        0.004999999888241291,
+        0
+      ]
+    ]
+  ],
+  "duration": 2,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      2.4000000953674316
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "lifetime": [
+    0.14000000059604645,
+    0.23999999463558197
+  ],
+  "maxParticles": 128,
+  "rate": 200,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 3,
+    "radius": 0.07000000029802322
+  },
+  "size": [
+    0.12999999523162842,
+    0.1899999976158142
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.8999999761581421
+    ],
+    [
+      0.4000000059604645,
+      1
+    ],
+    [
+      1,
+      0.30000001192092896
+    ]
+  ],
+  "space": "local",
+  "speed": [
+    10,
+    15
+  ]
+});

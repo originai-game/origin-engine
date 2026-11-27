@@ -1,31 +1,214 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 0.5833
-impact 0.0833
-emitter "vfx/effekseer-starter/Sword7/n0.emitter.ogt" {
-  at 0
-  offset 15 0 0
-  rotate 0 0 90
-}
-emitter "vfx/effekseer-starter/Sword7/n1.emitter.ogt" {
-  at 0.0833
-}
-emitter "vfx/effekseer-starter/Sword7/n2.emitter.ogt" {
-  at 0.0833
-}
-mesh ring {
-  at 0.0833
-  rotate -75 0 0
-  inner 0.9801
-  band 0.55
-  colors 1 1 1 0 0.142 0.4368 0.8513 0.1961 1 1 1 0
-  life 0.5
-  effect "vfx/effekseer-starter/Sword7/n3-0.effect.ogt"
-  scale curve 0 2.25 0.0781 3.0409 0.1719 3.7854 0.2656 4.3348 0.375 4.7686 0.4688 4.9969 0.5781 5.1374 1 5.25
-  color 50 50 50 1
-  blend additive
-}
-# effekseer: node 3.0 "〆リング": ring 50 instances: the first 4 drawn
-# effekseer: node 3.0 "〆リング": a ring whose thickness changes over its life: its middle thickness kept
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 0.583299994468689,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.08330000191926956
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        15,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Sword7/n0.emitter")
+      }
+    },
+    {
+      "at": 0.08330000191926956,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Sword7/n1.emitter")
+      }
+    },
+    {
+      "at": 0.08330000191926956,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Sword7/n2.emitter")
+      }
+    },
+    {
+      "at": 0.08330000191926956,
+      "life": 0.5,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -75,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          50,
+          50,
+          50,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Sword7/n3-0.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              2.25
+            ],
+            [
+              0.07810000330209732,
+              3.0408999919891357
+            ],
+            [
+              0.17190000414848328,
+              3.785399913787842
+            ],
+            [
+              0.2655999958515167,
+              4.334799766540527
+            ],
+            [
+              0.375,
+              4.768599987030029
+            ],
+            [
+              0.46880000829696655,
+              4.9969000816345215
+            ],
+            [
+              0.5781000256538391,
+              5.137400150299072
+            ],
+            [
+              1,
+              5.25
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.550000011920929,
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                0
+              ],
+              [
+                0.1420000046491623,
+                0.4368000030517578,
+                0.8513000011444092,
+                0.19609999656677246
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.9800999760627747,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+});

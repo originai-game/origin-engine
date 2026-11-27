@@ -1,31 +1,112 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. A large
-# blast's ground shock: a wall of dust racing outwards.
-maxParticles 26
-shape cone 87 1
-rate 0
-burst 0 24
-duration 0.05
-looping false
-lifetime 2.4 3.6
-speed 8 14
-size 2 3
-sizeOverLife 0 0.5 1 1.8
-rotation 0 360
-gravity 0 0.15 0
-drag 1.6
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.85 0.8 0.72
-softDistance 0.8
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.1 1 1 1 0.6
-  key 0.6 1 1 1 0.35
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 24,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.8500000238418579,
+    0.800000011920929,
+    0.7200000286102295,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        1,
+        1,
+        1,
+        0.6000000238418579
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        0.3499999940395355
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 1.600000023841858,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.15000000596046448,
+    0
+  ],
+  "lifetime": [
+    2.4000000953674316,
+    3.5999999046325684
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 26,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 87,
+    "radius": 1
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    2,
+    3
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.5
+    ],
+    [
+      1,
+      1.7999999523162842
+    ]
+  ],
+  "softDistance": 0.800000011920929,
+  "speed": [
+    8,
+    14
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

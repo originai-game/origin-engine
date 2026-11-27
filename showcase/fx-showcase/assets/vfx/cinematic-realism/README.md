@@ -2,7 +2,7 @@
 
 89 visual mechanisms for `cinematic-realism` and its `muted` variant.
 Install with `og vfx add cinematic-realism`; spawn
-`vfx/cinematic-realism/<name>.ogt`. This downloadable pack adds nothing to
+`base/vfx/cinematic-realism/<name>`. This downloadable pack adds nothing to
 a game that does not install it. There are no game rules, damage, rewards
 or automatic UI actions: an effect draws, lights, shakes the camera and
 plays its sound, and the game decides when and where. Camera impulses are

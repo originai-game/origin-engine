@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "README.md",
-      "sha256": "0dea43db9b9a230fceb93e81fb26d9ef40ec468fa6c3ad96b70bad147d502cb6",
+      "sha256": "a0fc40c7fce75ab7103c37b39bd2c3da6ebab0553ebbc571f01255b9c04a2524",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -394,7 +394,7 @@
       "type": "vfx",
       "title": "Satin Confetti",
       "loop": false,
-      "durationSeconds": 3.0,
+      "durationSeconds": 3,
       "impact": true,
       "category": "ui",
       "keywords": [
@@ -420,7 +420,7 @@
       "type": "vfx",
       "title": "Ion Exhaust",
       "loop": true,
-      "durationSeconds": 2.0,
+      "durationSeconds": 2,
       "impact": false,
       "category": "fire",
       "keywords": [

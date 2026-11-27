@@ -1,23 +1,89 @@
-type particles
-version 1
----
-# Effekseer node 0.1.0.0.7.0 "粒子"
-maxParticles 375
-shape point
-spread 0
-rate 7200
-duration 0.0417
-looping false
-lifetime 0.4167 0.4167
-speed 0 0
-size 0.75 0.75
-sizeOverLife 0 1 0.2812 0.3346 0.5938 0.6602 0.6094 0.651 1 0
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.04 1 1 1 1
-  key 0.6 1 1 1 1
-  key 1 1 1 1 0
-}
-angularVelocity -1200 1200
-texture "vfx/effekseer-starter/textures/star.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -1200,
+    1200
+  ],
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.03999999910593033,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.04170000180602074,
+  "lifetime": [
+    0.41670000553131104,
+    0.41670000553131104
+  ],
+  "looping": false,
+  "maxParticles": 375,
+  "rate": 7200,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.75,
+    0.75
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      0.28119999170303345,
+      0.3346000015735626
+    ],
+    [
+      0.5938000082969666,
+      0.6601999998092651
+    ],
+    [
+      0.6093999743461609,
+      0.6510000228881836
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/star")
+});

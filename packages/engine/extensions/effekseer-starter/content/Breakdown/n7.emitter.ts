@@ -1,27 +1,96 @@
-type particles
-version 1
----
-# Effekseer node 7 "Particle1"
-maxParticles 14
-shape point
-spread 180
-rate 0
-burst 0 1 20 0.0167
-duration 0.3333
-looping false
-lifetime 0.1333 0.2
-speed 7.7942 31.1769
-size 0.3 0.9
-colorOverLife {
-  key 0 0.5356 0.2195 0.1166 0.502
-  key 0.5 0.5356 0.2195 0.1166 0.502
-  key 1 0.5356 0.2195 0.1166 0
-}
-randomColorOverLife {
-  key 0 1 0.2195 0.7519 0.502
-  key 0.5 1 0.2195 0.7519 0.502
-  key 1 1 0.2195 0.7519 0
-}
-rotation -180 180
-texture "vfx/effekseer-starter/textures/particle2.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 20,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.5356000065803528,
+        0.21950000524520874,
+        0.11659999936819077,
+        0.5019999742507935
+      ]
+    ],
+    [
+      0.5,
+      [
+        0.5356000065803528,
+        0.21950000524520874,
+        0.11659999936819077,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        0.5356000065803528,
+        0.21950000524520874,
+        0.11659999936819077,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.33329999446868896,
+  "lifetime": [
+    0.13330000638961792,
+    0.20000000298023224
+  ],
+  "looping": false,
+  "maxParticles": 14,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.21950000524520874,
+        0.7519000172615051,
+        0.5019999742507935
+      ]
+    ],
+    [
+      0.5,
+      [
+        1,
+        0.21950000524520874,
+        0.7519000172615051,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.21950000524520874,
+        0.7519000172615051,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "rotation": [
+    -180,
+    180
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.30000001192092896,
+    0.8999999761581421
+  ],
+  "speed": [
+    7.7941999435424805,
+    31.17690086364746
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/particle2")
+});

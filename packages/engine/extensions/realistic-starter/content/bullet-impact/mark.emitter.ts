@@ -1,25 +1,85 @@
-type particles
-version 1
----
-# The scorched pit it leaves, lying on the surface and fading out.
-maxParticles 1
-shape point
-spread 0
-rate 0
-burst 0 1
-duration 0.05
-looping false
-lifetime 1.8
-speed 0
-size 0.16
-rotation 0 360
-gravity 0 0 0
-align facing 0 1 0
-color 0.05 0.045 0.04
-colorOverLife {
-  key 0 1 1 1 0.85
-  key 0.7 1 1 1 0.85
-  key 1 1 1 1 0
-}
-texture "vfx/realistic-starter/textures/scorch.png"
-blend alpha
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0,
+      1,
+      0
+    ]
+  },
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.05000000074505806,
+    0.04500000178813934,
+    0.03999999910593033,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0.8500000238418579
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1,
+        1,
+        1,
+        0.8500000238418579
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    1.7999999523162842,
+    1.7999999523162842
+  ],
+  "looping": false,
+  "maxParticles": 1,
+  "rate": 0,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    0.1599999964237213,
+    0.1599999964237213
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/realistic-starter/textures/scorch")
+});

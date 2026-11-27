@@ -1,28 +1,102 @@
-type particles
-version 1
----
-# MIT Origin Engine. A flamethrower's stream: burning fuel thrown forward,
-# swelling as it slows and lifting at its end.
-maxParticles 160
-shape cone 5 0.03
-rate 150
-duration 2
-looping true
-lifetime 0.55 0.85
-speed 9 13
-size 0.2 0.28
-sizeOverLife 0 0.6 0.3 2 1 5
-rotation 0 360
-angularVelocity -60 60
-gravity 0 1.6 0
-drag 2.2
-texture "vfx/cinematic-realism/textures/flames.png"
-sheet 8 4 32 random
-blend additive
-softDistance 0.2
-colorOverLife {
-  key 0 2.6 2.2 1.6 0.9
-  key 0.2 2.2 1.5 0.7 0.9
-  key 0.6 1.6 0.7 0.2 0.6
-  key 1 0.4 0.08 0.02 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -60,
+    60
+  ],
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        2.5999999046325684,
+        2.200000047683716,
+        1.600000023841858,
+        0.8999999761581421
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        2.200000047683716,
+        1.5,
+        0.699999988079071,
+        0.8999999761581421
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1.600000023841858,
+        0.699999988079071,
+        0.20000000298023224,
+        0.6000000238418579
+      ]
+    ],
+    [
+      1,
+      [
+        0.4000000059604645,
+        0.07999999821186066,
+        0.019999999552965164,
+        0
+      ]
+    ]
+  ],
+  "drag": 2.200000047683716,
+  "duration": 2,
+  "gravity": [
+    0,
+    1.600000023841858,
+    0
+  ],
+  "lifetime": [
+    0.550000011920929,
+    0.8500000238418579
+  ],
+  "maxParticles": 160,
+  "rate": 150,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 5,
+    "radius": 0.029999999329447746
+  },
+  "sheet": {
+    "blend": false,
+    "columns": 8,
+    "frames": 32,
+    "mode": {
+      "kind": "random"
+    },
+    "rows": 4
+  },
+  "size": [
+    0.20000000298023224,
+    0.2800000011920929
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      0.30000001192092896,
+      2
+    ],
+    [
+      1,
+      5
+    ]
+  ],
+  "softDistance": 0.20000000298023224,
+  "speed": [
+    9,
+    13
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/flames")
+});

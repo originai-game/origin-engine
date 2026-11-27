@@ -1,8 +1,25 @@
-type effect
-version 1
----
-# Effekseer node 0.5.0.0.1 "下半分"
-main "vfx/effekseer-starter/textures/hisigata1.png" rgba {
-  tile 1 0.5
-}
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "additive",
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/hisigata1"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        1,
+        0.5
+      ],
+      "rotate": 0
+    }
+  }
+});

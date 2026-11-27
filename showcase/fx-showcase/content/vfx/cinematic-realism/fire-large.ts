@@ -1,41 +1,305 @@
-type vfx
-version 2
----
-duration 2
-loop true
-emitter "vfx/cinematic-realism/emitters/flame-large.ogt" {
-  offset 0 0.9 0
-}
-emitter "vfx/cinematic-realism/emitters/flame-small.ogt" {
-  offset 0.6 0.25 0.2
-}
-emitter "vfx/cinematic-realism/emitters/flame-small.ogt" {
-  offset -0.5 0.25 -0.3
-  seed 5
-}
-emitter "vfx/cinematic-realism/emitters/fire-smoke-heavy.ogt" {
-  offset 0 2 0
-}
-emitter "vfx/cinematic-realism/emitters/fire-embers.ogt" {
-  offset 0 1 0
-}
-emitter "vfx/cinematic-realism/emitters/fire-embers.ogt" {
-  offset 0.3 1.4 0.2
-  seed 9
-}
-emitter "vfx/cinematic-realism/emitters/heat-rise.ogt" {
-  offset 0 1.8 0
-}
-glow {
-  life 2
-  offset 0 1 0
-  size 2.6
-  color 1.6 0.8 0.25 0.12
-}
-light {
-  life 2
-  offset 0 1.4 0
-  color 1 0.55 0.22
-  intensity curve 0 6 0.2 7.5 0.45 5.5 0.7 7 1 6
-  distance 14
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 2,
+  "looping": true,
+  "events": [],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.8999999761581421,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/flame-large")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0.6000000238418579,
+        0.25,
+        0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/flame-small")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        -0.5,
+        0.25,
+        -0.30000001192092896
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 5,
+        "asset": ref("base/vfx/cinematic-realism/emitters/flame-small")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        2,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/fire-smoke-heavy")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        1,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/fire-embers")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0.30000001192092896,
+        1.399999976158142,
+        0.20000000298023224
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 9,
+        "asset": ref("base/vfx/cinematic-realism/emitters/fire-embers")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        1.7999999523162842,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/heat-rise")
+      }
+    },
+    {
+      "at": 0,
+      "life": 2,
+      "offset": [
+        0,
+        1,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          1.600000023841858,
+          0.800000011920929,
+          0.25,
+          0.11999999731779099
+        ],
+        "size": 2.5999999046325684
+      }
+    },
+    {
+      "at": 0,
+      "life": 2,
+      "offset": [
+        0,
+        1.399999976158142,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          1,
+          0.550000011920929,
+          0.2199999988079071
+        ],
+        "distance": 14,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              6
+            ],
+            [
+              0.20000000298023224,
+              7.5
+            ],
+            [
+              0.44999998807907104,
+              5.5
+            ],
+            [
+              0.699999988079071,
+              7
+            ],
+            [
+              1,
+              6
+            ]
+          ]
+        }
+      }
+    }
+  ]
+});

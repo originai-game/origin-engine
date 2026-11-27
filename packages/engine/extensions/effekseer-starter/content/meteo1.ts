@@ -1,168 +1,914 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 0.8583
-impact 0.3333
-mesh "vfx/effekseer-starter/meteo1/model-block1.glb" {
-  at 0
-  offset 0 14.1421 14.1421
-  rotate 45 0 0
-  move 0 -28.2843 -28.2843
-  life 0.5
-  effect "vfx/effekseer-starter/meteo1/n0-0-0.effect.ogt"
-  scale 4
-  color 1 0.2195 0.2195 1
-  blend alpha
-}
-trail {
-  at 0
-  offset 0 14.1421 14.1421
-  rotate 45 0 0
-  move 0 -28.2843 -28.2843
-  life 0.3333
-  effect "vfx/effekseer-starter/meteo1/n0-0-1-0.effect.ogt"
-  width 1 1
-  lifetime 0.3333
-  color 0.2195 0.2195 0 0
-  orbit 1.5 5
-}
-mesh ring {
-  at 0
-  offset 0 14.8492 14.8492
-  rotate -45 0 0
-  move 0 -28.2843 -28.2843
-  inner 0.5
-  band 0.5
-  arc 210 120
-  colors 1 1 0 0 1 0.2195 0 0.7529 1 1 0 0
-  life 0.5
-  effect "vfx/effekseer-starter/meteo1/n0-0-2.effect.ogt"
-  scale 2
-  color 1 1 1 1
-  blend additive
-}
-mesh ring {
-  at 0
-  offset 0 14.8492 14.8492
-  rotate -45 0 -180
-  move 0 -28.2843 -28.2843
-  inner 0.5
-  band 0.5
-  arc 210 120
-  colors 1 1 0 0 1 0.2195 0 0.7529 1 1 0 0
-  life 0.5
-  effect "vfx/effekseer-starter/meteo1/n0-0-3.effect.ogt"
-  scale curve 0 10 1 0
-  color 1 1 1 1
-  blend additive
-}
-mesh ring {
-  at 0
-  offset 0 14.1421 14.1421
-  rotate 45 0 0
-  move 0 -28.2843 -28.2843
-  inner 0
-  band 0.5
-  colors 1 1 0 0 1 0 0 0.7529 1 0 0.2195 1
-  life 0.6667
-  effect "vfx/effekseer-starter/meteo1/n0-0-4.effect.ogt"
-  face camera
-  scale 2
-  color 1 1 1 1
-  blend additive
-}
-trail {
-  at 0
-  offset 0 14.1421 14.1421
-  rotate 45 0 0
-  move 0 -28.2843 -28.2843
-  life 0.3333
-  effect "vfx/effekseer-starter/meteo1/n0-0-5-0.effect.ogt"
-  width 1 0.25
-  lifetime 0.3333
-  color 1 0.2195 0 0.502
-  orbit 1.5 8.3333
-}
-mesh ring {
-  at 0.1667
-  offset 0 14.1421 14.1421
-  rotate -45 0 0
-  inner 0.25
-  band 0.5
-  colors 1 1 0 0 1 0 0 0.7529 1 0 0 0
-  life 0.1667
-  effect "vfx/effekseer-starter/meteo1/n0-0-6.effect.ogt"
-  scale curve 0 1 1 10
-  color 1 1 1 1
-  blend additive
-}
-mesh ring {
-  at 0.3333
-  offset 0 14.1421 14.1421
-  rotate -45 0 0
-  inner 0.25
-  band 0.5
-  colors 1 1 0 0 1 0 0 0.7529 1 0 0 0
-  life 0.1667
-  effect "vfx/effekseer-starter/meteo1/n0-0-7.effect.ogt"
-  scale curve 0 1 1 10
-  color 1 1 1 1
-  blend additive
-}
-mesh "vfx/effekseer-starter/meteo1/model-block2.glb" {
-  at 0.45
-  move 0 18 0
-  life 0.3333
-  effect "vfx/effekseer-starter/meteo1/n1-0.effect.ogt"
-  scale 1
-  color 15 3.2928 0.0339 0.7529
-  blend additive
-}
-mesh ring {
-  at 0.4167
-  inner 0.3333
-  band 0.5
-  colors 1 0 0 0 1 1 0.2195 0.7529 1 0 0 0
-  life 0.25
-  effect "vfx/effekseer-starter/meteo1/n2.effect.ogt"
-  face camera
-  scale curve 0 0 1 11.25
-  color 1 1 1 1
-  blend additive
-}
-emitter "vfx/effekseer-starter/meteo1/n3-0.emitter.ogt" {
-  at 0.45
-  offset 0 -0.5 0
-  rotate -180 0 0
-}
-mesh ring {
-  at 0.3333
-  rotate 125.2644 -30 9.7356
-  inner 0.3333
-  band 0.5
-  height -0.0667 0.0667
-  colors 1 0 0 0 0.2195 0.2195 0 0.502 1 0 0 0
-  life 0.1667
-  effect "vfx/effekseer-starter/meteo1/n4.effect.ogt"
-  scale curve 0 15 0.0781 12.6883 0.1562 10.7466 0.2344 9.1258 0.3281 7.5352 0.4688 5.6976 0.8281 2.1581 1 0
-  color 1 1 1 1
-  blend additive
-}
-light {
-  at 0.3333
-  life 0.3
-  offset 0 4.3514 4.3514
-  color 1 1 1
-  intensity curve 0 8 1 0
-  distance 12
-}
-shake {
-  at 0.3333
-  trauma 0.4
-}
-# effekseer: node 0.0.1.0 "Node": a track whose points move on their own: drawn along its generator's path
-# effekseer: node 0.0.1.0 "Node": nested generation: 3 instances above its generator folded into one emitter
-# effekseer: node 0.0.6 "Node": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.7 "Node": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0 "Node": model 15 instances: the first 4 drawn
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 0.858299970626831,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.33329999446868896
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0.5,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "alpha",
+        "color": [
+          1,
+          0.21950000524520874,
+          0.21950000524520874,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-0.effect"),
+        "faceCamera": false,
+        "scale": 4,
+        "shape": {
+          "kind": "model",
+          "asset": ref("base/vfx/effekseer-starter/meteo1/model-block1")
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.33329999446868896,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          0.21950000524520874,
+          0.21950000524520874,
+          0,
+          0
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-1-0.effect"),
+        "lifetime": 0.33329999446868896,
+        "orbit": [
+          1.5,
+          5
+        ],
+        "rise": 0,
+        "width": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.5,
+      "offset": [
+        0,
+        14.849200248718262,
+        14.849200248718262
+      ],
+      "rotate": [
+        -45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-2.effect"),
+        "faceCamera": false,
+        "scale": 2,
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0,
+                0.7529000043869019
+              ],
+              [
+                1,
+                1,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.5,
+            "length": 120,
+            "segments": 64,
+            "start": 210
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.5,
+      "offset": [
+        0,
+        14.849200248718262,
+        14.849200248718262
+      ],
+      "rotate": [
+        -45,
+        0,
+        -180
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-3.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              10
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0.21950000524520874,
+                0,
+                0.7529000043869019
+              ],
+              [
+                1,
+                1,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.5,
+            "length": 120,
+            "segments": 64,
+            "start": 210
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.666700005531311,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-4.effect"),
+        "faceCamera": true,
+        "scale": 2,
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0,
+                0.21950000524520874,
+                1
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.33329999446868896,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -28.284299850463867,
+        -28.284299850463867
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          1,
+          0.21950000524520874,
+          0,
+          0.5019999742507935
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-5-0.effect"),
+        "lifetime": 0.33329999446868896,
+        "orbit": [
+          1.5,
+          8.33329963684082
+        ],
+        "rise": 0,
+        "width": [
+          1,
+          0.25
+        ]
+      }
+    },
+    {
+      "at": 0.16670000553131104,
+      "life": 0.16670000553131104,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        -45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-6.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              10
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.25,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.33329999446868896,
+      "life": 0.16670000553131104,
+      "offset": [
+        0,
+        14.14210033416748,
+        14.14210033416748
+      ],
+      "rotate": [
+        -45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n0-0-7.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              10
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.25,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.44999998807907104,
+      "life": 0.33329999446868896,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        18,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          15,
+          3.292799949645996,
+          0.033900000154972076,
+          0.7529000043869019
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n1-0.effect"),
+        "faceCamera": false,
+        "scale": 1,
+        "shape": {
+          "kind": "model",
+          "asset": ref("base/vfx/effekseer-starter/meteo1/model-block2")
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.41670000553131104,
+      "life": 0.25,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n2.effect"),
+        "faceCamera": true,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              11.25
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                0.21950000524520874,
+                0.7529000043869019
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              0,
+              0
+            ],
+            "inner": 0.33329999446868896,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.44999998807907104,
+      "life": 0,
+      "offset": [
+        0,
+        -0.5,
+        0
+      ],
+      "rotate": [
+        -180,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/meteo1/n3-0.emitter")
+      }
+    },
+    {
+      "at": 0.33329999446868896,
+      "life": 0.16670000553131104,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        125.26439666748047,
+        -30,
+        9.735600471496582
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "mesh",
+        "blend": "additive",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "effect": ref("base/vfx/effekseer-starter/meteo1/n4.effect"),
+        "faceCamera": false,
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              15
+            ],
+            [
+              0.07810000330209732,
+              12.688300132751465
+            ],
+            [
+              0.15620000660419464,
+              10.746600151062012
+            ],
+            [
+              0.23440000414848328,
+              9.125800132751465
+            ],
+            [
+              0.3280999958515167,
+              7.535200119018555
+            ],
+            [
+              0.46880000829696655,
+              5.6975998878479
+            ],
+            [
+              0.8281000256538391,
+              2.158099889755249
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "band": 0.5,
+            "colors": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0.21950000524520874,
+                0.21950000524520874,
+                0,
+                0.5019999742507935
+              ],
+              [
+                1,
+                0,
+                0,
+                0
+              ]
+            ],
+            "height": [
+              -0.06669999659061432,
+              0.06669999659061432
+            ],
+            "inner": 0.33329999446868896,
+            "length": 360,
+            "segments": 64,
+            "start": 0
+          }
+        },
+        "spin": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "at": 0.33329999446868896,
+      "life": 0.30000001192092896,
+      "offset": [
+        0,
+        4.351399898529053,
+        4.351399898529053
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "distance": 12,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              8
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0.33329999446868896,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "shake",
+        "trauma": 0.4000000059604645
+      }
+    }
+  ]
+});

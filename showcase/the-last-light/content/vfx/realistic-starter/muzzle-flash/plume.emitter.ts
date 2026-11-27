@@ -1,27 +1,90 @@
-type particles
-version 1
----
-# The burning gas thrown forward: flame tongues stretched along their flight.
-maxParticles 8
-shape cone 12 0.02
-spread 0
-rate 0
-burst 0 5
-duration 0.05
-looping false
-lifetime 0.05 0.08
-speed 5 9
-size 0.07 0.12
-heightOverLife 0 2.5 1 4
-rotation 0 0
-gravity 0 0 0
-drag 8
-align velocity 0.02
-color 6 3 1.2
-colorOverLife {
-  key 0 1 1 1 1
-  key 1 1 0.4 0.15 0
-}
-texture "vfx/realistic-starter/textures/flame.png"
-sheet 2 2 4 random
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.019999999552965164
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 5,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    6,
+    3,
+    1.2000000476837158,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.4000000059604645,
+        0.15000000596046448,
+        0
+      ]
+    ]
+  ],
+  "drag": 8,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "heightOverLife": [
+    [
+      0,
+      2.5
+    ],
+    [
+      1,
+      4
+    ]
+  ],
+  "lifetime": [
+    0.05000000074505806,
+    0.07999999821186066
+  ],
+  "looping": false,
+  "maxParticles": 8,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 12,
+    "radius": 0.019999999552965164
+  },
+  "sheet": {
+    "blend": false,
+    "columns": 2,
+    "frames": 4,
+    "mode": {
+      "kind": "random"
+    },
+    "rows": 2
+  },
+  "size": [
+    0.07000000029802322,
+    0.11999999731779099
+  ],
+  "speed": [
+    5,
+    9
+  ],
+  "texture": ref("base/vfx/realistic-starter/textures/flame")
+});

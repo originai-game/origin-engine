@@ -1,25 +1,87 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs Explosion02; MIT composition. A grenade's
-# fireball: brief, about a metre and a half across.
-maxParticles 1
-shape point
-rate 0
-burst 0 1
-duration 0.05
-looping false
-lifetime 1.6
-speed 0
-size 1.6
-gravity 0 0.3 0
-texture "vfx/cinematic-realism/textures/explosion.png"
-sheet 5 5 25 life 1 blend
-blend alpha
-softDistance 0.2
-colorOverLife {
-  key 0 0.65 0.65 0.65 1
-  key 0.2 0.85 0.85 0.85 1
-  key 0.7 1 1 1 0.9
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.6499999761581421,
+        0.6499999761581421,
+        0.6499999761581421,
+        1
+      ]
+    ],
+    [
+      0.20000000298023224,
+      [
+        0.8500000238418579,
+        0.8500000238418579,
+        0.8500000238418579,
+        1
+      ]
+    ],
+    [
+      0.699999988079071,
+      [
+        1,
+        1,
+        1,
+        0.8999999761581421
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0.30000001192092896,
+    0
+  ],
+  "lifetime": [
+    1.600000023841858,
+    1.600000023841858
+  ],
+  "looping": false,
+  "maxParticles": 1,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 5,
+    "frames": 25,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 5
+  },
+  "size": [
+    1.600000023841858,
+    1.600000023841858
+  ],
+  "softDistance": 0.20000000298023224,
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/explosion")
+});

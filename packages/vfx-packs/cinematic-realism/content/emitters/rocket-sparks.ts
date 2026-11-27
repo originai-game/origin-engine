@@ -1,21 +1,61 @@
-type particles
-version 1
----
-# MIT Origin Engine. Burning grains shed by a rocket motor.
-maxParticles 24
-shape sphere 0.03
-spread 180
-rate 30
-duration 2
-looping true
-lifetime 0.2 0.5
-speed 0.5 2
-size 0.01 0.02
-gravity 0 -4 0
-drag 1
-blend additive
-colorOverLife {
-  key 0 2.4 1.6 0.7 1
-  key 0.5 1.4 0.5 0.1 1
-  key 1 0.3 0.06 0.01 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        2.4000000953674316,
+        1.600000023841858,
+        0.699999988079071,
+        1
+      ]
+    ],
+    [
+      0.5,
+      [
+        1.399999976158142,
+        0.5,
+        0.10000000149011612,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.30000001192092896,
+        0.05999999865889549,
+        0.009999999776482582,
+        0
+      ]
+    ]
+  ],
+  "drag": 1,
+  "duration": 2,
+  "gravity": [
+    0,
+    -4,
+    0
+  ],
+  "lifetime": [
+    0.20000000298023224,
+    0.5
+  ],
+  "maxParticles": 24,
+  "rate": 30,
+  "shape": {
+    "kind": "sphere",
+    "radius": 0.029999999329447746,
+    "surface": false
+  },
+  "size": [
+    0.009999999776482582,
+    0.019999999552965164
+  ],
+  "speed": [
+    0.5,
+    2
+  ],
+  "spread": 180
+});

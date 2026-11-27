@@ -1,22 +1,64 @@
-type particles
-version 1
----
-# MIT Origin Engine. Flecks of charge skating outwards over a struck
-# shield.
-maxParticles 24
-shape cone 82 0.03
-rate 0
-burst 0 20
-duration 0.05
-looping false
-lifetime 0.15 0.4
-speed 1.5 4
-size 0.012 0.024
-align velocity 0.03
-gravity 0 0 0
-drag 4
-blend additive
-colorOverLife {
-  key 0 1 2 3.2 1
-  key 1 0.1 0.3 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "align": {
+    "kind": "velocity",
+    "stretch": 0.029999999329447746
+  },
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 20,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        2,
+        3.200000047683716,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        0.10000000149011612,
+        0.30000001192092896,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 4,
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    0,
+    0
+  ],
+  "lifetime": [
+    0.15000000596046448,
+    0.4000000059604645
+  ],
+  "looping": false,
+  "maxParticles": 24,
+  "rate": 0,
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 82,
+    "radius": 0.029999999329447746
+  },
+  "size": [
+    0.012000000104308128,
+    0.024000000208616257
+  ],
+  "speed": [
+    1.5,
+    4
+  ]
+});

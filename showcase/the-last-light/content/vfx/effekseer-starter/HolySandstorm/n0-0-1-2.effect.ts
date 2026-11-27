@@ -1,10 +1,47 @@
-type effect
-version 1
----
-# Effekseer node 0.0.1.2 "Distortion"
-main "vfx/effekseer-starter/textures/Fire.png" rgba {
-  tile 0.5 0.5
-}
-alpha curve 0 0 0.2 1 0.4 1 1 0
-blend alpha
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "alpha": {
+    "kind": "curve",
+    "keys": [
+      [
+        0,
+        0
+      ],
+      [
+        0.20000000298023224,
+        1
+      ],
+      [
+        0.4000000059604645,
+        1
+      ],
+      [
+        1,
+        0
+      ]
+    ]
+  },
+  "blend": "alpha",
+  "doubleSided": true,
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/Fire"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        0.5,
+        0.5
+      ],
+      "rotate": 0
+    }
+  }
+});

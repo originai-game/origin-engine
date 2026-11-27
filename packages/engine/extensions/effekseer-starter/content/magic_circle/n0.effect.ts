@@ -1,9 +1,26 @@
-type effect
-version 1
----
-# Effekseer node 0 "Outer Ring"
-main "vfx/effekseer-starter/textures/ribbon01_trans.png" rgba {
-  tile 7.619 1
-}
-blend alpha
-doubleSided true
+import { file, ref } from '@origingame/engine/author';
+
+export default file.effect({
+  "blend": "alpha",
+  "doubleSided": true,
+  "main": {
+    "texture": ref("base/vfx/effekseer-starter/textures/ribbon01_trans"),
+    "channel": "rgba",
+    "uv": {
+      "offset": [
+        0,
+        0
+      ],
+      "polar": false,
+      "scroll": [
+        0,
+        0
+      ],
+      "tile": [
+        7.61899995803833,
+        1
+      ],
+      "rotate": 0
+    }
+  }
+});

@@ -306,17 +306,15 @@ streamed one's group is resident, the sky lights the scene.
 
 ## 5. Particle emitters
 
-An `.ogt` of `type particles` describes an emitter: shape, rate and
+`file.particles` under content/ describes an emitter: shape, rate and
 bursts, lifetime, speed, size and colour over life, gravity, drag,
 noise, a texture and sprite sheet, and blending.
 
-Every line, with its default, is in `effect-files §1`; the parser
-refuses any other and names the ones it takes.
+The checked input is `og api show file:particles`; native fields and explicit resource tables are cooked directly. Load its canonical content ID, without a source suffix.
 
 - Sub-emitters go one level deep. A sub-emitter that fires its parent is
   refused.
-- An effect material is an `.ogt` of `type effect` (its lines are
-  `effect-files §2`). It has a main texture, gradient ramp, mask, noise
+- An effect material is a checked `file.effect` declaration (`og api show file:effect`). It has a main texture, gradient ramp, mask, noise
   erosion, flow map, fresnel and soft depth fade, each texture with its own tile, scroll, turn and polar
   coordinates. Intensity, alpha, the uv offset, the erosion and eight
   custom numbers can each be a constant, a random range per particle or
@@ -523,63 +521,31 @@ stay loaded.
 ## 11. Composed effects
 
 A composed effect (a fireball's impact, a heal, a level-up) is an
-`.ogt` of `type vfx`: a timeline of elements, Effekseer's and Niagara's
-systems as text. An Effekseer effect in assets/ (`.efkproj`, `.efkefc`)
+checked `file.vfx` declaration: a timeline of native elements. An Effekseer effect in assets/ (`.efkproj`, `.efkefc`)
 loads too: the cook converts its nodes into the engine's vfx, emitters,
 effect materials and meshes and warns of what it could not carry.
-`og vfx import` writes the same conversion as `.ogt` text to edit. A
+`og vfx import` writes checked TS declarations to edit. A
 one-shot effect gets an `impact` at the frame where the most starts at
 once; `og vfx import --hit` also adds a light and a camera shake there,
 for hits and explosions.
 
-```text
-type vfx
-version 2
----
-duration 1.2
-loop false
-impact 0.3
-event 0.6 "linger"
-emitter "fx/sparks.ogt" {
-  at 0.3
-  until 0.8
-  seed 7
-}
-mesh ring {
-  effect "fx/shock.ogt"
-  at 0.3
-  life 0.4
-  inner 0.6
-  scale curve 0 0.2 1 3
-  blend additive
-}
-shake {
-  at 0.3
-  trauma 0.4
-}
+```ts
+import { file, ref } from '@origingame/engine/author';
+export default file.vfx({
+  duration: 1.2, looping: false,
+  events: [{time: 0.3, name: 'impact'}, {time: 0.6, name: 'linger'}],
+  elements: [
+    {at: 0.3, life: 0.5, node: {kind: 'emitter', asset: ref('base/fx/sparks'), seed: 7}},
+    {at: 0.3, life: 0.4, node: {kind: 'mesh', shape: {kind: 'ring', ring: {inner: 0.6}}, effect: ref('base/fx/shock'), scale: {kind: 'curve', keys: [[0,0.2],[1,3]]}, blend: 'additive'}},
+    {at: 0.3, node: {kind: 'shake', trauma: 0.4}},
+  ],
+});
 ```
 
-The header lines are `duration <seconds>`, `loop true|false`,
-`event <seconds> "<name>"`, and `impact <seconds>` (the same as
-`event <seconds> "impact"`, at most one). They mean the same in a
-`file.vfx2d` pixel effect (pixel-vfx §2).
-
-Every element takes:
-
-- `at <seconds>` from the effect's start;
-- `offset <x> <y> <z>` and `rotate <x> <y> <z>` (degrees) in the
-  effect's space;
-- `move <x> <y> <z>` (metres per second) and `accelerate <x> <y> <z>`
-  (per second squared), carrying it from its offset; an emitter spawns
-  along the path;
-- `life <seconds>` or `until <seconds>`, for elements that last.
-
-A value is a number, `random <min> <max>` (fixed per instance) or
-`curve <t> <v> ...` over the element's life.
+Times are seconds from the effect's start. Velocity and acceleration move an element from its offset in effect space; an emitter spawns along that path. Values may be constants or tagged random/curve data. The complete checked input, including the node variants, is `og api show file:vfx`; `effects §2` composes declarations and loads their canonical IDs.
 
 The elements are `emitter`, `mesh`, `trail`, `beam`, `light`, `decal`,
-`glow`, `shake`, `sound` and `flipbook`; every line each takes, with its
-default, is in `effect-files §3`.
+`glow`, `shake`, `sound` and `flipbook`.
 
 - A `mesh ring` builds its own shape at load: u runs along the arc and v
   from the outer edge to the inner.

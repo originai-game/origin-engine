@@ -1,23 +1,101 @@
-type particles
-version 1
----
-# Effekseer node 0.2.0.0.0.0 "smoke"
-maxParticles 125
-shape point
-spread 0
-rate 240
-duration 0.4167
-looping false
-lifetime 1.25 1.25
-speed 1.8 3
-speedOverLife 0 3.1895 0.1562 2.2241 0.2812 1.5767 0.4688 0.8502 0.6562 0.4174 0.6719 0.0673 0.6875 0 1 0
-size 1 1
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.2667 1 1 1 1
-  key 0.7333 1 1 1 1
-  key 1 1 1 1 0
-}
-rotation -180 180
-texture "vfx/effekseer-starter/textures/fog1.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.26669999957084656,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.733299970626831,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.41670000553131104,
+  "lifetime": [
+    1.25,
+    1.25
+  ],
+  "looping": false,
+  "maxParticles": 125,
+  "rate": 240,
+  "rotation": [
+    -180,
+    180
+  ],
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    1,
+    1
+  ],
+  "speed": [
+    1.7999999523162842,
+    3
+  ],
+  "speedOverLife": [
+    [
+      0,
+      3.189500093460083
+    ],
+    [
+      0.15620000660419464,
+      2.224100112915039
+    ],
+    [
+      0.28119999170303345,
+      1.57669997215271
+    ],
+    [
+      0.46880000829696655,
+      0.8501999974250793
+    ],
+    [
+      0.6561999917030334,
+      0.4174000024795532
+    ],
+    [
+      0.6718999743461609,
+      0.06729999929666519
+    ],
+    [
+      0.6875,
+      0
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/fog1")
+});

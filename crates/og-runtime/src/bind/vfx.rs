@@ -1,4 +1,4 @@
-//! Composed effects (`type vfx`, og_bundle::vfx) in the tick: `og.load.vfx`,
+//! Composed effects (`file.vfx`, og_bundle::vfx) in the tick: `og.load.vfx`,
 //! which links an effect's elements to the handles of what they name, and
 //! the `og.vfx` system, which runs each playing og.Vfx's gameplay side
 //! (og.VfxEvent, shakes, sounds, flipbook sprites, the despawn at the end).
@@ -216,16 +216,13 @@ pub(crate) fn load(eng: &crate::engine::Engine, path: &str) -> Result<usize, Str
     {
         return Ok(i);
     }
-    let (text, owner) = {
+    let (vfx, owner) = {
         let assets = eng.assets.borrow();
         let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        let text = bundle
-            .vfx_text(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?;
-        (text, owner)
+        let vfx = bundle.vfx(&id, bytes.bytes()).map_err(|e| e.to_string())?;
+        (vfx, owner)
     };
-    let vfx = og_bundle::vfx::parse_vfx(&text).map_err(|e| format!("{id}: {e}"))?;
     let links = vfx
         .elements
         .iter()

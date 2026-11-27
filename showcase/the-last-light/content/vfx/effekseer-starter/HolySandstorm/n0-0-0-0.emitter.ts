@@ -1,29 +1,118 @@
-type particles
-version 1
----
-# Effekseer node 0.0.0.0 "Smoke"
-maxParticles 153
-shape box 0.2 0.2 0.2
-spread 0
-rate 0
-burst 0 2 240 0.0167
-duration 4
-looping false
-lifetime 1 1
-speed 0.6 1.8
-size 11 11
-sizeOverLife 0 0.4545 1 1
-colorOverLife {
-  key 0 0.5356 0.4423 0.2195 0
-  key 0.1719 0.5356 0.4423 0.2195 0.0537
-  key 0.5333 0.5356 0.4423 0.2195 0.251
-  key 0.75 0.5356 0.4423 0.2195 0.251
-  key 0.9219 0.5356 0.4423 0.2195 0.0673
-  key 1 0.5356 0.4423 0.2195 0
-}
-rotation -360 360
-angularVelocity -300 300
-gravity 13.9762 0 52.16
-texture "vfx/effekseer-starter/textures/Smoke-037c8d34.png"
-blend additive
-effect "vfx/effekseer-starter/HolySandstorm/n0-0-0-0.effect.ogt"
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -300,
+    300
+  ],
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 2,
+      "cycles": 240,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0
+      ]
+    ],
+    [
+      0.17190000414848328,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0.053700000047683716
+      ]
+    ],
+    [
+      0.53329998254776,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0.25099998712539673
+      ]
+    ],
+    [
+      0.75,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0.25099998712539673
+      ]
+    ],
+    [
+      0.9218999743461609,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0.06729999929666519
+      ]
+    ],
+    [
+      1,
+      [
+        0.5356000065803528,
+        0.4422999918460846,
+        0.21950000524520874,
+        0
+      ]
+    ]
+  ],
+  "duration": 4,
+  "effect": ref("base/vfx/effekseer-starter/HolySandstorm/n0-0-0-0.effect"),
+  "gravity": [
+    13.976200103759766,
+    0,
+    52.15999984741211
+  ],
+  "lifetime": [
+    1,
+    1
+  ],
+  "looping": false,
+  "maxParticles": 153,
+  "rate": 0,
+  "rotation": [
+    -360,
+    360
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.20000000298023224,
+      0.20000000298023224,
+      0.20000000298023224
+    ]
+  },
+  "size": [
+    11,
+    11
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.4544999897480011
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0.6000000238418579,
+    1.7999999523162842
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Smoke-037c8d34")
+});

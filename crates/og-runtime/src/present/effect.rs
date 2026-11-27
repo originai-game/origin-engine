@@ -1,6 +1,5 @@
-//! Effect materials (og-render's `EffectMaterial`, an `.ogt` of `type
-//! effect`): loaded once per path with the textures and hook shader they
-//! name, for emitters (`effect "<id>"`) to draw with.
+//! Native effect materials, loaded once per asset ID with the textures and
+//! hook shader they name, for emitters and effect meshes to draw with.
 
 use og_core::IdMap;
 use std::collections::BTreeMap;
@@ -34,18 +33,17 @@ pub(crate) fn load_effect_index(eng: &crate::engine::Engine, path: &str) -> Resu
     if let Some(&i) = eng.render.borrow().effects.paths.get(&id) {
         return Ok(i);
     }
-    let (text, owner) = {
+    let (native, owner) = {
         let assets = eng.assets.borrow();
         let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        let text = bundle
-            .effect_text(&id, bytes.bytes())
+        let native = bundle
+            .effect(&id, bytes.bytes())
             .map_err(|e| e.to_string())?;
-        (text, owner)
+        (native, owner)
     };
-    let material = og_bundle::effect::parse_effect(
-        &text,
-        &mut og_bundle::effect::EffectLinks {
+    let material = native
+        .bind(&mut og_bundle::effect::EffectLinks {
             texture: &mut |tex| {
                 let i = crate::world::assets::load_texture(eng, tex)?;
                 Ok(eng.render.borrow().textures.get(i).copied())
@@ -57,9 +55,8 @@ pub(crate) fn load_effect_index(eng: &crate::engine::Engine, path: &str) -> Resu
                 let params = rs.scene.shaders()[h.index()].params.clone();
                 Ok(Some((h, params)))
             },
-        },
-    )
-    .map_err(|e| format!("{id}: {e}"))?;
+        })
+        .map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
     let h = rs.scene.add_effect_material(material);
     rs.effects.handles.push(h);

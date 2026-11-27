@@ -1,22 +1,72 @@
-type particles
-version 1
----
-# Effekseer node 0.0.3 "Flash"
-maxParticles 4
-shape point
-spread 0
-rate 0
-burst 0 1 3 0.0167
-duration 0.05
-looping false
-lifetime 0.3 0.3
-speed 0 0
-size 8 8
-sizeOverLife 0 0.25 1 1
-colorOverLife {
-  key 0 1 0.2195 0.0478 0
-  key 0.1667 1 0.2195 0.0478 0.502
-  key 1 1 0.2195 0.0478 0
-}
-texture "vfx/effekseer-starter/textures/Particle_Soft.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 3,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        0
+      ]
+    ],
+    [
+      0.16670000553131104,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        0.5019999742507935
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.21950000524520874,
+        0.04780000075697899,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.05000000074505806,
+  "lifetime": [
+    0.30000001192092896,
+    0.30000001192092896
+  ],
+  "looping": false,
+  "maxParticles": 4,
+  "rate": 0,
+  "shape": {
+    "kind": "point"
+  },
+  "size": [
+    8,
+    8
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.25
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "speed": [
+    0,
+    0
+  ],
+  "texture": ref("base/vfx/effekseer-starter/textures/Particle_Soft")
+});

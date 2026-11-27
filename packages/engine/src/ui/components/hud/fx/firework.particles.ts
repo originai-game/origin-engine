@@ -1,25 +1,80 @@
-type particles
-version 1
----
-# A firework's shell for a `<Particles>` node (1 unit a CSS px, +y up):
-# one burst of round sparks from the node's centre, falling as they
-# spread and fade. White: the node's ink (text-<colour>) colours it.
-maxParticles 32
-shape sphere 2
-spread 180
-rate 0
-burst 0 28
-duration 0.1
-looping false
-lifetime 1.1 1.5
-speed 90 170
-size 5 8
-sizeOverLife 0 1 1 0.4
-round true
-gravity 0 -70 0
-drag 0.9
-colorOverLife {
-  key 0 1 1 1 1
-  key 0.6 1 1 1 1
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "bursts": [
+    {
+      "count": 28,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 0.8999999761581421,
+  "duration": 0.10000000149011612,
+  "gravity": [
+    0,
+    -70,
+    0
+  ],
+  "lifetime": [
+    1.100000023841858,
+    1.5
+  ],
+  "looping": false,
+  "maxParticles": 32,
+  "rate": 0,
+  "round": true,
+  "shape": {
+    "kind": "sphere",
+    "radius": 2,
+    "surface": false
+  },
+  "size": [
+    5,
+    8
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0.4000000059604645
+    ]
+  ],
+  "speed": [
+    90,
+    170
+  ],
+  "spread": 180
+});

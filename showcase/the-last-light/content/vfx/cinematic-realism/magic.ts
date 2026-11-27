@@ -1,20 +1,144 @@
-type vfx
-version 2
----
-duration 1.8
-impact 0.1
-emitter "vfx/cinematic-realism/emitters/aether.ogt" {
-}
-glow {
-  life 0.65
-  offset 0 0.35 0
-  size curve 0 0.06 0.2 0.4 1 0
-  color 0.3 0.9 1.4 0.5
-}
-light {
-  life 0.65
-  offset 0 0.6 0
-  color 0.3 0.7 1
-  intensity curve 0 0 0.2 0.3 1 0
-  distance 2
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 1.7999999523162842,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.10000000149011612
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/cinematic-realism/emitters/aether")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.6499999761581421,
+      "offset": [
+        0,
+        0.3499999940395355,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "glow",
+        "color": [
+          0.30000001192092896,
+          0.8999999761581421,
+          1.399999976158142,
+          0.5
+        ],
+        "size": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0.05999999865889549
+            ],
+            [
+              0.20000000298023224,
+              0.4000000059604645
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "at": 0,
+      "life": 0.6499999761581421,
+      "offset": [
+        0,
+        0.6000000238418579,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "light",
+        "color": [
+          0.30000001192092896,
+          0.699999988079071,
+          1
+        ],
+        "distance": 2,
+        "intensity": {
+          "kind": "curve",
+          "keys": [
+            [
+              0,
+              0
+            ],
+            [
+              0.20000000298023224,
+              0.30000001192092896
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        }
+      }
+    }
+  ]
+});

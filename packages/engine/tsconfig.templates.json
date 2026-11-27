@@ -5,7 +5,7 @@
     "jsx": "preserve"
   },
   "include": [
-    "types/ui/ogt.d.ts",
+    "types/ui/assets.d.ts",
     "src/ui/components/**/*.tsx",
     "src/ui/controls/*.tsx",
     "src/ui/screens/*.tsx",

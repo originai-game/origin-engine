@@ -6,7 +6,7 @@ terrain (`content/terrain/hills.ts`, generated from its own numbers: height
 flattened with `og.terrain.edit` under an asphalt slab), with a HUD speed
 readout (the component `assets/ui/hud.tsx` at the safe-area insets, the
 look's `ui "default"`), a chase camera that eases after
-the car, tyre smoke while the rear slides (`assets/fx/smoke.ogt`), a ring of
+the car, tyre smoke while the rear slides (`content/fx/smoke.ts`), a ring of
 24 skid-mark decals, and an engine tone whose pitch follows the speed
 (`og.audio.createSound`). It bundles these on purpose: it is the
 presentation gate's moving scene, so it stays short in ticks instead.

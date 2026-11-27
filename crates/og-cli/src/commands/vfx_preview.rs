@@ -1,9 +1,8 @@
-//! `og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
+//! `og vfx preview <content-id>... [--project DIR] [--out DIR] [--size WxH]
 //! [--stage dusk|day] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
 //! it is and what it costs, without writing a scene for it.
 //!
-//! Each effect (an asset id of the project, `fx/hit.ogt`, or a file under
-//! its `assets/`; `type vfx`, or `type vfx2d` in a 2D project) is played
+//! Each checked file.vfx (3D) or file.vfx2d (2D) declaration is played
 //! alone at the origin of a dark stage (`vfx_preview/stage.ts`, run inside
 //! the project so its cooked assets load as in the game), in four steps:
 //!
@@ -253,9 +252,9 @@ fn coordinates<const N: usize>(text: &str) -> Result<[f64; N], String> {
 
 /// One effect asked for.
 struct Effect {
-    /// Its asset id (`fx/hit.ogt`).
+    /// Its canonical content id (`base/fx/hit`).
     id: String,
-    /// `type vfx2d`: a pixel effect, played as a sprite.
+    /// A file.vfx2d pixel effect, played as a sprite.
     pixel: bool,
 }
 
@@ -449,52 +448,36 @@ fn pixel_pivots(project: &Project, ids: &[&str]) -> Result<serde_json::Value, St
     Ok(serde_json::Value::Object(out))
 }
 
-/// The canonical content id or legacy 3D asset path an argument names.
+/// The canonical content id or checked declaration path an argument names.
 fn asset_id(
     root: &Path,
     arg: &str,
     index: &og_cook::cook::source_index::Index,
 ) -> Result<Effect, String> {
-    if let Some(entry) = index
+    let relative = Path::new(arg)
+        .strip_prefix(root)
+        .ok()
+        .and_then(Path::to_str);
+    let entry = index
         .entries
         .get(arg)
-        .or_else(|| index.entries.values().find(|e| e.file == arg))
-    {
-        if entry.factory != "vfx2d" {
-            return Err(format!(
-                "{arg}: expected a file.vfx2d declaration, got {}",
-                entry.factory
-            ));
-        }
-        return Ok(Effect {
-            id: entry.id.clone(),
-            pixel: true,
-        });
+        .or_else(|| {
+            index
+                .entries
+                .values()
+                .find(|e| e.file == arg || Some(e.file.as_str()) == relative)
+        })
+        .ok_or_else(|| format!("{arg}: no checked effect declaration in {}", root.display()))?;
+    if !matches!(entry.factory.as_str(), "vfx" | "vfx2d") {
+        return Err(format!(
+            "{arg}: expected file.vfx or file.vfx2d, got {} (preview emitters and materials through a vfx)",
+            entry.factory
+        ));
     }
-    let assets = root.join("assets");
-    let file = [assets.join(arg), PathBuf::from(arg)]
-        .into_iter()
-        .find(|p| p.is_file())
-        .ok_or_else(|| format!("{arg}: no such effect in {}", assets.display()))?;
-    let abs = file.canonicalize().map_err(|e| format!("{arg}: {e}"))?;
-    let base = assets.canonicalize().map_err(|e| format!("{arg}: {e}"))?;
-    let id = abs
-        .strip_prefix(&base)
-        .map_err(|_| format!("{arg}: not under {}", assets.display()))?
-        .to_string_lossy()
-        .replace('\\', "/");
-    let text = std::fs::read_to_string(&abs).map_err(|e| format!("{arg}: {e}"))?;
-    let ty = text
-        .lines()
-        .find_map(|l| l.strip_prefix("type "))
-        .map(str::trim)
-        .unwrap_or_default();
-    match ty {
-        "vfx" => Ok(Effect { id, pixel: false }),
-        other => Err(format!(
-            "{arg}: a `type {other}` file; a preview plays a type vfx asset or a checked file.vfx2d declaration (an emitter or an effect material is previewed through a vfx that names it)"
-        )),
-    }
+    Ok(Effect {
+        id: entry.id.clone(),
+        pixel: entry.factory == "vfx2d",
+    })
 }
 
 /// Step 1: every effect's timing from one run without a renderer.
@@ -726,7 +709,7 @@ fn shots(
                 particles = particles
                     .max(p["capacity"].as_u64().unwrap_or(0) + p["cpu"].as_u64().unwrap_or(0));
             }
-            let path = out.join(Path::new(&effects[i].id).with_extension("png"));
+            let path = out.join(format!("{}.png", effects[i].id));
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)
                     .map_err(|e| format!("{}: {e}", parent.display()))?;
@@ -1097,7 +1080,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     {
         return Err((
             2,
-            "look/scene/position/camera preview options currently require type vfx (3D)".into(),
+            "look/scene/position/camera preview options currently require file.vfx (3D)".into(),
         ));
     }
     let out = a
@@ -1106,7 +1089,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         .map(|o| std::path::absolute(o).unwrap_or_else(|_| PathBuf::from(o)))
         .unwrap_or_else(|| p.root.join("og-out/vfx-preview"));
     std::fs::create_dir_all(&out).map_err(|e| fail(format!("{}: {e}", out.display())))?;
-    let record_path = |e: &Effect| out.join(Path::new(&e.id).with_extension("json"));
+    let record_path = |e: &Effect| out.join(format!("{}.json", e.id));
     if p.has_assets() {
         let report = crate::cook::cook(&p.root, 0, false).map_err(fail)?;
         if report

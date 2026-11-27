@@ -1,19 +1,71 @@
-type particles
-version 1
----
-maxParticles 20
-shape cone 45 0.12
-rate 0
-burst 0 18
-duration 0.05
-looping false
-lifetime 0.4 1.1
-speed 1.3 2.5
-size 0.03 0.06
-sizeOverLife 0 1 0.65 1 1 0
-gravity 0 -5 0
-rotation 0 360
-angularVelocity -120 120
-render mesh tetrahedron
-blend alpha
-color 0.65 0.73 0.78
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "angularVelocity": [
+    -120,
+    120
+  ],
+  "blend": "alpha",
+  "bursts": [
+    {
+      "count": 18,
+      "cycles": 1,
+      "interval": 0,
+      "time": 0
+    }
+  ],
+  "color": [
+    0.6499999761581421,
+    0.7300000190734863,
+    0.7799999713897705,
+    1
+  ],
+  "duration": 0.05000000074505806,
+  "gravity": [
+    0,
+    -5,
+    0
+  ],
+  "lifetime": [
+    0.4000000059604645,
+    1.100000023841858
+  ],
+  "looping": false,
+  "maxParticles": 20,
+  "rate": 0,
+  "render": {
+    "kind": "mesh",
+    "mesh": "tetrahedron"
+  },
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 45,
+    "radius": 0.11999999731779099
+  },
+  "size": [
+    0.029999999329447746,
+    0.05999999865889549
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      1
+    ],
+    [
+      0.6499999761581421,
+      1
+    ],
+    [
+      1,
+      0
+    ]
+  ],
+  "speed": [
+    1.2999999523162842,
+    2.5
+  ]
+});

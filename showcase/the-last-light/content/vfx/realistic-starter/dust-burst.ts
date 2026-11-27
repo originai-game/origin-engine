@@ -1,22 +1,130 @@
-type vfx
-version 2
----
-# Dust thrown up where something breaks or falls (a wall, a crate, a rock), realistic: a lit cloud rolling out low, rubble and grit. It stands on its origin: spawn it on the ground under what broke.
-duration 3.6
-impact 0
-emitter "vfx/realistic-starter/dust-burst/cloud.emitter.ogt" {
-  at 0
-  offset 0 0.35 0
-}
-emitter "vfx/realistic-starter/dust-burst/chunks.emitter.ogt" {
-  at 0
-  offset 0 0.6 0
-}
-emitter "vfx/realistic-starter/dust-burst/grit.emitter.ogt" {
-  at 0
-  offset 0 1 0
-}
-shake {
-  at 0
-  trauma 0.25
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 3.5999999046325684,
+  "looping": false,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0
+    }
+  ],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.3499999940395355,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/realistic-starter/dust-burst/cloud.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0.6000000238418579,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/realistic-starter/dust-burst/chunks.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        1,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/realistic-starter/dust-burst/grit.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "shake",
+        "trauma": 0.25
+      }
+    }
+  ]
+});

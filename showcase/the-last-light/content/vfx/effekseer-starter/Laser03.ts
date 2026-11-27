@@ -1,59 +1,229 @@
-type vfx
-version 2
----
-# Converted from Effekseer by og vfx import.
-duration 10
-loop true
-trail {
-  at 0
-  rotate 0 0 -90
-  life 5
-  effect "vfx/effekseer-starter/Laser03/n0-0.effect.ogt"
-  width 0 1
-  lifetime 5
-  color 0.0012 0.8994 0.3392 0
-  orbit 2 1.6667
-}
-emitter "vfx/effekseer-starter/Laser03/n0-0-0.emitter.ogt" {
-  at 0
-  offset 0 2 0
-  until 1.6667
-}
-trail {
-  at 0
-  rotate 120 0 -90
-  life 5
-  effect "vfx/effekseer-starter/Laser03/n1-0.effect.ogt"
-  width 0 1
-  lifetime 5
-  color 0.4045 1 0.2508 0
-  orbit 2 1.6667
-}
-emitter "vfx/effekseer-starter/Laser03/n1-0-0.emitter.ogt" {
-  at 0
-  offset 0 -1 1.7321
-  rotate 120 0 0
-  until 1.6667
-}
-trail {
-  at 0
-  rotate -120 0 -90
-  life 5
-  effect "vfx/effekseer-starter/Laser03/n2-0.effect.ogt"
-  width 0 1
-  lifetime 5
-  color 0.0006 0.8751 0.9323 0
-  orbit 2 1.6667
-}
-emitter "vfx/effekseer-starter/Laser03/n2-0-0.emitter.ogt" {
-  at 0
-  offset 0 -1 -1.7321
-  rotate -120 0 0
-  until 1.6667
-}
-# effekseer: node 0.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 0.0.0 "Particle": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 1.0.0 "Particle": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 2.0 "Track": a moving ancestor: its descendants are placed where it starts
-# effekseer: node 2.0.0 "Particle": a moving ancestor: its descendants are placed where it starts
+import { file, ref } from '@origingame/engine/author';
+
+export default file.vfx({
+  "duration": 10,
+  "looping": true,
+  "events": [],
+  "params": [],
+  "elements": [
+    {
+      "at": 0,
+      "life": 5,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          0.0012000000569969416,
+          0.899399995803833,
+          0.3391999900341034,
+          0
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Laser03/n0-0.effect"),
+        "lifetime": 5,
+        "orbit": [
+          2,
+          1.666700005531311
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.666700005531311,
+      "offset": [
+        0,
+        2,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Laser03/n0-0-0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 5,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        120,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          0.40450000762939453,
+          1,
+          0.2508000135421753,
+          0
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Laser03/n1-0.effect"),
+        "lifetime": 5,
+        "orbit": [
+          2,
+          1.666700005531311
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.666700005531311,
+      "offset": [
+        0,
+        -1,
+        1.732100009918213
+      ],
+      "rotate": [
+        120,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Laser03/n1-0-0.emitter")
+      }
+    },
+    {
+      "at": 0,
+      "life": 5,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -120,
+        0,
+        -90
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "trail",
+        "color": [
+          0.0006000000284984708,
+          0.8751000165939331,
+          0.9322999715805054,
+          0
+        ],
+        "effect": ref("base/vfx/effekseer-starter/Laser03/n2-0.effect"),
+        "lifetime": 5,
+        "orbit": [
+          2,
+          1.666700005531311
+        ],
+        "rise": 0,
+        "width": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "at": 0,
+      "life": 1.666700005531311,
+      "offset": [
+        0,
+        -1,
+        -1.732100009918213
+      ],
+      "rotate": [
+        -120,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "acceleration": [
+        0,
+        0,
+        0
+      ],
+      "node": {
+        "kind": "emitter",
+        "seed": 0,
+        "asset": ref("base/vfx/effekseer-starter/Laser03/n2-0-0.emitter")
+      }
+    }
+  ]
+});

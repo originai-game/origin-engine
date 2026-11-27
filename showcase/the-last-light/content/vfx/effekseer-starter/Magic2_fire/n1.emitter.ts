@@ -1,27 +1,101 @@
-type particles
-version 1
----
-# Effekseer node 1 "Particle"
-maxParticles 14
-shape box 0.5 0.5 0.5
-spread 180
-rate 0
-burst 0 1 15 0.0167
-duration 0.25
-looping false
-lifetime 0.0833 0.25
-speed 6.4952 25.9808
-size 0.45 0.95
-colorOverLife {
-  key 0 1 0.0104 0 1
-  key 0.6 1 0.0104 0 1
-  key 1 1 0.0104 0 0
-}
-randomColorOverLife {
-  key 0 1 0.1166 0.0478 1
-  key 0.6 1 0.1166 0.0478 1
-  key 1 1 0.1166 0.0478 0
-}
-rotation -180 180
-texture "vfx/effekseer-starter/textures/particle2.png"
-blend additive
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "additive",
+  "bursts": [
+    {
+      "count": 1,
+      "cycles": 15,
+      "interval": 0.016699999570846558,
+      "time": 0
+    }
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.010400000028312206,
+        0,
+        1
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        0.010400000028312206,
+        0,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.010400000028312206,
+        0,
+        0
+      ]
+    ]
+  ],
+  "duration": 0.25,
+  "lifetime": [
+    0.08330000191926956,
+    0.25
+  ],
+  "looping": false,
+  "maxParticles": 14,
+  "randomColorOverLife": [
+    [
+      0,
+      [
+        1,
+        0.11659999936819077,
+        0.04780000075697899,
+        1
+      ]
+    ],
+    [
+      0.6000000238418579,
+      [
+        1,
+        0.11659999936819077,
+        0.04780000075697899,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        0.11659999936819077,
+        0.04780000075697899,
+        0
+      ]
+    ]
+  ],
+  "rate": 0,
+  "rotation": [
+    -180,
+    180
+  ],
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "size": [
+    0.44999998807907104,
+    0.949999988079071
+  ],
+  "speed": [
+    6.495200157165527,
+    25.98080062866211
+  ],
+  "spread": 180,
+  "texture": ref("base/vfx/effekseer-starter/textures/particle2")
+});

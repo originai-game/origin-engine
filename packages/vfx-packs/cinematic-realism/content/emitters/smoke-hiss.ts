@@ -1,29 +1,95 @@
-type particles
-version 1
----
-# CC0 Thomas Iché / Unity Labs DiscSmoke01; MIT composition. The jet a
-# smoke grenade vents as it starts.
-maxParticles 40
-shape cone 20 0.02
-rate 30
-duration 1.2
-looping false
-lifetime 0.5 0.9
-speed 2 4
-size 0.1 0.16
-sizeOverLife 0 0.6 1 4
-rotation 0 360
-gravity 0 0.2 0
-drag 3
-wind 1
-texture "vfx/cinematic-realism/textures/dust.png"
-sheet 16 4 64 life 1 blend
-blend alpha
-lit true
-color 0.85 0.86 0.88
-softDistance 0.1
-colorOverLife {
-  key 0 1 1 1 0
-  key 0.1 1 1 1 0.7
-  key 1 1 1 1 0
-}
+import { file, ref } from '@origingame/engine/author';
+
+export default file.particles({
+  "blend": "alpha",
+  "color": [
+    0.8500000238418579,
+    0.8600000143051147,
+    0.8799999952316284,
+    1
+  ],
+  "colorOverLife": [
+    [
+      0,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ],
+    [
+      0.10000000149011612,
+      [
+        1,
+        1,
+        1,
+        0.699999988079071
+      ]
+    ],
+    [
+      1,
+      [
+        1,
+        1,
+        1,
+        0
+      ]
+    ]
+  ],
+  "drag": 3,
+  "duration": 1.2000000476837158,
+  "gravity": [
+    0,
+    0.20000000298023224,
+    0
+  ],
+  "lifetime": [
+    0.5,
+    0.8999999761581421
+  ],
+  "lit": true,
+  "looping": false,
+  "maxParticles": 40,
+  "rate": 30,
+  "rotation": [
+    0,
+    360
+  ],
+  "shape": {
+    "kind": "cone",
+    "angleDegrees": 20,
+    "radius": 0.019999999552965164
+  },
+  "sheet": {
+    "blend": true,
+    "columns": 16,
+    "frames": 64,
+    "mode": {
+      "kind": "life",
+      "cycles": 1
+    },
+    "rows": 4
+  },
+  "size": [
+    0.10000000149011612,
+    0.1599999964237213
+  ],
+  "sizeOverLife": [
+    [
+      0,
+      0.6000000238418579
+    ],
+    [
+      1,
+      4
+    ]
+  ],
+  "softDistance": 0.10000000149011612,
+  "speed": [
+    2,
+    4
+  ],
+  "texture": ref("base/vfx/cinematic-realism/textures/dust"),
+  "wind": 1
+});

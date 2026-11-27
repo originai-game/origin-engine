@@ -133,8 +133,6 @@ pub(crate) fn scan_sources(
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     crate::cook::materials::expand(&mut sources);
-    // Typed script results enter the ordinary asset pipelines before planning.
-    effect::expand(&mut sources);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
     Ok(Scanned {

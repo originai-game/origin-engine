@@ -8,6 +8,9 @@ use crate::cook::{source_content, source_index, source_project, source_records};
 /// separate from legacy type claims; the scanner must not accept their OGT.
 pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("effect-texture", &effect_texture::TEXTURE),
+    ("particles", &effect::EMITTER),
+    ("effect", &effect::EFFECT),
+    ("vfx", &vfx::VFX),
     ("sound", &audio::SOUND),
     ("texture-array", &texture_array::TEXTURE_ARRAY),
     ("vector", &vector::VECTOR),
@@ -89,6 +92,7 @@ fn catalogue(
             &model::MODEL,
             &texture::TEXTURE,
             &font::FONT,
+            &audio::SOUND,
         ]
         .contains(&s.kind)
             && !s.rel.starts_with('@')
@@ -690,6 +694,7 @@ pub(crate) fn sources(
     timeline::bind(sources, &graph)?;
     font_pack::bind(sources, &graph)?;
     field::bind(sources, fields);
+    effect::prepare(sources, &graph).map_err(CookError)?;
     let mut prepared = terrain::Terrains::new();
     for (id, (input, captured, file)) in terrains {
         let source = sources
