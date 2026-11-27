@@ -18,7 +18,7 @@ declare const Bun: {
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
 // No resident host: these tests pin output shapes, which a warm session does not change.
-const env = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: "none", OG_SESSION: "0" };
+const env = { ...process.env, OG_BIN: ogBin(), OG_ENGINE_PACKAGE: pkg, OG_RENDERER: "none", OG_SESSION: "0" };
 let root = "";
 let game = "";
 
