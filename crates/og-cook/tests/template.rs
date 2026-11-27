@@ -14,6 +14,139 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Checked static and animated declarations share native frame, timing and
+/// subresource contracts, including captured exchange inputs on warm cooks.
+#[test]
+fn typed_flipbooks_cook_native_sheets_and_arrays() {
+    use og_anim::{FlipMode, cooked::BundleAnim};
+    let root = crate::temp::TempDir::new("typed-flipbooks");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "project.ts",
+        "import {defineProject,ref} from '@origingame/engine/author';export default defineProject({id:'flipbooks',entry:'src/main.ts',roots:[ref('base/grid#array#layer5'),ref('base/animated#array')]});",
+    );
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::create_dir_all(root.join("sources")).unwrap();
+    image::RgbaImage::from_pixel(13, 9, image::Rgba([17, 89, 231, 255]))
+        .save(root.join("assets/sheet.png"))
+        .unwrap();
+    let animation = |delays: [u32; 2]| {
+        let file = std::fs::File::create(root.join("sources/idle.gif")).unwrap();
+        let mut encoder = image::codecs::gif::GifEncoder::new(file);
+        for ms in delays {
+            encoder
+                .encode_frame(image::Frame::from_parts(
+                    image::RgbaImage::from_pixel(13, 9, image::Rgba([193, 51, 7, 255])),
+                    0,
+                    0,
+                    image::Delay::from_numer_denom_ms(ms, 1),
+                ))
+                .unwrap();
+        }
+    };
+    animation([100, 300]);
+    write(
+        "assets/sheet.png.ogt",
+        "type import\nversion 1\n---\nconform off\ntexture {\nkind pixel\n}\n",
+    );
+    let grid = "import {file,ref} from '@origingame/engine/author';export default file.flipbook({texture:ref('base/sheet'),conform:{kind:'off'},array:true,grid:{size:[3,2],columns:3,rows:2},margin:1,spacing:1,pivot:[0.25,0.75],clips:[{name:'stride',frames:['4','1','5'],durations:[0.125,0.25,0.5],mode:'pingPong',events:[[1,'step']]}]});";
+    write("content/grid.ts", grid);
+    write(
+        "content/atlas.ts",
+        "import {file,ref,input} from '@origingame/engine/author';export default file.flipbook({texture:ref('base/sheet'),conform:{kind:'off'},atlas:input.text('sources/atlas.json')});",
+    );
+    let atlas = r#"{"frames":{"run2":{"frame":{"x":4,"y":1,"w":3,"h":2},"duration":125,"pivot":{"x":0.25,"y":0.75}},"run1":{"frame":{"x":0,"y":0,"w":3,"h":2},"duration":250}},"meta":{"frameTags":[{"name":"run","from":0,"to":1,"direction":"reverse"}]}}"#;
+    write("sources/atlas.json", atlas);
+    write(
+        "content/animated.ts",
+        "import {file} from '@origingame/engine/author';export default file.flipbook({sources:[{source:'sources/idle.gif',clip:'pose',events:[[0,'ready']]}],conform:{kind:'off'},array:true,padding:0,align:'none',pivot:[0.2,0.8]});",
+    );
+    // This ref must bind the producer's actual #sheet output, not a guessed file.
+    write(
+        "content/derived.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.flipbook({texture:ref('base/animated#sheet'),conform:{kind:'off'},grid:{size:[13,9]},clips:[{name:'pose',frames:['0'],fps:4}]});",
+    );
+    let opts = CookOptions::default();
+    let mut previous = None;
+    for warm in [false, true] {
+        let report = cook_project(&root, &opts).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        let sheet = b.load_flipbook("base/grid").unwrap();
+        assert_eq!(sheet.texture, "sheet.png");
+        assert_eq!(sheet.size, [13, 9]);
+        assert_eq!(sheet.frames[4].rect, [5, 4, 3, 2]);
+        assert_eq!(sheet.frames[4].pivot, [0.25, 0.75]);
+        assert_eq!(sheet.clips[0].frames, [4, 1, 5]);
+        assert_eq!(sheet.clips[0].durations, [0.125, 0.25, 0.5]);
+        assert_eq!(sheet.clips[0].mode, FlipMode::PingPong);
+        assert_eq!(sheet.clips[0].events, [(1, "step".into())]);
+        let imported = b.load_flipbook("base/atlas").unwrap();
+        assert_eq!(imported.frames[1].name, "run2");
+        assert_eq!(imported.frames[1].pivot, [0.25, 0.25]);
+        assert_eq!(imported.clips[0].frames, [1, 0]);
+        assert_eq!(
+            imported.clips[0].durations,
+            if warm {
+                vec![0.375, 0.25]
+            } else {
+                vec![0.125, 0.25]
+            }
+        );
+        let animated = b.load_flipbook("base/animated").unwrap();
+        assert_eq!(animated.texture, "base/animated#sheet");
+        assert_eq!(
+            animated.clips[0].durations,
+            if warm { [0.2, 0.4] } else { [0.1, 0.3] }
+        );
+        assert_eq!(animated.clips[0].events, [(0, "ready".into())]);
+        assert_eq!(animated.frames[0].pivot, [0.2, 0.8]);
+        assert_eq!(b.load_flipbook("base/derived").unwrap().size, [13, 9]);
+        for id in [
+            "base/grid#array",
+            "base/grid#array#layer5",
+            "base/animated#array",
+            "base/animated#array#layer0",
+        ] {
+            assert!(b.read(id).is_ok(), "missing {id}");
+        }
+        let bytes = b.read("base/atlas").unwrap().to_vec();
+        if warm {
+            assert_ne!(previous.as_ref().unwrap(), &bytes);
+        }
+        previous = Some(bytes);
+        write("sources/atlas.json", &atlas.replace("125", "375"));
+        // Same packed image, different file delays: the native timing must recook.
+        animation([200, 400]);
+    }
+    for invalid in [
+        grid.replace("'4','1','5'", "'missing'"),
+        grid.replace("columns:3", "columns:4"),
+        grid.replace("spacing:1", "spacing:4294967295"),
+    ] {
+        write("content/grid.ts", &invalid);
+        let error = match cook_project(&root, &opts) {
+            Ok(report) => {
+                assert!(!report.ok());
+                format!("{:?}", report.errors())
+            }
+            Err(error) => error.to_string(),
+        };
+        assert!(error.contains("grid"), "{error}");
+    }
+    write("content/grid.ts", grid);
+    write(
+        "assets/old.ogt",
+        "type flipbook\nversion 1\n---\ntexture sheet.png\ngrid 3 2\n",
+    );
+    assert!(!cook_project(&root, &opts).unwrap().ok());
+}
+
 /// Recipes enter through the restricted VM and load as native sheets, with
 /// exact timing, captured helper edits, actual texture dependencies and no OGT.
 #[test]

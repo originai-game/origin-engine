@@ -33,6 +33,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("animgraph", &animgraph::GRAPH),
     ("vfx2d", &flipbook::FLIPBOOK),
     ("rig2d", &rig2d::RIG2D),
+    ("flipbook", &flipbook::FLIPBOOK),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -177,12 +178,14 @@ pub(crate) fn sources(
     let records = source_records::Records::open(root, project).map_err(CookError)?;
     let mut graph = source_content::GraphBuilder::new(project, &index);
     // Only actual scan results, not guessed paths or a second project reader.
-    catalogue(root, sources, &mut graph)?;
+    let scanned = catalogue(root, sources, &mut graph)?;
     graph.insert_provided(provided);
     let mut evaluator = source_content::Evaluator::default();
     let mut fields = field::Fields::new();
     let mut terrains = BTreeMap::new();
     let mut grammars = BTreeMap::new();
+    let mut flipbooks = BTreeMap::new();
+    let mut deferred_flipbooks = BTreeMap::new();
     for entry in index.entries.values() {
         let content = if let Some(content) = prepared.remove(&entry.id) {
             if content.entry() != entry {
@@ -284,6 +287,36 @@ pub(crate) fn sources(
                 sources.push(vfx2d::prepare(&mut source)?);
                 Ok(BTreeMap::from([("sheet".into(), "texture".into())]))
             }
+            "flipbook" => {
+                use source_schemas::media::clips::Flipbook;
+                match source.input()? {
+                    Flipbook::Texture(input) => {
+                        flipbooks.insert(entry.id.clone(), input);
+                        Ok(BTreeMap::new())
+                    }
+                    Flipbook::Animated(input) => {
+                        let module = root.join(&project.modules[&entry.module].root);
+                        let built = animated::build(&entry.id, &input, &|path| {
+                            std::fs::read(module.join(path)).map_err(|e| format!("{path}: {e}"))
+                        })?;
+                        for path in &built.read {
+                            if let Ok(path) = module.join(path).strip_prefix(root.join("assets")) {
+                                consumed.insert(path.to_string_lossy().replace('\\', "/"));
+                            }
+                        }
+                        let settings =
+                            (built.sheet.filter == og_anim::SheetFilter::Nearest).then(|| {
+                                "type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n".into()
+                            });
+                        let mut outputs = flipbook::outputs(&built.sheet);
+                        outputs.insert("sheet".into(), "texture".into());
+                        source.flipbook = Some(built.sheet);
+                        source.conformed = Some(std::sync::Arc::new(built.png.clone()));
+                        sources.push(flipbook::texture(&source, built.png, settings));
+                        Ok(outputs)
+                    }
+                }
+            }
             "tileset" => {
                 source.tileset = Some(tilemap::declaration(source.input()?)?);
                 Ok(BTreeMap::new())
@@ -357,10 +390,37 @@ pub(crate) fn sources(
         .map_err(|e| {
             CookError(source_content::diagnostic(content.source(), &entry.file, "", e).to_string())
         })?;
-        graph
-            .insert(&content, &derived)
-            .map_err(|e| CookError(e.to_string()))?;
+        if flipbooks.contains_key(&entry.id) {
+            deferred_flipbooks.insert(entry.id.clone(), content);
+        } else {
+            graph
+                .insert(&content, &derived)
+                .map_err(|e| CookError(e.to_string()))?;
+        }
         sources.push(source);
+    }
+    for (id, input) in flipbooks {
+        let texture = scanned
+            .get(&input.texture.id)
+            .map_or(&input.texture.id, |output| &output.asset)
+            .clone();
+        let bytes = &sources
+            .iter()
+            .find(|s| s.rel == texture)
+            .ok_or_else(|| CookError(format!("{id}: texture '{texture}' has no prepared image")))?
+            .bytes;
+        let sheet = flipbook::declaration(input, texture.clone(), bytes)
+            .map_err(|e| CookError(format!("{id}: {e}")))?;
+        graph
+            .insert(&deferred_flipbooks[&id], &flipbook::outputs(&sheet))
+            .map_err(|e| CookError(e.to_string()))?;
+        let bytes = std::sync::Arc::new(bytes.clone());
+        let source = sources
+            .iter_mut()
+            .find(|s| s.rel == id)
+            .expect("checked flipbook");
+        source.flipbook = Some(sheet);
+        source.conformed = Some(bytes);
     }
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     let mut lightmap_scenes = BTreeSet::new();

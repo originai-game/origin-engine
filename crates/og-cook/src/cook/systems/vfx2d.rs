@@ -9,7 +9,6 @@ mod layers;
 use super::{Source, source_schemas::media::vfx2d::Vfx2d};
 pub use engine::{ENGINE_VERSION, LAYER_TYPES, Rendered};
 use og_anim::{FlipClip, FlipMode, FlipbookSheet, SheetFilter, SheetFrame};
-use og_core::ogt::Document;
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -151,37 +150,7 @@ pub(crate) fn prepare(s: &mut Source) -> Result<Source, String> {
     let settings = format!(
         "type import\nversion 1\n---\n# vfx2d renderer {ENGINE_VERSION}\nconform off\ntexture {{\n  kind pixel\n}}\n"
     );
-    let doc = Document::parse(&settings).expect("internal texture import settings");
     s.flipbook = Some(built.sheet);
     s.conformed = Some(Arc::new(built.png.clone()));
-    Ok(Source {
-        rel: super::animated::sheet_texture_id(&s.rel),
-        path: s.path.clone(),
-        kind: &super::texture::TEXTURE,
-        bytes: built.png,
-        settings: Some((settings, doc)),
-        settings_files: Vec::new(),
-        hash: 0,
-        gltf: None,
-        error: None,
-        encoded: Default::default(),
-        whole: Default::default(),
-        model: Default::default(),
-        video: None,
-        timeline: None,
-        motion_action: None,
-        strings: None,
-        font_pack: None,
-        fields: Default::default(),
-        terrains: Default::default(),
-        navmesh: None,
-        lightmap: None,
-        tileset: None,
-        tilemap: None,
-        animgraph: None,
-        flipbook: None,
-        rig2d: None,
-        conformed: None,
-        fracture: None,
-    })
+    Ok(super::flipbook::texture(s, built.png, Some(settings)))
 }

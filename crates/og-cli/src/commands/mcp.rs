@@ -1110,7 +1110,7 @@ fn tools() -> Value {
             "sprite",
             "`og sprite inspect --json`: measure animated sprite or flipbook sheet frames, drift, loop seam, and alpha fringe.",
             json!({
-                "input": s("Path to `.gif`, `.webp`, `.png`, or flipbook `.ogt`."),
+                "input": s("Path to `.gif`, `.webp`, `.png`, or checked flipbook `content/**/*.ts`."),
                 "key": s("Background key: `auto`, `off`, or `#rrggbb`."),
                 "tolerance": { "type": "number" }, "holes": b("Also key enclosed background pockets."),
                 "out": s("Write measured frames sheet PNG."), "args": args,

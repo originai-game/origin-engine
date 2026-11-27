@@ -141,10 +141,19 @@ fn rig_bones(schema: &mut og_core::reflect::source::schemars::Schema) {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(untagged)]
+pub enum Flipbook {
+    Texture(TextureSheet),
+    Animated(AnimatedSheet),
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Flipbook {
+pub struct TextureSheet {
     #[schemars(extend("x-og-ref-kinds" = ["texture"]))]
     pub texture: ContentRef,
+    pub conform: Option<super::tiles::TilesetConform>,
     pub filter: Option<Filter>,
     #[serde(default)]
     pub array: bool,
@@ -162,6 +171,88 @@ pub struct Flipbook {
     pub frames: Vec<Frame>,
     #[serde(default)]
     pub clips: Vec<Clip>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AnimatedSheet {
+    /// Explicit animated GIF, WebP, APNG or still paths under this module's
+    /// assets/ or sources/. No declaration-relative or sibling lookup.
+    #[schemars(length(min = 1))]
+    pub sources: Vec<AnimatedSource>,
+    pub conform: Option<super::tiles::TilesetConform>,
+    pub filter: Option<Filter>,
+    #[serde(default)]
+    pub array: bool,
+    pub pivot: Option<[f32; 2]>,
+    /// Omitted: no background keying.
+    pub key: Option<ChromaKey>,
+    /// Omitted: no alignment.
+    pub align: Option<Alignment>,
+    /// Transparent texels around the common crop; omitted 1.
+    #[schemars(range(max = 64))]
+    pub padding: Option<u32>,
+    /// Omitted 1; resample before measuring.
+    #[schemars(extend("exclusiveMinimum" = 0), range(max = 8))]
+    pub scale: Option<f32>,
+    /// Omitted true: identical frames share a cell.
+    pub dedupe: Option<bool>,
+    /// Omitted all: common frame size; each packs sources in separate sizes.
+    pub crop: Option<Crop>,
+    /// Explicit clips override an imported clip of the same name.
+    #[serde(default)]
+    pub clips: Vec<Clip>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AnimatedSource {
+    #[schemars(length(min = 1), extend("x-og-input" = "bytes"))]
+    pub source: String,
+    /// Omitted: the source's file stem.
+    pub clip: Option<String>,
+    pub mode: Option<FlipMode>,
+    #[schemars(extend("exclusiveMinimum" = 0))]
+    pub fps: Option<f32>,
+    #[serde(default)]
+    pub events: Vec<(u32, String)>,
+    pub align: Option<Alignment>,
+    #[schemars(extend("exclusiveMinimum" = 0), range(max = 8))]
+    pub scale: Option<f32>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ChromaKey {
+    /// Omitted: auto-detect the flat border colour; explicit RGB8 otherwise.
+    pub color: Option<[u8; 3]>,
+    /// Omitted 0.1.
+    #[schemars(range(min = 0, max = 0.5))]
+    pub tolerance: Option<f32>,
+    /// Also key enclosed pockets of background; omitted false.
+    #[serde(default)]
+    pub holes: bool,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "lowercase")]
+pub enum Alignment {
+    Feet,
+    Bbox,
+    Centroid,
+    None,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "lowercase")]
+pub enum Crop {
+    All,
+    Each,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

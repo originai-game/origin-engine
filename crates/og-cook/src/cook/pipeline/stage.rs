@@ -136,8 +136,6 @@ pub(crate) fn scan_sources(
     // Typed script results enter the ordinary asset pipelines before planning.
     effect::expand(&mut sources);
     model_text::expand(&mut sources);
-    // Flipbooks of animated sources become ordinary sheets.
-    animated::expand(&mut sources, &mut consumed);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
     Ok(Scanned {

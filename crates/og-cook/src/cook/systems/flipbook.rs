@@ -1,8 +1,6 @@
-//! Flipbook sheets: an `.ogt` of `type flipbook` (grid frames, `frame`
-//! lines, clips) with an optional `atlas "x.json"` — an Aseprite export
-//! (frames with durations, `meta.frameTags` as clips) or a TexturePacker
-//! JSON (hash or array; pivots) — into the canonical sheet text
-//! (`og_anim::FlipbookSheet::to_text`) with the texture's size filled in.
+//! Checked TypeScript flipbooks become native sheets, using explicit frames,
+//! grids or captured Aseprite/TexturePacker JSON exchange data. Texture refs
+//! bind actual graph outputs; animated input paths are module-relative.
 //!
 //! A sheet with `array true` also cooks into a texture array: its frames,
 //! cut out of the texture, are the layers of `<id>#array` (an
@@ -11,88 +9,37 @@
 //! draws frame `n` as layer `n`. Every frame must then have one size, and
 //! a sheet has at most [`super::texture_array::MAX_LAYERS`] of them.
 
+use super::source_schemas::media::clips as input;
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root,
-    conform_off, stamp, texture_array,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, conform_off, stamp,
+    texture_array,
 };
 use crate::format::{self, *};
+use og_anim::{FlipClip, FlipMode, FlipbookSheet, SheetFilter, SheetFrame};
 use og_blob::BlobWriter;
-use og_core::ogt::{Block, Document, Entry, Value};
-
-/// A path the sheet names: relative to the sheet's directory when that file
-/// exists (`hero.png`, `../art/hero.png`), else an asset id
-/// (`sprites/hero.png`).
-pub(crate) fn resolve(s: &Source, path: &str) -> String {
-    resolve_in(&assets_root(s), &s.rel, path)
-}
-
-/// [`resolve`] for asset `rel` under the assets directory `root`.
-pub(crate) fn resolve_in(root: &std::path::Path, rel: &str, path: &str) -> String {
-    let id = crate::runtime::asset_id(path);
-    let mut parts: Vec<&str> = rel.split('/').collect();
-    parts.pop();
-    for seg in id.split('/') {
-        match seg {
-            "." | "" => {}
-            ".." => {
-                parts.pop();
-            }
-            x => parts.push(x),
-        }
-    }
-    let relative = parts.join("/");
-    if id.starts_with("./") || id.starts_with("../") || root.join(&relative).is_file() {
-        relative
-    } else {
-        id.to_string()
-    }
-}
-
-fn string_of(doc: &Document, key: &str) -> Option<String> {
-    doc.body
-        .get(key)
-        .and_then(|e| e.values.first())
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-}
 
 /// The hashes of what the sheet depends on (its texture and atlas files),
 /// for the cook stamp: editing either recooks the sheet.
 pub(crate) fn dependency_hashes(s: &Source) -> String {
-    if let Some(sheet) = &s.flipbook {
-        let hash = s
-            .conformed
-            .as_ref()
-            .map_or(0, |bytes| super::hash_bytes(bytes));
-        return format!("{}={hash:016x}", sheet.texture);
-    }
-    let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return String::new();
-    };
-    let root = assets_root(s);
-    ["texture", "atlas"]
-        .iter()
-        .filter_map(|k| string_of(&doc, k))
-        .map(|p| {
-            let id = resolve(s, &p);
-            let h = std::fs::read(root.join(&id))
-                .map(|b| super::hash_bytes(&b))
-                .unwrap_or(0);
-            format!("{id}={h:016x}")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    s.flipbook.as_ref().map_or_else(String::new, |sheet| {
+        let mut native = Vec::new();
+        sheet.encode(&mut native);
+        let mut hash = og_core::hash::StableHasher::new();
+        hash.write(&native);
+        if let Some(image) = &s.conformed {
+            hash.write(image);
+        }
+        format!("{}={:016x}", sheet.texture, hash.finish())
+    })
 }
 
-/// The bytes of the texture `id` the sheet names: the image the art
-/// contract conformed it to (`conform/texture2d.rs`, whose cells the
-/// sheet's text then follows), else the file.
+/// The prepared image of the texture `id` the sheet names, updated alongside
+/// its native frame rectangles by the art contract (`conform/texture2d.rs`).
 fn texture_bytes(s: &Source, id: &str) -> Result<Vec<u8>, String> {
-    match &s.conformed {
-        Some(b) => Ok(b.to_vec()),
-        None => std::fs::read(assets_root(s).join(id))
-            .map_err(|_| format!("texture `{id}` is not in assets/")),
-    }
+    s.conformed
+        .as_ref()
+        .map(|b| b.to_vec())
+        .ok_or_else(|| format!("texture `{id}` has no prepared image"))
 }
 
 /// Splits a name into text and number runs for a natural order ("run 2" before "run 10").
@@ -133,7 +80,7 @@ fn json_u32(v: &serde_json::Value, k: &str) -> Result<u32, String> {
 }
 
 /// Frames and tags of an Aseprite or TexturePacker JSON, in sheet order.
-fn read_atlas(text: &str) -> Result<(Vec<AtlasFrame>, Vec<Entry>), String> {
+fn read_atlas(text: &str) -> Result<(Vec<AtlasFrame>, Vec<input::Clip>), String> {
     let json: serde_json::Value =
         serde_json::from_str(text).map_err(|e| format!("not JSON: {e}"))?;
     let frame_of = |name: String, v: &serde_json::Value| -> Result<AtlasFrame, String> {
@@ -197,124 +144,206 @@ fn read_atlas(text: &str) -> Result<(Vec<AtlasFrame>, Vec<Entry>), String> {
         }
         let mut idx: Vec<u32> = (from..=to).collect();
         let mode = match t["direction"].as_str().unwrap_or("forward") {
-            "forward" => "loop",
+            "forward" => input::FlipMode::Loop,
             "reverse" => {
                 idx.reverse();
-                "loop"
+                input::FlipMode::Loop
             }
-            "pingpong" | "pingpong_reverse" => "pingPong",
+            "pingpong" | "pingpong_reverse" => input::FlipMode::PingPong,
             d => return Err(format!("tag `{name}`: direction `{d}`")),
         };
-        let mut block = Block::new();
-        block.push(idx.iter().fold(Entry::new("frames"), |e, i| {
-            e.with(Value::String(frames[*i as usize].name.clone()))
-        }));
-        let durations = idx
-            .iter()
-            .map(|i| frames[*i as usize].duration.unwrap_or(0.1));
-        block.push(durations.fold(Entry::new("durations"), |e, d| {
-            e.with(Value::Number(
-                og_core::ogt::Number::from_f32(d).expect("finite"),
-            ))
-        }));
-        block.push(Entry::new("mode").with(Value::Word(mode.into())));
-        clips.push(
-            Entry::new("clip")
-                .with(Value::String(name.into()))
-                .with_block(block),
-        );
+        clips.push(input::Clip {
+            name: name.into(),
+            frames: idx
+                .iter()
+                .map(|&i| frames[i as usize].name.clone())
+                .collect(),
+            fps: None,
+            durations: Some(
+                idx.iter()
+                    .map(|&i| frames[i as usize].duration.unwrap_or(0.1))
+                    .collect(),
+            ),
+            mode: Some(mode),
+            events: Vec::new(),
+        });
     }
     Ok((frames, clips))
 }
 
 /// The canonical sheet of a flipbook source.
 pub(crate) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
-    if let Some(sheet) = &s.flipbook {
-        return Ok(sheet.clone());
+    s.flipbook
+        .clone()
+        .ok_or_else(|| "missing checked flipbook".into())
+}
+
+pub(crate) fn filter(f: Option<&input::Filter>) -> SheetFilter {
+    match f {
+        Some(input::Filter::Linear) => SheetFilter::Linear,
+        _ => SheetFilter::Nearest,
     }
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| "a flipbook sheet is text (UTF-8)".to_string())?;
-    let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
-    let root = assets_root(s);
-    let texture = string_of(&doc, "texture").ok_or("a flipbook sheet needs `texture \"path\"`")?;
-    let texture_id = resolve(s, &texture);
-    let image = texture_bytes(s, &texture_id)?;
-    let (w, h) = image::load_from_memory(&image)
-        .map(|i| (i.width(), i.height()))
-        .map_err(|e| format!("texture `{texture_id}`: {e}"))?;
-    // The resolved texture id and its size.
-    doc.body
-        .entries
-        .retain(|e| e.key != "texture" && e.key != "size" && e.key != "conform");
-    doc.body.entries.insert(
-        0,
-        Entry::new("size")
-            .with(Value::Number(
-                og_core::ogt::Number::from_f64(f64::from(w)).expect("finite"),
-            ))
-            .with(Value::Number(
-                og_core::ogt::Number::from_f64(f64::from(h)).expect("finite"),
-            )),
-    );
-    doc.body
-        .entries
-        .insert(0, Entry::new("texture").with(Value::String(texture_id)));
-    if let Some(atlas) = string_of(&doc, "atlas") {
-        let id = resolve(s, &atlas);
-        let text = std::fs::read_to_string(root.join(&id))
-            .map_err(|_| format!("atlas `{id}` is not in assets/"))?;
-        let (frames, tags) = read_atlas(&text).map_err(|e| format!("atlas `{id}`: {e}"))?;
-        let pivot = doc.body.get("pivot").cloned();
-        doc.body.entries.retain(|e| e.key != "atlas");
-        let at = doc
-            .body
-            .entries
+}
+
+pub(crate) fn mode(m: Option<&input::FlipMode>) -> FlipMode {
+    match m {
+        Some(input::FlipMode::Once) => FlipMode::Once,
+        Some(input::FlipMode::PingPong) => FlipMode::PingPong,
+        _ => FlipMode::Loop,
+    }
+}
+
+pub(crate) fn clips(sheet: &mut FlipbookSheet, inputs: &[input::Clip]) -> Result<(), String> {
+    let names: std::collections::BTreeMap<_, _> = sheet
+        .frames
+        .iter()
+        .enumerate()
+        .map(|(i, f)| (f.name.as_str(), i as u32))
+        .collect();
+    for c in inputs {
+        let frames = c
+            .frames
             .iter()
-            .position(|e| e.key == "clip")
-            .unwrap_or(doc.body.entries.len());
-        let mut lines = Vec::new();
-        for f in &frames {
-            let num = |v: f64| Value::Number(og_core::ogt::Number::from_f64(v).expect("finite"));
-            let mut e = Entry::new("frame").with(Value::String(f.name.clone()));
-            for v in f.rect {
-                e = e.with(num(f64::from(v)));
-            }
-            let p = f.pivot.or_else(|| {
-                pivot
-                    .as_ref()
-                    .and_then(|p| Some([p.f32(0).ok()?, p.f32(1).ok()?]))
-            });
-            if let Some([x, y]) = p {
-                e = e.with(num(f64::from(x))).with(num(f64::from(y)));
-            }
-            lines.push(e);
-        }
-        // A clip the sheet declares itself wins over a tag of the same name.
-        let own: Vec<String> = doc
-            .body
-            .get_all("clip")
-            .filter_map(|e| {
-                e.values
-                    .first()
-                    .and_then(|v| v.as_word().or(v.as_str()))
-                    .map(str::to_string)
+            .map(|name| {
+                names
+                    .get(name.as_str())
+                    .copied()
+                    .ok_or_else(|| format!("clip '{}': no frame '{name}'", c.name))
             })
-            .collect();
-        for t in tags {
-            let name = t
-                .values
-                .first()
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            if !own.contains(&name) {
-                lines.push(t);
+            .collect::<Result<Vec<_>, _>>()?;
+        sheet.clips.push(FlipClip {
+            name: c.name.clone(),
+            durations: c
+                .durations
+                .clone()
+                .unwrap_or_else(|| vec![1.0 / c.fps.unwrap_or(12.0); frames.len()]),
+            frames,
+            mode: mode(c.mode.as_ref()),
+            events: c.events.clone(),
+        });
+    }
+    Ok(())
+}
+
+/// Resolve an explicit texture/atlas declaration directly into native fields.
+pub(crate) fn declaration(
+    input: input::TextureSheet,
+    texture: String,
+    bytes: &[u8],
+) -> Result<FlipbookSheet, String> {
+    let image = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
+    let mut sheet = FlipbookSheet {
+        texture,
+        size: [image.width(), image.height()],
+        filter: filter(input.filter.as_ref()),
+        array: input.array,
+        frames: Vec::new(),
+        clips: Vec::new(),
+    };
+    let pivot = input.pivot.unwrap_or([0.5, 0.5]);
+    if let Some(grid) = input.grid {
+        let [fw, fh] = grid.size;
+        let step = |n: u32| n.checked_add(input.spacing).ok_or("grid spacing overflow");
+        let (sx, sy) = (step(fw)?, step(fh)?);
+        let count = |n: u32, size: u32| {
+            n.checked_sub(input.margin)
+                .and_then(|n| n.checked_add(input.spacing))
+                .map(|n| n / size)
+                .ok_or("grid margin or spacing overflow")
+        };
+        let columns = grid.columns.unwrap_or(count(sheet.size[0], sx)?);
+        let rows = grid.rows.unwrap_or(count(sheet.size[1], sy)?);
+        for [n, step, side, limit] in [
+            [columns, sx, fw, sheet.size[0]],
+            [rows, sy, fh, sheet.size[1]],
+        ] {
+            if n > 0
+                && u64::from(n - 1) * u64::from(step) + u64::from(input.margin) + u64::from(side)
+                    > u64::from(limit)
+            {
+                return Err("grid frames are not inside the texture".into());
             }
         }
-        doc.body.entries.splice(at..at, lines);
+        if u64::from(columns) * u64::from(rows) > u64::from(u32::MAX) {
+            return Err("sheet frame indices must fit u32".into());
+        }
+        for y in 0..rows {
+            for x in 0..columns {
+                let at = |n: u32, s: u32| {
+                    n.checked_mul(s)
+                        .and_then(|n| n.checked_add(input.margin))
+                        .ok_or("grid position overflow")
+                };
+                sheet.frames.push(SheetFrame {
+                    name: (y * columns + x).to_string(),
+                    rect: [at(x, sx)?, at(y, sy)?, fw, fh],
+                    pivot,
+                });
+            }
+        }
     }
-    let canonical = doc.to_text().map_err(|e| e.reason().to_string())?;
-    og_anim::FlipbookSheet::parse(&canonical).map_err(|e| e.reason().to_string())
+    for f in input.frames {
+        sheet.frames.push(SheetFrame {
+            name: f.name,
+            rect: f.rect,
+            pivot: f.pivot.unwrap_or(pivot),
+        });
+    }
+    if let Some(text) = input.atlas {
+        let (frames, tags) = read_atlas(&text)?;
+        for f in frames {
+            sheet.frames.push(SheetFrame {
+                name: f.name,
+                rect: f.rect,
+                pivot: f.pivot.unwrap_or(pivot),
+            });
+        }
+        let tags: Vec<_> = tags
+            .into_iter()
+            .filter(|t| !input.clips.iter().any(|c| c.name == t.name))
+            .collect();
+        clips(&mut sheet, &tags)?;
+    }
+    clips(&mut sheet, &input.clips)?;
+    sheet.validate_native().map_err(|e| e.to_string())?;
+    Ok(sheet)
+}
+
+/// The concrete texture output shared by animated and procedural sheet producers.
+pub(crate) fn texture(s: &Source, png: Vec<u8>, settings: Option<String>) -> Source {
+    Source {
+        rel: super::animated::sheet_texture_id(&s.rel),
+        path: s.path.clone(),
+        kind: &super::texture::TEXTURE,
+        bytes: png,
+        settings: settings.map(|s| {
+            let doc = og_core::ogt::Document::parse(&s).expect("internal texture import settings");
+            (s, doc)
+        }),
+        settings_files: Vec::new(),
+        hash: 0,
+        gltf: None,
+        error: None,
+        encoded: Default::default(),
+        whole: Default::default(),
+        model: Default::default(),
+        video: None,
+        timeline: None,
+        motion_action: None,
+        strings: None,
+        font_pack: None,
+        fields: Default::default(),
+        terrains: Default::default(),
+        navmesh: None,
+        lightmap: None,
+        tileset: None,
+        tilemap: None,
+        animgraph: None,
+        flipbook: None,
+        rig2d: None,
+        conformed: None,
+        fracture: None,
+    }
 }
 
 /// Cooks a flipbook sheet blob.
@@ -366,6 +395,18 @@ pub(crate) fn cook(
 /// The texture array output of an `array true` sheet.
 pub(crate) fn array_id(rel: &str) -> String {
     format!("{rel}#array")
+}
+
+/// Actual subresources produced by a prepared sheet.
+pub(crate) fn outputs(sheet: &FlipbookSheet) -> std::collections::BTreeMap<String, String> {
+    let mut outputs = std::collections::BTreeMap::new();
+    if sheet.array {
+        outputs.insert("array".into(), "texture-array".into());
+        for n in 0..sheet.frames.len() {
+            outputs.insert(format!("array#layer{n}"), "texture".into());
+        }
+    }
+    outputs
 }
 
 /// The texture kind an `array true` sheet's layers cook as.
@@ -464,7 +505,7 @@ pub(crate) fn cook_layer(
 pub(crate) static FLIPBOOK: KindDef = KindDef {
     name: "flipbook",
     extensions: &[],
-    types: &["flipbook"],
+    types: &[],
     by_content: false,
     streams: true,
     plan: plan_flipbook,

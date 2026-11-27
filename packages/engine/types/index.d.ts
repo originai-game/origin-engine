@@ -40043,11 +40043,11 @@ export declare namespace og {
      */
     function rig(world: World, path: string): Result<Rig>;
     /**
-     * Load a cooked flipbook sheet (an `.ogt` of `type flipbook`: an Aseprite or TexturePacker atlas, or animated GIF, WebP or APNG sources the cook packs into `<sheet>#sheet`) and its texture, and register it with og.flipbook. A sheet with `array true` cooks into a texture array (FlipbookInfo.array), frame n drawn as layer n. A sheet in a streaming group loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles.
+     * Load a cooked file.flipbook by canonical content ID and register its native sheet with og.flipbook. Author a texture ref with grid, frames or explicit atlas input, or animated GIF/WebP/APNG sources packed into <id>#sheet. array: true produces a texture array (FlipbookInfo.array), frame n drawn as layer n. A streaming sheet loads only when its group is resident; sprites draw nothing while it is away. Repeated loads return the same handles.
      * See `loading §8`.
      *
      * @param world The world whose animation and renderer own it.
-     * @param path The sheet's asset id, such as `sprites/hero.ogt`.
+     * @param path The sheet's canonical content ID, such as `base/sprites/hero`.
      * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
      */
     function flipbook(world: World, path: string): Result<FlipbookInfo>;

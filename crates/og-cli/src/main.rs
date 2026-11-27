@@ -221,14 +221,14 @@ commands:
                       goes), or make each map periodic (a facade module across only) and its
                       authored normal, packed roughness and cavity maps, reporting seams (the
                       districts guide)
-  sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T]
+  sprite inspect <file.gif|.webp|.png|content/sheet.ts> [--key auto|off|#rrggbb] [--tolerance T]
       [--holes] [--out <frames.png>] [--json]
                       measure an animated sprite source or a flipbook sheet built from them:
                       frames, delays, each frame's drawn bounds and centroid and their drift,
                       the loop seam against the frame-to-frame steps, the alpha edge fringe
                       (numbers only; a flat border is keyed before measuring unless --key off);
                       the texels near the key still drawn (pockets the border does not reach;
-                      --holes keys them too, as a sheet's `key ... holes`);
+                      --holes keys them too, as a sheet's key.holes);
                       --out writes the measured frames side by side (a sheet: its packed texture)
   font add <pack|directory> [project]
                       a font pack (one per script: latin, cyrillic-greek, arabic, hebrew,

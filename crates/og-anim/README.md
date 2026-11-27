@@ -690,65 +690,29 @@ where it is called; the runtime puts it after the game's systems, beside
 sheet (assets are not world state, like clips); `sheet(handle)` reads it
 back for drawing.
 
-### The sheet (`.ogt` of `type flipbook`)
+### Native sheets and checked author declarations
 
-```text
-type flipbook
-version 1
----
-texture "hero.png"        # relative to the sheet when that file exists, else an asset id
-size 64 32                # the texture in pixels (the cook fills it in)
-filter nearest            # nearest (default, pixel art) | linear
-array false               # true: the frames become the layers of a texture array (one size each)
-pivot 0.5 0               # the frame point at the entity's position, from the bottom left
-margin 1                  # grid only
-spacing 0
-grid 16 16                # frames 0.. row-major, named by their index (columns, rows optional with size)
-frame slash 0 32 32 16 0.25 0.5   # a named frame: x y w h [pivot x y], after the grid's
-atlas "hero.json"         # Aseprite (frames with durations, frameTags as clips) or TexturePacker JSON
-clip walk {
-  frames 0 1 2 3          # frame names, or indices
-  fps 10                  # or `durations 0.1 0.1 0.2 0.1` seconds per frame
-  mode loop               # loop | pingPong | once
-  event 2 "step"          # entering clip frame 2 sends og.FlipbookEvent `step`
-}
-```
+`file.flipbook` in `content/**/*.ts` is the sole author entry. Its generated
+schema (`og api show file:flipbook`) offers exclusive texture/atlas and
+animated-source branches. Texture references are canonical content IDs;
+raw inputs explicitly name module-relative assets/ or sources/ paths.
+There is no OGT parser, text writer or sibling-file lookup.
 
-The cook resolves the atlas into `frame` lines (Aseprite hashes in the
-natural order of their names; TexturePacker pivots from the top left
-turned to the bottom left) and tags into clips (`reverse` reversed,
-`pingpong` as `pingPong`, the frames' own durations), lets a clip the
-sheet declares win over a tag of the same name, and stores the canonical
-text (`FlipbookSheet::to_text`, which parses back equal).
+The cook resolves grid, explicit rectangles and Aseprite/TexturePacker
+exchange JSON directly into `FlipbookSheet`. Atlas hashes use natural name
+order; TexturePacker pivots become bottom-left fractions. Explicit clips
+override imported tags. Native little-endian fields are shared by both
+hosts and whole-world snapshots.
 
-A sheet may take its frames from animated images instead of a texture:
-`source` lines (an animated GIF, an animated WebP or an APNG, the last two
-with real alpha; a still image is one frame), each a clip of its own, with
-no `texture`, `atlas`, `grid` or `frame` lines:
+Animated GIF, WebP, APNG and still sources each supply a clip. For example:
 
-```text
-source "hero_idle.gif"    # a clip named after the file: `hero_idle`
-source "hero_run.webp" {  # optional settings of this source's clip
-  clip "run"              # its name
-  mode loop               # loop (default) | pingPong | once
-  fps 12                  # instead of the file's frame delays
-  event 3 "step"          # og.FlipbookEvent on the clip's frame 3
-  align feet              # this source's alignment (default: the sheet's)
-  scale 0.9               # times the sheet's scale: a source drawn larger than the others
-}
-key auto 0.1 holes        # off (default) | auto | "#rrggbb", a tolerance 0 to 0.5, and
-                          # `holes`: the pockets of background the figure encloses too
-align feet                # none (default) | feet | bbox | centroid
-padding 1                 # transparent texels around the common crop (default 1)
-scale 0.25                # resampled first (a box filter over premultiplied alpha below 1)
-dedupe true               # identical frames share one cell (default)
-pivot 0.5 0               # instead of the anchor the alignment found
-crop each                 # all (default): every frame one size; each: every source cut
-                          # to its own frames' bounds, cells shelf-packed (loose props)
-clip turn {               # clips of the sheet's own, over the frames the sources made
-  frames run_0 run_1 idle_0
-  fps 8
-}
+```ts
+import { file } from '@origingame/engine/author';
+export default file.flipbook({
+  sources: [{ source: 'assets/hero_run.webp', clip: 'run', events: [[3, 'step']] }],
+  key: { tolerance: 0.1, holes: true },
+  align: 'feet', scale: 0.25, crop: 'all',
+});
 ```
 
 The cook (`og-cook`'s `cook/systems/animated.rs`) decodes and composites every
@@ -767,7 +731,7 @@ the pivot at the anchor (with `crop each`, every source's frames to
 their own bounds, each frame's pivot the anchor in its cell, so loose
 stills of many sizes pack tightly: shelves, tallest first), shares
 identical frames, and packs the cells into a texture of its own, `<sheet id>#sheet` (pixel art under `filter
-nearest`). The stored sheet is the canonical text, frames named
+nearest`). The stored sheet is native fields, frames named
 `<clip>_<n>`; the source files are part of the sheet, not assets of
 their own. `og sprite inspect` measures a source or a built sheet.
 

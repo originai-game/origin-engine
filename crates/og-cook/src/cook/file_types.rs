@@ -108,6 +108,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "rig" {
                 out.push_str("Output: native humanoid map loaded with og.load.rig. Scheme selects auto detection or one supported naming scheme; bones map standard humanoid names to skeleton node names, with null explicitly unmapping a bone. Optional footHeight is [left,right] in metres, each -10..10. Retargeting, skin relaxation and the writer share one checked declaration snapshot. Import animation settings name the canonical rig content ID. There is no rig author or runtime text parser. See animation.\n\n");
             }
+            if ty == "flipbook" {
+                out.push_str("Output: native frames, clips, durations, pivots and events loaded with og.load.flipbook. Choose a canonical texture ref (grid, explicit frames and/or atlas: input.text of Aseprite/TexturePacker JSON), or animated sources at explicit owning-module assets/ or sources/ paths. Animated inputs emit #sheet. array: true emits #array and actual #array#layerN textures; all frames must share a size. Clip frames are names, never numeric-index fallback. Image bytes, external atlas text and helper imports invalidate warm cooks. No author OGT parser, text writer or sibling guessing remains. See loading.\n\n");
+            }
             if ty == "strings" {
                 out.push_str("Output: a native locale table loaded with og.load.strings. Fonts are ordered canonical content refs, bound to actual font outputs. Locale/fallback tags are canonicalized; direction defaults to the locale. Entries preserve Unicode and compile ICU messages before cook. Importing the TS declaration in UI code registers only its cooked ID; author code never runs in the game. og i18n tables --json reads checked tables across modules; --index returns IDs/paths without content evaluation. Extraction writes direct literals only and refuses computed/shared expressions. No string-table author or runtime OGT parser remains. See localization.\n\n");
             }
@@ -143,10 +146,6 @@ pub fn markdown() -> Result<String, String> {
                     block(&mut out, &format!("district.{name}"), fields);
                 }
                 block(&mut out, "district.hlod", super::hlod::LINES);
-            }
-            "flipbook" => {
-                table(&mut out, og_anim::FLIPBOOK_LINES);
-                block(&mut out, "flipbook.clip", og_anim::FLIPBOOK_CLIP_LINES);
             }
             "quest" => {
                 for scope in ["quest", "reward", "stage", "objective"] {

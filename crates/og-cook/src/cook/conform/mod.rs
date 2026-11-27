@@ -288,14 +288,3 @@ impl AssetConform {
         Ok(c)
     }
 }
-
-/// `text` without its top-level `conform` line, and that line, when it
-/// has one: an asset's text as the importer that does not know the line
-/// reads it. `None` when the text has none (or is not an `.ogt`).
-pub(super) fn strip(text: &str, roles: &[&str]) -> Option<(String, Result<AssetConform, String>)> {
-    let mut doc = Document::parse(text).ok()?;
-    let at = doc.body.entries.iter().position(|e| e.key == "conform")?;
-    let e = doc.body.entries.remove(at);
-    let c = AssetConform::entry(&e, roles);
-    Some((doc.to_text().ok()?, c))
-}

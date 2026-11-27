@@ -13,7 +13,7 @@ use serde_json::json;
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T] [--holes] [--out <frames.png>] [--json]";
+const USAGE: &str = "usage: og sprite inspect <file.gif|.webp|.png|content/sheet.ts> [--key auto|off|#rrggbb] [--tolerance T] [--holes] [--out <frames.png>] [--json]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     match go(args) {
@@ -69,7 +69,7 @@ fn go(args: &[&str]) -> Result<(), String> {
         i += 1;
     }
     let file = Path::new(file.ok_or(USAGE)?);
-    let report = if file.extension().is_some_and(|e| e == "ogt") {
+    let report = if file.extension().is_some_and(|e| e == "ts") {
         let built = animated::build_file(file)?;
         if let Some(out) = out {
             std::fs::write(out, &built.png).map_err(|e| format!("{out}: {e}"))?;

@@ -543,7 +543,7 @@ pub(crate) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core
 }
 
 /// An asset's own `conform off` (docs/art.md §2.3), at the top of its
-/// `.ogt` (a `type model`, a flipbook) or of its import settings: why it
+/// `.ogt` (a `type model`) or of its import settings: why it
 /// keeps its source as made. Read before the 2D pass takes the line out
 /// of a sheet's text.
 pub(crate) fn own_conform_off(s: &Source) -> Option<String> {

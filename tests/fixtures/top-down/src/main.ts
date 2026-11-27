@@ -1,6 +1,6 @@
 // A farm at dusk (README.md): a tilemap of grass, paths and tilled plots
 // (base/tiles/farm-map), crops, fences and props from loose PNGs the cook
-// packs into one texture (props/props.ogt), trees of a texture each whose
+// packs into one texture (base/props/props), trees of a texture each whose
 // leaves og.Wind moves (og.Sprite.sway, trees/*.png.ogt), a farmer walking
 // down the path (a flipbook from a GIF) and warm lamps whose light the
 // fences and the trunks shadow (og.Light2D, og.Occluder2D).
@@ -50,7 +50,7 @@ type Opts = { shadow?: number; castShadow?: boolean; flipX?: boolean; glow?: num
 /** A prop of the packed sheet standing on its feet at (x, y), sorted by y. */
 function prop(world: World, name: keyof typeof PROPS, x: number, y: number, opts: Opts = {}): void {
   // The same handles every call (og.load answers a path once loaded).
-  const s = must(og.load.flipbook(world, "props/props.ogt"));
+  const s = must(og.load.flipbook(world, "base/props/props"));
   const e = must(world.spawn({ position: { x, y, z: 0 } }));
   must(world.insert(e, og.Sprite, { width: PROPS[name].w * TEX, height: PROPS[name].h * TEX, sortY: true, ...opts }));
   must(world.insert(e, og.Flipbook, { sheet: s.sheet, clip: og.anim.clip(s, name), playing: false }));
@@ -121,7 +121,7 @@ function build(world: World): void {
   for (const [x, y] of [[21.2, 23.4], [24.8, 17.6], [20.8, 11.4], [12.5, 16.4], [33.5, 16.4]] as const) lamp(world, x, y);
 
   // The farmer, walking down the path towards the camera.
-  const farmerSheet = must(og.load.flipbook(world, "farmer/farmer.ogt"));
+  const farmerSheet = must(og.load.flipbook(world, "base/farmer/farmer"));
   const farmer = must(world.spawn({ name: "farmer", position: { x: START.x, y: START.y, z: 0 } }));
   must(world.insert(farmer, og.Sprite, { width: farmerSheet.frameWidth * TEX, height: farmerSheet.frameHeight * TEX, sortY: true, shadow: 0.4 }));
   must(world.insert(farmer, og.Flipbook, { sheet: farmerSheet.sheet, clip: og.anim.clip(farmerSheet, "walk"), playing: false }));

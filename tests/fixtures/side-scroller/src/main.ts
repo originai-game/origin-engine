@@ -78,7 +78,7 @@ function vfx2d(world: World, name: "hit" | "dust", at: { x: number; y: number })
   if (name === "hit") must(world.insert(e, og.Light2D, { color: { r: 0.75, g: 0.85, b: 1 }, intensity: HIT_LIGHT, distance: 4, falloff: 1.4, castShadows: false }));
 }
 
-/** A prop of the packed sheet (props/props.ogt), standing on its feet at `at`, one texel two screen pixels. */
+/** A prop of the packed sheet (base/props/props), standing on its feet at `at`, one texel two screen pixels. */
 function prop(world: World, sheet: FlipbookInfo, name: keyof typeof PROPS, at: { x: number; y: number }, layer: number, extra: { blend?: "alpha" | "additive"; glow?: number; flipX?: boolean; color?: { r: number; g: number; b: number } } = {}): void {
   const e = must(world.spawn({ name: `${name}@${at.x}`, position: { x: at.x, y: at.y, z: 0 } }));
   must(world.insert(e, og.Sprite, { width: PROPS[name].w * CELL, height: PROPS[name].h * CELL, layer, ...extra }));
@@ -87,7 +87,7 @@ function prop(world: World, sheet: FlipbookInfo, name: keyof typeof PROPS, at: {
 
 function build(world: World): void {
   // The knight: one sheet of three clips, its states named by them.
-  const hero = must(og.load.flipbook(world, "hero/hero.ogt"));
+  const hero = must(og.load.flipbook(world, "base/hero/hero"));
   const graph = must(og.anim.graph(world, { ...KNIGHT, sprite: true }));
   const knight = must(world.spawn({ name: "knight", position: { x: -6, y: FLOOR, z: 0 } }));
   must(world.insert(knight, og.Sprite, { width: hero.frameWidth * PX, height: hero.frameHeight * PX, layer: 10 }));
@@ -95,7 +95,7 @@ function build(world: World): void {
   must(world.insert(knight, og.AnimationGraph, { asset: graph }));
   must(world.insert(knight, og.Follow2D, { offset: { x: 2.5, y: 3.2 }, smoothTime: 0.25, deadZone: { x: 0.5, y: 4 }, clamp: true, boundsMin: { x: -2, y: -1 }, boundsMax: { x: 20, y: -1 } }));
 
-  const slimeSheet = must(og.load.flipbook(world, "hero/slime.ogt"));
+  const slimeSheet = must(og.load.flipbook(world, "base/hero/slime"));
   const slime = must(world.spawn({ name: "slime", position: { x: 9.4, y: FLOOR, z: 0 } }));
   must(world.insert(slime, og.Sprite, { width: slimeSheet.frameWidth * PX, height: slimeSheet.frameHeight * PX, layer: 9, flipX: true }));
   must(world.insert(slime, og.Flipbook, { sheet: slimeSheet.sheet, clip: 0 }));
@@ -135,7 +135,7 @@ function build(world: World): void {
   must(world.insert(back, og.Tilemap, { map: walls.map, layer: 0, collision: false }));
 
   // Props from the loose PNGs the cook packed into one sheet.
-  const props = must(og.load.flipbook(world, "props/props.ogt"));
+  const props = must(og.load.flipbook(world, "base/props/props"));
   prop(world, props, "moon", { x: 2.4, y: 5.2 }, -15, { glow: 0.15, color: { r: 0.55, g: 0.6, b: 0.75 } });
   prop(world, props, "pillar", { x: -8.5, y: FLOOR }, 4);
   prop(world, props, "pillar", { x: 14.5, y: FLOOR }, 4);

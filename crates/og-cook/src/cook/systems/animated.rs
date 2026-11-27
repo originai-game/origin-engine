@@ -1,48 +1,20 @@
-//! Animated image sources of a flipbook: a sheet with `source "hero.gif"`
-//! lines instead of `texture` (animated GIF, animated WebP or APNG, the
+//! Animated image sources of a checked TypeScript flipbook instead of a
+//! texture reference (animated GIF, animated WebP or APNG, the
 //! last two with real alpha; a still image is one frame). The cook decodes
 //! and composites each source's frames, turns their delays into clip
 //! durations, optionally keys out a flat background, aligns the frames to a
 //! common anchor, crops them to one size, shares identical frames and
-//! packs them into a texture of its own, `<sheet>#sheet`; the sheet's text
-//! becomes the canonical one the Aseprite path writes (`frame` lines and
-//! clips), so the rest of the cook (the art contract, `array true`, the
+//! packs them into a texture of its own, `<sheet>#sheet`. It produces a
+//! native sheet directly, so the rest of the cook (the art contract, arrays, the
 //! runtime) sees an ordinary sheet.
-//!
-//! The grammar (og-anim's README has the whole sheet's):
-//!
-//! ```text
-//! type flipbook
-//! version 1
-//! ---
-//! source "hero_idle.gif"                  # a clip named `hero_idle`
-//! source "hero_run.webp" {
-//!   clip "run"                            # its clip's name (default: the file stem)
-//!   mode loop                             # loop (default), pingPong or once
-//!   fps 12                                # every frame 1/12 s instead of the file's delays
-//!   event 3 "step"                        # a FlipbookEvent on the clip's frame 3
-//!   align feet                            # this source's alignment (default: the sheet's)
-//!   scale 0.9                             # times the sheet's scale: a source drawn larger
-//! }
-//! key auto 0.1 holes                      # off (default), auto or "#rrggbb", a tolerance, and
-//!                                         # `holes`: enclosed pockets of the background too
-//! align feet                              # feet, bbox, centroid or none (default)
-//! padding 1                               # transparent texels around the common crop
-//! scale 0.25                              # resample before anything else is measured
-//! dedupe true                             # identical frames share one cell (default)
-//! pivot 0.5 0                             # instead of the anchor the alignment found
-//! crop each                               # each source its own cell size (default `all`: one)
-//! filter nearest
-//! ```
 //!
 //! [`inspect`] measures a decoded animation (`og sprite inspect`): frame
 //! count, delays, per-frame bounds and centroid and their drift, the loop
 //! seam and the alpha edge fringe. Measurements only, never a verdict.
 
-use super::Source;
-use og_core::ogt::{Document, Entry, Value};
+use super::source_schemas::media::clips as input;
+use og_anim::{FlipClip, FlipMode, FlipbookSheet, SheetFrame};
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 
 /// Alpha at or above which a texel counts as drawn, for bounds, centroids
 /// and the crop (a speck of keying noise below it moves nothing).
@@ -585,16 +557,6 @@ pub enum Align {
 }
 
 impl Align {
-    fn parse(w: &str) -> Option<Align> {
-        match w {
-            "none" => Some(Align::None),
-            "feet" => Some(Align::Feet),
-            "bbox" => Some(Align::Bbox),
-            "centroid" => Some(Align::Centroid),
-            _ => None,
-        }
-    }
-
     /// The anchor of a shape, in texels from the top left.
     fn anchor(self, s: &Shape) -> [f32; 2] {
         let [x0, y0, x1, y1] = s.bounds.map(|v| v as f32);
@@ -881,13 +843,13 @@ fn measure(
 
 // ---- the sheet ---------------------------------------------------------------
 
-/// One `source` line of a sheet.
+/// One checked animated input of a sheet.
 #[derive(Clone, Debug, PartialEq)]
 struct SourceLine {
     /// The asset id of the file.
     id: String,
     clip: String,
-    mode: Option<String>,
+    mode: FlipMode,
     fps: Option<f32>,
     events: Vec<(u32, String)>,
     align: Option<Align>,
@@ -911,14 +873,6 @@ struct Settings {
     crop_each: bool,
 }
 
-const IMPORT_KEYS: [&str; 8] = [
-    "source", "key", "align", "padding", "scale", "dedupe", "pivot", "crop",
-];
-
-fn line_err(e: &Entry, what: impl std::fmt::Display) -> String {
-    format!("line {}: {what}", e.line)
-}
-
 /// A `"#rrggbb"` colour.
 pub fn parse_hex(s: &str) -> Option<[u8; 3]> {
     let s = s.strip_prefix('#')?;
@@ -929,117 +883,19 @@ pub fn parse_hex(s: &str) -> Option<[u8; 3]> {
     Some([b(0)?, b(2)?, b(4)?])
 }
 
-/// Whether a parsed flipbook sheet takes animated sources.
-pub(crate) fn is_animated(doc: &Document) -> bool {
-    doc.ty == "flipbook" && doc.body.get("source").is_some()
-}
-
-fn settings(doc: &Document) -> Result<Settings, String> {
-    let mut s = Settings {
-        key: Key::Off,
-        tolerance: 0.1,
-        holes: false,
-        align: Align::None,
-        padding: 1,
-        scale: 1.0,
-        dedupe: true,
-        pivot: None,
-        crop_each: false,
-    };
-    for e in &doc.body.entries {
-        match e.key.as_str() {
-            "key" => {
-                let v = e
-                    .values
-                    .first()
-                    .ok_or_else(|| line_err(e, "key off|auto|\"#rrggbb\" [tolerance] [holes]"))?;
-                s.key = match (v.as_word(), v.as_str()) {
-                    (Some("off"), _) => Key::Off,
-                    (Some("auto"), _) => Key::Auto,
-                    (_, Some(h)) => Key::Colour(parse_hex(h).ok_or_else(|| {
-                        line_err(e, format!("key \"{h}\": a colour is \"#rrggbb\""))
-                    })?),
-                    _ => return Err(line_err(e, "key off|auto|\"#rrggbb\" [tolerance] [holes]")),
-                };
-                for (i, v) in e.values.iter().enumerate().skip(1) {
-                    if v.as_word() == Some("holes") {
-                        s.holes = true;
-                        continue;
-                    }
-                    s.tolerance = e
-                        .f32(i)
-                        .ok()
-                        .filter(|t| (0.0..=0.5).contains(t))
-                        .ok_or_else(|| line_err(e, "the key's tolerance is 0 to 0.5"))?;
-                }
-            }
-            "align" => {
-                s.align = e
-                    .word(0)
-                    .ok()
-                    .and_then(Align::parse)
-                    .ok_or_else(|| line_err(e, "align feet|bbox|centroid|none"))?
-            }
-            "padding" => {
-                s.padding = e
-                    .f32(0)
-                    .ok()
-                    .filter(|p| *p >= 0.0 && p.fract() == 0.0 && *p <= 64.0)
-                    .ok_or_else(|| line_err(e, "padding is a whole number of texels, 0 to 64"))?
-                    as u32
-            }
-            "scale" => {
-                s.scale = e
-                    .f32(0)
-                    .ok()
-                    .filter(|v| *v > 0.0 && *v <= 8.0)
-                    .ok_or_else(|| line_err(e, "scale is above 0, at most 8"))?
-            }
-            "dedupe" => {
-                s.dedupe = e
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| line_err(e, "dedupe true|false"))?
-            }
-            "crop" => {
-                s.crop_each = match e.word(0) {
-                    Ok("each") => true,
-                    Ok("all") => false,
-                    _ => return Err(line_err(e, "crop all|each")),
-                }
-            }
-            "pivot" => {
-                s.pivot = Some([
-                    e.f32(0).map_err(|_| line_err(e, "pivot x y"))?,
-                    e.f32(1).map_err(|_| line_err(e, "pivot x y"))?,
-                ])
-            }
-            "texture" | "atlas" | "grid" | "frame" | "margin" | "spacing" => {
-                return Err(line_err(
-                    e,
-                    format!(
-                        "`{}` and `source` do not mix: a sheet takes its frames from a texture or from animated sources",
-                        e.key
-                    ),
-                ));
-            }
-            _ => {}
-        }
+fn alignment(a: Option<&input::Alignment>) -> Align {
+    match a {
+        Some(input::Alignment::Feet) => Align::Feet,
+        Some(input::Alignment::Bbox) => Align::Bbox,
+        Some(input::Alignment::Centroid) => Align::Centroid,
+        _ => Align::None,
     }
-    Ok(s)
 }
 
-fn source_lines(
-    doc: &Document,
-    resolve: &dyn Fn(&str) -> String,
-) -> Result<Vec<SourceLine>, String> {
+fn source_lines(input: &input::AnimatedSheet) -> Result<Vec<SourceLine>, String> {
     let mut out: Vec<SourceLine> = Vec::new();
-    for e in doc.body.get_all("source") {
-        let path = e
-            .string(0)
-            .map_err(|_| line_err(e, "source \"path\" [{ ... }]"))?;
-        let id = resolve(path);
+    for source in &input.sources {
+        let id = source.source.clone();
         let stem = id
             .rsplit('/')
             .next()
@@ -1048,83 +904,17 @@ fn source_lines(
             .next()
             .unwrap_or("clip")
             .to_string();
-        let mut line = SourceLine {
+        let line = SourceLine {
             id,
-            clip: stem,
-            mode: None,
-            fps: None,
-            events: Vec::new(),
-            align: None,
-            scale: 1.0,
+            clip: source.clip.clone().unwrap_or(stem),
+            mode: super::flipbook::mode(source.mode.as_ref()),
+            fps: source.fps,
+            events: source.events.clone(),
+            align: source.align.as_ref().map(|a| alignment(Some(a))),
+            scale: source.scale.unwrap_or(1.0),
         };
-        for b in e.block.iter().flat_map(|b| &b.entries) {
-            match b.key.as_str() {
-                "clip" => {
-                    line.clip = b
-                        .values
-                        .first()
-                        .and_then(|v| v.as_str().or(v.as_word()))
-                        .ok_or_else(|| line_err(b, "clip \"name\""))?
-                        .to_string()
-                }
-                "mode" => {
-                    let m = b.word(0).unwrap_or("");
-                    if !matches!(m, "loop" | "pingPong" | "pingpong" | "once") {
-                        return Err(line_err(b, "mode is loop, pingPong or once"));
-                    }
-                    line.mode = Some(m.to_string());
-                }
-                "fps" => {
-                    line.fps = Some(
-                        b.f32(0)
-                            .ok()
-                            .filter(|f| *f > 0.0 && f.is_finite())
-                            .ok_or_else(|| line_err(b, "fps is above 0"))?,
-                    )
-                }
-                "event" => line.events.push((
-                    b.f32(0)
-                        .ok()
-                        .filter(|f| *f >= 0.0 && f.fract() == 0.0)
-                        .ok_or_else(|| line_err(b, "event <frame> \"name\""))?
-                        as u32,
-                    b.string(1)
-                        .map_err(|_| line_err(b, "event <frame> \"name\""))?
-                        .to_string(),
-                )),
-                "align" => {
-                    line.align = Some(
-                        b.word(0)
-                            .ok()
-                            .and_then(Align::parse)
-                            .ok_or_else(|| line_err(b, "align feet|bbox|centroid|none"))?,
-                    )
-                }
-                "scale" => {
-                    line.scale = b
-                        .f32(0)
-                        .ok()
-                        .filter(|v| *v > 0.0 && *v <= 8.0)
-                        .ok_or_else(|| line_err(b, "scale is above 0, at most 8"))?
-                }
-                k => {
-                    return Err(line_err(
-                        b,
-                        format!(
-                            "unknown key `{k}` in a source block (clip, mode, fps, event, align, scale)"
-                        ),
-                    ));
-                }
-            }
-        }
         if out.iter().any(|o| o.clip == line.clip) {
-            return Err(line_err(
-                e,
-                format!(
-                    "two sources make clip `{}`; name one with `clip \"...\"`",
-                    line.clip
-                ),
-            ));
+            return Err(format!("two sources make clip '{}'", line.clip));
         }
         out.push(line);
     }
@@ -1134,8 +924,8 @@ fn source_lines(
 /// A sheet built from its animated sources.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Built {
-    /// The canonical sheet text (its `texture` the packed image's id).
-    pub text: String,
+    /// The native sheet (its `texture` the packed image's id).
+    pub sheet: FlipbookSheet,
     /// The packed texture, a PNG.
     pub png: Vec<u8>,
     /// The common frame size.
@@ -1157,17 +947,27 @@ pub fn sheet_texture_id(rel: &str) -> String {
     format!("{rel}#sheet")
 }
 
-/// Builds sheet `rel` (its text `doc`) from its animated sources; `read`
-/// returns a file's bytes by asset id and `resolve` turns a path the sheet
-/// names into one.
+/// Builds checked sheet `rel` directly from explicit animated inputs.
 pub fn build(
     rel: &str,
-    doc: &Document,
-    resolve: &dyn Fn(&str) -> String,
+    input: &input::AnimatedSheet,
     read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
 ) -> Result<Built, String> {
-    let set = settings(doc)?;
-    let lines = source_lines(doc, resolve)?;
+    let set = Settings {
+        key: input
+            .key
+            .as_ref()
+            .map_or(Key::Off, |k| k.color.map_or(Key::Auto, Key::Colour)),
+        tolerance: input.key.as_ref().and_then(|k| k.tolerance).unwrap_or(0.1),
+        holes: input.key.as_ref().is_some_and(|k| k.holes),
+        align: alignment(input.align.as_ref()),
+        padding: input.padding.unwrap_or(1),
+        scale: input.scale.unwrap_or(1.0),
+        dedupe: input.dedupe.unwrap_or(true),
+        pivot: input.pivot,
+        crop_each: matches!(input.crop, Some(input::Crop::Each)),
+    };
+    let lines = source_lines(input)?;
     let mut notes = Vec::new();
     // Decode, key, resample.
     struct Clip {
@@ -1454,85 +1254,40 @@ pub fn build(
             ((r[1] + r[3]) as f32 - ay) / r[3] as f32,
         ])
     };
-    // The canonical text: the sheet's own lines but the import's, the
-    // texture, a frame line per source frame, a clip per source.
-    let num = |v: f64| Value::Number(og_core::ogt::Number::from_f64(v).expect("finite"));
-    let mut out = Document::new("flipbook", 1);
-    out.body
-        .push(Entry::new("texture").with(Value::String(sheet_texture_id(rel))));
-    for e in &doc.body.entries {
-        if !IMPORT_KEYS.contains(&e.key.as_str()) && e.key != "clip" {
-            out.body.push(e.clone());
-        }
-    }
+    let mut sheet = FlipbookSheet {
+        texture: sheet_texture_id(rel),
+        size: [tw, th],
+        filter: super::flipbook::filter(input.filter.as_ref()),
+        array: input.array,
+        frames: Vec::new(),
+        clips: Vec::new(),
+    };
     let mut k = 0usize;
-    let mut clip_entries = Vec::new();
     for c in &clips {
-        let mut names = Entry::new("frames");
-        let mut durations = Entry::new("durations");
+        let first = k;
         for i in 0..c.frames.len() {
             let name = format!("{}_{i}", c.line.clip);
             let (ox, oy) = origin[cell_of[k]];
             let r = rects[k];
-            let mut e = Entry::new("frame").with(Value::String(name.clone()));
-            for v in [ox, oy, r[2], r[3]] {
-                e = e.with(num(f64::from(v)));
-            }
-            let pv = pivot(r);
-            e = e.with(num(f64::from(pv[0]))).with(num(f64::from(pv[1])));
-            out.body.push(e);
-            names = names.with(Value::String(name));
-            durations = durations.with(num(f64::from(delays[k])));
+            sheet.frames.push(SheetFrame {
+                name,
+                rect: [ox, oy, r[2], r[3]],
+                pivot: pivot(r),
+            });
             k += 1;
         }
-        let mut block = og_core::ogt::Block::new();
-        block.push(names);
-        block.push(durations);
-        block.push(Entry::new("mode").with(Value::Word(
-            c.line.mode.clone().unwrap_or_else(|| "loop".into()),
-        )));
-        for (f, name) in &c.line.events {
-            if *f as usize >= c.frames.len() {
-                return Err(format!(
-                    "source `{}`: event `{name}` on frame {f} of {}",
-                    c.line.id,
-                    c.frames.len()
-                ));
-            }
-            block.push(
-                Entry::new("event")
-                    .with(num(f64::from(*f)))
-                    .with(Value::String(name.clone())),
-            );
-        }
-        clip_entries.push(
-            Entry::new("clip")
-                .with(Value::String(c.line.clip.clone()))
-                .with_block(block),
-        );
-    }
-    // The sheet's own clips come after (they name the frames above) and
-    // win over a source's clip of the same name.
-    let own: BTreeSet<String> = doc
-        .body
-        .get_all("clip")
-        .filter_map(|e| {
-            e.values
-                .first()
-                .and_then(|v| v.as_word().or(v.as_str()))
-                .map(str::to_string)
-        })
-        .collect();
-    for e in clip_entries {
-        let name = e.values[0].as_str().unwrap_or_default().to_string();
-        if !own.contains(&name) {
-            out.body.push(e);
+        if !input.clips.iter().any(|own| own.name == c.line.clip) {
+            sheet.clips.push(FlipClip {
+                name: c.line.clip.clone(),
+                frames: (first as u32..k as u32).collect(),
+                durations: delays[first..k].to_vec(),
+                mode: c.line.mode,
+                events: c.line.events.clone(),
+            });
         }
     }
-    for e in doc.body.get_all("clip") {
-        out.body.push(e.clone());
-    }
-    let text = out.to_text().map_err(|e| e.reason().to_string())?;
+    super::flipbook::clips(&mut sheet, &input.clips)?;
+    sheet.validate_native().map_err(|e| e.to_string())?;
     let drawn = cells
         .iter()
         .map(|&i| {
@@ -1555,7 +1310,7 @@ pub fn build(
         first[1]
     ));
     Ok(Built {
-        text,
+        sheet,
         png,
         size: [fw, fh],
         frames,
@@ -1566,34 +1321,37 @@ pub fn build(
     })
 }
 
-/// Builds the flipbook sheet at `path` (under a project's `assets/`) from
-/// its animated sources, as the cook would.
+/// Builds a checked `file.flipbook` TS entry with the project's ordinary
+/// index, schema and module-scoped input capture, as the cook would.
 pub fn build_file(path: &std::path::Path) -> Result<Built, String> {
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let doc = Document::parse(&text).map_err(|e| format!("{}: {}", path.display(), e.reason()))?;
-    if !is_animated(&doc) {
-        return Err(format!(
-            "{}: not a flipbook with `source` lines; inspect the image itself",
-            path.display()
-        ));
-    }
-    let path = std::path::absolute(path).map_err(|e| e.to_string())?;
+    use super::{source_content, source_index, source_project, source_schemas};
+    let path = path.canonicalize().map_err(|e| e.to_string())?;
     let root = path
         .ancestors()
-        .find(|a| a.file_name().is_some_and(|n| n == "assets"))
-        .ok_or_else(|| format!("{}: not under a project's assets/", path.display()))?;
-    let rel = path
-        .strip_prefix(root)
-        .expect("an ancestor")
-        .components()
-        .map(|c| c.as_os_str().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/");
-    let resolve = |p: &str| super::flipbook::resolve_in(root, &rel, p);
-    let read = |id: &str| {
-        std::fs::read(root.join(id)).map_err(|_| format!("source `{id}` is not in assets/"))
+        .find(|a| a.join("og-project.json").is_file())
+        .ok_or("flipbook entry is not in a project")?;
+    let project = source_project::Project::open(root).map_err(|e| e.to_string())?;
+    let index = source_index::Index::open(root, &project).map_err(|e| e.to_string())?;
+    let entry = index
+        .entries
+        .values()
+        .find(|e| root.join(&e.file) == path)
+        .filter(|e| e.factory == "flipbook")
+        .ok_or("expected a checked file.flipbook content entry")?;
+    let content = source_content::Evaluator::default()
+        .evaluate(root, &project, entry, &BTreeMap::new(), None)
+        .map_err(|e| e.to_string())?;
+    let file: source_schemas::File =
+        serde_json::from_value(content.data().root().into_json()).map_err(|e| e.to_string())?;
+    let input::Flipbook::Animated(input) =
+        serde_json::from_value(file.value).map_err(|e| e.to_string())?
+    else {
+        return Err("inspect the texture of a non-animated sheet directly".into());
     };
-    build(&rel, &doc, &resolve, &read)
+    let module = &project.modules[&entry.module];
+    let assets = root.join(&module.root);
+    let read = |id: &str| std::fs::read(assets.join(id)).map_err(|e| format!("source `{id}`: {e}"));
+    build(&entry.id, &input, &read)
 }
 
 /// Measures a built sheet's frames as [`inspect`] measures a file.
@@ -1615,82 +1373,4 @@ pub fn inspect_built(b: &Built) -> Inspection {
     };
     let border0 = border(&b.frames[0], b.size[0], b.size[1]);
     measure(&anim, border0, None, &b.frames)
-}
-
-/// Expands every flipbook with animated sources before the cook hashes
-/// anything: its text becomes the canonical sheet (with the packed image
-/// as its texture, `Source::conformed`, so the sheet reads its size), the
-/// packed image a texture source of its own (`<sheet>#sheet`, pixel art
-/// under `filter nearest`), and the files it read are consumed.
-pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
-    let mut extra = Vec::new();
-    for s in sources.iter_mut() {
-        if s.kind != &crate::cook::flipbook::FLIPBOOK || s.error.is_some() {
-            continue;
-        }
-        let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
-            continue;
-        };
-        if !is_animated(&doc) {
-            continue;
-        }
-        let root = crate::cook::assets_root(s);
-        let resolve = |p: &str| super::flipbook::resolve(s, p);
-        let read = |id: &str| {
-            std::fs::read(root.join(id)).map_err(|_| format!("source `{id}` is not in assets/"))
-        };
-        // The files it names are part of it, built or not.
-        if let Ok(lines) = source_lines(&doc, &resolve) {
-            consumed.extend(lines.into_iter().map(|l| l.id));
-        }
-        let built = match build(&s.rel, &doc, &resolve, &read) {
-            Ok(b) => b,
-            Err(e) => {
-                s.error = Some(e);
-                continue;
-            }
-        };
-        let nearest = !doc
-            .body
-            .get("filter")
-            .is_some_and(|e| e.word(0) == Ok("linear"));
-        let settings = nearest.then(|| {
-            let t = "type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n".to_string();
-            let d = Document::parse(&t).expect("the import text");
-            (t, d)
-        });
-        s.bytes = built.text.into_bytes();
-        s.conformed = Some(Arc::new(built.png.clone()));
-        extra.push(Source {
-            rel: sheet_texture_id(&s.rel),
-            path: s.path.clone(),
-            kind: &crate::cook::texture::TEXTURE,
-            bytes: built.png,
-            settings,
-            settings_files: Vec::new(),
-            hash: 0,
-            gltf: None,
-            error: None,
-            encoded: Default::default(),
-            whole: Default::default(),
-            model: Default::default(),
-            video: None,
-            timeline: None,
-            motion_action: None,
-            strings: None,
-            font_pack: None,
-            fields: Default::default(),
-            terrains: Default::default(),
-            navmesh: None,
-            lightmap: None,
-            tileset: None,
-            tilemap: None,
-            animgraph: None,
-            flipbook: None,
-            rig2d: None,
-            conformed: None,
-            fracture: None,
-        });
-    }
-    sources.extend(extra);
 }

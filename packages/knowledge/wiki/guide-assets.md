@@ -153,7 +153,7 @@ when there are any. `--json` returns `files`, `check`, `changed`, and
 
 Every OGT asset has the same extension, so its name can say what it is:
 `<name>.<type>.ogt`, with the word on its `type` line (`level1.scene.ogt`,
-`hero.flipbook.ogt`). A glob such as `*.scene.ogt` then finds every scene
+`menu.prefab.ogt`). A glob such as `*.scene.ogt` then finds every scene
 without opening a file. The name is optional and decides nothing: the `type`
 line does, and the asset id is the path as written, name and all.
 

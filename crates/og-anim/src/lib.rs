@@ -50,8 +50,8 @@ pub use asset::{
     bind,
 };
 pub use flipbook::{
-    FLIPBOOK_CLIP_LINES, FLIPBOOK_LINES, FLIPBOOK_SYSTEM, FlipClip, FlipMode, Flipbook,
-    FlipbookEvent, FlipbookSheet, FlipbookSystem, SheetFilter, SheetFrame, install_flipbook,
+    FLIPBOOK_SYSTEM, FlipClip, FlipMode, Flipbook, FlipbookEvent, FlipbookSheet, FlipbookSystem,
+    SheetFilter, SheetFrame, install_flipbook,
 };
 pub use graph::{
     ClipBinding, Condition, ConditionInput, GraphAsset, GraphDefinition, GraphSource, Interrupt,

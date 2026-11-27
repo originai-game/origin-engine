@@ -404,16 +404,17 @@ each one moves.
   the group is resident again.
 - TextureArrayInfo and the frame's texture bytes report an array's GPU
   size.
-- A flipbook sheet is an `.ogt` of `type flipbook`; the cook resolves its
-  Aseprite or TexturePacker atlas. A sheet may name animated GIF, WebP
-  or APNG files instead (`source "hero_run.gif"`, a clip per file). The
+- A flipbook is a checked `file.flipbook` declaration loaded by canonical
+  content ID. Use a texture ref plus grid, frames or explicit atlas JSON
+  from input.text; alternatively, sources name module-relative assets/
+  or sources/ GIF, WebP, APNG or still files (one clip per source). The
   cook turns their delays into clip durations, crops every frame to one
   size with the pivot at the anchor, shares identical frames and packs
-  them into `<sheet>#sheet`. `key auto` keys out a flat background,
-  `align feet` holds the figure still and `scale` resamples.
+  them into `<sheet>#sheet`. A key object keys out a flat background,
+  align: 'feet' holds the figure still and scale resamples.
   `og sprite inspect` measures a source's frames, drift, loop seam and
   edge fringe.
-- A sheet with `array true` cooks its frames into a texture array, so
+- A sheet with array: true cooks its frames into a texture array, so
   every sprite of the sheet is one draw, whichever frame each shows.
 
 <a id="guide-loading-9"></a>

@@ -70,8 +70,8 @@ fn ogt_kind(ty: &str) -> Option<Kind> {
 }
 
 /// The type an `.ogt`'s name says and does not hold: `<name>.<type>.ogt`
-/// names its type, so `hero.flipbook.ogt` cooking as anything but a
-/// flipbook is reported. A name whose last part is no type says nothing.
+/// names its type, so `menu.prefab.ogt` cooking as anything but a
+/// prefab is reported. A name whose last part is no type says nothing.
 pub(crate) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
     let stem = rel.rsplit('/').next()?.strip_suffix(".ogt")?;
     let (_, named) = stem.rsplit_once('.')?;

@@ -9,15 +9,15 @@ stack together on the real engine:
   its texture cooked as pixel art (`farm.png.ogt`, `kind pixel`); the map
   `content/tiles/farm-map.ts` is 48×30 cells. `till` waters a cell with
   og.tilemap.setTile.
-- **A flipbook from a GIF.** `assets/farmer/farmer.ogt` keys the generated
+- **A flipbook from a GIF.** `content/farmer/farmer.ts` keys the generated
   walk (512×512, magenta ground, an art pixel about 11 of its pixels) and
-  brings it to its own grid with `scale 0.0909`; `align none` keeps the
+  brings it to its own grid with `scale: 0.0909`; `align: 'none'` keeps the
   walk's own motion (its centroid drifts under 2 px). Steps are frame
   events 1 and 5.
 - **Loose PNGs packed into one texture.** The 27 crop and prop PNGs in
-  `assets/props/` are the still sources of one sheet, `props.ogt` with
-  `crop each`: the cook cuts each to its bounds and shelf-packs them into
-  `props/props.ogt#sheet`. Every prop, crop and fence is an og.Sprite with
+  `assets/props/` are the still sources of `content/props/props.ts` with
+  `crop: 'each'`: the cook cuts each to its bounds and shelf-packs them into
+  `base/props/props#sheet`. Every prop, crop and fence is an og.Sprite with
   an og.Flipbook on its still clip, sorted by y (`sortY`).
 - **Trees in the wind.** The tree and the pine are textures of their own
   in `assets/trees/`, cooked with `sway clumps` and `sway tiers`

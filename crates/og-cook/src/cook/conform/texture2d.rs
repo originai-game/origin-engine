@@ -207,19 +207,27 @@ pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConfo
             }
             continue;
         }
-        let sheets = [&flipbook::FLIPBOOK];
-        if !sheets.contains(&s.kind) {
-            continue;
-        }
-        if let Some((text, c)) = super::strip(&String::from_utf8_lossy(&s.bytes), &[]) {
-            match c {
-                Ok(c) => {
-                    sheet_conform.insert(i, c);
-                }
-                Err(e) => s.error = Some(e),
+        if s.kind == &flipbook::FLIPBOOK {
+            use crate::cook::source_schemas::media::tiles::TilesetConform;
+            let input: serde_json::Value = s.input().expect("checked sheet input");
+            // Flipbook and vfx2d share a native output kind, not an author schema.
+            if let Some(value) = input.get("conform").filter(|v| !v.is_null()) {
+                let c: TilesetConform =
+                    serde_json::from_value(value.clone()).expect("checked conform");
+                sheet_conform.insert(
+                    i,
+                    match c {
+                        TilesetConform::Off => AssetConform {
+                            off: true,
+                            ..Default::default()
+                        },
+                        TilesetConform::Size { size } => AssetConform {
+                            size: Some(size),
+                            ..Default::default()
+                        },
+                    },
+                );
             }
-            s.bytes = text.into_bytes();
-            s.hash = rehash(s, &[]);
         }
     }
     sheet_conform
@@ -392,6 +400,7 @@ pub(in crate::cook) fn conform(
     // A sheet's new text, the conformed image it reads, the look's hash.
     let mut sheet_texts: Vec<SheetText> = Vec::new();
     let mut tilesets = Vec::new();
+    let mut flipbooks = Vec::new();
     for i in 0..sources.len() {
         let s = &sources[i];
         if s.kind != &crate::cook::texture::TEXTURE
@@ -473,15 +482,26 @@ pub(in crate::cook) fn conform(
         if changed {
             for u in &used {
                 let text = match &u.kind {
-                    UseKind::Flipbook(sheet) => {
-                        let mut sheet = (**sheet).clone();
+                    UseKind::Flipbook(original) => {
+                        let mut sheet = (**original).clone();
                         for f in &mut sheet.frames {
                             if let Some(r) = done.layout.moved(f.rect) {
                                 f.rect = r;
                             }
                         }
                         sheet.size = [done.layout.size.0, done.layout.size.1];
-                        sheet.to_text().into_bytes()
+                        if sheet != **original {
+                            entries.push(ConformEntry {
+                                source: sources[u.by].rel.clone(),
+                                action: ConformAction::Changed,
+                                what: format!(
+                                    "its cells follow {base}'s conformed layout ({}x{} texels)",
+                                    done.layout.size.0, done.layout.size.1
+                                ),
+                            });
+                        }
+                        flipbooks.push((u.by, sheet));
+                        sources[u.by].bytes.clone()
                     }
                     UseKind::Tileset(t) => match done.layout.grid {
                         Some(g) if done.layout.size != (img.w, img.h) => {
@@ -647,6 +667,9 @@ pub(in crate::cook) fn conform(
     for (i, t) in tilesets {
         sources[i].tileset = Some(t);
     }
+    for (i, sheet) in flipbooks {
+        sources[i].flipbook = Some(sheet);
+    }
     for (i, text, png, look_hash) in sheet_texts {
         let s = &mut sources[i];
         s.bytes = text;
@@ -760,6 +783,11 @@ fn rehash(s: &Source, more: &[&[u8]]) -> u64 {
     if let Some(t) = &s.tileset {
         let mut data = Vec::new();
         t.encode(&mut data);
+        h.write(&data);
+    }
+    if let Some(sheet) = &s.flipbook {
+        let mut data = Vec::new();
+        sheet.encode(&mut data);
         h.write(&data);
     }
     if let Some((text, _)) = &s.settings {

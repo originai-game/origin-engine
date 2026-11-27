@@ -4,11 +4,11 @@ A night cave in the manner of Hollow Knight and Dead Cells: a hooded knight
 runs at a slime and slashes; the slash's hit frame blows the rock mound in
 front of it apart. It exercises the 2D stack together on the real engine:
 
-- **Flipbooks from GIFs.** `assets/hero/hero.ogt` cooks three generated GIFs
-  (512×512, flat magenta ground) into one sheet: `key auto 0.1 holes` keys
-  the ground and the pockets of it the slash's arc encloses, `align feet`
-  holds the figure still, `scale 0.25` brings it down, and the idle (drawn
-  larger) takes `scale 0.89` in its source block. `slime.ogt` is the enemy.
+- **Flipbooks from GIFs.** `content/hero/hero.ts` cooks three generated GIFs
+  (512×512, flat magenta ground) into one sheet: `key: {tolerance: 0.1, holes: true}` keys
+  the ground and the pockets of it the slash's arc encloses, `align: 'feet'`
+  holds the figure still, `scale: 0.25` brings it down, and the idle (drawn
+  larger) takes `scale: 0.89` on its source. `slime.ts` is the enemy.
 - **A sprite animation graph.** `KNIGHT` in `src/main.ts` (og.anim.graph
   with `sprite: true`) names the sheet's clips `idle`, `run` and `attack`;
   the `Drive` system sets its parameters and moves the knight in its run
@@ -33,7 +33,7 @@ front of it apart. It exercises the 2D stack together on the real engine:
   to 0.52–0.66 of the untreated frame (the knight 0.66, the ground 0.52),
   more under the follow camera's shake.
 - **Loose PNGs packed.** The props (`assets/props/*.png`) are the still
-  sources of one sheet, `props.ogt`, with `crop each`.
+  sources of one sheet, `content/props/props.ts`, with `crop: 'each'`.
 
 `art.py` generates the walls, their tileset and map, the floor's body, the
 props, their sheet and `src/art.ts` (each prop's cell size); rerun it to change them. The GIFs
