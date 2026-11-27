@@ -13,4 +13,4 @@
 | `assets/fonts/EBGaramond-Medium.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL-EBGaramond.txt`) | EB Garamond (google/fonts ofl/ebgaramond, variable) instanced at wght 500 and subset to Latin-1 by `tools/make-faces.py --garamond`, keeping its small-caps lookups (smcp, c2sc): the face the OpenType feature tests and frames set |
 | `assets/fonts/NotoSansHebrew-subset.ttf`, `assets/fonts/NotoSansDevanagari-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans Hebrew and Noto Sans Devanagari (notofonts; Godot 4.7's thirdparty copies) subset to the text screen's strings by `tools/make-faces.py`, layout features kept for shaping |
 | `assets/fonts/test_glyphs-glyf_colr_1.ttf` | Apache-2.0 (`assets/fonts/LICENSE-color-fonts.txt`) | googlefonts/color-fonts' COLR v1 test font (via fontations' font-test-data), unmodified: its characters at U+F0100 and up (Supplementary Private Use Area-A, as icon fonts map theirs) for the colour glyph cook and GPU tests |
-| `assets/strings/*.ogt` | CC0 1.0 | self-written string tables for the five locales |
+| `content/strings/*.ts` | CC0 1.0 | self-written string tables for the five locales |

@@ -29,7 +29,7 @@ for (const name of readdirSync(fixtures).sort()) {
         const cell = line.slice(2, line.indexOf("|", 2));
         for (const token of cell.replace(/\([^)]*\)/g, "").match(/`([^`]+)`/g) ?? []) {
           const path = token.slice(1, -1);
-          if (!path.startsWith("assets/")) continue;
+          if (!path.startsWith("assets/") && !path.startsWith("content/")) continue;
           if (path.includes("*")) {
             const glob = new Bun.Glob(path);
             const hits = [...glob.scanSync({ cwd: dir })].length;
