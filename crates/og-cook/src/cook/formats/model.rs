@@ -900,7 +900,6 @@ fn plan_model<'a>(
     } = *cx;
     let PlanState {
         early_errors,
-        parsed_refs,
         planned_textures,
         ..
     } = state;
@@ -970,10 +969,6 @@ fn plan_model<'a>(
         } else {
             format!("{}#tex{i}", s.rel)
         };
-        parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .insert(id.clone());
         if shared && !planned_textures.insert(id.clone()) {
             ids.push(id);
             continue;
@@ -1234,10 +1229,6 @@ fn plan_model<'a>(
     // name them itself puts them (`plan::derive`), so the manifest reads
     // the same from either.
     for id in cached.into_iter().flatten() {
-        parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .insert(id.clone());
         outs.push(prepared.lod_surface(id));
     }
 }

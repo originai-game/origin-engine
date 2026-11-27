@@ -547,21 +547,7 @@ pub fn cook_project_with_texture_cache(
         texture_cache,
         project_key: project_key.as_deref(),
     };
-    let (
-        plan,
-        PlanState {
-            early_errors,
-            mut parsed_refs,
-            ..
-        },
-    ) = plan(&cx, early_errors, threads);
-    for (id, node) in &content.nodes {
-        parsed_refs.entry(id.clone()).or_default().extend(
-            node.references
-                .iter()
-                .map(|edge| content.outputs[&edge.target].asset.clone()),
-        );
-    }
+    let (plan, PlanState { early_errors, .. }) = plan(&cx, early_errors, threads);
     laps.lap("plan");
     let plan: Vec<_> = plan
         .into_iter()
@@ -582,7 +568,7 @@ pub fn cook_project_with_texture_cache(
     laps.lap("execute");
     // What only a cook could name (a model's LOD surfaces), in a round of
     // its own.
-    let derived = derive(&cx, &plan, &mut parsed_refs, threads);
+    let derived = derive(&cx, &plan, threads);
     let derived_results = execute(
         &cx,
         &derived,
@@ -609,15 +595,7 @@ pub fn cook_project_with_texture_cache(
     laps.lap("write");
     pack(&cx, &groups, &mut written, &mut reports)?;
     laps.lap("pack");
-    let (removed, warnings, before_code) = finish(
-        &cx,
-        &old,
-        written,
-        &parsed_refs,
-        &mut reports,
-        &log,
-        threads,
-    )?;
+    let (removed, warnings, before_code) = finish(&cx, &old, written, &mut reports, &log, threads)?;
     laps.lap("finish");
     let mut warnings = warnings;
     warnings.extend(diagnose_models(&cx, &mut reports, threads));

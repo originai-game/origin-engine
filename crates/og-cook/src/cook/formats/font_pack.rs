@@ -21,7 +21,6 @@ use og_blob::BlobWriter;
 pub(crate) struct Prepared {
     pack: og_i18n::FontPack,
     hyphenation: BTreeMap<String, Vec<u8>>,
-    inputs: BTreeMap<String, u64>,
     face_hashes: String,
 }
 
@@ -44,7 +43,6 @@ pub(crate) fn declaration(
         }
     }
     let mut hyphenation = BTreeMap::new();
-    let mut inputs = BTreeMap::new();
     for file in input.hyphenation {
         let language = Path::new(&file)
             .file_name()
@@ -55,7 +53,6 @@ pub(crate) fn declaration(
         let path = crate::cook::source_path::checked(root, &file)
             .map_err(|e| format!("dictionary '{file}': {e}"))?;
         let bytes = std::fs::read(path).map_err(|e| format!("dictionary '{file}': {e}"))?;
-        inputs.insert(file.clone(), super::hash_bytes(&bytes));
         if hyphenation.insert(language.into(), bytes).is_some() {
             return Err(format!("duplicate hyphenation dictionary for '{language}'"));
         }
@@ -72,7 +69,6 @@ pub(crate) fn declaration(
             coverage: Vec::new(),
         },
         hyphenation,
-        inputs,
         face_hashes: String::new(),
     })
 }
@@ -389,7 +385,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&FONT_PACK];
 
 fn plan_font_pack<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -398,13 +394,6 @@ fn plan_font_pack<'a>(
     // the dictionaries it ships, by their bytes (ICU's, as this engine
     // links them).
     let m = s.font_pack.as_ref().expect("prepared font pack");
-    let deps = m
-        .inputs
-        .iter()
-        .map(|(f, h)| format!("{f}={h:016x}\n"))
-        .collect::<String>();
-    assets::record_dependencies(&mut state.parsed_refs, &s.rel, &deps);
-    assets::record_dependencies(&mut state.parsed_refs, &s.rel, &m.face_hashes);
     let dictionaries = shipped(m, cx.sources, &cx.options.code);
     let shipped: String = dictionaries
         .iter()

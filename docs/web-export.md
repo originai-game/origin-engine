@@ -132,10 +132,12 @@ is not ready until its dependencies are ready; conflicts and cycles fail. An
 open dependent prevents releasing its required bundle. Asset IDs must be unique
 across open bundles, regardless of load order.
 
-Cross-pack validation follows the cook's conservative reference index. A
-declared reference to another delivered output requires a `dependsOn` path even
-when its cooker embeds that output's data. Source-only inputs without delivered
-outputs do not create delivery edges.
+Cross-pack validation and Web pruning follow the same native runtime reference
+index. A reference retained by a cooked payload requires a `dependsOn` path to
+its delivery pack. Inputs embedded by the cooker (look inheritance, generated
+geometry, navigation bake inputs) invalidate the cook cache but do not require
+runtime downloads. Named runtime companions and all playback variants remain
+reachable; unrelated outputs from the same source are not retained implicitly.
 
 ### Streaming groups
 

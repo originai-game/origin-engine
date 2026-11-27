@@ -1225,18 +1225,13 @@ pub(crate) static KINDS: &[&KindDef] = &[&RIG2D];
 
 fn plan_rig2d<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let prepared = s.rig2d.as_ref().expect("checked rig2d");
     cx.index.note_external(&prepared.files);
-    state
-        .parsed_refs
-        .entry(s.rel.clone())
-        .or_default()
-        .insert(prepared.rig.texture.clone());
     let data = prepared.rig.to_bytes().expect("validated rig2d");
     let st = stamp(&[Area::Anim], &[b"rig2d", &hash, &prepared.hash, &data]);
     outs.push((

@@ -184,7 +184,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&EMITTER, &EFFECT];
 
 pub(crate) fn plan<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -196,11 +196,6 @@ pub(crate) fn plan<'a>(
     let mut references = String::new();
     if let Some(value) = prepared {
         for id in value.references() {
-            state
-                .parsed_refs
-                .entry(s.rel.clone())
-                .or_default()
-                .insert(id.clone());
             references.push_str(&format!("{id}={}\n", cx.known.contains(&id)));
         }
     }

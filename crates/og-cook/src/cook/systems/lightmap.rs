@@ -131,35 +131,8 @@ pub(crate) static LIGHTMAP: KindDef = KindDef {
 };
 pub(crate) static KINDS: &[&KindDef] = &[&LIGHTMAP];
 
-fn plan<'a>(
-    _: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
+fn plan<'a>(_: &Cx<'a>, _: &mut PlanState, s: &'a Source, hash: [u8; 8], outs: &mut Vec<Out<'a>>) {
     let prepared = s.lightmap.as_ref().expect("prepared lightmap");
-    let mut refs = std::collections::BTreeSet::from([prepared.file.scene.clone()]);
-    refs.extend(
-        prepared
-            .file
-            .models
-            .iter()
-            .filter(|m| !m.entity.is_empty())
-            .map(|m| m.asset.clone()),
-    );
-    state
-        .parsed_refs
-        .entry(s.rel.clone())
-        .or_default()
-        .extend(refs);
-    // The scene must load its lighting even though author references run from
-    // lighting to scene. This runtime residency edge is not an evaluation edge.
-    state
-        .parsed_refs
-        .entry(prepared.file.scene.clone())
-        .or_default()
-        .insert(s.rel.clone());
     let mut bindings = vec![prepared.file.scene.as_bytes()];
     bindings.extend(prepared.file.models.iter().map(|m| m.asset.as_bytes()));
     let bindings = stamp(&[], &bindings).to_le_bytes();

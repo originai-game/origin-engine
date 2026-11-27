@@ -42,11 +42,9 @@ pub(crate) struct Cx<'a> {
     pub(crate) provided: &'a provided::Provided,
 }
 
-/// What planning writes as it goes: the errors it finds, the references it
-/// parses and the glTF textures already planned.
+/// What planning writes: errors and the glTF textures already planned.
 pub(crate) struct PlanState {
     pub(crate) early_errors: Vec<EarlyError>,
-    pub(crate) parsed_refs: BTreeMap<String, BTreeSet<String>>,
     // glTF textures of models outside streaming groups are cooked once per
     // image and use, whichever models use them: a scene exported in many
     // glTFs (cells, tiles) repeats its images in every file, and a copy per
@@ -67,7 +65,6 @@ pub(crate) fn plan<'a>(
     let sources = cx.sources;
     let mut state = PlanState {
         early_errors,
-        parsed_refs: BTreeMap::new(),
         planned_textures: std::collections::HashSet::new(),
     };
     // These cookers consume only bytes/options. The other kinds resolve
@@ -115,12 +112,7 @@ fn planned<'a>(cx: &Cx<'a>, source: usize, (id, ty, stamp, work): Out<'a>) -> Pl
 /// first round has cooked: each after its source's own, with what is up to
 /// date left without work, as [`plan`] leaves it. An output whose cook
 /// failed derives nothing; its error is the first round's.
-pub(crate) fn derive<'a>(
-    cx: &Cx<'a>,
-    plan: &[Planned<'a>],
-    parsed_refs: &mut BTreeMap<String, BTreeSet<String>>,
-    threads: usize,
-) -> Vec<Planned<'a>> {
+pub(crate) fn derive<'a>(cx: &Cx<'a>, plan: &[Planned<'a>], threads: usize) -> Vec<Planned<'a>> {
     let ex = Exec {
         options: cx.options,
         schemas: cx.schemas,
@@ -136,10 +128,6 @@ pub(crate) fn derive<'a>(
     let mut more: Vec<Planned> = Vec::new();
     for (p, outs) in plan.iter().zip(derived) {
         for out in outs.into_iter().flatten() {
-            parsed_refs
-                .entry(cx.sources[p.source].rel.clone())
-                .or_default()
-                .insert(out.0.clone());
             more.push(planned(cx, p.source, out));
         }
     }

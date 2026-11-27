@@ -2,7 +2,7 @@
 //! Geometry is captured from imported models and scene snapshots; planning and
 //! execution never reopen author files. Terrain consumers share its surface.
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
-use crate::cook::formats::{prefab, scene};
+use crate::cook::formats::prefab;
 use crate::cook::{formats::geometry, source_content::Graph, source_schemas::world::bake as input};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
@@ -14,7 +14,6 @@ pub(crate) struct Prepared {
     origin: crate::cook::generator::source::Diagnostic,
     triangles: Vec<[Vec3; 3]>,
     notes: Vec<String>,
-    dependencies: BTreeSet<String>,
     hash: u64,
 }
 
@@ -28,7 +27,6 @@ impl Prepared {
             origin,
             triangles: Vec::new(),
             notes: Vec::new(),
-            dependencies: BTreeSet::new(),
             hash: 0,
         }
     }
@@ -67,7 +65,6 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
         let source = &sources[index];
         (|| {
             let input = &prepared.input;
-            let mut dependencies = BTreeSet::new();
             let mut triangles = Vec::new();
             let mut notes = Vec::new();
             let models = |id: &str, _: Option<&str>| {
@@ -90,21 +87,13 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
                         return Err(format!("subscene cycle: {} -> {asset}", chain.join(" -> ")));
                     }
                     chain.push(asset.clone());
-                    dependencies.insert(asset.clone());
                     let doc = documents
                         .get(&asset)
                         .ok_or_else(|| format!("scene '{asset}' has not been captured"))?;
                     let nodes = flatten.scene(&asset, doc).map_err(|e| e.0)?;
-                    dependencies.extend(scene::subscenes(doc, &documents));
-                    dependencies.extend(prefab::reached(doc, &documents));
-                    for (scene, matrix) in scene_triangles(
-                        &nodes,
-                        matrix,
-                        &models,
-                        &mut dependencies,
-                        &mut triangles,
-                        &mut notes,
-                    )? {
+                    for (scene, matrix) in
+                        scene_triangles(&nodes, matrix, &models, &mut triangles, &mut notes)?
+                    {
                         pending.push((scene, matrix, chain.clone()));
                     }
                 }
@@ -122,7 +111,6 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
             }
             for model in &input.models {
                 let asset = &graph.outputs[&model.model.id].asset;
-                dependencies.insert(asset.clone());
                 let placement = geometry::placement(model.transform.as_ref())?;
                 model_triangles(asset, placement.matrix().as_mat4(), &models, &mut triangles)?;
             }
@@ -131,12 +119,10 @@ pub(crate) fn bind(sources: &mut [Source], graph: &Graph) -> Result<(), CookErro
                 hash.write_u32(value.to_bits());
             }
             for terrain in &input.terrains {
-                dependencies.insert(terrain.terrain.id.clone());
                 hash.write_u64(super::terrain::get(source, &terrain.terrain.id)?.hash);
             }
             prepared.triangles = triangles;
             prepared.notes = notes;
-            prepared.dependencies = dependencies;
             prepared.hash = hash.finish();
             Ok(())
         })()
@@ -190,7 +176,6 @@ fn scene_triangles(
     nodes: &[prefab::Node],
     parent: Mat4,
     models: &geometry::Models<'_>,
-    dependencies: &mut BTreeSet<String>,
     out: &mut Vec<[Vec3; 3]>,
     notes: &mut Vec<String>,
 ) -> Result<Vec<(String, Mat4)>, String> {
@@ -215,7 +200,6 @@ fn scene_triangles(
         if let Some(model) = &e.model
             && !dynamic
         {
-            dependencies.insert(model.clone());
             model_triangles(model, m, models, out)?;
         }
         if let Some(c) = e.components.get("og.Collider")
@@ -256,14 +240,7 @@ fn scene_triangles(
                     .map(|t| t.map(|v| m.transform_point3(v))),
             );
         }
-        scenes.extend(scene_triangles(
-            &e.children,
-            m,
-            models,
-            dependencies,
-            out,
-            notes,
-        )?);
+        scenes.extend(scene_triangles(&e.children, m, models, out, notes)?);
     }
     Ok(scenes)
 }
@@ -643,17 +620,12 @@ pub(crate) static KINDS: &[&KindDef] = &[&NAVMESH];
 
 fn plan_nav_mesh<'a>(
     _: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let prepared = s.navmesh.as_ref().expect("bound typed navigation");
-    state
-        .parsed_refs
-        .entry(s.rel.clone())
-        .or_default()
-        .extend(prepared.dependencies.iter().cloned());
     let st = stamp(
         &[Area::Nav],
         &[b"typed navmesh 1", &hash, &prepared.hash.to_le_bytes()],

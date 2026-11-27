@@ -1403,7 +1403,7 @@ pub(crate) static MOTION_ACTION: KindDef = KindDef {
 
 fn plan_motion_action<'a>(
     _cx: &Cx<'a>,
-    state: &mut PlanState,
+    _state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -1411,12 +1411,6 @@ fn plan_motion_action<'a>(
     let Some(action) = &s.motion_action else {
         return;
     };
-    state.parsed_refs.entry(s.rel.clone()).or_default().extend(
-        [&action.source, &action.rig]
-            .into_iter()
-            .filter(|id| !id.is_empty())
-            .cloned(),
-    );
     // Reference bindings can change independently of the logical declaration.
     let st = stamp(
         &[Area::Anim],

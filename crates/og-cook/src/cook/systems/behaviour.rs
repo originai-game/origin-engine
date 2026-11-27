@@ -49,11 +49,6 @@ fn plan<'a>(
     let result = (|| -> Result<_, String> {
         let mut deps = Vec::new();
         let b = compile(s, cx.sources, &mut Vec::new(), &mut deps)?;
-        state
-            .parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .extend(b.subtrees.iter().cloned());
         let data = b.to_bytes()?;
         let st = stamp(&[Area::Data], &[b"behaviour", &hash, &deps, &data]);
         Ok((st, Cook(data)))

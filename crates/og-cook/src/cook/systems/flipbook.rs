@@ -11,7 +11,7 @@
 
 use super::source_schemas::media::clips as input;
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, conform_off, stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, conform_off, stamp,
     texture_array,
 };
 use crate::format::{self, *};
@@ -517,7 +517,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&FLIPBOOK];
 
 fn plan_flipbook<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -525,9 +525,7 @@ fn plan_flipbook<'a>(
     let Cx {
         options, tex_desc, ..
     } = *cx;
-    let PlanState { parsed_refs, .. } = state;
     let deps = dependency_hashes(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
     let motion = options
         .mesh
         .conform

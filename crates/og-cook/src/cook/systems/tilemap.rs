@@ -5,7 +5,7 @@
 //! live behind the `cook` feature and never reach the wasm runtime); the
 //! blob is the same whatever the source.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use crate::runtime::asset_id;
 use og_blob::BlobWriter;
@@ -1482,20 +1482,13 @@ fn plan_tileset<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let t = s.tileset.as_ref().expect("checked tileset");
-    if !t.texture.is_empty() {
-        if !cx.known.contains(t.texture.as_str()) {
-            state.early_errors.push((
-                s.rel.clone(),
-                "tileset",
-                format!("tileset texture '{}' is missing", t.texture),
-            ));
-            return;
-        }
-        state
-            .parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .insert(t.texture.clone());
+    if !t.texture.is_empty() && !cx.known.contains(t.texture.as_str()) {
+        state.early_errors.push((
+            s.rel.clone(),
+            "tileset",
+            format!("tileset texture '{}' is missing", t.texture),
+        ));
+        return;
     }
     let st = stamp(&[Area::Data], &[b"tileset", &hash, t.texture.as_bytes()]);
     outs.push((
@@ -1533,11 +1526,7 @@ fn plan_tilemap<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let Cx { known, .. } = *cx;
-    let PlanState {
-        early_errors,
-        parsed_refs,
-        ..
-    } = state;
+    let PlanState { early_errors, .. } = state;
     match MapSettings::from_input(s.settings.tilemap()) {
         Ok(m) => {
             let refs = if let Some(map) = &s.tilemap {
@@ -1551,7 +1540,6 @@ fn plan_tilemap<'a>(
             } else {
                 references(&s.rel, &s.bytes, &m, &|id| known.contains(id))
             };
-            assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
             let st = stamp(
                 &[Area::Data],
                 &[

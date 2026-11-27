@@ -6,20 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-pub const SIDECAR: &str = ".assets.ogt";
+mod refs;
 
-/// Preserve the resolved ids in the cook's `id=hash` / `id=present` stamp inputs.
-pub(crate) fn record_dependencies(
-    graph: &mut BTreeMap<String, BTreeSet<String>>,
-    source: &str,
-    dependencies: &str,
-) {
-    graph.entry(source.into()).or_default().extend(
-        dependencies
-            .lines()
-            .filter_map(|line| line.rsplit_once('=').map(|(id, _)| id.to_owned())),
-    );
-}
+pub const SIDECAR: &str = ".assets.ogt";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Asset {
@@ -381,38 +370,6 @@ pub fn game_typescript(root: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(files)
 }
 
-fn text_values(block: &Block, values: &mut Vec<String>) {
-    for entry in &block.entries {
-        values.extend(
-            entry
-                .values
-                .iter()
-                .filter_map(|v| v.as_str().or(v.as_word()))
-                .map(str::to_owned),
-        );
-        if let Some(block) = &entry.block {
-            text_values(block, values);
-        }
-    }
-}
-
-fn json_values(value: &serde_json::Value, values: &mut Vec<String>) {
-    match value {
-        serde_json::Value::String(value) => values.push(value.clone()),
-        serde_json::Value::Array(items) => {
-            for item in items {
-                json_values(item, values);
-            }
-        }
-        serde_json::Value::Object(items) => {
-            for item in items.values() {
-                json_values(item, values);
-            }
-        }
-        _ => {}
-    }
-}
-
 fn resolve(
     value: &str,
     source: &str,
@@ -508,16 +465,14 @@ fn known(manifest: &Manifest) -> BTreeMap<String, BTreeSet<String>> {
     known
 }
 
-/// The index of the project's assets and `project.ogt`, before its code is
+/// The index of cooked payloads and project roots, before its code is
 /// read ([`add_code`]).
 pub(crate) fn build(
     root: &Path,
     manifest: &Manifest,
     sources: &[Source],
-    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     threads: usize,
 ) -> Result<Index, CookError> {
-    let known = known(manifest);
     let old = Index::read(root).unwrap_or_default();
     let mut fingerprints: BTreeMap<_, _> = old
         .assets
@@ -529,44 +484,23 @@ pub(crate) fn build(
     for s in sources {
         by_rel.entry(s.rel.as_str()).or_insert(s);
     }
-    // What each asset names is in its own text: the scenes it places and
-    // the assets it refers to, read from every text at once.
-    let named = each(&manifest.assets, threads, |source| {
-        let input = by_rel.get(source.source.as_str()).copied();
-        let mut placed = BTreeSet::new();
-        let mut values: Vec<_> = parsed_refs
-            .get(&source.source)
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
-        if let Some(s) = input {
-            if let Some(doc) = &s.scene {
-                for scene in doc.direct_subscenes() {
-                    placed.extend(resolve(&scene, &s.rel, &known));
-                }
-            }
-            if let Ok(text) = std::str::from_utf8(&s.bytes) {
-                if let Ok(doc) = Document::parse(text) {
-                    text_values(&doc.body, &mut values);
-                } else if let Ok(json) = serde_json::from_str(text) {
-                    json_values(&json, &mut values);
-                }
-            }
-        }
-        let refs: BTreeSet<_> = values
-            .iter()
-            .flat_map(|v| resolve(v, &source.source, &known))
-            .collect();
-        (input, placed, refs)
+    let outputs: Vec<_> = manifest.outputs().collect();
+    let retained = each(&outputs, threads, |output| {
+        refs::retained(&bundle, output).map_err(|e| CookError(e.to_string()))
     });
+    let mut retained: BTreeMap<_, _> = outputs
+        .iter()
+        .zip(retained)
+        .map(|(o, refs)| refs.map(|refs| (o.id.as_str(), refs)))
+        .collect::<Result<_, _>>()?;
     // The outputs no fingerprint is known for (by their hash), each
     // decoded for its own: every new texture and sound, all at once.
     let mut fresh: BTreeMap<u64, (&ManifestOutput, Option<&Source>)> = BTreeMap::new();
-    for (source, (input, ..)) in manifest.assets.iter().zip(&named) {
+    for source in &manifest.assets {
+        let input = by_rel.get(source.source.as_str()).copied();
         for output in &source.outputs {
             if !fingerprints.contains_key(&format!("{:016x}", output.hash)) {
-                fresh.entry(output.hash).or_insert((output, *input));
+                fresh.entry(output.hash).or_insert((output, input));
             }
         }
     }
@@ -578,7 +512,7 @@ pub(crate) fn build(
         fingerprints.insert(format!("{:016x}", output.hash), perceptual);
     }
     let mut index = Index::default();
-    for (source, (_, placed, mut refs)) in manifest.assets.iter().zip(named) {
+    for source in &manifest.assets {
         if source.kind == super::probes::KIND {
             // Probe ids derive from runtime placement rather than source literals.
             index
@@ -591,20 +525,7 @@ pub(crate) fn build(
                 reason: "runtime reflection-probe lookup".into(),
             });
         }
-        index.roots.extend(placed);
-        // Loading a model, streamed sound, array or video also loads its sub-assets.
-        refs.extend(source.outputs.iter().map(|o| o.id.clone()));
         for output in &source.outputs {
-            let mut refs = if output.id == source.source {
-                refs.clone()
-            } else {
-                BTreeSet::new()
-            };
-            let mips = crate::runtime::mips_id(&output.id);
-            if known.contains_key(&mips) {
-                refs.insert(mips);
-            }
-            refs.remove(&output.id);
             let hash = format!("{:016x}", output.hash);
             let perceptual = fingerprints.get(&hash).copied().flatten();
             index.assets.push(Asset {
@@ -620,7 +541,7 @@ pub(crate) fn build(
                 bytes: output.bytes,
                 hash,
                 perceptual,
-                refs,
+                refs: retained.remove(output.id.as_str()).expect("indexed output"),
             });
         }
     }
@@ -643,8 +564,15 @@ pub(crate) fn build(
                 })
                 .map(|a| a.id.clone()),
         );
-        let mut values = Vec::new();
-        json_values(&project.data.root().into_json(), &mut values);
+        let mut values: Vec<_> = project
+            .input
+            .roots
+            .iter()
+            .chain(project.input.scenes.values())
+            .chain(project.input.packs.iter().flat_map(|p| &p.roots))
+            .chain(project.input.flow.iter().map(|f| &f.source))
+            .map(|r| r.id.clone())
+            .collect();
         if let Some(crate::cook::source_schemas::procedural::LookBase::Asset(reference)) =
             &project.metadata.look
         {
@@ -656,7 +584,7 @@ pub(crate) fn build(
                 *value = output.asset.clone();
             }
         }
-        let refs: BTreeSet<_> = values.iter().flat_map(|v| resolve(v, "", &known)).collect();
+        let refs: BTreeSet<_> = values.into_iter().collect();
         index.roots.extend(refs.iter().cloned());
         index.users.insert("project.ts".into(), refs);
     }

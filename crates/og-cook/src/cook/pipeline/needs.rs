@@ -2,13 +2,13 @@
 //! `modules` lines (docs/web-export.md §Modules). A scene's or prefab's own
 //! are its records' (the IDL's `split`: `RigidBody` is in `physics`); a
 //! dialogue's, a video's and a navmesh's are their kind's; an asset needs
-//! its own and those of every asset it references (parsed_refs: a scene's
+//! its own and those of every runtime asset its cooked payload references (a scene's
 //! sub-scenes, prefabs and models, a timeline's clips and scenes, a flow
 //! dialogue's segments). Physics
 //! is two modules: `physics`, which every physics record's split names, and
 //! the simulation of the world's profile, `physics3d` or `physics2d`: the
 //! scene's own `resource og.Physics { profile }`, else the project's. The
-//! bundle needs its boot scene's and its project.ogt `flow` dialogue's, or
+//! bundle needs its boot scene's and its project.ts `flow` dialogue's, or
 //! every asset's when the cook cannot name that scene.
 //!
 //! Readers fetch them before the first call that would load one where it
@@ -104,7 +104,7 @@ fn of_records(doc: &scene::Document, project: Profile) -> BTreeSet<&'static str>
 pub(crate) fn record(
     manifest: &mut Manifest,
     sources: &[Source],
-    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
+    runtime_refs: &BTreeMap<String, BTreeSet<String>>,
     boot: Option<&str>,
     flow: Option<&str>,
     profile: Profile,
@@ -136,7 +136,7 @@ pub(crate) fn record(
         .iter()
         .enumerate()
         .map(|(i, a)| {
-            parsed_refs
+            runtime_refs
                 .get(&a.source)
                 .into_iter()
                 .flatten()
@@ -163,26 +163,7 @@ pub(crate) fn record(
         .collect();
     let flow_boot_modules = |flow_id: &str| -> BTreeSet<&'static str> {
         let mut m = BTreeSet::from(["story", "video"]);
-        let Some(s) = by_rel.get(flow_id) else {
-            return m;
-        };
-        let Ok(text) = std::str::from_utf8(&s.bytes) else {
-            return m;
-        };
-        if let Ok(d) = og_story::yarn::compile(text) {
-            let graph = d.graph();
-            let roots = og_story::graph::flow_reach(&graph, std::slice::from_ref(&d.start));
-            for r in roots {
-                if let Some(seg) = graph
-                    .iter()
-                    .find(|n| n.title == r)
-                    .and_then(|n| n.headers.get(og_story::graph::FLOW_HEADER))
-                    && let Some(&idx) = owner.get(crate::runtime::asset_id(seg))
-                {
-                    m.extend(&needs[idx]);
-                }
-            }
-        } else if let Some(&f) = owner.get(flow_id) {
+        if let Some(&f) = owner.get(flow_id) {
             m.extend(&needs[f]);
         }
         m
@@ -196,7 +177,7 @@ pub(crate) fn record(
     manifest.modules = bundle.into_iter().map(str::to_string).collect();
     for (a, n) in manifest.assets.iter_mut().zip(needs) {
         a.modules = n.into_iter().map(str::to_string).collect();
-        a.dependencies = parsed_refs
+        a.dependencies = runtime_refs
             .get(&a.source)
             .into_iter()
             .flatten()

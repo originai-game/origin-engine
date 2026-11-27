@@ -11,7 +11,7 @@
 //! ```
 
 use super::texture;
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::cook::source_schemas::world::source_data::{TextureArrayInput, TextureKind};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
@@ -200,16 +200,11 @@ fn plan_texture_array<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let Cx { tex_desc, .. } = *cx;
-    let PlanState {
-        early_errors,
-        parsed_refs,
-        ..
-    } = state;
+    let PlanState { early_errors, .. } = state;
     let root = crate::cook::assets_root(s);
     match declaration(s) {
         Ok(decl) => {
             let deps = dependencies(&root, &decl);
-            assets::record_dependencies(parsed_refs, &s.rel, &deps);
             let base = [
                 b"texture-array 1".as_slice(),
                 tex_desc.as_bytes(),

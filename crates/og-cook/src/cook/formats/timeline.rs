@@ -20,7 +20,7 @@ pub(crate) fn parse(s: &Source) -> Result<Timeline, CookError> {
         .ok_or_else(|| CookError(format!("{}: not a prepared TS timeline", s.rel)))
 }
 
-fn refs(t: &Timeline) -> Vec<String> {
+pub(crate) fn refs(t: &Timeline) -> Vec<String> {
     let mut out = Vec::new();
     for tr in &t.tracks {
         match tr {
@@ -152,13 +152,7 @@ pub(crate) static TIMELINE: KindDef = KindDef {
 };
 pub(crate) static KINDS: &[&KindDef] = &[&TIMELINE];
 
-fn plan<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
+fn plan<'a>(cx: &Cx<'a>, _: &mut PlanState, s: &'a Source, hash: [u8; 8], outs: &mut Vec<Out<'a>>) {
     let Some(p) = &s.timeline else { return };
     let dependencies: Vec<_> = p.files.values().map(|(path, _)| path.clone()).collect();
     cx.index.note_external(&dependencies);
@@ -169,11 +163,6 @@ fn plan<'a>(
     // Native normalized tracks include physical output bindings, not just the
     // logical IR. A changed binding must not reuse yesterday's cached blob.
     let canonical = p.timeline.to_text();
-    state
-        .parsed_refs
-        .entry(s.rel.clone())
-        .or_default()
-        .extend(refs(&p.timeline));
     let st = stamp(
         &[Area::Scene],
         &[

@@ -505,6 +505,70 @@ fn delivery_packs_partition_loadable_assets_and_keep_partial_cooks_scoped() {
             .to_string();
         assert!(error.contains(expected), "{error}");
     }
+    // A flattened author input is not a runtime load, even when that input
+    // also has a delivered output. It still invalidates the derived cook.
+    write("content/boot.ts", scene);
+    write(
+        "project.ts",
+        &project
+            .replace("id:'base',dependsOn:['shared']", "id:'base'")
+            .replace(
+                "scene:'main',packs:",
+                "scene:'main',publish:{keep:['base/look']},packs:",
+            ),
+    );
+    let parent = "import {file} from '@origingame/engine/author';export default file.look({ArtPixels:{unit:2}});";
+    write("content/shared/look.ts", parent);
+    write(
+        "content/look.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.look({extends:[ref('base/shared/look')]});",
+    );
+    let flattened = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(flattened.ok(), "{:?}", flattened.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.manifest().requires.is_empty());
+    let index = og_cook::cook::assets::Index::read(&root).unwrap();
+    assert!(
+        index
+            .assets
+            .iter()
+            .find(|a| a.id == "base/look")
+            .unwrap()
+            .refs
+            .is_empty()
+    );
+    let full = og_cook::runtime::Manifest::parse(
+        &std::fs::read_to_string(root.join(".og/cook/manifest.ogt")).unwrap(),
+    )
+    .unwrap();
+    let plan = index.publish_plan(&full);
+    assert!(plan.omitted.iter().any(|o| o.id == "base/shared/look"));
+    assert!(!plan.omitted.iter().any(|o| o.id == "base/look"));
+    let pixels = |bundle: &Bundle| {
+        let bytes = bundle.read("base/look").unwrap();
+        let look = bundle.look("base/look", &bytes).unwrap();
+        look.blocks
+            .iter()
+            .find(|b| b.resource == "ArtPixels")
+            .unwrap()
+            .fields
+            .iter()
+            .find(|f| f.0 == "unit")
+            .unwrap()
+            .1[0]
+            .as_number()
+            .unwrap()
+            .as_f64()
+    };
+    assert_eq!(pixels(&bundle), 2.0);
+    write(
+        "content/shared/look.ts",
+        &parent.replace("unit:2", "unit:7"),
+    );
+    let changed = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(changed.ok(), "{:?}", changed.errors());
+    assert!(changed.cooked_outputs().iter().any(|o| o.id == "base/look"));
+    assert_eq!(pixels(&Bundle::open(&root.join("cooked")).unwrap()), 7.0);
 }
 
 /// Explicit imports own identity and controls; external model inputs invalidate
@@ -778,6 +842,24 @@ fn typed_flipbooks_cook_native_sheets_and_arrays() {
             "base/animated#array#layer0",
         ] {
             assert!(b.read(id).is_ok(), "missing {id}");
+        }
+        // A directly loaded derived array keeps its own layers, not the
+        // unused atlas or every sibling made by its producer.
+        let index = og_cook::cook::assets::Index::read(&root).unwrap();
+        let plan = index.publish_plan(b.manifest());
+        for id in [
+            "base/animated#array#layer0",
+            "base/animated#array#layer1",
+            "base/grid#array#layer5",
+        ] {
+            assert!(!plan.omitted.iter().any(|o| o.id == id), "pruned {id}");
+        }
+        for id in [
+            "base/animated#sheet",
+            "base/grid#array#layer4",
+            "base/animated",
+        ] {
+            assert!(plan.omitted.iter().any(|o| o.id == id), "retained {id}");
         }
         let bytes = b.read("base/atlas").unwrap().to_vec();
         if warm {

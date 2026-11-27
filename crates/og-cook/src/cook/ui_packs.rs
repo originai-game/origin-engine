@@ -34,7 +34,7 @@ pub(crate) fn pack_layer(s: &Source) -> Result<og_ui_next::pack::Layer, CookErro
 
 fn plan_pack<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -42,13 +42,6 @@ fn plan_pack<'a>(
     let refs: Vec<String> = pack_layer(s)
         .map(|l| l.assets().into_iter().map(str::to_owned).collect())
         .unwrap_or_default();
-    for r in &refs {
-        state
-            .parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .insert(r.clone());
-    }
     let refs: Vec<String> = refs
         .iter()
         .map(|r| format!("{r}={}", cx.known.contains(crate::runtime::asset_id(r))))

@@ -311,28 +311,12 @@ pub(crate) static KINDS: &[&KindDef] = &[&DIALOGUE, &QUEST];
 
 fn plan_dialogue<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
+    _: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let story_functions_stamp = cx.story_functions_stamp;
-    let mut segments = std::collections::BTreeSet::new();
-    if let Some(mut asset) = s.story.clone() {
-        asset
-            .map_resources(|_, id| {
-                segments.insert(id.clone());
-                Ok(())
-            })
-            .expect("collect resource IDs");
-    }
-    if !segments.is_empty() {
-        state
-            .parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .extend(segments);
-    }
     let st = stamp(&[Area::Data], &[b"dialogue", &hash, story_functions_stamp]);
     outs.push((
         s.rel.clone(),

@@ -447,11 +447,6 @@ fn plan_scene<'a>(
             ))
         ));
     }
-    state
-        .parsed_refs
-        .entry(s.rel.clone())
-        .or_default()
-        .extend(references.iter().chain(reached.iter()).cloned());
     let references = references
         .into_iter()
         .map(|id| format!("{id}={}", cx.known.contains(&id)))

@@ -572,7 +572,6 @@ pub(crate) fn finish(
     cx: &Cx,
     old: &Manifest,
     written: Written,
-    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     reports: &mut [AssetReport],
     log: &ConformLog,
     threads: usize,
@@ -605,14 +604,6 @@ pub(crate) fn finish(
             removed.push(f.clone());
         }
     }
-    needs::record(
-        &mut manifest,
-        sources,
-        parsed_refs,
-        cx.boot,
-        cx.flow,
-        cx.profile,
-    );
     std::fs::create_dir_all(cooked_dir)
         .map_err(|e| CookError(format!("{}: {e}", cooked_dir.display())))?;
     let text = manifest.to_text();
@@ -621,7 +612,22 @@ pub(crate) fn finish(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    let mut index = assets::build(root, &manifest, sources, parsed_refs, threads)?;
+    let mut index = assets::build(root, &manifest, sources, threads)?;
+    let mut runtime_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for asset in &index.assets {
+        runtime_refs
+            .entry(asset.source.clone())
+            .or_default()
+            .extend(asset.refs.iter().cloned());
+    }
+    needs::record(
+        &mut manifest,
+        sources,
+        &runtime_refs,
+        cx.boot,
+        cx.flow,
+        cx.profile,
+    );
     let before_code = BeforeCode {
         uses_motion,
         roots: index.roots.clone(),
@@ -629,10 +635,10 @@ pub(crate) fn finish(
         computed: index.computed.clone(),
     };
     assets::add_code(root, &manifest, &mut index, &cx.options.code.files)?;
-    let preload = index.font_preloads();
-    if manifest.preload != preload {
-        manifest.preload = preload;
-        std::fs::write(&manifest_path, manifest.to_text())
+    manifest.preload = index.font_preloads();
+    let text = manifest.to_text();
+    if std::fs::read_to_string(&manifest_path).ok().as_deref() != Some(text.as_str()) {
+        std::fs::write(&manifest_path, text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
     index.write(cooked_dir)?;

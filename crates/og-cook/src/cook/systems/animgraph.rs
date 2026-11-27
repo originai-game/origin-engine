@@ -86,11 +86,6 @@ fn plan<'a>(
             deps.extend_from_slice(
                 anim::dependencies(cx.assets_dir, &settings, cx.rigs, source).as_bytes(),
             );
-            state
-                .parsed_refs
-                .entry(s.rel.clone())
-                .or_default()
-                .insert(format!("{}#anim", b.source));
         }
         Ok((graph.to_bytes(), deps))
     })();
