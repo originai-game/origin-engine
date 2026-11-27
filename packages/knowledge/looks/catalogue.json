@@ -24,7 +24,7 @@
     "tactical",
     "tactical-arctic"
   ],
-  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>), re-coloured to this palette. Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
+  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>), re-coloured to this palette. Avoid: {avoid}. Proof: og-project.json selects the game's look as {look}, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
     {
       "slug": "cinematic-realism",

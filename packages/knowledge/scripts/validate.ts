@@ -518,8 +518,8 @@ export const PROFILES = ["2d", "3d"] as const;
 export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
 /** What `look.views` may name: the creation choice's views (scripts/creation.ts); a `-2d` view needs the 2d profile, the rest 3d. */
 export const VIEWS = CREATION_CHOICES.view;
-/** The placeholders the art-bible template may use. */
-export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
+/** The art-bible placeholders. `look` is og-project.json's canonical look ref, never the project id or a guessed filename. */
+export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "look", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
 const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlinePx", "textureDensity"];
 
