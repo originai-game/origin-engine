@@ -1,4 +1,4 @@
-//! Pure, typed functions registered by project.ts before any Yarn is cooked.
+//! Pure structured functions registered by project.ts before stories cook.
 use crate::cook::source_schemas::project::{StoryFunction, StoryType};
 use og_story::yarn::types::{Function, Signature, Type};
 use std::collections::BTreeMap;
@@ -20,8 +20,7 @@ pub(crate) fn read(
                 returns: ty(&input.returns),
             },
             parameters: input.parameters.iter().map(|p| p.name.clone()).collect(),
-            body: og_story::yarn::parse_expression(&input.body)
-                .map_err(|e| format!("project.ts: storyFunctions.{name}: {e}"))?,
+            body: input.body.clone().into(),
         };
         functions.insert(name.clone(), function);
     }

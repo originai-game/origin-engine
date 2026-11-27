@@ -3,7 +3,7 @@
 use super::*;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(untagged)]
 pub enum Value {
@@ -12,7 +12,7 @@ pub enum Value {
     String(String),
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Expr {
@@ -63,7 +63,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "kebab-case")]
 pub enum Op {

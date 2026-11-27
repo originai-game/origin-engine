@@ -8006,7 +8006,7 @@ readonly "schemas"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Rea
 /** Named command scripts used by UI and style capture tools. */
 readonly "screens"?: (Readonly<Record<string, (string)>>);
 readonly "seed"?: ((number) | (null));
-/** Pure Yarn expression functions, checked before dialogue compilation. */
+/** Pure structured expression functions, checked before story compilation. */
 readonly "storyFunctions"?: (Readonly<Record<string, (ProjectInputDefinitions["StoryFunction"])>>);
 readonly "tick"?: ((number) | (null));
 });
@@ -8067,6 +8067,52 @@ readonly "include"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Rea
 readonly "optional"?: (boolean);
 readonly "roots"?: (ReadonlyArray<(ProjectInputDefinitions["ContentRef"])> | (number extends ((ProjectInputDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
+readonly "Expr": (((({
+readonly "kind": ("literal") & (string);
+readonly "value": (ProjectInputDefinitions["Value"]);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; }) | ((({
+readonly "kind": ("variable") & (string);
+readonly "name": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "id": (string);
+readonly "kind": ("once") & (string);
+})) & { readonly "args"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("not") & (string);
+readonly "value": (ProjectInputDefinitions["Expr"]);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; }) | ((({
+readonly "kind": ("negate") & (string);
+readonly "value": (ProjectInputDefinitions["Expr"]);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; }) | ((({
+readonly "kind": ("binary") & (string);
+readonly "left": (ProjectInputDefinitions["Expr"]);
+readonly "op": (ProjectInputDefinitions["Op"]);
+readonly "right": (ProjectInputDefinitions["Expr"]);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "quest"?: never; readonly "value"?: never; }) | ((({
+readonly "args": (ReadonlyArray<(ProjectInputDefinitions["Expr"])> | (number extends ((ProjectInputDefinitions["Expr"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "kind": ("call") & (string);
+readonly "name": (string);
+})) & { readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("seen") & (string);
+readonly "node": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("status") & (string);
+readonly "quest": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("stage") & (string);
+readonly "quest": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("count") & (string);
+readonly "objective": (string);
+readonly "quest": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "op"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("member") & (string);
+readonly "member": (string);
+readonly "name": (string);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
+readonly "kind": ("enum-value") & (string);
+readonly "name": (string);
+readonly "value": (ProjectInputDefinitions["Value"]);
+})) & { readonly "args"?: never; readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; }));
 readonly "Fit": ("fill" | "letterbox") & (string);
 readonly "FlowScreen": ("engine" | "game") & (string);
 readonly "Form": ("2d" | "2.5d" | "3d") & (string);
@@ -8088,6 +8134,7 @@ readonly "inputs"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Read
 /** Canonical project-relative directory. Moving it preserves IDs. */
 readonly "root": (string);
 });
+readonly "Op": ("add" | "sub" | "mul" | "div" | "rem" | "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "and" | "or" | "xor") & (string);
 readonly "Orientation": ("any" | "landscape" | "portrait") & (string);
 readonly "Pipelines": ("auto" | "sync" | "async" | "prewarm") & (string);
 readonly "Platform": ("phone-portrait" | "phone-landscape" | "desktop" | "multi") & (string);
@@ -8128,7 +8175,7 @@ readonly "shortName"?: ((string) | (null));
 readonly "telemetry"?: (((ProjectInputDefinitions["Telemetry"])) | ((null)));
 });
 readonly "StoryFunction": ({
-readonly "body": (string);
+readonly "body": (ProjectInputDefinitions["Expr"]);
 /** Declaration order is the function's argument order. */
 readonly "parameters"?: (ReadonlyArray<(ProjectInputDefinitions["StoryParameter"])> | (number extends ((ProjectInputDefinitions["StoryParameter"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "returns": (ProjectInputDefinitions["StoryType"]);
@@ -8139,6 +8186,7 @@ readonly "name": (string);
 });
 readonly "StoryType": ("number" | "string" | "bool") & (string);
 readonly "Telemetry": ("on" | "off") & (string);
+readonly "Value": (((number)) | ((boolean)) | ((string)));
 }
 ```
 <a id="file-theme"></a>

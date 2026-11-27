@@ -75,7 +75,7 @@ input!(
         #[serde(default)]
         #[schemars(extend("additionalProperties" = {"type":"string","minLength":1}))]
         screens: BTreeMap<String, String>,
-        /// Pure Yarn expression functions, checked before dialogue compilation.
+        /// Pure structured expression functions, checked before story compilation.
         #[serde(default)]
         story_functions: BTreeMap<String, StoryFunction>,
     }
@@ -86,7 +86,7 @@ input!(StoryFunction {
     /// Declaration order is the function's argument order.
     #[serde(default)]
     parameters: Vec<StoryParameter>,
-    body: String,
+    body: super::media::story::Expr,
 });
 input!(StoryParameter {
     name: String,

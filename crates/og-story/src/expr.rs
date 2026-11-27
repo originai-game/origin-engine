@@ -1,5 +1,5 @@
-//! The expressions a dialogue or quest writes in quotes: conditions
-//! (`if "gold >= 10 and not seen(intro)"`) and values (`set gold "gold - 10"`).
+//! Native story expressions shared by checked declarations and the explicit
+//! Yarn importer. Author declarations construct expression data, not text.
 //!
 //! Numbers (`f64`), booleans and strings (`'Kai'`); variables by name;
 //! `+ - * / %` on numbers (`+` also joins two strings), comparisons
@@ -384,8 +384,8 @@ impl Parser {
 }
 
 impl Expr {
-    /// Parses an expression; the error says what to write instead.
-    pub fn parse(src: &str) -> Result<Expr, String> {
+    /// Parses an engine extension inside an explicitly imported Yarn file.
+    pub(crate) fn parse(src: &str) -> Result<Expr, String> {
         let toks = tokenize(src)?;
         if toks.is_empty() {
             return Err("the expression is empty".into());

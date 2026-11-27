@@ -256,12 +256,23 @@ storyFunctions: {
   scaled: {
     returns: "number",
     parameters: [{ name: "value", kind: "number" }, { name: "factor", kind: "number" }],
-    body: "$value * $factor + 2",
+    body: {
+      kind: "binary", op: "add",
+      left: {
+        kind: "binary", op: "mul",
+        left: { kind: "variable", name: "value" },
+        right: { kind: "variable", name: "factor" },
+      },
+      right: { kind: "literal", value: 2 },
+    },
   },
 },
 ```
 
-Then use `{scaled(3, 7)}` in Yarn. The cook type-checks calls and stores checked
+Use `{kind:"call",name:"scaled",args:[{kind:"literal",value:3},{kind:"literal",value:7}]}`
+in a TS expression, or `{scaled(3, 7)}` in explicitly imported Yarn. Function
+bodies use the same expression schema as dialogues and quests, never strings.
+The cook type-checks calls and stores checked
 expression bodies in the IR. Parameters and return values use `number`,
 `string`, or `bool`. Functions may call other pure functions, but cannot read
 story variables, RNG, quests, clocks, or host callbacks. Recursive calls fail

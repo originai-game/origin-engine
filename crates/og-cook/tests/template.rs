@@ -196,6 +196,8 @@ fn typed_stories_and_explicit_yarn_cook_native_and_resume() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
     };
+    let project = "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'stories',entry:'src/main.ts',storyFunctions:{price:{returns:'number',parameters:[{name:'cost',kind:'number'},{name:'discount',kind:'number'}],body:{kind:'binary',op:'sub',left:{kind:'variable',name:'cost'},right:{kind:'binary',op:'mul',left:{kind:'variable',name:'discount'},right:{kind:'literal',value:2}}}}}});";
+    write("project.ts", project);
     std::fs::create_dir_all(root.join("assets")).unwrap();
     image::RgbaImage::from_pixel(2, 2, image::Rgba([17, 89, 231, 255]))
         .save(root.join("assets/portrait.png"))
@@ -205,22 +207,33 @@ fn typed_stories_and_explicit_yarn_cook_native_and_resume() {
 export default file.dialogue({name:'typed',start:'Start',vars:[{name:'gold',value:7,global:true}],
 speakers:[{id:'Smith',portrait:ref('base/portrait')}],strings:{hello:'Welcome',buy:'Buy'},
 nodes:[{id:'Start',steps:[{kind:'line',id:'greeting',speaker:'Smith',text:{key:'hello'}}],
-choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'literal',value:3}},
+choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'call',name:'price',args:[{kind:'literal',value:7},{kind:'literal',value:2}]}},
 {kind:'command',name:'bought',args:[{kind:'variable',name:'gold'}]},{kind:'end'}]}]}]});"#;
     write("content/typed.ts", typed);
-    let yarn = "#og-profile:yarn-spinner-3.2.2\n#og-name:imported\ntitle: Start\nog-speaker: Smith||portrait.png|left\n---\n<<declare $gold = 7>>\nSmith: Welcome #line:hello\n-> Buy #line:buy\n    <<set $gold = 3>>\n    <<bought {$gold}>>\n    <<stop>>\n===\n";
+    let yarn = "#og-profile:yarn-spinner-3.2.2\n#og-name:imported\ntitle: Start\nog-speaker: Smith||portrait.png|left\n---\n<<declare $gold = 7>>\nSmith: Welcome #line:hello\n-> Buy #line:buy\n    <<set $gold = price(7, 2)>>\n    <<bought {$gold}>>\n    <<stop>>\n===\n";
     write("sources/story.yarn", yarn);
     write("assets/ignored.yarn", "not valid Yarn and never scanned");
     write(
         "content/imported.ts",
         "import {file,input,ref} from '@origingame/engine/author';export default file.dialogue({yarn:input.text('sources/story.yarn'),assets:{'portrait.png':ref('base/portrait')}});",
     );
-    write(
-        "content/quest.ts",
-        "import {file,ref} from '@origingame/engine/author';export default file.quest({id:'rescue',title:'quest.rescue',globals:{rescued:false},rewards:[{name:'reward',image:ref('base/portrait')}],stages:[{id:'find',objectives:[{id:'friend',text:{key:'quest.find'},when:{kind:'variable',name:'rescued'}}]}]});",
-    );
+    let quest = "import {file,ref} from '@origingame/engine/author';export default file.quest({id:'rescue',title:'quest.rescue',globals:{rescued:false},rewards:[{name:'reward',image:ref('base/portrait')}],stages:[{id:'find',objectives:[{id:'friend',text:{key:'quest.find'},when:{kind:'variable',name:'rescued'}}]}]});";
+    write("content/quest.ts", quest);
     let mut previous = None;
-    for (iteration, text) in [(0, "Welcome"), (1, "Welcome"), (2, "Changed")] {
+    for (iteration, text, expected_gold) in [
+        (0, "Welcome", 3.0),
+        (1, "Welcome", 3.0),
+        (2, "Changed", 3.0),
+        (3, "Changed", 11.0),
+    ] {
+        write(
+            "project.ts",
+            &if iteration == 3 {
+                project.replace("op:'sub'", "op:'add'")
+            } else {
+                project.into()
+            },
+        );
         write("sources/story.yarn", &yarn.replace("Welcome", text));
         let report = cook_project(&root, &CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -261,9 +274,15 @@ choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'
             story.save(&mut bytes);
             let mut restored = Story::load(&bytes).unwrap();
             for state in [&mut story, &mut restored] {
+                let shown = &state.convs[&id].history[0];
+                assert_eq!(
+                    shown.line_id,
+                    if name == "typed" { "greeting" } else { "hello" }
+                );
+                assert_eq!(shown.key, "hello");
                 state.choose(&lib, id, 0).unwrap();
-                assert_eq!(state.globals["gold"], og_story::Val::Num(3.0));
-                assert!(state.events.iter().any(|e| matches!(e, og_story::Event::Emit {name, arg, ..} if name == "bought" && arg == "3")));
+                assert_eq!(state.globals["gold"], og_story::Val::Num(expected_gold));
+                assert!(state.events.iter().any(|e| matches!(e, og_story::Event::Emit {name, arg, ..} if name == "bought" && arg == &expected_gold.to_string())));
                 assert_eq!(state.convs[&id].wait, og_story::Wait::Ended);
             }
             let mut a = Vec::new();
@@ -276,7 +295,7 @@ choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'
     for (from, to, expected) in [
         ("ref('base/portrait')", "ref('base/absent')", "base/absent"),
         ("id:'Start',steps", "id:'Missing',steps", "start"),
-        ("value:3", "value:true", "expected"),
+        ("value:7}", "value:true}", "expected"),
     ] {
         write("content/typed.ts", &typed.replace(from, to));
         let error = cook_project(&root, &CookOptions::default())
@@ -288,6 +307,26 @@ choices:[{id:'buy',text:{key:'buy'},steps:[{kind:'set',name:'gold',value:{kind:'
             "{error}"
         );
     }
+    write("content/typed.ts", typed);
+    write(
+        "content/quest.ts",
+        &quest.replace("kind:'variable',name:'rescued'", "kind:'literal',value:2"),
+    );
+    let error = cook_project(&root, &CookOptions::default())
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(
+        error.contains("content/quest.ts:") && error.contains("expected"),
+        "{error}"
+    );
+    write("content/quest.ts", quest);
+    write("project.ts", &project.replace("value:2", "value:true"));
+    let error = cook_project(&root, &CookOptions::default())
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(error.contains("price"), "{error}");
 }
 
 /// Modules, delivery and residency are independent: selecting a package must

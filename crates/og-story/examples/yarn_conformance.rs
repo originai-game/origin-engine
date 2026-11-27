@@ -1,7 +1,7 @@
 //! Runs the pinned upstream fixtures without rewriting their expectations.
 //! Also runs under WASI: preopen the repository as `.`.
 use og_core::Rng;
-use og_story::{Dialogue, Event, Library, Story, Val, Wait};
+use og_story::{Dialogue, Event, Expr, Library, Story, Val, Wait, expr::Op};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -262,30 +262,48 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
             "add_three_operands",
             vec![("a", Number), ("b", Number), ("c", Number)],
             Number,
-            "$a + $b + $c",
+            Expr::Bin(
+                Op::Add,
+                Box::new(Expr::Bin(
+                    Op::Add,
+                    Box::new(Expr::Var("a".into())),
+                    Box::new(Expr::Var("b".into())),
+                )),
+                Box::new(Expr::Var("c".into())),
+            ),
         ),
         (
             "set_objective_complete",
             vec![("objective", String)],
             Bool,
-            "true",
+            Expr::Lit(Val::Bool(true)),
         ),
         (
             "is_objective_active",
             vec![("objective", String)],
             Bool,
-            "true",
+            Expr::Lit(Val::Bool(true)),
         ),
         (
             "get_quest_status",
             vec![("quest", String)],
             String,
-            "\"InProgress\"",
+            Expr::Lit(Val::Str("InProgress".into())),
         ),
-        ("dummy_bool", vec![], Bool, "true"),
-        ("dummy_number", vec![], Number, "1"),
-        ("dummy_string", vec![], String, "\"string\""),
-        ("assert", vec![("value", Bool)], Bool, "$value"),
+        ("dummy_bool", vec![], Bool, Expr::Lit(Val::Bool(true))),
+        ("dummy_number", vec![], Number, Expr::Lit(Val::Num(1.0))),
+        (
+            "dummy_string",
+            vec![],
+            String,
+            Expr::Lit(Val::Str("string".into())),
+        ),
+        (
+            "assert",
+            vec![("value", Bool)],
+            Bool,
+            Expr::Var("value".into()),
+        ),
     ] {
         functions.insert(
             name.into(),
@@ -296,7 +314,7 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
                     returns,
                 },
                 parameters: parameters.iter().map(|(n, _)| (*n).into()).collect(),
-                body: og_story::yarn::parse_expression(body)?,
+                body,
             },
         );
     }
@@ -308,12 +326,17 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
             "some_function",
             vec![("value", Enum("EnumA".into()))],
             Bool,
-            "true",
+            Expr::Lit(Val::Bool(true)),
         )),
-        "Inference-FunctionsCannotChangeType" => Some(("somefunc", vec![], Number, "0")),
-        "Inference-FunctionsMustHaveSameNumberOfParams" => {
-            Some(("somefunc", vec![("value", Number)], Number, "$value"))
+        "Inference-FunctionsCannotChangeType" => {
+            Some(("somefunc", vec![], Number, Expr::Lit(Val::Num(0.0))))
         }
+        "Inference-FunctionsMustHaveSameNumberOfParams" => Some((
+            "somefunc",
+            vec![("value", Number)],
+            Number,
+            Expr::Var("value".into()),
+        )),
         _ => None,
     };
     if let Some((name, parameters, returns, body)) = registration {
@@ -326,7 +349,7 @@ fn run(path: &Path) -> Result<Vec<u8>, String> {
                     returns,
                 },
                 parameters: parameters.iter().map(|(name, _)| (*name).into()).collect(),
-                body: og_story::yarn::parse_expression(body)?,
+                body,
             },
         );
     }

@@ -72,8 +72,10 @@ pub fn validate(functions: &mut BTreeMap<String, Function>) -> Result<(), String
             functions: signatures.clone(),
             ..Default::default()
         };
-        types.infer(&mut function.body, Some(&function.signature.returns))?;
-        types.require_resolved(&function.body)?;
+        types
+            .infer(&mut function.body, Some(&function.signature.returns))
+            .and_then(|_| types.require_resolved(&function.body))
+            .map_err(|e| format!("function '{name}': {e}"))?;
         let mut dependencies = Vec::new();
         calls(&function.body, &mut dependencies)?;
         graph.insert(name.clone(), dependencies);

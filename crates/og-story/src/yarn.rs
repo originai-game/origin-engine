@@ -13,11 +13,6 @@ mod text;
 pub mod types;
 pub(crate) mod typing;
 
-/// Parses the Yarn expression grammar without changing quest expressions.
-pub fn parse_expression(text: &str) -> Result<Expr, String> {
-    syntax::parse(text)
-}
-
 pub const PROFILE: &str = "yarn-spinner-3.2.2";
 
 #[derive(Clone)]
@@ -62,7 +57,7 @@ fn identifier(s: &str) -> bool {
 }
 
 fn expression(s: &str, line: usize) -> Result<Expr, String> {
-    parse_expression(s).map_err(|e| error(line, e))
+    syntax::parse(s).map_err(|e| error(line, e))
 }
 
 fn once_condition(id: &str, suffix: &str, line: usize) -> Result<Expr, String> {
