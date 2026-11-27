@@ -477,7 +477,7 @@ entity "house-12" {
 
 - A TS `file.tileset` declaration under `content/` gives the grid, solid tiles and collision
   rects, animated tiles and 47-blob or 16-bitmask auto-tiling terrains. A
-  map is a hand-written `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`,
+  map is a checked TS `file.tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`,
   loaded with og.load.tilemap and placed by og.Tilemap; og.tilemap.create
   and og.tilemap.resize make and change maps in game code, saved whole by
   the og.tilemap state block (tilesets by asset id), so a save restores a
@@ -488,6 +488,13 @@ entity "house-12" {
   build equal durations with `frames.map(() => 1 / fps)`. Collision polygons
   retain top-left pixel coordinates, y down. Tiled and LDtk imports still
   work and their embedded tilesets use the same native codec.
+- A TS map names tilesets with ordered canonical refs; each layer selects
+  its `tileset` index and supplies `width * height` top-first packed `cells`:
+  0 empty, otherwise tile ID + 1 with optional flip X/Y bits. Terrain layers
+  use 0/1 occupancy. Compute cells directly in TS with ordinary helpers or
+  seeded `procgen`; imports and explicit inputs enter the cook cache. Object
+  coordinates/dimensions and layer offsets are map-local world units, y up;
+  `unit` is world units per tile width. See generating §5 for a checked recipe.
 - Layers draw through the sprite batch in 16x16-tile chunks culled to the
   view, each at the map's sprite layer plus its z, scrolled by its
   parallax. Solid tiles become static colliders merged into rectangles;

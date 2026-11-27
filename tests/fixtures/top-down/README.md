@@ -7,7 +7,7 @@ stack together on the real engine:
 - **A tilemap.** `content/tiles/farm-set.ts` is a checked TS tileset
   (16 texels a tile: grass, flowers, soil, watered soil, path),
   its texture cooked as pixel art (`farm.png.ogt`, `kind pixel`); the map
-  `farm-map.ogt` is 48×30 cells. `till` waters a cell with
+  `content/tiles/farm-map.ts` is 48×30 cells. `till` waters a cell with
   og.tilemap.setTile.
 - **A flipbook from a GIF.** `assets/farmer/farmer.ogt` keys the generated
   walk (512×512, magenta ground, an art pixel about 11 of its pixels) and

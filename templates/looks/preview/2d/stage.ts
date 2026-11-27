@@ -77,17 +77,15 @@ const LAYERS = ["backdrop", "mid"];
  * of earth, the last repeating) and its x (the set's four columns).
  */
 function sideMap(unit: number): string {
-  const rows: string[] = [];
+  const cells: number[] = [];
   for (let r = 0; r < 8; r++) {
-    const row: number[] = [];
     for (let c = 0; c < 40; c++) {
       const surface = c - 20 >= 4 ? 0 : 2;
       const depth = r - surface;
-      row.push(depth < 0 ? -1 : Math.min(depth, 3) * 4 + (c % 4));
+      cells.push(depth < 0 ? 0 : Math.min(depth, 3) * 4 + (c % 4) + 1);
     }
-    rows.push(`  row ${row.join(" ")}`);
   }
-  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the level's ground and its ledge.\nsize 40 8\ntile ${unit} ${unit}\nunit 1\ntileset "base/art/tiles-set"\nlayer ground {\n${rows.join("\n")}\n}\n`;
+  return `import {file,ref} from '@origingame/engine/author';\n// The level's ground and its ledge.\nexport default file.tilemap({width:40,height:8,tileWidth:${unit},tileHeight:${unit},unit:1,tilesets:[ref('base/art/tiles-set')],layers:[{name:'ground',tileset:0,cells:${JSON.stringify(cells)}}]});\n`;
 }
 
 /**
@@ -98,20 +96,19 @@ function sideMap(unit: number): string {
  */
 function topMap(unit: number): string {
   const layer = (name: string, tileset: number, z: number, at: (x: number, y: number) => boolean, tile: (c: number, r: number) => number) => {
-    const rows: string[] = [];
+    const cells: number[] = [];
     for (let r = 0; r < 16; r++) {
-      const row: number[] = [];
-      for (let c = 0; c < 28; c++) row.push(at(c - 14, 7 - r) ? tile(c, r) : -1);
-      rows.push(`  row ${row.join(" ")}`);
+      for (let c = 0; c < 28; c++) cells.push(at(c - 14, 7 - r) ? tile(c, r) + 1 : 0);
     }
-    return `layer ${name} {\n  tileset ${tileset}\n  z ${z}\n${rows.join("\n")}\n}`;
+    return { name, tileset, z, cells };
   };
   const any = (c: number, r: number) => (r % 4) * 4 + (c % 4);
   const cliff = (x: number, y: number) => (x >= 4 && (y === 2 || y === 3)) || (x === 4 && y > 3);
   const path = (x: number, y: number) => ((y === 0 || y === -1) && x < 4) || ((x === 2 || x === 3) && y < 0);
   // The cliff's rows: its top, then its lowest (the darkest) at its foot; the rim up the plateau's west side takes the two between.
   const face = (c: number, r: number) => (r === 4 ? 0 : r === 5 ? 12 : 4 + (r % 2) * 4) + (c % 4);
-  return `type tilemap\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: the meadow, its path and the plateau's face.\nsize 28 16\ntile ${unit} ${unit}\nunit 1\ntileset "base/art/grass-set"\ntileset "base/art/path-set"\ntileset "base/art/wall-set"\n${layer("grass", 0, 0, () => true, any)}\n${layer("path", 1, 1, path, any)}\n${layer("cliff", 2, 2, cliff, face)}\n`;
+  const layers = [layer("grass", 0, 0, () => true, any), layer("path", 1, 1, path, any), layer("cliff", 2, 2, cliff, face)];
+  return `import {file,ref} from '@origingame/engine/author';\n// The meadow, its path and the plateau's face.\nexport default file.tilemap({width:28,height:16,tileWidth:${unit},tileHeight:${unit},unit:1,tilesets:[ref('base/art/grass-set'),ref('base/art/path-set'),ref('base/art/wall-set')],layers:${JSON.stringify(layers)}});\n`;
 }
 
 /** Stages the scene in `dir` for the look `name`, whose art preview.json's `scene` names under `looks`. */
@@ -142,8 +139,8 @@ export function stage2d(dir: string, name: string, scene: Scene2d, looks: string
     writeFileSync(join(out, `${file}.ogt`), `type import\nversion 1\n---\n# Written by templates/looks/preview/2d/stage.ts: ${at.pw} x ${at.ph} logical pixels.\nconform {\n  size ${Math.max(at.pw, at.ph)}\n}\n`);
     if (LAYERS.includes(beat)) writeFileSync(join(content, `${beat}-set.ts`), `import {file,ref} from '@origingame/engine/author';\n// Written by templates/looks/preview/2d/stage.ts: one tile, so the cook lines no edge of the layer.\nexport default file.tileset({texture:ref(${JSON.stringify(`base/art/${beat}`)}),tileWidth:${w},tileHeight:${h},columns:1,rows:1,filter:'nearest'});\n`);
   }
-  mkdirSync(join(dir, "assets/level"), { recursive: true });
-  writeFileSync(join(dir, "assets/level/level.ogt"), plan === "top" ? topMap(tile) : sideMap(tile));
+  mkdirSync(join(dir, "content/level"), { recursive: true });
+  writeFileSync(join(dir, "content/level/level.ts"), plan === "top" ? topMap(tile) : sideMap(tile));
   mkdirSync(join(dir, "assets/fonts"), { recursive: true });
   for (const f of ["NotoSans-Latin.ttf", "NotoSans-Latin.ttf.ogt"]) copyFileSync(join(repo, "templates/fonts/latin/assets/fonts/latin", f), join(dir, "assets/fonts", f));
   writeFileSync(

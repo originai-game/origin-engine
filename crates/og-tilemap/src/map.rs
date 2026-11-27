@@ -1,10 +1,9 @@
-//! Layered maps (`.ogt` of `type tilemap`, or imported by the cook from
-//! Tiled and LDtk) and their coordinates.
+//! Layered maps from checked TypeScript or imported Tiled and LDtk data,
+//! and their coordinates.
 
-use crate::tileset::{Tileset, num, uint};
+use crate::tileset::Tileset;
 use glam::Vec2;
 use og_core::bytes::{ByteReader, ByteWriter};
-use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Result};
 
 /// Cell bit: the tile is mirrored left to right (Tiled's bit).
@@ -61,8 +60,8 @@ pub struct Layer {
     /// The sprite layer offset it draws at (the owner's base plus this).
     pub z: i32,
     /// Taken by 2D lighting when its sprite layer is in the lit range, as
-    /// the sprites there are (true by default); `lit false` in a layer
-    /// block, or a Tiled layer's bool property `lit` false, keeps it as
+    /// the sprites there are (true by default); `lit: false` in a layer
+    /// declaration, or a Tiled layer's bool property `lit` false, keeps it as
     /// authored (a sky, a far backdrop).
     pub lit: bool,
 }
@@ -241,8 +240,11 @@ impl TilemapAsset {
 
     /// Checks sizes, cell counts, tileset indices and flip bits.
     pub fn validate(&self) -> Result<()> {
-        if self.width == 0 || self.height == 0 {
-            return Err(err(0, "the map needs at least one cell"));
+        if self.width == 0
+            || self.height == 0
+            || u64::from(self.width) * u64::from(self.height) > 1 << 24
+        {
+            return Err(err(0, "a map needs 1 to 16,777,216 cells"));
         }
         if self.tile_width_px == 0 || self.tile_height_px == 0 {
             return Err(err(0, "the tile size must be at least 1 pixel"));
@@ -251,7 +253,31 @@ impl TilemapAsset {
             return Err(err(0, "unit must be above 0"));
         }
         let n = (self.width * self.height) as usize;
+        let mut names = std::collections::BTreeSet::new();
         for l in &self.layers {
+            if !names.insert(&l.name) {
+                return Err(err(0, format!("layer '{}' is declared twice", l.name)));
+            }
+            if !l.parallax.is_finite()
+                || !l.offset.is_finite()
+                || !l.opacity.is_finite()
+                || !(0.0..=1.0).contains(&l.opacity)
+            {
+                return Err(err(
+                    0,
+                    format!(
+                        "layer '{}': finite parallax/offset and opacity in 0..1 required",
+                        l.name
+                    ),
+                ));
+            }
+            if (l.collider_layers != 0 || l.collider_mask != 0 || l.cell_colliders) && !l.collision
+            {
+                return Err(err(
+                    0,
+                    format!("layer '{}': collider fields require collision true", l.name),
+                ));
+            }
             if let Some(t) = &l.terrain
                 && !self.orientation.square_grid()
             {
@@ -301,6 +327,13 @@ impl TilemapAsset {
                     ),
                 ));
             }
+        }
+        if self
+            .objects
+            .iter()
+            .any(|o| ![o.x, o.y, o.width, o.height].iter().all(|v| v.is_finite()))
+        {
+            return Err(err(0, "map objects need finite coordinates and dimensions"));
         }
         Ok(())
     }
@@ -520,330 +553,6 @@ impl TilemapAsset {
         m.validate()?;
         Ok(m)
     }
-
-    /// Parses a hand-written `.ogt` of `type tilemap`; errors name the line.
-    pub fn parse(text: &str) -> Result<TilemapAsset> {
-        let doc = Document::parse(text)?;
-        if doc.ty != "tilemap" {
-            return Err(err(
-                0,
-                format!("the file is of type '{}', not 'tilemap'", doc.ty),
-            ));
-        }
-        if doc.version != 1 {
-            return Err(err(
-                0,
-                format!("version {} is not supported (1 is)", doc.version),
-            ));
-        }
-        let mut m = TilemapAsset {
-            orientation: Orientation::Orthogonal,
-            width: 0,
-            height: 0,
-            tile_width_px: 0,
-            tile_height_px: 0,
-            unit: 1.0,
-            tilesets: Vec::new(),
-            layers: Vec::new(),
-            objects: Vec::new(),
-        };
-        let mut layer_entries: Vec<&Entry> = Vec::new();
-        let mut object_entries: Vec<&Entry> = Vec::new();
-        crate::grammar::check(&doc.body, crate::grammar::MAP)?;
-        for e in &doc.body.entries {
-            match e.key.as_str() {
-                "size" => {
-                    m.width = uint(e, 0)?;
-                    m.height = uint(e, 1)?;
-                }
-                "tile" => {
-                    m.tile_width_px = uint(e, 0)?;
-                    m.tile_height_px = uint(e, 1)?;
-                }
-                "unit" => m.unit = num(e, 0)?,
-                "orientation" => {
-                    let words: Vec<&str> = e
-                        .values
-                        .iter()
-                        .map(|v| v.as_word().or(v.as_str()).unwrap_or(""))
-                        .collect();
-                    m.orientation = match words.as_slice() {
-                        ["orthogonal"] => Orientation::Orthogonal,
-                        ["isometric"] => Orientation::Isometric,
-                        ["staggered"] => Orientation::Staggered,
-                        ["hex"] | ["hex", "pointy"] => Orientation::Hexagonal { flat: false },
-                        ["hex", "flat"] => Orientation::Hexagonal { flat: true },
-                        _ => {
-                            return Err(err(
-                                e.line,
-                                "orientation is orthogonal, isometric, staggered, hex (pointy-top) or hex flat",
-                            ));
-                        }
-                    }
-                }
-                "tileset" => m.tilesets.push(TilesetRef::Asset(
-                    e.string(0)
-                        .map_err(|_| err(e.line, "tileset needs a quoted asset path"))?
-                        .to_string(),
-                )),
-                "layer" => layer_entries.push(e),
-                "object" => object_entries.push(e),
-                other => return Err(err(e.line, format!("unknown key '{other}'"))),
-            }
-        }
-        if m.width == 0 || m.height == 0 {
-            return Err(err(0, "no size line (cells wide, cells high)"));
-        }
-        if m.tile_width_px == 0 || m.tile_height_px == 0 {
-            return Err(err(0, "no tile line (tile width and height in pixels)"));
-        }
-        if m.tilesets.is_empty() {
-            return Err(err(0, "no tileset line"));
-        }
-        for (i, e) in layer_entries.into_iter().enumerate() {
-            let l = parse_layer(e, &m, i as i32)?;
-            if m.layers.iter().any(|x| x.name == l.name) {
-                return Err(err(e.line, format!("layer '{}' is declared twice", l.name)));
-            }
-            m.layers.push(l);
-        }
-        let ts = m.tile_size();
-        for e in object_entries {
-            let name = name_of(e).ok_or_else(|| err(e.line, "object needs a name"))?;
-            let mut o = MapObject {
-                name,
-                kind: String::new(),
-                x: 0.0,
-                y: 0.0,
-                width: 0.0,
-                height: 0.0,
-                properties: Vec::new(),
-            };
-            if let Some(b) = &e.block {
-                crate::grammar::check(b, crate::grammar::OBJECT)?;
-            }
-            for p in e.block.iter().flat_map(|b| &b.entries) {
-                match p.key.as_str() {
-                    "kind" => {
-                        o.kind =
-                            string_or_word(p, 0).ok_or_else(|| err(p.line, "kind needs a name"))?
-                    }
-                    "rect" => {
-                        o.x = num(p, 0)? * ts.x;
-                        o.y = -num(p, 1)? * ts.y;
-                        o.width = num(p, 2)? * ts.x;
-                        o.height = num(p, 3)? * ts.y;
-                    }
-                    "at" => {
-                        o.x = num(p, 0)? * ts.x;
-                        o.y = -num(p, 1)? * ts.y;
-                    }
-                    "prop" => {
-                        let k =
-                            string_or_word(p, 0).ok_or_else(|| err(p.line, "prop needs a key"))?;
-                        let v =
-                            p.values
-                                .get(1)
-                                .map(|v| match v {
-                                    og_core::ogt::Value::Number(n) => n.text().to_string(),
-                                    og_core::ogt::Value::String(s)
-                                    | og_core::ogt::Value::Word(s) => s.clone(),
-                                })
-                                .ok_or_else(|| err(p.line, "prop needs a value"))?;
-                        o.properties.push((k, v));
-                    }
-                    other => {
-                        return Err(err(
-                            p.line,
-                            format!("unknown key '{other}' in an object block"),
-                        ));
-                    }
-                }
-            }
-            m.objects.push(o);
-        }
-        m.validate()?;
-        Ok(m)
-    }
-}
-
-fn string_or_word(e: &Entry, i: usize) -> Option<String> {
-    e.values
-        .get(i)
-        .and_then(|v| v.as_str().or(v.as_word()))
-        .map(str::to_string)
-}
-
-fn name_of(e: &Entry) -> Option<String> {
-    string_or_word(e, 0)
-}
-
-fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
-    let name = name_of(e).ok_or_else(|| err(e.line, "layer needs a name"))?;
-    let mut l = Layer::new(name, m.width, m.height, index);
-    let block = e
-        .block
-        .as_ref()
-        .ok_or_else(|| err(e.line, "layer needs a { block }"))?;
-    crate::grammar::check(block, crate::grammar::LAYER)?;
-    let mut legend: Vec<(char, i64)> = Vec::new();
-    let mut rows: Vec<&Entry> = Vec::new();
-    for p in &block.entries {
-        match p.key.as_str() {
-            "tileset" => l.tileset = uint(p, 0)?,
-            "z" => {
-                l.z = p
-                    .number(0)
-                    .ok()
-                    .and_then(|n| n.as_i64().ok())
-                    .and_then(|v| i32::try_from(v).ok())
-                    .ok_or_else(|| err(p.line, "z needs a whole number"))?
-            }
-            "parallax" => l.parallax = Vec2::new(num(p, 0)?, num(p, 1)?),
-            "offset" => l.offset = Vec2::new(num(p, 0)?, num(p, 1)?),
-            "opacity" => l.opacity = num(p, 0)?,
-            "visible" => {
-                l.visible = p
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| err(p.line, "visible is true or false"))?
-            }
-            "collision" => {
-                l.collision = p
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| err(p.line, "collision is true or false"))?
-            }
-            "colliderLayers" => l.collider_layers = uint(p, 0)?,
-            "colliderMask" => l.collider_mask = uint(p, 0)?,
-            "cellColliders" => {
-                l.cell_colliders = p
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| err(p.line, "cellColliders is true or false"))?
-            }
-            "lit" => {
-                l.lit = p
-                    .values
-                    .first()
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| err(p.line, "lit is true or false"))?
-            }
-            "repeat" => {
-                for v in &p.values {
-                    match v.as_word() {
-                        Some("x") => l.repeat_x = true,
-                        Some("y") => l.repeat_y = true,
-                        _ => return Err(err(p.line, "repeat takes x, y or both")),
-                    }
-                }
-            }
-            "terrain" => {
-                l.terrain =
-                    Some(string_or_word(p, 0).ok_or_else(|| err(p.line, "terrain needs a name"))?)
-            }
-            "legend" => {
-                let s = p
-                    .string(0)
-                    .map_err(|_| err(p.line, "legend needs a quoted character"))?;
-                let mut chars = s.chars();
-                let (Some(c), None) = (chars.next(), chars.next()) else {
-                    return Err(err(p.line, "legend's character is one character"));
-                };
-                let v = p
-                    .number(1)
-                    .ok()
-                    .and_then(|n| n.as_i64().ok())
-                    .ok_or_else(|| err(p.line, "legend needs a tile id (or -1 for empty)"))?;
-                legend.push((c, v));
-            }
-            "row" => rows.push(p),
-            other => {
-                return Err(err(
-                    p.line,
-                    format!("unknown key '{other}' in a layer block"),
-                ));
-            }
-        }
-    }
-    if (l.collider_layers != 0 || l.collider_mask != 0 || l.cell_colliders) && !l.collision {
-        return Err(err(
-            e.line,
-            format!(
-                "layer '{}' names colliderLayers, colliderMask or cellColliders without `collision true`",
-                l.name
-            ),
-        ));
-    }
-    let terrain = l.terrain.is_some();
-    if !rows.is_empty() && rows.len() != m.height as usize {
-        return Err(err(
-            e.line,
-            format!(
-                "layer '{}' has {} rows, the map {}",
-                l.name,
-                rows.len(),
-                m.height
-            ),
-        ));
-    }
-    let cell = |v: i64, line: usize| -> Result<u32> {
-        if terrain {
-            match v {
-                0 | -1 => Ok(0),
-                1 => Ok(1),
-                _ => Err(err(
-                    line,
-                    format!("a terrain cell is 1 (filled) or 0 (empty), not {v}"),
-                )),
-            }
-        } else if v < 0 {
-            Ok(0)
-        } else if v >= TILE_MASK as i64 {
-            Err(err(line, format!("tile id {v} is too large")))
-        } else {
-            Ok(v as u32 + 1)
-        }
-    };
-    for (y, r) in rows.iter().enumerate() {
-        let w = m.width as usize;
-        let values: Vec<i64> = if let Some(s) = r.values.first().and_then(|v| v.as_str()) {
-            let mut out = Vec::new();
-            for c in s.chars() {
-                let v = match legend.iter().find(|(lc, _)| *lc == c) {
-                    Some(&(_, v)) => v,
-                    None if c == '.' => -1,
-                    None => return Err(err(r.line, format!("'{c}' is not in the layer's legend"))),
-                };
-                out.push(v);
-            }
-            out
-        } else {
-            let mut out = Vec::new();
-            for i in 0..r.values.len() {
-                out.push(
-                    r.number(i)
-                        .ok()
-                        .and_then(|n| n.as_i64().ok())
-                        .ok_or_else(|| err(r.line, "a row is a quoted string or tile ids"))?,
-                );
-            }
-            out
-        };
-        if values.len() != w {
-            return Err(err(
-                r.line,
-                format!("the row is {} cells wide, the map {w}", values.len()),
-            ));
-        }
-        for (x, v) in values.into_iter().enumerate() {
-            l.cells[y * w + x] = cell(v, r.line)?;
-        }
-    }
-    Ok(l)
 }
 
 /// The cell at a map-local world point (y up from the top-left corner of

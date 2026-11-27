@@ -5813,6 +5813,7 @@ readonly "orientation"?: (((Input_tilemapDefinitions["Orientation"])) | ((null))
 readonly "tileHeight": (number);
 readonly "tileWidth": (number);
 readonly "tilesets": (ReadonlyArray<(Input_tilemapDefinitions["ContentRef"])> | (number extends ((Input_tilemapDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+/** World units per tile width; height retains the authored pixel aspect ratio. */
 readonly "unit"?: ((number) | (null));
 readonly "width": (number);
 });

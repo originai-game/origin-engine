@@ -170,6 +170,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             navmesh: None,
             lightmap: None,
             tileset: None,
+            tilemap: None,
             conformed: None,
             fracture: None,
         };

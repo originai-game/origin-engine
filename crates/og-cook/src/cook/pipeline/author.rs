@@ -28,6 +28,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("rig", &anim::RIG),
     ("lightmap", &lightmap::LIGHTMAP),
     ("tileset", &tilemap::TILESET),
+    ("tilemap", &tilemap::TILEMAP),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -75,6 +76,11 @@ fn catalogue(
             .map_err(|e| CookError(e.to_string()))?
             .to_string_lossy()
             .replace('\\', "/");
+        // A derived output can retain its producer's physical path. Only
+        // original scan entries define this temporary source catalogue.
+        if source.rel != file {
+            continue;
+        }
         let stem = file
             .rsplit_once('.')
             .map_or(file.as_str(), |(stem, _)| stem);
@@ -227,10 +233,15 @@ pub(crate) fn sources(
             navmesh: None,
             lightmap: None,
             tileset: None,
+            tilemap: None,
             conformed: None,
             fracture: None,
         };
         let derived = (|| match entry.factory.as_str() {
+            "tilemap" => {
+                source.tilemap = Some(tilemap::map_declaration(source.input()?)?);
+                Ok(BTreeMap::new())
+            }
             "tileset" => {
                 source.tileset = Some(tilemap::declaration(source.input()?)?);
                 Ok(BTreeMap::new())
@@ -312,6 +323,13 @@ pub(crate) fn sources(
     let graph = graph.finish().map_err(|e| CookError(e.to_string()))?;
     let mut lightmap_scenes = BTreeSet::new();
     for source in sources.iter_mut() {
+        if let Some(map) = &mut source.tilemap {
+            for tileset in &mut map.tilesets {
+                if let og_tilemap::TilesetRef::Asset(id) = tileset {
+                    *id = graph.outputs[id.as_str()].asset.clone();
+                }
+            }
+        }
         if let Some(t) = &mut source.tileset
             && !t.texture.is_empty()
         {

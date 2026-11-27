@@ -135,7 +135,6 @@ pub(crate) fn scan_sources(
     crate::cook::materials::expand(&mut sources);
     // Typed script results enter the ordinary asset pipelines before planning.
     effect::expand(&mut sources);
-    tilemap::expand(&mut sources);
     model_text::expand(&mut sources);
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).

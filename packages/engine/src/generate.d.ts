@@ -30,16 +30,6 @@ export interface HeightfieldSource {
   readonly heights: Float32Array | readonly number[];
 }
 
-/** Tile ids, not packed cells: -1 is empty. Names reference authored layers. */
-export interface TilemapSource {
-  readonly width: number;
-  readonly height: number;
-  readonly layers: readonly {
-    readonly name: string;
-    readonly tiles: Int32Array | readonly number[];
-  }[];
-}
-
 /** Static geometry attributes; materials and placements stay in the model file. */
 export interface MeshSource {
   readonly positions: Float32Array | readonly number[];

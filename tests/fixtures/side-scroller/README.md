@@ -21,7 +21,7 @@ front of it apart. It exercises the 2D stack together on the real engine:
 - **2D light.** og.Lighting2D with two torches and a moon spot (og.Light2D,
   `castShadows`, `sourceRadius`), glowing flames and mushrooms.
 - **Camera and parallax.** og.Follow2D (clamped) follows the knight; the
-  cave's two far walls are one tilemap (`assets/bg/cave.ogt`) of two layers
+  cave's two far walls are one tilemap (`content/bg/cave.ts`) of two layers
   at parallax 0.3 and 0.6, the far one unlit.
 - **Pixel effects.** `vfx2d()` in `src/main.ts` plays a `type vfx2d`
   recipe once as a sprite and flipbook (`assets/fx/`): `hit` (a steel star,

@@ -1,5 +1,5 @@
 // A farm at dusk (README.md): a tilemap of grass, paths and tilled plots
-// (tiles/farm-map.ogt), crops, fences and props from loose PNGs the cook
+// (base/tiles/farm-map), crops, fences and props from loose PNGs the cook
 // packs into one texture (props/props.ogt), trees of a texture each whose
 // leaves og.Wind moves (og.Sprite.sway, trees/*.png.ogt), a farmer walking
 // down the path (a flipbook from a GIF) and warm lamps whose light the
@@ -79,7 +79,7 @@ function lamp(world: World, x: number, y: number): void {
 const CROPS = [["parsnip_2", "cauliflower", "parsnip_1", "pumpkin"], ["wheat_a", "wheat_b", "sunflower", "tomato"], ["parsnip_0", "parsnip_1", "cauliflower", "tomato"]] as const;
 
 function build(world: World): void {
-  const map = must(og.load.tilemap(world, "tiles/farm-map.ogt"));
+  const map = must(og.load.tilemap(world, "base/tiles/farm-map"));
   const ground = must(world.spawn({ name: "farm", position: { x: 0, y: MAP.h, z: 0 } }));
   must(world.insert(ground, og.Tilemap, { map: map.map, layer: -10, collision: false }));
 

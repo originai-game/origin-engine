@@ -159,6 +159,8 @@ pub(crate) struct Source {
     lightmap: Option<lightmap::Prepared>,
     /// Checked atlas grid, bound to the actual texture output.
     tileset: Option<og_tilemap::Tileset>,
+    /// Checked map cells and metadata, bound to actual tileset outputs.
+    tilemap: Option<og_tilemap::TilemapAsset>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

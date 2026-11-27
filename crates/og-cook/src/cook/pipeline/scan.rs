@@ -558,6 +558,7 @@ pub(crate) fn scan_with(
             navmesh: None,
             lightmap: None,
             tileset: None,
+            tilemap: None,
             conformed: None,
             fracture: None,
         };

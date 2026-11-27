@@ -148,7 +148,7 @@ function build(world: World): void {
   }
 
   // The far walls, scrolling slower than the cave (a tilemap of two parallax layers).
-  const walls = must(og.load.tilemap(world, "bg/cave.ogt"));
+  const walls = must(og.load.tilemap(world, "base/bg/cave"));
   const back = must(world.spawn({ name: "walls", position: { x: -16, y: 6.2, z: 0 } }));
   must(world.insert(back, og.Tilemap, { map: walls.map, layer: 0, collision: false }));
 

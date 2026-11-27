@@ -1,6 +1,5 @@
 //! Atlas grids, collision shapes, animated tiles and explicit autotile rules.
 use og_core::IdMap;
-use og_core::ogt::Entry;
 use og_core::{Error, ErrorKind, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -127,18 +126,6 @@ fn err(line: usize, msg: impl std::fmt::Display) -> Error {
     } else {
         Error::new(ErrorKind::Parse, format!("tileset line {line}: {msg}"))
     }
-}
-
-// The remaining tilemap text frontend uses these numeric readers until its cutover.
-pub(crate) fn uint(e: &Entry, i: usize) -> Result<u32> {
-    e.number(i)?
-        .as_u64()
-        .ok()
-        .and_then(|v| u32::try_from(v).ok())
-        .ok_or_else(|| err(e.line, format!("'{}' needs a whole u32 number", e.key)))
-}
-pub(crate) fn num(e: &Entry, i: usize) -> Result<f32> {
-    e.finite(i)
 }
 
 impl Tileset {

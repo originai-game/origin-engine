@@ -184,7 +184,7 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
     );
     write(
         "assets/look.ogt",
-        "type look\nversion 1\n---\nArtPixels {\n unit 2\n}\n",
+        "type look\nversion 1\n---\nArtPixels {\n unit 2\n}\nArtPalette {\n maxColors 64\n rampSteps 6\n}\n",
     );
     for (conform, expected) in [("kind:'off'", (7, 11)), ("kind:'size',size:4", (3, 4))] {
         let source = declaration.replace("kind:'off'", conform);
@@ -199,6 +199,15 @@ fn typed_tilesets_preserve_shapes_animation_terrain_and_import_bindings() {
             assert_eq!((t.tile_width, t.tile_height), expected);
             assert_eq!(t.collision(0), Some(Collision::Full));
             assert_eq!(t.tiles[&2].anim.as_ref().unwrap().durations, [0.125, 0.625]);
+            if expected == (3, 4) {
+                assert!(
+                    Bundle::open(&root.join("cooked"))
+                        .unwrap()
+                        .read("atlas.png#index")
+                        .is_ok(),
+                    "palette conformance must retain the derived index texture"
+                );
+            }
             assert_eq!(
                 std::fs::read_to_string(root.join("modules/north/content/tiles.ts")).unwrap(),
                 source,

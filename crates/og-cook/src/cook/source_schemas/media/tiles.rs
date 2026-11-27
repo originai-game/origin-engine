@@ -112,9 +112,10 @@ pub struct Tilemap {
     pub tile_width: u32,
     #[schemars(range(min = 1), extend("x-og-unit" = "px"))]
     pub tile_height: u32,
+    /// World units per tile width; height retains the authored pixel aspect ratio.
     #[schemars(extend("exclusiveMinimum" = 0, "x-og-unit" = "m/tile"))]
     pub unit: Option<f32>,
-    #[schemars(extend("x-og-ref-kinds" = ["tileset"]))]
+    #[schemars(length(min = 1), extend("x-og-ref-kinds" = ["tileset"]))]
     pub tilesets: Vec<ContentRef>,
     pub layers: Vec<Layer>,
     #[serde(default)]

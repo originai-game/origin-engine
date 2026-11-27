@@ -85,7 +85,7 @@ function light(world: World) {
 
 /** The level's map with its top-left corner at (x, y). */
 function level(world: World, x: number, y: number) {
-  const map = must(og.load.tilemap(world, "level/level.ogt"));
+  const map = must(og.load.tilemap(world, "base/level/level"));
   const e = must(world.spawn({ name: "level", position: { x, y, z: 0 } }));
   must(world.insert(e, og.Tilemap, { map: map.map, layer: -10, collision: false }));
 }

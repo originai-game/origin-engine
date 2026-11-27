@@ -9,7 +9,7 @@ for og-render's sprite batch.
 
 ```rust
 let tileset = Arc::new(bundle.load_tileset("base/tiles/dungeon-set")?);
-let asset = TilemapAsset::parse(&map_text)?;                      // or bundle.load_tilemap("maps/room.tmj")
+let asset = bundle.load_tilemap("base/maps/room")?;               // checked file.tilemap TS
 let mut state = MapState::new(&asset, &[tileset.clone()])?;       // tilesets in asset.tilesets order
 state.set(walls, 4, 7, 1)?;                                       // fill a terrain cell; its 3×3 neighbourhood re-resolves
 let rects = collision_rects_all(&state);                          // static colliders, map-local world units
@@ -41,7 +41,7 @@ top-left corner in the same coordinates (y ≤ 0 inside the map).
 | `Tileset { texture, tile_width, tile_height, columns, rows, margin, spacing, filter, tiles: BTreeMap<u32, TileDef>, terrains }` | `encode(out)`, `decode(bytes)`, `validate()`, `count()`, `terrain(name)`, `collision(tile)`, `uv(tile, texture_w, texture_h) -> [u0, v0, u1, v1]` (v down, inset 1/512 texel) |
 | `TileDef { collision: Option<Collision>, anim: Option<TileAnim { frames, durations }> }`, `Collision::{Full, Rect { x, y, w, h }}` (px from the tile's top-left), `Filter::{Nearest, Linear}` | per-tile data |
 | `Terrain { name, mode: TerrainMode::{Blob47, Bitmask16}, rules: BTreeMap<u8, u32>, default, edge_filled }`, `resolve(neighbours)`, `reduce_blob(mask)`, `mask::{N, NE, E, SE, S, SW, W, NW}` | auto-tiling |
-| `TilemapAsset { width, height, tile_width_px, tile_height_px, unit, tilesets: Vec<TilesetRef>, layers, objects }` | `parse(text)`, `validate()`, `tile_size()`, `world_size()`, `layer(name)` |
+| `TilemapAsset { width, height, tile_width_px, tile_height_px, unit, tilesets: Vec<TilesetRef>, layers, objects }` | `validate()`, `tile_size()`, `world_size()`, `layer(name)` |
 | `TilesetRef::{Asset(id), Embedded(Tileset)}` | a cooked tileset ID, or one an importer made |
 | `Layer { name, tileset, cells, terrain: Option<String>, parallax, offset, opacity, visible, collision, collider_layers, collider_mask, repeat_x, repeat_y, z, lit }`, `Layer::new(name, w, h, z)` | cells: tile layers 0 empty else `(tile + 1) | FLIP_X | FLIP_Y`; terrain layers 0/1 |
 | `FLIP_X` (bit 31), `FLIP_Y` (bit 30), `FLIP_DIAGONAL` (bit 29, refused), `TILE_MASK` | the cell encoding (Tiled's gid flip bits) |
@@ -81,38 +81,35 @@ both of its edge bits are set (`reduce_blob`), so 47 distinct masks occur; a
 rule naming any other mask is refused at the TS declaration. Filled cells resolve
 to `rules[mask]` or `default`; empty cells draw nothing.
 
-## `.ogt` of `type tilemap`
+## Checked TypeScript maps
 
-```text
-type tilemap
-version 1
----
-size 32 18                 # cells
-tile 16 16                 # px
-unit 1                     # world units per tile width (optional)
-tileset "base/tiles/dungeon-set"
-layer floor {
-  tileset 0                # optional, default 0
-  z -10                    # sprite layer offset (default: the layer's index)
-  parallax 0.5 1           # optional
-  offset 0 0               # optional, world units
-  opacity 1                # optional
-  visible true             # optional
-  collision true           # optional: its tiles' shapes become colliders
-  colliderLayers 4         # optional: those colliders' layer bits (default: the owner's)
-  colliderMask 3           # optional: the layers they collide with (default: every layer)
-  repeat x                 # optional: x, y or both
-  terrain wall             # optional: a terrain layer (cells 1 filled)
-  legend "#" 1             # a character and the tile id (terrain: 1 filled); "." is empty unless given
-  row "################"   # one per map row, top first, exactly `size` wide
-  # numeric rows: row 3 3 4 -1 5   (tile ids, -1 empty; terrain 1/0)
-}
-object door {
-  kind "door"
-  rect 15 8 1 2            # x y w h in cells (y down) -> world units; or `at x y` for a point
-  prop target "room2"
-}
+`content/maps/room.ts` exports the complete declaration. Imports and explicit
+`input.bytes/text` reads enter the shared deterministic cook cache. No map
+author text parser or generation wrapper remains. Tiled and LDtk are external
+import formats and feed the same native writer.
+
+```ts
+import { file, ref } from "@origingame/engine/author";
+export default file.tilemap({
+  width: 32, height: 18, tileWidth: 16, tileHeight: 16, unit: 1,
+  orientation: "orthogonal", // also isometric, staggered, hex, hexFlat
+  tilesets: [ref("base/tiles/dungeon-set")],
+  layers: [{
+    name: "floor", tileset: 0, z: -10,
+    parallax: [0.5, 1], offset: [0, 0], opacity: 1, visible: true,
+    collision: true, colliderLayers: 4, colliderMask: 3,
+    repeatX: true, terrain: "wall",
+    cells: new Uint32Array(32 * 18).fill(1), // terrain occupancy, not tile IDs
+  }],
+  objects: [{ name: "door", kind: "door", x: 15, y: -8,
+    width: 1, height: 2, properties: { target: "room2" } }],
+});
 ```
+
+Tile layers use packed u32 cells, zero empty and otherwise tile ID + 1 with
+optional `FLIP_X` / `FLIP_Y`; terrain layers use 0/1. Every layer has exactly
+width × height cells and a unique name. Maps allow 1..16,777,216 cells.
+Objects and offsets are map-local world units, **not** cell coordinates.
 
 ## Invariants
 
@@ -147,17 +144,9 @@ object door {
 
 ## Tests
 
-`cargo test -p og-tilemap`: `tests/autotile.rs` (47 reduced masks; an
-isolated cell and a 3×3 block's centre, edges and corners resolve to their
-rule tiles; a fill then clear restores the neighbourhood; edge filled vs
-empty; bitmask16; refused masks and terrains), `tests/collision.rs` (an L
-shape is two rectangles, a room outline four and a full block one; partial
-rects per tile and merged full-width ones; only collision layers, with
-their offsets), `tests/state.rs` (equal edits give equal bytes, decode
-restores them; an untouched 256×256 four-layer map snapshots in 16 bytes;
-edit checks and chunk versions), `tests/chunks.rs` (quads with flips and
-animations, inset regions with margin and spacing, culling),
-`tests/text.rs` (tileset round trip and refusals by line; a hand-written map
-with legends, numeric rows, objects and coordinates). The cook side:
-`crates/og-cook/tests/tilemap.rs`. Each was checked by breaking the code it
-covers.
+`cargo test -p og-tilemap` checks deterministic edits, snapshots and native
+map round trips. The public cook/load contract in
+`crates/og-cli/tests/cli/generating.rs` covers checked TS maps, packed cells,
+orientations, metadata, object coordinates, tracked dependency invalidation
+and rejected grids. `crates/og-cook/tests/template.rs` covers tilesets,
+external-map bindings and embedded tilesets through bundles and snapshots.

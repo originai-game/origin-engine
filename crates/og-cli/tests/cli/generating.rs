@@ -3051,8 +3051,8 @@ fn author_inputs_are_captured_before_evaluation() {
     }
 }
 
-/// Generated cells pass through the real map compiler, preserve authored
-/// metadata, and change when tracked script input changes.
+/// Checked TS cells use the native map compiler, preserve metadata, and
+/// invalidate warm outputs when a tracked helper/input changes.
 #[test]
 fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     let root = TempDir::new("og-generated-map");
@@ -3068,10 +3068,17 @@ fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     std::fs::write(root.join("project.ts"), "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'map',entry:'src/main.ts'});").unwrap();
     std::fs::create_dir_all(root.join("content")).unwrap();
     std::fs::write(root.join("content/tiles.ts"), "import {file} from '@origingame/engine/author';export default file.tileset({tileWidth:8,tileHeight:8,columns:3,rows:1});").unwrap();
-    let map = "type tilemap\nversion 1\n---\ntile 8 16\nunit 3\ntileset \"base/tiles\"\ngenerate {\nscript \"grid.ts\"\ninput \"source\" \"cell.bin\"\n}\nlayer \"cells\" {\nz 4\nparallax 0.6 0.8\n}\nlayer \"manual\" {\nrow 2 -1 0\nrow 1 2 -1\n}\n";
-    std::fs::write(assets.join("map.ogt"), map).unwrap();
+    let map = r#"import {file,ref,input} from '@origingame/engine/author';
+import {last} from '../lib/grid.ts';
+export default file.tilemap({width:3,height:2,tileWidth:8,tileHeight:16,unit:3,
+ tilesets:[ref('base/tiles')],layers:[
+ {name:'cells',tileset:0,cells:new Uint32Array([input.bytes('assets/cell.bin')[0]+1,0,0x80000003,2,1,last]),z:4,parallax:[0.6,0.8],offset:[1.25,-2.5],opacity:0.75,visible:false,collision:true,colliderLayers:4,colliderMask:3,cellColliders:true,repeatX:true,repeatY:true,lit:false},
+ {name:'manual',tileset:0,cells:[3,0,1,2,3,0]}],
+ objects:[{name:'门',kind:'door',x:1.5,y:-4.25,width:2.5,height:6,properties:{target:'庭院'}}]});"#;
+    std::fs::write(root.join("content/map.ts"), map).unwrap();
+    std::fs::create_dir_all(root.join("lib")).unwrap();
+    std::fs::write(root.join("lib/grid.ts"), "export const last=3;").unwrap();
     std::fs::write(assets.join("cell.bin"), [0]).unwrap();
-    std::fs::write(assets.join("grid.ts"), "export default ({inputs}) => ({width: 3, height: 2, layers: [{name: 'cells', tiles: new Int32Array([inputs.source[0], -1, 2, 1, 0, 2])}]});").unwrap();
     let cook = || {
         og().args(["cook", ".", "--json"])
             .current_dir(&root)
@@ -3081,7 +3088,7 @@ fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     let loaded = || {
         og_cook::runtime::Bundle::open(&root.join("cooked"))
             .unwrap()
-            .load_tilemap("map.ogt")
+            .load_tilemap("base/map")
             .unwrap()
     };
     let out = cook();
@@ -3089,38 +3096,76 @@ fn generated_tilemap_cooks_loads_and_rejects_invalid_grids() {
     let first = loaded();
     assert_eq!((first.width, first.height), (3, 2));
     assert_eq!(first.tile_size().to_array(), [3.0, 6.0]);
-    // Stored cells are tile id + 1, zero for empty. This distinguishes
-    // a real tile zero from an empty cell and catches transposed rows.
-    assert_eq!(first.layers[0].cells, [1, 0, 3, 2, 1, 3]);
+    // Stored cells distinguish tile zero from empty, preserve flips, and
+    // catch transposed rows or an accidental second id+1 conversion.
+    assert_eq!(first.layers[0].cells, [1, 0, 0x80000003, 2, 1, 3]);
     assert_eq!(first.layers[1].cells, [3, 0, 1, 2, 3, 0]);
     assert_eq!(first.layers[0].z, 4);
     assert_eq!(first.layers[0].parallax.to_array(), [0.6, 0.8]);
+    let layer = &first.layers[0];
+    assert_eq!(layer.offset.to_array(), [1.25, -2.5]);
+    assert_eq!(layer.opacity, 0.75);
+    assert!(!layer.visible && !layer.lit);
+    assert!(layer.collision && layer.cell_colliders && layer.repeat_x && layer.repeat_y);
+    assert_eq!((layer.collider_layers, layer.collider_mask), (4, 3));
+    let object = &first.objects[0];
+    assert_eq!((&*object.name, &*object.kind), ("门", "door"));
+    assert_eq!(
+        [object.x, object.y, object.width, object.height],
+        [1.5, -4.25, 2.5, 6.0]
+    );
+    assert_eq!(object.properties, [("target".into(), "庭院".into())]);
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
     assert_eq!(loaded(), first);
     std::fs::write(assets.join("cell.bin"), [2]).unwrap();
     let out = cook();
     assert!(out.status.success(), "{}", text(&out));
-    assert_eq!(loaded().layers[0].cells, [3, 0, 3, 2, 1, 3]);
-
-    for source in [
-        "({width: 3, height: 2, layers: [{name: 'cells', tiles: [0, 1, 2]}]})",
-        "({width: 3, height: 2, layers: [{name: 'absent', tiles: [0, 1, 2, 0, 1, 2]}]})",
-        "({width: 3, height: 2, layers: [{name: 'cells', tiles: [0, 1, 2, 0, -2, 2]}]})",
-        "({width: 0, height: 2, layers: []})",
-    ] {
+    assert_eq!(loaded().layers[0].cells, [3, 0, 0x80000003, 2, 1, 3]);
+    std::fs::write(root.join("lib/grid.ts"), "export const last=2;").unwrap();
+    assert!(cook().status.success());
+    assert_eq!(loaded().layers[0].cells, [3, 0, 0x80000003, 2, 1, 2]);
+    for orientation in ["orthogonal", "isometric", "staggered", "hex", "hexFlat"] {
         std::fs::write(
-            assets.join("grid.ts"),
-            format!("export default () => {source};"),
+            root.join("content/map.ts"),
+            map.replace("width:3,", &format!("orientation:'{orientation}',width:3,")),
         )
         .unwrap();
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        assert_eq!(loaded().orientation.name(), orientation);
+    }
+    for (old, new) in [
+        ("cells:[3,0,1,2,3,0]", "cells:[3,0,1]"),
+        ("name:'manual'", "name:'cells'"),
+        ("tileset:0", "tileset:1"),
+        ("0x80000003", "0x20000003"),
+        ("width:3,height:2", "width:0,height:2"),
+        ("width:3,height:2", "width:4294967295,height:4294967295"),
+        ("opacity:0.75", "opacity:1.25"),
+        ("collision:true", "collision:false"),
+        ("ref('base/tiles')", "ref('base/missing')"),
+    ] {
+        let source = map.replace(old, new);
+        assert_ne!(source, map);
+        std::fs::write(root.join("content/map.ts"), &source).unwrap();
         let out = cook();
         assert!(
             !out.status.success(),
             "accepted invalid map {source}: {}",
             text(&out)
         );
+        assert!(text(&out).contains("content/map.ts"), "{}", text(&out));
     }
+    std::fs::remove_file(root.join("content/map.ts")).unwrap();
+    std::fs::write(assets.join("map.ogt"), "type tilemap\nversion 1\n---\n").unwrap();
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
 }
 
 /// Float source samples follow the same clamping, channel order and sound

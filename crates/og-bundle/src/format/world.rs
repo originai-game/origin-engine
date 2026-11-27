@@ -56,8 +56,8 @@ impl BlobKind for Tileset {
 }
 
 row!(
-    /// The root of a tilemap blob (an `.ogt` of `type tilemap`, a Tiled
-    /// `.tmj` or an LDtk `.ldtk`).
+    /// The root of a tilemap blob (checked TypeScript, a Tiled `.tmj` or
+    /// an LDtk `.ldtk`).
     TilemapMeta, "og.Tilemap", 1 {
         width: u32,
         height: u32,

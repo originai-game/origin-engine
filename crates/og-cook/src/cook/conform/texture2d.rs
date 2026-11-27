@@ -267,7 +267,8 @@ pub(super) fn uses(
                 }
             }
             k if k == &tilemap::TILEMAP => {
-                if let Ok(m) = tilemap::MapSettings::parse(settings_block(s, "tilemap"))
+                if s.tilemap.is_none()
+                    && let Ok(m) = tilemap::MapSettings::parse(settings_block(s, "tilemap"))
                     && let Ok(map) = tilemap::import(&s.rel, &s.bytes, &m, &|id| known.contains(id))
                 {
                     for t in &map.tilesets {
@@ -540,6 +541,7 @@ pub(in crate::cook) fn conform(
                 navmesh: None,
                 lightmap: None,
                 tileset: None,
+                tilemap: None,
                 conformed: None,
                 fracture: None,
             };

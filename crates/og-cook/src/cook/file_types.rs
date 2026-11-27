@@ -93,6 +93,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "tileset" {
                 out.push_str("Output: native atlas grid, collisions, tile animations and blob47/bitmask16 terrain rules. Texture is an optional canonical content ref; omit for collision-only grids. Tile IDs and frames are zero-based; durations are explicit positive seconds, one per frame (uniform fps: frames.map(() => 1 / fps)). Rectangles covering the full tile normalize to full collision. Masks must be reachable for their selected mode. Tiled/LDtk imports, embedded tilesets and snapshots share the native codec; no tileset author or runtime text parser remains. See world.\n\n");
             }
+            if ty == "tilemap" {
+                out.push_str("Output: a native layered map loaded with og.load.tilemap. Tilesets are ordered canonical refs; layer.tileset indexes this list. Cells are row-major top-first u32: zero empty, otherwise tile id + 1 with optional flip X (0x80000000) and Y (0x40000000); diagonal flips are refused. Terrain cells are 0/1 occupancy. Map dimensions allow at most 16,777,216 cells; every layer has exactly width * height cells and a unique name. Unit is world units per tile width; object positions/dimensions and layer offsets are map-local world units with y up. Compute cells directly in TS, using rng(seed), procgen and input.bytes as needed; no generate wrapper or author OGT parser remains. Tiled/LDtk remain external import formats. See world and generating.\n\n");
+            }
             if matches!(ty, "shader" | "post" | "ui-material") {
                 out.push_str("Output: checked WGSL and ordered typed uniforms, loaded with og.load.shader, og.load.post or og.load.uiMaterial. Use code: input.text('sources/example.wgsl') for an external WGSL file; imports and exact input bytes enter the shared evaluator/cache key. Shader mode explicitly selects hooks, sprite or full with lit. Parameters select float/vec2/vec3/vec4/color; defaults are zero and colors are linear RGB. Native checks and naga validate the existing WGSL contracts for SPIR-V, MSL and HLSL before writing the binary payload. No shader-family author OGT or runtime text parser remains. See render and ui-materials.\n\n");
             }
@@ -324,14 +327,6 @@ pub fn markdown() -> Result<String, String> {
                         block(&mut out, &format!("vfx.{kind}"), &fields);
                     }
                 }
-            }
-            "tilemap" => {
-                out.push_str("Field coverage: map, layer and object parser line tables, plus the cook generation block. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n");
-                table(&mut out, og_tilemap::grammar::MAP);
-                block(&mut out, "tilemap.layer", og_tilemap::grammar::LAYER);
-                block(&mut out, "tilemap.object", og_tilemap::grammar::OBJECT);
-                out.push_str("\n<a id=\"file-tilemap-generate\"></a>\n### `file:tilemap.generate`\n\nThe script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.\n\n");
-                table(&mut out, super::generator::SCRIPT_LINES);
             }
             "scatter" => {
                 out.push_str("Field coverage: complete parser line table. Output: a normal scene; load with og.load.scene or reference from a scene. Model placements reuse normal model instancing; prefab placements expand their authored entities. No distribution, density, model or gameplay rule is inferred. Paths are asset-root relative.\n\n");

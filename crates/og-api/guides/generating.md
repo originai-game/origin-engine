@@ -587,9 +587,9 @@ The guide gate writes all attached files and explicitly cooks the project before
 
 ## 5. Cook a generated tile grid
 
-A `tilemap.generate` script returns `TilemapSource`: positive `width` and `height`, and named layers of row-major tile ids (`-1` empty, not packed id-plus-one cells). Each name must identify one authored layer without `row` lines. The file retains tilesets, orientation, objects, collision and drawing properties; an optional `size` must match the result. Other layers can keep their handwritten rows. A terrain layer takes 0/1 occupancy instead. Invalid dimensions, ids or layer names fail cook.
+A `content/**/*.ts` declaration exports `file.tilemap({...})` from `@origingame/engine/author`. Compute its cells directly in TS; there is no map author OGT or `generate` wrapper. Positive `width` and `height` allow at most 16,777,216 cells. Each uniquely named layer supplies exactly `width * height` row-major packed u32 cells: zero empty, otherwise tile ID + 1 with optional flip X/Y bits. Terrain layers instead take 0/1 occupancy. Tilesets use ordered canonical refs and each layer explicitly selects its tileset index. Objects and layer offsets use map-local world units, y up; `unit` is world units per tile width. Imports and explicit `input.bytes/text` reads participate in the shared deterministic cache.
 
-This recipe composes WFC and BSP into two layers. The script explicitly maps mechanism output to the file's tile ids. WFC's sockets state adjacency, not a built-in wall or road interpretation; when enabling rotations, map the returned quarter-turns to authored tile variants too. At runtime only the cooked map is loaded.
+This recipe composes WFC and BSP into two layers. TS explicitly maps mechanism output to packed cells. WFC's sockets state adjacency, not a built-in wall or road interpretation; when enabling rotations, map the returned quarter-turns to authored tile variants too. At runtime only the cooked map is loaded.
 
 ```ts recipe ticks=2
 import { defineSystem, og } from "@origingame/engine";
@@ -614,7 +614,7 @@ const Check = defineSystem("Check", { reads: [og.Tilemap], writes: [] }, (_q, _t
 export default og.game({
   systems: [Check],
   start(world) {
-    const loaded = og.load.tilemap(world, "grid.ogt");
+    const loaded = og.load.tilemap(world, "base/grid");
     if (!loaded.ok) throw new Error(loaded.reason);
     og.assert.always(loaded.value.width === 12 && loaded.value.height === 7, "generated dimensions preserved", {});
     og.assert.always(loaded.value.layers[1]!.parallax.x === 0.5, "authored layer metadata preserved", {});
@@ -645,48 +645,25 @@ export default og.game({
 });
 ```
 
-```ogt recipe file=assets/grid.ogt
-type tilemap
-version 1
----
-tile 8 8
-tileset "base/tiles"
-generate {
-  script "grid.ts"
-  seed 9
-  params {
-    width 12
-    height 7
-  }
-}
-layer "sockets" {
-  lit false
-}
-layer "regions" {
-  parallax 0.5 0.8
-  lit false
-}
-```
+```ts recipe file=content/grid.ts
+import { file, ref, procgen } from "@origingame/engine/author";
 
-```ts recipe file=assets/grid.ts
-import { procgen, type GeneratorContext, type TilemapSource } from "@origingame/engine/generate";
-
-export default function grid(ctx: GeneratorContext<{ width: number; height: number }>) {
-  const { width, height } = ctx.params;
-  const wfc = procgen.wfc({ width, height, seed: ctx.seed, tiles: [
+const width = 12, height = 7, seed = 9;
+const wfc = procgen.wfc({ width, height, seed, tiles: [
     { weight: 1, up: 0, right: 1, down: 0, left: 2, rotations: false },
     { weight: 1, up: 0, right: 2, down: 0, left: 1, rotations: false },
   ], allowed: Array.from({ length: width * height }, (_, i) => [i % width % 2]) });
-  const mask = Uint8Array.from({ length: width * height }, (_, i) => i % width === 6 && Math.floor(i / width) < 4 ? 0 : 1);
-  const bsp = procgen.bsp({ width, height, seed: ctx.seed, minRoom: 2, maxRoom: 4, depth: 2, padding: 1, corridor: 1, mask,
+const mask = Uint8Array.from({ length: width * height }, (_, i) => i % width === 6 && Math.floor(i / width) < 4 ? 0 : 1);
+const bsp = procgen.bsp({ width, height, seed, minRoom: 2, maxRoom: 4, depth: 2, padding: 1, corridor: 1, mask,
     rooms: [{ x: 1, y: 1, width: 2, height: 2 }, { x: 8, y: 2, width: 2, height: 2 }] });
-  if (!wfc.ok) throw new Error(wfc.reason);
-  if (!bsp.ok) throw new Error(bsp.reason);
-  return { width, height, layers: [
-    { name: "sockets", tiles: Int32Array.from(wfc.value.tiles, tile => tile === 0 ? 2 : 0) },
-    { name: "regions", tiles: Int32Array.from(bsp.value.cells, cell => cell === 0 ? -1 : 1) },
-  ] } satisfies TilemapSource;
-}
+if (!wfc.ok) throw new Error(wfc.reason);
+if (!bsp.ok) throw new Error(bsp.reason);
+export default file.tilemap({ width, height, tileWidth: 8, tileHeight: 8,
+  tilesets: [ref("base/tiles")], layers: [
+    { name: "sockets", tileset: 0, lit: false, cells: Uint32Array.from(wfc.value.tiles, tile => tile === 0 ? 3 : 1) },
+    { name: "regions", tileset: 0, lit: false, parallax: [0.5, 0.8], cells: Uint32Array.from(bsp.value.cells, cell => cell === 0 ? 0 : 2) },
+  ],
+});
 ```
 
 ```ts recipe file=content/tiles.ts

@@ -1,12 +1,9 @@
-//! Tilesets and tilemaps: checked TS tilesets, `.ogt` maps, Tiled `.tmj` maps and
+//! Tilesets and tilemaps: checked TS declarations, Tiled `.tmj` maps and
 //! LDtk `.ldtk` projects into the `og.Tileset` and `og.Tilemap` blobs.
 //!
 //! The importers make an [`og_tilemap::TilemapAsset`] (native only: they
 //! live behind the `cook` feature and never reach the wasm runtime); the
 //! blob is the same whatever the source.
-
-mod generate;
-pub(crate) use generate::expand;
 
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, settings_block,
@@ -219,6 +216,71 @@ pub(crate) fn declaration(
     Ok(t)
 }
 
+/// Checked cells already use the runtime's packed cell representation: zero is
+/// empty and tile IDs are one-based, with the two supported flip bits retained.
+pub(crate) fn map_declaration(
+    input: super::source_schemas::media::tiles::Tilemap,
+) -> Result<TilemapAsset, String> {
+    use super::source_schemas::media::tiles::Orientation as O;
+    let map = TilemapAsset {
+        orientation: match input.orientation {
+            None | Some(O::Orthogonal) => Orientation::Orthogonal,
+            Some(O::Isometric) => Orientation::Isometric,
+            Some(O::Staggered) => Orientation::Staggered,
+            Some(O::Hex) => Orientation::Hexagonal { flat: false },
+            Some(O::HexFlat) => Orientation::Hexagonal { flat: true },
+        },
+        width: input.width,
+        height: input.height,
+        tile_width_px: input.tile_width,
+        tile_height_px: input.tile_height,
+        unit: input.unit.unwrap_or(1.0),
+        tilesets: input
+            .tilesets
+            .into_iter()
+            .map(|r| TilesetRef::Asset(r.id))
+            .collect(),
+        layers: input
+            .layers
+            .into_iter()
+            .enumerate()
+            .map(|(i, l)| Layer {
+                name: l.name,
+                tileset: l.tileset,
+                cells: l.cells,
+                terrain: l.terrain,
+                parallax: l.parallax.unwrap_or([1.0; 2]).into(),
+                offset: l.offset.unwrap_or([0.0; 2]).into(),
+                opacity: l.opacity.unwrap_or(1.0),
+                visible: l.visible.unwrap_or(true),
+                collision: l.collision.unwrap_or(false),
+                collider_layers: l.collider_layers.unwrap_or(0),
+                collider_mask: l.collider_mask.unwrap_or(0),
+                cell_colliders: l.cell_colliders.unwrap_or(false),
+                repeat_x: l.repeat_x.unwrap_or(false),
+                repeat_y: l.repeat_y.unwrap_or(false),
+                z: l.z.unwrap_or(i as i32),
+                lit: l.lit.unwrap_or(true),
+            })
+            .collect(),
+        objects: input
+            .objects
+            .into_iter()
+            .map(|o| MapObject {
+                name: o.name,
+                kind: o.kind,
+                x: o.x,
+                y: o.y,
+                width: o.width.unwrap_or(0.0),
+                height: o.height.unwrap_or(0.0),
+                properties: o.properties.into_iter().collect(),
+            })
+            .collect(),
+    };
+    map.validate().map_err(|e| e.to_string())?;
+    Ok(map)
+}
+
 /// A tileset into its blob; the texture must be an asset.
 pub fn cook_tileset(
     t: &Tileset,
@@ -259,7 +321,7 @@ pub fn cook_tileset(
     Ok((w.finish(), vec![note]))
 }
 
-/// Imports a map source (`.ogt`, `.tmj` or `.ldtk` by `rel`'s extension).
+/// Imports an external map source (`.tmj` or `.ldtk` by `rel`'s extension).
 pub fn import(
     rel: &str,
     bytes: &[u8],
@@ -274,13 +336,12 @@ pub fn import(
     let mut map = match ext.as_str() {
         "tmj" => import_tiled(rel, text, settings, known)?,
         "ldtk" => import_ldtk(rel, text, settings, known)?,
-        _ => TilemapAsset::parse(text).map_err(|e| e.to_string())?,
+        _ => {
+            return Err(
+                "an external map is Tiled .tmj or LDtk .ldtk, not an engine author format".into(),
+            );
+        }
     };
-    if ext == "ogt"
-        && let Some(u) = settings.unit
-    {
-        map.unit = u;
-    }
     if let Some(t) = &settings.tileset {
         for r in &mut map.tilesets {
             *r = TilesetRef::Asset(asset_id(t).to_string());
@@ -331,14 +392,8 @@ pub fn references(
 }
 
 /// A map source into its blob.
-pub fn cook_tilemap(
-    rel: &str,
-    bytes: &[u8],
-    settings: &MapSettings,
-    known: &dyn Fn(&str) -> bool,
-    stamp: u64,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let map = import(rel, bytes, settings, known).map_err(CookError)?;
+pub fn cook_tilemap(map: &TilemapAsset, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    map.validate().map_err(|e| CookError(e.to_string()))?;
     let note = format!(
         "{}x{} cells, {} layer(s), {} object(s), {} tileset(s)",
         map.width,
@@ -347,7 +402,7 @@ pub fn cook_tilemap(
         map.objects.len(),
         map.tilesets.len()
     );
-    Ok((encode(&map, stamp), vec![note]))
+    Ok((encode(map, stamp), vec![note]))
 }
 
 /// The `og.Tilemap` blob of a map.
@@ -1521,7 +1576,7 @@ impl Job for TilesetJob<'_> {
 pub(crate) static TILEMAP: KindDef = KindDef {
     name: "tilemap",
     extensions: &["tmj", "ldtk"],
-    types: &["tilemap"],
+    types: &[],
     by_content: false,
     streams: false,
     plan: plan_tilemap,
@@ -1542,7 +1597,17 @@ fn plan_tilemap<'a>(
     } = state;
     match MapSettings::parse(settings_block(s, "tilemap")) {
         Ok(m) => {
-            let refs = references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+            let refs = if let Some(map) = &s.tilemap {
+                map.tilesets
+                    .iter()
+                    .filter_map(|r| match r {
+                        TilesetRef::Asset(id) => Some(format!("{id}={}", known.contains(id))),
+                        TilesetRef::Embedded(_) => None,
+                    })
+                    .collect()
+            } else {
+                references(&s.rel, &s.bytes, &m, &|id| known.contains(id))
+            };
             assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
             let st = stamp(
                 &[Area::Data],
@@ -1571,7 +1636,14 @@ impl Job for TilemapJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let TilemapJob(s, m) = self;
         let Exec { known, .. } = ex;
-        cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
+        let imported;
+        let map = if let Some(map) = &s.tilemap {
+            map
+        } else {
+            imported = import(&s.rel, &s.bytes, m, &|id| known.contains(id)).map_err(CookError)?;
+            &imported
+        };
+        cook_tilemap(map, p.stamp)
     }
 }
 

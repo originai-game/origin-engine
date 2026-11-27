@@ -2,7 +2,7 @@
 
 # The `tilemap` module
 
-Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (a type tilemap file, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
+Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (checked file.tilemap TS, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code.
 
 Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
 
@@ -15,7 +15,7 @@ See `world §6`.
 
 ```ogt
 module tilemap {
-  doc "Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (a type tilemap file, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code."
+  doc "Tilemaps: layers from a checked file.tileset TS atlas, loaded from a cooked map (checked file.tilemap TS, Tiled .tmj or LDtk .ldtk) with og.load.tilemap and placed by og.Tilemap; og.tilemap.create and resize make and change maps in game code."
   doc "Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position."
   # declarations follow, each on its own page
 ```

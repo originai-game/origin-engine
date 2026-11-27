@@ -1,0 +1,7 @@
+{
+  "breaking": [{
+    "member": "tilemap author input",
+    "change": "Tilemaps use checked TypeScript declarations that feed the native map writer directly. The OGT author parser, grammar tables, TilemapSource and generate wrapper are removed. Tiled and LDtk remain external import formats.",
+    "fix": "Export file.tilemap from content/**/*.ts. Supply positive width/height, tileWidth/tileHeight, ordered canonical tileset refs, and uniquely named layers with explicit tileset indices and exactly width * height cells (at most 16,777,216). Cells are packed u32: zero empty, otherwise tile ID + 1 with optional X/Y flip bits; terrain cells remain 0/1. Move generation into ordinary TS helpers with tracked input.bytes/text. Object positions/dimensions use map-local world units, y up, not the old OGT cell coordinates. Use canonical module/content IDs at runtime and re-cook; old author files are unsupported."
+  }]
+}
