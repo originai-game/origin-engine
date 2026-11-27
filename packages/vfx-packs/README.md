@@ -15,6 +15,8 @@ in `packages/engine/extensions/` instead; a pack is in one place, never both.
 | `cartoon-2d-watercolor` | 59 (the same effects in light washes with a pigment rim); cartoon-2d watercolor |
 | `cartoon-2d-storybook` | 59 (the same effects with a thin coloured line); cartoon-2d storybook |
 | `cartoon-2d-rubber-hose` | 59 (the same effects in faded primaries with a 3 px black ink line); cartoon-2d rubber-hose |
+| `toy-3d` | 72 (hits, shooting and projectiles, explosions, movement, vehicles, water, pickups and rewards, status, magic, fire, smoke, environment, building and destruction, celebration; lit satin-plastic meshes that pop up and shrink away); toy-3d |
+| `toy-3d-paper` | 72 (the same effects as cut card that lets light through); toy-3d paper |
 | `geometric` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, ambient/trail, ui); minimal-geometric and faceted-low-poly |
 | `effekseer-andrewfm01` | 15 (beam, explosion, fire, hit-spark, magic-impact, magic-projectile, portal, smoke, ui) |
 | `effekseer-effekseer01` | 15 (basic, beam) |

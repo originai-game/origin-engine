@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "toy-3d",
+  "version": "1.0.0",
+  "description": "Toy effects for toy-3d: satin plastic puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
+  "minEngine": "0.9.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "ambient",
+      "beam",
+      "buff",
+      "debuff",
+      "destruction",
+      "exhaust",
+      "explosion",
+      "fire",
+      "gunfire",
+      "heal",
+      "hit-spark",
+      "magic-impact",
+      "movement",
+      "pickup",
+      "projectile",
+      "smoke",
+      "splash",
+      "status",
+      "ui"
+    ],
+    "element": [
+      "arcane",
+      "earth",
+      "fire",
+      "ice",
+      "life",
+      "light",
+      "lightning",
+      "nature",
+      "poison",
+      "shadow",
+      "water",
+      "wood"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "craft",
+    "toy",
+    "toy-3d"
+  ]
+}

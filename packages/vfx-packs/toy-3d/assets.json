@@ -1,0 +1,3351 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.9.0",
+    "revision": "e9589fa8dbd5761919f559e5c9f198d31c4890b2"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "c38db7c1753f1a6b316ae231d0c11938a4dfe1a6b492b9befe61deddf4fb42c4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/afterburner.ts",
+      "sha256": "ac07f5a35eb91d0336f1c95928d3bb492fd00a414cb440a95a5288c145cd84ad",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/boost.ts",
+      "sha256": "8b6256add511b14c9779391fdd322f959be064a8699dfcf8b2ac58a07ad24680",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/break-block.ts",
+      "sha256": "48fa91b8086bdd71c4e412e9e61da5145097296f33a7ccb5be90445a4ee8caa1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/break-crate.ts",
+      "sha256": "af0260ac0e6b08944fa196508fcd4690c18fd86b7d3dfb6cbeb126f32f7aa604",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/break-ice.ts",
+      "sha256": "f2dd372ee445e0379a75892a34520260eef2c775eb108cb876ba2347f0841b96",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/break-rock.ts",
+      "sha256": "1f34a98a4ec83c83b2f89da71d4a2a03a320679c0374f85a6ed68f45518c4770",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/bubble.ts",
+      "sha256": "176d48dff1193ef8622280aa0c58d499ae46d3cf6499c286cb2e8f39b01f2bb2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/bubbles.ts",
+      "sha256": "ec8f8cd44236f747ea408eb5b5eb872bbf767fd537dc75819ac707f2c8a9376d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/buff.ts",
+      "sha256": "be72a5f101b465c8f476db316e48422540e1ecf9984a317060daacf72d63a274",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/build-place.ts",
+      "sha256": "2351714efbaafffaaa0a06f66f14540d67337fe0f99246a768b21daa7f578f33",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/build-remove.ts",
+      "sha256": "fc634e33da7abe7211c1877ff24a2b83efea53d418e31debad0e19877152bf5c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/bullet.ts",
+      "sha256": "7ccf89768e9e7300823cfb29ef9eff525472fc29947228a65696e9354657b713",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/burning.ts",
+      "sha256": "7628450af5f49b4f357d37474077547e735e4b56766fe3f1ccb74daf5456c040",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/campfire.ts",
+      "sha256": "0677687a6ca378e9edb5c0065e8a385cb1f5f9a815fd2295fdfd4040d05a9752",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/charge.ts",
+      "sha256": "f241da8bb70220ab7bf7ed1755cc9d4165d2582407b5c6c86eb4f52587ce9137",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/checkpoint.ts",
+      "sha256": "2e63b7e4fa4dfd0c27a439e45773f9317579893f366b8c9f828bbbae100c7b2f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/chest-open.ts",
+      "sha256": "23fb3e7c967c210e41aaf1a5b65b0e7450bbdb998f3cd25ea0ca3a86b0692522",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/chimney-smoke.ts",
+      "sha256": "e99068561401134dbd6ad3699efc2673f2473f18fdf5e15f0d5f0e5e843ed935",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/coin.ts",
+      "sha256": "24f5d3438897a30b15d964d948f0c635556810c7d3c80a3a5fe798662390dfef",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/confetti-rain.ts",
+      "sha256": "813615c73ce40da157277762ba585c3d2d8f6c501c6b9734510ce954e88c845d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/confetti.ts",
+      "sha256": "052d5edc4d1be7e45c820e1799ac6ceaa767c0f81afdc9137b21ff3694534b28",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/dash.ts",
+      "sha256": "3291dbe8ac36d4093165100191da11b5b2b2c6482267fc97be4e94645845c5a8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/debuff.ts",
+      "sha256": "ed7759d758c7366be5069d92bf2f92628bf030e92c6787f5f7abf7dfc9010c5d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/double-jump.ts",
+      "sha256": "320a34d3d23df96a0d8abce3fb6d902c02822cf6c53fc35e952ee2e34555dd8c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/drift-sparks.ts",
+      "sha256": "7a3eeac70f73c747b0317cbeb18378ef62890781b76a59a41aa3f932b72a496a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/drip.ts",
+      "sha256": "be84fea7428e5fcdf999c68e4b8ec83b9ddf07538afa539878c413dac996db26",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/dust.ts",
+      "sha256": "12a2ca3728c3c0901b9c2d850ead7cac5f86ba81b3f15e4708b21406592ac147",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/block-bits.ts",
+      "sha256": "41520567bba90953d488745eed0737960a7e9a5f2c4e9ed10c45234bde5799d7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/block-chunks.ts",
+      "sha256": "8c7693538f4eb9aabae33e486fd0d80b327181ca88360b8642f7366b8c449326",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/block-puffs.ts",
+      "sha256": "0b95eefe10552b71ab11c96f97358441960f8e593e270a3ab6607c5ee0ed34b6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/bolt-bits.ts",
+      "sha256": "924fcb3fd9e3fc1c18c5866c511c74505f39ba7765487170b5e0a3bbc4f88ab1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/boost-flames.ts",
+      "sha256": "40d9e742baac495e783b30a3f4b1411474e01263aa6a95380e2ebf1a3c4de641",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/boost-puffs.ts",
+      "sha256": "506b3ba7b3fa6476ba98578cfc5b7cc41eeca26f460e3499abddea82de409ed0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/boost-stars.ts",
+      "sha256": "1ff99a370ee3681670a36771daecf408636619dd0d1156baf843a2ebe8e6c09b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/bubbles-rise.ts",
+      "sha256": "8b079f6bd2828af8ea085bf01c489c2498edb1dd5069716305a9a0da4cb81bfa",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/buff-arrows.ts",
+      "sha256": "ead847bd13fe0c8deaf29dbda78726655b0752aed2409d96f53f3393f50d26f6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/bullet-puffs.ts",
+      "sha256": "f9cc5cc015a604ac6cb4892f5e1a9225d35dad9fb8e50a2194957b540ed7d778",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/burning-flames.ts",
+      "sha256": "c52c03570fc2759ca10045028ba883e1db671875cc4ffe0a88b158d82bb61c30",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/burning-puffs.ts",
+      "sha256": "ebd3aef9261e5fcb5c5e2dff77450ef64c21724057029824dcd8195437516a43",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/camp-embers.ts",
+      "sha256": "7bc1264160218bca6077488c50cf48311b4aa5f037ec872fdbacbe5e6b4e8048",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/camp-flames.ts",
+      "sha256": "eaf543d7d779360d85f57ce0efeaa0ee4eb147a6f130623b73fb2709ee86b7de",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/camp-puffs.ts",
+      "sha256": "05e5dbe86a4f5eb0d41bf3efcc3d07885a1dce1111022c65b0c2bd40ae2b5cd5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/charge-in.ts",
+      "sha256": "6498d6875271b15c9a1c2c51c123cd25a20a82f6f337e9e59df802d9304cf1f0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/check-confetti-a.ts",
+      "sha256": "dbc2bb67b7616f15d0b34b3ce7bfafc6ef1338ab9a25c1ee2cc23812711a84ad",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/check-confetti-b.ts",
+      "sha256": "e33bff9e274982149808bf887ad5ce6723da727c21995e95a1ff00b9c07e0e2c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/check-confetti-c.ts",
+      "sha256": "4d19c6b412d762bbe40cccebb886f26aec15d43a88c552bd5b74f42fd450efb6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/chest-coins.ts",
+      "sha256": "359db3ebe685d45ff07e90a0f4b448f10fc6cede7c2c63e41167f9c052f21c88",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/chest-stars.ts",
+      "sha256": "d61d3efeba21e84db2d5d3449bd6a96560fbb63f00a087b12ff5086aad71176c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/chimney-puffs.ts",
+      "sha256": "4711fa09c3474f5022483cd46cd5cd88c614168261bfb859b067e672c4a87012",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/circle-stars.ts",
+      "sha256": "8ee169ea0bb996350b9e9a65e4ef05c6e0f1393ca03f4b4e0baaf88a5f4e6fe6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/coin-stars.ts",
+      "sha256": "56524a276698ffe420c4b1d442a82fbdca16e6fcfc78c94d2bfbf28f702d3718",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-0.ts",
+      "sha256": "c8ff8ce685530102980d6602410ec426a479791c6a1747ce0e31a35b631fb993",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-1.ts",
+      "sha256": "2842e787f93b86e8e2db264d180b83d2365533990d03bc50852a55437b9d7083",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-2.ts",
+      "sha256": "94dc53d143504dbc6223bc0de7ec0d82ffe866c3d1ff73b6320c899c972b4ed6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-3.ts",
+      "sha256": "8177d6ed83901e637bdcd1f3a7e7d7e2277abf78b5abdab15929d501a6a86cf1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-4.ts",
+      "sha256": "b9c9ca77cc52e01ced52d4f8f0e6acb1e767f88df734178facff57533cfaef26",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-rain-0.ts",
+      "sha256": "d0e0c06b54cbe3c23a0ae11145c56152cfc3d338e4eb938bd28ccf0467af908d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-rain-1.ts",
+      "sha256": "ee221dced84a533590a2ea1ced850847c88956f21126a343f6c96b1afd231c63",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-rain-2.ts",
+      "sha256": "9a6e4e8748b667168f0c7fbfdd72f7a8068b009c65ecc4132fd9c4a7fa4ef39a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-rain-3.ts",
+      "sha256": "53b0128078fa37fad2f00eb789aac7cf36164204bad24a8784d14a0875d9ec60",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/confetti-rain-4.ts",
+      "sha256": "1b822021cad0456481429a1d79827ee4b9a6ec6a165e8f67aa67a73b335d245c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/crate-planks.ts",
+      "sha256": "387430683fcc0d71a3a8330a870a485d48b6f46968f6c40f2f0f2a85bcbbf6ba",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/crate-puffs.ts",
+      "sha256": "2ea914e77071044b56a26ed9ff9ae71e8cf17a68aead63aff717f9456f3aa0e9",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/crate-splinters.ts",
+      "sha256": "79577bf63bf70711463038ba36014b5105a973f8628e0f70900b6509645018ae",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/dash-lines.ts",
+      "sha256": "d2dbcbcda76792d38ea4752cfd0d4f40ec9a149f208f4ddac6069e734f316eca",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/dash-puffs.ts",
+      "sha256": "759464f97fa4aa0acb3fc73f31b47412438555e66f1bd6dd7730fd3c6a42dd6d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/debuff-drops.ts",
+      "sha256": "236e193e2ee49530f08d988f1f185f10bbe7f8d99ad53e8caa936b7f13d7f353",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/debuff-puffs.ts",
+      "sha256": "88b40311d2c4c42759a8edd5e40c42a2cb9211b45a0b4094abbd1bcf3f288a63",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/double-puffs.ts",
+      "sha256": "d82489a47552e4f951b9fd7f7604a51b4699f0b6c649001d3ffa42e238c5aca4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/double-stars.ts",
+      "sha256": "4a02fd29b6bbad4545a3ee0b53000b5e63e13f0af4b4b11480ccdd1af0ec2ff4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/drift-puffs.ts",
+      "sha256": "75595f26c5f8162e78ef20484fc963688298725e026ad67d567dfea9b77c5851",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/drift-sparks.ts",
+      "sha256": "fc6935e807139a3e23d2107ec117466fce7e80a80fe66f417d3976f0f35ca312",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/drip-drop.ts",
+      "sha256": "84e9441aeec344a54e7503e9b1061a83c76449044331e672622053558c351fd7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/drip-plip.ts",
+      "sha256": "1bbf601c8ae9f698be8c5cb8bfacf2dbab0e295c8238c90d98c251184101d080",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/dust-grit.ts",
+      "sha256": "30cf701aa9f5092c21f83bb3150d3f4994a7da5f4e5a1f4bb4dcfd62ac5f0f66",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/dust-puffs.ts",
+      "sha256": "5a016ad6ded2a31fd46b5582071f207f1576c123c02e7cca243c5e63c47a7726",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/exhaust-puffs.ts",
+      "sha256": "ba00ba6b11ebb2e6bfb03d532210efda4cb074cf61ee071a8b3554bd8309f80f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/explosion-chips.ts",
+      "sha256": "9afd5214917226dfd5c262fb90863305c84d8b3d618c5c7a103c700753935dc5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/explosion-core.ts",
+      "sha256": "a698546bcdac658dfc963922446f996e5eeae398c8e8f0a8edaa614ff07ae544",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/explosion-puffs.ts",
+      "sha256": "e937dbbb3a6b7762da7c4312827e8adf1589f3dbdf878b0f425c80c27c1d33c1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/explosion-soot.ts",
+      "sha256": "140ed189c118a72882d8434fc44867edd220620b5afd7503eac07fd6f602d484",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fireflies-drift.ts",
+      "sha256": "2ae1bc057b8bb2b56bf35d7edf1a8a7e336ffe96a893540e631355f8e3bbc12e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fountain-jet.ts",
+      "sha256": "be0ad646012b3bb8c466d7ae34e47e730b152c7604cc4039093152f98c23f88a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/frozen-crystals.ts",
+      "sha256": "5a49c938138d4ebe200168dddb4af3e214ef520024ff31c985ed2c57d1138887",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/frozen-flakes.ts",
+      "sha256": "912be0a71e65c634e43d74fd02dbc6f53657010367220c385239dacd25357a97",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fuse-stars.ts",
+      "sha256": "89f52f292ffa2da5fc4fc99c8c3b329f6ccac096f8e7f73803ca76d689a628fe",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fw-burst-0.ts",
+      "sha256": "366bbbe4c80bd5e143c4b6ec08d98608b79740ee327d9b063891b9d16e8e24d6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fw-burst-1.ts",
+      "sha256": "37b8609daa332dce00f40465ee48e75048c5073490e99953f6fdeee01ea8ca43",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fw-burst-2.ts",
+      "sha256": "e68be5cd81d374a306358a3092f0490f5a44f19dc4d05d302d7fdf72e0681e4b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/fw-rise.ts",
+      "sha256": "e80b8d4268e93f661365eb987726b81b3e05eb27204b812cce9a31c9bc233a42",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/gem-bits.ts",
+      "sha256": "3719d99f6b985adb5a493cedbc71ea5cf6f61a87223e40d8a1e468fa6d876f12",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heal-hearts.ts",
+      "sha256": "2100a7ae7d75cbc91e1a7c63214af0903dd76d4a8790232b73060bbcbdbb9bbb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heal-plus.ts",
+      "sha256": "1a98c7668c2754f3af1f9e60307e5393ef2a133f42b4ae9323ecc94f28e47df8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heart-little.ts",
+      "sha256": "c7f4a8352f5eec193183f453c751b2d1d5381033a97bd027f6aaa85dee0a5c7d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heavy-bits.ts",
+      "sha256": "10a4261a5fce63bcb2fb06cd48c55a817e8e1fcf13d7334b14bd85904e79b784",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heavy-puffs.ts",
+      "sha256": "72814ec51ad84039a9323f3903569cf6272ef52005855c56414244071fdf39fc",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/heavy-stars.ts",
+      "sha256": "3b4e176152a63e4dbe0b0b2260d4fa813e583170d4bdcbf64f135ea731279ee2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/hit-bits.ts",
+      "sha256": "c47af14db1567340e1ff8fa5e2f9cbb5c55d435ebbc0d5d00f262dda5ccd2638",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/hit-stars.ts",
+      "sha256": "54a36c2444a27681be98fa1e0fca25e1f7e363623c8525b9a7b93e198f3580e5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/ice-glints.ts",
+      "sha256": "6fd0c103227a81cad4d39cb5e2d3500e53f3b45599d9d52c69cadffc71bd9c7b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/ice-shards.ts",
+      "sha256": "795e2df73b124fead035d17f30865513ed1b348eba628d15f71cd472e8d7c8b0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/jet-flames.ts",
+      "sha256": "cf32d4b5f8a4110d5cd6a1c78d0f19cfc80092acf546524d7b24e658210b8516",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/jet-puffs.ts",
+      "sha256": "52a6ae31430ae82c596cf121585c4794420f44c2c26511e9d1d3dc057577701f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/jump-puffs.ts",
+      "sha256": "37987c1b3bb2788a523f3f9ae62553791739b5d2ec8907c9c617cf9bca173878",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/land-puffs.ts",
+      "sha256": "e27862c364fd02fc2550c9e5a715a1c456eb8e01cc63eb48ed06198f07f9a5c3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/laser-bits.ts",
+      "sha256": "6dda3c99f05863684aee1aff242f2751b0ac18a23321b48b8775cad4632d1e13",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/laser-hit.ts",
+      "sha256": "6e90c67f31feacbdf3d704816f882b60669ea4226055fcd5075758c94eb4f822",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/leaves-fall.ts",
+      "sha256": "83e2b9f5d45f5ecdabf8409c0521fd44cb02374b1eab2e0a92a3252764f854de",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/level-confetti.ts",
+      "sha256": "7416f55a01c7197c6908385a6daad1b3dc45c2caccc429d45faaf2f9e381e489",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/level-stars.ts",
+      "sha256": "472795cf55a75d698141045dac642cd969db2f2ce3978f00397c38d1288f4340",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/magic-puffs.ts",
+      "sha256": "01b05ab6bdcdc8161c685a1420976bce89731a6b3c14a57ce10373e63b208995",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/magic-stars.ts",
+      "sha256": "031477e0175be16ffb0022389626e3868e1066bbe344657f62b15fff1a17beb4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/muzzle-flame.ts",
+      "sha256": "c5e0ff0198843a485f937e7ef7a7d5835d37bb9d9c443ec26ffeb73ee1016307",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/muzzle-puffs.ts",
+      "sha256": "e5f70441edf1ebf3d04171f0518467da3c59c08c1a55bb61554484164710d81e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/muzzle-stars.ts",
+      "sha256": "7dad359a80d376fc2101efff454d89760d74e2e8e22fa02efacbac6ad5c0f710",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/place-puffs.ts",
+      "sha256": "89eb68c5c997e1744c6f74f90695d8fb9da042d183bd5ad48737be51ef7f6f7b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/place-stars.ts",
+      "sha256": "a2d464b6ce6754aeba7bc2f7e440d7971fe8928d2cb3740023c096c06e96dca2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/poison-bubbles.ts",
+      "sha256": "f4de9584154343b8f7ce9663fb1f8609ad88859abec59b86670b71bcf4c35684",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/poof-puffs.ts",
+      "sha256": "accb0766b6ae2acadbeb2196266dde946ff3314e703c7befc8b7501869de715f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/poof-stars.ts",
+      "sha256": "56dc95379d48231d69f75ed83dba9de1e3c5ff30e6df372a542fcb275c9a5e3b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/portal-stars.ts",
+      "sha256": "1ec22cd3c19723e71132531cd4ddcf91abaece6ddf73cd04cc2e116a09fbab0f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/power-stars.ts",
+      "sha256": "b4054405eaf08c1127125866d7941d327f148171554ed0266cdf71e7974d9155",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/remove-bits.ts",
+      "sha256": "c748b399fa53d391686284f4cacaa4ffe3da9cae723593f35204e364e00e7451",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/remove-puffs.ts",
+      "sha256": "08accb83cd676ff7846d5a4994d909f099d5043b5609795e8d82d3afefce62a3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/reward-coins.ts",
+      "sha256": "2b38fd68b120d03ee9f6b3c935d670d0f595734e666d187e0b19ee110174372f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/reward-stars.ts",
+      "sha256": "a439291a51e5a060895e567d0439a8eee54ad74e87f03762b8d9b116a0e82632",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/rock-bits.ts",
+      "sha256": "4a5eade3dc8922f897b4137e6328fb08c9b3e9dabdbef4ef597e42f84656d534",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/rock-chunks.ts",
+      "sha256": "281a05fe8b05a9d84f980a2e9bfb2a1ef7bec408db27388d9568f14746e32806",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/rock-puffs.ts",
+      "sha256": "18e3699df00727e1ca4e9f21c66c7f49e351a7798b1387b04d3c5666940ff340",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/rocket-flame.ts",
+      "sha256": "935f667938d0064c747af7adb969568754c36a53bce9328fd5c537ff6cff1677",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/rocket-puffs.ts",
+      "sha256": "d1390cbcd1e803afb4d318ccd132fe3505928f8c5e632fc0e9f84b128e875384",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/run-puffs.ts",
+      "sha256": "be7246817fefb2dcebb5e94ccb52a1cb3fa6e17b29d3cc2447ca91f785b1f332",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/shield-glints.ts",
+      "sha256": "f62aab1bf3122acb80c83434e2e14a1eab8b45b5cea775b7071fdd55724eb1d1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/shock-stars.ts",
+      "sha256": "66369143ac60eadd5234876e588e3abc0b9d7656dd04ca294d7668da7060a4fe",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/skid-grit.ts",
+      "sha256": "c15e02a64143cf299df60e0aa31ef7e03e3e0a251cfbc2b92e8cd5732cad7ec4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/skid-puffs.ts",
+      "sha256": "59255aaf61bac8297784b354c7f168c72bfc77f8e4ab4df52427097a2999c344",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/small-chips.ts",
+      "sha256": "bab3bb2ba8f618427f4b7151d6666c013ff6412d56dd1f34f585222de16e4951",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/small-core.ts",
+      "sha256": "40ded9ed0812ce9b8c15223bc46985ca2f2a7101c2bafe8a527387130cca711d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/small-crown.ts",
+      "sha256": "6e954d3bad5c1853d000ea244cb4e55cdf6b2e24c9ac73a90c5574ceb6639ac7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/small-puffs.ts",
+      "sha256": "7f03cc25964469329f01a21b2c4cadb87d202a3d56426570d1e651d4f8b5db8c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/small-stars.ts",
+      "sha256": "439c409be2e5b5109ec35a90bfaff880b879b05f6cb6ad71667623bb143fdbe7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/splash-column.ts",
+      "sha256": "e89991efd92c01a6887ac6f02c65e71cda6d0e4b7aea25ba4bc10b9eb578206b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/splash-crown.ts",
+      "sha256": "c00207e13bd9c7fc5b52835a9ee2b1f12524e1f40da6065ff5d6c654bce0869f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/splash-foam.ts",
+      "sha256": "672e9e1b714332461c32729550afec63c486266d8ce40bd37c6449eabf514473",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/star-ring.ts",
+      "sha256": "6ad8e4f5993177635a919d710b49cf36642a3895ea736209ea3806c55415aaa5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/steam-puffs.ts",
+      "sha256": "817b8a583f81d5c4d0d715a8bc2024b2e34a1c6d07e793cceecd52b8ba2f927d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/stomp-puffs.ts",
+      "sha256": "9757e559bc18f7f8f4c0e4124c4d36d6a89b7dc4f3297a136fdf4945abcb7e07",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/stomp-stars.ts",
+      "sha256": "0a95d84377653e0317100333081f668d375012e61af94c181ac307b7f998acb4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/stun-stars.ts",
+      "sha256": "797b55cd483078c9563a01e60203c94b8e20feb71f1fee28c36a57a7d52d2072",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/teleport-column.ts",
+      "sha256": "449c9f6beaf0c587b377acce21f9038d02c26504730eab2eb9e3fff9d5fbeca8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/teleport-poof.ts",
+      "sha256": "e00b781282f2748d900c6eec21d840b603db2cc67269a36acd673594de99b4af",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/tire-puffs.ts",
+      "sha256": "91c3647f1f3b81369511b14c807d3e7badd0698cacd5dec104578ffb886487a8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/torch-flames.ts",
+      "sha256": "d618b64e0af86eae909ca67d580794facb99b94fc06874b3b68ccab341944f93",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/twinkle-stars.ts",
+      "sha256": "fef4359821ac8215559c6921560be73ffc78f6394f4dbd5bb5a2b8b9bcb43bfe",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/wake-drops.ts",
+      "sha256": "8cd70665010ab3404c152043cb02981dab4b4f999210a9fda0e855dc7d2cb6b4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/wake-foam.ts",
+      "sha256": "8802fc87ed7c345c9297fc56f358fa8f91942517d32cf9809284af90d7d499e6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/wheel-grit.ts",
+      "sha256": "b263be047217e604e4bd9ea490dc07323f874aea8defa9dea68a1dca12bce869",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/emitters/wheel-puffs.ts",
+      "sha256": "45e3488d29b1766131bffcc39e32fd189f145cd779265b5ca76aebaeed096b30",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/exhaust.ts",
+      "sha256": "88f70c888446db498a95a15064ef71a3bc24e219b03bf8273d0fd50a798e058e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/explosion-small.ts",
+      "sha256": "0b4b4c2b50d025c0f11dcda704c99e9607d638373c1480223597c3cd49c542f2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/explosion.ts",
+      "sha256": "b744ca6160e6335333e696c6a525e13d98b336de5347c5e29525ad56b37cd388",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/fade.ts",
+      "sha256": "5b81db744e6876c2f6aff2f7c18e3ddf6a3b4bb7bd956d2655c341f789ec659f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/fireflies.ts",
+      "sha256": "4c6b2e656dd0e783fb68b8c6004804a241e1ddbc29d6e779c03ce2ad8c598760",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/fireworks.ts",
+      "sha256": "009a70eb7e9c2f8bdb2fb1442efb1964d39e8f319f02fc34abf46ef3d8265b75",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/fountain.ts",
+      "sha256": "fa6781d7ccd9eda2479e9e31b1efeb14f81218050dae5678a6d4214f0c8cbd64",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/frozen.ts",
+      "sha256": "64279ef8e7c4fb3cc974a1971ad989433d9162403fcc3512621988cbcecb8db1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/fuse.ts",
+      "sha256": "3cff85055026647fee9f7776616008d9f52e3f31679bbc9d39cad21c659b216b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/gem.ts",
+      "sha256": "42eef07b4afd3ee0b7f5a7b30a2a91ed3f4d8f473a33ae3547fbd12c6db9dcca",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/heal.ts",
+      "sha256": "02a6c01d2c3d2f01fdf470445c2e4e7e54af03ae4e8eafacc881690a6540c2bb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/heart.ts",
+      "sha256": "345bc010e49c023946afffb40175551bd905b28bc04038656def238b5b161829",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/hit-heavy.ts",
+      "sha256": "a6d35f66fdccd537f3fd7979b793415b6fdb281f576080ead35c0345fc4cc304",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/hit-small.ts",
+      "sha256": "7e00473635b832e80d9fdd39530a1c1e53b41b4c9a3efd187fa80471f116f6a1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/hit.ts",
+      "sha256": "d75a0cb754d918895ed7389bf45add147ba0561597a0203d98e854916cdb6e50",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/jump-dust.ts",
+      "sha256": "52e96fdc11f76020c5a40a5443ed2bd418f78e05b24421ed2d48864f3bd27811",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/land-dust.ts",
+      "sha256": "5dc8794ff3267086a6ef9237236ee168b50eb380009d14b9d4556aaffc1bcf5a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/laser.ts",
+      "sha256": "66170ddecca8729e9224cd1b45950e1a97e6d048bd4e1cb838729772d433820a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/leaves.ts",
+      "sha256": "afa67499c7833b9fcb734cbd58599619c948cd926652c495bd3c80c0c353437c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/level-up.ts",
+      "sha256": "3826d6592a5f00e9eaf6d603730eafa657d5ea9ab282a0b59cc18b43176d47a1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/magic-bolt.ts",
+      "sha256": "e2102494c8225278691c0bdc1e1ba2a2d733bb4c1337617ef80840e515ec54ce",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/magic-circle.ts",
+      "sha256": "3152f9330db58be07b5285717de06bda813cb54528f3fe9585c22c76ac5f7bb0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/magic.ts",
+      "sha256": "7c9b688032a256a1a35718caed20041b1bc19b215baa90b9406c654db9591ef8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/block.ts",
+      "sha256": "2e975dadf5484c8cd33512a554c4e82046808a88612935974255f26e0aae8845",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/coin.ts",
+      "sha256": "6e438f509b055dbbae9079cfee19cf6f2be5a6a72adbb7a9d46ca0631180e9d7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/drop.ts",
+      "sha256": "a5c0589395900c2fbb5942a7bae41482672ad0742899ba8b3badc00adb87f922",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/flame.ts",
+      "sha256": "16f58ba603a36b64a9624e3c505a92fbb766785e16a601a95558f26f709a2dc2",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/gem.ts",
+      "sha256": "179ef70ac78296f2be2c996b8842fefda57d01ec80ba896679d586f0bb819957",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/heart.ts",
+      "sha256": "cf1880c86b7ed792d635b9f69ddbcf1060a37748879b411698efd8e67dbfdcb9",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/puff.ts",
+      "sha256": "861b09dceed6ad228fbd5747192885f0bc6d6961403cb9b86d87ffb386a779b8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/ribbon.ts",
+      "sha256": "f58f59d4b0c7b474598298dd709a303543824920bd915bcab1ef3457ac548410",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/models/star.ts",
+      "sha256": "9cc92c1816787e69f8f791aca3c933fb93391e6c58b479de3881e2f007f73bc1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/muzzle.ts",
+      "sha256": "a8c2b0cce613392c1022b452a06fefa7e54f3ba804c4624b7c2d69a24c9af9c5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/poison.ts",
+      "sha256": "d302bcf66c0d0a141fc377a687bfb3771365544608e04a868be7b016bbeb1b3e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/poof.ts",
+      "sha256": "58e2f0bccae758ea582edf8421c2a1212cdb86c597c0f589f8e34023512265f6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/portal.ts",
+      "sha256": "cf3fe14c859059500716793899e62f163d6e62768e92a4fe5efbc55494347554",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/powerup.ts",
+      "sha256": "b7e7c3873e09829d93d616ad19270d85a2ee9c0a59aafbd63d4b17522801a8a5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/reward-burst.ts",
+      "sha256": "48a7c404dbe85b0c7f8a83fd5bdea7d39df22adb32d09de1bcb1b9b04975d2c1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/ripple.ts",
+      "sha256": "8a7a17c4a39a58b2700c16536ac45e18289e28c8e1623484abb7e8bb1a379085",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/rocket.ts",
+      "sha256": "fa35f9847864aa2c469c2786e19109254547b89efb95b37121cc324d310ff2d3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/run-dust.ts",
+      "sha256": "6ddb3995d729a9d57fca375456d331448f7b1d3c99dbb99ceb3ce58bd8107618",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/shield.ts",
+      "sha256": "cacadbbce39ed1973f3bce2ea822f91102a6962945d8217744ecc11ede0320da",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/shocked.ts",
+      "sha256": "387f6857c32a153c1645d1aac40059354c2f5ddc1385a5556003164899e796e8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/skid.ts",
+      "sha256": "4dab91517753b924a068c36da0427852bed42638506646b827c2ecff80272194",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/solid.ts",
+      "sha256": "5ed62f30d956091b2183bfbda9164e4c990862d666197a205dfadfaa72c884eb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/splash-small.ts",
+      "sha256": "22b9b26f7ee44a0375189cedb70dff1b5a33510ea8380d18fd482b748a507849",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/splash.ts",
+      "sha256": "93ccbc98677149bcf65465ea5a3f83bd65eadd09dd9912a8c84e1ed60fae1dbd",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/star-collect.ts",
+      "sha256": "36f3c9a0efd8f78436610785e440641c0547f194109ce2a68342dd39112e269e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/steam.ts",
+      "sha256": "9d00be0c84fa60093e5858dc168731064155ebaa43c7548e51d596c32cff91fc",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/stomp.ts",
+      "sha256": "6fc152cdd6a953e0451b512f3baea2cc4d3ddbaf74166a12f4b3f078beb23b78",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/stun.ts",
+      "sha256": "f34b50026901305169670f1929e2116b746706902614f051897075d58a9d201a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/teleport.ts",
+      "sha256": "e3c8285d6dacb57253c174987945d23483152d0dd1fe929c98cfee4956db54ad",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/tire-smoke.ts",
+      "sha256": "3d79be4308733994ff1962d4382fafc8678e0a94c8b2baa68937ed6270dd36ec",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/torch.ts",
+      "sha256": "41116284a53efe24bb65c4a7d26b9f2b05140753fe741e28ba85630d02867dfb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/twinkle.ts",
+      "sha256": "ea7ce645a46e962683219fae07cd2a38dc9052a3c37f000e4f1996dd7d3a6265",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/wake.ts",
+      "sha256": "9c1190ad14abd48e8b432fc034265b61e88097afc158637b915a7520bf166389",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "content/wheel-dust.ts",
+      "sha256": "638e9c9089a14c6da1c19b42f1f1aed4c7964ac324f93d15cebd11a25a2e1450",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "extension.json",
+      "sha256": "3158ae935a515b3037e1c85ec62c266677d1753662e5de5a3d313c2c61037332",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/block.glb",
+      "sha256": "478ae1d8362ccb2de44550c70ebbcb6d63d6bcf6b93153119d6347c2be701ff1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/coin.glb",
+      "sha256": "182d5eea8e58b47de9b364677248cdac5155770f1fa5127aa91f58cd24a37709",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/drop.glb",
+      "sha256": "16b3ca1c46893e4778576739792a852b4d76988c137a3b90d6445b97f624b96c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/flame.glb",
+      "sha256": "2adfcedf68c1c9926248c7c6c4968ba0c078808df6cf8f70719907ee25274e5c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/gem.glb",
+      "sha256": "5ffea1b777b1a06b7677c6cab0eb6cdeeb18c3e1af3db6ec97324295b25cf5e6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/heart.glb",
+      "sha256": "ff0f268365e5ba083fd5acc3f71ca31b36c53d40e6849c3c38068149a5983ed5",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/puff.glb",
+      "sha256": "ce3ef5f35418888c0cd5ed5bde4065d42632ed80cee451215a819445c2fc8ad6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/ribbon.glb",
+      "sha256": "09bef5f3387e051942f4e47202d6372efc2fc9cf145a4aa25e3672d9039e0af0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    },
+    {
+      "path": "models/star.glb",
+      "sha256": "31b6786855f562f089d42fe05a68e0a516bb4bd8bd1634722f717c0f30b20bbe",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
+    }
+  ],
+  "effects": [
+    {
+      "path": "content/afterburner.ts",
+      "type": "vfx",
+      "title": "Toy Jet Flame",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "exhaust",
+      "keywords": [
+        "afterburner",
+        "exhaust",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/boost.ts",
+      "type": "vfx",
+      "title": "Kart Boost",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "exhaust",
+      "keywords": [
+        "boost",
+        "exhaust",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/break-block.ts",
+      "type": "vfx",
+      "title": "Block Break",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "block",
+        "break",
+        "destruction",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/break-crate.ts",
+      "type": "vfx",
+      "title": "Crate Break",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "break",
+        "crate",
+        "destruction",
+        "toy"
+      ],
+      "element": "wood"
+    },
+    {
+      "path": "content/break-ice.ts",
+      "type": "vfx",
+      "title": "Ice Break",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "break",
+        "destruction",
+        "ice",
+        "toy"
+      ],
+      "element": "ice"
+    },
+    {
+      "path": "content/break-rock.ts",
+      "type": "vfx",
+      "title": "Rock Break",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "break",
+        "destruction",
+        "rock",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/bubbles.ts",
+      "type": "vfx",
+      "title": "Bubbles",
+      "loop": true,
+      "durationSeconds": 1.5,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "bubbles",
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/buff.ts",
+      "type": "vfx",
+      "title": "Buff",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "buff",
+      "keywords": [
+        "buff",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/build-place.ts",
+      "type": "vfx",
+      "title": "Build Place",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "build",
+        "destruction",
+        "place",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/build-remove.ts",
+      "type": "vfx",
+      "title": "Build Remove",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "destruction",
+      "keywords": [
+        "build",
+        "destruction",
+        "remove",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/bullet.ts",
+      "type": "vfx",
+      "title": "Pellet Trail",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "projectile",
+      "keywords": [
+        "bullet",
+        "projectile",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/burning.ts",
+      "type": "vfx",
+      "title": "Burning",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "status",
+      "keywords": [
+        "burning",
+        "status",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/campfire.ts",
+      "type": "vfx",
+      "title": "Campfire",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "campfire",
+        "fire",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/charge.ts",
+      "type": "vfx",
+      "title": "Charge",
+      "loop": true,
+      "durationSeconds": 1.2,
+      "impact": false,
+      "category": "magic-impact",
+      "keywords": [
+        "charge",
+        "magic-impact",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/checkpoint.ts",
+      "type": "vfx",
+      "title": "Checkpoint",
+      "loop": false,
+      "durationSeconds": 2,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "checkpoint",
+        "toy",
+        "ui"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/chest-open.ts",
+      "type": "vfx",
+      "title": "Chest Open",
+      "loop": false,
+      "durationSeconds": 1.8,
+      "impact": true,
+      "category": "pickup",
+      "keywords": [
+        "chest",
+        "open",
+        "pickup",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/chimney-smoke.ts",
+      "type": "vfx",
+      "title": "Chimney Smoke",
+      "loop": true,
+      "durationSeconds": 2,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "chimney",
+        "smoke",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/coin.ts",
+      "type": "vfx",
+      "title": "Coin Collect",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "pickup",
+      "keywords": [
+        "coin",
+        "pickup",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/confetti-rain.ts",
+      "type": "vfx",
+      "title": "Confetti Rain",
+      "loop": true,
+      "durationSeconds": 2,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "confetti",
+        "rain",
+        "toy",
+        "ui"
+      ]
+    },
+    {
+      "path": "content/confetti.ts",
+      "type": "vfx",
+      "title": "Confetti Pop",
+      "loop": false,
+      "durationSeconds": 2.6,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "confetti",
+        "toy",
+        "ui"
+      ]
+    },
+    {
+      "path": "content/dash.ts",
+      "type": "vfx",
+      "title": "Dash",
+      "loop": false,
+      "durationSeconds": 0.6,
+      "impact": true,
+      "category": "movement",
+      "keywords": [
+        "dash",
+        "movement",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/debuff.ts",
+      "type": "vfx",
+      "title": "Debuff",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "debuff",
+      "keywords": [
+        "debuff",
+        "toy"
+      ],
+      "element": "shadow"
+    },
+    {
+      "path": "content/double-jump.ts",
+      "type": "vfx",
+      "title": "Double Jump",
+      "loop": false,
+      "durationSeconds": 0.8,
+      "impact": true,
+      "category": "movement",
+      "keywords": [
+        "double",
+        "jump",
+        "movement",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/drift-sparks.ts",
+      "type": "vfx",
+      "title": "Drift Sparks",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "exhaust",
+      "keywords": [
+        "drift",
+        "exhaust",
+        "sparks",
+        "toy"
+      ],
+      "element": "lightning"
+    },
+    {
+      "path": "content/drip.ts",
+      "type": "vfx",
+      "title": "Drip",
+      "loop": true,
+      "durationSeconds": 1.2,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "drip",
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/dust.ts",
+      "type": "vfx",
+      "title": "Dust Cloud",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "smoke",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/exhaust.ts",
+      "type": "vfx",
+      "title": "Kart Exhaust",
+      "loop": true,
+      "durationSeconds": 0.6,
+      "impact": false,
+      "category": "exhaust",
+      "keywords": [
+        "exhaust",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/explosion-small.ts",
+      "type": "vfx",
+      "title": "Small Explosion",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "explosion",
+      "keywords": [
+        "explosion",
+        "small",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/explosion.ts",
+      "type": "vfx",
+      "title": "Explosion",
+      "loop": false,
+      "durationSeconds": 2,
+      "impact": true,
+      "category": "explosion",
+      "keywords": [
+        "explosion",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/fireflies.ts",
+      "type": "vfx",
+      "title": "Fireflies",
+      "loop": true,
+      "durationSeconds": 3,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "ambient",
+        "fireflies",
+        "toy"
+      ],
+      "element": "nature"
+    },
+    {
+      "path": "content/fireworks.ts",
+      "type": "vfx",
+      "title": "Fireworks",
+      "loop": false,
+      "durationSeconds": 3,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "fireworks",
+        "toy",
+        "ui"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/fountain.ts",
+      "type": "vfx",
+      "title": "Fountain",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "fountain",
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/frozen.ts",
+      "type": "vfx",
+      "title": "Frozen",
+      "loop": true,
+      "durationSeconds": 1.5,
+      "impact": false,
+      "category": "status",
+      "keywords": [
+        "frozen",
+        "status",
+        "toy"
+      ],
+      "element": "ice"
+    },
+    {
+      "path": "content/fuse.ts",
+      "type": "vfx",
+      "title": "Fuse",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "fire",
+        "fuse",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/gem.ts",
+      "type": "vfx",
+      "title": "Gem Collect",
+      "loop": false,
+      "durationSeconds": 1.1,
+      "impact": true,
+      "category": "pickup",
+      "keywords": [
+        "gem",
+        "pickup",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/heal.ts",
+      "type": "vfx",
+      "title": "Heal",
+      "loop": false,
+      "durationSeconds": 1.8,
+      "impact": true,
+      "category": "heal",
+      "keywords": [
+        "heal",
+        "toy"
+      ],
+      "element": "life"
+    },
+    {
+      "path": "content/heart.ts",
+      "type": "vfx",
+      "title": "Heart Pickup",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "pickup",
+      "keywords": [
+        "heart",
+        "pickup",
+        "toy"
+      ],
+      "element": "life"
+    },
+    {
+      "path": "content/hit-heavy.ts",
+      "type": "vfx",
+      "title": "Heavy Hit",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "heavy",
+        "hit",
+        "hit-spark",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/hit-small.ts",
+      "type": "vfx",
+      "title": "Small Hit",
+      "loop": false,
+      "durationSeconds": 0.6,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "hit",
+        "hit-spark",
+        "small",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/hit.ts",
+      "type": "vfx",
+      "title": "Hit",
+      "loop": false,
+      "durationSeconds": 0.8,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "hit",
+        "hit-spark",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/jump-dust.ts",
+      "type": "vfx",
+      "title": "Jump Dust",
+      "loop": false,
+      "durationSeconds": 0.8,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "jump",
+        "smoke",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/land-dust.ts",
+      "type": "vfx",
+      "title": "Land Dust",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "land",
+        "smoke",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/laser.ts",
+      "type": "vfx",
+      "title": "Toy Laser",
+      "loop": false,
+      "durationSeconds": 0.6,
+      "impact": true,
+      "category": "beam",
+      "keywords": [
+        "beam",
+        "laser",
+        "toy"
+      ],
+      "element": "lightning"
+    },
+    {
+      "path": "content/leaves.ts",
+      "type": "vfx",
+      "title": "Falling Leaves",
+      "loop": true,
+      "durationSeconds": 3,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "ambient",
+        "leaves",
+        "toy"
+      ],
+      "element": "nature"
+    },
+    {
+      "path": "content/level-up.ts",
+      "type": "vfx",
+      "title": "Level Up",
+      "loop": false,
+      "durationSeconds": 2.2,
+      "impact": true,
+      "category": "buff",
+      "keywords": [
+        "buff",
+        "level",
+        "toy",
+        "up"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/magic-bolt.ts",
+      "type": "vfx",
+      "title": "Magic Bolt",
+      "loop": true,
+      "durationSeconds": 0.6,
+      "impact": false,
+      "category": "projectile",
+      "keywords": [
+        "bolt",
+        "magic",
+        "projectile",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/magic-circle.ts",
+      "type": "vfx",
+      "title": "Magic Circle",
+      "loop": false,
+      "durationSeconds": 3,
+      "impact": true,
+      "category": "magic-impact",
+      "keywords": [
+        "circle",
+        "magic",
+        "magic-impact",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/magic.ts",
+      "type": "vfx",
+      "title": "Magic Hit",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "magic-impact",
+      "keywords": [
+        "magic",
+        "magic-impact",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/muzzle.ts",
+      "type": "vfx",
+      "title": "Toy Blaster",
+      "loop": false,
+      "durationSeconds": 0.7,
+      "impact": true,
+      "category": "gunfire",
+      "keywords": [
+        "gunfire",
+        "muzzle",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/poison.ts",
+      "type": "vfx",
+      "title": "Poisoned",
+      "loop": true,
+      "durationSeconds": 1.2,
+      "impact": false,
+      "category": "status",
+      "keywords": [
+        "poison",
+        "status",
+        "toy"
+      ],
+      "element": "poison"
+    },
+    {
+      "path": "content/poof.ts",
+      "type": "vfx",
+      "title": "Poof",
+      "loop": false,
+      "durationSeconds": 1.1,
+      "impact": true,
+      "category": "smoke",
+      "keywords": [
+        "poof",
+        "smoke",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/portal.ts",
+      "type": "vfx",
+      "title": "Portal",
+      "loop": true,
+      "durationSeconds": 2,
+      "impact": false,
+      "category": "magic-impact",
+      "keywords": [
+        "magic-impact",
+        "portal",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/powerup.ts",
+      "type": "vfx",
+      "title": "Power-up",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "buff",
+      "keywords": [
+        "buff",
+        "powerup",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/reward-burst.ts",
+      "type": "vfx",
+      "title": "Reward Burst",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "ui",
+      "keywords": [
+        "burst",
+        "reward",
+        "toy",
+        "ui"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/ripple.ts",
+      "type": "vfx",
+      "title": "Ripple",
+      "loop": true,
+      "durationSeconds": 1.8,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "ripple",
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/rocket.ts",
+      "type": "vfx",
+      "title": "Toy Rocket Trail",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "projectile",
+      "keywords": [
+        "projectile",
+        "rocket",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/run-dust.ts",
+      "type": "vfx",
+      "title": "Run Dust",
+      "loop": true,
+      "durationSeconds": 0.4,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "run",
+        "smoke",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/shield.ts",
+      "type": "vfx",
+      "title": "Shield",
+      "loop": true,
+      "durationSeconds": 2,
+      "impact": false,
+      "category": "buff",
+      "keywords": [
+        "buff",
+        "shield",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/shocked.ts",
+      "type": "vfx",
+      "title": "Shocked",
+      "loop": true,
+      "durationSeconds": 0.6,
+      "impact": false,
+      "category": "status",
+      "keywords": [
+        "shocked",
+        "status",
+        "toy"
+      ],
+      "element": "lightning"
+    },
+    {
+      "path": "content/skid.ts",
+      "type": "vfx",
+      "title": "Skid",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "skid",
+        "smoke",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/splash-small.ts",
+      "type": "vfx",
+      "title": "Small Splash",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "splash",
+      "keywords": [
+        "small",
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/splash.ts",
+      "type": "vfx",
+      "title": "Splash",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "splash",
+      "keywords": [
+        "splash",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/star-collect.ts",
+      "type": "vfx",
+      "title": "Star Collect",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "pickup",
+      "keywords": [
+        "collect",
+        "pickup",
+        "star",
+        "toy"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/steam.ts",
+      "type": "vfx",
+      "title": "Steam",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "smoke",
+        "steam",
+        "toy"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/stomp.ts",
+      "type": "vfx",
+      "title": "Stomp",
+      "loop": false,
+      "durationSeconds": 1,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "hit-spark",
+        "stomp",
+        "toy"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/stun.ts",
+      "type": "vfx",
+      "title": "Stunned",
+      "loop": true,
+      "durationSeconds": 1.2,
+      "impact": false,
+      "category": "status",
+      "keywords": [
+        "status",
+        "stun",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/teleport.ts",
+      "type": "vfx",
+      "title": "Teleport",
+      "loop": false,
+      "durationSeconds": 1.4,
+      "impact": true,
+      "category": "magic-impact",
+      "keywords": [
+        "magic-impact",
+        "teleport",
+        "toy"
+      ],
+      "element": "arcane"
+    },
+    {
+      "path": "content/tire-smoke.ts",
+      "type": "vfx",
+      "title": "Tyre Smoke",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "smoke",
+        "tire",
+        "toy"
+      ]
+    },
+    {
+      "path": "content/torch.ts",
+      "type": "vfx",
+      "title": "Torch",
+      "loop": true,
+      "durationSeconds": 1,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "fire",
+        "torch",
+        "toy"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/twinkle.ts",
+      "type": "vfx",
+      "title": "Twinkle",
+      "loop": true,
+      "durationSeconds": 1.6,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "ambient",
+        "toy",
+        "twinkle"
+      ],
+      "element": "light"
+    },
+    {
+      "path": "content/wake.ts",
+      "type": "vfx",
+      "title": "Boat Wake",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "splash",
+        "toy",
+        "wake"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/wheel-dust.ts",
+      "type": "vfx",
+      "title": "Wheel Dust",
+      "loop": true,
+      "durationSeconds": 0.5,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "smoke",
+        "toy",
+        "wheel"
+      ],
+      "element": "earth"
+    }
+  ]
+}

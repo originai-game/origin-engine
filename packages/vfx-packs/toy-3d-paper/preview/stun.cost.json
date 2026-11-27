@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.9.0",
+    "revision": "066f072a24525d2258ee15230759c7674c63ee39"
+  },
+  "device": "x86_64",
+  "peakFrameMs": {
+    "sim": 0.013,
+    "total": 0.041,
+    "transparent": 0.006
+  },
+  "peakParticles": 8,
+  "draws": 12,
+  "bounds": {
+    "anchor": "ground",
+    "belowOrigin": 0.07,
+    "clipped": false,
+    "max": [
+      0.27,
+      0.06,
+      0.23
+    ],
+    "min": [
+      -0.25,
+      -0.06,
+      -0.25
+    ],
+    "size": [
+      0.52,
+      0.13,
+      0.48
+    ]
+  }
+}

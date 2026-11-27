@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og vfx add",
+      "summary": "Two downloadable toy effect packs for the toy-3d look, 72 effects each with the same names, timing and placement: `toy-3d` (satin plastic) and `toy-3d-paper` (cut card with light through it, for the paper variant). Every effect is lit solid matter: puffs, pieces, drops and flame shapes as small lit meshes with rings and point lights, so smoke and dust pop up and shrink away. Install one with `og vfx add toy-3d` and spawn `base/vfx/toy-3d/<name>`; a game changes look by changing the pack name."
+    }
+  ]
+}

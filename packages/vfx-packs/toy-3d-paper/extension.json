@@ -1,0 +1,54 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "toy-3d-paper",
+  "version": "1.0.0",
+  "description": "Paper-craft effects for toy-3d's paper variant: thin cut card in soft, slightly warm colours: cloud cutouts for smoke and dust that stand facing the viewer, card squares and punched dots for debris, flat stars, hearts and flames that tumble as they fall.",
+  "minEngine": "0.9.0",
+  "tags": {
+    "style": "stylised",
+    "dim": "3d",
+    "category": [
+      "ambient",
+      "beam",
+      "buff",
+      "debuff",
+      "destruction",
+      "exhaust",
+      "explosion",
+      "fire",
+      "gunfire",
+      "heal",
+      "hit-spark",
+      "magic-impact",
+      "movement",
+      "pickup",
+      "projectile",
+      "smoke",
+      "splash",
+      "status",
+      "ui"
+    ],
+    "element": [
+      "arcane",
+      "earth",
+      "fire",
+      "ice",
+      "life",
+      "light",
+      "lightning",
+      "nature",
+      "poison",
+      "shadow",
+      "water",
+      "wood"
+    ]
+  },
+  "keywords": [
+    "3d",
+    "craft",
+    "paper",
+    "toy",
+    "toy-3d"
+  ]
+}
