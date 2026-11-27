@@ -1,13 +1,13 @@
 {
   "format": 1,
   "engine": {
-    "version": "0.8.0",
+    "version": "0.9.0",
     "revision": "27b1a1d3b5f7c14d7fc4ed386ad897727e0b7ea3"
   },
   "files": [
     {
       "path": "README.md",
-      "sha256": "583e854643fe3955999cdbd26b9d53487b91c178fc4b0ff2abae4828c80e0e7c",
+      "sha256": "b71ed3d3e114b98832e5a8133dd2158040bb9993547a9be5acc9196c82b47b16",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html"
@@ -16,8 +16,8 @@
       "derived": "authored"
     },
     {
-      "path": "aoi-chou.ogt",
-      "sha256": "3787796a61e94e18f91ceb220e27602cd6a2db0f4b1022499a70e2347fb40066",
+      "path": "content/aoi-chou.ts",
+      "sha256": "87f10d8940e7e0bb2b0f10c24480134d30f60984726868074e7ed99e50845ef8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -27,8 +27,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-0-0-0-0.effect.ogt",
-      "sha256": "b0d780ed8bad59fa183834ad64c6094333f4e94e293ee9d7fa8afe7f4c425d9d",
+      "path": "content/aoi-chou/n0-0-0-0-0.effect.ts",
+      "sha256": "b33050576e3006e799a1e46bc99f6b45670006fd5476745cfdc21a30eb2e32b1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -38,8 +38,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-1-0-0-0.effect.ogt",
-      "sha256": "81df47d5744f86a8223b207a539c5ee941502b7e5cb22237480dae162afcff1c",
+      "path": "content/aoi-chou/n0-1-0-0-0.effect.ts",
+      "sha256": "4dce8c652de9d89f9e9936cebc1effb55b742f264d58a5515c5d1cd1c4c45d15",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -49,8 +49,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-1-0-0-1-0.emitter.ogt",
-      "sha256": "c2e173dcf2b1622c7d9682e5701a51e954590041b9d10552c1ad5ed0acc62edb",
+      "path": "content/aoi-chou/n0-1-0-0-1-0.emitter.ts",
+      "sha256": "238041678c6960f9d4848d41f8db9f22ff2fb372598e709949b0e97a3d8960a4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -60,8 +60,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-1-0-0-1-0.parent.ogt",
-      "sha256": "20f7f5a845abb1706cd40aa13376220fdeab8e8c96bee3cf3b0410f2db2a97e5",
+      "path": "content/aoi-chou/n0-1-0-0-1-0.parent.ts",
+      "sha256": "9825d39461ec43e969c9d9d02174c8175df18205654bf59d963847545e1acd43",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -71,8 +71,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-1-0-0-1.emitter.ogt",
-      "sha256": "bdcef9b824e9713c840e39c27e7f81402ab11a880fbcc558952fe56c13ae75e7",
+      "path": "content/aoi-chou/n0-1-0-0-1.emitter.ts",
+      "sha256": "701269bb574a2550c45e2213858f56d45d8f9043417e738c3de355dc5b9d7e24",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
@@ -82,344 +82,344 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "aoi-chou/n0-1-0-0-1.parent.ogt",
-      "sha256": "dc765366edba4e23263bbf8f0d5a89616355309540e8e2e200fec17292a1cc30",
+      "path": "content/aoi-chou/n0-1-0-0-1.parent.ts",
+      "sha256": "5cdc33e1bbb0011119398296b191a6b943d4f9a8e72a07e6cbb1d7a8a5cbac56",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
         "file": "HATO-Springhascome/Butterfliesflutter/aoi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/iwai-ume.ts",
+      "sha256": "ffdd93e2c2db23e7a55c9efc69999dfbe8a2d1aca809789381b4c257b8b39cf8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/iwai-ume/n0-0-0.emitter.ts",
+      "sha256": "d1986e3f2b2ee51ce96f65e0400ffa5387ec9dbb496f7207e032e17e5432f57e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/iwai-ume/n0-0-0.parent.ts",
+      "sha256": "aa7a4ed92a5d1016961b40177ff3f55aeb0d023c4a6dfe6c584ecb2c9b3bc702",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/iwai-ume/n0-0.emitter.ts",
+      "sha256": "bd7d691994cb6a99f78b68448d083ca7d5bed7a77cb02b4ed6e8b9b6f94a72c6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/iwai-ume/n0-0.parent.ts",
+      "sha256": "ee10692f8427ef40860d080621f7adcc4c45e8720437935bd50530d049564bf1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/kiroi-chou.ts",
+      "sha256": "1efd4391923831930011dbad32df087160c2c3ff82860a51693599db3c9319d5",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/kiroi-chou/n0-0-0-0-0-0.effect.ts",
+      "sha256": "34f7ca59b85bfd103f555d116b3a61833a089ec585a70a193f8de5729bd085d0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/kiroi-chou/n0-0-1-0-0-0.effect.ts",
+      "sha256": "adaec863277ee99818c9c1dd745967ba1911a998968f925ea796f4730515ff20",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/kiroi-chou/n0-0-1-0-0-1.emitter.ts",
+      "sha256": "e0b60bb29d047c8d18b9f7bec0bf98d6967e7056e890256607858111e7f7cde7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/kiroi-chou/n0-0-1-0-0-1.parent.ts",
+      "sha256": "59a50bbc4cf9c1a66cac9874e07ef4b86cbf7c60901e5c102fdd8e816d8e1338",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1.ts",
+      "sha256": "7715cb9b021f6e773f5919171042ff056f8aa0486dbca8607dd2202f7eb83b30",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-0-0.effect.ts",
+      "sha256": "7a1981559a823c2906fc979009e971cf93f07d546ecfa71d33f0616aa4b07027",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-0-1.effect.ts",
+      "sha256": "2b6d34cd784912d7fbdbaba76c3013167ae6d977cc08f7724e6b9632e168d2c8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-0-2.effect.ts",
+      "sha256": "56da3eb49cba318b110e8e2c39bf2cdce0432e6703da9c9843c832e09e289b45",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-0-3.effect.ts",
+      "sha256": "b78d060f7abc79f918cd931d36cd6a9f2e2ed431bea5d3ed997214d47684db0b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-0-4.effect.ts",
+      "sha256": "f510e0a43c94d6d588fe6515ebb0515ae5fc263c4010e33f5d89363887de154c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-0-1.emitter.ts",
+      "sha256": "29d0e966b0641b8ef2b009772a4432b726f63d21633248441a203d0a53d2f34b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-0-0.effect.ts",
+      "sha256": "f5b3d487214eb811d422d95d2f1857ab724667345a411f8d03b7962c26ca4951",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-0-1.effect.ts",
+      "sha256": "19f364719c238431ae11549c5a786baac75dad07d5726a2ffe20a6ede42706cf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-0-2.effect.ts",
+      "sha256": "6e38cb4f7d54c0dfe93555311877f4c56222158fe95c19d10dbc2b29dcde961a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-0-3.effect.ts",
+      "sha256": "5febcee19b10a3b59f12e957bd52a6ae632ed7886c0f41bed64397053ecd7fc7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-0-4.effect.ts",
+      "sha256": "8369e92accf333bfb6ccdaff404c9db895dd3dcc2f1d1f926b7ffb06761b800b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-1-1.emitter.ts",
+      "sha256": "0facbf84c295bacd491f609b5e81109af8c4c8fe3177f6e07edec06f6b459641",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-0-0.effect.ts",
+      "sha256": "ddf3ee9f5f0a1966bb98a8ad01bb57738e2ded15d0eda32c21a47cca0dbe41ae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-0-1.effect.ts",
+      "sha256": "65e072e81d0a10cc08ec46b52c65254137aa2f6b86e17a6be82ceb78822d4244",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-0-2.effect.ts",
+      "sha256": "66da1b25dd9b3a85bd9e986f59d7e384c2a896aeaefde98e145a60ee089e81ad",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-0-3.effect.ts",
+      "sha256": "3b155be95407f361dadef6c8a658a087642ffcaa373538c0a6a49681a2ffc5b1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-0-4.effect.ts",
+      "sha256": "f2ab05b2136a384bb015302713c24bb4e930ee7e7d91bfa24948d51fa68685e1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "converted by og vfx import"
+    },
+    {
+      "path": "content/sakura1/n0-2-1.emitter.ts",
+      "sha256": "62abdc5fe0d14de1a444cff3f5edfd2128bd28a9a93f6c65998b15b4df9d45ea",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
       },
       "credit": "Effekseer and HATO01",
       "derived": "converted by og vfx import"
     },
     {
       "path": "extension.json",
-      "sha256": "6eb07e13a9de78c09d6fb9ebcab0e6648f83f5a8ea797ff82862d2fb06044e9d",
+      "sha256": "df8991013f3e5a01917a9a333c35c6892ba5868a00e31414e914c2fca2166ee5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/HATO01/index.html"
       },
       "credit": "Effekseer and HATO01",
       "derived": "authored"
-    },
-    {
-      "path": "iwai-ume.ogt",
-      "sha256": "a557a34bf3da811521cbe0a5064cf56883b66eb8d994937213e7505d2a69ea01",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "iwai-ume/n0-0-0.emitter.ogt",
-      "sha256": "b0a1f06f1fbeb74be08009ae20b1f32df16df4ca2d17bd92cbd757e519fae76f",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "iwai-ume/n0-0-0.parent.ogt",
-      "sha256": "84ea0c95cc039d4e1675785142785ca8e44c0d1ce2fc65a04e0bb72c45cf3603",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "iwai-ume/n0-0.emitter.ogt",
-      "sha256": "8f101102494ef1209152af94a6f2975c2d404e9d7cbc3455e649f860da1fe047",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "iwai-ume/n0-0.parent.ogt",
-      "sha256": "bed651ac4a87f3b3660166240a81642613ae67cc6c7aca75f864fc4243dc06b5",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/celebration/iwai-ume.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "kiroi-chou.ogt",
-      "sha256": "69820e6a3395cdc5b41b98e0453be2004f37b0756f78b0860d8fe592548ed8c7",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "kiroi-chou/n0-0-0-0-0-0.effect.ogt",
-      "sha256": "d2ee3c38cfd1ee2f918a16c04408b15370c60d826a784e60bdff64c713cfd581",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "kiroi-chou/n0-0-1-0-0-0.effect.ogt",
-      "sha256": "dedb5af2b46aeddbd77961714b940574d78ada76f5b408f7f0cf6b5d43fc1373",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "kiroi-chou/n0-0-1-0-0-1.emitter.ogt",
-      "sha256": "77d67f3fdbe33c5d1ff3f39e59f1cb6e911a7914c1b0e830b015142873db7ee8",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "kiroi-chou/n0-0-1-0-0-1.parent.ogt",
-      "sha256": "c80af099e2c701bf96b3a4dc301480e8fcbf7fd0a9c5985ae4515713bd92e17c",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Butterfliesflutter/kiroi-chou.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1.ogt",
-      "sha256": "d4cab7a872df56604a827c35082751eac684b8dbb274fcdd77a2028e7e3b3730",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-0-0.effect.ogt",
-      "sha256": "bee363ffd20186b78fd759614025ac9b211c0b06b5d5fb4d98d830f2b0952f24",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-0-1.effect.ogt",
-      "sha256": "929deb8a03b474a1b4b37e2a4b22c427c557cd35f511f711e817567737d93b69",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-0-2.effect.ogt",
-      "sha256": "4cf22728d938b14a6d0e8d3ceada61e81742a038b0da5fdb0ba53e89260a6417",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-0-3.effect.ogt",
-      "sha256": "821643ed181cb473ca6fd1f61e68270c7710043f4dfdf1969d3f4d66382364c2",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-0-4.effect.ogt",
-      "sha256": "9f2f202503acc3a4bf9e9992913736f6637de981929d7cefc9bccf100f48dabf",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-0-1.emitter.ogt",
-      "sha256": "9e390a5cd0dcba9ca55eceef6fdd564065db70ad0ae13aefd7380fc9cc55acbc",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-0-0.effect.ogt",
-      "sha256": "f536e1b2710f7424476095fc00e3f38e1d96002163241a700e166d10f2b2b8e3",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-0-1.effect.ogt",
-      "sha256": "87c52fd7bdde5fcf997904dfeace6885a18e763be1a3088a9f1252eb1c8dfc13",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-0-2.effect.ogt",
-      "sha256": "0fe142dfa695f389a6c4be4863db77bc1d85146b90a5cfd5617832df88b274c1",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-0-3.effect.ogt",
-      "sha256": "2e9bed2c810a7e99dce4e498c03c0baa7f45333cb83734826699342b16e5a2ef",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-0-4.effect.ogt",
-      "sha256": "8b1eb9955c02294ab8a06116941cb4d3d9908c4000b5f88b779edc249a1eb410",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-1-1.emitter.ogt",
-      "sha256": "70e4a0c8b6cd040d708e919c5545740b69e78527242c112d7a30b2527d34193e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-0-0.effect.ogt",
-      "sha256": "119973f548ca69ca14e38890247373c1d7ae0a64436f33c2004f693818e6210e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-0-1.effect.ogt",
-      "sha256": "bd36352dae75b7b4545741941a91e46d87f9e71558d0cb247f81def3e6cb47c8",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-0-2.effect.ogt",
-      "sha256": "8f98c88683ab64b341fbb578097f3bf2aa8cb99c35320e794fe6544882519d0e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-0-3.effect.ogt",
-      "sha256": "a6dd140be3ea73829a019285ea56c54b4d7e1f496b92cdbf80a73c1f92389288",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-0-4.effect.ogt",
-      "sha256": "cb7be0953ad4dd27d4338e0aa7ea25401ade902404a63e55adf5124c46a091f5",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "sakura1/n0-2-1.emitter.ogt",
-      "sha256": "31935e1d5862ecd55f460ee20a872d79ef8ed8866ab508ca57f23f769ea71578",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
-        "file": "HATO-Springhascome/Flowersbloom/sakura1.efkefc"
-      },
-      "credit": "Effekseer and HATO01",
-      "derived": "converted by og vfx import"
     },
     {
       "path": "textures/aoi-hane.png",
@@ -479,7 +479,7 @@
   ],
   "effects": [
     {
-      "path": "aoi-chou.ogt",
+      "path": "content/aoi-chou.ts",
       "type": "vfx",
       "title": "Aoi Chou",
       "loop": true,
@@ -495,7 +495,7 @@
       "element": "nature"
     },
     {
-      "path": "iwai-ume.ogt",
+      "path": "content/iwai-ume.ts",
       "type": "vfx",
       "title": "Iwai Ume",
       "loop": false,
@@ -511,7 +511,7 @@
       "element": "nature"
     },
     {
-      "path": "kiroi-chou.ogt",
+      "path": "content/kiroi-chou.ts",
       "type": "vfx",
       "title": "Kiroi Chou",
       "loop": false,
@@ -527,7 +527,7 @@
       "element": "nature"
     },
     {
-      "path": "sakura1.ogt",
+      "path": "content/sakura1.ts",
       "type": "vfx",
       "title": "Sakura 1",
       "loop": false,

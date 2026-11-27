@@ -1,0 +1,50 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 1.3 "地面リング"
+export default file.effect({
+  "main": {
+    "texture": {
+      "$ogRef": "base/vfx/effekseer-tktk01/textures/Shock_wave_ring0011"
+    },
+    "channel": "rgba",
+    "uv": {}
+  },
+  "alpha": {
+    "kind": "curve",
+    "keys": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.5,
+        1.0
+      ],
+      [
+        0.7031,
+        0.9663
+      ],
+      [
+        0.8125,
+        0.8395
+      ],
+      [
+        0.8594,
+        0.7198
+      ],
+      [
+        0.9062,
+        0.5466
+      ],
+      [
+        0.9531,
+        0.3099
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ]
+  },
+  "blend": "additive",
+  "doubleSided": true
+});

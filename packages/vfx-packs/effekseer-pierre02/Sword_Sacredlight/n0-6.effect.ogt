@@ -1,8 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 0.6 "Tracker_5"
-main "vfx/effekseer-pierre02/textures/Line3.png" rgba {
-}
-blend additive
-doubleSided true

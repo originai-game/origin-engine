@@ -1,13 +1,23 @@
 {
   "format": 1,
   "engine": {
-    "version": "0.8.0",
+    "version": "0.9.0",
     "revision": "27b1a1d3b5f7c14d7fc4ed386ad897727e0b7ea3"
   },
   "files": [
     {
-      "path": "Atmosphere.ogt",
-      "sha256": "2f2548dabb14ea9a25cf2f19f380d14c5dcdd5aed2118e8bc09c560fa010bee5",
+      "path": "README.md",
+      "sha256": "9af3778187282d1eebfc351a045de330d9ceee9b415ce4b0fec1c543097ad77e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "authored"
+    },
+    {
+      "path": "content/Atmosphere.ts",
+      "sha256": "0d510cdb946122cc7b391c022c2fc5577e9701d9d1a4a99d6e22f8466d9a9e50",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -17,8 +27,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-0.effect.ogt",
-      "sha256": "bc98fed3d48f655671cce3cc94e8b507eb01fa6d537c7c5040f0db9dfd26fbb4",
+      "path": "content/Atmosphere/n0-0.effect.ts",
+      "sha256": "75594e559bb4f0bc35fac89cf29caca44c5cc23b454b42576568252186d35e99",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -28,8 +38,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-0.emitter.ogt",
-      "sha256": "a7e7b2c9fb1160cf6665488857566a6bccdf920f6e2cf2bd1efddc730a99be94",
+      "path": "content/Atmosphere/n0-0.emitter.ts",
+      "sha256": "df26b5a7b1ee28a30f155b020b327b2005136a457968c1da4e2a92f925372f82",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -39,8 +49,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-0.parent.ogt",
-      "sha256": "0a7a8730255fa4898ad5bf667d4b0b3d77bc337bb2df7ff5da904f3bae67aed8",
+      "path": "content/Atmosphere/n0-0.parent.ts",
+      "sha256": "b4666c1fe280df4dce227abf0d9a8bb4312502a51f80e5cdcff75c6239208828",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -50,8 +60,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-1.effect.ogt",
-      "sha256": "c8b1a95795126b2a73ef2404d3b0bc68c3ed5f0beec3fafcc26081491f01f5d0",
+      "path": "content/Atmosphere/n0-1.effect.ts",
+      "sha256": "f051632936cb8d846fab1b8116028c4e39c3106f881b84dec529b6d4d234b151",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -61,8 +71,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-1.emitter.ogt",
-      "sha256": "002b9dd9efab483f9a48fb6a70a23f4ef1badffd8360ed80638a8946a37edefb",
+      "path": "content/Atmosphere/n0-1.emitter.ts",
+      "sha256": "ded12bb7b15df50e7724f5d67fc4addd4e3f2b33a91be09af257013fd0d94960",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -72,8 +82,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-1.parent.ogt",
-      "sha256": "bb5ac8f5f7d6758039d7190358759676dc424f26437c2881fa3239a0ff5a5851",
+      "path": "content/Atmosphere/n0-1.parent.ts",
+      "sha256": "99d0ffadb2b7b1b2d3a84a9c3cf5d326b4203061fa1ee51f09c757c1ed6a0ca7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -83,8 +93,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-2.effect.ogt",
-      "sha256": "1b1e35696a47c51e23ea5750468a528b706c1c21f4a563f5ba34bc12d5ff63b5",
+      "path": "content/Atmosphere/n0-2.effect.ts",
+      "sha256": "f4aff6d7eda4a8f591a06396495cb5ad4441e37bdddeb3f9f9d2837cf6bd57bc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -94,8 +104,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-2.emitter.ogt",
-      "sha256": "f45c5b4407bf00526dcfff4c387a2d1911629219cc61f2a32209d4989238faa3",
+      "path": "content/Atmosphere/n0-2.emitter.ts",
+      "sha256": "e74cd096fa3f6d407e7960b269d7afc4b7aae580e92f54e26ee26e75808a883a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -105,8 +115,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-2.parent.ogt",
-      "sha256": "5c41a6f8ac3b30a5f0c33f37d5ec0114c45fd8efbce0380b90360c93e13093ee",
+      "path": "content/Atmosphere/n0-2.parent.ts",
+      "sha256": "3bea80c26ff512bcb3f5dbc8e1596b608f6044e3b60764c9488c441693d80aec",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -116,8 +126,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-3.effect.ogt",
-      "sha256": "344d59e57da3cc7f2c9d3cc280239b13b20913814c638a9604659713c5a7b263",
+      "path": "content/Atmosphere/n0-3.effect.ts",
+      "sha256": "65590e6a540e15a0389ceb464da4766046cd79ed1f97a11566c30a6840687961",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -127,8 +137,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-3.emitter.ogt",
-      "sha256": "24a5dcfc4913250e7e033f131e90476d1607edc54692af7bb44914ab3fb61ea8",
+      "path": "content/Atmosphere/n0-3.emitter.ts",
+      "sha256": "9c8321d142e178b137936c4e198a3c948e03e7d39d510f2829021b6ff8410dc9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -138,8 +148,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Atmosphere/n0-3.parent.ogt",
-      "sha256": "74b1e8945f2d27dc08eee60cf826f8666df54b6a8fb2dfb1c4b5125a6dc72925",
+      "path": "content/Atmosphere/n0-3.parent.ts",
+      "sha256": "d68b26d86240824f33cbce9437d87aa592e4f6208b5767a4a5e7a5ab447cc7e5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -149,8 +159,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background.ogt",
-      "sha256": "b51c6ee85e2be16db383f379effba1491c44689599a59adfb852b51ff9547289",
+      "path": "content/Background.ts",
+      "sha256": "99dbc4e6f772658c118b7765daaa7e3e66c329601492eeee76d254af4b28c823",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -160,8 +170,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-0-0.effect.ogt",
-      "sha256": "c5c6114fee5975510b7214acfc4467056f613b425fe5b0bf739f9c61611f44eb",
+      "path": "content/Background/n0-0-0.effect.ts",
+      "sha256": "48e26067333b2f1c8eaf4f0b2c8906d74ce418c9839d64db5edaa24cb8e79c99",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -171,8 +181,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-0-1.effect.ogt",
-      "sha256": "8a4f4a1a9c67f4ec568596d6c84db6cc71fa2b762a4e1c04efa8f5ee17033e51",
+      "path": "content/Background/n0-0-1.effect.ts",
+      "sha256": "92f3f179c3f5b607d037a451c37c7951298599f46dd3aeb342ceddfa4ebffb21",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -182,8 +192,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-0-2.effect.ogt",
-      "sha256": "e9b0258c976161dce0e86a05cf4796760eb1d417d68a7fb2f2fc1644dc9bc29e",
+      "path": "content/Background/n0-0-2.effect.ts",
+      "sha256": "80c7b8b52fa3454d3c50d5c15013565f01415baec65b630c32cb54daea4030e6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -193,8 +203,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-0-3.effect.ogt",
-      "sha256": "71a10e2796ff8d045d5a836ebcd0eb66c96739cf27ac45aa29cd7cd45cff7c7b",
+      "path": "content/Background/n0-0-3.effect.ts",
+      "sha256": "7cf626f91a225e8cf8a06863d146320b512d90b898b504d149e4e8e4d5b69e78",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -204,8 +214,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-1-0.emitter.ogt",
-      "sha256": "b8ddb0dee7a137a0d2772ac434dff5e971d99949e1f5f880f478bcac70d4c648",
+      "path": "content/Background/n0-1-0.emitter.ts",
+      "sha256": "37ab047ad89f44935fb265f68ef305634c75e994a6c571546f9400cfe077c3b4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -215,8 +225,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Background/n0-1-1.emitter.ogt",
-      "sha256": "dfbbfe7c6b0200803059584f02b65a0a14155b61536725c803a16861e2f726ad",
+      "path": "content/Background/n0-1-1.emitter.ts",
+      "sha256": "7acb0a237fea056c3dd1c8f37c0f1315630e3a2cf7ceae5591eae5f458b5e237",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -226,8 +236,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame.ogt",
-      "sha256": "b7394c026766531b2e7bf0d3d4eb66647aac46e313df3f7ee94f2b2083d01426",
+      "path": "content/Flame.ts",
+      "sha256": "2c3e7e3d0a1c0a2836725e0a9104b9c7c646d27ad06bbd32ea4552ef136d2a4a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -237,8 +247,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-0.effect.ogt",
-      "sha256": "6bbd2bb6a5e3e7a84ebfc1777cdc3ea373c41cb6075f6fd592f47add8fa43c74",
+      "path": "content/Flame/n0-0-0-0-0.effect.ts",
+      "sha256": "41bc7541d0e32a7d4536569c87792c48fcdf3f73cd7190b075454304d3dd7a57",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -248,8 +258,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-0.emitter.ogt",
-      "sha256": "695c51096294464ef86b81166b1bc7017dbe5e615abd748ec307c5402270c9eb",
+      "path": "content/Flame/n0-0-0-0-0.emitter.ts",
+      "sha256": "d1dea986730cb0bf61ba9acbd5d915621352b27d1ec5a9ed99e449a0fc6acf1d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -259,8 +269,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-0.parent.ogt",
-      "sha256": "dc1acc69b25c26fa6c0b3e6b8bde3e9634805eccff7d188514c9adb2ab1398aa",
+      "path": "content/Flame/n0-0-0-0-0.parent.ts",
+      "sha256": "2c84082da42cf698bde5e484d6d43f7b65ccfbb71803ee75ec2931ca2cff708d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -270,8 +280,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-1.effect.ogt",
-      "sha256": "729149ee4e97b15bc6dd6079922f964bb6e4971ccb3a8e83e5acafffa95f3953",
+      "path": "content/Flame/n0-0-0-0-1.effect.ts",
+      "sha256": "a72811a66f8525162cff14043d9690a20b6edc602ccf3e6fbd6ce68e5ba0b658",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -281,8 +291,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-1.emitter.ogt",
-      "sha256": "5d15caa284c112b4e2c91f2ab47f18e51b56c4f2a707c830248bbfad9f59ffd1",
+      "path": "content/Flame/n0-0-0-0-1.emitter.ts",
+      "sha256": "0b4ed12aa1e72c7f6083386e651ba9038929cbadac1f89a82c57a23c1d6f7a3f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -292,8 +302,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-1.parent.ogt",
-      "sha256": "5d4be8557cb78af0ddb89dc8513bb63b4c6ee9268dcda1135ed30e6f709571b1",
+      "path": "content/Flame/n0-0-0-0-1.parent.ts",
+      "sha256": "fc9839f5b6be7bf15d510b177e641ad6aa506c42d9501dd3f8d46f61696e7ee8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -303,8 +313,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-2.effect.ogt",
-      "sha256": "1b8ca4c817ad1a54cd5316c15e67c5d4addce758c2d960f3c57ad55dffe7a92d",
+      "path": "content/Flame/n0-0-0-0-2.effect.ts",
+      "sha256": "8e5f508626b5c3d9681c518591e04e56bc7424e6cf645287eed046c9f5c7e461",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -314,8 +324,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-2.emitter.ogt",
-      "sha256": "1a46d424314fee9a8cfe54b500d631a5b6bfec37ba42bf7732d2b1e77e4df0be",
+      "path": "content/Flame/n0-0-0-0-2.emitter.ts",
+      "sha256": "efe4077525d6c2e736a4083f0c529851ff3915e667caf6940357e9d41c9d8cac",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -325,8 +335,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-2.parent.ogt",
-      "sha256": "8f0c372c9adf3c66924762cd6c45c7c0248f976cff23e8fb68404e190afec713",
+      "path": "content/Flame/n0-0-0-0-2.parent.ts",
+      "sha256": "4f132aa9e14e683751b11e3e7921fa57fe6c2728d037b686949e788e80ddf4f8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -336,8 +346,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-3.effect.ogt",
-      "sha256": "4c40e91b6aa19211d528aec70e7c4bf5f0c314da72979bfff398d150ca545718",
+      "path": "content/Flame/n0-0-0-0-3.effect.ts",
+      "sha256": "d6c36fccff9cb039b0038fb9b3f3326ca1852e0ca3710a5ad391d31b2627026f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -347,8 +357,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-3.emitter.ogt",
-      "sha256": "aa865053d7ad93f18376860fa5d957793766458e046f4d53b9bba6de7a057f71",
+      "path": "content/Flame/n0-0-0-0-3.emitter.ts",
+      "sha256": "11b3cf9a7d1e604195e59d02fa9ab842180078b345845a2d5952cbba9b679571",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -358,8 +368,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-0-0-3.parent.ogt",
-      "sha256": "fcd4cfa0d6615e9b6d9301cde960aee998a46918e9915656f62426acfea2dc9b",
+      "path": "content/Flame/n0-0-0-0-3.parent.ts",
+      "sha256": "c4fa166a5e5dea4ceacad5fc30a7c82723fe033e931f07e3d1144a357dcef5b2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -369,8 +379,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-1.emitter.ogt",
-      "sha256": "a4db269b849b809ae0b9c0b24e64cf20d32cda9288189bf253d39e5048dd7b4e",
+      "path": "content/Flame/n0-0-1.emitter.ts",
+      "sha256": "101449ff65eb841a6c3a8713f81f5cdb9e5e85c9f42c372b33338ac477fe79ab",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -380,8 +390,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-2.emitter.ogt",
-      "sha256": "4c8250245a7096ad3994f5c36da62648dd5f3b0556fdfe3ddd1f5d2ba00e5142",
+      "path": "content/Flame/n0-0-2.emitter.ts",
+      "sha256": "e1e3c83819a96e5a39dc527098a561f67d6e10108f773e20779c7cb54733b1f4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -391,8 +401,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-0-3.emitter.ogt",
-      "sha256": "7b2b8774756fae710c82c77ceb33c2e4ea111d9311d6f311e8ecf6bbcfc1f2c6",
+      "path": "content/Flame/n0-0-3.emitter.ts",
+      "sha256": "086b2cbfdc0a2ca4816e3c81dd75eb2aec1ede2fc479798605694ba9b58e79ff",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -402,8 +412,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-0.effect.ogt",
-      "sha256": "214e594ae59a7eb3bee9bef4fa78ae58228b7279af928b3f72b4920ee6a97013",
+      "path": "content/Flame/n0-1-0-0-0.effect.ts",
+      "sha256": "87977674f8e99c89d9beae7c27b47a13661b8029da298f19b90721e4efc00a23",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -413,8 +423,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-0.emitter.ogt",
-      "sha256": "04d15c88027122fc97db56d5cf0ddbce0bcf24d7b525ef6171f841c219306eb0",
+      "path": "content/Flame/n0-1-0-0-0.emitter.ts",
+      "sha256": "c2d2c8dfb86d9e4112d710d380984f6c675568fecaeb50de4a8b38e4acd358fa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -424,8 +434,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-1.effect.ogt",
-      "sha256": "5520cd7c7687fb60a84a51064dcac0b62e7abe73823ed848591f778f9c492093",
+      "path": "content/Flame/n0-1-0-0-1.effect.ts",
+      "sha256": "fb0c69e3ec6f4f7db0d49c719e1da4dade86d7ec80fca11c4618d6a329f90ebf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -435,8 +445,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-1.emitter.ogt",
-      "sha256": "19b7de1fcd735edfad9119d416fc472ce463730079c98255e064c050d240cba5",
+      "path": "content/Flame/n0-1-0-0-1.emitter.ts",
+      "sha256": "52d6e417294c800ef68873fd2e97b53e737d21411cf78720919b42ebe5c78a3b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -446,8 +456,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-2.effect.ogt",
-      "sha256": "9c5ae0200ac1a6c9d7c7d976f23db80da1d6c80dfb2bb630745c907393e2daa5",
+      "path": "content/Flame/n0-1-0-0-2.effect.ts",
+      "sha256": "1f2c5fa0815e1c5d5ee7937dd80d814b16233ab4735218ac7658aadde1e1974e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -457,8 +467,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-2.emitter.ogt",
-      "sha256": "917a0fbe6ec2ece066ae93f48d0d3a2e9ec5e50abc19c667173c57856f7c2870",
+      "path": "content/Flame/n0-1-0-0-2.emitter.ts",
+      "sha256": "b5a357e0e79722a416c2d770f875bc6d2c8c0b6926a0ebd7d854d83a0438dc27",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -468,8 +478,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-3.effect.ogt",
-      "sha256": "207fda84a65214c654e467cad63dacce5e20246cd2699b7173db00eee74b83c2",
+      "path": "content/Flame/n0-1-0-0-3.effect.ts",
+      "sha256": "562d29d8a8f8e4e62fbee8749af051c90b7863a92de4375eb9fa4ebfa765dffd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -479,8 +489,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-3.emitter.ogt",
-      "sha256": "4eb0b05f8094b08f994e4221c6b6a34313d660a8acc03a22b740ad3de0cfa9ad",
+      "path": "content/Flame/n0-1-0-0-3.emitter.ts",
+      "sha256": "31a000e62a7f958e7fcf9e9f520f42426381c3ece2c8ee53fbfd0ec093ef8607",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -490,8 +500,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-0-0-4.emitter.ogt",
-      "sha256": "67d44f1c9161c4c1594e7eca198a4397a43c257e91310e4240e32f85ac5f2c11",
+      "path": "content/Flame/n0-1-0-0-4.emitter.ts",
+      "sha256": "d4526101cc00ab04cf7a5c3faf2cb616067082d4b0d5c26478e5cd7560cd8e05",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -501,8 +511,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-1-0-0.effect.ogt",
-      "sha256": "061c2020745a3832e6a78b66ddadc0d7111e3d92d7415b1c7b6751845b8014ce",
+      "path": "content/Flame/n0-1-1-0-0.effect.ts",
+      "sha256": "cef4c696e780e7bd2ed0390ff5d18921526b115f76860bb56f0786c15b967c6f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -512,8 +522,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-1-0-0.emitter.ogt",
-      "sha256": "6bf518da1001c13ee828b74b9dd86932a962cad204c41552a1eb1aff5f701d9b",
+      "path": "content/Flame/n0-1-1-0-0.emitter.ts",
+      "sha256": "558160db08e5da778c22cd3d5cdfe8a2646fe37fb9362551e42c227f0ab7c3b8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -523,8 +533,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-10.emitter.ogt",
-      "sha256": "641c469d08f0a6e55f4aac74e02b5f40d26870ef37ca18cf076cc98ea842124c",
+      "path": "content/Flame/n0-1-10.emitter.ts",
+      "sha256": "8a570b92907291d5a57733c601c2523886b5f1e034677cb04fcff2e3daafb64a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -534,8 +544,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-11.emitter.ogt",
-      "sha256": "5875356f70af5c71352d84319a18108a791f195b4935f8d5aa5872f1d95012fe",
+      "path": "content/Flame/n0-1-11.emitter.ts",
+      "sha256": "1ef2d2f723b941914aefa60916c982101eee28a052e0c61f9827ad9b26927207",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -545,8 +555,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-2-0-0.effect.ogt",
-      "sha256": "d3d51f8e40a5e5cecdae3fd7cee3758eaeba072252b7e40ec7a339632eec228a",
+      "path": "content/Flame/n0-1-2-0-0.effect.ts",
+      "sha256": "4174ae46982741edda67ad6b5e5b7466a7b58c8b77ebe8394df51c44a7f673e7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -556,8 +566,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-2-0-0.emitter.ogt",
-      "sha256": "a757ec7489ab23bab53bb9e917dadd6e3069f1f3ba179ba3dff43c82a15329d0",
+      "path": "content/Flame/n0-1-2-0-0.emitter.ts",
+      "sha256": "801f22b0b7b007c81bc64ca1eafe6fbd9f7d7303f9918bd6be5ec5b74df1c043",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -567,8 +577,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-3-0-0.effect.ogt",
-      "sha256": "a9916192cf284a9116cd33fed0d547c7e67936be81b16f6c9e127ab9dd44d966",
+      "path": "content/Flame/n0-1-3-0-0.effect.ts",
+      "sha256": "8f9778bcab5e68d2d757bdf7d139f77127e80146c0e5f98ca5e2ceb4387c15e7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -578,8 +588,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-3-0-0.emitter.ogt",
-      "sha256": "848519044ca0784d1916fb94a9b43b5617f27b27ae39e5956777471bc905b442",
+      "path": "content/Flame/n0-1-3-0-0.emitter.ts",
+      "sha256": "adb7aeff9ebb4cfcf8a70d21c95451f24b7b23536ba52b0c93a605c1bf555059",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -589,8 +599,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-4-0-0.effect.ogt",
-      "sha256": "17f08bf85b32b09d50214a05e26d3be93d9b7ee954a1d1c67fec14223cc6972e",
+      "path": "content/Flame/n0-1-4-0-0.effect.ts",
+      "sha256": "127f30c59037c32bdd0abfdd7e599eb820f30e95dbe8b0109ad501a1ca675869",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -600,8 +610,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-4-0-0.emitter.ogt",
-      "sha256": "b20c87704d4f53f2a282aea94d97fde6acfbc88ebcc0d91947746bff8ce00a86",
+      "path": "content/Flame/n0-1-4-0-0.emitter.ts",
+      "sha256": "04133014adfa4e4f325a6c1ebb9ec6319029065d70dfafb64d03246e23db5508",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -611,8 +621,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-0.effect.ogt",
-      "sha256": "b254b811387a291c8f485b40fb3f45c01f8340d1742ec85ebde4a2be5b936b8c",
+      "path": "content/Flame/n0-1-5-0-0.effect.ts",
+      "sha256": "3d43631b7f575ba502e1358143e06365586c260e793743f2382b504698967b4d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -622,8 +632,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-0.emitter.ogt",
-      "sha256": "acce03a2617a8bea28d8ecf6e6872b2448a129e1ba780171d642be0f1ee68f04",
+      "path": "content/Flame/n0-1-5-0-0.emitter.ts",
+      "sha256": "0c001d538c2871c8c96e56574b2d1d8624757a018343a72b3a7a6e9c46c9c9ac",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -633,8 +643,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-1.effect.ogt",
-      "sha256": "95082088c7116aa6a14268e31811895e8a63dff55863a95566b86ed641c2c0a0",
+      "path": "content/Flame/n0-1-5-0-1.effect.ts",
+      "sha256": "7ee13b68688121d4f7bc5c8f17d343fe4c10885fb597e125cad2f00a8de58a87",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -644,8 +654,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-1.emitter.ogt",
-      "sha256": "e28d4953aee5fce55cc8b311912ab198a33d829514fc91478effff6e7639830e",
+      "path": "content/Flame/n0-1-5-0-1.emitter.ts",
+      "sha256": "dbef115eb5f10b38bea6cd5dacb0829edc28b4dc8a022f011eedd4b43e57679d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -655,8 +665,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-2.effect.ogt",
-      "sha256": "c2aceb7749f7e45f1653c72ff7d5312732743e2fd62076be544f6270825a6c4c",
+      "path": "content/Flame/n0-1-5-0-2.effect.ts",
+      "sha256": "367db361db918f8175ed85cdcad85908c34a435588fd72dc0111c48fe713dc37",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -666,8 +676,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-2.emitter.ogt",
-      "sha256": "d004b131f18b9d5de7fa725356d627924f1c6fe1a228ac0cebd9eeec603439e9",
+      "path": "content/Flame/n0-1-5-0-2.emitter.ts",
+      "sha256": "a97420446001c88b7cc1c0b2ac44ce01ad42d65f1cd52fea842989ff2e500a62",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -677,8 +687,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-3.effect.ogt",
-      "sha256": "fb76a4bd41c295c6f5d3633cca2c3cd1386a8fe06631c5a3be8a44f438a773a1",
+      "path": "content/Flame/n0-1-5-0-3.effect.ts",
+      "sha256": "1574ebf5c31c144f3ca6d2eae4d0ba90754c191964139a87a57d09c9d01eac0a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -688,8 +698,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-3.emitter.ogt",
-      "sha256": "2dac00270c83ef0ba2236db7dfc3556e8ac4c2f375515fa81ac14f9a0c1447fd",
+      "path": "content/Flame/n0-1-5-0-3.emitter.ts",
+      "sha256": "58cdae89608934f326c09c5d6c25b8453de460d17c04e8a82d245315d8b9b2a4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -699,8 +709,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-5-0-4.emitter.ogt",
-      "sha256": "e2170124a1376c0358b684aaa616b791ee446a6d1154e247a5839933eece3765",
+      "path": "content/Flame/n0-1-5-0-4.emitter.ts",
+      "sha256": "201cbf20509cb105b0888c92cc6b564206b0a21928e0b18f16d99f5fa5948d65",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -710,8 +720,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-0.effect.ogt",
-      "sha256": "a0720d80c0dce0bd8b05aa008a80bf56cf003e8489a88c5884216691490e98d1",
+      "path": "content/Flame/n0-1-6-0-0.effect.ts",
+      "sha256": "9849b5cfb7035d524554d7aa1e27edf2c8aced0868373c2cac7340babb94982e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -721,8 +731,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-0.emitter.ogt",
-      "sha256": "1ea3e3e7ab2ea151dab27305981cba3cee42524ef2b1a39a4f773660f994df60",
+      "path": "content/Flame/n0-1-6-0-0.emitter.ts",
+      "sha256": "f340e97111f47f6bf23182084860437bb2d39c6ca1ad6c96360b1abccd358efa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -732,8 +742,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-0.parent.ogt",
-      "sha256": "f44e3a5b5ea7d21f3c09b40bcf3de2167da33f79d1f4eb0986393c5ef21f18c2",
+      "path": "content/Flame/n0-1-6-0-0.parent.ts",
+      "sha256": "4e46e91bddf851ae057e214d43e2b806761e1a901386aeee1fa60d072341dd94",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -743,8 +753,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-1.effect.ogt",
-      "sha256": "b8e41758fdfce7dad5511a97b23223c290fbcbbcef25c1faf0e0d90ac3795319",
+      "path": "content/Flame/n0-1-6-0-1.effect.ts",
+      "sha256": "6ea81862c0176d3c802c557ec79aebfe3bb38bd77b005bfb96abfdacb36ebb69",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -754,8 +764,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-1.emitter.ogt",
-      "sha256": "9f9c43d459901e5cb8b641f987559cd17f1850ecdeb1c610f4faf569ad650bde",
+      "path": "content/Flame/n0-1-6-0-1.emitter.ts",
+      "sha256": "ca299402b280c35c63bb49800b7c2d69e6daafe12a7944c1b589877d00cc1931",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -765,8 +775,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-1.parent.ogt",
-      "sha256": "5192f80b9aefb8337fffca34a5795495d56e45b6aa48ef045c911ab4d3f73080",
+      "path": "content/Flame/n0-1-6-0-1.parent.ts",
+      "sha256": "2f68871613181ad9a3121bf713943a4e6fcb829c7fa596023d0f730d2562773d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -776,8 +786,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-2.effect.ogt",
-      "sha256": "57a9f8cadf838d77bbacd2d7ca2cc272c8a476af18dfc2f64184018e0cacf101",
+      "path": "content/Flame/n0-1-6-0-2.effect.ts",
+      "sha256": "1bedbece94ce979a4a4625de13afa7dc6a9810265b11c08a28185112097be74d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -787,8 +797,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-2.emitter.ogt",
-      "sha256": "40623e43b32ac1682712dae023c9c89af7b9bf990a7930463964d8cca652395a",
+      "path": "content/Flame/n0-1-6-0-2.emitter.ts",
+      "sha256": "aea07a8677c263ee11e47ab6268109548d548038360f2712137617306e2d595f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -798,8 +808,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-2.parent.ogt",
-      "sha256": "8862911ca9d136f39a8212833ec10252ae9cc0e629a835895b665a89fca0a737",
+      "path": "content/Flame/n0-1-6-0-2.parent.ts",
+      "sha256": "6e2b9319b9bd0df9972daed3f0ba29bd4734b368f859cda93a91244f9cc43df1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -809,8 +819,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-3.effect.ogt",
-      "sha256": "8f7db16d0300c63a9299d0aa9b6fc068d5e7d481e7a9ad5b65c781d146ab86de",
+      "path": "content/Flame/n0-1-6-0-3.effect.ts",
+      "sha256": "c7bd004f4c8f7746b601d05faca0f23b3c0286d7f8c5aaf1dba4ba8abc944353",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -820,8 +830,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-3.emitter.ogt",
-      "sha256": "033c65bba6ec81abaf329fcd785f982f56d740de93298c45d10c31a7279626d4",
+      "path": "content/Flame/n0-1-6-0-3.emitter.ts",
+      "sha256": "ab3504bc52297603b05bfa5a5d54034abab57967ab38254dc6273a09099fc5b8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -831,8 +841,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-3.parent.ogt",
-      "sha256": "8bcf8f252c7c0adb2982eeff70c425f342f2ea5060835da32ac6a0656db3aae9",
+      "path": "content/Flame/n0-1-6-0-3.parent.ts",
+      "sha256": "b4ea279994b78c0fc3003033b46987a1e401622b04e2f0969b849235e3f7a7e1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -842,8 +852,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-4.emitter.ogt",
-      "sha256": "2b77efe38f1d43ed12218d26570d833b9ad43f2774bc51b16544d3068f6f397f",
+      "path": "content/Flame/n0-1-6-0-4.emitter.ts",
+      "sha256": "81e0d1a8d93ea8881807a3153880e284490bb59aa32de1f7792c4c2fa9596658",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -853,8 +863,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-6-0-4.parent.ogt",
-      "sha256": "e59abac5d897d3c1f34d9f0734067115f17002b8001cbb72eb2cdf7fc990ddd2",
+      "path": "content/Flame/n0-1-6-0-4.parent.ts",
+      "sha256": "5b88732f5d2647b0a6e7dc43ac7d8b04d1180b75b8f00c8c88c2dfdd70bc6b9b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -864,8 +874,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-7-0-0.emitter.ogt",
-      "sha256": "8714e66440970ef6b461e47afd7808a6338b2814767050cb41aad9fdca162e99",
+      "path": "content/Flame/n0-1-7-0-0.emitter.ts",
+      "sha256": "c6b989b2a5c68d0d66b6813ad65b6324828eb7ac9c6b3f6e9eb90afdaadc8b61",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -875,8 +885,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-7-0-0.parent.ogt",
-      "sha256": "614ac35c807ca61b479b6f90117e338aed8d4c941e7c4a12d30f15f56147d64a",
+      "path": "content/Flame/n0-1-7-0-0.parent.ts",
+      "sha256": "2cff0c988b6019544ed65ba8c868605e2250e8b51a7907356035224e25a87ee0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -886,8 +896,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-7-0.emitter.ogt",
-      "sha256": "cc6eb42d067470ee63f289e1e08f7bb0185f09247b9bd0667735a28575999278",
+      "path": "content/Flame/n0-1-7-0.emitter.ts",
+      "sha256": "3c3d64677d822e819e40b497562b525496da4923e950d1f1e018b3bd7ca7ab36",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -897,8 +907,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-8.emitter.ogt",
-      "sha256": "f260df834a37914340b310d0b5bc51cb931f0578ef1d93f136e101f485633a8a",
+      "path": "content/Flame/n0-1-8.emitter.ts",
+      "sha256": "b713e0af68ec2a8f5564756c6c10dcd10d238aa443ca542b4224a9df8e5f3784",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -908,8 +918,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Flame/n0-1-9.emitter.ogt",
-      "sha256": "c27fa05d06e75bdee119ce0b6bee92df30f55d84c3e85987fa07491a903259df",
+      "path": "content/Flame/n0-1-9.emitter.ts",
+      "sha256": "61419c52c203be3f4145a2fbc0e749c8cd3b2fe161c9e5d5f8aac1ca77773deb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -919,8 +929,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald.ogt",
-      "sha256": "82ba1b6c64c72dd10a5e14c4985ea11f08bbe7517d97db357745b03a9bf92cef",
+      "path": "content/Herald.ts",
+      "sha256": "4bba69277281ba98ce304695ee59674306b838e5d65df3210be968fa9ba5bb94",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -930,8 +940,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-0.emitter.ogt",
-      "sha256": "8873cd95c255b5a747416f763473299dd2344223e849ff960dcecae10ed0cad6",
+      "path": "content/Herald/n0-0-0.emitter.ts",
+      "sha256": "2ae069368e36f2fc8052093b103ad1a47047972c0a51d0d722f9bf30c0075c27",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -941,8 +951,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-1.emitter.ogt",
-      "sha256": "bb2b50584846222b2c37793c9e4146718bca4db915bc3a650fa823838ef0e156",
+      "path": "content/Herald/n0-0-1.emitter.ts",
+      "sha256": "fed3b090bd857a6e0626dd5b064cbcfca357d73fd5e2fac49d46c3d20e3d3ca7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -952,8 +962,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-10.effect.ogt",
-      "sha256": "5332fa32f301b4cd374e81b5565c6bbe30711edfce9308cb40711909bead3323",
+      "path": "content/Herald/n0-0-10.effect.ts",
+      "sha256": "c22f3eea42dc35e93bc41e5a592df9185bca12da5e5be931983a861951c34d14",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -963,8 +973,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-10.emitter.ogt",
-      "sha256": "83300fd816ca597f5a752b2e5e51e1dfd646a7b1523a13edce0ec1df0b144873",
+      "path": "content/Herald/n0-0-10.emitter.ts",
+      "sha256": "1b9a3b3cad6a6f6b0299dd6dc641534c31e2244d13bf24a7125dff454e3e91db",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -974,8 +984,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-11.effect.ogt",
-      "sha256": "920d612cf0e5bd501e646fed73d7610959cca3edf059616d6ee32a79e4f95654",
+      "path": "content/Herald/n0-0-11.effect.ts",
+      "sha256": "0c50cf08784ed84b00e9ede1f375befd8f9d75a36e934bd31829e651940ee512",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -985,8 +995,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-11.emitter.ogt",
-      "sha256": "00b972751e266ae36724e68eb3975074f25fafac03448da108e20e74d358a60b",
+      "path": "content/Herald/n0-0-11.emitter.ts",
+      "sha256": "0de9438ef39995eb15b87f2a7889dbef73f748533b5912969730ffde094c949d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -996,8 +1006,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-12.effect.ogt",
-      "sha256": "33a24724354fb9bc9d3a3485c4627f037189f8f02808226466e23be1624e37f4",
+      "path": "content/Herald/n0-0-12.effect.ts",
+      "sha256": "987c7465eadac8939debc8cdbb131e51b7e653b9db0b2f7e7d98ffc6bc166b82",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1007,8 +1017,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-12.emitter.ogt",
-      "sha256": "4541252d1c25d24a682e7e82cd7d534038eded4738965f72d9deb5935b4682c9",
+      "path": "content/Herald/n0-0-12.emitter.ts",
+      "sha256": "bac55b3efcb7b2fa41b01197e3452e2d8b18603b8552790f9cfe65c10d71b75e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1018,8 +1028,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-13.emitter.ogt",
-      "sha256": "07bb887eac4db3d37609237a9f89e08df5ed3981e226c1943e7c70b70a787656",
+      "path": "content/Herald/n0-0-13.emitter.ts",
+      "sha256": "71732740601c5798ffeec32da50997292887deeab7e10b039f45fedc3c37cbe9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1029,8 +1039,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-14.emitter.ogt",
-      "sha256": "0ef905ce61d20862b7ece71931652a99ef805bcdb4ab8d81c86ebdddb2d0c958",
+      "path": "content/Herald/n0-0-14.emitter.ts",
+      "sha256": "2f2c279022e68063394d3be54a091c51a0061cfa0b32d6c957727d6eb8b2e827",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1040,8 +1050,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-15-0.emitter.ogt",
-      "sha256": "01107f892d75ca55d17281fb601123b0515d2df8c102c2aa0943efe593197c66",
+      "path": "content/Herald/n0-0-15-0.emitter.ts",
+      "sha256": "b7f80efdabaa9feac44eb30e342d66962b6289e8f2f58c82391ee18a1669916e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1051,8 +1061,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-15.emitter.ogt",
-      "sha256": "8bdbdfbddb8226039ccf6d4f048d6876b7383114f1745fa6026f5b14b3e77e49",
+      "path": "content/Herald/n0-0-15.emitter.ts",
+      "sha256": "0cdf0dce55a1432479c6d25a6547a8a1ce835f49a8282d83a372d22853cf8ca0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1062,8 +1072,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-2.emitter.ogt",
-      "sha256": "86225a04c49c5e803373b6282fbc9ee936bef60788e19565ef0ea6d62c15c0ec",
+      "path": "content/Herald/n0-0-2.emitter.ts",
+      "sha256": "3d0459356e60a65fa837a98cd02fc2f65d84c85cc5bdbe5a31b0fb0aac58d342",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1073,8 +1083,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-3.emitter.ogt",
-      "sha256": "d1a823da55e31b3d4ffa7f316eb314f3ebd5325f25e09c2a341ef54906fae280",
+      "path": "content/Herald/n0-0-3.emitter.ts",
+      "sha256": "80033b15683ae53221627f03dbb320bba18fa5a2c24096af9ca6e32be536df76",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1084,8 +1094,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-4.emitter.ogt",
-      "sha256": "dfabf6d75f9260dd6acdf7c70e5cc7f02a90e49cce593e13fb2e2b2cb8806dfb",
+      "path": "content/Herald/n0-0-4.emitter.ts",
+      "sha256": "1bdec573ff9e980293a63af18a3ada68e1c554bc1b793b33228a2be94c804d26",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1095,8 +1105,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-5.effect.ogt",
-      "sha256": "737df548309d8b8ca3c97ea013afc29c7337138f8e43ad3203a4efedd71d1811",
+      "path": "content/Herald/n0-0-5.effect.ts",
+      "sha256": "ff651fc2bc7251577da8472c47c439952cbcbbd0d9062cc6f0008ae44e922a25",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1106,8 +1116,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-5.emitter.ogt",
-      "sha256": "b80d2ea417f53bfea742b7d85cb895c42155845f4e74c234faffaa7674bd002e",
+      "path": "content/Herald/n0-0-5.emitter.ts",
+      "sha256": "8060de04ed9c1ce04ad68ff28a0f1ae1d8299112e1ee0c10f8226f7aa7ab8597",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1117,8 +1127,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-6.effect.ogt",
-      "sha256": "d942db93a1861f363d688e35d5a5a6f21ddd3a15e31482e679efce6cd9673d36",
+      "path": "content/Herald/n0-0-6.effect.ts",
+      "sha256": "9f822fbace9a90cc20b4b0be84841d3fa0ebc2ba3b45cddc52f228d8baf2f3de",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1128,8 +1138,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-6.emitter.ogt",
-      "sha256": "7c90d37c976a897e38c9f799bff65dde1137a6d2a05f9f2a64961eb1a0b69dcb",
+      "path": "content/Herald/n0-0-6.emitter.ts",
+      "sha256": "698c876e4f43eaceffc286f67e6d2c6c98d78fd4bfb643650bb2953719cac0e3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1139,8 +1149,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-7.effect.ogt",
-      "sha256": "906356f1c49b52e9ec81ea395321ac813014aa60ed7383ed8affe288fc11209c",
+      "path": "content/Herald/n0-0-7.effect.ts",
+      "sha256": "d1bd7b219ae1124f7b0acc042a6e4bc39707173c0618254442a42f870905276d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1150,8 +1160,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-7.emitter.ogt",
-      "sha256": "3fc8e2fbd5484899485e96ef9e22fb99758482b5eee2304e8a1e9f64269e608c",
+      "path": "content/Herald/n0-0-7.emitter.ts",
+      "sha256": "01fea94b2b09a642a2f50a514c5f76030e7e154551b79503b843fe772136bf64",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1161,8 +1171,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-8.effect.ogt",
-      "sha256": "b06aee42496bfb1fa55e28ca64071f07a8dab03496bae000285bb04cfcf1d272",
+      "path": "content/Herald/n0-0-8.effect.ts",
+      "sha256": "c3ac1cc7d724d0aee5c0d18b169056a0519994ffee1358b85b23b7c886ea7867",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1172,8 +1182,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-8.emitter.ogt",
-      "sha256": "9c1718780fe1abda43172f6b9e96b5881d624881eca03bbcf8a03a9d29abdcc6",
+      "path": "content/Herald/n0-0-8.emitter.ts",
+      "sha256": "6e88a5bbdd325417c00fa0a70e70469a93a13900101f05404f8bdbd86a6263ad",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1183,8 +1193,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-9.effect.ogt",
-      "sha256": "6abc5920e4efbcf273dbabc915fa2992e30e071b1a736b452523fefed9a3d846",
+      "path": "content/Herald/n0-0-9.effect.ts",
+      "sha256": "e36e25dd9adb02f3f5ce4f8fa991f467f87eb1fe33d9edc403f32280e03423fb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1194,8 +1204,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-0-9.emitter.ogt",
-      "sha256": "ca7b97cceabf5788abbe80ce4251f0e15ef874c7820d2bfeeb9ba7e1ca4621dd",
+      "path": "content/Herald/n0-0-9.emitter.ts",
+      "sha256": "01a39985729ab3fe7bae41cf59c1e3ffa93c0c2336116dadb2a36322a91460a2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1205,8 +1215,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0-0-0-0-0-0.effect.ogt",
-      "sha256": "f839591bb4fcbfd59806fe721c4a99bceb98082ec3cc6c0bc26389ff4d6d7b5e",
+      "path": "content/Herald/n0-1-0-0-0-0-0-0-0-0.effect.ts",
+      "sha256": "a7422795f49dccfea996d6898bd536e4001d87c62ef16fab586df50c32ed0957",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1216,8 +1226,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0-0-0-0-0.effect.ogt",
-      "sha256": "b8240f0a85cacb69a2f123ca0d853a2e8c3b717d299d035cd61838f4d01d460e",
+      "path": "content/Herald/n0-1-0-0-0-0-0-0-0.effect.ts",
+      "sha256": "7b23dc0e3a73c9b965b088d715fd74ec2e521e3199ed8b2c9a26ee3d304c78f8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1227,8 +1237,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0-0-0-0.effect.ogt",
-      "sha256": "bc05ef54f8f8315fd402dfd2c4f0c38eff62723a42f162e63aea55c4988e78b2",
+      "path": "content/Herald/n0-1-0-0-0-0-0-0.effect.ts",
+      "sha256": "e26ef7637781e9a14242cdbba440668dbf70bdf17f740a1295ca6ca0ae04ca80",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1238,8 +1248,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0-0-0.effect.ogt",
-      "sha256": "eff06e242c6769805af139a7593a8da984ca5eb76590fcd0b5c9a74fd79bcfc6",
+      "path": "content/Herald/n0-1-0-0-0-0-0.effect.ts",
+      "sha256": "ef9dedabf6dd49707351fc2983a66b293c793770568379420e6acf36c6ef91f7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1249,8 +1259,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0-0.effect.ogt",
-      "sha256": "46838d9b1035c087678b949c0508e25e94876fdd5953e483cf90ea279edb88ef",
+      "path": "content/Herald/n0-1-0-0-0-0.effect.ts",
+      "sha256": "f0712c56bdc440cfde3d0ba5e242211ea3526428b83412b55f492840320b9537",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1260,8 +1270,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0-0.effect.ogt",
-      "sha256": "63da023a208d8d774f596261f002097e604c6f3c81bcbf83aed0b004e1597240",
+      "path": "content/Herald/n0-1-0-0-0.effect.ts",
+      "sha256": "75e8182879f96076845480bfb69f85fee3b20c9d27d747779e7d82ac3637259d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1271,8 +1281,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-0-0.effect.ogt",
-      "sha256": "b9065cd256d51b907a1aaea536e868dc860ac8019992f558ab19af11dcb6fd3f",
+      "path": "content/Herald/n0-1-0-0.effect.ts",
+      "sha256": "f8de31128aef6189228f8fb8c816bf911c81e3a4b762f2ddcd7d8d82303f67d9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1282,8 +1292,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0-0-0-0-0-0.effect.ogt",
-      "sha256": "a954e60168af14f58f3721137880b86dac2f1c51b82d7c8401df65444f1996b2",
+      "path": "content/Herald/n0-1-1-0-0-0-0-0-0-0.effect.ts",
+      "sha256": "23fed25a068efca5b3e294b293a61f074e9911534229b8336bc77c7da8f6fd0d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1293,8 +1303,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0-0-0-0-0.effect.ogt",
-      "sha256": "e4671ccdee75c362aab6101310e1d87198fd71e77ada509e3ce43a3c18e980f4",
+      "path": "content/Herald/n0-1-1-0-0-0-0-0-0.effect.ts",
+      "sha256": "476055658f25b4dadb026f5891ff002ce80cddc8284218f5799a7bfaba66ed6b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1304,8 +1314,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0-0-0-0.effect.ogt",
-      "sha256": "c26b6778fedc226781828dfe78db35cb611231b3b577181385de7736e013a12b",
+      "path": "content/Herald/n0-1-1-0-0-0-0-0.effect.ts",
+      "sha256": "fdf413689647a959ade8bb3d54d3cfbe5953cc29641df96f61ba76a654b89f2e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1315,8 +1325,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0-0-0.effect.ogt",
-      "sha256": "27c16ddaf201bbb151c4bb75c9b3831ca2559ad11f20953e0df22ed4a14b2535",
+      "path": "content/Herald/n0-1-1-0-0-0-0.effect.ts",
+      "sha256": "b512b1a1839bf9415fa9ee72081c4c0c953f4fc54d0f9767baaab36611f3d4cb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1326,8 +1336,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0-0.effect.ogt",
-      "sha256": "0b7f93dffd6c7f01cf858de84554684bbfd32e503e2fe6365d883f747a7d78fe",
+      "path": "content/Herald/n0-1-1-0-0-0.effect.ts",
+      "sha256": "bf5a893e7520ce60d6e90704145360c11346f555e677fdd4977531085b0a4ba6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1337,8 +1347,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0-0.effect.ogt",
-      "sha256": "dd3087b67786e3a491aca9d5d0c659a669c505eb57f2c5ea34b9911c33135880",
+      "path": "content/Herald/n0-1-1-0-0.effect.ts",
+      "sha256": "918dfcfe4961014f64cca8930e3cc3069ec2930932879436560a97bc8928ace4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1348,8 +1358,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-1-0.effect.ogt",
-      "sha256": "790da9cde728c9bb27f45405d5cc4436eb2cd4c0ff1962c500ac878fde0554ad",
+      "path": "content/Herald/n0-1-1-0.effect.ts",
+      "sha256": "547ee15dcd2d657e3032afbae254c759a1ecf86bc0461dacd90d8c543e250bc3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1359,8 +1369,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-2.effect.ogt",
-      "sha256": "cd6d931bd9139b78a5db053073324f967573d443940ea6c461e47a8d8df679bd",
+      "path": "content/Herald/n0-1-2.effect.ts",
+      "sha256": "6430e4544d4466b841136dbbee03a2161d0f33b4b9d7cce190310741dbff0a9d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1370,8 +1380,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-2.emitter.ogt",
-      "sha256": "d1172d0841afa076ccdeacb669a99b8f9192cd17f8b6afe8f919b0fba23e55f9",
+      "path": "content/Herald/n0-1-2.emitter.ts",
+      "sha256": "7481c4f3482a2b1d51a5533edcf597f1af1769352e6a65fd4e3d0131cca1ea50",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1381,8 +1391,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-3.effect.ogt",
-      "sha256": "82c611bb6cc813c12e8d29edf9ed71aaf75e838407f06d3213d437828ba8cc46",
+      "path": "content/Herald/n0-1-3.effect.ts",
+      "sha256": "2b0f7f30f72c2f2a6da73bcc9e4e1f0a8b73be658699626452dbc084a7c5651a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1392,8 +1402,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-3.emitter.ogt",
-      "sha256": "54e92a7f6df6ae33cb54e4b6985a2d5c98c508468cdb4dc8978ef4183813a317",
+      "path": "content/Herald/n0-1-3.emitter.ts",
+      "sha256": "22a4d7eaf563ce36ab0b6d43347877c2d273be95c75a821b69a6a521212ecb1b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1403,8 +1413,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-4.effect.ogt",
-      "sha256": "ef45d859c670cae012441087dc7e6c97064692cea14f0cdd6c80c975b8278a8d",
+      "path": "content/Herald/n0-1-4.effect.ts",
+      "sha256": "2f23fa2b9ef8b85e9aed63dedf33bfd33602400d5cf1e9dcc07e72d2c47e0a83",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1414,8 +1424,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-4.emitter.ogt",
-      "sha256": "59d0335501bc6cfed94d20a381c1a1b20cc7942fd496e4c16f59176e952c4bb0",
+      "path": "content/Herald/n0-1-4.emitter.ts",
+      "sha256": "00ae0032e6746dab1051d39989f446c39c06fa2c17665ef3081be664ab940cf9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1425,8 +1435,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-5.effect.ogt",
-      "sha256": "5e80c096a439624d9cafdb53302d630cdbe30ffec843cf7cbb43d9fbfdc71bc5",
+      "path": "content/Herald/n0-1-5.effect.ts",
+      "sha256": "7de5126c8bc38759e089811dbcbe000a232f1341da5b4d0b5f646232b299bfba",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1436,8 +1446,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-5.emitter.ogt",
-      "sha256": "c3de63909e87ede5b1e5d67918d7853b85ffed762e1feeae15a17c223fbbe272",
+      "path": "content/Herald/n0-1-5.emitter.ts",
+      "sha256": "b1cb12aa907129d94669f47d691aed8dcbba24860d615749c00f22266e763da8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1447,8 +1457,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-6.emitter.ogt",
-      "sha256": "65193d94071338c52557eefc85b9ce97d8a5c56741b874a90ba6d5ecb9c09065",
+      "path": "content/Herald/n0-1-6.emitter.ts",
+      "sha256": "a9e42296d0c6b8e4930d68a59ab1f78d27e4fe0f51827b014d9f6f629b855251",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1458,8 +1468,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Herald/n0-1-7.emitter.ogt",
-      "sha256": "9826fb2b11fc0746651e9ba91d0af963485199e021817f3c1db27b1d4497fc4a",
+      "path": "content/Herald/n0-1-7.emitter.ts",
+      "sha256": "2e466b9e7704ed63c2d5ca9b0219a5e266283029e25779f6ec371992f2aad376",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1469,8 +1479,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm.ogt",
-      "sha256": "dafddb7e0d90cafafc2904f50cb9c859e69f12d69f44527a1bdf201082158246",
+      "path": "content/HolySandstorm.ts",
+      "sha256": "3c625906a4c737bd303bb8e2a1fb7f42405098e3aabdc323063bf9356fbc053c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1480,8 +1490,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-0-0.effect.ogt",
-      "sha256": "b1044b9e600229d43855c169ee377821e32095549781a04f63d9e282cc85fa4b",
+      "path": "content/HolySandstorm/n0-0-0-0.effect.ts",
+      "sha256": "f62b7065f2cf24be22505e943ed2118c4191d5a492a19e4f42125f71dd31aefa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1491,8 +1501,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-0-0.emitter.ogt",
-      "sha256": "80cb1db83da174456ed202d1b691be8e30646f1f017dcc254e643ad80cf94759",
+      "path": "content/HolySandstorm/n0-0-0-0.emitter.ts",
+      "sha256": "5e4f81e0b6e270d036d0e5db046ee8995e75523c66732bc29d230c75cbde7def",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1502,8 +1512,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-0-1.effect.ogt",
-      "sha256": "6bbdc0348e2a14938805d6e91843d3102ccfb2008bb190070d5036aed5e04456",
+      "path": "content/HolySandstorm/n0-0-0-1.effect.ts",
+      "sha256": "5c727ae48481b95687095699c4bfe161b6edd6bfb7c6dde8f14d50db10bd5105",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1513,8 +1523,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-0-2.emitter.ogt",
-      "sha256": "6c165ba9a26e66291c44e807d131980bb3a585252feeb86a7d1120227f32cf55",
+      "path": "content/HolySandstorm/n0-0-0-2.emitter.ts",
+      "sha256": "a5ad8840599879f85f5d3253c0e3e85c71b02d2cd40124a161947791d50a81cc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1524,8 +1534,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-0-3.emitter.ogt",
-      "sha256": "8a88545435f5affb161fffde5f0c7aba92e44592d1d7645a5032b409d6a7d1c2",
+      "path": "content/HolySandstorm/n0-0-0-3.emitter.ts",
+      "sha256": "9ecdd8973dc72b3ca0e5788cd4c8e02e22cfbe8faf8fcfcda436db41a7aa9f68",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1535,8 +1545,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-1-0.effect.ogt",
-      "sha256": "2b3e7e7ac2e433101371f1a5d8b23c7bdc49265dd63c8f514e28fdc240b0596d",
+      "path": "content/HolySandstorm/n0-0-1-0.effect.ts",
+      "sha256": "010c1c199074c05c89c0a9c71b5537f51d3bbfc4997dadcfaeffd81f2eb2c3dd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1546,8 +1556,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-1-1.emitter.ogt",
-      "sha256": "4f8c1f522476ec775b4e26a2c1e87c63fe7e20e78ceb001606499c93f4b33019",
+      "path": "content/HolySandstorm/n0-0-1-1.emitter.ts",
+      "sha256": "9655bda3ce5c1db3809423aa84f9fa63ddec48a2e652eddb6bb524541ebffd14",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1557,8 +1567,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "HolySandstorm/n0-0-1-2.effect.ogt",
-      "sha256": "24ecc59957446d5fb72ba53dcc21c4f2f1350b85bd6003d279da4927034bda4a",
+      "path": "content/HolySandstorm/n0-0-1-2.effect.ts",
+      "sha256": "a8194390e946f90eae935bb03ff094b03ad3ee37b0507a37813f42d2347581a4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1568,8 +1578,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike.ogt",
-      "sha256": "7c24134db7e7eabc2d66c2197b00c4c0fdbaec4a5d33432956a92622050ff193",
+      "path": "content/LightningStrike.ts",
+      "sha256": "c91d2a2fcce9211fcd6094e3b0d758f3a32acc48aacc9d331ec3ebefd17c58e6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1579,8 +1589,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-0-0-0-0-0.emitter.ogt",
-      "sha256": "b9b7ba99a17baf83b00914c42c9471b1baa6bebd17e4c906b8da4f8cf8c4f4b8",
+      "path": "content/LightningStrike/n0-0-0-0-0-0-0.emitter.ts",
+      "sha256": "37217770167b062d3f90717899026f357990b4b56521933ed024d41a5b4f0a7d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1590,8 +1600,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-0-0-0-0-1.effect.ogt",
-      "sha256": "b6a534ac1d5b5320a79a475576eaf48b72936d9418b84410e0d2d51b7adf1391",
+      "path": "content/LightningStrike/n0-0-0-0-0-0-1.effect.ts",
+      "sha256": "1c3d69b99bee9281cb3a119b9e0cf45f8949e5bfe66310b96a17b40fb79dad1d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1601,8 +1611,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-0-0-0-0-2-0.emitter.ogt",
-      "sha256": "d2a7813c5979dc240a1068ac2e853d7dbf57823b887185e51a67ccbd5ee48d0d",
+      "path": "content/LightningStrike/n0-0-0-0-0-0-2-0.emitter.ts",
+      "sha256": "49f7f084bae9a7e17e876766630cacae550d59e75a53acaf5b7a2f30857b1da6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1612,8 +1622,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-0-0-0-0-2.emitter.ogt",
-      "sha256": "57ac02b7a489743d1ddbeb87514941dcabc5b7baddc9421ef63175406df81b50",
+      "path": "content/LightningStrike/n0-0-0-0-0-0-2.emitter.ts",
+      "sha256": "eafa7fdfd567e09ce63aa70d8d52575df5f5970497e58253b182a2c55c4634cf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1623,8 +1633,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-1-0-0-0-0-0.emitter.ogt",
-      "sha256": "d04180d3c740e2169ab7dbdf0d32879be56dace8077414723bd8264bce1e4e2a",
+      "path": "content/LightningStrike/n0-0-1-0-0-0-0-0.emitter.ts",
+      "sha256": "da5f58a27552a999731701d23bb3f8badf544c482017f8b62340add760c9cc3c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1634,8 +1644,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-1-0-0-0-0.effect.ogt",
-      "sha256": "3ff165ad20b92116b1ca1804bbb90c34023641d9759728ae3a708a658a6c70f7",
+      "path": "content/LightningStrike/n0-0-1-0-0-0-0.effect.ts",
+      "sha256": "4147ac89fd0fb712a21553fab4ce247b2fcc533a00c575fa167191463a624db6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1645,8 +1655,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-1-0-0-0-1-0.emitter.ogt",
-      "sha256": "faaf805d3edcbc05fa97b245180617944da7e0c32ea8f4b81991416cdf965376",
+      "path": "content/LightningStrike/n0-0-1-0-0-0-1-0.emitter.ts",
+      "sha256": "2c9af9b9276f0726d14880bf0f579606faef2d583094a6aae4b88367d68baf1b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1656,8 +1666,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-1-0-0-0-1.emitter.ogt",
-      "sha256": "2f58b7b6557e091f8a574923ba0b056a709ffc0d567325453f04ea98e6ab73a5",
+      "path": "content/LightningStrike/n0-0-1-0-0-0-1.emitter.ts",
+      "sha256": "1c428f52832fb633a3fd0adae907f7df9660501a9a1bc65f719f237aecb9361e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1667,8 +1677,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-2-0-0-0-0-0.emitter.ogt",
-      "sha256": "529957f5216c2c2f1fb428e02b5938302ed7d9d5eba7a720dce05232739e4c8c",
+      "path": "content/LightningStrike/n0-0-2-0-0-0-0-0.emitter.ts",
+      "sha256": "1f3e0e7b75d5bcef76b2133b56352532d66fac7dd1589c38829de4f1846d4dd1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1678,8 +1688,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-2-0-0-0-0.effect.ogt",
-      "sha256": "2960a0b0d34f3fa21ce9104435cc476e5a948b6d24b478360366803973324a2c",
+      "path": "content/LightningStrike/n0-0-2-0-0-0-0.effect.ts",
+      "sha256": "32c45e8af3c1d11ef931cf51c5aaa3cf59a4177a22e42b9ca6df2f65bc19e0fb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1689,8 +1699,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-0.effect.ogt",
-      "sha256": "1329fcd137d379cccf7f647cac1d5ab1ed9e10543635781097c33a2231e6fa2d",
+      "path": "content/LightningStrike/n0-0-3-0.effect.ts",
+      "sha256": "7bc10dcfad701cb0b59af721a3ecd9fc50a528421ee64f04ee8e6b1e2099e228",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1700,8 +1710,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-0.emitter.ogt",
-      "sha256": "b0aa2cdc1abaa6110b3227ae4ce3e461c4b427de9d1aff76d4fa23df2a91915a",
+      "path": "content/LightningStrike/n0-0-3-0.emitter.ts",
+      "sha256": "d321cdb32c230e0b6ff4c0a215b29763a4154b59cf9409549d45a90d2bfd2c3b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1711,8 +1721,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-1.effect.ogt",
-      "sha256": "31f72b1415f8958a644b6c41968d6c647ef58806e1acc4de6449fb2056fc2d40",
+      "path": "content/LightningStrike/n0-0-3-1.effect.ts",
+      "sha256": "289eeba3f02402b4f0310f4cc1d29cca417365c5fbcc75d9954a9cd1150f62e0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1722,8 +1732,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-1.emitter.ogt",
-      "sha256": "4466201450bce67a4ed81fc4f8071ce878ac1b6df0c51260b0e4c39d137d7ffe",
+      "path": "content/LightningStrike/n0-0-3-1.emitter.ts",
+      "sha256": "a85862df2e25d23a66a671afecb07aaaa317e374dc1112e392a05b00c0ee49a1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1733,8 +1743,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-10.effect.ogt",
-      "sha256": "09945ac4625d0cac18d0fd5e218452bd07f30a9729960a8d224692e041f04ec9",
+      "path": "content/LightningStrike/n0-0-3-10.effect.ts",
+      "sha256": "20c434926892ade7075ac099dcaff76e23b7b3a863b32041c95d8f36f4d73529",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1744,8 +1754,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-10.emitter.ogt",
-      "sha256": "a826145f458767ac60d403eaf2b924aaa4f74d6769bee4f41ee3c765abf06b4e",
+      "path": "content/LightningStrike/n0-0-3-10.emitter.ts",
+      "sha256": "c15bdf0a10be5a146f6a91800a3151f96dd89e9b3751ae62dbd5009d0e5b3451",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1755,8 +1765,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-11.effect.ogt",
-      "sha256": "47b7408a55cf822b4858d4d666a223e39d844daddd3420cb96a6a02fbea2ef38",
+      "path": "content/LightningStrike/n0-0-3-11.effect.ts",
+      "sha256": "ebc120606ce7e2ecb43242c96e5eac283ca06a15883c82ed20e6cd031c87ed39",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1766,8 +1776,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-11.emitter.ogt",
-      "sha256": "ed80dbb783cc92b53ca101d0792bd3e604102bc06ede7aeed3ef8c67561554a0",
+      "path": "content/LightningStrike/n0-0-3-11.emitter.ts",
+      "sha256": "81c6edec931952d919a4981b5cb697ea649f719e2ad97eac8da6fbb433c4487a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1777,8 +1787,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-12.effect.ogt",
-      "sha256": "e4fb5829fef41f7d651e3807c647010628d96ab30593334ba5557ee9cad909b2",
+      "path": "content/LightningStrike/n0-0-3-12.effect.ts",
+      "sha256": "dffdf876feab85589d24b70c5b5990503b8a21003b85e8ea84503e8ac1f8b885",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1788,8 +1798,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-12.emitter.ogt",
-      "sha256": "39d449b35e953e9eff1f5cd5da4abd3545990a0bc2a14776de73021ea45514d4",
+      "path": "content/LightningStrike/n0-0-3-12.emitter.ts",
+      "sha256": "2ffe81771c1449b6c5973ab32fb89c3d010afa0f4022e7e6d76b56eabffcfa25",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1799,8 +1809,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-13.effect.ogt",
-      "sha256": "8e10824efd666ce601e715816650f3b4a9081b830376865406c56851422d19d2",
+      "path": "content/LightningStrike/n0-0-3-13.effect.ts",
+      "sha256": "fe67efa72119b4ea7289edcddf5bec767077ddcfa604888ac68d90afb126ec8e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1810,8 +1820,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-13.emitter.ogt",
-      "sha256": "b40553a2a6ab5369a8562623c2f83081930c16d7403869f9f8f6c755c2df7d01",
+      "path": "content/LightningStrike/n0-0-3-13.emitter.ts",
+      "sha256": "80b03fb08ef2b93257747e47fc09598fa6d801d515e1dce629857490a6e7c4a0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1821,8 +1831,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-14.emitter.ogt",
-      "sha256": "86ee0e6a8775339b2d728044b97aab823ca3e74dae3d5f0de549e150b6842166",
+      "path": "content/LightningStrike/n0-0-3-14.emitter.ts",
+      "sha256": "70ee539fac39c701328e1426b1ef78775350bf5014c950d63b982b72bec6e163",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1832,8 +1842,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-14.parent.ogt",
-      "sha256": "74d30a959956a58e38b90db8ddedaa572ba896a671c6e195e6b59a0e81345f96",
+      "path": "content/LightningStrike/n0-0-3-14.parent.ts",
+      "sha256": "7117d31915dd45ed29c32d9eee4e6a73562a0e3939da774730d8c08ac0df461b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1843,8 +1853,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-15.emitter.ogt",
-      "sha256": "f171bd9aa22af4078e16724a240c3712a09348185ca46b43bb7c4f6c590d9a37",
+      "path": "content/LightningStrike/n0-0-3-15.emitter.ts",
+      "sha256": "b36900b674520219acb1d09d428488c048c8590b2de51ac5be8487c3819fa1a7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1854,8 +1864,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-2.effect.ogt",
-      "sha256": "4fd5707205c9df430984ff205e4ecfb457dadf3c221d8cb5892f5a72b8802cfa",
+      "path": "content/LightningStrike/n0-0-3-2.effect.ts",
+      "sha256": "8b3449a3b5d7b27322239e748d860392ee1c5739ba97edf8738ac3db8a7bb981",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1865,8 +1875,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-2.emitter.ogt",
-      "sha256": "eadee8b00be68eca487b1edf5cce6f8b73c5a2d17c0d20609194a6a1cb63ed9c",
+      "path": "content/LightningStrike/n0-0-3-2.emitter.ts",
+      "sha256": "73c9bfe3078bb13cfed4dab895f5a6009d3ddc2e1f85ffe22778482ca7300b1f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1876,8 +1886,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-3.effect.ogt",
-      "sha256": "4aedb4f88a1499c1740a36be59acba8f0c1b3ffd822cf1d3eb6605a805ae8a0f",
+      "path": "content/LightningStrike/n0-0-3-3.effect.ts",
+      "sha256": "98d35d180ddf3cc1649196f23aacb7d7363954a586c13b40c446f5c113c143b0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1887,8 +1897,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-3.emitter.ogt",
-      "sha256": "31e7c7ec17652202f0601aa577cd312afec40c148f6edab4c0996df916b07e67",
+      "path": "content/LightningStrike/n0-0-3-3.emitter.ts",
+      "sha256": "cb96ddb51ae496fabc62c53b8cdea927107ce0506cd91359b27954ab4306f3ab",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1898,8 +1908,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-4.emitter.ogt",
-      "sha256": "1bbad6d48845e80ffd20a8e0860fbe6cf8b4098664418b6344531fc6b3f9da1c",
+      "path": "content/LightningStrike/n0-0-3-4.emitter.ts",
+      "sha256": "7993173b2c5fcfb21e6deb7c9c87f12f875fafecd532921786bbecab1c9e453e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1909,8 +1919,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-5.emitter.ogt",
-      "sha256": "fcb1967453c23077ed30fdd85903c2fe57a80f533d2f13617d6f4c41549079dd",
+      "path": "content/LightningStrike/n0-0-3-5.emitter.ts",
+      "sha256": "e9a755f0098e748cf0d78f7b744a354fa376efea8c42e8e2e4db919e7eb538a9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1920,8 +1930,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-6.emitter.ogt",
-      "sha256": "1a7a309808b8134c8069d1e7458fd317af677d586d1ac3f04552a8af938671c6",
+      "path": "content/LightningStrike/n0-0-3-6.emitter.ts",
+      "sha256": "fed61ce0b5bbde51c9bedc1cbb45fc60aff02de5a1f815947c17129a4ae6b34d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1931,8 +1941,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-7.emitter.ogt",
-      "sha256": "95c456885d82aba07b9e863ea860975d4138017e2f2f8d0034773213183015b2",
+      "path": "content/LightningStrike/n0-0-3-7.emitter.ts",
+      "sha256": "03a5c135b5a3ffff30e409c2148dfe1f5ef261df2dee048b05d936c2a16afe6a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1942,8 +1952,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-0.effect.ogt",
-      "sha256": "a8d93f2770f48c2f401b46471f948f388da65cde0254dd0dc4334295d860229d",
+      "path": "content/LightningStrike/n0-0-3-8-0.effect.ts",
+      "sha256": "38f9ffb27f42842fc8661c2c79179e84270cee624933f458b9b5fd054bed7132",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1953,8 +1963,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-0.emitter.ogt",
-      "sha256": "047cdc036a53e3aad7770ba6edcbc34e005476e59f19d91dfd58219d156a1dd3",
+      "path": "content/LightningStrike/n0-0-3-8-0.emitter.ts",
+      "sha256": "5e7339ad34b710d9afd2ce1f595641e96b66d14f20b525433fb7352dc42105b3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1964,8 +1974,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-1.effect.ogt",
-      "sha256": "49500b9fddb3a3204ea42c365102f96d1c474ac2ea83991045dd3accf379927f",
+      "path": "content/LightningStrike/n0-0-3-8-1.effect.ts",
+      "sha256": "e8db36d425bd41a70c9705b49bf784f87c05a769f77b37e2a36b3856128a8b38",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1975,8 +1985,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-1.emitter.ogt",
-      "sha256": "33aeaefcbda968412c5bfd73c12d797435fff9a823f8669743e8a3fe61a245cc",
+      "path": "content/LightningStrike/n0-0-3-8-1.emitter.ts",
+      "sha256": "202a05425b78f1d6180e101cb8ede5e757709552fe683af0f5d328f93a3be626",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1986,8 +1996,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-2.effect.ogt",
-      "sha256": "92e2049d88c8110e1e61ace9b297ad3057a69968679c36301fa5a0cf0a3732b9",
+      "path": "content/LightningStrike/n0-0-3-8-2.effect.ts",
+      "sha256": "7293a37a10d2dc555a44cecdd41ce09bce63cd1503e149d631c5aeff237e56e2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -1997,8 +2007,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-2.emitter.ogt",
-      "sha256": "5b91c23eb3f61aaefb64e65605cf0b600f55d8b827c01951722cc4b107e2c78b",
+      "path": "content/LightningStrike/n0-0-3-8-2.emitter.ts",
+      "sha256": "1cd3a4ea9da6c97e9758f5e84cf2bba7138b7a045816ce63bf1adaf7f537e69b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2008,8 +2018,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-3.effect.ogt",
-      "sha256": "4d1a0dd97c063b7e7972993f2004c50907525d700a10c843f0ee5e0b2ca7d366",
+      "path": "content/LightningStrike/n0-0-3-8-3.effect.ts",
+      "sha256": "dd40001b04c602f55851dda21620fa76f57875e341fc6ba4db996f693c716c7f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2019,8 +2029,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-8-3.emitter.ogt",
-      "sha256": "7a1fe0d3d455a201bb6d4c161fe9a57e309b7c11ccb250bc95a3d0e4ded2481c",
+      "path": "content/LightningStrike/n0-0-3-8-3.emitter.ts",
+      "sha256": "36d2e149ad8493b7aacb5b67763d974a9d5aecc3f5462a906b33ca39f483b87d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2030,8 +2040,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-9-0-0.emitter.ogt",
-      "sha256": "2767758ec30c5036b999390a30ae139b8ba0412c1a16149e46b1139841e30727",
+      "path": "content/LightningStrike/n0-0-3-9-0-0.emitter.ts",
+      "sha256": "5c0e454dc71b86f68609a9e26e60110a833e01b8cffa6a874a3019127eef8bbd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2041,8 +2051,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "LightningStrike/n0-0-3-9-0-0.parent.ogt",
-      "sha256": "0d40016718d7e596da68ec7a4e665b03951aaea0d207a520d6d807e89e45c4d3",
+      "path": "content/LightningStrike/n0-0-3-9-0-0.parent.ts",
+      "sha256": "8c9f7c14e191c22b2f98f82399662fbb93d42bddf0a9e50ffcf95331153d4ad9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2055,16 +2065,16 @@
       "licence": "CC0-1.0",
       "credit": "Effekseer and Pierre01",
       "derived": "converted by og vfx import",
-      "path": "LightningStrike/n0-0-3-9-0.effect.ogt",
+      "path": "content/LightningStrike/n0-0-3-9-0.effect.ts",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
         "file": "Pierre01/LightningStrike.efkproj"
       },
-      "sha256": "5ca7eafba2af445b77117ff4b546d28ecdad32547d246de4a515a22ea4786986"
+      "sha256": "08cf5c97d21c13dbcbaf033459eb197a0593584958ac3ffbe41f9f7491146e46"
     },
     {
-      "path": "LightningStrike/n0-0-4.emitter.ogt",
-      "sha256": "be9d7aa07b7308b945887785ca2da059eefff57ad572ea991f22b31100d361f3",
+      "path": "content/LightningStrike/n0-0-4.emitter.ts",
+      "sha256": "6b7b08b73e21db02ee7ec57ab4fc4253bf9e868a68ef6a55f296623996270bea",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2074,8 +2084,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost.ogt",
-      "sha256": "8107971787a3aa3c38a3e09160d01af60b7201310d43b1fb94c1e0819d6d46ca",
+      "path": "content/MissileBoost.ts",
+      "sha256": "aa673cfb27d172e884eb5ee0d9d25e35d30295a8a48e7b650502e1ba07477d87",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2085,8 +2095,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-0-0.emitter.ogt",
-      "sha256": "c27b6ad3a627dfd353c65e00f1ba0d1e33f5eb48cae7414b404964b3e39d32f3",
+      "path": "content/MissileBoost/n0-0-0.emitter.ts",
+      "sha256": "48572f41f67d774e1964e94d7d9e0e739f1a306be36a360ae434f0d9da0a6529",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2096,8 +2106,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-1.effect.ogt",
-      "sha256": "aeee37e03b04943cda2b1e02885aaf3910ecdf962353140f7f3f3cce3b9ea4d0",
+      "path": "content/MissileBoost/n0-1.effect.ts",
+      "sha256": "d079d18667dc5d1822c99cedcfcbd7e97f3dac02b7a782b2548de520bb942c26",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2107,8 +2117,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-1.emitter.ogt",
-      "sha256": "74c7a185693f1f994e025e5dbd5144673eadcf1d12e399d1e2d243d5f9dcad28",
+      "path": "content/MissileBoost/n0-1.emitter.ts",
+      "sha256": "407b413e65201b1f9844198c92eae1e9a8362a0a34012ea32d86a7773715d8ca",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2118,8 +2128,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-2.effect.ogt",
-      "sha256": "ba8f6f54ceafbeb2f7fd361d4c5746a9b4f4839e35c300b7b8bdd32600fc370b",
+      "path": "content/MissileBoost/n0-2.effect.ts",
+      "sha256": "de408c39d411195045a643492fa7f8b3292063fbf48217d8f2a30c8073559d03",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2129,8 +2139,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-2.emitter.ogt",
-      "sha256": "2eb808cffbeeba36c7c0fc2d530ffe3c424dbc8fae1a60e90578dd5090ca51c0",
+      "path": "content/MissileBoost/n0-2.emitter.ts",
+      "sha256": "e5fcc6dd9739ddf0df7e3ef54799fc1d9c82a6830c18fd9a43533f4862191f3f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2140,8 +2150,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-3.effect.ogt",
-      "sha256": "1c2bf57a845e4420c012079fe31e3c4bd0e34f56862dca8d81487e7024ed9c5f",
+      "path": "content/MissileBoost/n0-3.effect.ts",
+      "sha256": "ded4c63ff8cf5e7bbede2363b4291707ccd7ef94681745889b25e9b35362ad4d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2151,8 +2161,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-3.emitter.ogt",
-      "sha256": "5b0936a673d3d984124cfb3d5a8e01e7034a44b47bf3bdcb1a324ce9b799945e",
+      "path": "content/MissileBoost/n0-3.emitter.ts",
+      "sha256": "1955383cb89d4aca3a088705f492f59583a2bd24e224114ebaecee0d44774097",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2162,8 +2172,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-4.effect.ogt",
-      "sha256": "a5787b285dd35cf0619ca43929c20a2adde9d0ca6f451e740d903d60cce3bca0",
+      "path": "content/MissileBoost/n0-4.effect.ts",
+      "sha256": "a37bc7cdb5857db6517b5e80edc3ad849299ad5e6ea1c2b0b761157cff87fb0c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2173,8 +2183,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-4.emitter.ogt",
-      "sha256": "e107b8c0829bec7a37e1313133f6c1a53c323543ebd5cfa03862b1dcca6a474a",
+      "path": "content/MissileBoost/n0-4.emitter.ts",
+      "sha256": "753fa3b16e553f1caf3cd9ab7fc39f78f5e09f099d68d69f6e7a6fad1844d97a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2184,8 +2194,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-5.emitter.ogt",
-      "sha256": "5ff084c1cce06c0ac1fdf92eb2edfe4df7b50f59fed9c8dd7f8c4c7eb861723f",
+      "path": "content/MissileBoost/n0-5.emitter.ts",
+      "sha256": "2c5c9eb5938417f5dc1c44b6a7cfdd6ca270aeb367f670e060c18f1b0f349f9d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2195,8 +2205,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MissileBoost/n0-6.emitter.ogt",
-      "sha256": "408ceafd7ad66a504278fffc57747322ff016e2be2c0360d55dc239d11e991e8",
+      "path": "content/MissileBoost/n0-6.emitter.ts",
+      "sha256": "db5145c89d5e1ae470a40c8776f42c89f885c9040a76ed5418383a95f8b381e2",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2206,8 +2216,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar.ogt",
-      "sha256": "455cb25f6178157dfa67a81a5e3d4f7ec3fcd83ebf7927712e00c000330f20d2",
+      "path": "content/MonsterRoar.ts",
+      "sha256": "cea480a8da82116a8c1d5703afd188e36a41cbef58f19d235b5ee89f3d53a15a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2217,8 +2227,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-0.effect.ogt",
-      "sha256": "91e04639335664cffe9b331bb921d922c6f9309797825131686c092eeb15c357",
+      "path": "content/MonsterRoar/n0-0-0.effect.ts",
+      "sha256": "ce202c62b2b9b8233b54a00313658e39f5cd497e45b280e2a6a5837d40f4798d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2228,8 +2238,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-0.emitter.ogt",
-      "sha256": "5a4175f5cfa8af291470ef73e3bc6265f8b436986aa2d07368837e122deb2a6f",
+      "path": "content/MonsterRoar/n0-0-0.emitter.ts",
+      "sha256": "63586b52e5f26e60ff4fc5a54f1fead0426462c8cf6e8f93a890e8d9907f3e72",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2239,8 +2249,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-1.effect.ogt",
-      "sha256": "8477f6982133630632aa4407b5e3cd52c3c9dbb4d45b420b563aa8bc60c4ffd9",
+      "path": "content/MonsterRoar/n0-0-1.effect.ts",
+      "sha256": "449e9909b8e8f1097a8baa5ea77282eba14f58a40924b7d3a6267f89b378f4f5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2250,8 +2260,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-1.emitter.ogt",
-      "sha256": "befc231c90591d59ca1d0eb9b8ee6004d77df3f946d6ce9a8818200b6a431438",
+      "path": "content/MonsterRoar/n0-0-1.emitter.ts",
+      "sha256": "dc654bdea46898219c4f99c1ed4db57860b9e09ab3c698dad7c9c2ace58c01ab",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2261,8 +2271,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-2.effect.ogt",
-      "sha256": "a69f32c5b392baf71fad3fb0ece4e9a6b08287814a35d9583723cb1ebe3e737a",
+      "path": "content/MonsterRoar/n0-0-2.effect.ts",
+      "sha256": "f879fbc2ab9b729732fe33745c284c60f086aed517f9681194349d4bf8934775",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2272,8 +2282,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-2.emitter.ogt",
-      "sha256": "68d568721e276022b5a3a679d0c1af334d5c7ae9adcced699968ec8520184320",
+      "path": "content/MonsterRoar/n0-0-2.emitter.ts",
+      "sha256": "636887622acdbcd06bd3096d92b61ca23616029bab0d7a6ea94798c927fe6b95",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2283,8 +2293,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-3.effect.ogt",
-      "sha256": "5c64da2d894bb836ed0b8ee1a8b42ff2305b23d967adfe248cee117da93e7b6f",
+      "path": "content/MonsterRoar/n0-0-3.effect.ts",
+      "sha256": "4d8c47360e173830ceac33d3aee33c848db919e8f57653ac7d0c48bf6030ab29",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2294,8 +2304,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-3.emitter.ogt",
-      "sha256": "66b018ab9bde43909f56fb5f07c80a44335af82bc755fbe4920cfe9733691cd6",
+      "path": "content/MonsterRoar/n0-0-3.emitter.ts",
+      "sha256": "d351345ad1171e8a897043fd6de04f0c5517a839f0ab1404049d12f4b1b8eb72",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2305,8 +2315,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-4-0.emitter.ogt",
-      "sha256": "f49b91466433ba690dc9ebaef0975f75ca280aca9dddc8e529fb0992f53bfebc",
+      "path": "content/MonsterRoar/n0-0-4-0.emitter.ts",
+      "sha256": "bfb75b5807cdb58d90a3dd6c5e1daab8cf4dd6c178fc646fb0e8b49fecd11095",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2316,8 +2326,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-4.effect.ogt",
-      "sha256": "b6f05d91aca048ae81cf8e22b4935d9e53e5ed45ee21f5a000cea3037ce5fb74",
+      "path": "content/MonsterRoar/n0-0-4.effect.ts",
+      "sha256": "3dd2c9993ce18a7861b3efbbbcac6774d1e08f1d66fbb1ba5775154b63076b9e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2327,8 +2337,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-5.emitter.ogt",
-      "sha256": "6bb83a5dbbc246f6a30dcf9d3b75616bc6a8a97f4f2666b0213a2ad61de931b5",
+      "path": "content/MonsterRoar/n0-0-5.emitter.ts",
+      "sha256": "061f5d005b126b77aa971b21f03e0862460e886b728fc87d2b73ed074233ae2b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2338,8 +2348,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-0-6.emitter.ogt",
-      "sha256": "c298e70e1e1aee57494129c34825565c87d3dcc69adcbfb496f37310c86d3290",
+      "path": "content/MonsterRoar/n0-0-6.emitter.ts",
+      "sha256": "fa786e209b79d31a7d24312b5a48eea54086931b884b3e0c003bd1a381b1d66d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2349,8 +2359,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-1-0.effect.ogt",
-      "sha256": "851048ed068a1fc99a5451362a667a9c0828a1c7d2f8438458b6e498d08fc4ef",
+      "path": "content/MonsterRoar/n0-1-0.effect.ts",
+      "sha256": "12b62c9251025588c3ab04f0782105cab30b4afb90b0964e1b26c1f6a91fc2c4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2360,8 +2370,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-1-0.emitter.ogt",
-      "sha256": "863af9aa243eb7a854394e836ce40508b23177f8c73522af07161dadf33a8a99",
+      "path": "content/MonsterRoar/n0-1-0.emitter.ts",
+      "sha256": "85cdda38839976ca4d3db75b8b381a31b6e972d6f8dbc331ae8ddd70a425fb99",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2371,8 +2381,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-1-1.emitter.ogt",
-      "sha256": "3287422b75e2fc081c4c2e88fedc71d830da947e5e975fd496a2a24abb4ce574",
+      "path": "content/MonsterRoar/n0-1-1.emitter.ts",
+      "sha256": "64e868c932b620bb09d2ad0d6f3e942181a4ec843fd903844b5abb7ed5ee635f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2382,8 +2392,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "MonsterRoar/n0-1-2.emitter.ogt",
-      "sha256": "1045288b0f76d2d908bb8401c0217b8d77fe7d4c73574805efdfc4205e9a9959",
+      "path": "content/MonsterRoar/n0-1-2.emitter.ts",
+      "sha256": "c2152bdf7296ec1bc9b546206793d3759735af04d0659f0673ef2022a869a313",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2393,8 +2403,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor.ogt",
-      "sha256": "0bc6ebf60e9cec17855f06fd10456101ada19fe16d15b6c98bae51b25a63de4d",
+      "path": "content/PhantasmMeteor.ts",
+      "sha256": "ec7a52a28a19b74530e21a40f67da12a400b79f80a99687f2171cbc1eb1ff794",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2404,8 +2414,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-0.effect.ogt",
-      "sha256": "88574510b2c09568d1a42423762ba94c6278a77e88965b1dc43a80199f5797a4",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-0.effect.ts",
+      "sha256": "bb00483eac2e54be79183d4c3d10ac3c169135fc6984f85c27b039c70b369cc9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2415,8 +2425,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-0.emitter.ogt",
-      "sha256": "dd3cb439975ad60353289ac6588adad9f910a335a34892eb1bc1d649c4b36a3a",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-0.emitter.ts",
+      "sha256": "e3f136c7e9e16a11ba9c819dd1aeb1d3cc50b613bf710f41436c3e8129c8a4d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2426,8 +2436,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-0.parent.ogt",
-      "sha256": "d552ae81c4aeb7ba190fd397a5c23f84735c587b42bb9e4828e8f0628226d3ef",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-0.parent.ts",
+      "sha256": "1343f709bca0a50addde79438c91ade4127976e9ed755a3b9b219be47d986e9b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2437,8 +2447,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-1.emitter.ogt",
-      "sha256": "5007a339532acb5849c7556825e94f397e529103edc1e616953a25fc6bc92218",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-1.emitter.ts",
+      "sha256": "966bc08b7668c564f986c9532e9054820987763c951c25de95b7a24024d5766e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2448,8 +2458,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-1.parent.ogt",
-      "sha256": "d8191335d5297ddd2ceeadc0c589ca79cd366fed6703603c70061896d5c74c3f",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-1.parent.ts",
+      "sha256": "302e00d552dbedbb5155bbc074db04a62ac55d6a90a13ed69a095169a36e034a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2459,8 +2469,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-2.emitter.ogt",
-      "sha256": "6205ef46a28dd57f0515b03b20cf1289bfe4aa369251b575931610b04cbe9277",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-2.emitter.ts",
+      "sha256": "762b9d4729e378a257dca4c1d21e8b74d3815283733e7c8fde2992a68aaa9ad8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2470,8 +2480,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-2.parent.ogt",
-      "sha256": "898081ac9f59898b87da6306e2f840a088c4bfb90bc6df96eb1bb8c036f07334",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-2.parent.ts",
+      "sha256": "ff177ded9c5fb6cd53670e9321db6a4f56595dce270051e37c31789385279df3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2481,8 +2491,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-3.effect.ogt",
-      "sha256": "84d3f96e8717b0c5f98069f94b695326022c3b4d95bc9de614253d4965f8a573",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-3.effect.ts",
+      "sha256": "f0f04b27fee0b1d02f4c07575b7309c88c3e98e847f175608e987ee80bfa4a55",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2492,8 +2502,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-3.emitter.ogt",
-      "sha256": "82ed7d1094c2bc3502e1fa8f11ad731e5591ad31794ebba3b69ba2edb38215a7",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-3.emitter.ts",
+      "sha256": "42e767fd43e16c7ae38f152933d4758e0e136bb9e9597ea5a524d4e388796b2f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2503,8 +2513,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-3.parent.ogt",
-      "sha256": "7a3d703a0b7342bd5ee8dec07d1207f9d135a6c902788f16200d8377316b72f9",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-3.parent.ts",
+      "sha256": "64e2531acfd407bfb1078fcee597e950dfabc2de5b44950ddbac615ec4d1b8fd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2514,8 +2524,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-4-0-0.effect.ogt",
-      "sha256": "301e3d90c115f281c89357a13cc2bdf903209bfcac3f24e05425c111b8cf9b4f",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-4-0-0.effect.ts",
+      "sha256": "34d8e93fefc6ef93404e3e1c3a99554c235f0491d7cea23a273c8b85943070b6",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2525,8 +2535,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-5.effect.ogt",
-      "sha256": "4bdfaf723bed0a00358287039e2cadae123c546e92f84b68627fd724021093e4",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-5.effect.ts",
+      "sha256": "f77c68c9f7baf9e601fc7eda3d4dea77a75bd3f6a5d24c879468de84441969e5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2536,8 +2546,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-5.emitter.ogt",
-      "sha256": "b64b326786e865903fbf9ad237975b555ffe03780aed0dd965776a1c588b15be",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-5.emitter.ts",
+      "sha256": "f7e16e370d8fcfad2880c8694829e2376b2b7b45c3a72ecc70055236638ba8d7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2547,8 +2557,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-5.parent.ogt",
-      "sha256": "aee59d68265760b11809d6cddd59de4921d07e437bde05a9882e3c00a46f4462",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-5.parent.ts",
+      "sha256": "79879990cc50b46cf32f293203bb49157a4304e593d86ea502ad7fbeed8e4240",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2558,8 +2568,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-6.emitter.ogt",
-      "sha256": "15917a5155c2b878280d0a283eeccb785d477b64ed3cfd340f9bae77f73f128a",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-6.emitter.ts",
+      "sha256": "23b3863b9f8a25a095eec23840f24058135824065ec8ed1bf044c0de4096ec89",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2569,8 +2579,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-6.parent.ogt",
-      "sha256": "9ec2eb8ec90655541baa531877375756002966caa036fe9f1097488184872433",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-6.parent.ts",
+      "sha256": "8695b7d77a9aca7eb3f2bb50fbc2884be595f76465107a01dfe72a053e3da827",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2580,8 +2590,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-7.emitter.ogt",
-      "sha256": "eeb2436c66f782447cea81eca4e4e9b52db4600b63be70ea45a58c4f2e04a010",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-7.emitter.ts",
+      "sha256": "3ce2aff5e0e17c8f952a5c0f601058fa5eea344d07c93b914fc2339daf01180d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2591,8 +2601,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-8.emitter.ogt",
-      "sha256": "32732fbbec67ec87edab8636d34da540cf668a8ba4310ea30bd1f8e35741bde7",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-8.emitter.ts",
+      "sha256": "10bb142e97dc9a668bb4c4170530ac381a1e1dabded48a41dbc207c548b4010f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2602,8 +2612,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-0-9.emitter.ogt",
-      "sha256": "f3f97bf267d4c3b5fe9aa30282c8e698d59de97f82e8f6b19f3f718a90fdf04f",
+      "path": "content/PhantasmMeteor/n0-0-0-0-0-9.emitter.ts",
+      "sha256": "09b4fedf161c0a543f8987c9a096b0e6bb5e890cd4fdca49047a45df598bde35",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2613,8 +2623,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-0.effect.ogt",
-      "sha256": "879a767913c5cfb2789c9a817f54ca90568af126871cbe297fd14b673b1f713d",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-0.effect.ts",
+      "sha256": "95303108c23d804846c3bd8b3c3b60c746ace848baae21306dcfae5879eea527",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2624,8 +2634,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-0.emitter.ogt",
-      "sha256": "b694addd1096bc675033730084d2c6b71ccbe1bc248b1af16f7bc8c83412c4c3",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-0.emitter.ts",
+      "sha256": "d2cf96d8aaf72811c2a720597e06fdf115dea184c50e3580c6071e8884424b34",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2635,8 +2645,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-0.parent.ogt",
-      "sha256": "044b91c410a3f7ae154e7b0351b15984d6bacdcd82187faa9431cec0cdd32aa7",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-0.parent.ts",
+      "sha256": "fb28aed9cffb8ec156b74d7f35d1d100368682d76e9d76b4650e41aae78d02ab",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2646,8 +2656,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-1.effect.ogt",
-      "sha256": "0287a2307cb4a4cad090d7d858017e56716a431c15fcf6031edd51b0ced82cd6",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-1.effect.ts",
+      "sha256": "3abde5f306f1854558e518a78aff462e5085b223f9ba5f5d70d0977e468d5861",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2657,8 +2667,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-1.emitter.ogt",
-      "sha256": "0ec2d6cca849488f68c80f7fe6931035ae5e2898a3869781950ae31c60c250c3",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-1.emitter.ts",
+      "sha256": "5f513ba17a63446eaaa05714b8afca87ca30f05de221b5aeb4d72495e1a008a8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2668,8 +2678,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-1.parent.ogt",
-      "sha256": "9c1820e5924e46998fc4a21fb61ec676b7334cc4788f0743881e732bfa26892b",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-1.parent.ts",
+      "sha256": "da0f8a0758279334af53d515002760ba61c9ead52fcafffab47028e89b03b7c7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2679,8 +2689,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-10-0.emitter.ogt",
-      "sha256": "ed2c223f08d498ddf1a489068d7a7225e05501d7f72621a4a6eb6ee41215a3bc",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-10-0.emitter.ts",
+      "sha256": "179a90d9d727b964c4ea41b0f73992ece3e0801e1622e9d2103d74b678f07654",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2690,8 +2700,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-10-0.parent.ogt",
-      "sha256": "0e994461806b886826712e05008230b48be41bf8be77bd230270d6292624bc70",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-10-0.parent.ts",
+      "sha256": "865a40d21eddbde20db5b7670791b58e0c537d28b6af39726280cbf50eb1680b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2701,8 +2711,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-10.emitter.ogt",
-      "sha256": "d510e6c6298307747b42ade4851354a598450294ab48ac16a754ca618bbcd556",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-10.emitter.ts",
+      "sha256": "ab12a2f902e6a3a25723971d2c3060f74007c3a1dbb2ccb8efb0e6f938a695ec",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2712,8 +2722,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-10.parent.ogt",
-      "sha256": "1b0e15f171a0ed0391bbfaee8275a84e61f08451ceb35bd9be6e95dfb346e719",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-10.parent.ts",
+      "sha256": "24e55380f3d325c982efa840964ad68c1e44324207de173041c7e87895230b9a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2723,8 +2733,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-11.emitter.ogt",
-      "sha256": "db731e3da6577c007e944363fedf49f79c05b5f60f23eac5441e61c33053a81e",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-11.emitter.ts",
+      "sha256": "f55c07ced0c8001da9c5767c4e257226b715c4a5d52637f6415155fb97922530",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2734,8 +2744,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-12.emitter.ogt",
-      "sha256": "b361586db41e0c8e96690eaaa923dd0ce57bbcfb5cbe13d40fc14d3770f8e8c5",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-12.emitter.ts",
+      "sha256": "1b614155e416b12c528767daf14694587ed54ef375dc80f825bf056321cac6ad",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2745,8 +2755,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-13.emitter.ogt",
-      "sha256": "baddb2e14b23b0539a64f949720d3549be4e68d620ab528aba2bcca3903ef3c6",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-13.emitter.ts",
+      "sha256": "36f6ec011e2ffa31ad140ec82b9a45dfc29bfa9eb0d05ecc3b676e80a9a97197",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2756,8 +2766,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-13.parent.ogt",
-      "sha256": "8ec7dfd269586e26a2a34d221af6ba6067b79a25d57570f12309db8d6318653c",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-13.parent.ts",
+      "sha256": "242a5dce9cd4754ec2591127b4c3c9405e5543c4006c2cd8f63aa25f8d7b1767",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2767,8 +2777,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-14.emitter.ogt",
-      "sha256": "eaa6acde19b7ca734cf05317581106552e5487d68698ece1770da33c9d529ec4",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-14.emitter.ts",
+      "sha256": "2a0b089bba9209e75332678679d5b99d42e8f69b9c4fed157ae47819373aedcb",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2778,8 +2788,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-2.emitter.ogt",
-      "sha256": "4643856c94fa8a4c4972ff1af78ce9535bb70523d3380f5c7f32b46a2530ac34",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-2.emitter.ts",
+      "sha256": "49bed380ed1c1479eeb490e9ab82043a5f77d0f03e7f7f792bbce9d97d9ed1c9",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2789,8 +2799,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-3.emitter.ogt",
-      "sha256": "5db19003750a60d95e1e24e6313a7d2591d5f63aeda832c13e06ca8aa460ae95",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-3.emitter.ts",
+      "sha256": "3fa4a12c7d791ff8d7bb2c5ee85fb7245ef1e3b71f7ba4a9eb5230577138796d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2800,8 +2810,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-4.effect.ogt",
-      "sha256": "15d29bba8beaae4c0f785c7a73fb17b1eaa97c21f0ec852db35b0819f20d80ec",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-4.effect.ts",
+      "sha256": "b278665456a02d09731ce07d14da3fe48d70a9b16db5e70ce00e7903b071e47c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2811,8 +2821,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-4.emitter.ogt",
-      "sha256": "7e1cbd1de2ad54042a9232eeefd9f1f9a10f689872098f1bb3c29dda9572298f",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-4.emitter.ts",
+      "sha256": "33e8a8e8e071eb8498703cdf52abc1e96a37dab32d9afaaf1152b53cec2935c4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2822,8 +2832,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-4.parent.ogt",
-      "sha256": "94761726be482833e764cdcf97bdfa54ad4ef51fbafa633e8945693241f4ec77",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-4.parent.ts",
+      "sha256": "04c327df7407d5ad726dd831f4b4df72fec674874b36a6da33cc82169636607f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2833,8 +2843,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-5.effect.ogt",
-      "sha256": "a5303e2291f88be0e94bb2d91a56c26851de6a8b7638e490d029e13d6f94b0c3",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-5.effect.ts",
+      "sha256": "88455b7f172d418187381ebf82b92905746c2e3c61bd095692c741ddcf3e7e2e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2844,8 +2854,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-6.effect.ogt",
-      "sha256": "b0e732fc513c8dfe52447d6c648996ee613538cf37688024d6cd6a8f83640e08",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-6.effect.ts",
+      "sha256": "0b1ecbec8be580efea6694ee088daec551672f63358c02e671d924058218a401",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2855,8 +2865,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-6.emitter.ogt",
-      "sha256": "4290422d35abb4c8e95971dc906957fbf52319aa93a1e4e3a963120020f003b2",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-6.emitter.ts",
+      "sha256": "5856c1cfb7bdd361cebc6e50ef4cb527f116a958314482f34eb781d25a0b3e4e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2866,8 +2876,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-6.parent.ogt",
-      "sha256": "583116f74f3b2c7994a7bb7c3a5ea3095d715bf86bda413206028727e793872f",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-6.parent.ts",
+      "sha256": "f70c85f703a1352a2417457ae3039660ad88cc907e50dbc4855fad4470b76ce5",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2877,8 +2887,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-7.effect.ogt",
-      "sha256": "13cfd916cbc2c3ba697442faa1c7ab9f48dfdaa7610606b6949131be5db62249",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-7.effect.ts",
+      "sha256": "ddab2dc3279d8a0417bc7731ed76a6937876d7deccaa7e80d3e2d4d14b19787d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2888,8 +2898,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-7.emitter.ogt",
-      "sha256": "ec03d9ab7ba25efe22b829768ae7c4f5a513a52de07a4e4e2949efe5d0fca6d3",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-7.emitter.ts",
+      "sha256": "e71164e695818054c1c0e2ea2258b24249c0ec9d69a9a36f5ffe5ae3e4a60a7e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2899,8 +2909,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-7.parent.ogt",
-      "sha256": "85907bda40d1a2fc2ad1e97f49aef36952d314ab4d8dcab2c6863a1180432eae",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-7.parent.ts",
+      "sha256": "dd6ed57a64872aa51d5a7067c1bbede2dc8ff900cf4fcdf75bc1c94c209e7605",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2910,8 +2920,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-8.effect.ogt",
-      "sha256": "ebdaa8914525e105dc2bfd7cbd731e74b8ba6af9b0d965367996b19346432268",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-8.effect.ts",
+      "sha256": "80c78d2a1477f947ad884f7de96e231cecfe105de115f44a839ffecaceab924f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2921,8 +2931,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-8.emitter.ogt",
-      "sha256": "f4e60acbcf8884246e7b8eff1364850a5cbe8de943d3ee867fd1af6d79f45843",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-8.emitter.ts",
+      "sha256": "6ba4dc3d12e06ce542204d6876876ff86e271ae633d6812beb15dec59bf3385e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2932,8 +2942,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-8.parent.ogt",
-      "sha256": "70e529dab3dab5728bce77b4c854cf783bb7633fb1dcbeb9b2f1b4266afe4b47",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-8.parent.ts",
+      "sha256": "ccf8c86f4a686548c7b054d4391a38512b9514de40a79781042e076f86518cc7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2943,8 +2953,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-9.effect.ogt",
-      "sha256": "08b0e55ee9e232643de621e7a34445dd4def85e2233e5e701c461f1048d77db2",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-9.effect.ts",
+      "sha256": "6e5f5b740fe806bcb79971b76d215597d44bba7da6e23cbdecd834a43b8bcb69",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2954,8 +2964,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-9.emitter.ogt",
-      "sha256": "cd7ef3bfde5b43497da96cd750e6b1cfd606983b2b29aedec655b5fd0e64e38a",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-9.emitter.ts",
+      "sha256": "71b1e0aa890b7c37e7bd1f8456f55913bd90beb9bc8d3b22b1a45aeb56129620",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2965,8 +2975,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor/n0-0-0-0-1-9.parent.ogt",
-      "sha256": "587a3ec06e296a63f7f05a4d1d802a74019655aebfb61c47e7c9174e81a7f2d7",
+      "path": "content/PhantasmMeteor/n0-0-0-0-1-9.parent.ts",
+      "sha256": "b96bab4d180715ad686b2e712c62e386ee0a6e234c53e66d57aaca9ae938377b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2976,8 +2986,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single.ogt",
-      "sha256": "0ccb4834ac633f4e121ce50e6f92a1eb9f2978c5a05dc704bf0b1bbce35f5038",
+      "path": "content/PhantasmMeteor_Single.ts",
+      "sha256": "2511c145e7709121cbdea4e4e774e83e34491d2121d6993abbd46dd21ee2c949",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2987,8 +2997,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-0.effect.ogt",
-      "sha256": "986fad080b1a00a287582f98a609c47ca45efcf698df4f22de4100d1b47e989e",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-0.effect.ts",
+      "sha256": "c3e456db9495325e43c20391e4466f3ae79af6c10a60e4d3afdba8837b408320",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -2998,8 +3008,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-0.emitter.ogt",
-      "sha256": "ebce11aead286be9d38932e03a42e2130849f207cf4550d8f8fc8c46329f0a81",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-0.emitter.ts",
+      "sha256": "0b8d524d895d954382ab50c975beeffe05937229ccf56e5d649003cc8462a02a",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3009,8 +3019,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-1.emitter.ogt",
-      "sha256": "c61131c0e01bd67978b52f22eae962abbe72ce0911e97602e4dbe0d6ed3710ce",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-1.emitter.ts",
+      "sha256": "6ddae2b8103d014ef5b907dfce434b8ae133799de2c3fec1480c902d04d94f6d",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3020,8 +3030,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-2.emitter.ogt",
-      "sha256": "2a0a2bf476fccf626dabd20e6bde12833a29b20b80b02e6e9fc314829673631a",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-2.emitter.ts",
+      "sha256": "ad6954fdbfda120f137219ec679227b31aa4684484223b845815de10c96d5b96",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3031,8 +3041,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-3.effect.ogt",
-      "sha256": "98a1716cc4016179b17c9cc5998e1bb3d5b0b9fe6ab2c47a38246602f714b7bc",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-3.effect.ts",
+      "sha256": "e3b3692c9be27443184e4a51ffd99703a6fbade10c10870dee11e97ffdda4c34",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3042,8 +3052,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-3.emitter.ogt",
-      "sha256": "f044356300de072ff3ab592e416aed49da132ddc2d220cf7c4b836e86f9e563d",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-3.emitter.ts",
+      "sha256": "43c304e32f17964d2c180d947cac9e0450fe37b3cb9cf5f5b04489908ea9460f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3053,8 +3063,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-4-0-0.effect.ogt",
-      "sha256": "a2ca847dd332b032d88ed949150197373041b17c6aad8b39af14445fd65b5945",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-4-0-0.effect.ts",
+      "sha256": "4fb4eb2f99b6233680d11e3e654b570f657b337bc5c959984000398c21dbdd74",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3064,8 +3074,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-5.effect.ogt",
-      "sha256": "5af592abb187be152a0b6aea094e2ead069b88f5554cff75d7cc837323341798",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-5.effect.ts",
+      "sha256": "3278502b89f41a3478034c57b9832c05cc648b4e8dac852424f3c1a17536a311",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3075,8 +3085,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-5.emitter.ogt",
-      "sha256": "406f623032c72201eed09453b4553f8b1d85a96ce3d63580878c725ce0bdc301",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-5.emitter.ts",
+      "sha256": "e2df2a98ca72d9674dcba6b73961df754f59d5df605722eff02acfe8f7e7e6ae",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3086,8 +3096,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-6.emitter.ogt",
-      "sha256": "57a1d7d9c57cbbdd2a6e1c8cd3bf89cfd7faa6524f268e5b3097ee9bc697e88d",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-6.emitter.ts",
+      "sha256": "21053384254b44a340af3f6fed3e17f419ee08fc1a4dc588608a52de2f9bdfca",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3097,8 +3107,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-7.emitter.ogt",
-      "sha256": "8c69fb65311ea2ca2bec14d9ef059770eab8238fc2c49f39562ee8bcd63339bc",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-7.emitter.ts",
+      "sha256": "d73b9a6489e0400867c44c6679a4997d974301815e1a8e936ebd0c11a6f51c18",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3108,8 +3118,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-8.emitter.ogt",
-      "sha256": "083c55cac0efb839e4ee45deb930450b21498fdc24f3361de477ba7304f97a3c",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-8.emitter.ts",
+      "sha256": "00344b61216a0e4f036f8a79b4e295807f0490306c1945f551a9e0033fda43aa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3119,8 +3129,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-0-9.emitter.ogt",
-      "sha256": "c410430a62e4135d36a718e9fbea83d2a01ab68110faedd2b498a6e9fecb3a43",
+      "path": "content/PhantasmMeteor_Single/n0-0-0-9.emitter.ts",
+      "sha256": "cc28e3ecb5e2a4ff36beb6b97e82e2da32cb99e7e5a583fe28fbd5f7f11f8bdd",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3130,8 +3140,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-0.effect.ogt",
-      "sha256": "bcb673ba79c2d5bc11b44509fa802d028185b703b0f90e61ecaf695d8cde401c",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-0.effect.ts",
+      "sha256": "ceba7644854cc43daf00b89de05b8a9e4d4bb4f79b996ef91830223896366652",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3141,8 +3151,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-0.emitter.ogt",
-      "sha256": "ab10ff4759b95cb18f83626b59a9164e1345849736c3949844bae9d90fa1cef4",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-0.emitter.ts",
+      "sha256": "6b8712b64bb91e27c585cb1893a77507bed9656e482993f212b4b185a5a203be",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3152,8 +3162,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-1.effect.ogt",
-      "sha256": "b1487e9ac09d3b61703fe4aff2bd5e64ab236e7c2629c4c75f381581aca51288",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-1.effect.ts",
+      "sha256": "777e488c383503c1006a79737dc885807efc54f5ac690f0836599672e7d82153",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3163,8 +3173,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-1.emitter.ogt",
-      "sha256": "303970d3c18d2a6638e46ffbafb5004abf370617f61aae466ab04063d1c4aac0",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-1.emitter.ts",
+      "sha256": "8b1d8cbb5a4d0c53c20637f1ed9a35193035297cb5ab24439dacd67e2b53b8de",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3174,8 +3184,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-10-0.emitter.ogt",
-      "sha256": "370e535fe450c63b47ab4ac04ad253e4a00ff9ca12750876411165d36e4e1c14",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-10-0.emitter.ts",
+      "sha256": "fb86e6ce237495587d2c8188ebcc92c673a42b11b503152281d0576c9d0f7894",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3185,8 +3195,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-10.emitter.ogt",
-      "sha256": "c87beeb07f5066d28cd6010a8e08253a57eb2985e0f1e8d94c9e854ec16c7173",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-10.emitter.ts",
+      "sha256": "31445d098eeced16594094293413ab94bf3eb05dafb81c1926b4aa0b716259d1",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3196,8 +3206,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-11.emitter.ogt",
-      "sha256": "c052f3114aea80d2ebb621d0aee8bcfdc072a830c13d6949cd73d8db1464fc5f",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-11.emitter.ts",
+      "sha256": "83ef56e896c983f24e5a1f3b4ac8ebdcf8b41ab2a906da7340ea1b11e4b969dc",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3207,8 +3217,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-12.emitter.ogt",
-      "sha256": "148d022f10744ee35e03fa0ea61d50aca529b7495b5b0dbb980cbc6bc2e9b47f",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-12.emitter.ts",
+      "sha256": "a81169c5d0c1c5216407e4202c5aacb4064f116b0cd19d9206d211c95c2d9008",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3218,8 +3228,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-13.emitter.ogt",
-      "sha256": "c56615da06c2baea672f053ed6e9059bd29ec3ea2f7a1daa3aeab879ff3f5159",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-13.emitter.ts",
+      "sha256": "742c03e0d431ba936d38299e4e67ab4a28c770a5fa89c1cdca7c68676ca3e484",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3229,8 +3239,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-14.emitter.ogt",
-      "sha256": "2a9153ce2ea83654664cfec672198bd512cda38518a372ef82782b4434f91893",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-14.emitter.ts",
+      "sha256": "32de6efcabff0b202b61bc802cd7a6c1049af51d7b141cb4a9f3e3c1d51b5cb0",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3240,8 +3250,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-2.emitter.ogt",
-      "sha256": "1e740e51d1ea522b069cfa54ccd08cc64f09abc66f8a309eb75ad5dcf5bd9621",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-2.emitter.ts",
+      "sha256": "253993e5ba9801a1033e8a71247f08e1f337697df2a376ec1bba5477db2ef424",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3251,8 +3261,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-3.emitter.ogt",
-      "sha256": "9f6f0995f5f57cad3e8a800b4c43fd01d7dbc985d80612b75674bbee1dc27e85",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-3.emitter.ts",
+      "sha256": "7e6d08f0895cd3b1179cbb777cecc74093f72adc9a8db18d55270aad0963abf3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3262,8 +3272,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-4.effect.ogt",
-      "sha256": "83401d1ec766e091f85d8353e6c42dc3c5a6e14388497cc925c0de86b501ae6b",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-4.effect.ts",
+      "sha256": "fbd9636010e6b625b0de5bfaa8f1799196aaf9808218d83ef5eaad4a36ea2172",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3273,8 +3283,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-4.emitter.ogt",
-      "sha256": "7e5d46efc48a1d8d0da6aa0acbc3d60c53039041f9f958fb3e1256c7ebaa8062",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-4.emitter.ts",
+      "sha256": "d9250b3c65e25e0c40d6d633e05048d6e3efa1a9676238063f77f518cb5e80df",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3284,8 +3294,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-5.effect.ogt",
-      "sha256": "39300c11dced1603afd7f4ba807da467227e97f1c4e7cc1405e98d5ad4fde2be",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-5.effect.ts",
+      "sha256": "6beca66c3ec456707ef0e9e1ad83c7edc86f04d833bccf322ab98d4e8b0d85be",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3295,8 +3305,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-6.effect.ogt",
-      "sha256": "7cb8b43be29d9ffa673d64feee58f09e0300ec2b4e0f4bb646733ff09901dc57",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-6.effect.ts",
+      "sha256": "d8d9f5d5c76426234252a7b759eeb25812c9d9df6f131467e461e4dfa3d71ace",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3306,8 +3316,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-6.emitter.ogt",
-      "sha256": "1367178cbfbcf03d3f06cdb80ddd2c38b422a355306bc89d0c970272e7a1d826",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-6.emitter.ts",
+      "sha256": "00741e58ec70b97f0a62c0bbc44123afcee93c1512e42a0310e186776e79bc33",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3317,8 +3327,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-7.effect.ogt",
-      "sha256": "433b4976a9a72cbdb4e1305c9805060e52a8273a84eca0ed7e31e162699df497",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-7.effect.ts",
+      "sha256": "af5f673c4796aac4efa72db4d689ab7ecbbbd4a8de76e9b493c02aa406208439",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3328,8 +3338,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-7.emitter.ogt",
-      "sha256": "3cc2ff0d9661fa520c7bac48bf2b6c34f95bd129c42127ba765a5ab0116b3035",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-7.emitter.ts",
+      "sha256": "bbae1ca8458099befef053fa6ec21572d505b302ccbbc89795cc912321c7e50c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3339,8 +3349,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-8.effect.ogt",
-      "sha256": "fcbe8020d39c1343c51a64d72e6e87dfeffc424e60d8392441caf6d96a2413a3",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-8.effect.ts",
+      "sha256": "b08e086d73cf544a43462940b4d27f89b68546726889bb366eec1cd3f72f06ed",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3350,8 +3360,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-8.emitter.ogt",
-      "sha256": "48909e3ef94343bd06a371b98191a8c6a34483d0f51f693a781e0328c2da3f66",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-8.emitter.ts",
+      "sha256": "83b037c877ea62db4a35f65f0e61a544e316eb6f22bd4f8da32e65f6c2c89783",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3361,8 +3371,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-9.effect.ogt",
-      "sha256": "2e061a89036af767a15a1a6bbb1a996ad700d5de54d6c85c3847edd6a0a4373c",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-9.effect.ts",
+      "sha256": "98e72b0af759f42358c195dee9618ef35362803988d2498ee83c613b878882f4",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3372,8 +3382,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "PhantasmMeteor_Single/n0-0-1-9.emitter.ogt",
-      "sha256": "7de72d6979dbcff58e3eb55ec8a4cfb7b17f28a311622125b5deb407d41d4eb4",
+      "path": "content/PhantasmMeteor_Single/n0-0-1-9.emitter.ts",
+      "sha256": "e28008c9119b78b08d97b3a5b33231cf6807c58a49148ac477635abbeff62859",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3383,18 +3393,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "README.md",
-      "sha256": "c5d28ff92041e0c0c1f36a8c3f66505e35a08a72408f427c616129acbadf2ac4",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html"
-      },
-      "credit": "Effekseer and Pierre01",
-      "derived": "authored"
-    },
-    {
-      "path": "SonicBoom.ogt",
-      "sha256": "468878dd378a7dc6b3dd466c1b56f67db0b1a6e7dcd93698ec97fb092fd4e84d",
+      "path": "content/SonicBoom.ts",
+      "sha256": "072dfbc28fabf1581bcb3cf2ce6feda32b73ec0066ca9862e90f9a5fb8dab88c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3404,8 +3404,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-0-0.effect.ogt",
-      "sha256": "b1044b9e600229d43855c169ee377821e32095549781a04f63d9e282cc85fa4b",
+      "path": "content/SonicBoom/n0-0-0-0.effect.ts",
+      "sha256": "f62b7065f2cf24be22505e943ed2118c4191d5a492a19e4f42125f71dd31aefa",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3415,8 +3415,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-0-0.emitter.ogt",
-      "sha256": "a99ac50b754c26811dbb387600878cb507c97bb46a3f37e0feafe7cd173cabb8",
+      "path": "content/SonicBoom/n0-0-0-0.emitter.ts",
+      "sha256": "3b93041eaca1687f6c75083a7ea70927711a732780d11dd6a2c75f01eb6f9236",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3426,8 +3426,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-0-1.effect.ogt",
-      "sha256": "f632cac5129611f39ec9949f9639b3cff0447c11bd1b18e597c8bafe397fd8dd",
+      "path": "content/SonicBoom/n0-0-0-1.effect.ts",
+      "sha256": "108e30dfe6d907ba6be4ecb8f51a3d28511b32182d66b00173672cf88a50f874",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3437,8 +3437,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-0-2.emitter.ogt",
-      "sha256": "8f4af813b829ce5d958930c6e7e8802d088e935673e85e008fd9272ab01f28ba",
+      "path": "content/SonicBoom/n0-0-0-2.emitter.ts",
+      "sha256": "43b3d69b8da4dc3871b4f8afac274ea75477057792a598fe3a1279b4462ec63b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3448,8 +3448,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-0-3.emitter.ogt",
-      "sha256": "7099158291e7b4b6dea4bdc8a8c91d9bfbb357ca01be6f021f80032a8de6dc2e",
+      "path": "content/SonicBoom/n0-0-0-3.emitter.ts",
+      "sha256": "2127bc4ffbed7e5dafabdd2d53706aa0e64f75e8194933fe447216154b5dd0f8",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3459,8 +3459,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-1.emitter.ogt",
-      "sha256": "7eb08a0d106b46909c7173cff010936c2220ec5e51f608e8b08225e771fe24ed",
+      "path": "content/SonicBoom/n0-0-1.emitter.ts",
+      "sha256": "07d7d85c574adccf874c0d9779b745734cc6af1fde735cbada4688a3d439c831",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3470,8 +3470,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-2.emitter.ogt",
-      "sha256": "6b99862de9f58c398a3cc29fad08a180f34cf1ef92e3b0159279039943aac535",
+      "path": "content/SonicBoom/n0-0-2.emitter.ts",
+      "sha256": "79916739d616278d9cd152fb4e006653eaadbc1f4a077806077c0f4bda72fddf",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3481,8 +3481,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-3-0.effect.ogt",
-      "sha256": "f0d7fba7465cd0154da60b73d4d47e23f364150df33d0051c7c0b69537ef76c6",
+      "path": "content/SonicBoom/n0-0-3-0.effect.ts",
+      "sha256": "c20f1fc24e39a9c9bd99c06cf06b6ecca3dfa6ed976188479629fa6af21c27d3",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3492,8 +3492,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-3-1.effect.ogt",
-      "sha256": "36eecb70c00ea04bb040a139ea0690db4c84dd02ed89e50ecd29730f7a08a91e",
+      "path": "content/SonicBoom/n0-0-3-1.effect.ts",
+      "sha256": "9be3c2597c009e01c439aed277107a403af7a4013ec030f1ab0c5aabc6c0427f",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3503,8 +3503,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-3-2.effect.ogt",
-      "sha256": "c6b230076946a906a74a7608683a75814205d70e986c1e8af15a24d8ea6c2571",
+      "path": "content/SonicBoom/n0-0-3-2.effect.ts",
+      "sha256": "3be88fbf7d00f16de1663973ecd62e7108552f74bf41bc9e3c5bac6ab7be9f4b",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3514,8 +3514,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "SonicBoom/n0-0-3-3.effect.ogt",
-      "sha256": "73debc6e616bbd0d1df236e082824c8b1b986ff1a148351797df6dbdae420224",
+      "path": "content/SonicBoom/n0-0-3-3.effect.ts",
+      "sha256": "e8858c315e2c7b7bbd01165b675ce0ad672e0dcc624e05c7bcb6e19b03a0576c",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
@@ -3526,7 +3526,7 @@
     },
     {
       "path": "extension.json",
-      "sha256": "d2ac0eb406944f0b4607730f122f0e7a717634f0fb2285e7104234b99d2dda37",
+      "sha256": "de7463b3e4df81be386f382642a0e1aedf88da39c0a973514a775791c3d3e5e7",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html"
@@ -3768,7 +3768,7 @@
   ],
   "effects": [
     {
-      "path": "Atmosphere.ogt",
+      "path": "content/Atmosphere.ts",
       "type": "vfx",
       "title": "Atmosphere",
       "loop": true,
@@ -3782,7 +3782,7 @@
       ]
     },
     {
-      "path": "Background.ogt",
+      "path": "content/Background.ts",
       "type": "vfx",
       "title": "Background",
       "loop": false,
@@ -3796,7 +3796,7 @@
       ]
     },
     {
-      "path": "Flame.ogt",
+      "path": "content/Flame.ts",
       "type": "vfx",
       "title": "Flame",
       "loop": false,
@@ -3811,7 +3811,7 @@
       "element": "fire"
     },
     {
-      "path": "Herald.ogt",
+      "path": "content/Herald.ts",
       "type": "vfx",
       "title": "Herald",
       "loop": false,
@@ -3825,7 +3825,7 @@
       ]
     },
     {
-      "path": "HolySandstorm.ogt",
+      "path": "content/HolySandstorm.ts",
       "type": "vfx",
       "title": "Holy Sandstorm",
       "loop": false,
@@ -3841,7 +3841,7 @@
       "element": "wind"
     },
     {
-      "path": "LightningStrike.ogt",
+      "path": "content/LightningStrike.ts",
       "type": "vfx",
       "title": "Lightning Strike",
       "loop": false,
@@ -3857,7 +3857,7 @@
       "element": "lightning"
     },
     {
-      "path": "MissileBoost.ogt",
+      "path": "content/MissileBoost.ts",
       "type": "vfx",
       "title": "Missile Boost",
       "loop": true,
@@ -3871,7 +3871,7 @@
       ]
     },
     {
-      "path": "MonsterRoar.ogt",
+      "path": "content/MonsterRoar.ts",
       "type": "vfx",
       "title": "Monster Roar",
       "loop": false,
@@ -3885,7 +3885,7 @@
       ]
     },
     {
-      "path": "PhantasmMeteor.ogt",
+      "path": "content/PhantasmMeteor.ts",
       "type": "vfx",
       "title": "Phantasm Meteor",
       "loop": false,
@@ -3901,7 +3901,7 @@
       "element": "fire"
     },
     {
-      "path": "PhantasmMeteor_Single.ogt",
+      "path": "content/PhantasmMeteor_Single.ts",
       "type": "vfx",
       "title": "Phantasm Meteor Single",
       "loop": false,
@@ -3917,7 +3917,7 @@
       "element": "fire"
     },
     {
-      "path": "SonicBoom.ogt",
+      "path": "content/SonicBoom.ts",
       "type": "vfx",
       "title": "Sonic Boom",
       "loop": false,

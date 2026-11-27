@@ -1,0 +1,486 @@
+import { file } from '@origingame/engine/author';
+// Converted from Effekseer by og vfx import.
+// effekseer: node 0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.0.0.0.1.0 "LineColor": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.1.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.1.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.1.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.2.0 "RingMain": a ring whose thickness changes over its life: its middle thickness kept
+// effekseer: node 0.0.0.2.1 "Ring1": a ring whose thickness changes over its life: its middle thickness kept
+// effekseer: node 0.0.0.3.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.3.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.0.3.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.1 "Distortion": motion out from a circle: approximated along one direction
+// effekseer: node 0.0.2 "Node": a ring whose thickness changes over its life: its middle thickness kept
+// effekseer: node 2.0.0.0.0 "Fog": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0 "Ine6": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0.0.0.0.0.0 "LineMain": nested generation: 6 instances above its generator folded into one emitter
+// effekseer: node 3.0.0.0.0.0.0.0 "LineMain": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0.0.0.0.0.1 "LineColor": nested generation: 6 instances above its generator folded into one emitter
+// effekseer: node 3.0.0.0.0.0.0.1 "LineColor": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": nested generation: 6 instances above its generator folded into one emitter
+// effekseer: node 3.0.0.0.0.0.0.1.0 "LineGlow": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0.0.1 "Distortion": motion out from a circle: approximated along one direction
+// effekseer: node 3.0.0.1.0.0.0.1 "Line": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 3.0.0.1.0.0.0.1 "Line": nested generation: 120 instances above its generator folded into one emitter
+export default file.vfx({
+  "elements": [
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-0-0-0-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-0-0-0-1.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-0-0-0-1-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-1-0-0-0-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-1-0-0-0-1.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-1-0-0-0-1-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.8146,
+            "band": 1.0,
+            "colors": [
+              [
+                0.0605,
+                0.2158,
+                1.0,
+                0.0
+              ],
+              [
+                0.3585,
+                0.6378,
+                1.0,
+                0.1571
+              ],
+              [
+                0.0605,
+                0.2158,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-2-0.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              0.5625
+            ],
+            [
+              0.1719,
+              0.6585
+            ],
+            [
+              0.375,
+              0.7199
+            ],
+            [
+              0.5781,
+              0.743
+            ],
+            [
+              1.0,
+              0.75
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.3667,
+      "life": 0.5
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.5085,
+            "band": 1.0,
+            "colors": [
+              [
+                0.0605,
+                0.2158,
+                1.0,
+                0.0
+              ],
+              [
+                0.3585,
+                0.6378,
+                1.0,
+                0.502
+              ],
+              [
+                0.0605,
+                0.2158,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-2-1.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              0.5625
+            ],
+            [
+              0.1719,
+              0.6585
+            ],
+            [
+              0.375,
+              0.7199
+            ],
+            [
+              0.5781,
+              0.743
+            ],
+            [
+              1.0,
+              0.75
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.3667,
+      "life": 0.5
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-3-0-0-0-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-3-0-0-0-1.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-0-3-0-0-0-1-0.parent"
+        }
+      },
+      "at": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-1.emitter"
+        }
+      },
+      "at": 0.335
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.8821,
+            "band": 0.75,
+            "colors": [
+              [
+                0.0619,
+                0.2195,
+                1.0,
+                0.0
+              ],
+              [
+                0.5326,
+                0.7482,
+                1.0,
+                0.502
+              ],
+              [
+                0.1166,
+                0.3587,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n0-0-2.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              0.5625
+            ],
+            [
+              0.125,
+              1.0577
+            ],
+            [
+              0.2188,
+              1.3664
+            ],
+            [
+              0.3125,
+              1.6063
+            ],
+            [
+              0.4062,
+              1.7766
+            ],
+            [
+              0.5,
+              1.8842
+            ],
+            [
+              0.5938,
+              1.9414
+            ],
+            [
+              1.0,
+              2.0
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "alpha"
+      },
+      "at": 0.3667,
+      "life": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n1-0-0-0-0.emitter"
+        }
+      },
+      "at": 0.0,
+      "offset": [
+        0.0,
+        0.1875,
+        0.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n1-1-0-0-0.emitter"
+        }
+      },
+      "at": 0.0
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n2-0-0-0-0.emitter"
+        }
+      },
+      "at": 0.335,
+      "offset": [
+        0.0,
+        0.25,
+        0.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0.emitter"
+        }
+      },
+      "at": 0.4683
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-0-0-0-0-0.parent"
+        }
+      },
+      "at": 0.835
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-0-0-0-0-1.parent"
+        }
+      },
+      "at": 0.835
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-0-0-0-0-1-0.parent"
+        }
+      },
+      "at": 0.835
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-0-1.emitter"
+        }
+      },
+      "at": 0.835
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-1-0-0-0-0.parent"
+        }
+      },
+      "at": 0.4683
+    },
+    {
+      "node": {
+        "kind": "trail",
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-0-0-1-0-0-0-1.effect"
+        },
+        "width": [
+          0.75,
+          0.75
+        ],
+        "lifetime": 0.3333,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "orbit": [
+          0.0,
+          2.4
+        ]
+      },
+      "at": 0.835,
+      "offset": [
+        0.0,
+        0.25,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -90.0
+      ],
+      "velocity": [
+        0.0,
+        -3.0,
+        0.0
+      ],
+      "life": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk02/Gun2/n3-1.emitter"
+        }
+      },
+      "at": 0.8
+    }
+  ],
+  "duration": 2.9683,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.3333
+    }
+  ]
+});

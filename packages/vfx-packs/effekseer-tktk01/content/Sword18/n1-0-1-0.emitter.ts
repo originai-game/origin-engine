@@ -1,0 +1,121 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 1.0.1.0 "glow"
+export default file.particles({
+  "maxParticles": 1000,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      0.001,
+      0.5,
+      0.001
+    ]
+  },
+  "spread": 0.0,
+  "rate": 0.0,
+  "bursts": [
+    {
+      "time": 0.0,
+      "count": 100
+    }
+  ],
+  "duration": 0.0167,
+  "looping": false,
+  "lifetime": [
+    0.5,
+    0.5
+  ],
+  "speed": [
+    1.72,
+    6.88
+  ],
+  "speedOverLife": [
+    [
+      0.0,
+      4.4254
+    ],
+    [
+      0.2188,
+      1.9936
+    ],
+    [
+      0.3281,
+      1.1232
+    ],
+    [
+      0.4375,
+      0.5008
+    ],
+    [
+      0.6094,
+      0.024
+    ],
+    [
+      0.8125,
+      0.2502
+    ],
+    [
+      0.8438,
+      0.0
+    ],
+    [
+      1.0,
+      0.0
+    ]
+  ],
+  "size": [
+    1.2413,
+    1.2413
+  ],
+  "align": {
+    "kind": "upright",
+    "axis": [
+      -1.0,
+      0.0,
+      0.0
+    ]
+  },
+  "colorOverLife": [
+    [
+      0.0,
+      [
+        1.0,
+        0.0478,
+        0.0023,
+        1.0
+      ]
+    ],
+    [
+      1.0,
+      [
+        1.0,
+        0.0478,
+        0.0023,
+        1.0
+      ]
+    ]
+  ],
+  "randomColorOverLife": [
+    [
+      0.0,
+      [
+        1.0,
+        0.5356,
+        0.0254,
+        1.0
+      ]
+    ],
+    [
+      1.0,
+      [
+        1.0,
+        0.5356,
+        0.0254,
+        1.0
+      ]
+    ]
+  ],
+  "texture": {
+    "$ogRef": "base/vfx/effekseer-tktk01/textures/Line01"
+  },
+  "blend": "additive"
+});

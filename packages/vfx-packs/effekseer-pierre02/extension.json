@@ -3,8 +3,8 @@
   "kind": "vfx",
   "name": "effekseer-pierre02",
   "version": "1.0.0",
-  "description": "Pierre vol.2's Effekseer sample effects (12), converted to type vfx",
-  "minEngine": "0.8.0",
+  "description": "Pierre vol.2's Effekseer sample effects (12), converted to file.vfx",
+  "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
     "dim": "3d",

@@ -1,0 +1,50 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 1 "グロー画像"
+export default file.effect({
+  "main": {
+    "texture": {
+      "$ogRef": "base/vfx/effekseer-tktk01/textures/Particle02"
+    },
+    "channel": "rgba",
+    "uv": {}
+  },
+  "alpha": {
+    "kind": "curve",
+    "keys": [
+      [
+        0.0,
+        0.0248
+      ],
+      [
+        0.0938,
+        1.0
+      ],
+      [
+        0.1406,
+        0.9007
+      ],
+      [
+        0.2031,
+        0.6478
+      ],
+      [
+        0.25,
+        0.4582
+      ],
+      [
+        0.4531,
+        0.1604
+      ],
+      [
+        0.5625,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ]
+  },
+  "blend": "additive",
+  "doubleSided": true
+});

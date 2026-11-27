@@ -1,6 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 1 "始めリング"
-blend additive
-doubleSided true

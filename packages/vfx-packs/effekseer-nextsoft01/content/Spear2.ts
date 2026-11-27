@@ -1,0 +1,51 @@
+import { file } from '@origingame/engine/author';
+// Converted from Effekseer by og vfx import.
+export default file.vfx({
+  "elements": [
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-nextsoft01/Spear2/n0.emitter"
+        }
+      },
+      "at": 0.0,
+      "offset": [
+        -1.0,
+        0.8,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -90.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-nextsoft01/Spear2/n1.emitter"
+        }
+      },
+      "at": 0.0167,
+      "offset": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -101.3099
+      ]
+    }
+  ],
+  "duration": 0.9833,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.0167
+    }
+  ]
+});

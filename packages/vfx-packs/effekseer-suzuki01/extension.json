@@ -3,8 +3,8 @@
   "kind": "vfx",
   "name": "effekseer-suzuki01",
   "version": "1.0.0",
-  "description": "Suzuki01's Effekseer sample effects (3), converted to type vfx",
-  "minEngine": "0.8.0",
+  "description": "Suzuki01's Effekseer sample effects (3), converted to file.vfx",
+  "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
     "dim": "3d",

@@ -1,0 +1,13 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 6.0.0.0 "Node"
+export default file.effect({
+  "main": {
+    "texture": {
+      "$ogRef": "base/vfx/effekseer-magicalxspiral/textures/ShockWave8"
+    },
+    "channel": "rgba",
+    "uv": {}
+  },
+  "blend": "additive",
+  "doubleSided": true
+});

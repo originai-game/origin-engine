@@ -1,0 +1,39 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 1.1.0 "爆発つぶ"
+export default file.effect({
+  "alpha": {
+    "kind": "curve",
+    "keys": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.6774,
+        1.0
+      ],
+      [
+        0.7344,
+        0.9111
+      ],
+      [
+        0.7812,
+        0.7865
+      ],
+      [
+        0.8281,
+        0.6299
+      ],
+      [
+        0.9531,
+        0.1585
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ]
+  },
+  "blend": "additive",
+  "doubleSided": true
+});

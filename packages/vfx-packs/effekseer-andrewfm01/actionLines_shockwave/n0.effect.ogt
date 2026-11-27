@@ -1,6 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 0 "Node"
-blend alpha
-doubleSided true

@@ -1,8 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 0.0.0.5.0 "Calve"
-main "vfx/effekseer-pierre02/textures/Yakiniku.png" rgba {
-  tile 1 0.5
-}
-blend alpha

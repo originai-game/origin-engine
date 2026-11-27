@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "effekseer-* effect packs",
+      "change": "All ten downloadable Effekseer packs use checked TypeScript content declarations instead of OGT FX author files and require engine 0.9.0. Native fields and seeded timelines are preserved; models and textures retain their existing import path.",
+      "fix": "Reinstall the updated pack and replace vfx/<pack>/<effect>.ogt with base/vfx/<pack>/<effect>. Edit declarations under content/vfx/<pack>/; raw textures and models remain under assets/vfx/<pack>/."
+    }
+  ]
+}

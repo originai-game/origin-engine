@@ -1,0 +1,13 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 6 "始めリング"
+export default file.effect({
+  "main": {
+    "texture": {
+      "$ogRef": "base/vfx/effekseer-tktk01/textures/AuroraRing"
+    },
+    "channel": "rgba",
+    "uv": {}
+  },
+  "blend": "additive",
+  "doubleSided": true
+});

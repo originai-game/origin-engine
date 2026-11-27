@@ -1,6 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 2 "Inner Glow"
-blend additive
-doubleSided true

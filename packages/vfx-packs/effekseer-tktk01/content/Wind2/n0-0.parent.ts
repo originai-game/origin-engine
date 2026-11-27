@@ -1,0 +1,72 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 0 "風の振れ"
+export default file.particles({
+  "maxParticles": 5,
+  "shape": {
+    "kind": "point"
+  },
+  "spread": 0.0,
+  "rate": 0.0,
+  "bursts": [
+    {
+      "time": 0.0,
+      "count": 4
+    }
+  ],
+  "duration": 0.0167,
+  "looping": false,
+  "lifetime": [
+    0.25,
+    0.25
+  ],
+  "speed": [
+    72.0,
+    72.0
+  ],
+  "speedOverLife": [
+    [
+      0.0,
+      3.6952
+    ],
+    [
+      0.25,
+      1.7411
+    ],
+    [
+      0.375,
+      1.0269
+    ],
+    [
+      0.5,
+      0.5001
+    ],
+    [
+      0.625,
+      0.1608
+    ],
+    [
+      0.75,
+      0.0091
+    ],
+    [
+      0.875,
+      0.0448
+    ],
+    [
+      1.0,
+      0.2582
+    ]
+  ],
+  "size": [
+    0.0,
+    0.0
+  ],
+  "subEmitters": [
+    {
+      "trigger": "life",
+      "emitter": {
+        "$ogRef": "base/vfx/effekseer-tktk01/Wind2/n0-0.emitter"
+      }
+    }
+  ]
+});

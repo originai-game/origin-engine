@@ -1,0 +1,95 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 0.1.1.0.1 "Light"
+export default file.particles({
+  "maxParticles": 27,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1.6875,
+      1.6875,
+      1.6875
+    ]
+  },
+  "spread": 54.7356,
+  "rate": 181.8182,
+  "duration": 0.0385,
+  "looping": false,
+  "lifetime": [
+    1.3333,
+    1.3333
+  ],
+  "speed": [
+    0.0,
+    0.0
+  ],
+  "speedOverLife": [
+    [
+      0.0,
+      1.3763
+    ],
+    [
+      0.5156,
+      0.9652
+    ],
+    [
+      1.0,
+      0.7194
+    ]
+  ],
+  "size": [
+    0.0,
+    0.0
+  ],
+  "sizeOverLife": [
+    [
+      0.0,
+      0.6
+    ],
+    [
+      1.0,
+      1.0
+    ]
+  ],
+  "colorOverLife": [
+    [
+      0.0,
+      [
+        1.0,
+        0.4647,
+        0.0356,
+        0.0
+      ]
+    ],
+    [
+      0.225,
+      [
+        1.0,
+        0.4647,
+        0.0356,
+        0.0941
+      ]
+    ],
+    [
+      0.4375,
+      [
+        1.0,
+        0.4647,
+        0.0356,
+        0.0941
+      ]
+    ],
+    [
+      1.0,
+      [
+        1.0,
+        0.4647,
+        0.0356,
+        0.0
+      ]
+    ]
+  ],
+  "texture": {
+    "$ogRef": "base/vfx/effekseer-pierre02/textures/Particle_Soft"
+  },
+  "blend": "additive"
+});

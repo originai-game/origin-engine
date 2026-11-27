@@ -1,6 +1,0 @@
-type effect
-version 1
----
-# Effekseer node 0.7.3.0.0.0.2.0 "SparkTracker"
-blend additive
-doubleSided true

@@ -1,0 +1,34 @@
+import { file } from '@origingame/engine/author';
+// Converted from Effekseer by og vfx import.
+// effekseer: node 0.0.0 "リボン本体": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 0.0.0 "リボン本体": nested generation: 200 instances above its generator folded into one emitter
+export default file.vfx({
+  "elements": [
+    {
+      "node": {
+        "kind": "trail",
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-nextsoft01/MagicTornade/n0-0-0.effect"
+        },
+        "width": [
+          0.7746,
+          0.1936
+        ],
+        "lifetime": 0.3333,
+        "color": [
+          0.0278,
+          0.0781,
+          0.1905,
+          1.0
+        ],
+        "orbit": [
+          3.0,
+          3.3333
+        ]
+      },
+      "at": 0.0,
+      "life": 0.4833
+    }
+  ],
+  "duration": 0.8167
+});

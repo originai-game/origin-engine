@@ -1,0 +1,146 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 0.2.0.0.0.1.2.0.2 "FireVariation"
+export default file.particles({
+  "maxParticles": 89,
+  "shape": {
+    "kind": "box",
+    "halfExtents": [
+      1.3,
+      0.5,
+      2.3
+    ]
+  },
+  "spread": 18.1561,
+  "rate": 0.0,
+  "bursts": [
+    {
+      "time": 0.0,
+      "count": 3,
+      "cycles": 40,
+      "interval": 0.0267
+    }
+  ],
+  "duration": 1.0567,
+  "looping": false,
+  "lifetime": [
+    0.5167,
+    0.6833
+  ],
+  "speed": [
+    18.9069,
+    28.9854
+  ],
+  "speedOverLife": [
+    [
+      0.0,
+      1.3054
+    ],
+    [
+      0.5156,
+      0.9741
+    ],
+    [
+      1.0,
+      0.7628
+    ]
+  ],
+  "size": [
+    3.9056,
+    3.9056
+  ],
+  "sizeOverLife": [
+    [
+      0.0,
+      0.8
+    ],
+    [
+      1.0,
+      1.0
+    ]
+  ],
+  "heightOverLife": [
+    [
+      0.0,
+      0.25
+    ],
+    [
+      1.0,
+      1.25
+    ]
+  ],
+  "align": {
+    "kind": "facing",
+    "normal": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "colorOverLife": [
+    [
+      0.0,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.0
+      ]
+    ],
+    [
+      0.0938,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.0864
+      ]
+    ],
+    [
+      0.1667,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.1927
+      ]
+    ],
+    [
+      0.2188,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.2907
+      ]
+    ],
+    [
+      0.2778,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.435
+      ]
+    ],
+    [
+      1.0,
+      [
+        0.2195,
+        0.0055,
+        0.0104,
+        0.0
+      ]
+    ]
+  ],
+  "rotation": [
+    -6.0,
+    6.0
+  ],
+  "texture": {
+    "$ogRef": "base/vfx/effekseer-pierre02/textures/Fire"
+  },
+  "blend": "alpha",
+  "effect": {
+    "$ogRef": "base/vfx/effekseer-pierre02/BloodLance/n0-2-0-0-0-1-2-0-2.effect"
+  }
+});

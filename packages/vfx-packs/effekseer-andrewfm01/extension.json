@@ -3,8 +3,8 @@
   "kind": "vfx",
   "name": "effekseer-andrewfm01",
   "version": "1.0.0",
-  "description": "AndrewFM01's Effekseer sample effects (15), converted to type vfx",
-  "minEngine": "0.8.0",
+  "description": "AndrewFM01's Effekseer sample effects (15), converted to file.vfx",
+  "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
     "dim": "3d",

@@ -1,0 +1,21 @@
+import { file } from '@origingame/engine/author';
+// Effekseer node 0.1.3.0.0 "SmokeVariation"
+export default file.effect({
+  "main": {
+    "texture": {
+      "$ogRef": "base/vfx/effekseer-pierre01/textures/Smoke"
+    },
+    "channel": "rgba",
+    "uv": {
+      "tile": [
+        0.5,
+        0.5
+      ],
+      "offset": [
+        0.0,
+        0.5
+      ]
+    }
+  },
+  "blend": "alpha"
+});

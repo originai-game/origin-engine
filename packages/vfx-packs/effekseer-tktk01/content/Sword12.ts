@@ -1,0 +1,542 @@
+import { file } from '@origingame/engine/author';
+// Converted from Effekseer by og vfx import.
+// effekseer: node 0 "斬撃一段目": a sprite scaled unevenly: drawn square at its mean
+// effekseer: node 0.0 "粒ﾉｰﾄﾞ": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 0.1 "粒ﾉｰﾄﾞ余韻": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 1 "斬撃2段目": a sprite scaled unevenly: drawn square at its mean
+// effekseer: node 1.0 "粒ﾉｰﾄﾞ": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 1.1 "粒ﾉｰﾄﾞ余韻": a moving ancestor: its descendants are placed where it starts
+// effekseer: node 2.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
+// effekseer: node 3.0 "リング": a ring whose thickness changes over its life: its middle thickness kept
+export default file.vfx({
+  "elements": [
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "quad"
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n0.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              7.0
+            ],
+            [
+              0.2656,
+              5.6398
+            ],
+            [
+              0.8281,
+              2.3516
+            ],
+            [
+              0.9062,
+              1.7344
+            ],
+            [
+              0.9531,
+              1.2299
+            ],
+            [
+              0.9844,
+              0.7126
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.0,
+      "offset": [
+        5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -45.0
+      ],
+      "velocity": [
+        -30.0,
+        -30.0,
+        0.0
+      ],
+      "life": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n0-0.emitter"
+        }
+      },
+      "at": 0.0,
+      "offset": [
+        5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -45.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n0-1.emitter"
+        }
+      },
+      "at": 0.0,
+      "offset": [
+        5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -45.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "quad"
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n1.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              7.0
+            ],
+            [
+              0.2656,
+              5.6398
+            ],
+            [
+              0.8281,
+              2.3516
+            ],
+            [
+              0.9062,
+              1.7344
+            ],
+            [
+              0.9531,
+              1.2299
+            ],
+            [
+              0.9844,
+              0.7126
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.05,
+      "offset": [
+        -5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        45.0
+      ],
+      "velocity": [
+        30.0,
+        -30.0,
+        0.0
+      ],
+      "life": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n1-0.emitter"
+        }
+      },
+      "at": 0.05,
+      "offset": [
+        -5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        45.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n1-1.emitter"
+        }
+      },
+      "at": 0.05,
+      "offset": [
+        -5.0,
+        5.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        45.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.6214,
+            "band": 1.0,
+            "colors": [
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.7593,
+                1.0,
+                1.0,
+                1.0
+              ],
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n2-0.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0781,
+              3.0501
+            ],
+            [
+              0.1719,
+              4.0278
+            ],
+            [
+              0.2656,
+              4.7386
+            ],
+            [
+              0.375,
+              5.2884
+            ],
+            [
+              0.5625,
+              5.7221
+            ],
+            [
+              0.875,
+              5.8537
+            ],
+            [
+              1.0,
+              6.0
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.0333,
+      "rotate": [
+        0.0,
+        0.0,
+        -90.0
+      ],
+      "life": 0.5
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.6214,
+            "band": 1.0,
+            "colors": [
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.7593,
+                1.0,
+                1.0,
+                1.0
+              ],
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n2-0.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0781,
+              3.0501
+            ],
+            [
+              0.1719,
+              4.0278
+            ],
+            [
+              0.2656,
+              4.7386
+            ],
+            [
+              0.375,
+              5.2884
+            ],
+            [
+              0.5625,
+              5.7221
+            ],
+            [
+              0.875,
+              5.8537
+            ],
+            [
+              1.0,
+              6.0
+            ]
+          ]
+        },
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.035,
+      "rotate": [
+        0.0,
+        0.0,
+        90.0
+      ],
+      "life": 0.5
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n2-1-0.emitter"
+        }
+      },
+      "at": 0.0,
+      "offset": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -90.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n2-2.emitter"
+        }
+      },
+      "at": 0.0333
+    },
+    {
+      "node": {
+        "kind": "mesh",
+        "shape": {
+          "kind": "ring",
+          "ring": {
+            "inner": 0.4188,
+            "band": 1.0,
+            "colors": [
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.7593,
+                1.0,
+                1.0,
+                1.0
+              ],
+              [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+              ]
+            ]
+          }
+        },
+        "effect": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n3-0.effect"
+        },
+        "scale": {
+          "kind": "curve",
+          "keys": [
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0781,
+              3.8377
+            ],
+            [
+              0.1719,
+              5.5487
+            ],
+            [
+              0.2656,
+              6.7926
+            ],
+            [
+              0.375,
+              7.7548
+            ],
+            [
+              0.5625,
+              8.5137
+            ],
+            [
+              0.875,
+              8.744
+            ],
+            [
+              1.0,
+              9.0
+            ]
+          ]
+        },
+        "color": [
+          2.0,
+          2.0,
+          2.0,
+          1.0
+        ],
+        "blend": "additive"
+      },
+      "at": 0.1,
+      "life": 0.3333
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n3-1-0.emitter"
+        }
+      },
+      "at": 0.1,
+      "offset": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "rotate": [
+        0.0,
+        0.0,
+        -90.0
+      ]
+    },
+    {
+      "node": {
+        "kind": "emitter",
+        "asset": {
+          "$ogRef": "base/vfx/effekseer-tktk01/Sword12/n3-2.emitter"
+        }
+      },
+      "at": 0.1
+    }
+  ],
+  "duration": 0.7967,
+  "events": [
+    {
+      "name": "impact",
+      "time": 0.1
+    }
+  ]
+});
