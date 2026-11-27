@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og dev --web",
+      "summary": "A game that imports the built-in TSX components (`@origingame/engine/ui/screens/*.tsx`, `ui/controls/*.tsx`, as every `og new` shell does) builds in the live dev server again; it failed with `Parse error` once per component while `og build` succeeded."
+    }
+  ]
+}

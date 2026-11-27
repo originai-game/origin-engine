@@ -227,8 +227,10 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         return { path: file, external: target === "native" && !/\.[jt]sx$/.test(file) };
       });
       build.onLoad({ filter: /.*/, namespace: "og-pub" }, (a) => {
-        const file = JSON.stringify(engineFile(a.path));
-        const hasDefault = new Bun.Transpiler({ loader: "ts" }).scan(readFileSync(engineFile(a.path)!, "utf8")).exports.includes("default");
+        const path = engineFile(a.path)!;
+        const file = JSON.stringify(path);
+        // The built-in components are TSX: scanning them as TS is a parse error.
+        const hasDefault = new Bun.Transpiler({ loader: path.endsWith(".tsx") ? "tsx" : "ts" }).scan(readFileSync(path, "utf8")).exports.includes("default");
         return {
           contents: `import * as m from ${file};\n(globalThis.__og_engine__ ??= {})[${JSON.stringify(a.path)}] = m;\nexport * from ${file};\n${hasDefault ? `export { default } from ${file};\n` : ""}`,
           loader: "ts",
