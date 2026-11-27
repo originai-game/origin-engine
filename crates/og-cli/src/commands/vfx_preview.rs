@@ -350,7 +350,7 @@ impl Stage<'_> {
             .replace("__VFX2D__", &json!(pixel).to_string())
             .replace(
                 "__PIVOTS__",
-                &pixel_pivots(&self.project.root.join("assets"), pixel)?.to_string(),
+                &pixel_pivots(self.project, pixel)?.to_string(),
             )
             .replace("__W__", &size.0.to_string())
             .replace("__H__", &size.1.to_string())
@@ -427,33 +427,50 @@ impl Stage<'_> {
     }
 }
 
-/// Each `type vfx2d` effect's sheet pivot (a fraction from the bottom left),
+/// Each checked pixel effect's sheet pivot (a fraction from the bottom left),
 /// so the stage centres the frame rather than the pivot: an effect that
 /// stands on the ground has its pivot near the frame's foot.
-fn pixel_pivots(assets: &Path, ids: &[&str]) -> Result<serde_json::Value, String> {
+fn pixel_pivots(project: &Project, ids: &[&str]) -> Result<serde_json::Value, String> {
+    use og_anim::cooked::BundleAnim;
     let mut out = serde_json::Map::new();
+    if ids.is_empty() {
+        return Ok(out.into());
+    }
+    let bundle = og_cook::runtime::Bundle::open(&project.root.join(&project.out))
+        .map_err(|e| e.to_string())?;
     for id in ids {
-        let text = std::fs::read_to_string(assets.join(id)).map_err(|e| format!("{id}: {e}"))?;
-        let dir = Path::new(id).parent().unwrap_or(Path::new(""));
-        let resolve = |p: &str| {
-            let local = dir.join(p);
-            if assets.join(&local).is_file() {
-                local.to_string_lossy().replace('\\', "/")
-            } else {
-                p.to_string()
-            }
-        };
-        let read = |f: &str| std::fs::read(assets.join(f)).map_err(|e| format!("{f}: {e}"));
-        let (x, y) = og_cook::cook::vfx2d::pivot(&text, &resolve, &read)
-            .map_err(|e| format!("{id}: {e}"))?;
-        out.insert(id.to_string(), json!([x, y]));
+        let sheet = bundle.load_flipbook(id).map_err(|e| e.to_string())?;
+        let frame = sheet
+            .frames
+            .first()
+            .ok_or_else(|| format!("{id}: empty effect sheet"))?;
+        out.insert(id.to_string(), json!(frame.pivot));
     }
     Ok(serde_json::Value::Object(out))
 }
 
-/// The asset id an argument names: an id as given, or a file under the
-/// project's `assets/`.
-fn asset_id(root: &Path, arg: &str) -> Result<Effect, String> {
+/// The canonical content id or legacy 3D asset path an argument names.
+fn asset_id(
+    root: &Path,
+    arg: &str,
+    index: &og_cook::cook::source_index::Index,
+) -> Result<Effect, String> {
+    if let Some(entry) = index
+        .entries
+        .get(arg)
+        .or_else(|| index.entries.values().find(|e| e.file == arg))
+    {
+        if entry.factory != "vfx2d" {
+            return Err(format!(
+                "{arg}: expected a file.vfx2d declaration, got {}",
+                entry.factory
+            ));
+        }
+        return Ok(Effect {
+            id: entry.id.clone(),
+            pixel: true,
+        });
+    }
     let assets = root.join("assets");
     let file = [assets.join(arg), PathBuf::from(arg)]
         .into_iter()
@@ -474,9 +491,8 @@ fn asset_id(root: &Path, arg: &str) -> Result<Effect, String> {
         .unwrap_or_default();
     match ty {
         "vfx" => Ok(Effect { id, pixel: false }),
-        "vfx2d" => Ok(Effect { id, pixel: true }),
         other => Err(format!(
-            "{arg}: a `type {other}` file; a preview plays a `type vfx` or `type vfx2d` effect (an emitter or an effect material is previewed through a vfx that names it)"
+            "{arg}: a `type {other}` file; a preview plays a type vfx asset or a checked file.vfx2d declaration (an emitter or an effect material is previewed through a vfx that names it)"
         )),
     }
 }
@@ -1053,10 +1069,14 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     }
     let package =
         project::engine_package(Some(&p.root)).ok_or((1, project::NO_ENGINE.to_string()))?;
+    let checked =
+        og_cook::cook::source_project::Project::open(&p.root).map_err(|e| fail(e.to_string()))?;
+    let index = og_cook::cook::source_index::Index::open(&p.root, &checked)
+        .map_err(|e| fail(e.to_string()))?;
     let effects: Vec<Effect> = a
         .effects
         .iter()
-        .map(|e| asset_id(&p.root, e))
+        .map(|e| asset_id(&p.root, e, &index))
         .collect::<Result<_, _>>()
         .map_err(fail)?;
     let pixel: Vec<&str> = effects

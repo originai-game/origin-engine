@@ -239,9 +239,9 @@ commands:
   font list [project] the bundled and installed font packs, with their languages
                       (a pack of no language: its scripts)
   vfx add <pack|directory> [project] [--any-engine]
-                      copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
+                      copy an effect pack (`kind vfx`: type vfx and file.vfx2d effects,
                       emitters, effect materials and their textures) into the game's
-                      assets/vfx/<pack>/ to use and change: a directory, a pack bundled with
+                      assets/vfx/<pack>/ and content/vfx/<pack>/ to use and change: a directory, a pack bundled with
                       the engine (`og ui list` names them), else one of this engine's
                       downloadable packs (its release's manifest.json `vfx` names them),
                       fetched from <downloads>/<version>/vfx/<pack>.tar.gz and refused unless
@@ -262,7 +262,7 @@ commands:
               [--project-look | --look asset.ogt] [--scene asset.ogt]
               [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov]
               [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]
-                      play each effect (type vfx, or type vfx2d in a 2D project) alone on a
+                      play each effect (type vfx, or canonical file.vfx2d ID in a 2D project) alone on a
                       dark stage at dusk (--stage day: a grey one under an overcast day, where
                       smoke, dust, debris and marks read), or the selected project look/scene,
                       and report it: six frames tiled into

@@ -4,7 +4,7 @@ Effect content (converted Effekseer samples, the Kenney-based starter sets,
 the Pixel VFX Forge library) lives in the platform's asset library; the
 engine's own packs ship with its releases, a few bundled and the rest
 downloadable (§5). The engine owns the formats (`type
-vfx`, `type vfx2d`, `type particles`, `type effect`), the `vfx` extension
+vfx`, `file.vfx2d`, `type particles`, `type effect`), the `vfx` extension
 kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.ts`.
 This is the contract agreed with the platform's importer
 (`origingame` packages/asset-admin, `vfx:import`).
@@ -12,9 +12,7 @@ This is the contract agreed with the platform's importer
 ## 1. The pack
 
 One directory, named as the pack, which `og vfx add <dir> [project]`
-copies to `assets/vfx/<name>/` (hidden files skipped, symlinks refused, an
-existing install never replaced). Its effects name their assets as
-`vfx/<name>/<path>`.
+installs into `assets/vfx/<name>/` and `content/vfx/<name>/` (hidden files skipped, symlinks refused, either existing root refuses the whole install). A pack's `content/` subtree contains checked TS declarations and is installed under the content root; other files stay under the assets root. Installation rolls back both roots on failure. Pixel effects load by canonical ID `base/vfx/<name>/<content-relative-stem>`; 3D FX author formats are still awaiting their cutover.
 
 A pack is whole in its directory: nothing it draws or plays needs a line
 in the game. The marks its effects leave (a scorch, a bullet hole, a wet
@@ -22,8 +20,7 @@ patch) are `decal` elements naming textures of the pack (`texture`,
 `normal`). Synthesised sounds are `file.sfx` declarations in the destination
 project's `content/`, not `type sfx` files under the copied `assets/` directory;
 `sound` elements name their canonical `<module>/<content-relative-stem>` IDs.
-A pack ships no recorded audio. The current asset-directory installer does
-not install TS declarations; copy those sources into `content/` explicitly.
+A pack ships no recorded audio. Put TS sound declarations in the pack's `content/` subtree so the installer carries them with its effects.
 
 `extension.json`: `format` 1, `kind` `"vfx"`, `name` (lowercase letters,
 digits and `-`, unique in the library: `effekseer-<contributor>`,
@@ -43,8 +40,8 @@ and the catalog fields:
 Beside `extension.json`, `format` 1:
 
 - `engine`: `{ "version": <minEngine>, "revision": <the main revision it was made with> }`.
-- `files`: every installed file (extension.json, README.md, each `.ogt`,
-  recipe, texture, sheet and model; not assets.json, nothing under
+- `files`: every installed file (extension.json, README.md, each declaration,
+  texture, sheet and model; not assets.json, nothing under
   `preview/`) with `path`, `sha256`, `licence` (an SPDX id, or `"custom"`
   with `licenceText`), `source` (`url`, https; `file`, the original name,
   optional for authored files), `credit` and `derived` (how this file was

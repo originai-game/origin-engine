@@ -59,6 +59,13 @@ fn string_of(doc: &Document, key: &str) -> Option<String> {
 /// The hashes of what the sheet depends on (its texture and atlas files),
 /// for the cook stamp: editing either recooks the sheet.
 pub(crate) fn dependency_hashes(s: &Source) -> String {
+    if let Some(sheet) = &s.flipbook {
+        let hash = s
+            .conformed
+            .as_ref()
+            .map_or(0, |bytes| super::hash_bytes(bytes));
+        return format!("{}={hash:016x}", sheet.texture);
+    }
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
@@ -222,6 +229,9 @@ fn read_atlas(text: &str) -> Result<(Vec<AtlasFrame>, Vec<Entry>), String> {
 
 /// The canonical sheet of a flipbook source.
 pub(crate) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
+    if let Some(sheet) = &s.flipbook {
+        return Ok(sheet.clone());
+    }
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| "a flipbook sheet is text (UTF-8)".to_string())?;
     let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
@@ -454,8 +464,7 @@ pub(crate) fn cook_layer(
 pub(crate) static FLIPBOOK: KindDef = KindDef {
     name: "flipbook",
     extensions: &[],
-    // A pixel effect becomes a sheet (`vfx2d::expand`).
-    types: &["flipbook", super::vfx2d::VFX2D_TYPE],
+    types: &["flipbook"],
     by_content: false,
     streams: true,
     plan: plan_flipbook,

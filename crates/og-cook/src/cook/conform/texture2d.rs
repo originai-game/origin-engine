@@ -543,6 +543,7 @@ pub(in crate::cook) fn conform(
                 tileset: None,
                 tilemap: None,
                 animgraph: None,
+                flipbook: None,
                 conformed: None,
                 fracture: None,
             };

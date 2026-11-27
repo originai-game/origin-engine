@@ -47,16 +47,17 @@ fn project() -> &'static Path {
              light {\n  at 0.1\n  life 0.2\n  intensity curve 0 10 1 0\n}\n\
              shake {\n  at 0.1\n  trauma 0.2\n}\n",
         );
-        // A pixel effect (type vfx2d): 6 frames at 12 fps, its impact on
+        // A checked pixel effect: 6 frames at 12 fps, its impact on
         // frame 3 (0.25 s), played 0.1 s into a composed effect.
-        write(
-            "fx/burst.ogt",
-            "type vfx2d\nversion 1\n---\nimpact 0.25\n\
-             {\"w\": 16, \"h\": 32, \"frames\": 6, \"fps\": 12, \"layers\": [{\"type\": \"flash\", \"r\": 0.8, \"dur\": 1}]}\n",
-        );
+        std::fs::create_dir_all(root.join("content/fx")).unwrap();
+        std::fs::write(
+            root.join("content/fx/burst.ts"),
+            "import {file} from '@origingame/engine/author';\nexport default file.vfx2d({impact: 0.25, recipe: {w: 16, h: 32, frames: 6, fps: 12, layers: [{type: 'flash', r: 0.8, dur: 1}]}});\n",
+        )
+        .unwrap();
         write(
             "fx/pixel.ogt",
-            "type vfx\nversion 1\n---\nduration 1\nflipbook \"fx/burst.ogt\" {\n  at 0.1\n  size 2\n}\n",
+            "type vfx\nversion 1\n---\nduration 1\nflipbook \"base/fx/burst\" {\n  at 0.1\n  size 2\n}\n",
         );
         // A sound 0.1 s in, its playback rate picked from a range.
         let pcm: Vec<f32> = (0..2400)

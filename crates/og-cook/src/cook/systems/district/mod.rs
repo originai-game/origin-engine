@@ -173,6 +173,7 @@ pub(crate) fn expand(
             tileset: None,
             tilemap: None,
             animgraph: None,
+            flipbook: None,
             conformed: None,
             fracture: None,
         };

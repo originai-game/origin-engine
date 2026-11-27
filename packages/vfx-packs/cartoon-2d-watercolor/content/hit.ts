@@ -1,5 +1,82 @@
-type vfx2d
-version 1
----
-# Pow Hit: Where the hit lands; a struck enemy or wall.
-recipe "hit.json"
+import { file } from '@origingame/engine/author';
+export default file.vfx2d({
+  "recipe": {
+    "cleanup": false,
+    "fps": 18,
+    "frames": 10,
+    "h": 144,
+    "layers": [
+      {
+        "hollow": 0.9,
+        "inner": 0.42,
+        "jitter": 0.25,
+        "points": 8,
+        "pop": 0.22,
+        "r": 0.78,
+        "ramp": "$main",
+        "sharp": 0.6,
+        "type": "star"
+      },
+      {
+        "breakup": 0.5,
+        "gain": 0.8,
+        "r0": 0.25,
+        "r1": 0.95,
+        "ramp": "$alt",
+        "t0": 0.05,
+        "t1": 0.7,
+        "th": 0.12,
+        "type": "ring"
+      },
+      {
+        "count": 7,
+        "drag": 2.6,
+        "life": [
+          0.35,
+          0.6
+        ],
+        "mode": "burst",
+        "ramp": "$spark",
+        "shape": "star",
+        "size": 6,
+        "speed": [
+          1.6,
+          2.4
+        ],
+        "t0": 0.05,
+        "type": "particles"
+      },
+      {
+        "dur": 0.12,
+        "r": 0.45,
+        "ramp": "$spark",
+        "type": "flash"
+      }
+    ],
+    "line": 1.5,
+    "loop": false,
+    "name": "Pow Hit",
+    "outline": "inside",
+    "ramps": {
+      "alt": [
+        "#e0dbd4",
+        "#f6f3ef",
+        "#f7f7f7"
+      ],
+      "main": [
+        "#deb059",
+        "#f0d57b",
+        "#f8f1c4"
+      ],
+      "spark": [
+        "#deb059",
+        "#f0d57b",
+        "#f8f1c4"
+      ]
+    },
+    "scale": 0.777778,
+    "seed": 11,
+    "supersample": 4,
+    "w": 144
+  }
+});

@@ -23,8 +23,8 @@ front of it apart. It exercises the 2D stack together on the real engine:
 - **Camera and parallax.** og.Follow2D (clamped) follows the knight; the
   cave's two far walls are one tilemap (`content/bg/cave.ts`) of two layers
   at parallax 0.3 and 0.6, the far one unlit.
-- **Pixel effects.** `vfx2d()` in `src/main.ts` plays a `type vfx2d`
-  recipe once as a sprite and flipbook (`assets/fx/`): `hit` (a steel star,
+- **Pixel effects.** `vfx2d()` in `src/main.ts` plays a `file.vfx2d`
+  recipe once as a sprite and flipbook (`content/fx/`): `hit` (a steel star,
   shards and a broken ring) where the blade bites, `dust` at the heel on
   each run step; `Drive` despawns each when its clip is finished.
 - **Sharp pixels.** No `render` option: a 2D project's (`create { form "2d" }`) default

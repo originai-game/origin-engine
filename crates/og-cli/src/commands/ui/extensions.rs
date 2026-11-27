@@ -310,6 +310,14 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
                 project.join("content/fonts").join(&extension.manifest.name),
             ),
         ]
+    } else if extension.manifest.kind == "vfx" {
+        vec![
+            ("metadata", target.clone()),
+            (
+                "content",
+                project.join("content/vfx").join(&extension.manifest.name),
+            ),
+        ]
     } else {
         vec![("metadata", target.clone())]
     };
@@ -344,6 +352,12 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
                     ("content", local)
                 } else if let Ok(local) = file.strip_prefix("sources") {
                     ("sources", local)
+                } else {
+                    ("metadata", file.as_path())
+                }
+            } else if extension.manifest.kind == "vfx" {
+                if let Ok(local) = file.strip_prefix("content") {
+                    ("content", local)
                 } else {
                     ("metadata", file.as_path())
                 }

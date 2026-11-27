@@ -6,454 +6,594 @@
   },
   "files": [
     {
-      "path": "README.md",
-      "sha256": "4424555497ee13d9fbfa3729d8b38ee652694a2c8323dbfcdc3ae0dac282b173",
+      "path": "content/block.ts",
+      "sha256": "8e824092beecd4e8e146ac9046ac18d836ec4e53f65b303bd3526b33ed9e076f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "block.json",
-      "sha256": "e24409d98ffc0791c4fbe838408726db4cd1926d058103c00542f54dc75b5f22",
+      "path": "content/break-crate.ts",
+      "sha256": "123817ac688c6ad0e79e469aee083e28c35fac94d5beb9f28b793aef16cf7698",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "block.ogt",
-      "sha256": "4a3229bb61a0127e068dc2af949246bb281d4ce0c403dba3d78cc757aabf4030",
+      "path": "content/break-ice.ts",
+      "sha256": "d779067ea1d1926c275ab0e45d2fd88be02d64c1a69093408cc812fd8f3c8ab3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-crate.json",
-      "sha256": "0c88f4fa6fbb8d21edd024f047a4b0b5ecf994c4f5609c7a863b7ee27dc5a91b",
+      "path": "content/break-rock.ts",
+      "sha256": "425d575ef0e636893fc4cb46d8e1879810226a383ef221e463f60a39aa117b51",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-crate.ogt",
-      "sha256": "51ee8c0c03cfb79e86bc67ddf65dacbcd8c46b2a6c90383a0f46a4d73690cda5",
+      "path": "content/bubbles.ts",
+      "sha256": "e5a787c54a3940bcaeacf117ed4e02377cddd4c4b29069adfddbfc5843a95531",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-ice.json",
-      "sha256": "18f9fc5d4bc45daae301b56a8f181e93b0c5456406fc7045ce216c3c33b83e80",
+      "path": "content/buff.ts",
+      "sha256": "84d80e803be11f845153f1197da08d94c4c6f07d6f14f47acc936ba9ccf76768",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-ice.ogt",
-      "sha256": "fa6ba312fb8ae5e0984321ff87788914d9f4dded2a69d887d45a009830ec3b94",
+      "path": "content/bullet-hit.ts",
+      "sha256": "c2d2c43d3c416c077a5d3a4f56c565791cd67e00b693ea7edc57ab1f4813994b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-rock.json",
-      "sha256": "38a7e43e18f6b2d6f625c5a89813b2d3f9efe29fa2d3e5d93d1825ac1bbbecba",
+      "path": "content/bullet.ts",
+      "sha256": "6c7f402f7a9a1bad4b4eef481fc104fa9d0123cf3b6ac2c88bff3ab37e3a2f25",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "break-rock.ogt",
-      "sha256": "17b9538bad5f0d6cde33f6d63e96faa2fc3809fa89fa0a86df9415ffa7219c02",
+      "path": "content/burning.ts",
+      "sha256": "cb88c8ce6235aa26ea3abe1181450fa0a6b27b8ea22cdc118717b4220744e836",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bubbles.json",
-      "sha256": "7e5d0aa0803ca4d52bf4e779b1607fe78949706b44909565f64b51a30ae7f722",
+      "path": "content/campfire.ts",
+      "sha256": "aa77952637091e52ce0e74a028be2992af61df2a6dc08822af4d6363624f9e56",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bubbles.ogt",
-      "sha256": "b36db424edc7ad6a1f005a072255b9813d6f42f46f8460c621defa01372cb878",
+      "path": "content/charge.ts",
+      "sha256": "d1494d2fd37e0bec5027b5f4b6d6b051a876408ce09576b2f58a9010f07a1dca",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "buff.json",
-      "sha256": "69d07f992636d07cc9b9c1ff2b5021bb68cfade42269331ff317bd7fb57077e5",
+      "path": "content/checkpoint.ts",
+      "sha256": "4264699148b1f0e9750058a3428b6feb4e165a8f73e9708dda17afa7ea8dcfc0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "buff.ogt",
-      "sha256": "83f3063fe88e6367a453f382a6888c9c03f93f031568b1a0945e1f81f01c1a0d",
+      "path": "content/chest-open.ts",
+      "sha256": "b5314e841e1a71966eaf39f78ffbd0f762950f934b924c3dea001f20a4001cbd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bullet-hit.json",
-      "sha256": "e24386f490b22f1b38c90e6a90c899df36933049dcb6e7fd38deaa6a4000a684",
+      "path": "content/chimney-smoke.ts",
+      "sha256": "db4488d712e96d242d7c91448bb89cbddf2eb6fb1f6b3d5b697781184d1ab35c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bullet-hit.ogt",
-      "sha256": "c3370eaa2bbca25aa6e2ad6ec1987f4dab1e9dff7e2a9c202a23a78a7201dce5",
+      "path": "content/coin.ts",
+      "sha256": "d73fe26386d222d675c06707fab31a96eeca9c49c9ffe802c1d1c227233132be",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bullet.json",
-      "sha256": "0e32ee03c60bacb133d57486be2f3e06facdc606706a77b4cb9bcc03459c62dc",
+      "path": "content/confetti-rain.ts",
+      "sha256": "dc349814ac450723503ea5a867643d0537f0fafde03913e26ddfd913fe801ca4",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "bullet.ogt",
-      "sha256": "336bd29f4d41110caec37a675c670bfe5f98823a2089faf8bb46e4e54c8f584d",
+      "path": "content/confetti.ts",
+      "sha256": "7f71d838420315b471e7b5f6efb16458afe03f79b97267cbd7d7c28d9668ebf2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "burning.json",
-      "sha256": "260f4cd052c475de395cebebae4e9a72b65ed4b2eb6630b6a4eb466ec06254da",
+      "path": "content/dash.ts",
+      "sha256": "d6862f96f6d34e0eef36e4f79588316ccaf92bc944fc62fdcb1c252302c628c5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "burning.ogt",
-      "sha256": "b94a9165b0e629c11993791bebe3a1cb665bf6168928d6460c82f4482bbbcc70",
+      "path": "content/debuff.ts",
+      "sha256": "1c1a0121f364a4bf3d8b4da27487c97d0b703d3bdf873b36df557b833d01208e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "campfire.json",
-      "sha256": "5e111b2aba8e8cf43049b0d04b2560e6caab7c20812a034aa271a18e1fa7e23d",
+      "path": "content/double-jump.ts",
+      "sha256": "5f7389c3b7c36348fa5556a9441025e7f3f9cf6dc04cd9a791b828b3a44d1263",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "campfire.ogt",
-      "sha256": "a1549846d145201a9c93bb833c89e765281394ebf26451a5b03a6c59881346c8",
+      "path": "content/explosion-small.ts",
+      "sha256": "f25cbc26dd145b5e44d1054429fd7393f7734f90ea33e3f9ad6e8eba658b3489",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "charge.json",
-      "sha256": "5aeef5bb323c9834617555139cda4eeca9ced9ef5fac30307860b3fcf3a29123",
+      "path": "content/explosion.ts",
+      "sha256": "ad3bbabc73de43489ac233217fcd62d2cfc60f95d6530294fac510819592ea38",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "charge.ogt",
-      "sha256": "e6dbd2e8d561e4db2a8f48b31ba86f91ef3293d59c942c75002006a19bd14d25",
+      "path": "content/fireflies.ts",
+      "sha256": "86a22c16beaaf6f3ce76ae8dfc23542a7c7179a85b45e96570d469cc5b9d5e2b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "checkpoint.json",
-      "sha256": "66d3d8d7517568ee0b8608ea5c864cfa8685cb38d80829e250299bc99b359ecf",
+      "path": "content/fireworks.ts",
+      "sha256": "52d16506d495f37a3a912870c7e8fbf55f01a3571c90aebddec0ed6fe56de6f3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "checkpoint.ogt",
-      "sha256": "4cbd52198346dbdaa734dede7b8e06ed118b6389df1357b93f06b4bba9134e49",
+      "path": "content/frozen.ts",
+      "sha256": "3dd17f60abda327a418a385f77a90c539dd90d2f560466c5323b09d2ccfcdd86",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "chest-open.json",
-      "sha256": "3e2cc73ab76a1f551741d0b65524328fb7e3f3044f1de56e21c6b4892cf833f5",
+      "path": "content/fuse.ts",
+      "sha256": "f4dfbb74c135d634e12bf3121006a4270448856309954d78fdf32c9fbaa65f47",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "chest-open.ogt",
-      "sha256": "997aa8288dafe1eca20f79fe7167bc979f02493ff7b42b62d83cf20dead6964f",
+      "path": "content/gem.ts",
+      "sha256": "182fe9f7ac1995a4ef852154d47ce5e41c57677cff8fe0e0f2aee1a921cd0cb1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "chimney-smoke.json",
-      "sha256": "69c61dcf6130db58ba288950d34ba5f94279bf009b145cd7ee3b088153245d2c",
+      "path": "content/heal.ts",
+      "sha256": "bbc0333ba1673d13ea17b15bb07e1a1eeba8343c41cfc2b4f1b5cbe42c5a926f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "chimney-smoke.ogt",
-      "sha256": "afb702cded7ab63c00fc35d9791f4640e44cc5485d0fe59d775fb71a71bbba40",
+      "path": "content/heart.ts",
+      "sha256": "6188dbd2e88d5eaf940f7c5a8a8b0933c5ed05db23a04e6b357681ed84ee02bd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "coin.json",
-      "sha256": "c76d21ed75fbda0650a80cfb51eae40b8867b02a708895eacd5499ebdcca1013",
+      "path": "content/hit-heavy.ts",
+      "sha256": "a9698c292440b45f95c0dc0e48b13e38f171046dd6276fa82ef91f8b8e019db8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "coin.ogt",
-      "sha256": "c5cf1bea8278a8cf1f5b5f4b23d6a97abb8c04b748b4b2e6f5d7d2062bd2b05a",
+      "path": "content/hit-small.ts",
+      "sha256": "86aa02e8cf88add271cde1ade5884457e8972c41c2ddea119c665aff745e6a8a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "confetti-rain.json",
-      "sha256": "d0cbeb35444d0255d2168a928def85b19b0e8068db093285b095a355649025ba",
+      "path": "content/hit.ts",
+      "sha256": "53c6c433d662ba01c7dae240740c494d6d7e7ce71d026f6abe5d2b33dc8cf1d8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "confetti-rain.ogt",
-      "sha256": "eaf19be3063e5a3fab6c5f06cc400a51ba6c9ed6992d995b236ca4573a6a8ae3",
+      "path": "content/jump-dust.ts",
+      "sha256": "3bf049d905c9d920c0f7480ed24bd7e58c5df194c3a30f1f93ea171f81bd6804",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "confetti.json",
-      "sha256": "13a8a238281eaa843fd770238d11f3d5e50cfa1eb6f7281c54bfd6477b9308c9",
+      "path": "content/land-dust.ts",
+      "sha256": "eeaddc4e78d39d8ba5c56073d970543b4ad36e3e204b5cc6aa3ff9474481f450",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "confetti.ogt",
-      "sha256": "a91467f066740d510cc66441c9adda10ecf90ece00bfcc9a461e0375bb3ac518",
+      "path": "content/laser.ts",
+      "sha256": "41ff7ea325153ddf7ef7a084490d6cb8a7aad32610379a1024f8ef517c671550",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "dash.json",
-      "sha256": "e531de1de69493993bd04e25702e1b1e7c26259d187376369a07320bc4803232",
+      "path": "content/leaves.ts",
+      "sha256": "df4b58cf83b609d151364a6b49437b2fafbf7e7f87f023769301354fdbb7b2f3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "dash.ogt",
-      "sha256": "dc66ce7c815e619dd7dad7159dfc099351081328da2060526484710e2c1872ca",
+      "path": "content/magic-bolt.ts",
+      "sha256": "9edd1e69466063d26c6cba7155cb375a2d7aa929d0d0522bc04aaf61b958f2d4",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "debuff.json",
-      "sha256": "52204127cd5f20e31a87ca91c0793de6bdbcd2e00423550f2bebc666616dbcf5",
+      "path": "content/magic-circle.ts",
+      "sha256": "226f575e83e4f185b4799a5c0b21eddb7c627409ee10563300286a8279bf5bbf",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "debuff.ogt",
-      "sha256": "031ce954df414748fbc373de3e3f40bd0eef7f34b68d15b4c9adee68e669885a",
+      "path": "content/magic.ts",
+      "sha256": "2616a9c5259a4dd0aa722296d7a07884f0c3c639eb42f203176ac4fc3aaf9636",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "double-jump.json",
-      "sha256": "aba10d09dcd5895acf8f97d997eb57ff61f2c5570506b61de3b17c5d04b8ec31",
+      "path": "content/muzzle.ts",
+      "sha256": "4df7b7b2fd651c9258fc0c1cdba6178f1da326ad4b2f5842d1b90280c66ec25e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "double-jump.ogt",
-      "sha256": "fe5f9e9755e9b288c842c9aa1c945c3e2f95c57882c004e94d2232ba333d3fba",
+      "path": "content/poison.ts",
+      "sha256": "eecf1320c01e9b8f2020ec589a8042e7d7fd7fc7142516245bf16920f701278e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "explosion-small.json",
-      "sha256": "0f5af0d251e6cb51a42e113f026bd486f58c6f083c1a53bedd7c9a73e86b84d9",
+      "path": "content/poof.ts",
+      "sha256": "c0e12d34bb629dd1db4ab6886f5adfb727a94a9159c3cec59a89af1748575cfc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "explosion-small.ogt",
-      "sha256": "a5547f025039762b323f66727359da34da7a327f906399eefacee68cb638cb8d",
+      "path": "content/portal.ts",
+      "sha256": "ee4d58a360aae3735cc8fcd45c9e188e23ce86cd8d270d7ac1b5d7ad321d36e6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "explosion.json",
-      "sha256": "2d81e9da38760707aabe232ea09a7d20655a0fa9083f92f97acd60e3bea82ec0",
+      "path": "content/powerup.ts",
+      "sha256": "bfc89d5b48969429e074335be567c92c35377d2221b411acbbf6f837aec9f9a5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
-      "path": "explosion.ogt",
-      "sha256": "268e706e79a58b3f969220005943e790cf03d90656cd9d02c419173f8a7dec86",
+      "path": "content/ripple.ts",
+      "sha256": "54801cceb10d2d1ccb438c36524b3d835e9055dfa5e71de487e1c929339b5a62",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
       },
       "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/run-dust.ts",
+      "sha256": "59f6725e5a757dea0ceb3b57a1719df7bd15daec370a2f511b35b8893acc72fa",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/shield.ts",
+      "sha256": "23395e8496d4563442d82cb9fe1954b20f906b0b074fdf814f458570e424a63d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/shocked.ts",
+      "sha256": "3254b04f75ef42d285c1a94d755b6b2a6b62daa05f494b9de2de70cab21e247c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/skid.ts",
+      "sha256": "1598739b865947a98902fe19caba3ef5408ee04f6206c867ae51fe96febaac52",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/slash.ts",
+      "sha256": "0a62ed10296caf5555e8326cc9b2b72cec08a93342601432a93dcafe2c2dc6fc",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/splash-small.ts",
+      "sha256": "e9075fc9349e3206e66aa4f4909efe5801dc654cc9cda0d80ec3d9bb622b5705",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/splash.ts",
+      "sha256": "c901af47489c9b3054277f4a94fb09d442c778fa027b9b08cdfa0b6babacf1a3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/star-collect.ts",
+      "sha256": "dfaea839c8a5cb435e71029a1d416f6d3fa3e9acb92323a3cdc0fa6bdb3cc8e7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/stomp.ts",
+      "sha256": "c67ef95861bbf8ab35a9f7b31969047e19947598ba06133022aca83603584480",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/stun.ts",
+      "sha256": "fbd0cc465e6bd45d57f5a34e737081848329b4ef4566697b50f3d82d59bfe348",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/teleport.ts",
+      "sha256": "e4947552818f0980663f1b44d13e954b68e8b988c36812040f0f57040db9fea8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/torch.ts",
+      "sha256": "45953018f7d99b05cf83914860478308f7732ee59f6b74f01b97a700ec303ec6",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/twinkle.ts",
+      "sha256": "a5fff90581c0fee29512f58bea3667a47e6edb5ccb5b4a1a1f281dc1e0d719db",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
+    },
+    {
+      "path": "content/whirlwind.ts",
+      "sha256": "3cc81a3f230a72852e3ff00a9ffbaccd1f2fa96988291a3f269842a656291e23",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.; represented as checked TypeScript recipe data"
     },
     {
       "path": "extension.json",
@@ -466,738 +606,8 @@
       "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
     },
     {
-      "path": "fireflies.json",
-      "sha256": "22c81dcfc5758b365a08494f18d958ccb446bd18370d5da6774e0bc5c5c32166",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "fireflies.ogt",
-      "sha256": "42529b97c29eeefb9a2c041e585c887bb3125e9c068653d8b9537d088ff66b00",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "fireworks.json",
-      "sha256": "a8e88aedcb435c5a1e3e8433755de1645db5ce43178def97aa04b26207f057ed",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "fireworks.ogt",
-      "sha256": "85d22b84e18a657858a8438306d8b9b536c5ab32dd1551e68660424c9d28ec73",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "frozen.json",
-      "sha256": "b540663b8582cbb442302142115b475dff2e5863f6253cb33b1107208af3cf05",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "frozen.ogt",
-      "sha256": "79e0b280ad861b9cc1118ac3ead9bbbd4cc7b5126e196cf3d2ecf3d7b2a2fae4",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "fuse.json",
-      "sha256": "3daef6db3685a2372ce137e74587e960da08dc9b6c04efa34f458216391b9129",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "fuse.ogt",
-      "sha256": "bd89c7c00f8a24c98c6fd064da08834c5525d0284c055d092b88cdb283c1828c",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "gem.json",
-      "sha256": "4e799bb9a4f347443786a5bfb26ffaed5795d5f93f1681a036df743b836c0117",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "gem.ogt",
-      "sha256": "758feacb4bf2c9132bbc8f65bd7e5ac51389c838dcd412ac72cd6230bbef81eb",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "heal.json",
-      "sha256": "9f0822b7cba0f9998d0d4b42d895b4a2f60bff44d7f58b994eb845fc78a11346",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "heal.ogt",
-      "sha256": "c9226734ce769d98cf8b3aa3f6ca8dbec4d9abe653ebf5046ec0cfc36516ddbb",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "heart.json",
-      "sha256": "33439dca579ea9da6cac90ce5d63949a005184824749aa30f99a9e3e83011267",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "heart.ogt",
-      "sha256": "f04c54cacdb9fe839d8b18ab467ab00da3286df6a01de2ccac77efeddaa9b94c",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit-heavy.json",
-      "sha256": "0530576e054217670b753a85ed844d561f1aa9b459279b7363715d80300db630",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit-heavy.ogt",
-      "sha256": "e62ff7aa8fa8fddd305af738d6b1d8117e8d9846bdabc5d9094ab4a7fc619076",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit-small.json",
-      "sha256": "d21546bd46e1a99fce966777b8795e468b6424ed2102382dd534131a9fd5169c",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit-small.ogt",
-      "sha256": "bba09722a9eea1b652e2184b5531e19be52f096d8e4fa20f72e54f7686130583",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit.json",
-      "sha256": "afb44a4f53f017541f4a0221f153929efabe3870b0f0b60d612a6c4bd56b146c",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "hit.ogt",
-      "sha256": "ae51175eec70d04dfab714416e4b82ebac7d874c49bc126ae4ff46ef647644f3",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "jump-dust.json",
-      "sha256": "399ae5767960a4642e5afd770c8b7684255c1f474682d9b588f34a3a315600a5",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "jump-dust.ogt",
-      "sha256": "55f502e4a13f3f5c95a9be4ddfd688e18f6fd49d67db3fbb3efa24af6f1d853e",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "land-dust.json",
-      "sha256": "1cf13b01fba20242a1d73f256e50105ce6651cbae7b9e83393ab25612815623e",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "land-dust.ogt",
-      "sha256": "0a91a3ef44d4735ac206c959c38644eadc056b2eb8dcbe9dd67031971c7e5c30",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "laser.json",
-      "sha256": "556fbeb93af7369eba5a60727c8190a07d8583d50ecdedfaa586ffbdfd825b9f",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "laser.ogt",
-      "sha256": "f903d52d7089eece59844870ca1de1e0115c084013bd981277c0690a36c6b975",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "leaves.json",
-      "sha256": "6452902fe1d3f2d8796654ba4dcec1bd68b3e965e0c132ee0e4dde9d0bab8d0f",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "leaves.ogt",
-      "sha256": "97d414f2bbe8ddb8f7af311b3c1657d22a7e65f3cfebecae74661676a1d0dd75",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic-bolt.json",
-      "sha256": "b01ab2e5cb65d5b121426fd05997bb643d7c4b541e0723bab5351936fd4fc4b2",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic-bolt.ogt",
-      "sha256": "3ed38b6842f41c65eb3a108c274ea2eb758ebdba71864f2ae6ba75d48baf611f",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic-circle.json",
-      "sha256": "64f7f8ed7d206eb022e54f547fc0f3348317d0f2192cc1f72ff7c366eaf2af4f",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic-circle.ogt",
-      "sha256": "b744de63b8b8ddb8f32748d559b91c665f9fa2018e0aca258fe6594cfae93355",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic.json",
-      "sha256": "8de8ac18dc0e3525a867897bfcea8f936cda39bc0c22bb650a3b4cf9db9bc4d4",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "magic.ogt",
-      "sha256": "431fc09b27326afea688b351e411698ecb7d4123cbc75cb3fcfbc0a1d41d1bac",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "muzzle.json",
-      "sha256": "16a34f81c874c4bbcdd34e769b5ba151271864b9c70ce44cdc0d69115f241ab8",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "muzzle.ogt",
-      "sha256": "3d927ab5b8aee9a5015cc488101c48239293f42c21f75d2c1dfc62563f632a6a",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "poison.json",
-      "sha256": "c1c1ebbfbdbd89c3bb020d476e98bf1bb587147eb81066480847d6fcbb1aa189",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "poison.ogt",
-      "sha256": "1b5e84a4892889bb7a4a67c175ef7fb7318f3c624bfc3910baca1b816cd9fff3",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "poof.json",
-      "sha256": "8bef196babafaf8135e8b262e57b24195c159ab94379a7aaaca5d45514597065",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "poof.ogt",
-      "sha256": "4a797904bf5e7f9c2b81cbc734b8a4701613b65f13537ba9088bc74a1cb026f8",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "portal.json",
-      "sha256": "5327ce38a652c7b233049aacee11cd4503dae3746ceffe47cd16cd2be3be9c5f",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "portal.ogt",
-      "sha256": "e7a6601c4cc4cf152758f9ec34869cb7e49f5b500b8f84b9599379613ed19855",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "powerup.json",
-      "sha256": "c6ca8f01ad7534c404c7fc11c043a1da8e990b7d3ecd6b3e067f293a09247544",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "powerup.ogt",
-      "sha256": "1ba7ca8546efab973f579843022f0c2a311d8b1c3cef41f2fc64794e161ee2d7",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "ripple.json",
-      "sha256": "7450686010a226f6ffe9899ace3926b6295dc3e398233ba06cd64118957cb764",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "ripple.ogt",
-      "sha256": "11668c12bad1b1b68ef3a6043aa8a67ae43335d83418ef1bf266d992a6b92772",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "run-dust.json",
-      "sha256": "96f24553d8f74d09c4882ddb9219b682da9faf4c1e9fca65bd8d4a4152c4a14e",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "run-dust.ogt",
-      "sha256": "c8051d706af7fc46f967cc6daa6378c861f3c23756c5f5ad1b9a9066b79a79f7",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "shield.json",
-      "sha256": "c2103a57fdbd0542530ee6205087ddc78101439696e8811af52890e4f5a38f20",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "shield.ogt",
-      "sha256": "99d914337e595a38d2dad9d0c1a767b8e3081c3d772e63d042788d44911b445a",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "shocked.json",
-      "sha256": "35521f928282edd9c3b013ad10b153b7e3029ba07158dde4eb4ae5090e83cc41",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "shocked.ogt",
-      "sha256": "3fdc902709e7f9e5726fd2b34b99daa87655ab201f7944b9757246034376d61c",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "skid.json",
-      "sha256": "13eb9095c13649d1e01b7768bac3b139e4b8780196bb138e5662618f1ff5a0ab",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "skid.ogt",
-      "sha256": "cec737ca468d2c0aba8908749096a770934493ff4a8c030c943d37bd78a8ddf1",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "slash.json",
-      "sha256": "048dca87d5edfd6ddab991acdb5699d422a49fce0a2b5477ae1f170b6cd29523",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "slash.ogt",
-      "sha256": "3a6a84ea79d358f16cbba8df400dd86c84a312fdff18e929a146f101f395a1a5",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "splash-small.json",
-      "sha256": "1dd20a32b29099f1cdf67ea8f5c2f9c271a80ea68730669113b7ace274a955a1",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "splash-small.ogt",
-      "sha256": "4e95aea6c42938a573f6dd4590744d4769636b6c1efcc349b6524350b92f6744",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "splash.json",
-      "sha256": "0be6a29588a30da41e8fd7a4f0d2d8704a31bc6cde984ed5ea343b1d2eb281db",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "splash.ogt",
-      "sha256": "ce1e6475d773f0d4d96ec394ed61cf67c9a23e34172781749a707ce4b1703182",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "star-collect.json",
-      "sha256": "9b9c209c1f3834fbd72a2ae6ee0aee8b06000b4fa6d9e22e824bf09376cfe852",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "star-collect.ogt",
-      "sha256": "1e4595ac3d2603e4760c23ac21f730076683a2be8880c244093528902988e6bc",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "stomp.json",
-      "sha256": "c16c147efed6a486206b114fc8cb17bc3634340fcf32319559472563c2ec122b",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "stomp.ogt",
-      "sha256": "b96a735bd24c1abc1ee87460470b3e574e8f5efc7327a947ee23e028986235c1",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "stun.json",
-      "sha256": "3536aee3e0052a82f013f2350e61246966d362916a41272d16c4ee6b5527211a",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "stun.ogt",
-      "sha256": "c3d7d608aa0dbc58add61c49b34cc242a7461957e17a0592f82ab8b22c7aa6c8",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "teleport.json",
-      "sha256": "7ff549ef2d6e9ad6a8d48a2a39c73c4f8241ab906a991a18122e774cc8ab21b1",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "teleport.ogt",
-      "sha256": "078b9cceec3767f1b9f10b5fb1afd5f99ebeeeb298bd57af1c9cb39717a5beb2",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "torch.json",
-      "sha256": "1f3497437e50d31354b0638ab0dd59106b285b137d61cdee1b34bf9c800aa950",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "torch.ogt",
-      "sha256": "5a1a0e69a1f2a06d07c98fde7b292a461ac57ac6e7b05f06a1fec6cb88e2da54",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "twinkle.json",
-      "sha256": "25aae76a0758db07ba04e6c4ba55abcb53511f8811def8b0d089345dff234244",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "twinkle.ogt",
-      "sha256": "ce1f0e07596b1052770505fb24ed4d345a2411979b175051f773f6e454bf9880",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "whirlwind.json",
-      "sha256": "e46a396ebfbc631c04be700465095e696fc97b77c0f22d2ec8927c972cc01e9b",
-      "licence": "MIT",
-      "source": {
-        "url": "https://github.com/originai-game/origin-engine"
-      },
-      "credit": "Origin Engine",
-      "derived": "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code."
-    },
-    {
-      "path": "whirlwind.ogt",
-      "sha256": "bc729fd9664a32dd1a4ec11545fe8af1c5c7a5dfc231872e708597623d5a6d23",
+      "path": "README.md",
+      "sha256": "92e76c0c46ac059abf5e94bea9a5e083e4c9c425c2e86dcc8bc7d35494078a97",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1208,7 +618,7 @@
   ],
   "effects": [
     {
-      "path": "block.ogt",
+      "path": "content/block.ts",
       "type": "vfx2d",
       "title": "Block",
       "loop": false,
@@ -1221,7 +631,7 @@
       ]
     },
     {
-      "path": "break-crate.ogt",
+      "path": "content/break-crate.ts",
       "type": "vfx2d",
       "title": "Crate Break",
       "loop": false,
@@ -1235,7 +645,7 @@
       "element": "nature"
     },
     {
-      "path": "break-ice.ogt",
+      "path": "content/break-ice.ts",
       "type": "vfx2d",
       "title": "Ice Shatter",
       "loop": false,
@@ -1249,7 +659,7 @@
       "element": "ice"
     },
     {
-      "path": "break-rock.ogt",
+      "path": "content/break-rock.ts",
       "type": "vfx2d",
       "title": "Rock Break",
       "loop": false,
@@ -1263,7 +673,7 @@
       "element": "earth"
     },
     {
-      "path": "bubbles.ogt",
+      "path": "content/bubbles.ts",
       "type": "vfx2d",
       "title": "Bubbles",
       "loop": true,
@@ -1277,7 +687,7 @@
       "element": "water"
     },
     {
-      "path": "buff.ogt",
+      "path": "content/buff.ts",
       "type": "vfx2d",
       "title": "Buff",
       "loop": false,
@@ -1290,7 +700,7 @@
       ]
     },
     {
-      "path": "bullet-hit.ogt",
+      "path": "content/bullet-hit.ts",
       "type": "vfx2d",
       "title": "Pellet Pop",
       "loop": false,
@@ -1303,7 +713,7 @@
       ]
     },
     {
-      "path": "bullet.ogt",
+      "path": "content/bullet.ts",
       "type": "vfx2d",
       "title": "Pellet",
       "loop": true,
@@ -1316,7 +726,7 @@
       ]
     },
     {
-      "path": "burning.ogt",
+      "path": "content/burning.ts",
       "type": "vfx2d",
       "title": "On Fire",
       "loop": true,
@@ -1330,7 +740,7 @@
       "element": "fire"
     },
     {
-      "path": "campfire.ogt",
+      "path": "content/campfire.ts",
       "type": "vfx2d",
       "title": "Campfire",
       "loop": true,
@@ -1344,7 +754,7 @@
       "element": "fire"
     },
     {
-      "path": "charge.ogt",
+      "path": "content/charge.ts",
       "type": "vfx2d",
       "title": "Charge Ball",
       "loop": true,
@@ -1358,7 +768,7 @@
       "element": "lightning"
     },
     {
-      "path": "checkpoint.ogt",
+      "path": "content/checkpoint.ts",
       "type": "vfx2d",
       "title": "Checkpoint",
       "loop": false,
@@ -1371,7 +781,7 @@
       ]
     },
     {
-      "path": "chest-open.ogt",
+      "path": "content/chest-open.ts",
       "type": "vfx2d",
       "title": "Treasure",
       "loop": false,
@@ -1384,7 +794,7 @@
       ]
     },
     {
-      "path": "chimney-smoke.ogt",
+      "path": "content/chimney-smoke.ts",
       "type": "vfx2d",
       "title": "Chimney Smoke",
       "loop": true,
@@ -1397,7 +807,7 @@
       ]
     },
     {
-      "path": "coin.ogt",
+      "path": "content/coin.ts",
       "type": "vfx2d",
       "title": "Coin Grab",
       "loop": false,
@@ -1410,7 +820,7 @@
       ]
     },
     {
-      "path": "confetti-rain.ogt",
+      "path": "content/confetti-rain.ts",
       "type": "vfx2d",
       "title": "Confetti Rain",
       "loop": true,
@@ -1423,7 +833,7 @@
       ]
     },
     {
-      "path": "confetti.ogt",
+      "path": "content/confetti.ts",
       "type": "vfx2d",
       "title": "Confetti Pop",
       "loop": false,
@@ -1436,7 +846,7 @@
       ]
     },
     {
-      "path": "dash.ogt",
+      "path": "content/dash.ts",
       "type": "vfx2d",
       "title": "Dash Lines",
       "loop": false,
@@ -1450,7 +860,7 @@
       "element": "wind"
     },
     {
-      "path": "debuff.ogt",
+      "path": "content/debuff.ts",
       "type": "vfx2d",
       "title": "Debuff",
       "loop": false,
@@ -1464,7 +874,7 @@
       "element": "dark"
     },
     {
-      "path": "double-jump.ogt",
+      "path": "content/double-jump.ts",
       "type": "vfx2d",
       "title": "Air Jump",
       "loop": false,
@@ -1478,7 +888,7 @@
       "element": "wind"
     },
     {
-      "path": "explosion-small.ogt",
+      "path": "content/explosion-small.ts",
       "type": "vfx2d",
       "title": "Pop Boom",
       "loop": false,
@@ -1492,7 +902,7 @@
       "element": "fire"
     },
     {
-      "path": "explosion.ogt",
+      "path": "content/explosion.ts",
       "type": "vfx2d",
       "title": "Boom",
       "loop": false,
@@ -1506,7 +916,7 @@
       "element": "fire"
     },
     {
-      "path": "fireflies.ogt",
+      "path": "content/fireflies.ts",
       "type": "vfx2d",
       "title": "Fireflies",
       "loop": true,
@@ -1520,7 +930,7 @@
       "element": "nature"
     },
     {
-      "path": "fireworks.ogt",
+      "path": "content/fireworks.ts",
       "type": "vfx2d",
       "title": "Firework",
       "loop": false,
@@ -1534,7 +944,7 @@
       "element": "fire"
     },
     {
-      "path": "frozen.ogt",
+      "path": "content/frozen.ts",
       "type": "vfx2d",
       "title": "Frozen",
       "loop": false,
@@ -1548,7 +958,7 @@
       "element": "ice"
     },
     {
-      "path": "fuse.ogt",
+      "path": "content/fuse.ts",
       "type": "vfx2d",
       "title": "Fuse Sparks",
       "loop": true,
@@ -1562,7 +972,7 @@
       "element": "fire"
     },
     {
-      "path": "gem.ogt",
+      "path": "content/gem.ts",
       "type": "vfx2d",
       "title": "Gem Grab",
       "loop": false,
@@ -1575,7 +985,7 @@
       ]
     },
     {
-      "path": "heal.ogt",
+      "path": "content/heal.ts",
       "type": "vfx2d",
       "title": "Heal",
       "loop": false,
@@ -1589,7 +999,7 @@
       "element": "nature"
     },
     {
-      "path": "heart.ogt",
+      "path": "content/heart.ts",
       "type": "vfx2d",
       "title": "Heart Grab",
       "loop": false,
@@ -1602,7 +1012,7 @@
       ]
     },
     {
-      "path": "hit-heavy.ogt",
+      "path": "content/hit-heavy.ts",
       "type": "vfx2d",
       "title": "Smash Hit",
       "loop": false,
@@ -1615,7 +1025,7 @@
       ]
     },
     {
-      "path": "hit-small.ogt",
+      "path": "content/hit-small.ts",
       "type": "vfx2d",
       "title": "Tap Hit",
       "loop": false,
@@ -1628,7 +1038,7 @@
       ]
     },
     {
-      "path": "hit.ogt",
+      "path": "content/hit.ts",
       "type": "vfx2d",
       "title": "Pow Hit",
       "loop": false,
@@ -1641,7 +1051,7 @@
       ]
     },
     {
-      "path": "jump-dust.ogt",
+      "path": "content/jump-dust.ts",
       "type": "vfx2d",
       "title": "Jump Dust",
       "loop": false,
@@ -1655,7 +1065,7 @@
       "element": "earth"
     },
     {
-      "path": "land-dust.ogt",
+      "path": "content/land-dust.ts",
       "type": "vfx2d",
       "title": "Land Dust",
       "loop": false,
@@ -1669,7 +1079,7 @@
       "element": "earth"
     },
     {
-      "path": "laser.ogt",
+      "path": "content/laser.ts",
       "type": "vfx2d",
       "title": "Ray Beam",
       "loop": true,
@@ -1683,7 +1093,7 @@
       "element": "lightning"
     },
     {
-      "path": "leaves.ogt",
+      "path": "content/leaves.ts",
       "type": "vfx2d",
       "title": "Falling Leaves",
       "loop": true,
@@ -1697,7 +1107,7 @@
       "element": "nature"
     },
     {
-      "path": "magic-bolt.ogt",
+      "path": "content/magic-bolt.ts",
       "type": "vfx2d",
       "title": "Magic Bolt",
       "loop": true,
@@ -1711,7 +1121,7 @@
       "element": "arcane"
     },
     {
-      "path": "magic-circle.ogt",
+      "path": "content/magic-circle.ts",
       "type": "vfx2d",
       "title": "Spell Circle",
       "loop": true,
@@ -1725,7 +1135,7 @@
       "element": "arcane"
     },
     {
-      "path": "magic.ogt",
+      "path": "content/magic.ts",
       "type": "vfx2d",
       "title": "Sparkle Cast",
       "loop": false,
@@ -1739,7 +1149,7 @@
       "element": "arcane"
     },
     {
-      "path": "muzzle.ogt",
+      "path": "content/muzzle.ts",
       "type": "vfx2d",
       "title": "Pop Muzzle",
       "loop": false,
@@ -1753,7 +1163,7 @@
       "element": "fire"
     },
     {
-      "path": "poison.ogt",
+      "path": "content/poison.ts",
       "type": "vfx2d",
       "title": "Poisoned",
       "loop": true,
@@ -1767,7 +1177,7 @@
       "element": "poison"
     },
     {
-      "path": "poof.ogt",
+      "path": "content/poof.ts",
       "type": "vfx2d",
       "title": "Poof",
       "loop": false,
@@ -1780,7 +1190,7 @@
       ]
     },
     {
-      "path": "portal.ogt",
+      "path": "content/portal.ts",
       "type": "vfx2d",
       "title": "Portal",
       "loop": true,
@@ -1794,7 +1204,7 @@
       "element": "arcane"
     },
     {
-      "path": "powerup.ogt",
+      "path": "content/powerup.ts",
       "type": "vfx2d",
       "title": "Power Up",
       "loop": false,
@@ -1807,7 +1217,7 @@
       ]
     },
     {
-      "path": "ripple.ogt",
+      "path": "content/ripple.ts",
       "type": "vfx2d",
       "title": "Ripples",
       "loop": true,
@@ -1821,7 +1231,7 @@
       "element": "water"
     },
     {
-      "path": "run-dust.ogt",
+      "path": "content/run-dust.ts",
       "type": "vfx2d",
       "title": "Run Dust",
       "loop": true,
@@ -1835,7 +1245,7 @@
       "element": "earth"
     },
     {
-      "path": "shield.ogt",
+      "path": "content/shield.ts",
       "type": "vfx2d",
       "title": "Shield Bubble",
       "loop": true,
@@ -1849,7 +1259,7 @@
       "element": "arcane"
     },
     {
-      "path": "shocked.ogt",
+      "path": "content/shocked.ts",
       "type": "vfx2d",
       "title": "Zapped",
       "loop": false,
@@ -1863,7 +1273,7 @@
       "element": "lightning"
     },
     {
-      "path": "skid.ogt",
+      "path": "content/skid.ts",
       "type": "vfx2d",
       "title": "Skid Dust",
       "loop": true,
@@ -1877,7 +1287,7 @@
       "element": "earth"
     },
     {
-      "path": "slash.ogt",
+      "path": "content/slash.ts",
       "type": "vfx2d",
       "title": "Swoosh Slash",
       "loop": false,
@@ -1890,7 +1300,7 @@
       ]
     },
     {
-      "path": "splash-small.ogt",
+      "path": "content/splash-small.ts",
       "type": "vfx2d",
       "title": "Plop",
       "loop": false,
@@ -1904,7 +1314,7 @@
       "element": "water"
     },
     {
-      "path": "splash.ogt",
+      "path": "content/splash.ts",
       "type": "vfx2d",
       "title": "Splash",
       "loop": false,
@@ -1918,7 +1328,7 @@
       "element": "water"
     },
     {
-      "path": "star-collect.ogt",
+      "path": "content/star-collect.ts",
       "type": "vfx2d",
       "title": "Star Grab",
       "loop": false,
@@ -1931,7 +1341,7 @@
       ]
     },
     {
-      "path": "stomp.ogt",
+      "path": "content/stomp.ts",
       "type": "vfx2d",
       "title": "Stomp",
       "loop": false,
@@ -1945,7 +1355,7 @@
       "element": "earth"
     },
     {
-      "path": "stun.ogt",
+      "path": "content/stun.ts",
       "type": "vfx2d",
       "title": "Dizzy Stars",
       "loop": true,
@@ -1958,7 +1368,7 @@
       ]
     },
     {
-      "path": "teleport.ogt",
+      "path": "content/teleport.ts",
       "type": "vfx2d",
       "title": "Teleport",
       "loop": false,
@@ -1972,7 +1382,7 @@
       "element": "arcane"
     },
     {
-      "path": "torch.ogt",
+      "path": "content/torch.ts",
       "type": "vfx2d",
       "title": "Torch Flame",
       "loop": true,
@@ -1986,7 +1396,7 @@
       "element": "fire"
     },
     {
-      "path": "twinkle.ogt",
+      "path": "content/twinkle.ts",
       "type": "vfx2d",
       "title": "Twinkle",
       "loop": true,
@@ -1999,7 +1409,7 @@
       ]
     },
     {
-      "path": "whirlwind.ogt",
+      "path": "content/whirlwind.ts",
       "type": "vfx2d",
       "title": "Whirlwind",
       "loop": true,

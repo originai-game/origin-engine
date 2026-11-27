@@ -1,5 +1,48 @@
-type vfx2d
-version 1
----
-# Bubbles: Loops under water at a diver or a vent.
-recipe "bubbles.json"
+import { file } from '@origingame/engine/author';
+export default file.vfx2d({
+  "recipe": {
+    "cleanup": false,
+    "fps": 12,
+    "frames": 16,
+    "h": 128,
+    "innerLine": 0.75,
+    "layers": [
+      {
+        "area": 0.3,
+        "count": 8,
+        "life": [
+          0.6,
+          1
+        ],
+        "mode": "rise",
+        "ramp": "$main",
+        "shape": "bubble",
+        "size": [
+          3,
+          6
+        ],
+        "speed": [
+          0.8,
+          1.4
+        ],
+        "type": "particles",
+        "wiggle": 0.3,
+        "y": 0.8
+      }
+    ],
+    "line": 1.25,
+    "loop": true,
+    "name": "Bubbles",
+    "outline": "outside",
+    "ramps": {
+      "main": [
+        "#7cc4ee",
+        "#c6ecff",
+        "#ffffff"
+      ]
+    },
+    "seed": 54,
+    "supersample": 4,
+    "w": 64
+  }
+});

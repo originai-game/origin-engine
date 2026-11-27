@@ -9,7 +9,7 @@ The API: `og api show vfx`, `og api show og.ParticleSystem`, `og api show og.Dec
 | The effect | Use | Why |
 |---|---|---|
 | a common effect (a hit, an explosion, a heal, a level-up, fire, a portal) | an effect pack: `og vfx add <pack>`, then og.load.vfx and og.vfx.spawn | ready-made and measured; `effect-packs` lists each with its size, anchor and cost |
-| a 2D game's effect | a pixel effect (`type vfx2d`, `pixel-vfx`), or a `flipbook` element in a composed effect | baked into a sheet at cook: hard pixels, no per-frame simulation |
+| a 2D game's effect | a pixel effect (`file.vfx2d`, `pixel-vfx`), or a `flipbook` element in a composed effect | baked into a sheet at cook: hard pixels, no per-frame simulation |
 | a 3D effect with parts in time (sparks, then a ring, a light, a scorch, a shake) | a composed effect (`type vfx`, §2) | one timeline, one spawn, events back to the game |
 | a lasting source (a torch, smoke from a chimney, rain round the camera) | one emitter (`type particles`) on an og.ParticleSystem | no timeline needed; it runs while the entity lives |
 | a streak behind a moving thing (a sword, a dash, a projectile) | og.Trail (its `effect` an effect material for a scrolling slash), or a `trail` element | the positions it passed through, faded by age |

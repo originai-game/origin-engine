@@ -14,6 +14,89 @@ use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Recipes enter through the restricted VM and load as native sheets, with
+/// exact timing, captured helper edits, actual texture dependencies and no OGT.
+#[test]
+fn typed_pixel_effects_cook_native_frames_and_events() {
+    use og_anim::{FlipMode, SheetFilter, cooked::BundleAnim};
+    let root = crate::temp::TempDir::new("typed-pixel-effects");
+    crate::init_project(&root);
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    let declaration = "import {file} from '@origingame/engine/author';\nimport {width} from '../lib/shape.ts';\nexport default file.vfx2d({duration:0.75,loop:true,impact:0.2,events:[{time:0.5,name:'尾😀'}],recipe:{w:width,h:12,frames:5,fps:19,pivot:[0.25,0.75],supersample:2,scale:0.75,line:1.5,innerLine:0.5,layers:[{type:'burst',r0:0.1,r1:0.6}]}});";
+    write("content/hit.ts", declaration);
+    write("lib/shape.ts", "export const width=8;");
+    let opts = CookOptions {
+        threads: 2,
+        ..Default::default()
+    };
+    let mut previous = None;
+    for warm in [false, true, true] {
+        let report = cook_project(&root, &opts).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        let bytes = b.read("base/hit").unwrap().to_vec();
+        if warm {
+            assert_eq!(previous.as_ref().unwrap(), &bytes);
+        }
+        let sheet = b.load_flipbook("base/hit").unwrap();
+        assert_eq!(sheet.texture, "base/hit#sheet");
+        assert!(b.read(&sheet.texture).is_ok());
+        assert_eq!((sheet.size, sheet.filter), ([40, 12], SheetFilter::Linear));
+        assert_eq!(sheet.frames[3].rect, [24, 0, 8, 12]);
+        assert_eq!(sheet.frames[3].pivot, [0.25, 0.25]);
+        let clip = &sheet.clips[0];
+        assert_eq!(clip.name, "hit");
+        assert_eq!(clip.mode, FlipMode::Loop);
+        assert_eq!(clip.frames, [0, 1, 2, 3, 4]);
+        assert_eq!(clip.durations, [0.15; 5]);
+        assert_eq!(clip.events, [(2, "impact".into()), (4, "尾😀".into())]);
+        if !warm {
+            let mut native = Vec::new();
+            sheet.encode(&mut native);
+            for end in 0..native.len() {
+                assert!(og_anim::FlipbookSheet::decode(&native[..end]).is_err());
+            }
+            native.push(0);
+            assert!(og_anim::FlipbookSheet::decode(&native).is_err());
+        }
+        previous = Some(bytes);
+        if warm {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+    }
+    write("lib/shape.ts", "export const width=13;");
+    let report = cook_project(&root, &opts).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(b.load_flipbook("base/hit").unwrap().size, [65, 12]);
+    assert_ne!(previous.unwrap(), b.read("base/hit").unwrap().to_vec());
+    for invalid in [
+        declaration.replace("impact:0.2", "impact:0.76"),
+        declaration.replace("duration:0.75", "duration:0"),
+        declaration.replace("r0:0.1", "typo:0.1"),
+    ] {
+        write("content/hit.ts", &invalid);
+        let error = match cook_project(&root, &opts) {
+            Ok(report) => {
+                assert!(!report.ok(), "accepted invalid recipe");
+                format!("{:?}", report.errors())
+            }
+            Err(error) => error.to_string(),
+        };
+        assert!(error.contains("content/hit.ts"), "{error}");
+    }
+    std::fs::remove_file(root.join("content/hit.ts")).unwrap();
+    write(
+        "assets/old.ogt",
+        "type vfx2d\nversion 1\n---\n{\"layers\":[{\"type\":\"burst\"}]}\n",
+    );
+    assert!(!cook_project(&root, &opts).unwrap().ok());
+}
+
 /// Grammars cross the author/native boundary once, including unreferenced
 /// validation, imported parameters and warm-cache district dependencies.
 #[test]

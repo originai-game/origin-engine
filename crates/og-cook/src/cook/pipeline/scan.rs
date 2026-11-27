@@ -82,7 +82,7 @@ pub(crate) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
 /// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
 /// alone.
 pub fn own_lines(ty: &str) -> bool {
-    ["style", vfx2d::VFX2D_TYPE].contains(&ty)
+    ty == "style"
 }
 
 /// The extensions of the texts the scan reads more than once.
@@ -560,6 +560,7 @@ pub(crate) fn scan_with(
             tileset: None,
             tilemap: None,
             animgraph: None,
+            flipbook: None,
             conformed: None,
             fracture: None,
         };

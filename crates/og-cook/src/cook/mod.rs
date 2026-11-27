@@ -163,6 +163,8 @@ pub(crate) struct Source {
     tilemap: Option<og_tilemap::TilemapAsset>,
     /// Checked animation graph and canonical model bindings.
     animgraph: Option<og_anim::GraphSource>,
+    /// Prepared native frames and clips, shared by sheet producers and cook.
+    flipbook: Option<og_anim::FlipbookSheet>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

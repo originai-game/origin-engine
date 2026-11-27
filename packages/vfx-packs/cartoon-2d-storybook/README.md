@@ -1,9 +1,9 @@
 # Storybook 2D effects
 
-Install with `og vfx add cartoon-2d-storybook`; spawn `vfx/cartoon-2d-storybook/<name>.ogt` as an
+Install with `og vfx add cartoon-2d-storybook`; spawn `base/vfx/cartoon-2d-storybook/<name>` as an
 og.Sprite flipbook (`og api show anim`). Storybook effects for cartoon-2d's storybook variant: soft saturated shapes with a thin coloured line a shade darker than the fill.
 
-Every effect is a `type vfx2d` recipe drawn supersampled (`supersample 4`):
+Every effect is a `file.vfx2d` recipe drawn supersampled (`supersample: 4`):
 the cook renders it at four canvas pixels an output pixel, outlines it and
 shrinks it, so its edges are smooth and its sheet is filtered linearly.
 An effect's pixels are the character's (96 to 160 px): draw the sprite at

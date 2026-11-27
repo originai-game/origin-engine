@@ -31,6 +31,7 @@ pub(crate) const KINDS: &[(&str, Kind)] = &[
     ("tilemap", &tilemap::TILEMAP),
     ("grammar", &district::GRAMMAR),
     ("animgraph", &animgraph::GRAPH),
+    ("vfx2d", &flipbook::FLIPBOOK),
 ];
 
 /// Bind project-only canonical refs through actual scanned domain entries.
@@ -238,6 +239,7 @@ pub(crate) fn sources(
             tileset: None,
             tilemap: None,
             animgraph: None,
+            flipbook: None,
             conformed: None,
             fracture: None,
         };
@@ -264,6 +266,10 @@ pub(crate) fn sources(
             "animgraph" => {
                 source.animgraph = Some(animgraph::declaration(source.input()?)?);
                 Ok(BTreeMap::new())
+            }
+            "vfx2d" => {
+                sources.push(vfx2d::prepare(&mut source)?);
+                Ok(BTreeMap::from([("sheet".into(), "texture".into())]))
             }
             "tileset" => {
                 source.tileset = Some(tilemap::declaration(source.input()?)?);

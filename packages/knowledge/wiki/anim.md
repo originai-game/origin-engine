@@ -91,7 +91,7 @@ module anim {
 | [`og.anim.retarget`](anim/fn-retarget.md) | function | `(world: World, desc?: RetargetDesc): Result<ClipInfo>` | A new clip for `target` from a clip of `source`: a source facing another way is first turned to face as the target does (guide §7), then each animated humanoid bone turns as the source's does from it… |
 | [`MirrorDesc`](anim/type-MirrorDesc.md) | desc struct |  | A clip to play on the other side of the skeleton it was made for. |
 | [`og.anim.mirror`](anim/fn-mirror.md) | function | `(world: World, desc?: MirrorDesc): Result<ClipInfo>` | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in m… |
-| [`FlipbookSheet`](anim/type-FlipbookSheet.md) | handle |  | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
+| [`FlipbookSheet`](anim/type-FlipbookSheet.md) | handle |  | A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook. |
 | [`FlipbookSheet()`](#column-FlipbookSheet) | column kind |  | A FlipbookSheet handle field. |
 | [`FlipMode`](anim/type-FlipMode.md) | enum |  | How a flipbook clip runs past its last frame. |
 | [`og.Flipbook`](anim/record-Flipbook.md) | component |  | Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` shee… |

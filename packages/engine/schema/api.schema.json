@@ -43730,7 +43730,7 @@
     "FlipbookSheet": {
       "x-og-kind": "handle",
       "x-og-module": "anim",
-      "description": "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook.",
+      "description": "A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook.",
       "type": "integer",
       "minimum": 0
     },

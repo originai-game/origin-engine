@@ -886,7 +886,7 @@ module anim {
     returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton."
   }
 
-  handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
+  handle FlipbookSheet "A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook."
 
   column FlipbookSheet {
     doc "A FlipbookSheet handle field."

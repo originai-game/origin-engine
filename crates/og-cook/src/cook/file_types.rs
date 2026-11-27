@@ -137,23 +137,6 @@ pub fn markdown() -> Result<String, String> {
                     }
                 }
             }
-            "vfx2d" => {
-                out.push_str("OGT header followed by inline JSON or an external recipe, not an ordinary nested OGT grammar. Unknown JSON notes are ignored. JSON fields below share the recipe reader's recognised field registry. See pixel-vfx for layer-specific defaults and enum choices.\n\n");
-                let g = super::systems::vfx2d::grammar::LINES;
-                table(&mut out, g);
-                block(
-                    &mut out,
-                    "vfx2d.recipe",
-                    super::systems::vfx2d::grammar::RECIPE,
-                );
-                for kind in super::systems::vfx2d::LAYER_TYPES {
-                    block(
-                        &mut out,
-                        &format!("vfx2d.layer.{kind}"),
-                        &super::systems::vfx2d::grammar::layer_fields(kind),
-                    );
-                }
-            }
             "district" => {
                 table(&mut out, super::systems::district::parse::DISTRICT_LINES);
                 for (name, fields) in super::systems::district::parse::DISTRICT_BLOCKS {

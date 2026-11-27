@@ -7,8 +7,8 @@
 //
 // Writes `cartoon-2d/` (the cartoon-2d look) and one pack a variant of it:
 // `cartoon-2d-watercolor`, `cartoon-2d-storybook`, `cartoon-2d-rubber-hose`.
-// Each effect is a `type vfx2d` file and its Pixel VFX Forge recipe
-// (`<name>.json`, the `pixel-vfx` guide), drawn supersampled (`supersample`)
+// Each effect is one checked `file.vfx2d` Pixel VFX Forge declaration
+// (`content/<name>.ts`, the `pixel-vfx` guide), drawn supersampled (`supersample`)
 // so its edges are smooth, its fills flat bands of two to four tones and its
 // contour the variant's line: a 2 px dark warm brown for cartoon-2d, none
 // (pigment rims instead) for watercolour, a 1 px coloured line a shade
@@ -576,7 +576,7 @@ const keywords = (spec: Pack) => [...new Set(["2d", "cartoon", "flat", ...spec.l
 
 function write(pack: string, spec: Pack): number {
   const d = join(OUT, pack);
-  mkdirSync(d, { recursive: true });
+  mkdirSync(join(d, "content"), { recursive: true });
   const cats = new Set<string>();
   const elems = new Set<string>();
   const rows: string[] = [];
@@ -584,8 +584,7 @@ function write(pack: string, spec: Pack): number {
     const r: Recipe = structuredClone(r0);
     r.ramps = Object.fromEntries(Object.entries(r.ramps as Record<string, string[]>).map(([k, v]) => [k, spec.ramp(v)]));
     Object.assign(r, { supersample: 4, cleanup: false, ...spec.style });
-    writeFileSync(join(d, `${name}.json`), JSON.stringify(r, null, 1) + "\n");
-    writeFileSync(join(d, `${name}.ogt`), `type vfx2d\nversion 1\n---\n# ${title}: ${placement}\nrecipe "${name}.json"\n`);
+    writeFileSync(join(d, "content", `${name}.ts`), `import { file } from '@origingame/engine/author';\n// ${title}: ${placement}\nexport default file.vfx2d(${JSON.stringify({ recipe: r }, null, 1)});\n`);
     cats.add(category);
     if (element) elems.add(element);
     rows.push(`| ${name} | ${r.loop ? "loops" : "once"} | ${placement} |`);
@@ -603,10 +602,10 @@ function write(pack: string, spec: Pack): number {
   writeFileSync(join(d, "extension.json"), JSON.stringify(ext, null, 2) + "\n");
   writeFileSync(join(d, "README.md"), `# ${spec.title} 2D effects
 
-Install with \`og vfx add ${pack}\`; spawn \`vfx/${pack}/<name>.ogt\` as an
+Install with \`og vfx add ${pack}\`; spawn \`base/vfx/${pack}/<name>\` as an
 og.Sprite flipbook (\`og api show anim\`). ${spec.description}
 
-Every effect is a \`type vfx2d\` recipe drawn supersampled (\`supersample 4\`):
+Every effect is a \`file.vfx2d\` recipe drawn supersampled (\`supersample: 4\`):
 the cook renders it at four canvas pixels an output pixel, outlines it and
 shrinks it, so its edges are smooth and its sheet is filtered linearly.
 An effect's pixels are the character's (96 to 160 px): draw the sprite at
@@ -647,7 +646,7 @@ function manifestSpec(spec: Pack) {
       derived: "Original recipes written by scripts/vfx-cartoon.ts for the Pixel VFX Forge renderer the cook runs; no external images, models or code.",
     }],
     effects: Object.fromEntries(EFFECTS.map(([name, title, category, element]) =>
-      [`${name}.ogt`, { title, category, element, keywords: ["cartoon", category] }])),
+      [`content/${name}.ts`, { title, category, element, keywords: ["cartoon", category] }])),
   };
 }
 

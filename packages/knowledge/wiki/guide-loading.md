@@ -574,7 +574,7 @@ shake {
 The header lines are `duration <seconds>`, `loop true|false`,
 `event <seconds> "<name>"`, and `impact <seconds>` (the same as
 `event <seconds> "impact"`, at most one). They mean the same in a
-`type vfx2d` pixel effect (pixel-vfx §2).
+`file.vfx2d` pixel effect (pixel-vfx §2).
 
 Every element takes:
 
@@ -595,7 +595,7 @@ default, is in `effect-files §3`.
 
 - A `mesh ring` builds its own shape at load: u runs along the arc and v
   from the outer edge to the inner.
-- A `flipbook` takes a pixel effect (`type vfx2d`) or any og.load.flipbook
+- A `flipbook` takes a pixel effect (`file.vfx2d`) or any og.load.flipbook
   sheet. Its og.FlipbookEvent events, the impact frame among them, reach
   the game as this effect's og.VfxEvent of the same name.
 - `og cook` checks the file and that everything it names is in the

@@ -55,6 +55,14 @@ pub struct Recipe {
     pub outline_color: Option<String>,
     #[schemars(range(min = 0, max = 1))]
     pub dither: Option<f64>,
+    #[schemars(range(min = 1, max = 8))]
+    pub supersample: Option<u32>,
+    #[schemars(range(min = 0, max = 8))]
+    pub line: Option<f64>,
+    #[schemars(range(min = 0.25, max = 4))]
+    pub scale: Option<f64>,
+    #[schemars(range(min = 0, max = 8))]
+    pub inner_line: Option<f64>,
     pub palette: Option<Ramp>,
     pub cleanup: Option<bool>,
     pub pivot: Option<[f64; 2]>,
@@ -106,9 +114,8 @@ macro_rules! layers {
             #[serde(rename_all = "camelCase", deny_unknown_fields)]
             pub struct $kind {
                 pub ramp: Option<Ramp>,
-                #[schemars(range(min = 0, max = 1))]
+                /// Normalized effect time; a layer may extend past the clip.
                 pub t0: Option<f64>,
-                #[schemars(range(min = 0, max = 1))]
                 pub t1: Option<f64>,
                 /// Half the shorter canvas dimension, y down.
                 pub x: Option<f64>, pub y: Option<f64>,
@@ -147,11 +154,11 @@ layers! {
     Pillar { freq: f64, grow: f64, hgt: f64, rough: f64, speed: f64, w: f64 },
     Rays { count: f64, inner: f64, jitter: f64, r: f64, spin: f64, twinkle: f64, width: f64 },
     Glyph { draw: f64, fill: f64, r: f64, rings: Vec<f64>, runes: f64, spin: f64, star: f64, step: f64, ticks: f64 },
-    Puffs { cone: f64, count: f64, decay: f64, dir: f64, dissolve: f64, drift: f64, emit: f64, flat: f64, freq: f64, life: f64, r0: f64, r1: f64, rise: f64, speed: f64, spread: f64 },
+    Puffs { cone: f64, count: f64, decay: f64, dir: f64, dissolve: f64, drift: f64, emit: f64, flat: f64, freq: f64, life: Pair, r0: f64, r1: f64, rise: f64, speed: Pair, spread: f64 },
     Particles { area: f64, area_x: f64, area_y: f64, both: bool, count: f64, dir: f64, drag: f64, drift_x: f64, emit: f64, fade_in: f64, fall_scale: f64, gravity: f64, ground: f64, heat: Pair, implode_r: f64, jitter: f64, life: Pair, mode: ParticleMode, orbit_r: f64, shape: ParticleShape, size: Pair, span_x: f64, span_y: f64, speed: Pair, spread: f64, swirl: f64, turns: f64, twinkle: f64, wiggle: f64, wiggle_rate: f64 },
     Bolt { branch: f64, count: f64, depth: f64, fade_start: f64, flicker: f64, hold: f64, jag: f64, len: f64, mode: BoltMode, spread: f64, thick: f64, x0: f64, x1: f64, y0: f64, y1: f64 },
     Cracks { count: f64, fade_start: f64, grow: f64, len: f64 },
-    Spikes { count: f64, fan: f64, grow: f64, hgt: f64, hold: f64, lean: f64, spread: f64, width: f64 },
+    Spikes { count: f64, fan: f64, grow: f64, hgt: Pair, hold: f64, lean: f64, spread: f64, width: Pair },
     Star { hollow: f64, inner: f64, jitter: f64, points: f64, pop: f64, r: f64, sharp: f64 },
     Streaks { count: f64, curve: f64, dir: f64, gap: f64, len: f64, mode: StreakMode, r: f64, span_y: f64, speed: f64, stagger: f64, th: f64, turns: f64 },
     Bubble { cell: f64, fill: f64, hex: f64, r: f64, shimmer: f64, th: f64 },
@@ -200,6 +207,7 @@ pub enum ParticleShape {
     Coin,
     Chunk,
     Circle,
+    Heart,
 }
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "og_core::reflect::source::schemars")]

@@ -115,7 +115,7 @@ or `conform effect` (an effect's mesh, which no face budget simplifies;
 | models (glTF, `type model`, `.vox`) | `ArtShape`, `ArtTexels`, `ArtPalette` | decimate to the face budget (meshopt), flat normals or an angle split, bevel hard edges, voxelise at `voxel` with palette colours, bake vertex colours for untextured styles, the outline hull's data for `ArtLine` |
 | clips and flipbooks | `ArtMotion` | step the sampled clip at `stepFps`, drop frames beyond `maxFrames` with a warning |
 
-`type vfx2d` recipes already author their pixel grid, colour ramps,
+`file.vfx2d` recipes already author their pixel grid, colour ramps,
 coverage and outline. Their generated `#sheet` textures carry `conform
 off`: the sprite contract must not shrink thin particles, turn a ramp's
 dark steps into outline, or replace its highlights. This applies to every

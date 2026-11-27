@@ -63,13 +63,13 @@ const Play = defineResource("Play", {
 const Fx = defineComponent("Fx", { name: u32() });
 
 /**
- * A pixel effect (`assets/fx/<name>.ogt`, `type vfx2d`: a Forge recipe the
+ * A pixel effect (`content/fx/<name>.ts`, `file.vfx2d`: a Forge recipe the
  * cook renders into a flipbook) played once at `at`, one texel a screen
  * pixel as the knight's: `hit` where the blade bites the rock, `dust` at
  * the heel on each run step.
  */
 function vfx2d(world: World, name: "hit" | "dust", at: { x: number; y: number }): void {
-  const fx = must(og.load.flipbook(world, `fx/${name}.ogt`));
+  const fx = must(og.load.flipbook(world, `base/fx/${name}`));
   const e = must(world.spawn({ position: { x: at.x, y: at.y, z: 0 } }));
   must(world.insert(e, og.Sprite, { width: fx.frameWidth * PX, height: fx.frameHeight * PX, layer: name === "hit" ? 12 : 11, glow: name === "hit" ? 0.3 : 0 }));
   must(world.insert(e, og.Flipbook, { sheet: fx.sheet, clip: 0 }));

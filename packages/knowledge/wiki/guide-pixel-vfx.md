@@ -2,7 +2,7 @@
 
 # The `pixel-vfx` guide: Pixel VFX
 
-Pixel-art 2D effects (explosions, slashes, spells, portals, beams, auras, sparks, heals, level-ups, weather, loot) as `type vfx2d` files: a Pixel VFX Forge recipe, layered heat fields cut into hard colour bands, that the cook renders into a flipbook sheet with an `impact` event.
+Pixel-art 2D effects (explosions, slashes, spells, portals, beams, auras, sparks, heals, level-ups, weather, loot) as checked `file.vfx2d` declarations: a Pixel VFX Forge recipe, layered heat fields cut into hard colour bands, that the cook renders into a native flipbook sheet with an `impact` event.
 
 The sheet it cooks into is an ordinary flipbook: `og api show anim`
 (og.load.flipbook, og.Flipbook, og.FlipbookEvent) and `og api show
@@ -12,25 +12,21 @@ effect (`og api show vfx`).
 <a id="guide-pixel-vfx-1"></a>
 ### `pixel-vfx §1` The file
 
-An `.ogt` under `assets/` that starts `type vfx2d`, `version 1`, `---`,
-then optional lines, then the recipe:
+Export one declaration from `content/fx/slash.ts`. Load it by its canonical ID, `base/fx/slash`, not its source path:
 
-```text
-type vfx2d
-version 1
----
-duration 0.8          # seconds the clip lasts (default: frames / fps)
-loop false            # the clip's mode, loop or once (default: the recipe's loop)
-impact 0.2            # = event 0.2 "impact", at most one
-event 0.5 "linger"    # a FlipbookEvent with this name
-recipe "slash.json"   # the recipe file, beside this one (or an asset id)
+```ts
+import { file } from '@origingame/engine/author';
+export default file.vfx2d({
+  duration: 0.8,
+  loop: false,
+  impact: 0.2,
+  events: [{ time: 0.5, name: 'linger' }],
+  recipe: { w: 64, h: 96, frames: 12, fps: 18,
+    layers: [{ type: 'slash', r: 0.75, th: 0.15 }] }
+});
 ```
 
-Instead of the `recipe` line, the recipe's JSON may follow inline, from a
-line that starts with `{` to the end of the file. The recipe is the
-Forge's JSON unchanged: a recipe exported from the Forge's web tool, or
-written by hand, cooks as it is, and its layers keep their own `type`
-field. Editing the recipe file cooks the effect again.
+`recipe` is checked data, not JSON text or a path. Shared recipes can be imported from a pure module under `lib/`; changes to that module invalidate the cook. Layers keep their own `type` discriminator. Unknown fields are rejected; put notes in TypeScript comments. There is no OGT author entry or generated OGT intermediate.
 
 The cook writes the sheet `<id>` (one clip named after the file, the
 recipe's fps, `filter nearest`, pivot the recipe's `pivot`) and its
@@ -44,18 +40,18 @@ renderer gives.
 
 Every pixel effect's clip sends an og.FlipbookEvent named `impact` on its impact frame: start og.time.hitStop, og.camera.shake, the target's flash and damage numbers from it.
 
-The four optional lines mean what they mean in a `type vfx`. Times are
+The optional duration, loop, impact and events fields control playback. Times are
 seconds from the start, put on the frame that starts at or after them;
-a time past the duration is an error. Without an `impact` line, the
+a time past the duration is an error. Without an explicit `impact`, the
 impact frame is the recipe's `impact` (0 to 1 of the effect) or else the
 Forge's own pick: the frame with the largest jump in covered pixels in
 the first 60% of the frames (the flash, or the burst's first expansion).
-`event` lines add named events (at most 16 with the impact).
+`events` adds named events (at most 16 with the impact).
 
 <a id="guide-pixel-vfx-3"></a>
 ### `pixel-vfx §3` The recipe
 
-A JSON object; unknown fields are ignored, so notes can stay in it.
+A checked recipe object. See `og api show file:vfx2d` for its closed input type.
 
 | Field | Default | Meaning |
 |---|---|---|
@@ -172,4 +168,3 @@ and the outside of the shape fades over one pixel. The sheet is then
 - `cleanup` and `dither` are pixel-art passes: leave them off.
 - It costs `supersample` squared times the pixel effect's cook time; the
   sheet it writes is the same size.
-

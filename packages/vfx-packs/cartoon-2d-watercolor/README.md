@@ -1,9 +1,9 @@
 # Watercolour 2D effects
 
-Install with `og vfx add cartoon-2d-watercolor`; spawn `vfx/cartoon-2d-watercolor/<name>.ogt` as an
+Install with `og vfx add cartoon-2d-watercolor`; spawn `base/vfx/cartoon-2d-watercolor/<name>` as an
 og.Sprite flipbook (`og api show anim`). Watercolour effects for cartoon-2d's watercolor variant: light translucent-looking washes with no contour, a darker pigment rim instead.
 
-Every effect is a `type vfx2d` recipe drawn supersampled (`supersample 4`):
+Every effect is a `file.vfx2d` recipe drawn supersampled (`supersample: 4`):
 the cook renders it at four canvas pixels an output pixel, outlines it and
 shrinks it, so its edges are smooth and its sheet is filtered linearly.
 An effect's pixels are the character's (96 to 160 px): draw the sprite at

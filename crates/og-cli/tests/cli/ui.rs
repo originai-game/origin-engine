@@ -1,5 +1,72 @@
 use super::*;
 
+/// A pack's checked declarations install outside assets, conflict atomically,
+/// and are usable by the ordinary cook and native sheet loader.
+#[test]
+fn vfx_pack_installs_checked_pixel_effects_and_cooks() {
+    use og_anim::cooked::BundleAnim;
+    let dir = TempDir::new("og-pixel-pack");
+    let write = |file: &str, text: &str| {
+        let path = dir.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write("src/main.ts", "");
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Effects","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author';export default defineProject({id:'effects',entry:'src/main.ts'});",
+    );
+    write(
+        "pack/extension.json",
+        r#"{"format":1,"kind":"vfx","name":"tiny","version":"1.0.0","description":"Tiny effect"}"#,
+    );
+    let declaration = "import {file} from '@origingame/engine/author';export default file.vfx2d({recipe:{w:8,h:12,frames:3,layers:[{type:'burst'}]}});";
+    write("pack/content/hit.ts", declaration);
+    let add = || {
+        og().args(["vfx", "add"])
+            .arg(dir.join("pack"))
+            .arg(&dir)
+            .output()
+            .unwrap()
+    };
+    write("content/vfx/tiny/keep.ts", "owned");
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(!dir.join("assets/vfx/tiny").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("content/vfx/tiny/keep.ts")).unwrap(),
+        "owned"
+    );
+    std::fs::remove_dir_all(dir.join("content/vfx/tiny")).unwrap();
+    std::fs::remove_dir(dir.join("content/vfx")).unwrap();
+    write("content/vfx", "owned parent");
+    let out = add();
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(
+        !dir.join("assets/vfx/tiny").exists(),
+        "half-installed metadata survived"
+    );
+    std::fs::remove_file(dir.join("content/vfx")).unwrap();
+    let out = add();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("content/vfx/tiny/hit.ts")).unwrap(),
+        declaration
+    );
+    assert!(!dir.join("assets/vfx/tiny/content").exists());
+    let out = og().arg("cook").arg(&dir).output().unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let b = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    let sheet = b.load_flipbook("base/vfx/tiny/hit").unwrap();
+    assert_eq!(sheet.size, [24, 12]);
+    assert_eq!(sheet.texture, "base/vfx/tiny/hit#sheet");
+    assert!(b.read(&sheet.texture).is_ok());
+}
+
 /// Font installation owns two roots atomically, with declarations outside
 /// binary assets and no rewrite of the distributed source or its references.
 #[test]
@@ -270,6 +337,7 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
     }
     assert!(!installed.join("preview").exists(), "{out}");
     std::fs::remove_dir_all(project.join("assets/vfx")).unwrap();
+    std::fs::remove_dir_all(project.join("content/vfx")).unwrap();
     nothing_left("good", &out);
 
     // A pack the release does not offer.

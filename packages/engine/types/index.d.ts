@@ -22956,7 +22956,7 @@ export interface MirrorDesc {
 
 
 /**
- * A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook.
+ * A sprite sheet's native frames and clips, including checked file.vfx2d recipe output, from og.load.flipbook.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */

@@ -108,9 +108,13 @@ function ogtType(path: string): string | undefined {
 function effectsOf(pack: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const rel of walk(pack)) {
+    if (rel.startsWith("content/") && rel.endsWith(".ts")) {
+      if (/\bfile\.vfx2d\s*\(/.test(readFileSync(join(pack, rel), "utf8"))) found.set(rel, "vfx2d");
+      continue;
+    }
     if (!rel.endsWith(".ogt") || rel.startsWith("preview/")) continue;
     const t = ogtType(join(pack, rel));
-    if (t === "vfx" || t === "vfx2d") found.set(rel, t);
+    if (t === "vfx") found.set(rel, t);
   }
   return found;
 }
@@ -323,7 +327,9 @@ function preview(args: PreviewArgs) {
   }
   const { root, game, name } = scratchGame(pack, og);
   const work = join(root, "out");
-  const id = (rel: string) => `vfx/${name}/${rel}`;
+  const id = (rel: string) => rel.startsWith("content/")
+    ? `base/vfx/${name}/${rel.slice("content/".length, -3)}`
+    : `vfx/${name}/${rel}`;
   const stage = ["--stage", args.stage];
   try {
     // The shots, the pack's effects in one call (the command runs them a

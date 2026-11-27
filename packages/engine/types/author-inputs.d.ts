@@ -6961,6 +6961,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "rough"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("burst") & (string);
@@ -6989,6 +6990,7 @@ readonly "r1"?: ((number) | (null));
 readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "th"?: ((number) | (null));
@@ -7018,6 +7020,7 @@ readonly "rough"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "speed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "taper"?: ((number) | (null));
@@ -7046,6 +7049,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "speed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "th"?: ((number) | (null));
@@ -7074,6 +7078,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
 readonly "sweep"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "th"?: ((number) | (null));
@@ -7104,6 +7109,7 @@ readonly "rim"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "spin"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("orb") & (string);
@@ -7131,6 +7137,7 @@ readonly "rough"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "speed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("comet") & (string);
@@ -7160,6 +7167,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "spin"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "twist"?: ((number) | (null));
@@ -7187,6 +7195,7 @@ readonly "rough"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "speed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("pillar") & (string);
@@ -7214,6 +7223,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "spin"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "twinkle"?: ((number) | (null));
@@ -7245,6 +7255,7 @@ readonly "spin"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
 readonly "star"?: ((number) | (null));
 readonly "step"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "ticks"?: ((number) | (null));
@@ -7273,15 +7284,16 @@ readonly "glow"?: ((number) | (null));
 readonly "glowFalloff"?: ((number) | (null));
 readonly "hidden"?: ((boolean) | (null));
 readonly "hue"?: ((number) | (null));
-readonly "life"?: ((number) | (null));
+readonly "life"?: (((Input_vfx2dDefinitions["Pair"])) | ((null)));
 readonly "r0"?: ((number) | (null));
 readonly "r1"?: ((number) | (null));
 readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "rise"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
-readonly "speed"?: ((number) | (null));
+readonly "speed"?: (((Input_vfx2dDefinitions["Pair"])) | ((null)));
 readonly "spread"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("puffs") & (string);
@@ -7329,6 +7341,7 @@ readonly "speed"?: (((Input_vfx2dDefinitions["Pair"])) | ((null)));
 readonly "spread"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
 readonly "swirl"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "turns"?: ((number) | (null));
@@ -7364,6 +7377,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "spread"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "thick"?: ((number) | (null));
@@ -7394,6 +7408,7 @@ readonly "len"?: ((number) | (null));
 readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("cracks") & (string);
@@ -7413,7 +7428,7 @@ readonly "gamma"?: ((number) | (null));
 readonly "glow"?: ((number) | (null));
 readonly "glowFalloff"?: ((number) | (null));
 readonly "grow"?: ((number) | (null));
-readonly "hgt"?: ((number) | (null));
+readonly "hgt"?: (((Input_vfx2dDefinitions["Pair"])) | ((null)));
 readonly "hidden"?: ((boolean) | (null));
 readonly "hold"?: ((number) | (null));
 readonly "hue"?: ((number) | (null));
@@ -7422,10 +7437,11 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "spread"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("spikes") & (string);
-readonly "width"?: ((number) | (null));
+readonly "width"?: (((Input_vfx2dDefinitions["Pair"])) | ((null)));
 /** Half the shorter canvas dimension, y down. */
 readonly "x"?: ((number) | (null));
 readonly "y"?: ((number) | (null));
@@ -7451,6 +7467,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "sharp"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("star") & (string);
@@ -7482,6 +7499,7 @@ readonly "spanY"?: ((number) | (null));
 readonly "speed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
 readonly "stagger"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "th"?: ((number) | (null));
@@ -7510,6 +7528,7 @@ readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "shimmer"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "th"?: ((number) | (null));
@@ -7534,6 +7553,7 @@ readonly "r"?: ((number) | (null));
 readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "type": ("flash") & (string);
@@ -7559,6 +7579,7 @@ readonly "rise"?: ((number) | (null));
 readonly "scale"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "text"?: ((string) | (null));
@@ -7586,6 +7607,7 @@ readonly "seed"?: ((number) | (null));
 readonly "spin"?: ((number) | (null));
 readonly "squash"?: ((number) | (null));
 readonly "sway"?: ((number) | (null));
+/** Normalized effect time; a layer may extend past the clip. */
 readonly "t0"?: ((number) | (null));
 readonly "t1"?: ((number) | (null));
 readonly "twist"?: ((number) | (null));
@@ -7599,7 +7621,7 @@ readonly "y"?: ((number) | (null));
 readonly "Outline": ("none" | "outside" | "outside8" | "inside") & (string);
 readonly "Pair": (((number)) | ((ReadonlyArray<(number)> & { readonly length: 2 })));
 readonly "ParticleMode": ("burst" | "spray" | "rise" | "fall" | "ambient" | "orbit" | "implode") & (string);
-readonly "ParticleShape": ("dot" | "square" | "plus" | "cross" | "star" | "diamond" | "ring" | "bubble" | "streak" | "drop" | "shard" | "leaf" | "petal" | "chevron" | "coin" | "chunk" | "circle") & (string);
+readonly "ParticleShape": ("dot" | "square" | "plus" | "cross" | "star" | "diamond" | "ring" | "bubble" | "streak" | "drop" | "shard" | "leaf" | "petal" | "chevron" | "coin" | "chunk" | "circle" | "heart") & (string);
 readonly "Ramp": (((string)) | ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "Recipe": ({
 readonly "cleanup"?: ((boolean) | (null));
@@ -7609,7 +7631,9 @@ readonly "frames"?: ((number) | (null));
 readonly "h"?: ((number) | (null));
 readonly "hue"?: ((number) | (null));
 readonly "impact"?: ((number) | (null));
+readonly "innerLine"?: ((number) | (null));
 readonly "layers": (ReadonlyArray<(Input_vfx2dDefinitions["Layer"])> | (number extends ((Input_vfx2dDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "line"?: ((number) | (null));
 readonly "loop"?: ((boolean) | (null));
 readonly "name"?: ((string) | (null));
 readonly "outline"?: (((Input_vfx2dDefinitions["Outline"])) | ((null)));
@@ -7618,7 +7642,9 @@ readonly "palette"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
 readonly "pivot"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 readonly "ramps"?: (Readonly<Record<string, (Input_vfx2dDefinitions["Ramp"])>>);
 readonly "sat"?: ((number) | (null));
+readonly "scale"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
+readonly "supersample"?: ((number) | (null));
 readonly "w"?: ((number) | (null));
 });
 readonly "StreakMode": ("claw" | "speed" | "flow") & (string);
