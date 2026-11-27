@@ -7150,7 +7150,7 @@
         },
         {
           "name": "environment",
-          "doc": "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment` (an equirectangular .hdr or .exr, a KTX2 cube map, or six faces). The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) and nine harmonics of diffuse irradiance, so loading only uploads it. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.\nSee `loading §4`.",
+          "doc": "A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.\nSee `loading §4`.",
           "params": [
             {
               "name": "world",
@@ -7162,7 +7162,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The asset id, such as `env/studio.ogt`."
+              "doc": "The canonical content id, such as `base/env/studio`."
             }
           ],
           "returns": "Result<EnvironmentMap>",
@@ -7171,7 +7171,7 @@
         },
         {
           "name": "environmentSun",
-          "doc": "The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.\nSee `loading §4`.",
+          "doc": "The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.\nSee `loading §4`.",
           "params": [
             {
               "name": "world",
@@ -28052,7 +28052,7 @@
     "EnvironmentMap": {
       "x-og-kind": "handle",
       "x-og-module": "render",
-      "description": "A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight.",
+      "description": "A prefiltered environment map for Environment.map, from og.load.environment (a TS file.environment declaration naming an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). LDR sources keep authored background colours apart from linear lighting; hemisphere: 'upper' fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight.",
       "type": "integer",
       "minimum": 0
     },

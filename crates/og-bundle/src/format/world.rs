@@ -791,7 +791,7 @@ impl BlobKind for Terrain {
 // ── phase 4: environment maps ────────────────────────────────────────────
 
 row!(
-    /// The root of an environment map blob (an `.ogt` of `type environment`):
+    /// The root of an environment map blob (a typed environment declaration):
     /// og-render's `EnvironmentMapData` and what it was baked from.
     EnvironmentMeta, "og.EnvironmentMap", 4 {
         /// Level 0's face size (a power of two) and the level count

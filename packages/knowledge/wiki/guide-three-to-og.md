@@ -176,7 +176,7 @@ and `anisotropy`.
 | `vertexColors` on | the geometry's `colors` multiply the colour whenever it has them |
 | `texture.repeat.set(4, 4)` with `RepeatWrapping` | the geometry's `uvRepeat: { x: 4, y: 4 }`; textures always wrap |
 | `texture.colorSpace = THREE.SRGBColorSpace` | the cook's import settings: colour textures are sRGB, a `kind normal` texture is linear |
-| `scene.environment = pmrem.fromEquirectangular(hdr)` | og.Environment's `map` from `og.load.environment` of a `type environment` asset (§7) |
+| `scene.environment = pmrem.fromEquirectangular(hdr)` | og.Environment's `map` from `og.load.environment` of a `file.environment` asset (§7) |
 | `LineBasicMaterial`, `PointsMaterial` | `og.render.lines` and `og.render.points` each tick, or the og.Lines and og.Points components over a geometry |
 | `SpriteMaterial` with `THREE.Sprite` | og.Sprite, or `og.render.sprite` each tick |
 | `ShaderMaterial`, `RawShaderMaterial`, `onBeforeCompile` | §10 |
@@ -230,7 +230,7 @@ call names an asset id, the path under `assets/` (`og api show load`).
 | `gltf.userData.variants` / `KHR_materials_variants` `selectVariant` | `og.Model.variant`, an index into `og.load.gltfInfo(world, asset).variants`, per instance |
 | a glTF's `KHR_lights_punctual` lights in `gltf.scene` | spawned with the model as child entities with og.PointLight, og.SpotLight or og.DirectionalLight (`GltfInfo.lights` counts them) |
 | `new THREE.TextureLoader().load("textures/crate.png")` | `og.load.texture(world, "textures/crate.png")` |
-| `RGBELoader`, `EXRLoader`, `CubeTextureLoader` for the environment | an `.ogt` of `type environment` naming the `.hdr`, `.exr` or cube, loaded with `og.load.environment` (prefiltered at cook time) |
+| `RGBELoader`, `EXRLoader`, `CubeTextureLoader` for the environment | a TS `file.environment` declaration naming the `.hdr`, `.exr` or cube, loaded by canonical content ID with `og.load.environment` (prefiltered at cook time) |
 | `AudioLoader` with `THREE.Audio` | `og.load.sound` and og.AudioSource (og-audio) |
 | `FontLoader` | `og.load.font` of a TTF or OTF, for `og.render.text` and og.ui |
 | `loader.loadAsync(url)` and `await` | no promises: a load completes at a tick boundary, and under `og run` before the next tick, so it lands on the same tick every run |

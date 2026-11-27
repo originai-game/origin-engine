@@ -675,11 +675,7 @@ pub(crate) fn resolve(
             ));
         }
         if s.kind == &environment::ENVIRONMENT {
-            consumed.extend(environment::environment_files(
-                &s.rel,
-                assets_dir,
-                &String::from_utf8_lossy(&s.bytes),
-            ));
+            consumed.extend(environment::environment_files(s, assets_dir));
         }
     }
     // A file a model references stays an asset of its own as well when it

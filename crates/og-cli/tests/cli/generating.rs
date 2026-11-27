@@ -1,5 +1,181 @@
 use super::*;
 
+/// Typed environment inputs retain native bake semantics, module ownership and
+/// dependency invalidation across the public CLI and bundle loader.
+#[test]
+fn typed_environments_cook_module_images_and_refresh_cached_maps() {
+    use og_render_data::bake::{BakeDesc, Equirect, bake};
+    let root = TempDir::new("og-typed-environments");
+    let write = |file: &str, text: &str| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    };
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Environments","engine":"0.9.0"}"#,
+    );
+    write(
+        "project.ts",
+        "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'environments',entry:'src/main.ts',modules:[{id:'north',root:'modules/north',dependsOn:['base']}]});",
+    );
+    write("src/main.ts", "export default {};");
+    let source = "import {file} from '@origingame/engine/author'; export default file.environment({source:{equirect:'assets/sky.hdr'},size:16,intensity:1.3,rotation:37,samples:16});";
+    write("content/env/sky.ts", source);
+    write("modules/north/content/env/sky.ts", source);
+    let hdr = |file: &str, gain: f32| {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let pixels: Vec<_> = (0..128)
+            .map(|i| {
+                image::Rgb([
+                    (1 + i % 16) as f32 * gain / 8.0,
+                    (1 + i / 16) as f32 / 7.0,
+                    (1 + i % 5) as f32 / 3.0,
+                ])
+            })
+            .collect();
+        image::codecs::hdr::HdrEncoder::new(std::fs::File::create(&path).unwrap())
+            .encode(&pixels, 16, 8)
+            .unwrap();
+        let image = image::load_from_memory(&std::fs::read(path).unwrap())
+            .unwrap()
+            .to_rgb32f();
+        bake(
+            &Equirect {
+                width: 16,
+                height: 8,
+                rgb: image.as_raw(),
+            },
+            &BakeDesc {
+                size: 16,
+                intensity: 1.3,
+                rotation_degrees: 37.0,
+                samples: 16,
+                sun: false,
+            },
+        )
+        .unwrap()
+    };
+    let north = hdr("modules/north/assets/sky.hdr", 0.35);
+    let cache = root.join("cache");
+    let cook = || {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", &cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let mut previous = None;
+    for (run, gain) in [1.0, 1.0, 2.3].into_iter().enumerate() {
+        let expected = hdr("assets/sky.hdr", gain);
+        if run == 1 {
+            std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        }
+        let out = cook();
+        assert!(out.status.success(), "{}", text(&out));
+        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let actual = bundle.load_environment("base/env/sky").unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(bundle.load_environment("north/env/sky").unwrap(), north);
+        assert!(
+            bundle.read("sky.hdr").is_err(),
+            "owned image became a standalone texture"
+        );
+        if let Some(before) = previous {
+            assert_eq!(actual == before, run == 1);
+        }
+        previous = Some(actual);
+    }
+    // LDR retains a separately authored background, including upper-hemisphere
+    // fill. The source is outside assets/, so only its declared owner reads it.
+    std::fs::create_dir_all(root.join("sources")).unwrap();
+    image::RgbImage::from_fn(16, 5, |x, y| {
+        image::Rgb([(x * 11) as u8, (y * 37) as u8, 83])
+    })
+    .save(root.join("sources/upper.png"))
+    .unwrap();
+    write(
+        "content/ldr.ts",
+        "import {file} from '@origingame/engine/author'; export default file.environment({source:{equirect:'sources/upper.png'},size:16,samples:16,hemisphere:'upper',ground:[0.12,0.1,0.08],sun:'keep'});",
+    );
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let ldr = bundle.load_environment("base/ldr").unwrap();
+    assert!(!ldr.background.is_empty());
+    assert!(ldr.background_size > 0);
+    assert_eq!(ldr.sun.intensity, 0.0);
+    for (invalid, message) in [
+        (
+            "{source:{equirect:'assets/sky.hdr'},size:24}",
+            "power of two",
+        ),
+        (
+            "{source:{equirect:'assets/sky.hdr'},prefiltered:true}",
+            "KTX2",
+        ),
+        (
+            "{source:{ktx2:'sources/map.ktx2'},prefiltered:true,samples:16}",
+            "samples",
+        ),
+        (
+            "{source:{ktx2:'sources/map.ktx2'},prefiltered:true,sun:'extract'}",
+            "sun extract",
+        ),
+        (
+            "{source:{equirect:'assets/sky.hdr'},ground:[0.1,0.2,0.3]}",
+            "hemisphere",
+        ),
+        (
+            "{source:{faces:['a.hdr','b.png','c.hdr','d.hdr','e.hdr','f.hdr']}}",
+            "all be HDR",
+        ),
+        ("{source:{equirect:'assets/../sky.hdr'}}", "canonical"),
+        ("{source:{equirect:'sky.hdr'}}", "owning module"),
+        (
+            "{source:{equirect:'assets/sky.hdr',ktx2:'sources/map.ktx2'}}",
+            "/source",
+        ),
+    ] {
+        write(
+            "content/bad.ts",
+            &format!(
+                "import {{file}} from '@origingame/engine/author'; export default file.environment({invalid});"
+            ),
+        );
+        let out = cook();
+        assert!(!out.status.success(), "accepted {invalid}");
+        assert!(text(&out).contains(message), "{}", text(&out));
+    }
+    std::fs::remove_file(root.join("content/bad.ts")).unwrap();
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(root.join("assets/sky.hdr"), root.join("sources/link.hdr"))
+            .unwrap();
+        write(
+            "content/env/sky.ts",
+            &source.replace("assets/sky.hdr", "sources/link.hdr"),
+        );
+        let out = cook();
+        assert!(!out.status.success(), "symlink source accepted");
+        assert!(text(&out).contains("symlink"), "{}", text(&out));
+        std::fs::remove_file(root.join("sources/link.hdr")).unwrap();
+        write("content/env/sky.ts", source);
+    }
+    write(
+        "assets/old.ogt",
+        "type environment\nversion 1\n---\nsource \"sky.hdr\"\n",
+    );
+    let out = cook();
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("environment OGT authoring is removed"),
+        "{}",
+        text(&out)
+    );
+}
+
 #[test]
 fn typed_vectors_cook_explicit_svg_inputs_and_inline_geometry() {
     let root = TempDir::new("og-typed-vectors");

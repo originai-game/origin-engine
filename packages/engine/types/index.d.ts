@@ -9288,7 +9288,7 @@ export interface Interpolation {
 export type Lut = number & { readonly [handleType]: "Lut" };
 
 /**
- * A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight.
+ * A prefiltered environment map for Environment.map, from og.load.environment (a TS file.environment declaration naming an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). LDR sources keep authored background colours apart from linear lighting; hemisphere: 'upper' fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -39699,16 +39699,16 @@ export declare namespace og {
      */
     function lut(world: World, path: string): Result<Lut>;
     /**
-     * A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment` (an equirectangular .hdr or .exr, a KTX2 cube map, or six faces). The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) and nine harmonics of diffuse irradiance, so loading only uploads it. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+     * A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
      * See `loading §4`.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `env/studio.ogt`.
+     * @param path The canonical content id, such as `base/env/studio`.
      * @returns Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.
      */
     function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
-     * The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
+     * The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
      * See `loading §4`.
      *
      * @param world The world whose renderer owns the map.

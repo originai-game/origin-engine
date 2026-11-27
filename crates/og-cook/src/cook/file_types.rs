@@ -67,6 +67,9 @@ pub fn markdown() -> Result<String, String> {
             if ty == "sfx" {
                 out.push_str("Output: an ordinary mono 48 kHz sound loaded with og.load.sound. A preset or at least one layer is required; preset layers precede custom layers. Rendering is limited to 30 seconds. A sample is either inline PCM or an explicit canonical path in the owning module's assets/ or sources/; stereo recordings average to mono. Sample bytes participate in cook stamps. FM is oscillator-only. og sfx writes TS declarations or listening WAVs.\n\n");
             }
+            if ty == "environment" {
+                out.push_str("Output: an environment map loaded with og.load.environment. Source is exactly one of {equirect: path}, {ktx2: path}, or {faces: [px,nx,py,ny,pz,nz]}. Paths are canonical under the owning module's assets/ or sources/, without sibling fallback. Image bytes are captured before cache lookup. The existing HDR/LDR prefilter, upper hemisphere fill, sun extraction and prefiltered KTX2 chain are unchanged. Size is a power of two; prefiltered forbids samples and sun extraction. See loading and render.\n\n");
+            }
             continue;
         }
         let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
@@ -231,15 +234,9 @@ pub fn markdown() -> Result<String, String> {
                     super::systems::district::parse::VARY_LINES,
                 );
             }
-            "environment" | "icons" => {
+            "icons" => {
                 out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
-                table(
-                    &mut out,
-                    match ty {
-                        "environment" => super::environment::LINES,
-                        _ => super::icons::LINES,
-                    },
-                );
+                table(&mut out, super::icons::LINES);
             }
             "navmesh" => {
                 out.push_str("Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.\n\n");

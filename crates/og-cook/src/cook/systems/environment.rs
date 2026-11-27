@@ -1,28 +1,13 @@
-//! The environment map cook step (phase 4): a `type environment` .ogt names
+//! The environment map cook step: a typed content declaration names
 //! an HDR or sRGB image, equirectangular or six faces, or a cube map, prefiltered
 //! here, at cook time, into og-render's `EnvironmentMapData`
 //! (`og_render_data::bake`): a cube of RGB9E5 levels, level `m` GGX-prefiltered
 //! at roughness `m / 4` (level 0 the radiance), and the diffuse irradiance
 //! as nine harmonics. The runtime only uploads it (`og.load.environment`).
 //!
-//! ```text
-//! type environment
-//! version 1
-//! ---
-//! source "studio.hdr"   # an equirectangular .hdr/.exr (linear) or .png/.jpg/.webp (sRGB),
-//!                       # or a KTX2 cube map (RGBA16F, RGB9E5, BC6H, ...: `cube_source`)
-//! faces "px.hdr" "nx.hdr" "py.hdr" "ny.hdr" "pz.hdr" "nz.hdr"
-//!                       # instead of source: six square faces, +x -x +y -y +z -z
-//! size 128              # level 0's face size: a power of two from 16 to 2048
-//! intensity 1           # multiplies the image
-//! rotation 0            # turns it about +y, degrees (what was at +x moves towards -z)
-//! samples 256           # GGX samples per texel of each prefiltered level (16 to 4096)
-//! prefiltered false     # true: a KTX2 cube's own mip chain is the prefiltered levels
-//! sun keep              # extract: the sun leaves the image and is stored as a light
-//! hemisphere upper      # optional: bottom edge is horizon; fill the lower half
-//! ground 0.12 0.10 0.08  # optional linear RGB override of the horizon-row mean
-//! expand 0.25           # mild inverse tone curve for LDR lighting only
-//! sunBoost 1            # multiplier of the estimated LDR sun, extracted by default
+//! ```ts
+//! import {file} from '@origingame/engine/author';
+//! export default file.environment({source: {equirect: 'assets/studio.hdr'}, size: 128});
 //! ```
 //!
 //! `sun extract` takes the image's sun out of the map
@@ -39,8 +24,8 @@
 //! five levels texel for texel; `size` is the file's face size (another is
 //! refused) and `samples` does not apply.
 //!
-//! The images are read beside the environment file (or, failing that,
-//! under `assets/`); they are part of the environment, not assets of their
+//! Images have explicit canonical paths under their module's assets/ or
+//! sources/; they are part of the environment, not assets of their
 //! own: the walk does not list them, and the environment's stamp covers
 //! their bytes. An equirectangular image's centre column looks along +x
 //! and its three-quarter column along +z, rows from +y down: the
@@ -51,104 +36,16 @@
 //! is baked the same way (`bake::bake` or `bake::bake_cube`).
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
 };
+use crate::cook::source_schemas::world::source_data::{EnvironmentInput, Sun};
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
-use og_core::ogt::Document;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[path = "environment/image.rs"]
 mod prepare;
-
-pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
-
-pub(crate) const LINES: &[crate::grammar::Line] = &[
-    crate::grammar::Line::new(
-        "source",
-        "\"<image or KTX2 cube>\"",
-        "",
-        "Exclusive with faces; paths resolve beside this file, then under assets/.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "faces",
-        "\"<+x>\" \"<-x>\" \"<+y>\" \"<-y>\" \"<+z>\" \"<-z>\"",
-        "",
-        "Six square faces, all HDR/EXR or all sRGB images; exclusive with source.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "size",
-        "<power of two, 16..2048>",
-        "128 or prefiltered cube size",
-        "Radiance face side. A prefiltered cube must keep its own size.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "intensity",
-        "<number >= 0>",
-        "1",
-        "Multiply input radiance.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "rotation",
-        "<degrees>",
-        "0",
-        "Turn about +Y, +X toward -Z.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "samples",
-        "<16..4096>",
-        "256",
-        "GGX samples per filtered texel; forbidden with prefiltered true.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "prefiltered",
-        "true | false",
-        "false",
-        "Use an existing GGX KTX2 cube mip chain without filtering again.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "sun",
-        "keep | extract",
-        "extract for LDR, keep for HDR",
-        "Extraction removes the sun from the map and records it as a light fact.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "hemisphere",
-        "upper",
-        "",
-        "Treat the image bottom edge as the horizon and fill the lower half.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "ground",
-        "<linear r> <g> <b>",
-        "horizon mean",
-        "Each channel 0..1; requires hemisphere upper.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "expand",
-        "<0..0.9>",
-        "0.25",
-        "Inverse tone expansion, applied to LDR only.",
-        "",
-    ),
-    crate::grammar::Line::new(
-        "sunBoost",
-        "<0..100>",
-        "1",
-        "Multiply the estimated LDR sun.",
-        "",
-    ),
-];
 
 /// What an environment bakes from.
 #[derive(serde::Deserialize, og_core::reflect::source::schemars::JsonSchema)]
@@ -230,187 +127,53 @@ pub(crate) struct EnvironmentDoc {
     pub sun_boost: f32,
 }
 
-fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
-    match doc.body.get(key) {
-        None => Ok(default),
-        Some(e) => match e.values.as_slice() {
-            [v] => v
-                .as_number()
-                .map(|n| n.as_f32())
-                .filter(|v| v.is_finite())
-                .ok_or_else(|| format!("line {}: '{key}' takes one number", e.line)),
-            _ => Err(format!("line {}: '{key}' takes one number", e.line)),
-        },
-    }
-}
-
-pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    for e in &doc.body.entries {
-        if !LINES.iter().any(|f| f.key == e.key) || e.block.is_some() {
-            return Err(format!(
-                "line {}: '{}' is not an environment entry: {}",
-                e.line,
-                e.key,
-                LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
-            ));
+fn declaration(input: EnvironmentInput) -> Result<EnvironmentDoc, String> {
+    let source = input.source;
+    match &source {
+        EnvironmentSource::Equirect(name) if !environment_image(name) => {
+            return Err("equirect takes an HDR/EXR or sRGB PNG/JPG/WebP image".into());
         }
-    }
-    let source = match (doc.body.get("source"), doc.body.get("faces")) {
-        (Some(_), Some(f)) => {
-            return Err(format!(
-                "line {}: an environment has a source or six faces, not both",
-                f.line
-            ));
+        EnvironmentSource::Ktx2(name) if !name.to_ascii_lowercase().ends_with(".ktx2") => {
+            return Err("ktx2 takes a KTX2 cube map".into());
         }
-        (None, Some(f)) => {
-            let names: Vec<&str> = f.values.iter().filter_map(|v| v.as_str()).collect();
-            if names.len() != 6 || f.values.len() != 6 {
-                return Err(format!(
-                    "line {}: faces takes six images, +x -x +y -y +z -z: faces \"px.hdr\" \"nx.hdr\" \"py.hdr\" \"ny.hdr\" \"pz.hdr\" \"nz.hdr\"",
-                    f.line
-                ));
+        EnvironmentSource::Faces(names) => {
+            if names.iter().any(|name| !environment_image(name)) {
+                return Err("a face is HDR/EXR or sRGB PNG/JPG/WebP".into());
             }
-            if let Some(bad) = names.iter().find(|n| !environment_image(n)) {
-                return Err(format!(
-                    "line {}: face \"{bad}\": a face is .hdr, .exr, .png, .jpg or .webp",
-                    f.line
-                ));
-            }
-            if names.iter().any(|n| hdr_image(n)) && names.iter().any(|n| !hdr_image(n)) {
+            if names.iter().any(|name| hdr_image(name)) && names.iter().any(|name| !hdr_image(name))
+            {
                 return Err("faces must all be HDR/EXR or all be sRGB PNG/JPG/WebP".into());
             }
-            EnvironmentSource::Faces(std::array::from_fn(|i| {
-                super::terrain::resolve(rel, root, names[i])
-            }))
         }
-        (Some(e), None) => {
-            let source = e.values.first().and_then(|v| v.as_str()).ok_or_else(|| {
-                format!(
-                    "line {}: source \"<file>.hdr\" (or .exr, or a .ktx2 cube map)",
-                    e.line
-                )
-            })?;
-            if source.to_ascii_lowercase().ends_with(".ktx2") {
-                EnvironmentSource::Ktx2(super::terrain::resolve(rel, root, source))
-            } else if environment_image(source) {
-                EnvironmentSource::Equirect(super::terrain::resolve(rel, root, source))
-            } else {
-                return Err(format!(
-                    "source \"{source}\": an equirectangular .hdr, .exr, .png, .jpg or .webp, or a KTX2 cube map"
-                ));
-            }
-        }
-        (None, None) => {
-            return Err(
-                "an environment names its image: source \"<file>.hdr\" (or .exr, or a .ktx2 cube map), or faces with six images"
-                    .into(),
-            );
-        }
-    };
-    let prefiltered = match doc.body.get("prefiltered") {
-        None => false,
-        Some(e) => match e.values.as_slice() {
-            [v] => v
-                .as_bool()
-                .ok_or_else(|| format!("line {}: 'prefiltered' takes true or false", e.line))?,
-            _ => {
-                return Err(format!(
-                    "line {}: 'prefiltered' takes true or false",
-                    e.line
-                ));
-            }
-        },
-    };
+        _ => {}
+    }
+    let prefiltered = input.prefiltered.unwrap_or(false);
     if prefiltered {
         if !matches!(source, EnvironmentSource::Ktx2(_)) {
+            return Err("prefiltered takes a KTX2 cube map with a prefiltered mip chain".into());
+        }
+        if input.samples.is_some() {
             return Err(
-                "prefiltered true takes a KTX2 cube map whose mip chain is already prefiltered: source \"<file>.ktx2\""
-                    .into(),
+                "samples is forbidden with prefiltered: the file supplies its levels".into(),
             );
         }
-        if let Some(e) = doc.body.get("samples") {
-            return Err(format!(
-                "line {}: samples is the cook's prefilter; prefiltered true takes the file's levels as they are",
-                e.line
-            ));
-        }
     }
-    let sun = match doc.body.get("sun") {
-        None => false,
-        Some(e) => match e.values.first().and_then(|v| v.as_word()) {
-            Some("extract") if e.values.len() == 1 => true,
-            Some("keep") if e.values.len() == 1 => false,
-            _ => {
-                return Err(format!(
-                    "line {}: 'sun' takes extract (the sun leaves the image and is stored as a light) or keep",
-                    e.line
-                ));
-            }
-        },
-    };
-    if sun && prefiltered {
+    if matches!(input.sun, Some(Sun::Extract)) && prefiltered {
         return Err(
-            "sun extract takes the sun out before the cook prefilters the image; a prefiltered true chain is taken as it is (leave sun out)"
-                .into(),
+            "sun extract must precede prefiltering; a prefiltered chain is taken as it is".into(),
         );
     }
-    let size = number(&doc, "size", 128.0)?;
-    let (lo, hi) = (
-        og_render_data::ENVIRONMENT_MAP_MIN_SIZE,
-        og_render_data::ENVIRONMENT_MAP_MAX_SIZE,
-    );
-    if size.fract() != 0.0
-        || !(lo as f32..=hi as f32).contains(&size)
-        || !(size as u32).is_power_of_two()
+    if let Some(size) = input.size
+        && !size.is_power_of_two()
     {
-        return Err(format!("size {size}: a power of two from {lo} to {hi}"));
+        return Err(format!("size {size}: expected a power of two"));
     }
-    let intensity = number(&doc, "intensity", 1.0)?;
-    if intensity < 0.0 {
-        return Err(format!("intensity {intensity}: 0 or more"));
+    let upper = input.hemisphere.is_some();
+    if input.ground.is_some() && !upper {
+        return Err("ground takes hemisphere upper".into());
     }
-    let samples = number(&doc, "samples", 256.0)?;
-    if samples.fract() != 0.0 || !(16.0..=4096.0).contains(&samples) {
-        return Err(format!("samples {samples}: a whole number from 16 to 4096"));
-    }
-    let upper = match doc.body.get("hemisphere") {
-        None => false,
-        Some(e) if e.values.len() == 1 && e.values[0].as_word() == Some("upper") => true,
-        Some(_) => return Err("hemisphere takes upper: an image from zenith to horizon".into()),
-    };
-    let ground = match doc.body.get("ground") {
-        None => None,
-        Some(e) => {
-            let values: Vec<f32> = e
-                .values
-                .iter()
-                .filter_map(|v| v.as_number().map(|n| n.as_f32()))
-                .collect();
-            if values.len() != 3
-                || e.values.len() != 3
-                || values
-                    .iter()
-                    .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
-            {
-                return Err("ground takes three linear RGB numbers in 0..1".into());
-            }
-            if !upper {
-                return Err("ground takes hemisphere upper".into());
-            }
-            Some(glam::Vec3::from_slice(&values))
-        }
-    };
     if upper && !matches!(&source, EnvironmentSource::Equirect(_)) {
         return Err("hemisphere takes an equirectangular source, not faces or KTX2".into());
-    }
-    let expand = number(&doc, "expand", 0.25)?;
-    if !(0.0..=0.9).contains(&expand) {
-        return Err("expand is in 0..0.9 (0 disables inverse tone mapping)".into());
-    }
-    let sun_boost = number(&doc, "sunBoost", 1.0)?;
-    if !(0.0..=100.0).contains(&sun_boost) {
-        return Err("sunBoost is in 0..100".into());
     }
     let ldr = match &source {
         EnvironmentSource::Equirect(s) => !hdr_image(s),
@@ -418,45 +181,42 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
         _ => false,
     };
     // LDR defaults to extracting the estimated disc, HDR keeps its prior contract.
-    let sun = sun || (ldr && doc.body.get("sun").is_none());
+    let sun = match input.sun {
+        Some(Sun::Extract) => true,
+        Some(Sun::Keep) => false,
+        None => ldr,
+    };
     Ok(EnvironmentDoc {
         source,
-        size: doc.body.get("size").map(|_| size as u32),
-        intensity,
-        rotation: number(&doc, "rotation", 0.0)?,
-        samples: samples as u32,
+        size: input.size,
+        intensity: input.intensity.unwrap_or(1.0),
+        rotation: input.rotation.unwrap_or(0.0),
+        samples: input.samples.unwrap_or(256),
         prefiltered,
         sun,
         upper,
-        ground,
-        expand,
-        sun_boost,
+        ground: input.ground.map(glam::Vec3::from_array),
+        expand: input.expand.unwrap_or(0.25),
+        sun_boost: input.sun_boost.unwrap_or(1.0),
     })
 }
 
-/// The images an environment reads (by asset path), for the stamp and so
-/// the walk does not list them.
-pub(crate) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
-    parse(rel, root, text)
-        .map(|d| d.source.files())
-        .unwrap_or_default()
-}
-
-/// The stamp's dependency: the images with their hashes.
-pub(crate) fn environment_dependencies(s: &Source) -> String {
+/// Images already owned by an environment are not standalone scan assets.
+/// Only the base assets directory is scanned; module inputs are explicit.
+pub(crate) fn environment_files(s: &Source, assets: &Path) -> Vec<String> {
     let root = assets_root(s);
-    environment_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes))
+    s.input::<EnvironmentInput>()
+        .map(|input| input.source.files())
+        .unwrap_or_default()
         .into_iter()
-        .map(|f| {
-            format!(
-                "{f}={:016x}",
-                std::fs::read(root.join(&f))
-                    .map(|b| super::hash_bytes(&b))
-                    .unwrap_or(0)
-            )
+        .filter_map(|file| {
+            crate::cook::source_path::checked(&root, &file)
+                .ok()?
+                .strip_prefix(assets)
+                .ok()
+                .map(|file| file.to_string_lossy().replace('\\', "/"))
         })
-        .collect::<Vec<_>>()
-        .join("\n")
+        .collect()
 }
 
 /// Both LDR layouts share solar estimation, range expansion and the bake.
@@ -528,16 +288,13 @@ fn bake_image(
     Ok(map)
 }
 
-/// Cooks one `type environment` file.
-pub(crate) fn cook_environment(
-    s: &Source,
+/// Cooks the checked declaration and the exact images captured for its stamp.
+fn cook_environment(
+    doc: &EnvironmentDoc,
+    images: &BTreeMap<String, Vec<u8>>,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let root = assets_root(s);
-    let text = std::str::from_utf8(&s.bytes)
-        .map_err(|_| CookError("an environment is text (UTF-8)".into()))?;
-    let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let read = |f: &str| std::fs::read(root.join(f)).map_err(|e| CookError(format!("{f}: {e}")));
+    let read = |f: &str| images[f].as_slice();
     let finite = |name: &str, rgb: &[f32]| match rgb.iter().position(|v| !v.is_finite()) {
         Some(i) => Err(CookError(format!(
             "{name}: pixel {} holds a value that is not a finite number",
@@ -557,19 +314,19 @@ pub(crate) fn cook_environment(
     let mut no_sun = None;
     let (map, width, height, what) = match &doc.source {
         EnvironmentSource::Equirect(source) => {
-            let img = decode_image(source, &read(source)?)?;
+            let img = decode_image(source, read(source))?;
             finite(source, img.as_raw())?;
             diagnostics = prepare::facts(&img, doc.upper);
             facts.push(format!("environment facts: {diagnostics}"));
             let ldr = !hdr_image(source);
             let source_width = img.width();
-            let img = prepare::panorama(source, img, &doc)?;
+            let img = prepare::panorama(source, img, doc)?;
             let (width, height) = img.dimensions();
-            let map = bake_image(img, source_width, ldr, &doc, &desc, &mut no_sun)?;
+            let map = bake_image(img, source_width, ldr, doc, &desc, &mut no_sun)?;
             (map, width, height, format!("{source} {width} × {height}"))
         }
         EnvironmentSource::Ktx2(source) if doc.prefiltered => {
-            let cube = super::cube_source::read_ktx2_cube_levels(&read(source)?)
+            let cube = super::cube_source::read_ktx2_cube_levels(read(source))
                 .map_err(|e| CookError(format!("{source}: {e}")))?;
             let n = cube.size;
             if cube.levels.len() < 2 {
@@ -605,7 +362,7 @@ pub(crate) fn cook_environment(
             )
         }
         EnvironmentSource::Ktx2(source) => {
-            let cube = super::cube_source::read_ktx2_cube(&read(source)?)
+            let cube = super::cube_source::read_ktx2_cube(read(source))
                 .map_err(|e| CookError(format!("{source}: {e}")))?;
             let map = og_render_data::bake::bake_cube(
                 &og_render_data::bake::CubeFaces {
@@ -627,7 +384,7 @@ pub(crate) fn cook_environment(
             let mut rgb = Vec::new();
             let mut size = 0;
             for (i, face) in faces.iter().enumerate() {
-                let img = decode_image(face, &read(face)?)?;
+                let img = decode_image(face, read(face))?;
                 let (w, h) = (img.width(), img.height());
                 if w != h {
                     return Err(CookError(format!(
@@ -652,7 +409,7 @@ pub(crate) fn cook_environment(
                 "environment facts (faces projected to panorama): {diagnostics}"
             ));
             let map = if faces.iter().all(|f| !hdr_image(f)) {
-                bake_image(panorama, 4 * size, true, &doc, &desc, &mut no_sun)?
+                bake_image(panorama, 4 * size, true, doc, &desc, &mut no_sun)?
             } else {
                 og_render_data::bake::bake_cube(
                     &og_render_data::bake::CubeFaces { size, rgb: &rgb },
@@ -734,7 +491,7 @@ pub(crate) fn cook_environment(
     Ok((blob, facts))
 }
 
-/// A `type environment` blob of `map`: its meta (the source's size, the
+/// An environment blob of `map`: its meta (the source's size, the
 /// cook's intensity, turn and samples; 0 samples: levels taken as given),
 /// irradiance and zlib'd RGB9E5 texels; with the texels' raw and packed bytes.
 pub(crate) fn environment_blob(
@@ -814,8 +571,8 @@ pub(crate) fn environment_blob(
 pub(crate) static ENVIRONMENT: KindDef = KindDef {
     name: "environment",
     extensions: &[],
-    types: &[ENVIRONMENT_TYPE],
-    by_content: false,
+    types: &[],
+    by_content: true,
     streams: true,
     plan: plan_environment,
 };
@@ -830,26 +587,62 @@ fn plan_environment<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let PlanState { parsed_refs, .. } = state;
-    let deps = environment_dependencies(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(
-        &[Area::Lighting],
-        &[b"environment 3", &hash, deps.as_bytes()],
-    );
+    let prepared = (|| -> Result<_, String> {
+        let doc = declaration(s.input::<EnvironmentInput>()?)?;
+        let root = assets_root(s);
+        let mut images = BTreeMap::new();
+        for file in doc.source.files() {
+            if !(file.starts_with("assets/") || file.starts_with("sources/")) {
+                return Err(
+                    "environment inputs belong in the owning module's assets/ or sources/".into(),
+                );
+            }
+            if images.contains_key(&file) {
+                continue;
+            }
+            let path = crate::cook::source_path::checked(&root, &file)
+                .map_err(|e| format!("{file}: {e}"))?;
+            let bytes = std::fs::read(path).map_err(|e| format!("{file}: {e}"))?;
+            images.insert(file, bytes);
+        }
+        Ok((doc, images))
+    })();
+    let (doc, images) = match prepared {
+        Ok(prepared) => prepared,
+        Err(error) => {
+            state
+                .early_errors
+                .push((s.rel.clone(), "environment", error));
+            return;
+        }
+    };
+    let mut parts = vec![b"environment typed 1".as_slice(), &hash];
+    parts.extend(images.values().map(Vec::as_slice));
+    let st = stamp(&[Area::Lighting], &parts);
     outs.push((
         s.rel.clone(),
         format::EnvironmentMap::NAME,
         st,
-        Box::new(EnvironmentJob(s)),
+        Box::new(EnvironmentJob {
+            source: s,
+            doc,
+            images,
+        }),
     ));
 }
 
 /// An environment's one output: its maps.
-struct EnvironmentJob<'a>(&'a Source);
+struct EnvironmentJob<'a> {
+    source: &'a Source,
+    doc: EnvironmentDoc,
+    images: BTreeMap<String, Vec<u8>>,
+}
 
 impl Job for EnvironmentJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_environment(self.0, p.stamp)
+        cook_environment(&self.doc, &self.images, p.stamp)
+    }
+    fn action(&self) -> Action<'_> {
+        Action::Input(&self.source.bytes, false)
     }
 }

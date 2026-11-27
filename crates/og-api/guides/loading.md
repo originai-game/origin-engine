@@ -236,16 +236,24 @@ sound {
 
 ## 4. Environment maps
 
-An `.ogt` of `type environment` names its source:
+Export a `file.environment({...})` declaration from `content/**/*.ts`, importing
+`file` from `@origingame/engine/author`. It names exactly one source:
 
-- `source`: an equirectangular sRGB PNG, JPG or WebP, Radiance `.hdr` or OpenEXR `.exr` (the
-  centre column faces +X, as three.js maps it), or a KTX2 cube map (six
+- `source: {equirect: "assets/env/day.hdr"}`: an equirectangular sRGB PNG, JPG or WebP, Radiance `.hdr` or OpenEXR `.exr` (the
+  centre column faces +X, as three.js maps it).
+- `source: {ktx2: "assets/env/studio.ktx2"}`: a KTX2 cube map (six
   square faces +X -X +Y -Y +Z -Z, rows from the top; RGBA16F, RGB9E5,
   BC6H and the other HDR formats, decoded at cook time).
-- `faces`: six HDR/EXR or PNG/JPG/WebP images in that order.
+- `source: {faces: [px, nx, py, ny, pz, nz]}`: six HDR/EXR or PNG/JPG/WebP paths in that order.
 - `size`: level 0's face size, a power of two from 16 to 2048, default
   128. Also `intensity`, `rotation` (degrees about +Y) and `samples`.
 - `sun`: `extract` (the LDR default) or `keep` (the HDR default), below.
+
+Every path is canonical and relative to its owning module, under `assets/` or
+`sources/`. There is no declaration-sibling or project asset-root fallback.
+The cook captures the image bytes before cache lookup and bakes that snapshot.
+Load `<module>/<content-relative-stem>`, not the source filename. OGT environment
+authoring is removed; `og api show file:environment` gives the generated shape.
 
 `render §4` documents LDR skies, upper-hemisphere ground fill, expansion,
 sun estimation and source diagnostics. They all produce
@@ -253,21 +261,21 @@ the same EnvironmentMap; `environmentData` remains an uncooked HDR loader.
 
 The cook prefilters it into a cube of five GGX levels (roughness 0 to 1)
 in RGB9E5, plus the diffuse irradiance as nine harmonics, so loading
-only uploads it. `prefiltered true` takes a KTX2 cube's own mip chain
+only uploads it. `prefiltered: true` takes a KTX2 cube's own mip chain
 as the levels, at the file's own size, without filtering it again: use
 it for a cube already prefiltered by cmgen, IBLBaker or the glTF IBL
 sampler. Level k of L is then at roughness k / (L - 1).
 
-`sun extract` is for an outdoor image with the sun in it. Left in the
+`sun: "extract"` is for an outdoor image with the sun in it. Left in the
 map, a sun lights without casting a shadow and leaves bright speckles in
 rough reflections; an `og.DirectionalLight` added beside it lights the
-scene with the sun a second time. With `sun extract` the cook takes the
+scene with the sun a second time. With `sun: "extract"` the cook takes the
 sun's light out of the image (everything within 5° of the brightest
 point that is over sixteen times the rest's mean for HDR; a detected disc
 and fitted daylight estimate for LDR) and stores it:
 
 ```ts
-const map = og.load.environment(world, "env/day.ogt");
+const map = og.load.environment(world, "base/env/day");
 if (!map.ok) throw new Error(map.reason);
 const rotation = 0.4, intensity = 1.2; // the same values as og.Environment
 const result = og.load.environmentSun(world, map.value, rotation, intensity);

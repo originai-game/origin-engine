@@ -52,7 +52,7 @@
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids, the layer arrays' ids) |
 //! | look (`og.Look`, an `.ogt` of `type look`) | [`LookMeta`] | `text` (the canonical, flattened look: `extends` resolved and listed, colours linear) |
 //! | palette (`og.Palette`, a `.hex` or `.gpl` file) | [`PaletteMeta`] | `rgb` (`count` sRGB colours, 3 bytes each, in file order) |
-//! | environment map (`og.EnvironmentMap`, an `.ogt` of `type environment`, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
+//! | environment map (`og.EnvironmentMap`, a typed environment declaration, phase 4) | [`EnvironmentMeta`] | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, face after face, zlib), `irradiance` [`EnvironmentShRow`] (nine order-2 harmonics of the irradiance over pi) |
 //! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
 use og_core::hash::StableHasher;

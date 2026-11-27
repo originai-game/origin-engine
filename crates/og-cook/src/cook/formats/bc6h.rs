@@ -1,5 +1,5 @@
 //! BC6H (BPTC float) block decoding, for HDR cube maps the cook takes in
-//! that format and decodes before it prefilters (`type environment`).
+//! that format and decodes before the environment prefilter.
 //!
 //! A block is 16 bytes for 4 x 4 texels of RGB half floats, unsigned
 //! (`VK_FORMAT_BC6H_UFLOAT_BLOCK`) or signed (`_SFLOAT_BLOCK`). Each of the

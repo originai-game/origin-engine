@@ -41,11 +41,16 @@ fn afternoon() -> Result<EnvironmentMapData, String> {
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         std::fs::write(dir.join("afternoon.png"), sky_image()?)
             .map_err(|e| format!("afternoon.png: {e}"))?;
-        std::fs::write(
-            dir.join("afternoon.ogt"),
-            "type environment\nversion 1\n---\nsource \"afternoon.png\"\nhemisphere upper\nsun extract\n",
-        )
-        .map_err(|e| format!("afternoon.ogt: {e}"))?;
+        for (file, text) in [
+            ("og-project.json", r#"{"version":1,"name":"Cloudscape","engine":"0.9.0"}"#),
+            ("project.ts", "import {defineProject} from '@origingame/engine/author'; export default defineProject({id:'cloudscape',entry:'src/main.ts'});"),
+            ("src/main.ts", "export default {};"),
+            ("content/env/afternoon.ts", "import {file} from '@origingame/engine/author'; export default file.environment({source:{equirect:'assets/env/afternoon.png'},hemisphere:'upper',sun:'extract'});"),
+        ] {
+            let path = root.join(file);
+            std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+            std::fs::write(&path, text).map_err(|e| format!("{file}: {e}"))?;
+        }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
             .map_err(|e| format!("cook: {e}"))?;
         if !report.ok() {
@@ -53,7 +58,7 @@ fn afternoon() -> Result<EnvironmentMapData, String> {
         }
         let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
         let map = bundle
-            .load_environment("env/afternoon.ogt")
+            .load_environment("base/env/afternoon")
             .map_err(|e| e.to_string())?;
         let _ = std::fs::remove_dir_all(&root);
         Ok(map)

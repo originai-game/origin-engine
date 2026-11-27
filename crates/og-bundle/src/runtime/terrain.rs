@@ -425,7 +425,7 @@ impl Bundle {
         self.terrain(id, &self.read(id)?)
     }
 
-    /// Decodes an environment map blob (`type environment`): the texels
+    /// Decodes an environment map blob: the texels
     /// inflated, the map ready for `RenderScene::add_environment_map`.
     pub fn environment(
         &self,

@@ -1,6 +1,6 @@
 //! Baked reflection probes (`og bake probes`, `docs/design.md` §2.6): a
-//! probe's capture, read back from the native renderer, written as a
-//! `type environment` blob under the cook cache (`cooked/probes/<key>.ogb`)
+//! probe's capture, read back from the native renderer, written as an
+//! environment map blob under the cook cache (`cooked/probes/<key>.ogb`)
 //! and recorded in the manifest as an asset of kind `probe` with no source,
 //! which the cook keeps while its file is there. The runtime loads it as
 //! the environment map of the og.ReflectionProbe whose key it is

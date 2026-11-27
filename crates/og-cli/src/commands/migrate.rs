@@ -447,7 +447,7 @@ fn manual_class(name: &str) -> Option<(&'static str, u8)> {
             S_LOAD,
         ),
         "RGBELoader" | "EXRLoader" | "CubeTextureLoader" | "PMREMGenerator" => (
-            "an .ogt of type environment, loaded with og.load.environment and set as og.Environment's map",
+            "a content/**/*.ts file.environment declaration, loaded by canonical module/content ID with og.load.environment and set as og.Environment's map",
             S_LOAD,
         ),
         "AudioLoader" | "Audio" | "PositionalAudio" | "AudioListener" => (

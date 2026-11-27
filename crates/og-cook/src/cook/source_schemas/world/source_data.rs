@@ -69,6 +69,8 @@ pub enum VectorInput {
 #[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvironmentInput {
+    /// Explicit canonical paths under the owning module's assets/ or sources/.
+    /// No sibling lookup or project asset-root fallback.
     pub source: EnvironmentSource,
     /// Face side in texels. Omitted: 128, or the prefiltered cube's own size.
     #[schemars(range(min = og_render_data::ENVIRONMENT_MAP_MIN_SIZE, max = og_render_data::ENVIRONMENT_MAP_MAX_SIZE), extend("x-og-unit" = "px"))]

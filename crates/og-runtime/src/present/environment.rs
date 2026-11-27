@@ -1,5 +1,5 @@
 //! Cooked environment maps (IDL `load.environment`, `render.Environment`):
-//! a `type environment` blob decoded into og-render's `EnvironmentMapData`
+//! an environment blob decoded into og-render's `EnvironmentMapData`
 //! and added to the renderer once per path; og.Environment picks the map a
 //! frame is lit by (`RenderScene::environment_map`) and whether it is the
 //! background.

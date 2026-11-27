@@ -2,7 +2,7 @@
 //! the procedural sky (three.js `scene.environment`), shown behind the scene
 //! through [`crate::Background::Sky`] (three.js `scene.background`).
 //!
-//! A map is prefiltered ahead of time (og-cook's `type environment`, or
+//! A map is prefiltered ahead of time (og-cook's environment declaration, or
 //! [`bake`] with the `bake` feature): a cube whose level `m` is the
 //! radiance GGX-prefiltered at roughness `m / (ENVIRONMENT_MAP_LEVELS - 1)`
 //! (level 0 the radiance itself), the convention of the procedural sky's
@@ -428,7 +428,7 @@ impl EquirectIrradiance {
 }
 
 /// Prefiltering an equirectangular HDR image into an [`EnvironmentMapData`]
-/// on the CPU: what og-cook's `type environment` runs at cook time (feature
+/// on the CPU: what og-cook's environment declaration runs at cook time (feature
 /// `bake`; never in the runtime wasm). It lives here because it must match
 /// the renderer's conventions exactly: the face orientation, the roughness
 /// of each level and the GGX sampling of the procedural sky's own prefilter

@@ -62,7 +62,7 @@ module render {
 | [`og.render.compile`](render/fn-compile.md) | function | `(world: World): void` | Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. |
 | [`og.render.reveal`](render/fn-reveal.md) | function | `(world: World, entity: Entity, seconds: number): Result<void>` | Set the fade-in of entity's og.Model or light when streaming brings it into view. |
 | [`Lut`](render/type-Lut.md) | handle |  | A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file). |
-| [`EnvironmentMap`](render/type-EnvironmentMap.md) | handle |  | A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face image… |
+| [`EnvironmentMap`](render/type-EnvironmentMap.md) | handle |  | A prefiltered environment map for Environment.map, from og.load.environment (a TS file.environment declaration naming an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). |
 | [`ParticleEmitter`](render/type-ParticleEmitter.md) | handle |  | A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`). |
 | [`EffectMaterial`](render/type-EffectMaterial.md) | handle |  | An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`). |
 | [`Texture()`](#column-Texture) | column kind |  | A Texture handle field (0 is none). |

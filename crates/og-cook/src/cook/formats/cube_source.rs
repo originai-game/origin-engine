@@ -1,4 +1,4 @@
-//! HDR cube maps an environment (`type environment`) takes instead of an
+//! HDR cube maps an environment declaration takes instead of an
 //! equirectangular image: a KTX2 cube map, decoded here to linear RGB
 //! floats for og-render's `bake::bake_cube`.
 //!

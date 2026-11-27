@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.environment`
 
-A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment` (an equirectangular .hdr or .exr, a KTX2 cube map, or six faces). The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) and nine harmonics of diffuse irradiance, so loading only uploads it. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
+A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path.
 
 See `loading §4`.
 
@@ -17,7 +17,7 @@ og.load.environment(world: World, path: string): Result<EnvironmentMap>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns it. |
-| `path` | `string` | no | The asset id, such as `env/studio.ogt`. |
+| `path` | `string` | no | The canonical content id, such as `base/env/studio`. |
 
 **Returns** `Result<EnvironmentMap>`: Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.
 
@@ -25,10 +25,10 @@ Binding symbol `og_load_environment` · publish builds: kept
 
 ```ogt
 fn environment {
-  doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment` (an equirectangular .hdr or .exr, a KTX2 cube map, or six faces). The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) and nine harmonics of diffuse irradiance, so loading only uploads it. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+  doc "A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
   guide "loading §4"
   param world World "The world whose renderer owns it."
-  param path String "The asset id, such as `env/studio.ogt`."
+  param path String "The canonical content id, such as `base/env/studio`."
   returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
 }
 ```

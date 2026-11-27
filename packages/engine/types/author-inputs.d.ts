@@ -892,6 +892,8 @@ readonly "rotation"?: ((number) | (null));
 readonly "samples"?: ((number) | (null));
 /** Face side in texels. Omitted: 128, or the prefiltered cube's own size. */
 readonly "size"?: ((number) | (null));
+/** Explicit canonical paths under the owning module's assets/ or sources/.
+No sibling lookup or project asset-root fallback. */
 readonly "source": (Input_environmentDefinitions["EnvironmentSource"]);
 /** Omitted: extract for LDR images, keep for HDR and KTX2. */
 readonly "sun"?: (((Input_environmentDefinitions["Sun"])) | ((null)));

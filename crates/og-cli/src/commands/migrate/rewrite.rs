@@ -570,7 +570,7 @@ impl Ctx {
                 }
                 match assignment(rest) {
                     Some(("fog", _)) => Done::Manual("og.Fog's color, start and end (density for FogExp2), with enabled true".into(), S_LIGHT),
-                    Some(("environment", _)) => Done::Manual("og.Environment's map, from og.load.environment of a type environment asset".into(), S_MATERIAL),
+                    Some(("environment", _)) => Done::Manual("og.Environment's map, from og.load.environment of a typed file.environment declaration".into(), S_MATERIAL),
                     _ => Done::Manual(format!("no og mapping for the scene's `{}`", short(rest)), S_GRAPH),
                 }
             }

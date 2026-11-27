@@ -152,34 +152,32 @@ feeds back into the simulation.
 ### Environment images
 
 An environment is both a camera-relative spherical background and image-based
-lighting, not a flat camera plate. Cook a `type environment` file and use
+lighting, not a flat camera plate. Cook a `file.environment` declaration and use
 `og.load.environment` with `og.Environment`. Rotation, intensity, blurriness,
 grounded projection (`groundHeight`, `groundRadius`) and blending are the same
 for HDR and LDR sources. `loading §4` covers loading and aiming a DirectionalLight.
 
-```text
-type environment
-version 1
----
-source "ai-sky.png"
-size 256
-samples 256
-expand 0.25
-sunBoost 1
+```ts
+import { file } from "@origingame/engine/author";
+
+export default file.environment({
+  source: { equirect: "assets/ai-sky.png" },
+  size: 256, samples: 256, expand: 0.25, sunBoost: 1,
+});
 ```
 
-- `source` accepts a full equirectangular `.hdr`/`.exr` (linear), sRGB
-  `.png`/`.jpg`/`.jpeg`/`.webp`, or a KTX2 cube. `faces` accepts six square
+- `source.equirect` accepts a full equirectangular `.hdr`/`.exr` (linear) or sRGB
+  `.png`/`.jpg`/`.jpeg`/`.webp`; `source.ktx2` accepts a KTX2 cube. `source.faces` accepts six square
   HDR or LDR images in +X -X +Y -Y +Z -Z order. Keep all six in one range.
   LDR uses the texture decoder, then the sRGB transfer function into linear
   float RGB before the usual GGX prefilter and diffuse harmonics.
 - A full panorama must be within 5% of 2:1. The cook resamples in linear
   light to exact 2:1, without cropping; a distant aspect ratio is refused
   with its dimensions. 1774 × 887 is already exactly 2:1 and needs no repair.
-- `hemisphere upper` instead means the image runs from zenith at its top to
+- `hemisphere: "upper"` instead means the image runs from zenith at its top to
   horizon at its bottom, across the full 360° width. Its aspect ratio need
   not be 2:1. The lower half is filled with the mean linear colour of the
-  last four resampled horizon rows; `ground 0.12 0.10 0.08` overrides it
+  last four resampled horizon rows; `ground: [0.12, 0.10, 0.08]` overrides it
   with linear RGB in 0..1. Each column starts at its last sky colour and
   smoothly eases to that ground colour over six degrees below the horizon,
   avoiding a hard step. This supplies a ground to the existing dome; it
@@ -195,7 +193,7 @@ sunBoost 1
   default 0.25, range 0..0.9 (0 disables). It preserves RGB ratios and
   mildly opens highlights rather than trying to recover the sun with a
   steep curve. It has no effect on HDR.
-- LDR defaults to `sun extract`; `sun keep` opts out. The cook finds a
+- LDR defaults to `sun: "extract"`; `sun: "keep"` opts out. The cook finds a
   compact bright disc above the horizon, measures its solid-angle-equivalent
   diameter, and fits the unclipped upper sky's luminance gradient to the
   Perez/Preetham daylight model (turbidity and exposure), following the

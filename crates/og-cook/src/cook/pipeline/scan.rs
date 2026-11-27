@@ -465,7 +465,7 @@ pub(crate) fn scan_with(
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, model, particles, style, icons, tileset, tilemap, flipbook, vfx2d, rig2d, shader, behaviour, navmesh, terrain, district, grammar, materials, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset; use og api list --kind file to find the author entry for each domain",
                                 doc.ty
                             ),
                         ));

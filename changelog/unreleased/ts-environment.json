@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "file.environment / og cook / og.load.environment",
+      "change": "Environment authoring now consumes checked TS declarations directly. The OGT environment parser, grammar and sibling/asset-root fallback are deleted. HDR/LDR prefiltering, authored LDR background, sun extraction, hemisphere fill, KTX2 formats and prefiltered mip handling keep the same bake and runtime representation. Exact image bytes are captured before cook cache lookup.",
+      "fix": "Export file.environment({source:{equirect:'assets/env/day.hdr'}}) from content/env/day.ts, importing file from @origingame/engine/author, and load base/env/day. Alternative sources are {ktx2:'sources/studio.ktx2'} or {faces:[px,nx,py,ny,pz,nz]}. Every path is canonical under the owning module's assets/ or sources/. Do not keep environment .ogt sources. See og api show file:environment.",
+      "find": ["type environment", "env/studio.ogt", "env/day.ogt"]
+    }
+  ]
+}

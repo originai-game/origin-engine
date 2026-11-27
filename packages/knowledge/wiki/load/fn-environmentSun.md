@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.environmentSun`
 
-The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
+The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
 
 See `loading §4`.
 
@@ -27,7 +27,7 @@ Binding symbol `og_load_environment_sun` · publish builds: kept
 
 ```ogt
 fn environmentSun {
-  doc "The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time."
+  doc "The sun a cooked environment map holds apart from its image (sun: 'extract' in file.environment): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time."
   guide "loading §4"
   param world World "The world whose renderer owns the map."
   param map EnvironmentMap "A map og.load.environment answered."
