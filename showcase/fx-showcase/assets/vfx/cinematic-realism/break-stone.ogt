@@ -15,10 +15,10 @@ emitter "vfx/cinematic-realism/emitters/rubble-dust.ogt" {
 shake {
   trauma 0.25
 }
-sound "vfx/cinematic-realism/sounds/crack.ogt" {
+sound "base/vfx/cinematic-realism/audio/crack" {
   playbackRate 0.55 0.7
 }
-sound "vfx/cinematic-realism/sounds/thud.ogt" {
+sound "base/vfx/cinematic-realism/audio/thud" {
   volume 1.2
   playbackRate 0.6 0.75
 }

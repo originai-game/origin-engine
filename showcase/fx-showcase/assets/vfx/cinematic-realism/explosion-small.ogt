@@ -59,6 +59,6 @@ decal {
   angleFade 80
   turn 0 360
 }
-sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+sound "base/vfx/cinematic-realism/audio/blast-small" {
   playbackRate 0.95 1.05
 }

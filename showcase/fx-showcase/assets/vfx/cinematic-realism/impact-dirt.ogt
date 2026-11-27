@@ -22,6 +22,6 @@ decal {
   roughness 1
   turn 0 360
 }
-sound "vfx/cinematic-realism/sounds/thud.ogt" {
+sound "base/vfx/cinematic-realism/audio/thud" {
   playbackRate 0.9 1.1
 }

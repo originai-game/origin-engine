@@ -25,5 +25,5 @@ light {
 shake {
   trauma 0.2
 }
-sound "vfx/cinematic-realism/sounds/whoosh.ogt" {
+sound "base/vfx/cinematic-realism/audio/whoosh" {
 }

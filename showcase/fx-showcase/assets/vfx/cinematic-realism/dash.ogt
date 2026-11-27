@@ -11,7 +11,7 @@ emitter "vfx/cinematic-realism/emitters/dash-air.ogt" {
 emitter "vfx/cinematic-realism/emitters/step-dust.ogt" {
   rotate 0 0 0
 }
-sound "vfx/cinematic-realism/sounds/whoosh.ogt" {
+sound "base/vfx/cinematic-realism/audio/whoosh" {
   volume 0.5
   playbackRate 1.5 1.8
 }

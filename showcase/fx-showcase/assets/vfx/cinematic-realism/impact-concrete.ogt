@@ -27,7 +27,7 @@ decal {
   roughness 0.9
   turn 0 360
 }
-sound "vfx/cinematic-realism/sounds/tick.ogt" {
+sound "base/vfx/cinematic-realism/audio/tick" {
   volume 0.8
   playbackRate 0.8 1
 }

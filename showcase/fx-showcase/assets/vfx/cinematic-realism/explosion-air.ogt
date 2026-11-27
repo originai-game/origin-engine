@@ -26,6 +26,6 @@ light {
 shake {
   trauma 0.2
 }
-sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+sound "base/vfx/cinematic-realism/audio/blast-small" {
   playbackRate 1.15 1.3
 }

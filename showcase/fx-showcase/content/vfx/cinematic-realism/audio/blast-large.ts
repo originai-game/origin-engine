@@ -1,39 +1,45 @@
-type sfx
-version 1
----
-# MIT Origin Engine. A large blast: a long sub rumble, a wide roar and
-# debris rattling after it.
-layer sine {
-  freq 52
-  freq_end 22
-  attack 0.003
-  sustain 0.15
-  decay 1.6
-  punch 0.6
-  drive 2
-  gain 1
-}
-layer noise {
-  lowpass 650
-  lp_slide -0.4
-  attack 0.006
-  sustain 0.25
-  decay 2.6
-  gain 0.8
-}
-layer noise {
-  highpass 1500
-  attack 0.001
-  sustain 0.015
-  decay 0.16
-  gain 0.4
-}
-layer noise {
-  lowpass 2600
-  highpass 700
-  delay 0.35
-  attack 0.2
-  sustain 0.3
-  decay 1.4
-  gain 0.12
-}
+import { file } from '@origingame/engine/author';
+
+// MIT Origin Engine. Synthesized oscillator/noise layers; no recording.
+export default file.sfx({
+  "layers": [
+    {
+      "attack": 0.003,
+      "decay": 1.6,
+      "drive": 2.0,
+      "freq": 52.0,
+      "freqEnd": 22.0,
+      "gain": 1.0,
+      "punch": 0.6,
+      "sustain": 0.15,
+      "wave": "sine"
+    },
+    {
+      "attack": 0.006,
+      "decay": 2.6,
+      "gain": 0.8,
+      "lowpass": 650.0,
+      "lpSlide": -0.4,
+      "sustain": 0.25,
+      "wave": "noise"
+    },
+    {
+      "attack": 0.001,
+      "decay": 0.16,
+      "gain": 0.4,
+      "highpass": 1500.0,
+      "sustain": 0.015,
+      "wave": "noise"
+    },
+    {
+      "attack": 0.2,
+      "decay": 1.4,
+      "delay": 0.35,
+      "gain": 0.12,
+      "highpass": 700.0,
+      "lowpass": 2600.0,
+      "sustain": 0.3,
+      "wave": "noise"
+    }
+  ]
+});

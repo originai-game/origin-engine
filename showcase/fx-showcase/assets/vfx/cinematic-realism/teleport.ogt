@@ -46,6 +46,6 @@ light {
   intensity curve 0 0 0.2 4 1 0
   distance 6
 }
-sound "vfx/cinematic-realism/sounds/swell.ogt" {
+sound "base/vfx/cinematic-realism/audio/swell" {
   playbackRate 1.4 1.5
 }

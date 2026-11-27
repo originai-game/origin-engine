@@ -15,6 +15,6 @@ emitter "vfx/cinematic-realism/emitters/wood-dust-large.ogt" {
 shake {
   trauma 0.12
 }
-sound "vfx/cinematic-realism/sounds/crack.ogt" {
+sound "base/vfx/cinematic-realism/audio/crack" {
   playbackRate 0.8 1
 }

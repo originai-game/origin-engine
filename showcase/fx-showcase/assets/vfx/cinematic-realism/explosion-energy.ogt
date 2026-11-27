@@ -69,11 +69,11 @@ decal {
   angleFade 80
   turn 0 360
 }
-sound "vfx/cinematic-realism/sounds/zap.ogt" {
+sound "base/vfx/cinematic-realism/audio/zap" {
   volume 0.9
   playbackRate 0.6 0.7
 }
-sound "vfx/cinematic-realism/sounds/blast-small.ogt" {
+sound "base/vfx/cinematic-realism/audio/blast-small" {
   volume 0.5
   playbackRate 0.8 0.9
 }

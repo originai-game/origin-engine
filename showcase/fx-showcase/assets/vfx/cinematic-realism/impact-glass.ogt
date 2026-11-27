@@ -21,7 +21,7 @@ decal {
   roughness 0.25
   turn 0 360
 }
-sound "vfx/cinematic-realism/sounds/shatter.ogt" {
+sound "base/vfx/cinematic-realism/audio/shatter" {
   volume 0.5
   playbackRate 1 1.2
 }
