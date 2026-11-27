@@ -17,30 +17,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "Icicle2/model-icicle1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "Icicle2/model-icicle3.glb",
       "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "Icicle2/model-icicle3.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
@@ -2997,6 +2975,28 @@
       "derived": "converted by og vfx import; represented as checked TypeScript FX data"
     },
     {
+      "path": "content/Icicle2/model-icicle1.ts",
+      "sha256": "cc52551bfd00aa90e87fc9d958804d57e354c54040a1e2a8480fcb1338c172a6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/Icicle2/model-icicle3.ts",
+      "sha256": "9c48e3480749f738f1cfa59e4e71da1f6e2a62289d0b83a706152cf18a207689",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Icicle2.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import; explicit checked TypeScript import declaration"
+    },
+    {
       "path": "content/Icicle2/n0-0-0.effect.ts",
       "sha256": "559bf80d4fe1b4889206a326d623ecfbee03578509fc63df15a30db62f092ff3",
       "licence": "CC0-1.0",
@@ -5703,6 +5703,28 @@
       "derived": "converted by og vfx import; represented as checked TypeScript FX data"
     },
     {
+      "path": "content/meteo1/model-block1.ts",
+      "sha256": "48a7c9e294dd3c8b8dbee032b3aa68d809868bec3a298fafebeedef7217c4cbc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/meteo1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/meteo1/model-block2.ts",
+      "sha256": "84fcfeb8d849fbfe8716863139af3c3ec7d80f8dad799f02efcf11f5d401b542",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/meteo1.efkproj"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "converted by og vfx import; explicit checked TypeScript import declaration"
+    },
+    {
       "path": "content/meteo1/n0-0-0.effect.ts",
       "sha256": "d2d53957f3002344f2ade032a9cbcade37e76b6c58af09b6f32d026ac057b291",
       "licence": "CC0-1.0",
@@ -6088,6 +6110,908 @@
       "derived": "converted by og vfx import; represented as checked TypeScript FX data"
     },
     {
+      "path": "content/textures/Aurora.ts",
+      "sha256": "cdef9eb788daf6488d510ca94b9ee6c25de0c975b7fc36ec33d2fca05f389c07",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Aurora.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/AuroraRing.ts",
+      "sha256": "cd0a207d6bd799f768cd4bac40ccb0dceb6012ddb52775a07812674100f10153",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/AuroraRing.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Aurora_B.ts",
+      "sha256": "8d7324ff8af1cf975fd581ddfd6a6bf1a50c7f90f0d0f545d14f879f35441a18",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Aurora_B.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Burst01.ts",
+      "sha256": "5f9d6b1b0e7858ff682e927722f81e6572676858eb9c4c797a60f16b030c0816",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Burst01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Cloud01.ts",
+      "sha256": "e869140fb1a46f4dc44d43875694b5f98adeef71b688c3df6ace30a598f5e5a7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Cloud01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Distortion.ts",
+      "sha256": "30513b81581de1a8505cee36bbf06cb19eb0f79bf4524922c41a71c49c095889",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Distortion11.ts",
+      "sha256": "8b4e8b0a32344d368d2de80959dd335b84194755f088e1257018948358be30d4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion11.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Distortion6.ts",
+      "sha256": "ee4e6e986a35169415ce63b4b978554b6d26ac8eda807ceb505461742a34d296",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Distortion6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ExperimentalBlur.ts",
+      "sha256": "7a075757a989ba461ba39fe8464d758254dd7857b0258a2d30c7bc2895efc635",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/ExperimentalBlur.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ExperimentalNoise.ts",
+      "sha256": "94fcd9b36ab307f695e6befbeea876995c24a6b4442cb4e32f57bb8c9c1ef4ae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/ExperimentalNoise.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Feather.ts",
+      "sha256": "b668d6f09748557df592f1ca2781f29e1c495ddabd8aadc9a0484698426a1681",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Feather.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire.ts",
+      "sha256": "be74968b0a380ab0c9c1b70209b81099cd794dc401c316b02c1c52ac2aa67688",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Fire.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire4.ts",
+      "sha256": "ff8b745f9816ee6558faae0893e84f00cc14e280d2b19581d0685b6ab9888010",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Fire4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire6.ts",
+      "sha256": "06c18181d13016a7f9aeaf7f682da346476f923df71eab5f1afaa52035f7ff19",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Fire6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/FireFog.ts",
+      "sha256": "7e3eb21f863544ce90dd66fdc2e53322359619c586f19df4ff643c25ea1562c3",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/FireFog.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire_Blur.ts",
+      "sha256": "2c0fcd9afa17e04f5c7c67f7d90ae09c00ef36fc427caf214e9784cb4d35a9ca",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Fire_Blur.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire_Single-5d682741.ts",
+      "sha256": "621559b6e9ae506daa8814e860ed0ccd9ad0d9cb22337d8b08e2ad099b64c010",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Fire_Single.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fire_Single.ts",
+      "sha256": "2c217b6bfecf07307e26221ed8e3daf7880711fa7e29faf4a580e80280609510",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Fire_Single.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/FlameRadiation.ts",
+      "sha256": "463bd4adb14c92f6c4dce9e75407f26b7a5236b4c7eccd341d8803e96f6c3e2e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/FlameRadiation.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Foam001-713b55cf.ts",
+      "sha256": "a3f13578315fa536577f1587bce1165414ffc7b8804317e2502bf13bbcb3a7ed",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Foam001.ts",
+      "sha256": "b6974d4bba8c42620e12b8da4a420c512a487513033a98b8165a651ea2fd3945",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Foam001.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Foam002.ts",
+      "sha256": "f7909f12894c6e9e8870560a1eeed9897127013760881adc17affdb7ef45ebc0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Foam003.ts",
+      "sha256": "320fe4651824954d87f401deb45c85d5dcda929df11cc9af07f4bb2f73cc8b72",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Foam003.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fog001.ts",
+      "sha256": "1c5640d58c05f11c1815340725fc2ebb1e6ee69d92a07ff7e04dd74bb961eeba",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Fog001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Fog3001.ts",
+      "sha256": "4193e3f55b029c9c57bae2ffac697493e8e3b68eb4415dca12e1587f2ebda110",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Fog3001.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/FractalNoise_2.ts",
+      "sha256": "ea6cfb1425b2507d0702ea767782dee713b1166bd28a6f17191483a4c9fe2c28",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/FractalNoise_2.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Hammer1.ts",
+      "sha256": "7eca2ce83e24a5327c338c241fbfba005bcf886b81f2f85209f5e5f7034779ef",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Hammer1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/LaserMain02.ts",
+      "sha256": "ef417b1953f06d554c933a893ce03f90b3908066b96b300116f4cb1143bdd4af",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/LaserMain02.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line01-d5bd32db.ts",
+      "sha256": "1ca03bcdac5160a4d9b4b05d75e0ebc4e8eb7cefdef254acc3d8c88fe51abecd",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Line01.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line01.ts",
+      "sha256": "7cf32f2f4e6b4b7bc0443283db095627db6ff13a395acd9ca8e43bcddb787aa4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Line01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line1.ts",
+      "sha256": "b545702b73db590a25efd542556c9529e76b4ba6059c4e3f2017e727bec39ce1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line3.ts",
+      "sha256": "732352543c7132f5755d92141ebf3cfda5fd3e375da1faf8392c5b040ae47637",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line6-9f180d6d.ts",
+      "sha256": "4e635d382199c2f319b44285bb6bde3082f3f4491200047acd5a66a67a55856a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Line6.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Line6.ts",
+      "sha256": "97161df5114647c96939f50f661daa1fbadce5c18fc1311e7ea1cc7a697e5776",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/Line6.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/MagicCircle1.ts",
+      "sha256": "81dc4c144f0adb122adfc558b2521842222fa3a238ced453b0db90754dcf0f35",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/MagicCircle1.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/MagicCircle4.ts",
+      "sha256": "903736f8ba97171c62ae60e99368b8ca066d040b6c747ed302fcc6194066012c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/MagicCircle4.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle01-8c6ffbd0.ts",
+      "sha256": "bc6e7e3776bfd5e94f7c606411ffde96d77987698f3cf5ee55ebb49125379c88",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Particle01.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle01-b96f716d.ts",
+      "sha256": "683525124761cda8f2a5da7e33256a8050fe401e79b6fc17ad4dde2753cb48f1",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle01.ts",
+      "sha256": "b7e07af1907c577e26a6e4e3ee82106eb46c4eb66bad21917473b332e69afe2c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Particle01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle02-b223f51c.ts",
+      "sha256": "d11bd5252e3ebd2fb462cf6d5146108f989c01bea22b09cfaffabb3aca63cee4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Effekseer01/index.html",
+        "file": "Effekseer01/Texture/Particle02.png"
+      },
+      "credit": "Effekseer and Effekseer01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle02.ts",
+      "sha256": "f673f94ead54a6ad0b8197439d84c4c14bb830f3222fa3e13bfd3ea19481cc0a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/Particle02.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle_Hard.ts",
+      "sha256": "68d5953444ee415caf271400e3e0318d7ddec429dc9604898f95188065c27d6d",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Particle_Hard.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Particle_Soft.ts",
+      "sha256": "864ed6788c6c2471a712862b9abb90980ebeb49c49a9becfb94b81143422178f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Particle_Soft.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Photon.ts",
+      "sha256": "915f1bffd13ffef1effda9afc6466c08ea8bd403d32cacd8db40931588a80d46",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Photon.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/PolkaDot.ts",
+      "sha256": "f11dda673961e264d30116552b57296de1bacc5521518e8cd005541cf082a8ab",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/PolkaDot.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ShadowEye.ts",
+      "sha256": "311469e6ba4d381e1dbfab17b131a15d6f7d9ce4f4e56d5ac90f427bfad276ae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/ShadowEye.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ShockWave1.ts",
+      "sha256": "476326eb20b7ee1201641524532395343cb77faf7dc00e098e323cf4d45905c7",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ShockWave3.ts",
+      "sha256": "3dde223056b7e0c93eacfec5c36d292d045d4cd86449b5660d6b1155459a027e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave3.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ShockWave4.ts",
+      "sha256": "3d7aac235682772274e4fa66d473f1c0d7afee0d625416526f2112a2b160235b",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ShockWave5.ts",
+      "sha256": "85000f5627dc47f3152cd9f3a63c57f263f07535b930d021f171caee9a671b52",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/ShockWave5.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring0011.ts",
+      "sha256": "08546b160b6d21d36d97e48692d9fd5c2baf4a40380d42825f02b79d0454c1ff",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/Shock_wave_ring0011.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Shock_wave_ring004.ts",
+      "sha256": "d573e825cd3b975c356e4aa1400dd59a7f7e4dce3d47dada8f3f85f030f05fec",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/Shock_wave_ring004.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Smoke-037c8d34.ts",
+      "sha256": "64894484bf92d50c5386c93df5c1657218a5cfec0cca34ec8c8e32137a228427",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Smoke.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Smoke.ts",
+      "sha256": "69c0bb77d458e08d18e25172b481ece6a0fe4104b24e0961cb4b0cd70c3c2c2f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Smoke.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/SnowCrystals_M.ts",
+      "sha256": "1e0532fdc430e2898d99600bea469ac9c8ac54a690a412938f852ecbdd8c69ae",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/SnowCrystals_M.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/SnowCrystals_S.ts",
+      "sha256": "805b4bd2505fee3ac1e2657525c2545ca6e697d7e84f3bc7b80f963dfc4b7bed",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/SnowCrystals_S.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Splash.ts",
+      "sha256": "ce98673b6c29e1d9369cdcf7ce089333f6d23199879da432ea3642b04de312cf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Splash.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Thunder01.ts",
+      "sha256": "3424a1f5ebfa532583dd2b8bfc9165b9947850143b0049902f37933e53ffe325",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/Thunder01.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/WaterForm1.ts",
+      "sha256": "356ef7ac787db3207d00acec61a816735f4a8097b11bd847e3fbfbd0804dd516",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/WaterForm1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/Wind.ts",
+      "sha256": "6361cec11268f60cc81a1ce7c419bb7dcae158a71f03167d227550f620df6c87",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre01/index.html",
+        "file": "Pierre01/Texture/Wind.png"
+      },
+      "credit": "Effekseer and Pierre01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/actionlines.ts",
+      "sha256": "405362f2d4f52d0395a4e5ed5c563a32e14183deaa7b2a47b3b706eb8d123b03",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/actionlines.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/burst02_red.ts",
+      "sha256": "d2c3a2d878fe6dcd0061ea3ae317ab2782ea3297b00f558e450625b463e80e45",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/burst02_red.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/circle1.ts",
+      "sha256": "d21e9612141b753d44ba295f5104abc6d89a0387b4bb5c70250e8dd4e651296a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/circle1.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/clockHand.ts",
+      "sha256": "7d9330be67a69f14d9ddf0adc371c5823e1f607c65c6194efc34bc6fda26233f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/clockHand.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/drillshi.ts",
+      "sha256": "4cb880fa090473b49990452dfd9822a59ddb2bdab4b452063db9d1ca679111b4",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/drillshi.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/eggzero.ts",
+      "sha256": "fd846bbcd834858de72ee4eca8c78bd8e777999a20ce39a60399de6dcc6ff5fa",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/eggzero.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/fog1.ts",
+      "sha256": "c8b5b7f0187611f7ac807b3d0faf3b39f6341d8f07d220e7b2868651724cc3e0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk02/index.html",
+        "file": "tktk02/Parts/fog1.png"
+      },
+      "credit": "Effekseer and tktk02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/hisigata0.ts",
+      "sha256": "fc4b803dc71ea01eb565dbc42dbe75521a95f57f0bddb599b2476b9bf4123bfc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/hisigata0.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/hisigata1.ts",
+      "sha256": "2bb8212187679c98b1261b826aaa99ee8a5e779e92f1506e0c30342e4f161097",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/hisigata1.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/icicle2.ts",
+      "sha256": "33e79a1b239c7edaa0df2ae32e71b036d5d0fea7f993d968af2b5ba263628765",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/icicle2.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/naihu.ts",
+      "sha256": "f1ae8cd43516faf5fd6486dba5bfae24f2e98733a750333e2cf41751ce45252a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/naihu.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/particle.ts",
+      "sha256": "6139f9cfbba919a9905dad97750681cc4a07575abcff162f1ad165f4a6aef6bb",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/particle2.ts",
+      "sha256": "06cfc85fe58d1ead42cdb323d8d411f0ef431bd289acfe66f9b75ecebc11e91c",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/celebration/texture/particle2.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/particle4.ts",
+      "sha256": "5ebcf4158a07ac04892cf9e832eed3a8fb02cc7beb6862933cd7747ad92ad72a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/particle4.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/rainnaka.ts",
+      "sha256": "527530ab5fc96eb85c2980d1d90892dee36a02e94bb71dbcf2bf2052e7027480",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/tktk01/index.html",
+        "file": "tktk01/Texture/rainnaka.png"
+      },
+      "credit": "Effekseer and tktk01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ribbon01_trans.ts",
+      "sha256": "0a2e92af8ff504ef7df8d99e29fd91798964717e8b6f66dca9b0e1fc0f762c1f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/ribbon01_trans.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/sakura-1.ts",
+      "sha256": "56a51c30882eaa51918c37452b8e798428574ff1bdc095b809aa0186ba6c8618",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/HATO01/index.html",
+        "file": "HATO-Springhascome/Flowersbloom/texture/sakura-1.png"
+      },
+      "credit": "Effekseer and HATO01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/smoke_01.ts",
+      "sha256": "1e76cc29377711c18f76ea8dcb6d15cc2a9dc94b1899d213fe4cc2f5269e4407",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
+        "file": "MAGICALxSPIRAL/Texture/smoke_01.png"
+      },
+      "credit": "Effekseer and MAGICALxSPIRAL",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/squareWave.ts",
+      "sha256": "e575b269df27c7172972afc92654402e981e6b19ecbb544ee3045b6e0faba9d9",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/squareWave.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/star.ts",
+      "sha256": "99605fe20c935b9fe28d7c656dd1b75a1661478175e508210603fd54167fbd3a",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/Pierre02/index.html",
+        "file": "Pierre02/Texture/Star.png"
+      },
+      "credit": "Effekseer and Pierre02",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/starpart_.ts",
+      "sha256": "d9114d9fd42bd1ddf3bdd6847f3f72e57728967646fbaf0e26f19b3f017f6b18",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/AndrewFM01/index.html",
+        "file": "AndrewFM01/Texture/starpart_.png"
+      },
+      "credit": "Effekseer and AndrewFM01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/t0002.ts",
+      "sha256": "20073d885ac3a7b2593da672c07e5b718df1d028ccdf94a44466f6c1ff67d6ca",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://effekseer.github.io/en/contributes/NextSoft01/index.html",
+        "file": "NextSoft01/Texture/t0002.png"
+      },
+      "credit": "Effekseer and NextSoft01",
+      "derived": "copied, losslessly recompressed; explicit checked TypeScript import declaration"
+    },
+    {
       "path": "extension.json",
       "sha256": "e39f6a1fd17ae67394230baf520217d84a197718b300f811e97cfed59eee0684",
       "licence": "CC0-1.0",
@@ -6109,30 +7033,8 @@
       "derived": "converted by og vfx import"
     },
     {
-      "path": "meteo1/model-block1.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/meteo1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
       "path": "meteo1/model-block2.glb",
       "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
-      "licence": "CC0-1.0",
-      "source": {
-        "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",
-        "file": "MAGICALxSPIRAL/meteo1.efkproj"
-      },
-      "credit": "Effekseer and MAGICALxSPIRAL",
-      "derived": "converted by og vfx import"
-    },
-    {
-      "path": "meteo1/model-block2.glb.ogt",
-      "sha256": "896f692c9f8b5d8b2e6de15f5d4b862ff315cd233ef9b62572cda01c2a4a3a3e",
       "licence": "CC0-1.0",
       "source": {
         "url": "https://effekseer.github.io/en/contributes/MAGICALxSPIRAL/index.html",

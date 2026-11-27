@@ -256,6 +256,76 @@
       "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
     },
     {
+      "path": "content/textures/dirt.ts",
+      "sha256": "8d315721c517d9a01376ce6bbfa4946b00401aff4fe492db3a471f2f44acd127",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/fire.ts",
+      "sha256": "4136798ba7cc9c5e58893a6f5837c6eb8ee5a26e26587c44f42df3235a5344a0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/flame.ts",
+      "sha256": "ff3a831e783c29b7143146f83224e349ab031a325abc4cdd0948f89e01eeadab",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/muzzle.ts",
+      "sha256": "add59ef85ad8aebedb483517dc6775ec4220da3cdc92c461edd7ea9433d8b55e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ring.ts",
+      "sha256": "14d7d128723ce0f47386a4f7dcd08a919e2504272f9c35bac9946edfc6f0cbcf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/scorch.ts",
+      "sha256": "0bbb214e1f98a0939ddd620045dec3d80d5e4bc2d71f20bdd9eb985c5c5249e8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/smoke.ts",
+      "sha256": "07355a072f80e9cd694cf9a2288cb371fef248617b2a06fadac292595bcedef2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
       "path": "content/torch-fire.ts",
       "sha256": "77511fd97ce0728f7f12029f9f6c151b2eeb6a5f3a99f43d124deca894fe1b9d",
       "licence": "MIT",
