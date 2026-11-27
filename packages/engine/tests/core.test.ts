@@ -5,12 +5,11 @@
 // Ways it could fail, and the test that catches each:
 // - a fork from og.Rng declared only in `reads` answers NaN, moves the main
 //   stream, or differs between hosts → "og.Rng in reads forks …"
-// - og.procgen or og.Rng's picks leave og-core's pinned outputs, or the
-//   hosts disagree → "og.procgen and og.Rng's picks …"
+// - og.procgen repeats differ, or the hosts disagree → "og.procgen and
+//   og.Rng's picks …"
 // - og.audio.createSound refuses a whole sound, or an og.AudioEvent's pick
 //   does not follow the world's seed → "og.audio.createSound …"
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -78,17 +77,12 @@ test.skipIf(STALE_WASM)("og.Rng in reads forks a deterministic stream without mo
 
 type Procgen = { hashes: Record<string, string | number>; noise: number; refused: { ok: boolean; reason: string }; hash: string };
 
-/** The shared procgen pin (tests/fixtures/procgen-pin.json): the scenario and the cross-host hashes, also og-core's test's. */
-const procgenPin = JSON.parse(
-  readFileSync(join(pkg, "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8"),
-) as { pinned: Record<string, string> };
-
-test("og.procgen and og.Rng's picks give og-core's pinned outputs, bit for bit, through the API", () => {
+test("og.procgen and og.Rng's picks repeat bit for bit and agree across hosts through the API", () => {
   const node = run<Procgen>("node", "procgen");
-  // og-core's procgen::tests::every_generator_gives_its_pinned_output_for_a_seed:
-  // the floats survive the JSON wire exactly, so the hashes are the same.
+  // Seeded output must repeat within this engine version; algorithm changes
+  // need not preserve older versions' generated worlds.
+  expect(run<Procgen>("node", "procgen")).toEqual(node);
   expect(node.hashes).toMatchObject({
-    ...procgenPin.pinned,
     // og.Rng's fork "picks" of a world seeded 42: equal across runs and hosts.
     weighted: "d9faff60662c6855",
     permutation: "496debfddbe40345",

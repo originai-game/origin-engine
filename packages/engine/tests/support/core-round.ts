@@ -138,10 +138,9 @@ if (which === "startup") {
   out.picks = picks;
   out.hash = engine.hash();
 } else if (which === "procgen") {
-  // The same generators and settings as og-core's pinned test, from the
-  // same fixture (tests/fixtures/procgen-pin.json): the scenario is read
-  // once. og.Rng's picks are a world's fork "picks" (seed 42), not
-  // og-core's Rng::new stream, so their hashes stay pinned in core.test.ts.
+  // One scenario for repeatability and cross-host comparisons. Only the
+  // independent og.Rng vectors remain pinned in core.test.ts; generated
+  // worlds need not match older engine versions.
   const pin = JSON.parse(readFileSync(join(pkg, "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8")) as {
     noise: { seed: number; octaves: number; frequency: number; grid: { width: number; height: number; x: number; y: number; step: number; z: number } };
     poisson: { seed: number; width: number; height: number; radius: number; attempts: number; maxPoints: number };

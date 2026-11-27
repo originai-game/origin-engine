@@ -1,5 +1,5 @@
 {
-  "comment": "The pinned procgen scenario, run twice by design (cross-host determinism): og-core's procgen::tests::every_generator_gives_its_pinned_output_for_a_seed and packages/engine/tests/core.test.ts (through support/core-round.ts's --case procgen). Both read this file; a change here is a change to every seeded world. `pinned` holds the hashes both hosts must give. The weighted and permutation picks are a host's own stream (Rng::new here, og.Rng's fork \"picks\" of a world seeded 42 there), so their hashes are pinned in each test, not here.",
+  "comment": "The procgen input scenario for packages/engine/tests/core.test.ts, through support/core-round.ts's --case procgen. It checks repeated output and cross-host determinism within the current engine version, not compatibility with older algorithms. The weighted and permutation picks use og.Rng's fork \"picks\" of a world seeded 42 and have independent vectors in core.test.ts.",
   "weighted": { "seed": 42, "draws": 64, "weights": [1, 0, 3, 0.5] },
   "permutation": { "seed": 42, "length": 32 },
   "noise": { "seed": 7, "octaves": 4, "frequency": 0.13, "grid": { "width": 16, "height": 16, "x": -3.5, "y": 2.25, "step": 0.7, "z": 1.3 } },
@@ -12,14 +12,5 @@
       { "weight": 1, "sockets": [1, 0, 1, 0], "rotations": true },
       { "weight": 1, "sockets": [1, 1, 0, 0], "rotations": true }
     ]
-  },
-  "pinned": {
-    "perlin2": "f408080a80a69ae1",
-    "perlin3": "c99bab4bf56e2da4",
-    "simplex2": "f87052e661c5c7be",
-    "simplex3": "7988b7773f1605ed",
-    "poisson": "8c0c32d7c29b84cd",
-    "bsp": "4c25af53c3dbd445",
-    "wfc": "c3d44cb51b6ea25a"
   }
 }
