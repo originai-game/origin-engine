@@ -293,7 +293,7 @@ The audio counterpart of §2.2: `audioBrief({ music, mood, genre,
 premise? })` in the same `brief.ts`, re-exported by
 `@origingame/create-game`, is a pure, deterministic public contract (a
 change is a break with a breaking changelog entry). `readAudioChoices`
-reads its input from checked project.ts's `create` choices, and an unknown value
+reads music and genre from checked project.ts's `create` choices and mood from its look, falling back to the engine's `bright` audio default when no mood is declared. This keeps lookless games on the same audio flow without adding a visual contract. An unknown value
 throws naming the known ones. It returns the shared direction and avoid
 list, the music cues (title, the genre's cues, victory and defeat), the
 sound effects (the UI's and the genre's) and, for each effect a

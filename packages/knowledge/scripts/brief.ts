@@ -1801,13 +1801,14 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
   stinger: "short stinger that plays over the loop at a highlight",
 };
 
-/** Checked project.ts creation music/genre and the game's look mood. */
+/** Checked project.ts creation music/genre and look mood, or the engine's bright audio default. */
 export function readAudioChoices(projectDir: string): AudioBriefInput {
   const choices = checkedProject(projectDir).input.create;
   if (!choices) throw new Error(`${join(projectDir, "project.ts")} has no create: pass music, mood and genre (brief audio --music --mood --genre)`);
   const { music, genre } = choices;
-  const mood = readLook(projectDir).mood ?? undefined;
-  if (!music || !mood || !genre) throw new Error("the create block lacks music or genre, or the look names no mood");
+  // Audio generation needs a mood even when realistic rendering imposes none.
+  const mood = readLook(projectDir).mood ?? "bright";
+  if (!music || !genre) throw new Error("the create block lacks music or genre");
   return { music, mood, genre };
 }
 

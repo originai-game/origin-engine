@@ -176,5 +176,6 @@ These are a public contract like the art brief: `audioBrief`,
 `readAudioChoices`, `MUSIC_STYLES`, `SFX_PRESETS` and the shapes
 `AudioBriefInput`, `AudioBrief`, `MusicCueBrief`, `SfxBrief`,
 `SfxPresetBrief`, `AudioFormat`, `MusicRole`, `MusicStyle`, `SfxPreset`.
+`readAudioChoices` uses the look's mood when it names one, otherwise the engine's `bright` audio default. Lookless projects need no cook report or caller-supplied mood; this audio choice does not add a visual look or art contract.
 On the command line: `bun scripts/brief.ts audio [--project <dir>]
 [--music --mood --genre] [--premise "<line>"] [--json]`.

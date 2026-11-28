@@ -121,6 +121,10 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
     writeFileSync(choices, `export const choices = { form: "${form}", music: "ambient", genre: "rpg" };`);
     const plain = readLook(dir);
     expect(plain).toMatchObject({ profile: form, extends: null, art: {}, style: null, mood: null });
+    expect(readAudioChoices(dir)).toEqual({ music: "ambient", genre: "rpg", mood: "bright" });
+    const audio = audioBrief(readAudioChoices(dir));
+    expect(audio.mood).toBe("bright");
+    expect(audio.cues.find(c => c.role === "title")?.prompt).toContain("bright, hopeful and playful");
     const brief = artBrief(plain, "character", "a pilot");
     expect(brief.style).toBeNull();
     expect(brief.references).toEqual([]);

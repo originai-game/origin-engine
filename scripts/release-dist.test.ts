@@ -37,7 +37,12 @@ describe("vfx archives", () => {
     writeFileSync(join(engine, "dist/web-publish/modules/modules.json"), JSON.stringify({ physics: { file: `modules/physics.${hash.slice(0, 12)}.wasm`, bytes: 8, sha256: hash } }));
     expect(writeWasmModules(engine, dir, "1.2.3-dev.4")).toEqual([`wasm/publish/physics.${hash.slice(0, 12)}.wasm`]);
     expect(JSON.parse(readFileSync(join(engine, "dist/web-publish/modules/modules.json"), "utf8")).physics.base).toBe("https://origingame.ai/downloads/engine/1.2.3-dev.4/wasm/publish/");
-    const { looks, filled } = drawLooks(dir, "1.2.3-dev.4", "0".repeat(40)).looks();
+    const drawn = drawLooks(dir, "1.2.3-dev.4", "0".repeat(40));
+    const defaultPreview = join(dir, "previews/realistic-default.webp");
+    rmSync(defaultPreview);
+    expect(drawn.looks).toThrow("no previews/realistic-default.webp");
+    writeFileSync(defaultPreview, "realistic");
+    const { looks, filled } = drawn.looks();
     const creation = writeCreation(dir, "1.2.3-dev.4", { previews: filled });
     finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx, { looks, creation, files: ["looks/catalogue.json", ...SLOTS.map((s) => s.path), "creation.json"] });
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
@@ -53,9 +58,10 @@ describe("vfx archives", () => {
         "pixel.8bit": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.8bit.webp", sha256: sha("8bit"), size: 4, engine: "1.2.3-dev.4" },
       },
     });
-    // ui previews are the creation document's alone, filled like the rest.
+    // Default and UI previews are the creation document's alone, not catalogue presets.
     expect(manifest.creation).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/creation.json", sha256: sha(readFileSync(join(dir, "creation.json"))), size: statSync(join(dir, "creation.json")).size });
     expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/ui/default.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/ui/default.webp", sha256: sha("ui"), size: 2, engine: "1.2.3-dev.4" });
+    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/realistic-default.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/realistic-default.webp", sha256: sha("realistic"), size: 9, engine: "1.2.3-dev.4" });
     expect(manifest).toMatchObject({ version: "1.2.3-dev.4", channel: "dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig" });
     expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
@@ -65,7 +71,7 @@ describe("vfx archives", () => {
     expect(sums).toContain("  manifest.json\n");
     expect(sums).toContain(`${manifest.looks.catalogue.sha256}  looks/catalogue.json\n`);
     expect(sums).toContain(`${sha("pix")}  previews/pixel.webp\n`);
-    for (const f of ["previews/pixel.8bit.webp", "previews/ui/default.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
+    for (const f of ["previews/pixel.8bit.webp", "previews/ui/default.webp", "previews/realistic-default.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
     // A dev build carries the launcher's installers too: the site's root installer may be older than its name.
     for (const f of ["install.sh", "install.ps1"]) expect(sums).toContain(`${sha(readFileSync(join(dir, f)))}  ${f}\n`);
     // Every line verifies from the version's directory, as publish checks them.
@@ -77,8 +83,9 @@ describe("vfx archives", () => {
 
 const sha = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 const LINUX = { og: sha("og"), addon: sha("addon") };
-/** The slots of a version: two looks, a variant and a UI pack, with their bytes. */
+/** The slots of a version: the engine default, two looks, a variant and a UI pack, with their bytes. */
 const SLOTS: (Slot & { bytes: string })[] = [
+  { path: "previews/realistic-default.webp", kind: "default", bytes: "realistic" },
   { path: "previews/pixel.webp", kind: "look", look: "pixel", bytes: "pix" },
   { path: "previews/pixel.8bit.webp", kind: "variant", look: "pixel", variant: "8bit", bytes: "8bit" },
   { path: "previews/neon-vector.webp", kind: "look", look: "neon-vector", bytes: "neon" },

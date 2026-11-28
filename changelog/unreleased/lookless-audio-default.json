@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "knowledge/scripts/brief.ts readAudioChoices",
+      "change": "Projects with no look or no declared look mood now use the engine's bright audio mood instead of failing. Explicit look moods remain authoritative. readLook still reports null visual mood for a lookless project; audio fallback adds no look or art contract.",
+      "fix": "Use audioBrief(readAudioChoices(projectDir)) for new lookless games as for styled games. No extra mood argument or look cook report is needed for a lookless game. Music and genre still come from the checked creation choices; callers can override the returned mood explicitly when requesting another audio direction."
+    }
+  ]
+}
