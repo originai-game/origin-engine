@@ -34,7 +34,7 @@ const FEATURE_LEVEL: wgpu::FeatureLevel = wgpu::FeatureLevel::Compatibility;
 
 /// Cold browser GPU processes can initially report no adapter. Keep the
 /// retry here so the player and offscreen renderers use the same policy.
-async fn request_adapter(
+pub async fn request_adapter(
     instance: &wgpu::Instance,
     desc: &RenderDesc,
     surface: Option<&wgpu::Surface<'_>>,
@@ -202,8 +202,7 @@ impl Renderer {
         }
         let instance = desc.backend.instance();
         let adapter = request_adapter(&instance, desc, None).await?;
-        let format = desc.output_format.unwrap_or(DEFAULT_OUTPUT_FORMAT);
-        Self::from_adapter(adapter, None, format, desc, None).await
+        Self::on_adapter(desc, adapter, None).await
     }
 
     /// A fresh offscreen run. Mutable resources are
@@ -258,6 +257,24 @@ impl Renderer {
             return Err(disabled_error());
         }
         let adapter = request_adapter(instance, desc, Some(&surface)).await?;
+        Self::on_adapter(desc, adapter, Some(surface)).await
+    }
+
+    /// Creates the renderer on the host's selected adapter. A web host must
+    /// choose its presentation transport before binding a canvas context:
+    /// fallback adapters cannot share swap images with Chrome's compositor.
+    pub async fn on_adapter(
+        desc: &RenderDesc,
+        adapter: wgpu::Adapter,
+        surface: Option<wgpu::Surface<'static>>,
+    ) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
+        let Some(surface) = surface else {
+            let format = desc.output_format.unwrap_or(DEFAULT_OUTPUT_FORMAT);
+            return Self::from_adapter(adapter, None, format, desc, None).await;
+        };
         let caps = surface.get_capabilities(&adapter);
         // The widest output the surface and display offer (a caller's own
         // format keeps sRGB): the frame composes in float and the display

@@ -23,6 +23,7 @@ mod uploads;
 pub(crate) use buffers::*;
 pub use config::*;
 pub use history::Restored;
+pub use init::request_adapter;
 pub(crate) use pipelines::*;
 pub(crate) use presentation::LostFlag;
 pub use presentation::{GpuMemory, MAX_RENDER_SCALE, MIN_RENDER_SCALE, Successor};

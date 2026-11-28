@@ -30,7 +30,7 @@ serde_json = "1"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true }
 wasm-bindgen-futures = "=0.4.79"
-web-sys = { version = "=0.3.106", features = ["OffscreenCanvas"] }
+web-sys = { version = "=0.3.106", features = ["OffscreenCanvas", "OffscreenCanvasRenderingContext2d", "ImageData"] }
 # No logger is installed in the web module (nothing calls log::set_logger),
 # so every log macro of wgpu, naga and og-render discards its record at run
 # time; off at compile time, their formatting (wgpu-core's and naga's Debug

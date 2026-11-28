@@ -106,9 +106,9 @@ export class Gate {
     return (glue?.og_web_textures_deferred?.() ?? 0) > 0 || (glue?.og_web_fonts_pending?.() ?? 0) > 0;
   }
 
-  /** Whether the last frame drew less than the scene: draws skipped or work left for a pipeline not ready (og-render gpu/deferred.rs), textures waiting (s63). */
-  #frameWaits(): boolean {
-    return (this.#run.glue?.og_web_frame_skipped() ?? 0) > 0 || this.#texturesWaiting();
+  /** A whole scene reached the canvas, including fallback readback presentation. */
+  frameReady(): boolean {
+    return (this.#run.glue?.og_web_frame_skipped() ?? 0) === 0 && !this.#texturesWaiting();
   }
 
   // og.loading (fork s61): the game's stages reach the page as `og-stage`, and its done (stage
@@ -156,7 +156,7 @@ export class Gate {
         // A frame that drew less than the scene is drawn again, each try its own task: once no
         // pipeline compiles (polled without drawing: a frame meanwhile only slows them), or at
         // once while textures wait to upload (s63). The first frame is the first one drawn whole.
-        if (this.#frameWaits()) {
+        if (!this.frameReady()) {
           if (!waiting.since) waiting.since = performance.now();
           waiting.frames++;
           // The pipelines ready of those requested (each count only goes up; the page's bar never
@@ -174,7 +174,7 @@ export class Gate {
               waiting.again = setTimeout(poll, 50);
             } else this.present();
           };
-          if (!waiting.again) waiting.again = setTimeout(poll, compiling(run.glue) > 0 ? 50 : 0);
+          if (!waiting.again) waiting.again = setTimeout(poll, compiling(run.glue) > 0 ? 50 : 16);
           run.flushLog();
           return;
         }

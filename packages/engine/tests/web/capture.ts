@@ -19,14 +19,22 @@ if (builtAt < 0) {
 writeFileSync(join(work, "worker.ts"), `
 import { startWorker } from ${JSON.stringify(join(pkg, "src/web/worker.ts"))};
 import { og, defineSystem } from ${JSON.stringify(join(pkg, "src/index.ts"))};
-let mode = "delay";
+let mode = "normal";
 addEventListener("message", (e) => { if (e.data.captureMode) mode = e.data.captureMode; });
+const requestDevice = GPUAdapter.prototype.requestDevice;
+GPUAdapter.prototype.requestDevice = async function (...args) {
+  const device = await requestDevice.apply(this, args);
+  device.lost.then((loss) => self.postMessage({ captureDeviceLost: loss.message }));
+  return device;
+};
 const raf = self.requestAnimationFrame.bind(self);
 self.requestAnimationFrame = (f) => mode === "hidden" ? 0 : raf(f);
 const map = GPUBuffer.prototype.mapAsync;
 GPUBuffer.prototype.mapAsync = function (...args) {
   const p = map.apply(this, args);
-  if (this.label !== "capture") return p;
+  // Delay only explicit 160 × 90 probe captures, not the fallback
+  // canvas's 256 × 144 presentation readbacks on the same device.
+  if (this.label !== "capture" || this.size !== Math.ceil(160 * 4 / 256) * 256 * 90 || mode === "normal") return p;
   const policy = mode;
   return p.then(async (v) => {
     if (policy === "fail") throw new Error("injected capture mapping failure");
@@ -47,6 +55,8 @@ writeFileSync(join(work, "page.ts"), `
 import { Shell } from ${JSON.stringify(join(pkg, "src/web/shell.ts"))};
 const worker = new Worker("/game/worker.js", { type: "module" });
 globalThis.captureWorker = worker;
+globalThis.captureLosses = [];
+worker.addEventListener("message", ({data}) => { if (data.captureDeviceLost) captureLosses.push(data.captureDeviceLost); });
 Shell.start({ canvas: document.querySelector("canvas"), worker,
   glue: "/game/origin-engine.js", wasm: "/game/origin-engine_bg.wasm",
   autoplay: false, prime: false, dprCap: 1,
@@ -59,7 +69,7 @@ cpSync(join(pkg, "dist/web"), work, { recursive: true });
 }
 // Serve the development wasm beside this test's bundled Worker.
 const server = serve({ dist: work, isolate: !process.argv.includes("--no-isolation"), extra: {
-  "/capture.html": '<!doctype html><canvas width="160" height="90"></canvas><script type="module" src="/game/page.js"></script>',
+  "/capture.html": '<!doctype html><canvas width="256" height="144"></canvas><script type="module" src="/game/page.js"></script>',
 } });
 const browser = await Browser.launch({ chrome: chromePath(process.argv), width: 160, height: 90 });
 const log: string[] = [];
@@ -67,6 +77,7 @@ let failures = 0;
 try {
   const page = await browser.open(`http://127.0.0.1:${server.port}/capture.html`, log);
   await page.until("globalThis.shell || globalThis.failed", 90_000);
+  await page.until("globalThis.shell?.boot || globalThis.failed", 90_000);
   const result = await page.eval<Record<string, unknown>>(`(async () => {
     if (globalThis.failed) throw new Error(globalThis.failed);
     const s = globalThis.shell, worker = globalThis.captureWorker;
@@ -74,6 +85,7 @@ try {
     const mode = async (captureMode) => { worker.postMessage({ captureMode }); await s.call("hash"); };
     const shot = () => s.probe("capture", { width: 160, height: 90, fit: 0 });
     const errors = {};
+    await mode("delay");
     await s.call("advance", 1);
     const first = await shot();
     // A command/direct probe can leave a readback pending while ticks run.
@@ -87,6 +99,18 @@ try {
     try { await shot(); } catch (e) { errors.mapping = String(e); }
     await mode("delay");
     const recovered = await shot();
+    const bootLosses = captureLosses.slice();
+    await mode("normal");
+    s.play(true);
+    const lost = await s.call("loseDevice");
+    const deadline = performance.now() + 10000;
+    let display = await s.call("display");
+    while ((display?.deviceLosses ?? 0) === 0 && performance.now() < deadline) {
+      await sleep(50);
+      display = await s.call("display");
+    }
+    const replacement = await s.probe("capture", { width: 158, height: 88, fit: 0 });
+    s.play(false);
     await mode("hang");
     try { await shot(); } catch (e) { errors.deadline = String(e); }
     await mode("hidden");
@@ -97,15 +121,22 @@ try {
     s.play(false);
     return { pending, first: { tick: first?.tick }, stale: stale && { tick: stale.tick, previousPixels: stale.png === first.png },
       current: { tick: current?.tick, changed: current?.png !== first?.png },
-      recovered: { tick: recovered?.tick, same: recovered?.png === current?.png }, hidden: !!hidden?.png, errors };
+      recovered: { tick: recovered?.tick, same: recovered?.png === current?.png }, hidden: !!hidden?.png,
+      boot: !!s.boot, losses: bootLosses,
+      replacement: { lost, devices: display?.deviceLosses, tick: replacement?.tick, png: !!replacement?.png }, errors };
   })()`);
   console.log(JSON.stringify(result, null, 2));
   const errors = result.errors as Record<string, string>;
   for (const [ok, label] of [
+    [result.boot === true && (result.losses as unknown[]).length === 0, "a complete canvas frame boots and captures without losing its device"],
     [result.pending === null && /tick 1.*tick 4/.test(errors.stale ?? ""), "a tick-1 readback cannot be returned as tick 4"],
     [(result.current as { tick: number; changed: boolean }).tick === 4 && (result.current as { changed: boolean }).changed, "a fresh tick-4 capture contains the current scene"],
     [/readback:.*map/i.test(errors.mapping ?? ""), "a failed mapping reports its cause instead of restarting"],
     [(result.recovered as { same: boolean }).same, "a subsequent capture succeeds after a mapping error"],
+    [(result.replacement as { lost: boolean; devices: number; tick: number; png: boolean }).lost
+      && (result.replacement as { devices: number }).devices === 1
+      && (result.replacement as { tick: number }).tick > 4
+      && (result.replacement as { png: boolean }).png, "a lost device is replaced while ticks continue and capture recovers"],
     [result.hidden === true, "a playing capture completes without presentation callbacks"],
     [/readback.*20000 ms/.test(errors.deadline ?? ""), "a readback deadline is an error, never null success"],
   ] as const) {

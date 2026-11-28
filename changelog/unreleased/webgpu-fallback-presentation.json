@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "WebGPU fallback-adapter presentation and boot",
+      "change": "Fallback adapters present WebGPU-rendered frames through a single asynchronous CPU readback to the canvas, avoiding unsupported compositor swap-image sharing. Hardware adapters retain surface presentation. The first-frame mark now waits for a complete presented frame in autoplay too. A replacement device must remain healthy before its recovery deadline resets.",
+      "fix": "No game changes are required. Leave pipeline mode on auto; fallback adapters continue using asynchronous compilation. The play gate deliberately holds simulation until play; autoplay ticks do not wait for renderer readiness.",
+      "find": ["og:first-frame", "pipelines"]
+    }
+  ]
+}

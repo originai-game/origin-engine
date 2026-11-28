@@ -7,6 +7,9 @@ use wasm_bindgen::prelude::*;
 struct CanvasBackend {
     engine: u32,
     renderer: Renderer,
+    /// Fallback adapters render with WebGPU but cannot share swap images
+    /// with Chrome's compositor. Only their presentation crosses the CPU.
+    readback: Option<ReadbackCanvas>,
     tier: String,
     cpu_pass_timing_only: bool,
     /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
@@ -48,6 +51,19 @@ thread_local! {
     /// the next frame.
     static RECOVERED: std::cell::RefCell<og_core::IdMap<u32, Result<Renderer, String>>> =
         const { std::cell::RefCell::new(og_core::IdMap::new()) };
+    // Like og-render's frame_skipped, describes the last display attempt.
+    static PRESENT_PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+pub(super) fn present_pending() -> bool {
+    PRESENT_PENDING.with(|p| p.get())
+}
+
+struct ReadbackCanvas {
+    context: web_sys::OffscreenCanvasRenderingContext2d,
+    pending: Option<(og_render::CaptureRequest, bool)>,
+    failed: Option<String>,
+    shown: bool,
 }
 
 impl CanvasBackend {
@@ -83,11 +99,23 @@ impl CanvasBackend {
                     .insert(self.engine, renderer.info().texture_formats.clone())
             });
             self.renderer = renderer;
-            self.lost_at = None;
+            // Creation is not recovery: a device can die at its first
+            // presentation. Keep the episode's deadline until it survives.
+            self.lost_at = self.lost_at.map(|(since, _)| (since, now + RETRY_MS));
             self.losses += 1;
             self.kept = None;
+            if let Some(readback) = &mut self.readback {
+                readback.pending = None;
+                readback.failed = None;
+            }
         }
         let Some(why) = self.renderer.lost() else {
+            if self
+                .lost_at
+                .is_some_and(|(_, next)| now - next > RECOVERY_MS)
+            {
+                self.lost_at = None;
+            }
             return Ok(false);
         };
         let (since, next) = *self.lost_at.get_or_insert((now, now));
@@ -107,16 +135,20 @@ impl CanvasBackend {
             let successor = self.renderer.successor();
             let canvas = self.canvas.clone();
             let engine = self.engine;
+            let readback = self.readback.is_some();
             wasm_bindgen_futures::spawn_local(async move {
                 let instance = Backend::WebGpu.instance();
-                let made =
+                let made = if readback {
+                    successor.make(None).await.map_err(|e| e.to_string())
+                } else {
                     match instance.create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas)) {
                         Ok(surface) => successor
                             .make(Some((&instance, surface)))
                             .await
                             .map_err(|e| e.to_string()),
                         Err(e) => Err(format!("surface: {e}")),
-                    };
+                    }
+                };
                 RECOVERED.with(|m| m.borrow_mut().insert(engine, made));
             });
         }
@@ -171,14 +203,63 @@ impl RenderBackend for CanvasBackend {
         ))
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        PRESENT_PENDING.with(|p| p.set(true));
         if self.recover_device()? {
             return Ok(());
         }
         if let Some((w, h)) = super::take_resize(self.engine) {
             self.renderer.resize(w, h);
+            if let Some(readback) = &mut self.readback {
+                readback.pending = None;
+                self.canvas.set_width(w);
+                self.canvas.set_height(h);
+            }
         }
         self.renderer.poll();
-        match self.renderer.render(scene, &RenderTarget::Surface) {
+        if let Some(readback) = &mut self.readback {
+            if let Some(error) = readback.failed.take() {
+                return Err(error);
+            }
+            if let Some((request, complete)) = &mut readback.pending {
+                let image = match request.try_finish(&self.renderer) {
+                    Ok(image) => image,
+                    Err(error) => {
+                        // Buffer invalidation can precede device.lost's
+                        // callback. Give it one event-loop turn to arrive
+                        // so recovery, not a presentation error, owns loss.
+                        readback.failed = Some(error.to_string());
+                        readback.pending = None;
+                        return Ok(());
+                    }
+                };
+                if let Some(image) = image {
+                    let data = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
+                        wasm_bindgen::Clamped(&image.pixels),
+                        image.width,
+                        image.height,
+                    )
+                    .map_err(|e| format!("canvas image: {e:?}"))?;
+                    readback
+                        .context
+                        .put_image_data(&data, 0.0, 0.0)
+                        .map_err(|e| format!("canvas presentation: {e:?}"))?;
+                    readback.shown |= *complete;
+                    readback.pending = None;
+                }
+            }
+            PRESENT_PENDING.with(|p| p.set(!readback.shown));
+            // One readback in flight. A slow software GPU skips display
+            // work, never simulation ticks or an unbounded queue of copies.
+            if readback.pending.is_some() {
+                return Ok(());
+            }
+        }
+        let target = if self.readback.is_some() {
+            RenderTarget::Offscreen
+        } else {
+            RenderTarget::Surface
+        };
+        match self.renderer.render(scene, &target) {
             Ok(s) => {
                 self.stats = s;
             }
@@ -188,6 +269,17 @@ impl RenderBackend for CanvasBackend {
             Err(e) => return Err(e.to_string()),
         }
         self.drawn += 1;
+        if let Some(readback) = &mut self.readback {
+            // Bound incomplete warmup frames too: otherwise the software
+            // GPU's queue grows while its first pipelines compile. Only a
+            // complete frame counts as the first presentation.
+            readback.pending = Some((
+                self.renderer.begin_capture().map_err(|e| e.to_string())?,
+                og_render::frame_skipped() == 0,
+            ));
+        } else {
+            PRESENT_PENDING.with(|p| p.set(false));
+        }
         // A reader of every frame: this one's readback starts now (the
         // renderer copied it offscreen before presenting it).
         if self.renderer.keeps_frame() {
@@ -432,10 +524,38 @@ pub async fn og_web_attach_canvas(
     }
     let instance = backend.instance();
     let canvas_kept = canvas.clone();
-    let surface = instance
-        .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))
-        .map_err(|e| JsValue::from_str(&format!("surface: {e}")))?;
-    let renderer = Renderer::with_surface(&desc, &instance, surface)
+    // Select before binding the canvas: its context type cannot change.
+    // Chrome 157's fallback adapter accepts configure(), but allocating
+    // the first swap image fails (8-bit and float) and destroys the device.
+    let adapter = og_render::request_adapter(&instance, &desc, None)
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let software = adapter.get_info().device_type == wgpu::DeviceType::Cpu;
+    let (surface, readback) = if software {
+        use wasm_bindgen::JsCast;
+        let context = canvas
+            .get_context("2d")?
+            .ok_or_else(|| JsValue::from_str("no 2D canvas context for fallback presentation"))?
+            .dyn_into::<web_sys::OffscreenCanvasRenderingContext2d>()?;
+        super::console_warn(
+            "origin-engine: fallback WebGPU adapter; presenting through bounded CPU readback",
+        );
+        (
+            None,
+            Some(ReadbackCanvas {
+                context,
+                pending: None,
+                failed: None,
+                shown: false,
+            }),
+        )
+    } else {
+        let surface = instance
+            .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))
+            .map_err(|e| JsValue::from_str(&format!("surface: {e}")))?;
+        (Some(surface), None)
+    };
+    let renderer = Renderer::on_adapter(&desc, adapter, surface)
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
     let tier = renderer.info().backend_tier();
@@ -453,6 +573,7 @@ pub async fn og_web_attach_canvas(
         Some(Box::new(CanvasBackend {
             engine,
             renderer,
+            readback,
             tier: tier.clone(),
             cpu_pass_timing_only: cpu_pass_timing_only.unwrap_or(false),
             pending: Vec::new(),

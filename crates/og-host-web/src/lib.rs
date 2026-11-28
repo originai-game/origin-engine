@@ -397,11 +397,15 @@ pub fn og_web_warm_behind_gate(engine: u32) -> bool {
 }
 
 /// The draws the last frame skipped and the work it left for a later frame,
-/// each for a pipeline that was not ready (og-render `frame_skipped`): the
-/// Worker draws the first frame again until it is 0.
+/// including a fallback canvas's pending first presentation. The Worker
+/// draws the first frame again until it is 0.
 #[wasm_bindgen]
 pub fn og_web_frame_skipped() -> u32 {
-    og_render::frame_skipped()
+    let skipped = og_render::frame_skipped();
+    #[cfg(target_arch = "wasm32")]
+    return skipped + u32::from(canvas::present_pending());
+    #[cfg(not(target_arch = "wasm32"))]
+    skipped
 }
 
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit); a

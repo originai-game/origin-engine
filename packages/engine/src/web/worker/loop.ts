@@ -66,7 +66,7 @@ export class FrameLoop {
           pumpShared(engine);
           if (typeof answered.tick === "number") run.lastTick = answered.tick;
           this.#gate.warmCovered();
-          if (!run.firstFrame && answered.rendered !== false) {
+          if (!run.firstFrame && answered.rendered !== false && this.#gate.frameReady()) {
             run.firstFrame = true;
             post(run.boot.firstFrame(pipelineStats(run.glue)));
           }
