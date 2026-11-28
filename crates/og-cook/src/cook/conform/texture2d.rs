@@ -340,6 +340,12 @@ pub(super) fn texture_role(
                 size,
                 line: 0,
             }
+        })
+        .or_else(|| {
+            s.settings.conform_off.then_some(AssetConform {
+                off: true,
+                ..Default::default()
+            })
         });
     let kind = super::super::texture_kind(s).unwrap_or(crate::format::kind::COLOR);
     let role = match own.as_ref().and_then(|c| c.role.as_deref()) {

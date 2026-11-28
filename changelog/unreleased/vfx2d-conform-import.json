@@ -1,0 +1,15 @@
+{
+  "fixed": [{
+    "member": "file.vfx2d cook",
+    "summary": "Generated recipe sheets again retain their authored resolution, ramps, dithering, alpha and outlines under a selected look. The texture conformance pass now honors their internal opt-out after the TypeScript import cutover; re-cook affected effects without adding author overrides."
+  }],
+  "breaking": [{
+    "member": "file.vfx2d recipe particle layers",
+    "change": "Particle-layer spawn area uses separate areaX and areaY fields; the old area tuple is rejected.",
+    "fix": "Replace area: [x, y] with areaX: x, areaY: y inside each recipe particle layer. These are vfx2d recipe fields, not file.particles emitter fields."
+  }, {
+    "member": "file.vfx2d recipe notes",
+    "change": "Checked recipes reject the formerly ignored note field at the recipe root and inside layers.",
+    "fix": "Remove note properties from recipe data and put the same text in TypeScript comments beside the recipe or layer."
+  }]
+}

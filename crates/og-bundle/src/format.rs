@@ -148,8 +148,8 @@ impl Area {
     const fn entry(self) -> (&'static str, u32) {
         match self {
             Area::Blob => ("blob", 1),
-            // Keep VFX recipe sheets and omit empty adaptive palettes.
-            Area::Texture => ("texture", 2),
+            // Honor generated sheets' conformance opt-out with typed imports.
+            Area::Texture => ("texture", 3),
             // Preserve authored tangent frames even without a normal map.
             Area::Model => ("model", 3),
             // Bounded chroma mattes for animated-source flipbooks.

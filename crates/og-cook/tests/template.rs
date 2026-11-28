@@ -1084,6 +1084,36 @@ fn typed_pixel_effects_cook_native_frames_and_events() {
     let b = Bundle::open(&root.join("cooked")).unwrap();
     assert_eq!(b.load_flipbook("base/hit").unwrap().size, [65, 12]);
     assert_ne!(previous.unwrap(), b.read("base/hit").unwrap().to_vec());
+    let sheet = b.load_flipbook("base/hit").unwrap();
+    let image = b
+        .load_texture(&sheet.texture)
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    write(
+        "og-project.json",
+        r#"{"version":1,"name":"Pixel effects","engine":"0.9.0","look":{"$ogRef":"base/look"}}"#,
+    );
+    write(
+        "content/look.ts",
+        "import {file} from '@origingame/engine/author';export default file.look({extends:['pixel']});",
+    );
+    for _ in 0..2 {
+        let report = cook_project(&root, &opts).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(b.load_flipbook("base/hit").unwrap(), sheet);
+        let kept = b
+            .load_texture(&sheet.texture)
+            .unwrap()
+            .to_texture_data()
+            .unwrap();
+        assert_eq!((kept.width, kept.height), (image.width, image.height));
+        assert!(
+            kept.rgba == image.rgba,
+            "a look must not re-conform a recipe sheet"
+        );
+    }
     for invalid in [
         declaration.replace("impact:0.2", "impact:0.76"),
         declaration.replace("duration:0.75", "duration:0"),
