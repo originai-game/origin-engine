@@ -438,9 +438,10 @@ async function main(): Promise<number> {
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks. A page whose UI is
-  // still `moving` then (an entrance, a transition) is shot again once it has had a second, longer
-  // than any built-in entrance, so a frame is judged at rest, never mid-pop.
-  const STEP = 15, SETTLE = 12, LEAD = 30, REST = 60;
+  // still `moving` then (an entrance, a transition) is shot again once it has had 2.5 s, longer than
+  // the longest built-in entrance (the title screen's prompt: a 1.6 s delay, then 0.64 s in), so a
+  // frame is judged at rest, never mid-pop.
+  const STEP = 15, SETTLE = 12, LEAD = 30, REST = 150;
   const at = (tick: number) => (tick / 60).toFixed(4);
   for (const { pack, scheme, key } of columns) {
     const shots = join(out, key);
