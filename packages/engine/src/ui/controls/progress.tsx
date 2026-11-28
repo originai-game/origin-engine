@@ -30,7 +30,7 @@ export function Progress(props: ProgressProps) {
       class={`${packClass("Progress", "track")} ${props.class ?? ""}`}
     >
       <View
-        class={`h-full min-w-2 rounded-capsule bg-accent inset-shadow-lit ${packClass("Bar", "fill")} data-empty:hidden ${props.indeterminate ? packClass("Progress", "indeterminate") : ""}`}
+        class={`h-full min-w-2 ${packClass("Progress", "fill")} ${packClass("Bar", "fill")} data-empty:hidden ${props.indeterminate ? packClass("Progress", "indeterminate") : ""}`}
         data-empty={!props.indeterminate && percent() <= 0}
         style={props.indeterminate ? undefined : { width: `${percent()}%` }}
       />

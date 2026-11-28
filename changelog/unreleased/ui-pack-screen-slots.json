@@ -1,0 +1,20 @@
+{
+  "breaking": [
+    {
+      "member": "Progress, Progress.fill",
+      "change": "A progress bar's indicator takes the pack's new `Progress.fill` slot instead of a fixed accent capsule; the look packs draw it with their track and range parts.",
+      "fix": "A pack that dressed `Bar.fill` for a progress bar's colour sets `Progress.fill`."
+    },
+    {
+      "member": "@themes/pixel, @themes/minimal, @themes/candy, @themes/cartoon, @themes/comic, @themes/neon",
+      "change": "The packs' `fg`, `fg-muted` and `fg-subtle` are light and dark pairs, and their drawn frames fix their own scheme (`scheme-light` on the light parts, `scheme-dark` on the dark ones), so words over key art in a screen's dark scheme read light and words on a part read in the part's ink.",
+      "fix": "Text a game sets on one of these packs' parts reads `text-fg`; text over the picture outside a part reads in the screen's scheme."
+    }
+  ],
+  "added": [
+    {
+      "member": "Screen.veil, Screen.heading, Screen.note, Screen.prompt",
+      "summary": "Pack slots for a full-screen built-in's shade over the picture, its heading, its small words and a title screen's call to start."
+    }
+  ]
+}

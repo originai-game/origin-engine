@@ -19,7 +19,7 @@ export default file.theme({
     "images": images,
     "theme": {
       "colors": {
-        "fg": "#e8fbff", "fg-muted": "#9fc7d0", "fg-subtle": "#5f8a94",
+        "fg": { "light": "#0b0a18", "dark": "#e8fbff" }, "fg-muted": { "light": "#2f3c52", "dark": "#9fc7d0" }, "fg-subtle": { "light": "#56627a", "dark": "#5f8a94" },
         "part-fg": "#e8fbff", "part-on": "#04040a", "part-gold": "#ffe94a", "part-cyan": "#36f1ff", "part-magenta": "#ff2bd6",
         "accent": "#36f1ff", "accent-fg": "#04040a", "track": "#0c6f7a"
       },
@@ -31,14 +31,18 @@ export default file.theme({
     },
     "variants": {
       "Ability.box": "size-15 compact:size-10", "Ability.box.ultimate": "size-22 compact:size-13",
+      "Screen.heading": "font-display font-black text-display-xl leading-none uppercase tracking-label text-fg text-shadow-wordmark",
+      "Screen.note": "text-xs uppercase tracking-label text-fg-muted",
+      "Screen.prompt": "flex-row items-center gap-x-3 py-2 px-6 nine-button scheme-dark font-display font-bold text-lg uppercase tracking-label text-part-cyan text-shadow-neon",
+      "Screen.veil": "bg-scrim",
       "Title.wordmark": "font-display font-black text-display-3xl leading-none uppercase tracking-display-3xl text-part-fg text-shadow-wordmark",
-      "Panel.frame": "nine-panel text-part-fg",
+      "Panel.frame": "nine-panel scheme-dark text-part-fg",
       "Panel.body": "gap-4 px-8 pt-7 pb-8",
       "Panel.title": "font-display font-bold text-xl uppercase tracking-label text-part-cyan text-shadow-neon",
-      "Plate.frame": "nine-plate text-part-fg",
-      "Slot.frame": "nine-slot text-part-fg",
-      "Chip.frame": "nine-plate text-part-fg",
-      "Dialog.frame": "flex-col gap-4 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto px-8 pt-7 pb-8 nine-panel text-part-fg",
+      "Plate.frame": "nine-plate scheme-dark text-part-fg",
+      "Slot.frame": "nine-slot scheme-dark text-part-fg",
+      "Chip.frame": "nine-plate scheme-dark text-part-fg",
+      "Dialog.frame": "flex-col gap-4 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto px-8 pt-7 pb-8 nine-panel scheme-dark text-part-fg",
       "Dialog.title": "font-display font-bold text-xl leading-tight uppercase tracking-label text-part-magenta text-shadow-neon-hot",
       "Dialog.body": "text-base leading-normal text-fg-muted",
       "Button.plate": "relative nine-button text-part-fg font-bold uppercase tracking-label text-base px-6 hover:text-part-cyan active:nine-button-down aria-pressed:nine-button-down selected:nine-button-down disabled:opacity-40",
@@ -60,6 +64,8 @@ export default file.theme({
       "Tab.list": "flex-row items-end gap-2",
       "Tab.item": "flex-row items-center justify-center gap-2 min-h-11 px-4 font-bold uppercase tracking-label text-fg-muted hover:text-part-fg selected:nine-tab-on selected:text-part-cyan selected:text-shadow-neon disabled:opacity-40",
       "Tab.mark": "hidden",
+      "Progress.track": "w-full h-4 nine-track overflow-hidden",
+      "Progress.fill": "nine-range",
       "Slider.track": "relative grow h-4 nine-track disabled:opacity-40",
       "Slider.range": "absolute left-0 top-0 bottom-0 nine-range",
       "Slider.thumb": "absolute top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 nine-thumb",
@@ -68,11 +74,11 @@ export default file.theme({
       "Checkbox.indicator": "flex items-center justify-center size-6 shrink-0 nine-check checked:nine-check-on disabled:opacity-40",
       "Checkbox.mark": "hidden",
       "Bar.frame": "h-4.5 nine-bar overflow-hidden px-1 py-1",
-      "Tooltip.frame": "max-w-64 px-3 py-2 nine-plate text-part-fg text-xs uppercase tracking-label",
-      "Toast.frame": "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-5 py-3 nine-plate text-part-fg pointer-events-auto",
+      "Tooltip.frame": "max-w-64 px-3 py-2 nine-plate scheme-dark text-part-fg text-xs uppercase tracking-label",
+      "Toast.frame": "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-5 py-3 nine-plate scheme-dark text-part-fg pointer-events-auto",
       "Toast.frame.danger": "",
       "Toast.frame.success": "",
-      "Row.frame": "nine-slot text-part-fg",
+      "Row.frame": "nine-slot scheme-dark text-part-fg",
       "Row.frame.selected": "nine-entry-on text-part-fg"
     }
   }

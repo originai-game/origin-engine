@@ -421,8 +421,13 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "Progress.track",
-        "a progress bar's track; its indicator is Bar.fill",
+        "a progress bar's track; its indicator is Progress.fill",
         "w-full h-2 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk",
+    ),
+    (
+        "Progress.fill",
+        "a progress bar's indicator: how much is done, drawn inside Progress.track (its easing is Bar.fill)",
+        "rounded-capsule bg-accent inset-shadow-lit",
     ),
     (
         "Progress.indeterminate",
@@ -438,6 +443,26 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Title.wordmark",
         "a game's name set in type where it has no logo (a title or main menu's wordmark): the pack's display face, size and treatment",
         "font-display text-display-2xl leading-tight font-bold text-fg text-shadow-xs text-shadow-bg",
+    ),
+    (
+        "Screen.veil",
+        "the shade over the game or the key art behind a full-screen built-in's words (a pause menu, a loading screen's foot): how much of the picture shows through",
+        "bg-scrim",
+    ),
+    (
+        "Screen.heading",
+        "a full-screen built-in's title set straight over the game or the key art (Paused, Settings, You died): the pack's display face and the treatment that keeps it legible on any picture",
+        "font-display text-display-lg leading-tight font-bold uppercase text-fg text-shadow-sm text-shadow-bg",
+    ),
+    (
+        "Screen.note",
+        "small words set straight over the picture: a legal line, a version, a key hint",
+        "text-xs text-fg-muted text-shadow-xs text-shadow-bg",
+    ),
+    (
+        "Screen.prompt",
+        "a title screen's call to start (Press any button): its plate, if any, and its type",
+        "flex-row items-center gap-x-3 py-2 px-5 text-base font-semibold uppercase tracking-kicker text-fg text-shadow-sm text-shadow-bg",
     ),
     (
         "Panel.body",
