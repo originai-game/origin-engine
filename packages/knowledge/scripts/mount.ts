@@ -2,14 +2,16 @@
 // knowledge tree, `knowledge/` of an origin-agent checkout (before the
 // agent-repo split, OriginGame's packages/game-knowledge/production):
 // the project template plus origin-engine.json and distribution.json as
-// the scaffold overlay game-scaffold/<overlay>/. The engine ships no skills:
+// the scaffold overlay game-scaffold/<overlay>/, plus the generated VFX
+// catalogue at game/vfx/catalogue.json. The engine ships no skills:
 // what an agent reads is `og api find` and `og api show` (the API reference
 // in the engine package).
 //
 //   bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]
 //
-// The package owns, in the platform tree, exactly the directories it mounts:
-// game-scaffold/<overlay>/. Within it the result is byte-for-byte the package's text payload: files are
+// The package owns game-scaffold/<overlay>/ and the single file
+// game/vfx/catalogue.json, never game/ or game/vfx/. Within those owned paths
+// the result is byte-for-byte the package's text payload: files are
 // written only when their bytes differ, files the package no longer has are
 // removed, and nothing outside them is touched, so a second run changes
 // nothing. Binary template files (models, textures, audio, fonts) are never
@@ -49,7 +51,7 @@ export interface Change {
 export interface MountResult {
   /** The platform's production root. */
   readonly production: string;
-  /** The directories the package owns there, production-relative, each ending in `/`. */
+  /** Owned production-relative paths: directories end in `/`, individual files do not. */
   readonly owned: readonly string[];
   /** Text files mounted (written or already identical). */
   readonly files: number;
@@ -58,13 +60,14 @@ export interface MountResult {
   readonly changes: readonly Change[];
 }
 
-/** The production-relative directories the payload occupies: game-scaffold/<overlay>/. */
+/** Owned scaffold directories and the catalogue file, even when it is no longer in the payload. */
 export function ownedRoots(paths: readonly string[]): string[] {
-  const owned = new Set<string>();
+  const catalogue = "game/vfx/catalogue.json";
+  const owned = new Set<string>([catalogue]);
   for (const p of paths) {
     const parts = p.split("/");
     if (parts[0] === "game-scaffold" && parts.length > 2) owned.add(`game-scaffold/${parts[1]}/`);
-    else throw new Error(`${p}: a mount outside game-scaffold/<overlay>/; fix knowledge.json`);
+    else if (p !== catalogue) throw new Error(`${p}: a mount outside game-scaffold/<overlay>/ or ${catalogue}; fix knowledge.json`);
   }
   return [...owned].sort();
 }
@@ -75,7 +78,7 @@ function executable(path: string): boolean {
 
 /** Compares (and with `write`, materialises) the package's payload in `production`. */
 export function mount(roots: Roots, production: string, write: boolean): MountResult {
-  for (const top of ["game-scaffold"]) {
+  for (const top of ["game", "game-scaffold"]) {
     if (!existsSync(join(production, top)) || !statSync(join(production, top)).isDirectory()) {
       throw new Error(`${production}: no ${top}/; pass the root of an origin-agent checkout (its ${PRODUCTION}/ holds game/ and game-scaffold/)`);
     }
@@ -109,13 +112,16 @@ export function mount(roots: Roots, production: string, write: boolean): MountRe
 
   for (const root of owned) {
     const dir = join(production, root);
-    for (const full of walk(dir)) {
-      const path = `${root}${full.slice(dir.length).split("\\").join("/")}`;
+    const directory = root.endsWith("/");
+    const files = directory ? walk(dir) : existsSync(dir) ? [dir] : [];
+    for (const full of files) {
+      const path = directory ? `${root}${full.slice(dir.length).split("\\").join("/")}` : root;
       if (wanted.has(path)) continue;
+      if (lstatSync(full).isDirectory()) throw new Error(`${path}: a directory in the platform tree where the package owns a file`);
       changes.push({ kind: "removed", path });
       if (write) rmSync(full, { force: true });
     }
-    if (write) pruneEmpty(dir);
+    if (write && directory) pruneEmpty(dir);
   }
 
   changes.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));

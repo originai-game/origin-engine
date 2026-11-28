@@ -81,7 +81,7 @@ function packageJson(roots: Roots, problems: string[]): void {
   const p = JSON.parse(readFileSync(join(roots.pkg, "package.json"), "utf8")) as { name?: string; version?: string; files?: string[]; scripts?: Record<string, string> };
   if (p.name !== "@origingame/engine-knowledge") problems.push(`package.json: name is ${p.name}; the package is @origingame/engine-knowledge (design §9)`);
   if (!/^(?:\d+\.\d+\.\d+(-[\w.]+)?|dev\.\d{8}\.\d+)$/.test(p.version ?? "")) problems.push(`package.json: version ${p.version} is not semver`);
-  for (const f of ["wiki", "looks", "scaffold", "rules", "knowledge.json"]) {
+  for (const f of ["wiki", "vfx", "looks", "scaffold", "rules", "knowledge.json"]) {
     if (!p.files?.some((x) => x === f || x === `${f}/`)) problems.push(`package.json: files does not publish ${f}`);
   }
   if (!p.scripts?.test) problems.push("package.json: no test script, so scripts/check.sh bun-test would skip the package");

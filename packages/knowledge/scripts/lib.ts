@@ -115,7 +115,9 @@ export function isText(bytes: Uint8Array): boolean {
 }
 
 /**
- * The production-tree payload: every mounted file. Template binaries are
+ * The production-tree payload: the scaffold overlay and the single generated
+ * game/vfx/catalogue.json file, each at its exact knowledge.json destination.
+ * Template binaries are
  * included here (so the validator sees them) and flagged by `isText`; the
  * published bundle carries text only and names binaries in distribution.json.
  */
@@ -149,7 +151,7 @@ export function packName(path: string): string {
   return "game";
 }
 
-/** Each pack's content hash, as `packsFromFiles` computes it over the text files. */
+/** Each pack's content hash: `game` includes the VFX catalogue, `scaffold:<overlay>` the template text. */
 export function packs(files: readonly PayloadFile[]): Record<string, string> {
   const groups = new Map<string, Record<string, string>>();
   for (const f of files) {

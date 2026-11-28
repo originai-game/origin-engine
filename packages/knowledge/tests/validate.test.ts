@@ -41,8 +41,14 @@ const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(r
 
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
-  // The skeleton is the platform's only pack from the engine: no skills.
-  expect(Object.keys(packs(payload(real)))).toEqual(["scaffold:origin-engine-ts"]);
+  // The catalogue adds a game pack beside the scaffold; no skills are shipped.
+  const files = payload(real);
+  const hashes = packs(files);
+  expect(Object.keys(hashes)).toEqual(["game", "scaffold:origin-engine-ts"]);
+  expect(files.filter(f => f.path.startsWith("game/")).map(f => f.path)).toEqual(["game/vfx/catalogue.json"]);
+  const changed = packs(files.map(f => f.path === "game/vfx/catalogue.json" ? { ...f, bytes: new TextEncoder().encode("[]\n") } : f));
+  expect(changed.game).not.toBe(hashes.game);
+  expect(changed["scaffold:origin-engine-ts"]).toBe(hashes["scaffold:origin-engine-ts"]);
 });
 
 test("brief vocabularies stay in lockstep with Rust cook/synth constants", async () => {
