@@ -37,6 +37,7 @@ export default file.theme({
       "MenuList.frame": "flex-col gap-1.5",
       "Screen.glow": "bg-radial from-stage-glow to-transparent to-60% opacity-dim",
       "Screen.backdrop": "bg-linear-to-b from-stage-hi to-stage-lo",
+      "Screen.texture": "bg-[repeating-linear-gradient(135deg,rgb(255_255_255/0.035)_0%,rgb(255_255_255/0.035)_2%,transparent_2%,transparent_4%)]",
       "Ability.box": "size-18 compact:size-12", "Ability.box.ultimate": "size-27 compact:size-16",
       "Screen.heading": "font-display text-display-2xl leading-none text-part-on text-stroke-4 text-stroke-part-pink text-shadow-wordmark -rotate-1",
       "Screen.note": "text-sm font-semibold text-fg",

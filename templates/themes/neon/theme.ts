@@ -34,7 +34,8 @@ export default file.theme({
     "variants": {
       "MenuList.frame": "flex-col nine-panel scheme-dark text-part-fg p-3",
       "Screen.glow": "bg-radial from-stage-glow to-transparent to-60% opacity-dim",
-      "Screen.backdrop": "bg-linear-to-b from-stage-hi to-stage-lo",
+      "Screen.backdrop": "bg-stage-lo bg-[repeating-linear-gradient(0deg,rgb(54_241_255/0.08)_0%,rgb(54_241_255/0.08)_0.25%,transparent_0.25%,transparent_7%)]",
+      "Screen.texture": "bg-[repeating-linear-gradient(90deg,rgb(54_241_255/0.10)_0%,rgb(54_241_255/0.10)_0.15%,transparent_0.15%,transparent_4%)]",
       "Ability.box": "size-15 compact:size-10", "Ability.box.ultimate": "size-22 compact:size-13",
       "Screen.heading": "font-display font-black text-display-xl leading-none uppercase tracking-label text-fg text-shadow-wordmark",
       "Screen.note": "text-xs uppercase tracking-label text-fg",
@@ -50,7 +51,7 @@ export default file.theme({
       "Dialog.frame": "flex-col gap-4 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto px-8 pt-7 pb-8 nine-panel scheme-dark text-part-fg",
       "Dialog.title": "font-display font-bold text-xl leading-tight uppercase tracking-label text-part-magenta text-shadow-neon-hot",
       "Dialog.body": "text-base leading-normal text-fg-muted",
-      "Button.plate": "relative nine-button text-part-fg font-bold uppercase tracking-label text-base px-6 hover:text-part-cyan active:nine-button-down aria-pressed:nine-button-down selected:nine-button-down disabled:opacity-40",
+      "Button.plate": "relative nine-button text-part-fg font-bold uppercase tracking-label px-6 hover:text-part-cyan active:nine-button-down aria-pressed:nine-button-down selected:nine-button-down disabled:opacity-40",
       "Button.plate.primary": "nine-button-primary text-part-on active:nine-button-primary-down",
       "Button.plate.danger": "nine-button-danger text-part-fg active:nine-button-danger-down",
       "Button.plate.ghost": "nine-none bg-transparent text-part-fg hover:text-part-cyan",
@@ -62,8 +63,8 @@ export default file.theme({
       "MenuList.indicator": "absolute inset-0 nine-entry-on pointer-events-none transition-layout duration-120 ease-out glide-menu",
       "MenuList.indicator.danger": "",
       "MenuList.cursor": "absolute left-2 top-1/2 w-4 h-5 -translate-y-1/2 nine-cursor animate-pulse",
-      "MenuList.label": "text-start font-display font-bold text-3xl leading-tight uppercase tracking-label group-data-current/entry:text-shadow-neon-hot",
-      "MenuList.label.md": "text-2xl",
+      "MenuList.label": "text-start font-display font-bold text-3xl leading-tight uppercase tracking-label group-data-current/entry:text-shadow-neon-hot portrait:text-4xl",
+      "MenuList.label.md": "text-2xl portrait:text-3xl",
       "MenuList.line": "text-start text-sm uppercase tracking-label text-fg-muted whitespace-nowrap overflow-hidden",
       "MenuList.chevron": "hidden",
       "Tab.list": "flex-row items-end gap-2",
@@ -84,7 +85,7 @@ export default file.theme({
       "Toast.frame.danger": "",
       "Toast.frame.success": "",
       "Row.frame": "nine-slot scheme-dark text-part-fg",
-      "Row.frame.selected": "nine-entry-on text-part-fg"
+      "Row.frame.selected": "nine-entry-on text-part-fg border-s-4 border-part-magenta"
     }
   }
 });

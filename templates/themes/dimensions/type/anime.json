@@ -1,0 +1,32 @@
+{
+  "about": "Chakra Petch display, Nunito text: a sharp, angled title face over a soft rounded reading face (anime action RPG).",
+  "fonts": [
+    "@styles/shared/ChakraPetch-Bold.ttf",
+    "@styles/shared/ChakraPetch-BoldItalic.ttf",
+    "@styles/shared/Nunito[wght].ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Nunito",
+    "display": "Chakra Petch",
+    "sans": "Nunito",
+    "mono": "Nunito"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Chakra Petch\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Nunito\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Nunito\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Nunito\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-sm": 0.02,
+    "display-md": 0.03,
+    "display-lg": 0.04,
+    "display-xl": 0.04,
+    "display-2xl": 0.05,
+    "display-3xl": 0.05,
+    "display-4xl": 0.05,
+    "label": 0.1
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "anime theme",
+      "change": "The anime look pack has its own identity: the anime type (Chakra Petch display, Nunito text), cut corners, a dusk-violet palette with a coral accent, italic display headings and wordmark, and the current menu entry on a slanted ribbon with a coral edge. Candy, cartoon, pixel, neon and anime set Screen.texture; neon's backdrop is a grid; cartoon's fallback ground is a deeper blue under a softer glow; pixel's type scale is one step larger at 720p. Neon's button plate no longer sets its own type size, so Button's size governs; candy's stripes are half as strong.",
+      "fix": "A game that wants the former anime look copies the pack and sets its type, colour and MenuList slots back."
+    }
+  ]
+}
