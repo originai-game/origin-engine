@@ -3204,6 +3204,702 @@
       "sha256": "0fed30ffce5ce052a8de81188f9cb7060a9221d9acde85ada2e193479a491468",
       "size": 29842,
       "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/bar.png",
+      "sha256": "86915cd9a0f436782e506360666509fc170bec192137e6f22532c72bdb2a6ad6",
+      "size": 2690,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button-danger-down.png",
+      "sha256": "b8f4eac4a27d7802443253bc624021cf272226dd841fbaadcbdcc63e2b76e2c9",
+      "size": 3667,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button-danger.png",
+      "sha256": "370902b59fcc71c2eeac15e79d311a89cd7c11b7a4fe214d4a23e6a21a37fa9b",
+      "size": 14414,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button-down.png",
+      "sha256": "3e42b42b2640eeeba82c2dec0d84bfd80b7d1abf9b66182bcc1f4f351be57dde",
+      "size": 3261,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button-primary-down.png",
+      "sha256": "aa02700fb961ec20642e10f323b6e337bcb8c84bbe784caa4e9496b4ffa24aee",
+      "size": 3665,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button-primary.png",
+      "sha256": "30c9e783a2dbc2128486ff59ee1c70a106a0a97920cd53dbd2f862363a36678d",
+      "size": 14431,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/button.png",
+      "sha256": "922ed0fc9939d5dc456bb42638b2fcddd41c1bd0eefb1d16db075ff4d8ecb67e",
+      "size": 14006,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/check-on.png",
+      "sha256": "af3d0fa029f3d465f3cf50ba2a37b55259c887b53eb46c46aa2013e2b8433b8b",
+      "size": 2301,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/check.png",
+      "sha256": "d5987e0c76b733c2c2842c7bef86db1561e192462c6ed59e2eb7112ffcbe5d44",
+      "size": 2328,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/entry-on.png",
+      "sha256": "dd58ac8f0f6b75609cb6a23e58d8125e7e7681f5559fdeb70fc9e7d08d9bc5b6",
+      "size": 11086,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/entry.png",
+      "sha256": "922ed0fc9939d5dc456bb42638b2fcddd41c1bd0eefb1d16db075ff4d8ecb67e",
+      "size": 14006,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/panel.png",
+      "sha256": "fbaeb1f930d3494676937b361a3b5cbc5e909d09f82b6793441db0d78a7c374b",
+      "size": 29367,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/plate.png",
+      "sha256": "11d01b1e230fba2fb2581df40c2e395d52f2c0168d28ca3b9df70de1fac1730a",
+      "size": 13988,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/range.png",
+      "sha256": "f52dc7c88da185af81987f2852c14f87b02515e839cad562e9fd8fab222c2f5c",
+      "size": 1797,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/slot.png",
+      "sha256": "c87573105db526af95a62fdf93e73b54e3db3a5e6698f261040453c761759bcc",
+      "size": 1848,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/tab-on.png",
+      "sha256": "30c9e783a2dbc2128486ff59ee1c70a106a0a97920cd53dbd2f862363a36678d",
+      "size": 14431,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/tab.png",
+      "sha256": "ee1bbdee83657b0babace46cd2d626632d31d933c231ceb15a37f62232b9016f",
+      "size": 14156,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/thumb.png",
+      "sha256": "5a1887dc85c95f976f1630dc9c85f51bed00be15ba348b6cb92a6ccbf7953dc8",
+      "size": 10121,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/candy/track.png",
+      "sha256": "beef5c932b2f41f81f84202445c9e9eb0b0e954736537e2c0cc7839da2687814",
+      "size": 1361,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/bar.png",
+      "sha256": "821f17fea7ca9e7222145bf523dd78245e62a407736a0800123243d62338cb3a",
+      "size": 2397,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button-danger-down.png",
+      "sha256": "95b2c1ca91c617be91a4f84ad07491d223a56cfc1e6fd8f3bf028af8b77a7d52",
+      "size": 4134,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button-danger.png",
+      "sha256": "16d2870000d5a6a5b66f176c74a583fcd2f6bea0c975958686bca2ba7e04b139",
+      "size": 5717,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button-down.png",
+      "sha256": "75a82ab809ac11849ee57870dfa8cb533c0ddc8a2d5c0a20b96c297e9626aa78",
+      "size": 4222,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button-primary-down.png",
+      "sha256": "9e3dd166ca48bc3535a6ade9bdb963b8c1d29f03d8b20e12c681b4dc58e0012d",
+      "size": 4181,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button-primary.png",
+      "sha256": "6ce054bc1fcce3ba1b34468f0b5c111855375aa31255d99fd6e51a91d299e499",
+      "size": 5872,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/button.png",
+      "sha256": "b7d433eca393697073c9781e47e50370a5a8ff93f08a684b7c6879dc8fd80148",
+      "size": 5816,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/check-on.png",
+      "sha256": "66a6762d0fc9964a27e3b963ec9e4e3cc14b432e318e2658fde665e1fec1566d",
+      "size": 2727,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/check.png",
+      "sha256": "099f36e52dea69fe18ef874b783d1c124bf3dfa6ac9b0f3be577647961718c16",
+      "size": 1844,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/entry-on.png",
+      "sha256": "6cbe173163b31d49007c1c539bdc06cfd834b8c2f83cecec94798f2706403429",
+      "size": 6129,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/entry.png",
+      "sha256": "b7d433eca393697073c9781e47e50370a5a8ff93f08a684b7c6879dc8fd80148",
+      "size": 5816,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/header.png",
+      "sha256": "638644e684f0e2e3aee01ff6799af19108cc42decd1c8cbb7b7c209ed2d36380",
+      "size": 4957,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/panel.png",
+      "sha256": "f052d094bbf28463d8540e272dd38f5df282718a336095ef3a058aa168867145",
+      "size": 16596,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/plate.png",
+      "sha256": "83c0c6732c0bbe2924f270772c1ea05535c28e6840b163c29e8ce24ce47282ee",
+      "size": 3646,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/range.png",
+      "sha256": "8aac48d1d8bdd134cfe7a099cd712bf6dd246cb3b1bcf4d1e0064021401e8824",
+      "size": 2921,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/slot.png",
+      "sha256": "ae515aeb222f467b266bbb0835eb36d4a9fd6d1883a50a99212bbb33dcc64d19",
+      "size": 3091,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/tab-on.png",
+      "sha256": "7cf9f193eb178e027d8ce40df2e3e17712e0fff9b3912725b2257a473a1a9c25",
+      "size": 4987,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/tab.png",
+      "sha256": "73071844692dcfc354e3040ae2508565e179953f2dcc0d94ed5737366ca268fd",
+      "size": 4981,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/thumb.png",
+      "sha256": "3d68f77ef9281e6922d46c5570547ff24ca8ada15d5f77a0338458ffeda68902",
+      "size": 2742,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/cartoon/track.png",
+      "sha256": "2e9b9b1caca206994ff5a82418ac5cf3ce1c06edebae1d9264ca4e8d26596cb5",
+      "size": 1988,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/bar.png",
+      "sha256": "3dc2fa46c23c5b345c8ddabea15cb973ade43c5df4781dbd8514b148640e1733",
+      "size": 518,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button-danger-down.png",
+      "sha256": "413a65034a9401e9cba80f9356d72b61626821d12b5c9a78ad39d0d9c9bbe04c",
+      "size": 839,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button-danger.png",
+      "sha256": "0489e7d3172163e5000099d27f643f3425169254e5196f60714319a1901f57da",
+      "size": 1095,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button-down.png",
+      "sha256": "e91762e10e88d90463b92bf1f92587771731efed6dfc86c21080f35955bb7212",
+      "size": 870,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button-primary-down.png",
+      "sha256": "34b9edebfb2f4f6c31261b23464ef3bce33519422fecf2b98eb34e96f4919763",
+      "size": 879,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button-primary.png",
+      "sha256": "337dce2a8cd3144968d1a1cf572ef6e3ee94fcfb523ad3106b8ae60ad4ed966c",
+      "size": 1141,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/button.png",
+      "sha256": "0d4f2ce45b5ed30c2d274bd6062254ffb135bf9593bfe2cd7c1ad6584cae047b",
+      "size": 1146,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/caption.png",
+      "sha256": "f0b3a526ccf538a73628a31b18efe0c6368675f319b1583e42e4a2cc644357f4",
+      "size": 1087,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/check-on.png",
+      "sha256": "4d0ba54ed840a085b1033aed1f90bab5694416ae80284c2b553e656b3a877ef8",
+      "size": 1750,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/check.png",
+      "sha256": "691f820d98aae0a06d892f989d532eadd99970c6b79b05138b1e5cebacb48354",
+      "size": 638,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/cursor.png",
+      "sha256": "b508fe1193fe70ed04914f09727b56fba20d22b89227708f5da21a881c545351",
+      "size": 1451,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/entry-on.png",
+      "sha256": "dabc0bcd178510a449db5f4383b2f5009f68a3f1fb65fc046ae4507558e475aa",
+      "size": 919,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/header.png",
+      "sha256": "a5abe58c68cc05df1d3cef028485012f121e23704a9fd24ff3a1a626b197374e",
+      "size": 1016,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/panel.png",
+      "sha256": "e308f6f092d48e1417f1e14517f1a77b442df98c9ed98186f25bd7cdef650304",
+      "size": 1190,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/plate.png",
+      "sha256": "051346d15914deaf16aa621e2fe701ab8adf324cf6d0f3dddf380a7a52716d24",
+      "size": 1178,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/range.png",
+      "sha256": "362218ce7e22fb30fadaba54ae1e0e8987569bf7f54bc1872c82c1cbb39a7acc",
+      "size": 175,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/slot.png",
+      "sha256": "9f635dbd2d60c866189e21b25138e74ef1554b4b4838782fd286f8853cb5397d",
+      "size": 818,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/tab-on.png",
+      "sha256": "cec71dfc6b42ace6a55b9d71fc09c5d1cc2b60abafea1759e0fab2eeccd55e62",
+      "size": 1031,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/tab.png",
+      "sha256": "4b7e34dd1ea7e5bd8bd07e5337c330d62cbed4c66344d17942668be13792077d",
+      "size": 864,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/thumb.png",
+      "sha256": "aed11897dc8d877cfe86e7707a1e66024d6aa11f1882808414deb6be06712838",
+      "size": 875,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/comic/track.png",
+      "sha256": "4f7623d0654b33d0fbca12684c7ad2b7f28bb7811064cfd635951026927ea7a2",
+      "size": 498,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/bar.png",
+      "sha256": "2fe723525937f9d1f40085aa582313b2b39c9c047b4aa06c9ddf14c6fe1048d3",
+      "size": 371,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button-danger-down.png",
+      "sha256": "197128d52fb0b5310435ea1e8db26754c32acbc5b534031ff7941e71d88cf8d7",
+      "size": 417,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button-danger.png",
+      "sha256": "3b45f98f5e550ff4379fdb02b6d939dc256c851aa0cb44d7ac80de826c1e293b",
+      "size": 4641,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button-down.png",
+      "sha256": "d5bd1ca65e26797362a82d8e87006803c22fcbb14523a72a0214974ae694027f",
+      "size": 412,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button-primary-down.png",
+      "sha256": "9f60e4aad1cfcf66d5c4f643bd9913d2804f0a0777f661b503f97ce2a7d1ec1d",
+      "size": 418,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button-primary.png",
+      "sha256": "2949dce23b58504b3dc57e9b75dfb77dafbb9a08d7e71eb465ed205ffede4632",
+      "size": 4769,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/button.png",
+      "sha256": "12465f11926b10ee99033afa194b8f55714de6529d4f927c3565a6a5358e6721",
+      "size": 4633,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/check-on.png",
+      "sha256": "9d9cdcc6330798efaf8a8ac2a752e57722561abd74b9fa5961b035de55e4de5e",
+      "size": 858,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/check.png",
+      "sha256": "c191211227e9a73c35e1ac66b7ef60e8838f154a29ee34ffacac629cf895b240",
+      "size": 529,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/cursor.png",
+      "sha256": "406aea003c64a4305e5f9bfe09168ee7d883adb91f7bc854a108cbe70ad2ed61",
+      "size": 362,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/entry-on.png",
+      "sha256": "55466b34c311d748c8bfd4aba2eaded3e899d74fb74b37f6385af42507f5b708",
+      "size": 5994,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/entry.png",
+      "sha256": "53897d3c2f66c97dcd8ef0f8f1396a659a1ec1a8e0d839d0a0fdade84f4105a0",
+      "size": 425,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/panel.png",
+      "sha256": "1f13ed4cc8107cf7eb55aa10a4b05c88f659fe1f289287a4d289e1f2145763f8",
+      "size": 12898,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/plate.png",
+      "sha256": "9b30bbeaea57150e5682a39dedd1c2c5c6fc306210b0f433e1df7bf12f2b503a",
+      "size": 7439,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/range.png",
+      "sha256": "6b8ea7813ccab4fd1387a4e31d8bf08f5595d66b4677cc5d306fa00ad5771183",
+      "size": 246,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/slot.png",
+      "sha256": "52f9f09de6a647e735636a926fb9fac57727a185201f240ca73c60dc372d9378",
+      "size": 518,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/thumb.png",
+      "sha256": "b980d4a8ea6a045d70c3f7b2baac72c819ed8a883603c690a95ef2b70f501190",
+      "size": 3352,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/minimal/track.png",
+      "sha256": "cadbbc4a3d3abc897251aaf72c69b31662e73265389eeafdf7c96fa903e1d001",
+      "size": 211,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/bar.png",
+      "sha256": "a48096b3730e7876f1840c8e16027890e66fb321621fda502329c4a95147fc9e",
+      "size": 6444,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button-danger-down.png",
+      "sha256": "4690bbbcebed45c1b7a80341a66c5c25659a985f4253b7ebb2edd3f93b4c99f1",
+      "size": 12395,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button-danger.png",
+      "sha256": "9ebcc4495ace364a7a09116d6524b71d9c1fa95e60c282c6f9d13ea6ab8e8513",
+      "size": 12815,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button-down.png",
+      "sha256": "2de243f62429a6aa6803e894c7ade0c6087a2048ceb5ad9a80b511e3b078da43",
+      "size": 11849,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button-primary-down.png",
+      "sha256": "dc255659e3de00edd5d546e7918fde72c018933acc2d5dce315f306df9786870",
+      "size": 11339,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button-primary.png",
+      "sha256": "88c8b7d54881c2fac2bb6f06a37579a06910c98dfcdf5c266f75439c4f57b983",
+      "size": 10173,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/button.png",
+      "sha256": "e4cbd4d34d9edd111e7d05e6ed7f26e30a038346294651a20619d3faba3f6af1",
+      "size": 12368,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/check-on.png",
+      "sha256": "cebbe42d77d8a6dfe35046a0ad7a57237137b76aff14a0c61ed9503e89a790b9",
+      "size": 6931,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/check.png",
+      "sha256": "e37ff004d0a90f60de0102a5afb9c2da0e75566c2799fe0120ef8ee5e0532174",
+      "size": 6257,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/cursor.png",
+      "sha256": "2078e3cb3666f23f5a007a8f554760c5c0047b78159352114f947cc7ffbbb067",
+      "size": 4771,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/entry-on.png",
+      "sha256": "3d2c56ab0b3a44fed06b3202845ad4ea0a73f20581d5a7c92b6df5551ae17d91",
+      "size": 8970,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/panel.png",
+      "sha256": "513bdd4bb8a7d69981098eaf6c88e1a55b8efa53cae254c1755e532209827169",
+      "size": 18975,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/plate.png",
+      "sha256": "185753bbf08b0e579806f2c4eea64127ad97e4a72578c7c6420b042282884fe0",
+      "size": 11566,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/range.png",
+      "sha256": "af080a934399e29bba3eff77b32a1d45098e724ca05283507b1c1f3a8657217a",
+      "size": 317,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/slot.png",
+      "sha256": "3cf3b40a601ab8e3b75cc09da4769c62d037aee571fb74e073f8a4355fa0128a",
+      "size": 10267,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/tab-on.png",
+      "sha256": "16876bf029023b40715f726c2470e9ae45527e0470d8a1a0698e2dc8ec52a62b",
+      "size": 295,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/thumb.png",
+      "sha256": "7a7d2d7789973a47dd45be7913a908ebe6c3dc8527823d43ae280e307c55a196",
+      "size": 7480,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/neon/track.png",
+      "sha256": "dab5a0a404b5cca99d9f1e413d54745d229813c0a5b4db1e6d9333edf1a1114f",
+      "size": 315,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/bar.png",
+      "sha256": "547211a51b6bb8efbc1624e566dfe60938b08537d7e773bbcf58a2d606f81b5c",
+      "size": 254,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button-danger-down.png",
+      "sha256": "08b31d1ed3a0e1ce95865396e8e177efcac0f1f0923fc9bed632bbf6d44985b6",
+      "size": 375,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button-danger.png",
+      "sha256": "4e520368128058144afeaad108169b0c85d911397597bbceef0de36d63c0b5dd",
+      "size": 389,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button-down.png",
+      "sha256": "be39b12bada44e8365f57a3e950e494f47f98a61191ccbc9f854918fca37c58e",
+      "size": 376,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button-primary-down.png",
+      "sha256": "34dad248ba1d174078d89126df96a48721c8b1973f49bbe72161274e993801be",
+      "size": 379,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button-primary.png",
+      "sha256": "df588392486651f3e7068eff4c7adf159e33ecb06cbf824444d880969568fd6f",
+      "size": 394,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/button.png",
+      "sha256": "4ffb8d47dcc6056f016e59f5d2c1b34c8f6ef54efa2a34a700ee625257efe052",
+      "size": 398,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/check-on.png",
+      "sha256": "ef2758d3f202004118d7c0016b3d863b203debb1373533ce6d0d3347b1a3bfe9",
+      "size": 317,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/check.png",
+      "sha256": "60c6324d7ef2772b930c843ffd313146ef04ccdca64eb10b559e65d2b1e607f0",
+      "size": 249,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/cursor.png",
+      "sha256": "2d6a4c65400435d84956bf76dcfc64a40e38959d34731737c108bb74b5d7f29f",
+      "size": 315,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/entry-on.png",
+      "sha256": "a00be4921bfc4b5c4b4ba30dbadc22ee081242ea2ebda0857f838aee95464740",
+      "size": 281,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/header.png",
+      "sha256": "19da1e1978c3f91503355488f46a83f6e3d7c618c7157a925b3cd7fb46b0ad50",
+      "size": 432,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/panel.png",
+      "sha256": "72cfec390cdc8000c82abaa4f4a2028232caa2b376abc517ab1a3062c7b32d82",
+      "size": 1023,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/plate.png",
+      "sha256": "930ac01cdba658deb4424532852038ef8af6f0ff9349f019f1ce4cac9137dc07",
+      "size": 454,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/range.png",
+      "sha256": "67b8f22e0facca61acbbbf9550d3c893dae8cbcb9ca043939d04a4878d29de79",
+      "size": 135,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/slot.png",
+      "sha256": "14df1b889bdfd21fd0458814ec77bbf753913efeffc76fbcc268b70fa4997c58",
+      "size": 244,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/tab-on.png",
+      "sha256": "9bfe7940214a1c8af2087b5a878d079a6e7d48f5aa68a0b7766e9b65fc712ee1",
+      "size": 282,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/tab.png",
+      "sha256": "87da276fac3be0e7bb01dca43609484e429566c00deac773996125f7e8ac6070",
+      "size": 281,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/thumb.png",
+      "sha256": "e9bbd8f25d7e314cee08c28661b78a6f94bc7049524931859d52fefbdbb44608",
+      "size": 320,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ui/pixel/track.png",
+      "sha256": "abcd88315dad7fae7d8b11f16eb50a69b1ad70357a08d51b4f10e252350f579d",
+      "size": 224,
+      "visibility": "public"
     }
   ]
 }
