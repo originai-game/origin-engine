@@ -115,6 +115,7 @@ fn gradient_of(g: &nsh_tailwind::effects::Gradient) -> Gradient {
         corner,
         center,
         count: n as u8,
+        repeating: g.repeating,
         stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
     };
     let all = g.stops.len();

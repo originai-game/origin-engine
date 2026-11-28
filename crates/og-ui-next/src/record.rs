@@ -211,6 +211,9 @@ pub struct Gradient {
     /// top left.
     pub center: [f32; 2],
     pub count: u8,
+    /// The stops repeat between the first's and the last's offsets (a
+    /// `repeating-*-gradient`).
+    pub repeating: bool,
     /// (offset 0..1, linear RGBA), `count` of them.
     pub stops: [(f32, Rgba); GRADIENT_STOPS],
 }

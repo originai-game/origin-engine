@@ -275,6 +275,9 @@ pub const GRADIENT_LINEAR: u32 = 0;
 pub const GRADIENT_RADIAL: u32 = 1;
 /// Around a centre.
 pub const GRADIENT_CONIC: u32 = 2;
+/// Or'd into [`PaintGradient::shape`]: the stops repeat between the first
+/// and the last one's offsets (CSS's `repeating-*-gradient`).
+pub const GRADIENT_REPEAT: u32 = 4;
 
 /// A gradient's stop: its offset (0..1) and its colour, linear RGBA.
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]

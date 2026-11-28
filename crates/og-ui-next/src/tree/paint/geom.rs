@@ -482,11 +482,16 @@ pub(super) fn paint_gradient(
             (og_draw::paint::GRADIENT_RADIAL, radii)
         }
     };
+    let repeat = if g.repeating {
+        og_draw::paint::GRADIENT_REPEAT
+    } else {
+        0
+    };
     og_draw::paint::PaintGradient {
         angle,
         first: 0,
         count: 0,
-        shape,
+        shape: shape | repeat,
         center,
         radii,
         area,

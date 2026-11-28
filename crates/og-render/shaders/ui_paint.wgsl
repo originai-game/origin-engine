@@ -204,12 +204,15 @@ fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
   let g = gradients[3u * gi];
   let shape = gradients[3u * gi + 1u];
   var t: f32;
-  if (g.w > 1.5) {
+  // A repeating gradient's shape carries GRADIENT_REPEAT (4) over its kind.
+  let repeat = g.w > 3.5;
+  let kind = select(g.w, g.w - 4.0, repeat);
+  if (kind > 1.5) {
     // Around the centre, in turns from the start angle (0 up, clockwise).
     let d = p - shape.xy;
     let a = atan2(d.x, -d.y) - g.x;
     t = fract(a / 6.2831853);
-  } else if (g.w > 0.5) {
+  } else if (kind > 0.5) {
     // Out from the centre: 1 on the ending ellipse.
     t = length((p - shape.xy) / max(shape.zw, vec2<f32>(1e-4)));
   } else {
@@ -219,6 +222,15 @@ fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
   }
   let first = u32(g.y);
   let count = max(u32(g.z), 1u);
+  if (repeat) {
+    // CSS's repeating gradients: the stops' run from the first offset to
+    // the last tiles the line, the ring or the turn.
+    let o0 = stops[2u * first + 1u].x;
+    let span = stops[2u * (first + count - 1u) + 1u].x - o0;
+    if (span > 1e-6) {
+      t = o0 + fract((t - o0) / span) * span;
+    }
+  }
   var lo = 0u;
   for (var k = 1u; k < count; k++) {
     if (stops[2u * (first + k) + 1u].x <= t) {

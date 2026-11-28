@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "repeating-linear-gradient, repeating-radial-gradient, repeating-conic-gradient",
+      "summary": "A repeating gradient in a bg-[…] or mask-[…] class now repeats its stops across the box, as CSS does; it was drawn as one run, with its last stop's colour beyond it. Stops repeat by percentage or angle; a length stop still spreads evenly."
+    }
+  ]
+}
