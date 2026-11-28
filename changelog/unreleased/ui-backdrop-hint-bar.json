@@ -1,0 +1,28 @@
+{
+  "breaking": [
+    {
+      "member": "MenuList.label, MenuList.label.md",
+      "change": "The default pack sets a main menu's entries at text-4xl and a pause menu's at text-3xl (compact 2xl), half again the former size, so they read at arm's length on a 720p frame.",
+      "fix": "A menu that must stay at the former size passes its own class to MenuEntry."
+    },
+    {
+      "member": "Screen.veil, Screen.veil.full",
+      "change": "Screen.veil is now only what every veil shares and is empty by default, since a variant draws over its base: its fill lay under the side and foot gradients as a flat band. The even shade over the whole picture is Screen.veil.full.",
+      "fix": "A pack that set Screen.veil's shade sets it on Screen.veil.full instead."
+    }
+  ],
+  "added": [
+    {
+      "member": "Backdrop",
+      "summary": "What a full-screen built-in stands on: the key art, or with none the pack's designed ground (Screen.backdrop, Screen.glow, Screen.vignette), then the veil its words need (side, foot or full); over the running game it draws the veil alone."
+    },
+    {
+      "member": "HintBar",
+      "summary": "A footer of input hints (A Select · B Back): each action's glyph on the device used last and its words, in the pack's Hint.bar and Hint.item; hidden on touch."
+    },
+    {
+      "member": "Screen.backdrop, Screen.glow, Screen.vignette, Screen.veil.full, Screen.veil.side, Screen.veil.foot, Screen.figure, Hint.bar, Hint.item, MenuList.frame, Card.rarity",
+      "summary": "Pack slots for a screen's fallback ground and its light and vignette, the side and foot veils, a headline number, the hint footer, what a menu list stands in, and a card's frame by rarity (Card.rarity.uncommon … mythic)."
+    }
+  ]
+}

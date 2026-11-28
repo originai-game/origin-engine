@@ -56,7 +56,7 @@ export default file.theme({
       "Screen.heading": "font-display text-display-xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg",
       "Screen.note": "text-sm text-fg text-stroke-2 text-stroke-part-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 px-6 py-2 nine-plate scheme-light text-part-fg font-display text-xl",
-      "Screen.veil": "bg-scrim",
+      "Screen.veil.full": "bg-scrim",
       "Title.wordmark": "font-display text-display-3xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg",
       "Checkbox.indicator": "flex items-center justify-center size-5 shrink-0 nine-check checked:nine-check-on disabled:grayscale",
       "Checkbox.mark": "hidden",

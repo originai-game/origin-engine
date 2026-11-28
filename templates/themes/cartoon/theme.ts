@@ -38,7 +38,7 @@ export default file.theme({
       "Screen.heading": "font-display text-display-2xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg text-shadow-wordmark -rotate-1",
       "Screen.note": "text-sm font-bold text-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 px-7 pt-2 pb-4 nine-button-primary scheme-light text-part-on text-stroke-3 text-stroke-part-fg font-display text-xl",
-      "Screen.veil": "bg-scrim",
+      "Screen.veil.full": "bg-scrim",
       "Title.wordmark": "font-display text-display-4xl leading-none text-part-gold text-stroke-6 text-stroke-part-fg text-shadow-wordmark -rotate-2",
       "Panel.frame": "nine-panel scheme-light text-part-fg",
       "Panel.body": "gap-4 px-7 pt-5 pb-9",

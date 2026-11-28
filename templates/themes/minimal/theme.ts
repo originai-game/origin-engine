@@ -36,7 +36,7 @@ export default file.theme({
       "Screen.heading": "font-display font-light text-display-xl leading-none uppercase tracking-kicker text-fg",
       "Screen.note": "text-xs uppercase tracking-label text-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 py-2 px-5 font-display font-light text-lg uppercase tracking-kicker text-fg",
-      "Screen.veil": "bg-scrim",
+      "Screen.veil.full": "bg-scrim",
       "Title.wordmark": "font-display font-light text-display-3xl leading-none uppercase tracking-display-3xl text-fg",
       "Panel.frame": "nine-panel scheme-light text-part-fg",
       "Panel.body": "gap-4 px-8 pt-6 pb-8",

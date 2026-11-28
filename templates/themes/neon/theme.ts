@@ -35,7 +35,7 @@ export default file.theme({
       "Screen.heading": "font-display font-black text-display-xl leading-none uppercase tracking-label text-fg text-shadow-wordmark",
       "Screen.note": "text-xs uppercase tracking-label text-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 py-2 px-6 nine-button scheme-dark font-display font-bold text-lg uppercase tracking-label text-part-cyan text-shadow-neon",
-      "Screen.veil": "bg-scrim",
+      "Screen.veil.full": "bg-scrim",
       "Title.wordmark": "font-display font-black text-display-3xl leading-none uppercase tracking-display-3xl text-part-fg text-shadow-wordmark",
       "Panel.frame": "nine-panel scheme-dark text-part-fg",
       "Panel.body": "gap-4 px-8 pt-7 pb-8",

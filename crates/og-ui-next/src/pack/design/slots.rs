@@ -152,12 +152,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "MenuList.label",
         "a menu entry's words (MenuEntry): the main menu's size; the pack sets the face, case and treatment",
-        "text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg",
+        "text-start text-4xl leading-tight font-semibold text-shadow-xs text-shadow-bg",
     ),
     (
         "MenuList.label.md",
         "a pause menu's entry words (MenuEntry size md)",
-        "text-title compact:text-xl",
+        "text-3xl compact:text-2xl",
     ),
     (
         "MenuList.line",
@@ -446,7 +446,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "Screen.veil",
-        "the shade over the game or the key art behind a full-screen built-in's words (a pause menu, a loading screen's foot): how much of the picture shows through",
+        "the shade over the game or the key art behind a full-screen built-in's words, under each of its variants (full, side, foot): what every shade shares; a fill here lies under the side and foot gradients too",
+        "",
+    ),
+    (
+        "Screen.veil.full",
+        "the even shade over the whole picture (a pause menu over the running game): how much of it shows through",
         "bg-scrim",
     ),
     (
@@ -463,6 +468,81 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Screen.prompt",
         "a title screen's call to start (Press any button): its plate, if any, and its type",
         "flex-row items-center gap-x-3 py-2 px-5 text-base font-semibold uppercase tracking-kicker text-fg text-shadow-sm text-shadow-bg",
+    ),
+    (
+        "Screen.backdrop",
+        "what a full-screen built-in stands on where the game has no key art (the art slot is empty): the pack's own ground, a gradient in its palette, never a flat colour",
+        "bg-linear-to-br from-layer-3 via-bg to-bg",
+    ),
+    (
+        "Screen.glow",
+        "a soft light over the backdrop (Screen.backdrop), so the empty ground reads as lit: a radial wash in the pack's accent",
+        "bg-radial from-accent to-transparent to-60% opacity-dim",
+    ),
+    (
+        "Screen.vignette",
+        "the darkened edges over a backdrop or key art, so words at the edges hold",
+        "bg-radial from-transparent via-transparent via-55% to-bg",
+    ),
+    (
+        "Screen.veil.side",
+        "the shade behind a menu set down the leading third of the screen (a main menu over its key art); in portrait it rises from the foot",
+        "bg-linear-to-r from-bg via-scrim to-transparent portrait:bg-linear-to-t compact:bg-linear-to-t",
+    ),
+    (
+        "Screen.veil.foot",
+        "the shade under words set along the screen's foot (a loading screen's place and tip)",
+        "bg-linear-to-t from-bg via-scrim via-40% to-transparent",
+    ),
+    (
+        "Screen.figure",
+        "a headline number set over the picture (a game over's score): the pack's display face at its largest",
+        "font-display text-display-3xl leading-none font-bold tabular-nums text-fg text-shadow-sm text-shadow-bg",
+    ),
+    (
+        "Hint.bar",
+        "the footer of input hints a full-screen built-in shows (A Select · B Back): its type and spacing",
+        "flex-row flex-wrap items-center gap-x-6 gap-y-1 text-base font-semibold text-fg text-shadow-xs text-shadow-bg",
+    ),
+    (
+        "Hint.item",
+        "one input hint in the footer: the binding's glyph and its words",
+        "flex-row items-center gap-x-2",
+    ),
+    (
+        "Card.rarity",
+        "a card's frame by the rarity of what it shows (RpgItemCard): common's, over Panel.frame",
+        "",
+    ),
+    (
+        "Card.rarity.uncommon",
+        "an uncommon card's frame: a rim in the rarity's colour",
+        "inset-ring-regular inset-ring-uncommon",
+    ),
+    (
+        "Card.rarity.rare",
+        "a rare card's frame: a rim in the rarity's colour",
+        "inset-ring-regular inset-ring-rare",
+    ),
+    (
+        "Card.rarity.epic",
+        "an epic card's frame: a rim and a glow in the rarity's colour",
+        "inset-ring-regular inset-ring-epic shadow-glow",
+    ),
+    (
+        "Card.rarity.legendary",
+        "a legendary card's frame: a rim and a glow in the rarity's colour",
+        "inset-ring-regular inset-ring-legendary shadow-glow",
+    ),
+    (
+        "Card.rarity.mythic",
+        "a mythic card's frame: a rim and a glow in the rarity's colour",
+        "inset-ring-regular inset-ring-mythic shadow-glow",
+    ),
+    (
+        "MenuList.frame",
+        "what a menu list stands in (a main or pause menu's column): none in the default pack, whose words sit straight over the screen's veil; a pack's drawn panel",
+        "flex-col",
     ),
     (
         "Panel.body",
