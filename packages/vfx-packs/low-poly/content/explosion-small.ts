@@ -13,20 +13,20 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/small-core")
+        "asset": ref("base/vfx/low-poly/emitters/small-core")
       }
     },
     {
       "at": 0.03,
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/small-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/small-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/small-chips")
+        "asset": ref("base/vfx/low-poly/emitters/small-chips")
       }
     },
     {
@@ -50,7 +50,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [

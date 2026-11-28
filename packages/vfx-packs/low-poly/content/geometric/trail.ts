@@ -32,7 +32,7 @@ export default file.vfx({
       "node": {
         "kind": "emitter",
         "seed": 0,
-        "asset": ref("base/vfx/geometric/emitters/trail")
+        "asset": ref("base/vfx/low-poly/geometric/emitters/trail")
       }
     }
   ]

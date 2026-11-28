@@ -59,7 +59,7 @@ export default file.particles({
   "drag": 0.6,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/gem")
+    "mesh": ref("base/vfx/low-poly/models/gem")
   },
   "lit": true,
   "roughness": 0.12,

@@ -13,19 +13,19 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/block-chunks")
+        "asset": ref("base/vfx/low-poly/emitters/block-chunks")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/block-bits")
+        "asset": ref("base/vfx/low-poly/emitters/block-bits")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/block-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/block-puffs")
       }
     },
     {

@@ -20,7 +20,7 @@ export default file.vfx({
           0
         ],
         "width": 0.06,
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           1.775,
           0.113,
@@ -39,7 +39,7 @@ export default file.vfx({
           0
         ],
         "width": 0.025,
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           1.929,
           1.86,
@@ -51,7 +51,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/laser-bits")
+        "asset": ref("base/vfx/low-poly/emitters/laser-bits")
       }
     },
     {
@@ -62,7 +62,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/laser-hit")
+        "asset": ref("base/vfx/low-poly/emitters/laser-hit")
       }
     },
     {

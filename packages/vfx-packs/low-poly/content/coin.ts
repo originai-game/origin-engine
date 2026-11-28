@@ -21,9 +21,9 @@ export default file.vfx({
         "kind": "mesh",
         "shape": {
           "kind": "model",
-          "asset": ref("base/vfx/toy-3d/models/coin")
+          "asset": ref("base/vfx/low-poly/models/coin")
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -64,7 +64,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/coin-stars")
+        "asset": ref("base/vfx/low-poly/emitters/coin-stars")
       }
     }
   ]

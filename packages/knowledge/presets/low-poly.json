@@ -1,0 +1,588 @@
+{
+  "about": "The look preset low-poly flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.2
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.2
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.4
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.2
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.2
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.2
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "bevel": [
+              0.015
+            ],
+            "characterFaces": [
+              1500
+            ],
+            "normals": [
+              "flat"
+            ],
+            "propFaces": [
+              500
+            ]
+          },
+          "MaterialStyle": {
+            "flatShading": [
+              true
+            ],
+            "surface": [
+              "plastic"
+            ]
+          },
+          "PostEffects": {
+            "ao": [
+              true
+            ],
+            "aoIntensity": [
+              1.2
+            ],
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "@themes/candy",
+        "uiSeeds": {
+          "neutral": "#8a8577",
+          "primary": "#2f9c8a"
+        },
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    }
+  ],
+  "slug": "low-poly"
+}

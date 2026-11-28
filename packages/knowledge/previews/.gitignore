@@ -1,0 +1,7 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/anime.webp
+/cartoon.webp
+/low-poly.webp
+/neon.webp
+/pixel.webp
+# og-assets end

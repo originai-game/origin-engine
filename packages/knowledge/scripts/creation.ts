@@ -105,19 +105,15 @@ export function localized([en, zh, enDescription, zhDescription]: Copy) {
 
 /** Chinese catalogue copy; English names and descriptions remain catalogue-owned. */
 export const LOOK_ZH: Readonly<Record<string, readonly [string, string]>> = {
-  "inked-comic-3d": ["墨线漫画三维", "立体模型保留粗轮廓、手绘表面与夸张色彩。"],
-  "faceted-low-poly": ["低多边形切面", "可见多边形切面与大色块通过轮廓和层次呈现空间。"],
-  pixel: ["像素", "严格像素网格上的精灵与瓦片、阶梯明暗与视差背景；保留俯视瓦片世界变体。"],
-  "neon-vector": ["霓虹矢量", "暗色背景上的细发光线、网格与明亮粒子呈现矢量显示效果。"],
-  "toy-3d": ["玩具三维", "圆润倒角的缎面塑料玩具、明亮色彩与柔和接触阴影；保留纸艺变体。"],
-  "cartoon-2d": ["卡通二维", "简洁造型、每种材质两三个平涂色阶与暖深色轮廓。"],
+  "low-poly": ["低模", "简洁厚实的造型、可见切面与玩具般明亮的材质色；柔和接触阴影，清晰的游戏区域。"],
+  cartoon: ["卡通", "二维平涂插画与三维赛璐璐描边共用夸张造型、两三个色阶与暖深色轮廓。"],
+  anime: ["二次元", "二维横版动画绘画与三维赛璐璐体积，冷紫阴影、细致轮廓与明亮天空。"],
+  pixel: ["像素", "严格像素网格、阶梯色阶；横版视差与俯视瓦片地图直接由视角选择。"],
+  neon: ["霓虹", "暗色背景上的发光细线、网格与明亮粒子；光晕不掩盖轮廓。"],
 };
 
 /** Chinese copy of the catalogue's variants, keyed `<look>.<variant>`; English titles and descriptors remain catalogue-owned. */
-export const VARIANT_ZH: Readonly<Record<string, readonly [string, string]>> = {
-  "pixel.topdown": ["俯视瓦片世界", "俯视或四分之三视角的瓦片地图与直立精灵，台阶与悬崖清楚表达高度。"],
-  "toy-3d.paper": ["纸艺", "折叠的平面、可见的纸张厚度与层叠剪纸构成整个世界。"],
-};
+export const VARIANT_ZH: Readonly<Record<string, readonly [string, string]>> = {};
 
 /** The genre told in segments (og.flow, project.ts's `flow`): its form is the world its live scenes draw in (3d unless named), and it may leave its view out. */
 export const FILM_GENRE = "interactive-film";

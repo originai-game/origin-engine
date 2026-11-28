@@ -43,7 +43,7 @@ export default file.vfx({
           0.11999999731779099,
           1
         ],
-        "effect": ref("base/vfx/geometric/flat"),
+        "effect": ref("base/vfx/low-poly/geometric/flat"),
         "faceCamera": true,
         "scale": {
           "kind": "curve",
@@ -139,7 +139,7 @@ export default file.vfx({
           0.3799999952316284,
           1
         ],
-        "effect": ref("base/vfx/geometric/flat"),
+        "effect": ref("base/vfx/low-poly/geometric/flat"),
         "faceCamera": true,
         "scale": {
           "kind": "curve",

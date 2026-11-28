@@ -31,7 +31,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -61,7 +61,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/teleport-column")
+        "asset": ref("base/vfx/low-poly/emitters/teleport-column")
       }
     },
     {
@@ -73,7 +73,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/teleport-poof")
+        "asset": ref("base/vfx/low-poly/emitters/teleport-poof")
       }
     },
     {

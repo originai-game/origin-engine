@@ -1,19 +1,24 @@
 import { file } from "@origingame/engine/author";
 
 export default file.look({
-  // Flat cartoon colour: a few clean tones a material, stepped in value only
-  // (posterize in tone mode keeps a hue from drifting), a dark warm contour
-  // round every sprite and a soft vignette. Its variants
-  // (templates/looks/variants/cartoon-2d/) wash it in watercolour, ornament it
-  // as a storybook or ink it as a rubber-hose cartoon.
-  name: "Cartoon 2D",
+  // The same clean fills and warm contours on illustrated sprites and cel
+  // shaded volumes. Comic crease accents survive; gritty hatching does not.
+  name: "Cartoon",
   mood: "bright",
   ui: "@themes/cartoon",
+  MaterialStyle: {
+    toon: true,
+    outlineWidth: 2,
+    outlineDistance: 8,
+    outlinePlace: "outside",
+    outlineColor: "#2a1a10",
+  },
   Stylise: {
     posterize: 10,
     posterizeMode: "tone",
   },
   PostEffects: {
+    ao: false,
     vignette: true,
     vignetteIntensity: 0.2,
   },
@@ -29,7 +34,9 @@ export default file.look({
     color: "#2a1a10",
     place: "outside",
   },
-  ArtCamera: {
-    projection: "orthographic",
+  ArtShape: {
+    propFaces: 30000,
+    characterFaces: 30000,
+    normals: "smooth",
   },
 });

@@ -13,7 +13,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/frozen-crystals")
+        "asset": ref("base/vfx/low-poly/emitters/frozen-crystals")
       }
     },
     {
@@ -24,7 +24,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/frozen-flakes")
+        "asset": ref("base/vfx/low-poly/emitters/frozen-flakes")
       }
     }
   ]

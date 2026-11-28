@@ -1,49 +1,50 @@
 import { file } from '@origingame/engine/author';
+// Bubbles: Loops under water at a diver or a vent.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 16,
-    "h": 128,
-    "innerLine": 1,
-    "layers": [
-      {
-        "area": 0.3,
-        "count": 8,
-        "life": [
-          0.6,
-          1
-        ],
-        "mode": "rise",
-        "ramp": "$main",
-        "shape": "bubble",
-        "size": [
-          3,
-          6
-        ],
-        "speed": [
-          0.8,
-          1.4
-        ],
-        "type": "particles",
-        "wiggle": 0.3,
-        "y": 0.8
-      }
+ "recipe": {
+  "name": "Bubbles",
+  "w": 64,
+  "h": 128,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 54,
+  "ramps": {
+   "main": [
+    "#7cc4ee",
+    "#c6ecff",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "rise",
+    "count": 8,
+    "y": 0.8,
+    "area": 0.3,
+    "speed": [
+     0.8,
+     1.4
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Bubbles",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#7cc4ee",
-        "#c6ecff",
-        "#ffffff"
-      ]
-    },
-    "seed": 54,
-    "supersample": 4,
-    "w": 64
-  }
+    "life": [
+     0.6,
+     1
+    ],
+    "wiggle": 0.3,
+    "shape": "bubble",
+    "size": [
+     3,
+     6
+    ]
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

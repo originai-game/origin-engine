@@ -1,12 +1,8 @@
 {
   "//": "Which preview scene draws each look and variant (README.md), and the art it takes from templates/looks/. scene: 3d or 2d. models: a directory whose models replace the 3D scene's of the same name (the look's authored models). sprites: 3D beats stood in the set as pixel sprites, by beat: the file under art and its height in metres. art: the art directory. For the 2D scene (2d/stage.ts): plan: side or top, the same place from the side or from above; unit: the look's logical pixels a metre (none without a pixel grid); view: the view's height in metres; size: the frame drawn, a whole multiple of the look's grid; light: day (the default: white ambient, the lanterns warm what they reach), night (a dim ambient, the lanterns light the scene) or none (a look whose few tones a light would break); haze: the tree line's opacity; text and rim: the HUD count's colour and its rim's as #rrggbb (white on near black unless the look's contract names its text's colours); heights: each beat's height in metres (its width from the image); widths: the beats sized by their width instead. A look or variant not listed draws the 3D scene with its own models.",
-  "neon-vector": {
+  "neon": {
     "scene": "3d",
-    "models": "neon-vector/models"
-  },
-  "toy-3d:paper": {
-    "scene": "3d",
-    "models": "toy-3d/paper/models"
+    "models": "neon/models"
   },
   "pixel": {
     "scene": "2d",
@@ -32,12 +28,12 @@
       "bush": 1.75
     }
   },
-  "pixel:topdown": {
+  "pixel@top-down-2d": {
     "scene": "2d",
     "plan": "top",
-    "art": "pixel/topdown/art",
+    "art": "pixel/top-down/art",
     "unit": 16,
-    "view": 11.25,
+    "view": 16.875,
     "size": "1920x1080",
     "heights": {
       "hero": 1.5,
@@ -52,10 +48,10 @@
       "bush": 1.5
     }
   },
-  "cartoon-2d": {
+  "cartoon": {
     "scene": "2d",
     "plan": "side",
-    "art": "cartoon-2d/art",
+    "art": "cartoon/art",
     "view": 13.5,
     "size": "1920x1080",
     "haze": 0.75,
@@ -74,5 +70,29 @@
       "platform": 3,
       "bush": 1.75
     }
+  },
+  "anime": {"scene": "3d"},
+  "anime@side-2d": {
+    "scene": "2d", "plan": "side", "art": "anime/art", "view": 13.5, "size": "1920x1080", "haze": 0.75,
+    "heights": {"hero": 2.5, "tree": 4, "crate": 1, "lantern": 3, "slime": 1, "gem": 0.75, "heart": 0.75, "mid": 5, "backdrop": 13.5},
+    "widths": {"platform": 3, "bush": 1.75}
+  },
+  "cartoon@third-person-3d": {"scene": "3d"},
+  "cartoon@isometric-2.5d": {"scene": "3d"},
+  "cartoon@first-person-3d": {"scene": "3d"},
+  "cartoon@top-down-2d": {
+    "scene": "2d", "plan": "top", "art": "cartoon/top-down/art", "view": 13.5, "size": "1920x1080",
+    "heights": {"hero": 2, "tree": 4, "crate": 1, "lantern": 3, "slime": 1, "gem": 0.75, "heart": 0.75},
+    "widths": {"bush": 1.75}
+  },
+  "neon@side-2d": {
+    "scene": "2d", "plan": "side", "art": "neon/art", "view": 13.5, "size": "1920x1080", "light": "none", "haze": 0.75,
+    "heights": {"hero": 2, "tree": 4, "crate": 1, "lantern": 3, "slime": 1, "gem": 0.75, "heart": 0.75, "mid": 5, "backdrop": 13.5},
+    "widths": {"platform": 3, "bush": 1.75}
+  },
+  "neon@top-down-2d": {
+    "scene": "2d", "plan": "top", "art": "neon/top-down/art", "view": 13.5, "size": "1920x1080", "light": "none",
+    "heights": {"hero": 2, "tree": 4, "crate": 1, "lantern": 3, "slime": 1, "gem": 0.75, "heart": 0.75},
+    "widths": {"bush": 1.75}
   }
 }

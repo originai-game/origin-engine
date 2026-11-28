@@ -12,7 +12,7 @@ export default file.vfx({
         "shape": {
           "kind": "sphere"
         },
-        "effect": ref("base/vfx/toy-3d/bubble"),
+        "effect": ref("base/vfx/low-poly/bubble"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -60,7 +60,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -95,7 +95,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/shield-glints")
+        "asset": ref("base/vfx/low-poly/emitters/shield-glints")
       }
     }
   ]

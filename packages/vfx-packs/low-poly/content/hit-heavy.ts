@@ -13,19 +13,19 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/heavy-stars")
+        "asset": ref("base/vfx/low-poly/emitters/heavy-stars")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/heavy-bits")
+        "asset": ref("base/vfx/low-poly/emitters/heavy-bits")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/heavy-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/heavy-puffs")
       }
     },
     {
@@ -49,7 +49,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -94,7 +94,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [

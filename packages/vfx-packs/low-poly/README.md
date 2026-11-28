@@ -1,15 +1,14 @@
-# Toy 3D effects
+# Low-poly 3D effects
 
-Install with `og vfx add toy-3d`; spawn `base/vfx/toy-3d/<name>`
-with og.vfx.spawn. Toy effects for toy-3d: satin plastic puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.
+Install with `og vfx add low-poly`; spawn `base/vfx/low-poly/<name>`
+with og.vfx.spawn. Chunky low-poly effects: satin puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.
 
 Every effect is solid matter, the way a toy world is built: puffs, pieces,
 drops and flame shapes drawn as small lit mesh particles (`file.particles`
 with a mesh `render`), with ring meshes and point lights in each
 `file.vfx` (`content/<name>.ts`). Sizes are in metres for a figure about
-1 m tall. The same names, timing and placement are in every toy pack
-(`toy-3d`, `toy-3d-paper`), so a game
-changes look by changing the pack. Effects that play once send their
+1 m tall. The geometric/ directory adds nine texture-free mechanisms.
+Effects that play once send their
 impact at the time in `assets.json`. No gameplay, scoring, damage or UI
 logic, and no sound.
 

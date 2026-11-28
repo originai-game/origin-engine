@@ -1,23 +1,21 @@
 # Authored art kept with its look
 
-A few looks of the catalogue, and some of their variants, are content
-styles (`look.support` content, or a variant's `authored`): the conform and
-frame layers cannot make their art, so the art was drawn for them. That art
-lived in the art samples (`examples/art-*`, deleted on 2026-11-06) and is
-kept here, beside the look's preset, under the look's slug and, for a
-variant, the variant's name:
+The catalogue's content styles need authored art; conformance and frame
+effects do not invent illustration. The preview's art stays beside its
+checked preset under the plain look slug:
 
-- `<slug>/art/` and `<slug>/<variant>/art/`: the 2D preview scene's beats
-  drawn in pixel, pixel's topdown variant and cartoon-2d: hero, tree, crate, lantern, slime, gem, bush,
-  heart, platform, the ground's tile set (`tiles`), the tree line (`mid`)
-  and the far layer (`backdrop`); topdown has a floor, a path and a cliff
-  tile set (`grass`, `path`, `wall`) in place of the last four.
-  `preview/2d/tools/art.ts` makes them from each look's art brief.
-- `<slug>/models/` and `<slug>/<variant>/models/`: the 3D beats built in the
-  style (checked `file.model` TypeScript), for neon-vector and toy-3d's
-  paper variant.
+- `pixel/art/`, `cartoon/art/`, `anime/art/`, `neon/art/`: side-view
+  hero, tree, crate, lantern, slime, gem, bush, heart, platform, ground
+  tile set (`tiles`), tree line (`mid`) and far valley (`backdrop`).
+- `pixel/top-down/art/`, `cartoon/top-down/art/`, `neon/top-down/art/`:
+  the top-down drawing of the same beats, with floor, path and cliff
+  tile sets (`grass`, `path`, `wall`) instead of the side-view layers.
+  Top-down is a view, not a variant or another preset.
+- `neon/models/`: the 3D beats built as glowing vector geometry, in
+  checked `file.model` TypeScript.
 
-`preview/` draws every look on its preset scene with this art
-(`preview/preview.json`) into the catalogue's previews. Nothing here is a
-preset: the cook reads only `templates/looks/*.ts`,
-`variants/`, `assets/` and `moods/`, and `pack-template.ts` ships only those.
+`preview/preview.json` selects the scene and art for each view.
+`preview/2d/tools/art.ts` prepares generated art to the look's contract.
+Binary art is pinned in `templates/og-assets.json`, never committed.
+The cook reads only the checked presets, built-in assets and mood layers;
+the preview scene and its authored art are not gameplay templates.

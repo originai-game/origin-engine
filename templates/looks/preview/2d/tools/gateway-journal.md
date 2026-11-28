@@ -140,3 +140,29 @@ target/look-previews/raw/ on the machine that made them, not in git.
 | 2026-11-17 17:15 | generate_image | pixel:luminous backdrop | generation fca5071e-5f27-40c1-8290-cc82d5c93985 | 1536 x 1024, sha256 21bbafb264576c02124da03c946b6ae4fc446c31b8d56d52486c1710eead8a12 |
 | 2026-11-17 17:15 | generate_image | pixel:luminous gem | generation cf496576-63c1-45f1-94d3-d76b4cfc4812 | 1024 x 1024, sha256 eb84a20f5acb27e0edac7f0ceae0d1055fd9278be5adfcce3468afcbf37d346a |
 | 2026-11-17 17:18 | generate_image | pixel:luminous backdrop | generation d41a1cb3-1553-4822-9454-95938d6adeb4 | 1536 x 1024, sha256 010812a9460b05cb47949bf07cd49de579ac5dcfb4d943bd9e824f611ff14378 |
+
+## Consolidated drawing views, 2026-11-28
+
+Origin MCP generated the Anime side-view, Cartoon top-down, and Neon
+side-view and top-down beats with gpt-image-2.6-sunburst. The unchanged
+Cartoon side-view and both Pixel views retain their earlier authored art.
+The new answers are kept under `target/look-previews/raw/<slug>@<view>/`.
+Transparent requests returned RGB magenta instead of alpha; the sprites
+were keyed with ImageMagick (`-alpha set -fuzz 10% -transparent '#ff00ff'`)
+before `art.ts prepare` trimmed and resized them. The resulting files and
+their exact SHA-256 are pinned in `templates/og-assets.json`. Their rendered
+quality is pending the next development release's joint GPU verification.
+
+Recovered Neon source media, in tree, slime, lantern, bush, heart order
+for side view: `75dce639a92f4d080212ae9da85dc2d3`,
+`7ac318b922205b9ace682b54ace8254f`, `57d0468795077f515c7d1fea1facc997`,
+`5752d529188cc4c2e2dbbd37e5af2402`, `61a1a31fe9f8a84cc71e87decd4c3e29`.
+Top-down hero, tree, crate, slime, heart, gem, bush, wall, grass, path:
+`55dc1bbc23b0a2a86ab4c0c306f18797`, `83303d46680c5b87bda826268b0220c5`,
+`2f91829e7b4dad097d7f6467fdca5629`, `9ba4b02c3178369e98b04f7395d5b3b3`,
+`49437edf2d5ad7ab455781a0620e871a`, `3f125185212160a9b795d6eefdc7a263`,
+`92a2694a6f6375a127f834ecf434fb8b`, `21f71d27eb2d3fc588f6cd8003c42c73`,
+`29f5619dde90c623d2b0cee398212946`, `3647b21f525a9d2ca6a6b61303881a72`.
+Side-view backdrop, mid, platform, tiles:
+`9fd1720146a8244a655f0d554a3480f0`, `cbe84a1e7d6ecfaa7e844ea94ab7d144`,
+`0563c787a7aea2de60ae49b1f5ca24c4`, `e3d9bd02a604aec671669b629e273514`.

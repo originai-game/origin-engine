@@ -13,7 +13,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/camp-flames")
+        "asset": ref("base/vfx/low-poly/emitters/camp-flames")
       }
     },
     {
@@ -24,7 +24,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/camp-embers")
+        "asset": ref("base/vfx/low-poly/emitters/camp-embers")
       }
     },
     {
@@ -35,7 +35,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/camp-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/camp-puffs")
       }
     },
     {

@@ -13,7 +13,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/rocket-flame")
+        "asset": ref("base/vfx/low-poly/emitters/rocket-flame")
       }
     },
     {
@@ -29,7 +29,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/rocket-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/rocket-puffs")
       }
     },
     {

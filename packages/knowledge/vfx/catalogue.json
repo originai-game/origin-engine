@@ -3,9 +3,9 @@
     "manifest": {
       "format": 1,
       "kind": "vfx",
-      "name": "cartoon-2d",
+      "name": "cartoon",
       "version": "1.0.0",
-      "description": "Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
+      "description": "Flat cartoon effects: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
       "minEngine": "0.9.0",
       "tags": {
         "style": "stylised",
@@ -49,7 +49,6 @@
       "keywords": [
         "2d",
         "cartoon",
-        "cartoon-2d",
         "flat"
       ]
     },
@@ -7636,145 +7635,1255 @@
     "manifest": {
       "format": 1,
       "kind": "vfx",
-      "name": "geometric",
+      "name": "low-poly",
       "version": "1.0.0",
-      "description": "Texture-free hard geometry for faceted-low-poly: nine visual mechanisms, no bloom or soft sprites.",
+      "description": "Chunky low-poly effects: satin puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
       "minEngine": "0.9.0",
       "tags": {
         "style": "stylised",
         "dim": "3d",
         "category": [
           "ambient",
+          "beam",
           "buff",
+          "debuff",
+          "destruction",
+          "exhaust",
           "explosion",
+          "fire",
           "gunfire",
+          "heal",
           "hit-spark",
           "magic-impact",
+          "movement",
+          "pickup",
+          "projectile",
           "smoke",
           "splash",
+          "status",
           "ui"
         ],
         "element": [
+          "arcane",
           "earth",
-          "water"
+          "fire",
+          "ice",
+          "life",
+          "light",
+          "lightning",
+          "nature",
+          "poison",
+          "shadow",
+          "water",
+          "wood"
         ]
       },
       "keywords": [
-        "faceted-low-poly",
-        "geometric",
-        "texture-free"
+        "3d",
+        "craft",
+        "low-poly",
+        "toy"
       ]
     },
     "bundled": false,
     "effects": [
       {
-        "category": "ui",
-        "durationSeconds": 2,
-        "impact": true,
+        "category": "exhaust",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": false,
         "keywords": [
-          "celebration"
+          "afterburner",
+          "exhaust",
+          "toy"
         ],
-        "loop": false,
-        "path": "content/celebration.ts",
-        "title": "Coral Confetti",
+        "loop": true,
+        "path": "content/afterburner.ts",
+        "title": "Toy Jet Flame",
         "type": "vfx"
       },
       {
-        "category": "smoke",
-        "durationSeconds": 1.5,
+        "category": "exhaust",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": true,
+        "keywords": [
+          "boost",
+          "exhaust",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/boost.ts",
+        "title": "Kart Boost",
+        "type": "vfx"
+      },
+      {
+        "category": "destruction",
+        "durationSeconds": 1.6,
         "element": "earth",
         "impact": true,
         "keywords": [
-          "dust"
+          "block",
+          "break",
+          "destruction",
+          "toy"
         ],
         "loop": false,
-        "path": "content/dust.ts",
-        "title": "Slate Dust",
+        "path": "content/break-block.ts",
+        "title": "Block Break",
         "type": "vfx"
       },
       {
-        "category": "explosion",
-        "durationSeconds": 1.2,
+        "category": "destruction",
+        "durationSeconds": 1.6,
+        "element": "wood",
         "impact": true,
         "keywords": [
-          "facets"
+          "break",
+          "crate",
+          "destruction",
+          "toy"
         ],
         "loop": false,
-        "path": "content/explosion.ts",
-        "title": "Facet Burst",
+        "path": "content/break-crate.ts",
+        "title": "Crate Break",
         "type": "vfx"
       },
       {
-        "category": "hit-spark",
+        "category": "destruction",
+        "durationSeconds": 1.4,
+        "element": "ice",
+        "impact": true,
+        "keywords": [
+          "break",
+          "destruction",
+          "ice",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/break-ice.ts",
+        "title": "Ice Break",
+        "type": "vfx"
+      },
+      {
+        "category": "destruction",
+        "durationSeconds": 1.6,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "break",
+          "destruction",
+          "rock",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/break-rock.ts",
+        "title": "Rock Break",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 1.5,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "bubbles",
+          "splash",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/bubbles.ts",
+        "title": "Bubbles",
+        "type": "vfx"
+      },
+      {
+        "category": "buff",
+        "durationSeconds": 1.4,
+        "impact": true,
+        "keywords": [
+          "buff",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/buff.ts",
+        "title": "Buff",
+        "type": "vfx"
+      },
+      {
+        "category": "destruction",
+        "durationSeconds": 1,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "build",
+          "destruction",
+          "place",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/build-place.ts",
+        "title": "Build Place",
+        "type": "vfx"
+      },
+      {
+        "category": "destruction",
+        "durationSeconds": 1,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "build",
+          "destruction",
+          "remove",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/build-remove.ts",
+        "title": "Build Remove",
+        "type": "vfx"
+      },
+      {
+        "category": "projectile",
         "durationSeconds": 0.5,
-        "impact": true,
+        "impact": false,
         "keywords": [
-          "impact"
+          "bullet",
+          "projectile",
+          "toy"
         ],
-        "loop": false,
-        "path": "content/impact.ts",
-        "title": "Angular Impact",
+        "loop": true,
+        "path": "content/bullet.ts",
+        "title": "Pellet Trail",
+        "type": "vfx"
+      },
+      {
+        "category": "status",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": false,
+        "keywords": [
+          "burning",
+          "status",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/burning.ts",
+        "title": "Burning",
+        "type": "vfx"
+      },
+      {
+        "category": "fire",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": false,
+        "keywords": [
+          "campfire",
+          "fire",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/campfire.ts",
+        "title": "Campfire",
         "type": "vfx"
       },
       {
         "category": "magic-impact",
         "durationSeconds": 1.2,
-        "impact": true,
+        "element": "arcane",
+        "impact": false,
         "keywords": [
-          "magic"
+          "charge",
+          "magic-impact",
+          "toy"
         ],
-        "loop": false,
-        "path": "content/magic.ts",
-        "title": "Open Triangles",
+        "loop": true,
+        "path": "content/charge.ts",
+        "title": "Charge",
         "type": "vfx"
       },
       {
-        "category": "gunfire",
-        "durationSeconds": 0.12,
+        "category": "ui",
+        "durationSeconds": 2,
+        "element": "light",
         "impact": true,
         "keywords": [
-          "muzzle"
+          "checkpoint",
+          "toy",
+          "ui"
         ],
         "loop": false,
-        "path": "content/muzzle.ts",
-        "title": "Geometric Pulse",
+        "path": "content/checkpoint.ts",
+        "title": "Checkpoint",
         "type": "vfx"
       },
       {
-        "category": "buff",
+        "category": "pickup",
+        "durationSeconds": 1.8,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "chest",
+          "open",
+          "pickup",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/chest-open.ts",
+        "title": "Chest Open",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 2,
+        "impact": false,
+        "keywords": [
+          "chimney",
+          "smoke",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/chimney-smoke.ts",
+        "title": "Chimney Smoke",
+        "type": "vfx"
+      },
+      {
+        "category": "pickup",
         "durationSeconds": 1,
+        "element": "light",
         "impact": true,
         "keywords": [
-          "pickup"
+          "coin",
+          "pickup",
+          "toy"
         ],
         "loop": false,
-        "path": "content/pickup.ts",
-        "title": "Rising Cubes",
+        "path": "content/coin.ts",
+        "title": "Coin Collect",
+        "type": "vfx"
+      },
+      {
+        "category": "ui",
+        "durationSeconds": 2,
+        "impact": false,
+        "keywords": [
+          "confetti",
+          "rain",
+          "toy",
+          "ui"
+        ],
+        "loop": true,
+        "path": "content/confetti-rain.ts",
+        "title": "Confetti Rain",
+        "type": "vfx"
+      },
+      {
+        "category": "ui",
+        "durationSeconds": 2.6,
+        "impact": true,
+        "keywords": [
+          "confetti",
+          "toy",
+          "ui"
+        ],
+        "loop": false,
+        "path": "content/confetti.ts",
+        "title": "Confetti Pop",
+        "type": "vfx"
+      },
+      {
+        "category": "movement",
+        "durationSeconds": 0.6,
+        "impact": true,
+        "keywords": [
+          "dash",
+          "movement",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/dash.ts",
+        "title": "Dash",
+        "type": "vfx"
+      },
+      {
+        "category": "debuff",
+        "durationSeconds": 1.4,
+        "element": "shadow",
+        "impact": true,
+        "keywords": [
+          "debuff",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/debuff.ts",
+        "title": "Debuff",
+        "type": "vfx"
+      },
+      {
+        "category": "movement",
+        "durationSeconds": 0.8,
+        "impact": true,
+        "keywords": [
+          "double",
+          "jump",
+          "movement",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/double-jump.ts",
+        "title": "Double Jump",
+        "type": "vfx"
+      },
+      {
+        "category": "exhaust",
+        "durationSeconds": 0.5,
+        "element": "lightning",
+        "impact": false,
+        "keywords": [
+          "drift",
+          "exhaust",
+          "sparks",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/drift-sparks.ts",
+        "title": "Drift Sparks",
         "type": "vfx"
       },
       {
         "category": "splash",
         "durationSeconds": 1.2,
         "element": "water",
+        "impact": false,
+        "keywords": [
+          "drip",
+          "splash",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/drip.ts",
+        "title": "Drip",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 1.6,
+        "element": "earth",
         "impact": true,
         "keywords": [
+          "dust",
+          "smoke",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/dust.ts",
+        "title": "Dust Cloud",
+        "type": "vfx"
+      },
+      {
+        "category": "exhaust",
+        "durationSeconds": 0.6,
+        "impact": false,
+        "keywords": [
+          "exhaust",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/exhaust.ts",
+        "title": "Kart Exhaust",
+        "type": "vfx"
+      },
+      {
+        "category": "explosion",
+        "durationSeconds": 1.4,
+        "element": "fire",
+        "impact": true,
+        "keywords": [
+          "explosion",
+          "small",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/explosion-small.ts",
+        "title": "Small Explosion",
+        "type": "vfx"
+      },
+      {
+        "category": "explosion",
+        "durationSeconds": 2,
+        "element": "fire",
+        "impact": true,
+        "keywords": [
+          "explosion",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/explosion.ts",
+        "title": "Explosion",
+        "type": "vfx"
+      },
+      {
+        "category": "ambient",
+        "durationSeconds": 3,
+        "element": "nature",
+        "impact": false,
+        "keywords": [
+          "ambient",
+          "fireflies",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/fireflies.ts",
+        "title": "Fireflies",
+        "type": "vfx"
+      },
+      {
+        "category": "ui",
+        "durationSeconds": 3,
+        "element": "fire",
+        "impact": true,
+        "keywords": [
+          "fireworks",
+          "toy",
+          "ui"
+        ],
+        "loop": false,
+        "path": "content/fireworks.ts",
+        "title": "Fireworks",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 1,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "fountain",
+          "splash",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/fountain.ts",
+        "title": "Fountain",
+        "type": "vfx"
+      },
+      {
+        "category": "status",
+        "durationSeconds": 1.5,
+        "element": "ice",
+        "impact": false,
+        "keywords": [
+          "frozen",
+          "status",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/frozen.ts",
+        "title": "Frozen",
+        "type": "vfx"
+      },
+      {
+        "category": "fire",
+        "durationSeconds": 0.5,
+        "element": "fire",
+        "impact": false,
+        "keywords": [
+          "fire",
+          "fuse",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/fuse.ts",
+        "title": "Fuse",
+        "type": "vfx"
+      },
+      {
+        "category": "pickup",
+        "durationSeconds": 1.1,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "gem",
+          "pickup",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/gem.ts",
+        "title": "Gem Collect",
+        "type": "vfx"
+      },
+      {
+        "category": "ui",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "celebration",
+          "geometric"
+        ],
+        "loop": false,
+        "path": "content/geometric/celebration.ts",
+        "title": "Coral Confetti",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0,
+        "element": "earth",
+        "impact": false,
+        "keywords": [
+          "dust",
+          "geometric"
+        ],
+        "loop": false,
+        "path": "content/geometric/dust.ts",
+        "title": "Slate Dust",
+        "type": "vfx"
+      },
+      {
+        "category": "explosion",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "explosion",
+          "geometric"
+        ],
+        "loop": false,
+        "path": "content/geometric/explosion.ts",
+        "title": "Facet Burst",
+        "type": "vfx"
+      },
+      {
+        "category": "hit-spark",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "geometric",
+          "impact"
+        ],
+        "loop": false,
+        "path": "content/geometric/impact.ts",
+        "title": "Angular Impact",
+        "type": "vfx"
+      },
+      {
+        "category": "magic-impact",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "geometric",
+          "magic"
+        ],
+        "loop": false,
+        "path": "content/geometric/magic.ts",
+        "title": "Open Triangles",
+        "type": "vfx"
+      },
+      {
+        "category": "gunfire",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "geometric",
+          "muzzle"
+        ],
+        "loop": false,
+        "path": "content/geometric/muzzle.ts",
+        "title": "Geometric Pulse",
+        "type": "vfx"
+      },
+      {
+        "category": "buff",
+        "durationSeconds": 0,
+        "impact": false,
+        "keywords": [
+          "geometric",
+          "pickup"
+        ],
+        "loop": false,
+        "path": "content/geometric/pickup.ts",
+        "title": "Rising Cubes",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 0,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "geometric",
           "splash"
         ],
         "loop": false,
-        "path": "content/splash.ts",
+        "path": "content/geometric/splash.ts",
         "title": "Facet Splash",
         "type": "vfx"
       },
       {
         "category": "ambient",
-        "durationSeconds": 2,
+        "durationSeconds": 0,
         "impact": false,
         "keywords": [
+          "geometric",
           "trail"
         ],
-        "loop": true,
-        "path": "content/trail.ts",
+        "loop": false,
+        "path": "content/geometric/trail.ts",
         "title": "Facet Trail",
+        "type": "vfx"
+      },
+      {
+        "category": "heal",
+        "durationSeconds": 1.8,
+        "element": "life",
+        "impact": true,
+        "keywords": [
+          "heal",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/heal.ts",
+        "title": "Heal",
+        "type": "vfx"
+      },
+      {
+        "category": "pickup",
+        "durationSeconds": 1.2,
+        "element": "life",
+        "impact": true,
+        "keywords": [
+          "heart",
+          "pickup",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/heart.ts",
+        "title": "Heart Pickup",
+        "type": "vfx"
+      },
+      {
+        "category": "hit-spark",
+        "durationSeconds": 1,
+        "impact": true,
+        "keywords": [
+          "heavy",
+          "hit",
+          "hit-spark",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/hit-heavy.ts",
+        "title": "Heavy Hit",
+        "type": "vfx"
+      },
+      {
+        "category": "hit-spark",
+        "durationSeconds": 0.6,
+        "impact": true,
+        "keywords": [
+          "hit",
+          "hit-spark",
+          "small",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/hit-small.ts",
+        "title": "Small Hit",
+        "type": "vfx"
+      },
+      {
+        "category": "hit-spark",
+        "durationSeconds": 0.8,
+        "impact": true,
+        "keywords": [
+          "hit",
+          "hit-spark",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/hit.ts",
+        "title": "Hit",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0.8,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "dust",
+          "jump",
+          "smoke",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/jump-dust.ts",
+        "title": "Jump Dust",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 1,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "dust",
+          "land",
+          "smoke",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/land-dust.ts",
+        "title": "Land Dust",
+        "type": "vfx"
+      },
+      {
+        "category": "beam",
+        "durationSeconds": 0.6,
+        "element": "lightning",
+        "impact": true,
+        "keywords": [
+          "beam",
+          "laser",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/laser.ts",
+        "title": "Toy Laser",
+        "type": "vfx"
+      },
+      {
+        "category": "ambient",
+        "durationSeconds": 3,
+        "element": "nature",
+        "impact": false,
+        "keywords": [
+          "ambient",
+          "leaves",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/leaves.ts",
+        "title": "Falling Leaves",
+        "type": "vfx"
+      },
+      {
+        "category": "buff",
+        "durationSeconds": 2.2,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "buff",
+          "level",
+          "toy",
+          "up"
+        ],
+        "loop": false,
+        "path": "content/level-up.ts",
+        "title": "Level Up",
+        "type": "vfx"
+      },
+      {
+        "category": "projectile",
+        "durationSeconds": 0.6,
+        "element": "arcane",
+        "impact": false,
+        "keywords": [
+          "bolt",
+          "magic",
+          "projectile",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/magic-bolt.ts",
+        "title": "Magic Bolt",
+        "type": "vfx"
+      },
+      {
+        "category": "magic-impact",
+        "durationSeconds": 3,
+        "element": "arcane",
+        "impact": true,
+        "keywords": [
+          "circle",
+          "magic",
+          "magic-impact",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/magic-circle.ts",
+        "title": "Magic Circle",
+        "type": "vfx"
+      },
+      {
+        "category": "magic-impact",
+        "durationSeconds": 1.2,
+        "element": "arcane",
+        "impact": true,
+        "keywords": [
+          "magic",
+          "magic-impact",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/magic.ts",
+        "title": "Magic Hit",
+        "type": "vfx"
+      },
+      {
+        "category": "gunfire",
+        "durationSeconds": 0.7,
+        "impact": true,
+        "keywords": [
+          "gunfire",
+          "muzzle",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/muzzle.ts",
+        "title": "Toy Blaster",
+        "type": "vfx"
+      },
+      {
+        "category": "status",
+        "durationSeconds": 1.2,
+        "element": "poison",
+        "impact": false,
+        "keywords": [
+          "poison",
+          "status",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/poison.ts",
+        "title": "Poisoned",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 1.1,
+        "impact": true,
+        "keywords": [
+          "poof",
+          "smoke",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/poof.ts",
+        "title": "Poof",
+        "type": "vfx"
+      },
+      {
+        "category": "magic-impact",
+        "durationSeconds": 2,
+        "element": "arcane",
+        "impact": false,
+        "keywords": [
+          "magic-impact",
+          "portal",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/portal.ts",
+        "title": "Portal",
+        "type": "vfx"
+      },
+      {
+        "category": "buff",
+        "durationSeconds": 1.6,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "buff",
+          "powerup",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/powerup.ts",
+        "title": "Power-up",
+        "type": "vfx"
+      },
+      {
+        "category": "ui",
+        "durationSeconds": 1.6,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "burst",
+          "reward",
+          "toy",
+          "ui"
+        ],
+        "loop": false,
+        "path": "content/reward-burst.ts",
+        "title": "Reward Burst",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 1.8,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "ripple",
+          "splash",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/ripple.ts",
+        "title": "Ripple",
+        "type": "vfx"
+      },
+      {
+        "category": "projectile",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": false,
+        "keywords": [
+          "projectile",
+          "rocket",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/rocket.ts",
+        "title": "Toy Rocket Trail",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0.4,
+        "element": "earth",
+        "impact": false,
+        "keywords": [
+          "dust",
+          "run",
+          "smoke",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/run-dust.ts",
+        "title": "Run Dust",
+        "type": "vfx"
+      },
+      {
+        "category": "buff",
+        "durationSeconds": 2,
+        "element": "light",
+        "impact": false,
+        "keywords": [
+          "buff",
+          "shield",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/shield.ts",
+        "title": "Shield",
+        "type": "vfx"
+      },
+      {
+        "category": "status",
+        "durationSeconds": 0.6,
+        "element": "lightning",
+        "impact": false,
+        "keywords": [
+          "shocked",
+          "status",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/shocked.ts",
+        "title": "Shocked",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0.5,
+        "element": "earth",
+        "impact": false,
+        "keywords": [
+          "skid",
+          "smoke",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/skid.ts",
+        "title": "Skid",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 1,
+        "element": "water",
+        "impact": true,
+        "keywords": [
+          "small",
+          "splash",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/splash-small.ts",
+        "title": "Small Splash",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 1.4,
+        "element": "water",
+        "impact": true,
+        "keywords": [
+          "splash",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/splash.ts",
+        "title": "Splash",
+        "type": "vfx"
+      },
+      {
+        "category": "pickup",
+        "durationSeconds": 1.4,
+        "element": "light",
+        "impact": true,
+        "keywords": [
+          "collect",
+          "pickup",
+          "star",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/star-collect.ts",
+        "title": "Star Collect",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 1,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "smoke",
+          "steam",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/steam.ts",
+        "title": "Steam",
+        "type": "vfx"
+      },
+      {
+        "category": "hit-spark",
+        "durationSeconds": 1,
+        "element": "earth",
+        "impact": true,
+        "keywords": [
+          "hit-spark",
+          "stomp",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/stomp.ts",
+        "title": "Stomp",
+        "type": "vfx"
+      },
+      {
+        "category": "status",
+        "durationSeconds": 1.2,
+        "impact": false,
+        "keywords": [
+          "status",
+          "stun",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/stun.ts",
+        "title": "Stunned",
+        "type": "vfx"
+      },
+      {
+        "category": "magic-impact",
+        "durationSeconds": 1.4,
+        "element": "arcane",
+        "impact": true,
+        "keywords": [
+          "magic-impact",
+          "teleport",
+          "toy"
+        ],
+        "loop": false,
+        "path": "content/teleport.ts",
+        "title": "Teleport",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0.5,
+        "impact": false,
+        "keywords": [
+          "smoke",
+          "tire",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/tire-smoke.ts",
+        "title": "Tyre Smoke",
+        "type": "vfx"
+      },
+      {
+        "category": "fire",
+        "durationSeconds": 1,
+        "element": "fire",
+        "impact": false,
+        "keywords": [
+          "fire",
+          "torch",
+          "toy"
+        ],
+        "loop": true,
+        "path": "content/torch.ts",
+        "title": "Torch",
+        "type": "vfx"
+      },
+      {
+        "category": "ambient",
+        "durationSeconds": 1.6,
+        "element": "light",
+        "impact": false,
+        "keywords": [
+          "ambient",
+          "toy",
+          "twinkle"
+        ],
+        "loop": true,
+        "path": "content/twinkle.ts",
+        "title": "Twinkle",
+        "type": "vfx"
+      },
+      {
+        "category": "splash",
+        "durationSeconds": 0.5,
+        "element": "water",
+        "impact": false,
+        "keywords": [
+          "splash",
+          "toy",
+          "wake"
+        ],
+        "loop": true,
+        "path": "content/wake.ts",
+        "title": "Boat Wake",
+        "type": "vfx"
+      },
+      {
+        "category": "smoke",
+        "durationSeconds": 0.5,
+        "element": "earth",
+        "impact": false,
+        "keywords": [
+          "dust",
+          "smoke",
+          "toy",
+          "wheel"
+        ],
+        "loop": true,
+        "path": "content/wheel-dust.ts",
+        "title": "Wheel Dust",
         "type": "vfx"
       }
     ]
@@ -8744,2283 +9853,6 @@
         "loop": false,
         "path": "content/water-splash.ts",
         "title": "Water Splash",
-        "type": "vfx"
-      }
-    ]
-  },
-  {
-    "manifest": {
-      "format": 1,
-      "kind": "vfx",
-      "name": "toy-3d",
-      "version": "1.0.0",
-      "description": "Toy effects for toy-3d: satin plastic puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
-      "minEngine": "0.9.0",
-      "tags": {
-        "style": "stylised",
-        "dim": "3d",
-        "category": [
-          "ambient",
-          "beam",
-          "buff",
-          "debuff",
-          "destruction",
-          "exhaust",
-          "explosion",
-          "fire",
-          "gunfire",
-          "heal",
-          "hit-spark",
-          "magic-impact",
-          "movement",
-          "pickup",
-          "projectile",
-          "smoke",
-          "splash",
-          "status",
-          "ui"
-        ],
-        "element": [
-          "arcane",
-          "earth",
-          "fire",
-          "ice",
-          "life",
-          "light",
-          "lightning",
-          "nature",
-          "poison",
-          "shadow",
-          "water",
-          "wood"
-        ]
-      },
-      "keywords": [
-        "3d",
-        "craft",
-        "toy",
-        "toy-3d"
-      ]
-    },
-    "bundled": false,
-    "effects": [
-      {
-        "category": "exhaust",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "afterburner",
-          "exhaust",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/afterburner.ts",
-        "title": "Toy Jet Flame",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "boost",
-          "exhaust",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/boost.ts",
-        "title": "Kart Boost",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "block",
-          "break",
-          "destruction",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-block.ts",
-        "title": "Block Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "wood",
-        "impact": true,
-        "keywords": [
-          "break",
-          "crate",
-          "destruction",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-crate.ts",
-        "title": "Crate Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.4,
-        "element": "ice",
-        "impact": true,
-        "keywords": [
-          "break",
-          "destruction",
-          "ice",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-ice.ts",
-        "title": "Ice Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "break",
-          "destruction",
-          "rock",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-rock.ts",
-        "title": "Rock Break",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.5,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "bubbles",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/bubbles.ts",
-        "title": "Bubbles",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 1.4,
-        "impact": true,
-        "keywords": [
-          "buff",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/buff.ts",
-        "title": "Buff",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "build",
-          "destruction",
-          "place",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/build-place.ts",
-        "title": "Build Place",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "build",
-          "destruction",
-          "remove",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/build-remove.ts",
-        "title": "Build Remove",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 0.5,
-        "impact": false,
-        "keywords": [
-          "bullet",
-          "projectile",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/bullet.ts",
-        "title": "Pellet Trail",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "burning",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/burning.ts",
-        "title": "Burning",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "campfire",
-          "fire",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/campfire.ts",
-        "title": "Campfire",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.2,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "charge",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/charge.ts",
-        "title": "Charge",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "checkpoint",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/checkpoint.ts",
-        "title": "Checkpoint",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.8,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "chest",
-          "open",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/chest-open.ts",
-        "title": "Chest Open",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 2,
-        "impact": false,
-        "keywords": [
-          "chimney",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/chimney-smoke.ts",
-        "title": "Chimney Smoke",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "coin",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/coin.ts",
-        "title": "Coin Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2,
-        "impact": false,
-        "keywords": [
-          "confetti",
-          "rain",
-          "toy",
-          "ui"
-        ],
-        "loop": true,
-        "path": "content/confetti-rain.ts",
-        "title": "Confetti Rain",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2.6,
-        "impact": true,
-        "keywords": [
-          "confetti",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/confetti.ts",
-        "title": "Confetti Pop",
-        "type": "vfx"
-      },
-      {
-        "category": "movement",
-        "durationSeconds": 0.6,
-        "impact": true,
-        "keywords": [
-          "dash",
-          "movement",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/dash.ts",
-        "title": "Dash",
-        "type": "vfx"
-      },
-      {
-        "category": "debuff",
-        "durationSeconds": 1.4,
-        "element": "shadow",
-        "impact": true,
-        "keywords": [
-          "debuff",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/debuff.ts",
-        "title": "Debuff",
-        "type": "vfx"
-      },
-      {
-        "category": "movement",
-        "durationSeconds": 0.8,
-        "impact": true,
-        "keywords": [
-          "double",
-          "jump",
-          "movement",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/double-jump.ts",
-        "title": "Double Jump",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 0.5,
-        "element": "lightning",
-        "impact": false,
-        "keywords": [
-          "drift",
-          "exhaust",
-          "sparks",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/drift-sparks.ts",
-        "title": "Drift Sparks",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.2,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "drip",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/drip.ts",
-        "title": "Drip",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/dust.ts",
-        "title": "Dust Cloud",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 0.6,
-        "impact": false,
-        "keywords": [
-          "exhaust",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/exhaust.ts",
-        "title": "Kart Exhaust",
-        "type": "vfx"
-      },
-      {
-        "category": "explosion",
-        "durationSeconds": 1.4,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "explosion",
-          "small",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/explosion-small.ts",
-        "title": "Small Explosion",
-        "type": "vfx"
-      },
-      {
-        "category": "explosion",
-        "durationSeconds": 2,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "explosion",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/explosion.ts",
-        "title": "Explosion",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 3,
-        "element": "nature",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "fireflies",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fireflies.ts",
-        "title": "Fireflies",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 3,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "fireworks",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/fireworks.ts",
-        "title": "Fireworks",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "fountain",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fountain.ts",
-        "title": "Fountain",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.5,
-        "element": "ice",
-        "impact": false,
-        "keywords": [
-          "frozen",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/frozen.ts",
-        "title": "Frozen",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 0.5,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "fire",
-          "fuse",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fuse.ts",
-        "title": "Fuse",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.1,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "gem",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/gem.ts",
-        "title": "Gem Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "heal",
-        "durationSeconds": 1.8,
-        "element": "life",
-        "impact": true,
-        "keywords": [
-          "heal",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/heal.ts",
-        "title": "Heal",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.2,
-        "element": "life",
-        "impact": true,
-        "keywords": [
-          "heart",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/heart.ts",
-        "title": "Heart Pickup",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 1,
-        "impact": true,
-        "keywords": [
-          "heavy",
-          "hit",
-          "hit-spark",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit-heavy.ts",
-        "title": "Heavy Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 0.6,
-        "impact": true,
-        "keywords": [
-          "hit",
-          "hit-spark",
-          "small",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit-small.ts",
-        "title": "Small Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 0.8,
-        "impact": true,
-        "keywords": [
-          "hit",
-          "hit-spark",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit.ts",
-        "title": "Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.8,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "jump",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/jump-dust.ts",
-        "title": "Jump Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "land",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/land-dust.ts",
-        "title": "Land Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "beam",
-        "durationSeconds": 0.6,
-        "element": "lightning",
-        "impact": true,
-        "keywords": [
-          "beam",
-          "laser",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/laser.ts",
-        "title": "Toy Laser",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 3,
-        "element": "nature",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "leaves",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/leaves.ts",
-        "title": "Falling Leaves",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 2.2,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "buff",
-          "level",
-          "toy",
-          "up"
-        ],
-        "loop": false,
-        "path": "content/level-up.ts",
-        "title": "Level Up",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 0.6,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "bolt",
-          "magic",
-          "projectile",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/magic-bolt.ts",
-        "title": "Magic Bolt",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 3,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "circle",
-          "magic",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/magic-circle.ts",
-        "title": "Magic Circle",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.2,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "magic",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/magic.ts",
-        "title": "Magic Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "gunfire",
-        "durationSeconds": 0.7,
-        "impact": true,
-        "keywords": [
-          "gunfire",
-          "muzzle",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/muzzle.ts",
-        "title": "Toy Blaster",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.2,
-        "element": "poison",
-        "impact": false,
-        "keywords": [
-          "poison",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/poison.ts",
-        "title": "Poisoned",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1.1,
-        "impact": true,
-        "keywords": [
-          "poof",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/poof.ts",
-        "title": "Poof",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 2,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "magic-impact",
-          "portal",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/portal.ts",
-        "title": "Portal",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "buff",
-          "powerup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/powerup.ts",
-        "title": "Power-up",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "burst",
-          "reward",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/reward-burst.ts",
-        "title": "Reward Burst",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.8,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "ripple",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/ripple.ts",
-        "title": "Ripple",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "projectile",
-          "rocket",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/rocket.ts",
-        "title": "Toy Rocket Trail",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.4,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "dust",
-          "run",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/run-dust.ts",
-        "title": "Run Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 2,
-        "element": "light",
-        "impact": false,
-        "keywords": [
-          "buff",
-          "shield",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/shield.ts",
-        "title": "Shield",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 0.6,
-        "element": "lightning",
-        "impact": false,
-        "keywords": [
-          "shocked",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/shocked.ts",
-        "title": "Shocked",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "skid",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/skid.ts",
-        "title": "Skid",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": true,
-        "keywords": [
-          "small",
-          "splash",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/splash-small.ts",
-        "title": "Small Splash",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.4,
-        "element": "water",
-        "impact": true,
-        "keywords": [
-          "splash",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/splash.ts",
-        "title": "Splash",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.4,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "collect",
-          "pickup",
-          "star",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/star-collect.ts",
-        "title": "Star Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "smoke",
-          "steam",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/steam.ts",
-        "title": "Steam",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "hit-spark",
-          "stomp",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/stomp.ts",
-        "title": "Stomp",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.2,
-        "impact": false,
-        "keywords": [
-          "status",
-          "stun",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/stun.ts",
-        "title": "Stunned",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.4,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "magic-impact",
-          "teleport",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/teleport.ts",
-        "title": "Teleport",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "impact": false,
-        "keywords": [
-          "smoke",
-          "tire",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/tire-smoke.ts",
-        "title": "Tyre Smoke",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "fire",
-          "torch",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/torch.ts",
-        "title": "Torch",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "toy",
-          "twinkle"
-        ],
-        "loop": true,
-        "path": "content/twinkle.ts",
-        "title": "Twinkle",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 0.5,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "splash",
-          "toy",
-          "wake"
-        ],
-        "loop": true,
-        "path": "content/wake.ts",
-        "title": "Boat Wake",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "dust",
-          "smoke",
-          "toy",
-          "wheel"
-        ],
-        "loop": true,
-        "path": "content/wheel-dust.ts",
-        "title": "Wheel Dust",
-        "type": "vfx"
-      }
-    ]
-  },
-  {
-    "manifest": {
-      "format": 1,
-      "kind": "vfx",
-      "name": "toy-3d-paper",
-      "version": "1.0.0",
-      "description": "Paper-craft effects for toy-3d's paper variant: thin cut card in soft, slightly warm colours: cloud cutouts for smoke and dust that stand facing the viewer, card squares and punched dots for debris, flat stars, hearts and flames that tumble as they fall.",
-      "minEngine": "0.9.0",
-      "tags": {
-        "style": "stylised",
-        "dim": "3d",
-        "category": [
-          "ambient",
-          "beam",
-          "buff",
-          "debuff",
-          "destruction",
-          "exhaust",
-          "explosion",
-          "fire",
-          "gunfire",
-          "heal",
-          "hit-spark",
-          "magic-impact",
-          "movement",
-          "pickup",
-          "projectile",
-          "smoke",
-          "splash",
-          "status",
-          "ui"
-        ],
-        "element": [
-          "arcane",
-          "earth",
-          "fire",
-          "ice",
-          "life",
-          "light",
-          "lightning",
-          "nature",
-          "poison",
-          "shadow",
-          "water",
-          "wood"
-        ]
-      },
-      "keywords": [
-        "3d",
-        "craft",
-        "paper",
-        "toy",
-        "toy-3d"
-      ]
-    },
-    "bundled": false,
-    "effects": [
-      {
-        "category": "exhaust",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "afterburner",
-          "exhaust",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/afterburner.ts",
-        "title": "Toy Jet Flame",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "boost",
-          "exhaust",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/boost.ts",
-        "title": "Kart Boost",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "block",
-          "break",
-          "destruction",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-block.ts",
-        "title": "Block Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "wood",
-        "impact": true,
-        "keywords": [
-          "break",
-          "crate",
-          "destruction",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-crate.ts",
-        "title": "Crate Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.4,
-        "element": "ice",
-        "impact": true,
-        "keywords": [
-          "break",
-          "destruction",
-          "ice",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-ice.ts",
-        "title": "Ice Break",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "break",
-          "destruction",
-          "rock",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/break-rock.ts",
-        "title": "Rock Break",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.5,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "bubbles",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/bubbles.ts",
-        "title": "Bubbles",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 1.4,
-        "impact": true,
-        "keywords": [
-          "buff",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/buff.ts",
-        "title": "Buff",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "build",
-          "destruction",
-          "place",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/build-place.ts",
-        "title": "Build Place",
-        "type": "vfx"
-      },
-      {
-        "category": "destruction",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "build",
-          "destruction",
-          "remove",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/build-remove.ts",
-        "title": "Build Remove",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 0.5,
-        "impact": false,
-        "keywords": [
-          "bullet",
-          "projectile",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/bullet.ts",
-        "title": "Pellet Trail",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "burning",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/burning.ts",
-        "title": "Burning",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "campfire",
-          "fire",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/campfire.ts",
-        "title": "Campfire",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.2,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "charge",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/charge.ts",
-        "title": "Charge",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "checkpoint",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/checkpoint.ts",
-        "title": "Checkpoint",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.8,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "chest",
-          "open",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/chest-open.ts",
-        "title": "Chest Open",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 2,
-        "impact": false,
-        "keywords": [
-          "chimney",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/chimney-smoke.ts",
-        "title": "Chimney Smoke",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "coin",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/coin.ts",
-        "title": "Coin Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2,
-        "impact": false,
-        "keywords": [
-          "confetti",
-          "rain",
-          "toy",
-          "ui"
-        ],
-        "loop": true,
-        "path": "content/confetti-rain.ts",
-        "title": "Confetti Rain",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 2.6,
-        "impact": true,
-        "keywords": [
-          "confetti",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/confetti.ts",
-        "title": "Confetti Pop",
-        "type": "vfx"
-      },
-      {
-        "category": "movement",
-        "durationSeconds": 0.6,
-        "impact": true,
-        "keywords": [
-          "dash",
-          "movement",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/dash.ts",
-        "title": "Dash",
-        "type": "vfx"
-      },
-      {
-        "category": "debuff",
-        "durationSeconds": 1.4,
-        "element": "shadow",
-        "impact": true,
-        "keywords": [
-          "debuff",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/debuff.ts",
-        "title": "Debuff",
-        "type": "vfx"
-      },
-      {
-        "category": "movement",
-        "durationSeconds": 0.8,
-        "impact": true,
-        "keywords": [
-          "double",
-          "jump",
-          "movement",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/double-jump.ts",
-        "title": "Double Jump",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 0.5,
-        "element": "lightning",
-        "impact": false,
-        "keywords": [
-          "drift",
-          "exhaust",
-          "sparks",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/drift-sparks.ts",
-        "title": "Drift Sparks",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.2,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "drip",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/drip.ts",
-        "title": "Drip",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1.6,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/dust.ts",
-        "title": "Dust Cloud",
-        "type": "vfx"
-      },
-      {
-        "category": "exhaust",
-        "durationSeconds": 0.6,
-        "impact": false,
-        "keywords": [
-          "exhaust",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/exhaust.ts",
-        "title": "Kart Exhaust",
-        "type": "vfx"
-      },
-      {
-        "category": "explosion",
-        "durationSeconds": 1.4,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "explosion",
-          "small",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/explosion-small.ts",
-        "title": "Small Explosion",
-        "type": "vfx"
-      },
-      {
-        "category": "explosion",
-        "durationSeconds": 2,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "explosion",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/explosion.ts",
-        "title": "Explosion",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 3,
-        "element": "nature",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "fireflies",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fireflies.ts",
-        "title": "Fireflies",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 3,
-        "element": "fire",
-        "impact": true,
-        "keywords": [
-          "fireworks",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/fireworks.ts",
-        "title": "Fireworks",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "fountain",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fountain.ts",
-        "title": "Fountain",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.5,
-        "element": "ice",
-        "impact": false,
-        "keywords": [
-          "frozen",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/frozen.ts",
-        "title": "Frozen",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 0.5,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "fire",
-          "fuse",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/fuse.ts",
-        "title": "Fuse",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.1,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "gem",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/gem.ts",
-        "title": "Gem Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "heal",
-        "durationSeconds": 1.8,
-        "element": "life",
-        "impact": true,
-        "keywords": [
-          "heal",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/heal.ts",
-        "title": "Heal",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.2,
-        "element": "life",
-        "impact": true,
-        "keywords": [
-          "heart",
-          "pickup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/heart.ts",
-        "title": "Heart Pickup",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 1,
-        "impact": true,
-        "keywords": [
-          "heavy",
-          "hit",
-          "hit-spark",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit-heavy.ts",
-        "title": "Heavy Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 0.6,
-        "impact": true,
-        "keywords": [
-          "hit",
-          "hit-spark",
-          "small",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit-small.ts",
-        "title": "Small Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 0.8,
-        "impact": true,
-        "keywords": [
-          "hit",
-          "hit-spark",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/hit.ts",
-        "title": "Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.8,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "jump",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/jump-dust.ts",
-        "title": "Jump Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "dust",
-          "land",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/land-dust.ts",
-        "title": "Land Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "beam",
-        "durationSeconds": 0.6,
-        "element": "lightning",
-        "impact": true,
-        "keywords": [
-          "beam",
-          "laser",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/laser.ts",
-        "title": "Toy Laser",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 3,
-        "element": "nature",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "leaves",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/leaves.ts",
-        "title": "Falling Leaves",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 2.2,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "buff",
-          "level",
-          "toy",
-          "up"
-        ],
-        "loop": false,
-        "path": "content/level-up.ts",
-        "title": "Level Up",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 0.6,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "bolt",
-          "magic",
-          "projectile",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/magic-bolt.ts",
-        "title": "Magic Bolt",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 3,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "circle",
-          "magic",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/magic-circle.ts",
-        "title": "Magic Circle",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.2,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "magic",
-          "magic-impact",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/magic.ts",
-        "title": "Magic Hit",
-        "type": "vfx"
-      },
-      {
-        "category": "gunfire",
-        "durationSeconds": 0.7,
-        "impact": true,
-        "keywords": [
-          "gunfire",
-          "muzzle",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/muzzle.ts",
-        "title": "Toy Blaster",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.2,
-        "element": "poison",
-        "impact": false,
-        "keywords": [
-          "poison",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/poison.ts",
-        "title": "Poisoned",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1.1,
-        "impact": true,
-        "keywords": [
-          "poof",
-          "smoke",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/poof.ts",
-        "title": "Poof",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 2,
-        "element": "arcane",
-        "impact": false,
-        "keywords": [
-          "magic-impact",
-          "portal",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/portal.ts",
-        "title": "Portal",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "buff",
-          "powerup",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/powerup.ts",
-        "title": "Power-up",
-        "type": "vfx"
-      },
-      {
-        "category": "ui",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "burst",
-          "reward",
-          "toy",
-          "ui"
-        ],
-        "loop": false,
-        "path": "content/reward-burst.ts",
-        "title": "Reward Burst",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.8,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "ripple",
-          "splash",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/ripple.ts",
-        "title": "Ripple",
-        "type": "vfx"
-      },
-      {
-        "category": "projectile",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "projectile",
-          "rocket",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/rocket.ts",
-        "title": "Toy Rocket Trail",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.4,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "dust",
-          "run",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/run-dust.ts",
-        "title": "Run Dust",
-        "type": "vfx"
-      },
-      {
-        "category": "buff",
-        "durationSeconds": 2,
-        "element": "light",
-        "impact": false,
-        "keywords": [
-          "buff",
-          "shield",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/shield.ts",
-        "title": "Shield",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 0.6,
-        "element": "lightning",
-        "impact": false,
-        "keywords": [
-          "shocked",
-          "status",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/shocked.ts",
-        "title": "Shocked",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "skid",
-          "smoke",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/skid.ts",
-        "title": "Skid",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": true,
-        "keywords": [
-          "small",
-          "splash",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/splash-small.ts",
-        "title": "Small Splash",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 1.4,
-        "element": "water",
-        "impact": true,
-        "keywords": [
-          "splash",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/splash.ts",
-        "title": "Splash",
-        "type": "vfx"
-      },
-      {
-        "category": "pickup",
-        "durationSeconds": 1.4,
-        "element": "light",
-        "impact": true,
-        "keywords": [
-          "collect",
-          "pickup",
-          "star",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/star-collect.ts",
-        "title": "Star Collect",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 1,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "smoke",
-          "steam",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/steam.ts",
-        "title": "Steam",
-        "type": "vfx"
-      },
-      {
-        "category": "hit-spark",
-        "durationSeconds": 1,
-        "element": "earth",
-        "impact": true,
-        "keywords": [
-          "hit-spark",
-          "stomp",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/stomp.ts",
-        "title": "Stomp",
-        "type": "vfx"
-      },
-      {
-        "category": "status",
-        "durationSeconds": 1.2,
-        "impact": false,
-        "keywords": [
-          "status",
-          "stun",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/stun.ts",
-        "title": "Stunned",
-        "type": "vfx"
-      },
-      {
-        "category": "magic-impact",
-        "durationSeconds": 1.4,
-        "element": "arcane",
-        "impact": true,
-        "keywords": [
-          "magic-impact",
-          "teleport",
-          "toy"
-        ],
-        "loop": false,
-        "path": "content/teleport.ts",
-        "title": "Teleport",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "impact": false,
-        "keywords": [
-          "smoke",
-          "tire",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/tire-smoke.ts",
-        "title": "Tyre Smoke",
-        "type": "vfx"
-      },
-      {
-        "category": "fire",
-        "durationSeconds": 1,
-        "element": "fire",
-        "impact": false,
-        "keywords": [
-          "fire",
-          "torch",
-          "toy"
-        ],
-        "loop": true,
-        "path": "content/torch.ts",
-        "title": "Torch",
-        "type": "vfx"
-      },
-      {
-        "category": "ambient",
-        "durationSeconds": 1.6,
-        "element": "light",
-        "impact": false,
-        "keywords": [
-          "ambient",
-          "toy",
-          "twinkle"
-        ],
-        "loop": true,
-        "path": "content/twinkle.ts",
-        "title": "Twinkle",
-        "type": "vfx"
-      },
-      {
-        "category": "splash",
-        "durationSeconds": 0.5,
-        "element": "water",
-        "impact": false,
-        "keywords": [
-          "splash",
-          "toy",
-          "wake"
-        ],
-        "loop": true,
-        "path": "content/wake.ts",
-        "title": "Boat Wake",
-        "type": "vfx"
-      },
-      {
-        "category": "smoke",
-        "durationSeconds": 0.5,
-        "element": "earth",
-        "impact": false,
-        "keywords": [
-          "dust",
-          "smoke",
-          "toy",
-          "wheel"
-        ],
-        "loop": true,
-        "path": "content/wheel-dust.ts",
-        "title": "Wheel Dust",
         "type": "vfx"
       }
     ]

@@ -13,13 +13,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/dust-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/dust-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/dust-grit")
+        "asset": ref("base/vfx/low-poly/emitters/dust-grit")
       }
     }
   ]

@@ -8,7 +8,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/bubbles-rise")
+        "asset": ref("base/vfx/low-poly/emitters/bubbles-rise")
       }
     }
   ]

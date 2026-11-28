@@ -13,13 +13,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/chest-coins")
+        "asset": ref("base/vfx/low-poly/emitters/chest-coins")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/chest-stars")
+        "asset": ref("base/vfx/low-poly/emitters/chest-stars")
       }
     },
     {

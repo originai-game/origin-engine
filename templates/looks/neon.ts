@@ -4,7 +4,7 @@ export default file.look({
   // Glowing vector lines on a dark scene: every lit material drawn as its
   // feature edges (creases past 30 degrees and its borders) in its colour and
   // emissive light, blooming, with a bright outline round the silhouettes.
-  name: "Neon vector-like graphics",
+  name: "Neon",
   mood: "dark",
   ui: "@themes/neon",
   MaterialStyle: {
@@ -14,6 +14,8 @@ export default file.look({
     wireframeAngle: 30,
   },
   RenderSettings: {
+    // A black field must not be lifted towards middle grey by exposure.
+    autoExposure: false,
     bloom: true,
     bloomThreshold: 0.6,
     bloomIntensity: 1.2,

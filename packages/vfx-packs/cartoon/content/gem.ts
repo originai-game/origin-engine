@@ -1,76 +1,77 @@
 import { file } from '@origingame/engine/author';
+// Gem Grab: Where a gem is collected.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 18,
-    "frames": 12,
-    "h": 112,
-    "innerLine": 1,
-    "layers": [
-      {
-        "breakup": 0.4,
-        "r0": 0.2,
-        "r1": 0.8,
-        "ramp": "$spark",
-        "t1": 0.6,
-        "th": 0.1,
-        "type": "ring"
-      },
-      {
-        "count": 6,
-        "drag": 3,
-        "life": [
-          0.35,
-          0.6
-        ],
-        "mode": "burst",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 5,
-        "speed": [
-          1.2,
-          1.8
-        ],
-        "t0": 0.1,
-        "type": "particles"
-      },
-      {
-        "count": 1,
-        "gravity": -2.5,
-        "life": [
-          0.55,
-          0.6
-        ],
-        "mode": "burst",
-        "ramp": "$main",
-        "shape": "diamond",
-        "size": 10,
-        "speed": [
-          0,
-          0
-        ],
-        "type": "particles"
-      }
+ "recipe": {
+  "name": "Gem Grab",
+  "w": 96,
+  "h": 112,
+  "frames": 12,
+  "fps": 18,
+  "loop": false,
+  "seed": 62,
+  "ramps": {
+   "main": [
+    "#1e8a86",
+    "#3cc0b4",
+    "#9cf0e0"
+   ],
+   "spark": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "ring",
+    "ramp": "$spark",
+    "r0": 0.2,
+    "r1": 0.8,
+    "th": 0.1,
+    "breakup": 0.4,
+    "t1": 0.6
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "burst",
+    "count": 6,
+    "speed": [
+     1.2,
+     1.8
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Gem Grab",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#1e8a86",
-        "#3cc0b4",
-        "#9cf0e0"
-      ],
-      "spark": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ]
-    },
-    "seed": 62,
-    "supersample": 4,
-    "w": 96
-  }
+    "drag": 3,
+    "life": [
+     0.35,
+     0.6
+    ],
+    "shape": "star",
+    "size": 5,
+    "t0": 0.1
+   },
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "burst",
+    "count": 1,
+    "speed": [
+     0,
+     0
+    ],
+    "life": [
+     0.55,
+     0.6
+    ],
+    "shape": "diamond",
+    "size": 10,
+    "gravity": -2.5
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

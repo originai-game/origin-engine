@@ -1,81 +1,82 @@
 import { file } from '@origingame/engine/author';
+// Block: In front of a guarding character, +x toward the attack.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 18,
-    "frames": 10,
-    "h": 144,
-    "innerLine": 1,
-    "layers": [
-      {
-        "fill": 0,
-        "hex": 0,
-        "r": 0.62,
-        "ramp": "$main",
-        "shimmer": 1,
-        "th": 0.08,
-        "type": "bubble",
-        "x": -0.15
-      },
-      {
-        "hollow": 0.9,
-        "inner": 0.5,
-        "points": 5,
-        "pop": 0.25,
-        "r": 0.42,
-        "ramp": "$spark",
-        "t1": 0.45,
-        "type": "star",
-        "x": 0.55
-      },
-      {
-        "count": 8,
-        "dir": 0,
-        "drag": 3.5,
-        "life": [
-          0.3,
-          0.55
-        ],
-        "mode": "spray",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 7,
-        "speed": [
-          0.9,
-          1.4
-        ],
-        "spread": 110,
-        "type": "particles",
-        "x": 0.45
-      },
-      {
-        "dur": 0.1,
-        "r": 0.55,
-        "ramp": "$spark",
-        "squash": 1.6,
-        "type": "flash",
-        "x": 0.4
-      }
+ "recipe": {
+  "name": "Block",
+  "w": 128,
+  "h": 144,
+  "frames": 10,
+  "fps": 18,
+  "loop": false,
+  "seed": 16,
+  "ramps": {
+   "main": [
+    "#2856b8",
+    "#4a8ee8",
+    "#9cd0ff"
+   ],
+   "spark": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "bubble",
+    "ramp": "$main",
+    "r": 0.62,
+    "th": 0.08,
+    "hex": 0,
+    "fill": 0,
+    "shimmer": 1,
+    "x": -0.15
+   },
+   {
+    "type": "star",
+    "ramp": "$spark",
+    "points": 5,
+    "r": 0.42,
+    "inner": 0.5,
+    "pop": 0.25,
+    "hollow": 0.9,
+    "x": 0.55,
+    "t1": 0.45
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "spray",
+    "count": 8,
+    "x": 0.45,
+    "dir": 0,
+    "spread": 110,
+    "speed": [
+     0.9,
+     1.4
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Block",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#2856b8",
-        "#4a8ee8",
-        "#9cd0ff"
-      ],
-      "spark": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ]
-    },
-    "seed": 16,
-    "supersample": 4,
-    "w": 128
-  }
+    "drag": 3.5,
+    "life": [
+     0.3,
+     0.55
+    ],
+    "shape": "star",
+    "size": 7
+   },
+   {
+    "type": "flash",
+    "ramp": "$spark",
+    "r": 0.55,
+    "x": 0.4,
+    "squash": 1.6,
+    "dur": 0.1
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

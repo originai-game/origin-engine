@@ -1,9 +1,9 @@
 {
   "format": 1,
   "kind": "vfx",
-  "name": "toy-3d",
+  "name": "low-poly",
   "version": "1.0.0",
-  "description": "Toy effects for toy-3d: satin plastic puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
+  "description": "Chunky low-poly effects: satin puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
   "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
@@ -47,7 +47,7 @@
   "keywords": [
     "3d",
     "craft",
-    "toy",
-    "toy-3d"
+    "low-poly",
+    "toy"
   ]
 }

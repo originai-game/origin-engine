@@ -11,9 +11,9 @@ export default file.vfx({
         "kind": "mesh",
         "shape": {
           "kind": "model",
-          "asset": ref("base/vfx/toy-3d/models/star")
+          "asset": ref("base/vfx/low-poly/models/star")
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -50,7 +50,7 @@ export default file.vfx({
           0.14,
           0
         ],
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           0.407,
           0.164,
@@ -62,7 +62,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/bolt-bits")
+        "asset": ref("base/vfx/low-poly/emitters/bolt-bits")
       }
     },
     {

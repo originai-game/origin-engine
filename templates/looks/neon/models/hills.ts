@@ -1,6 +1,6 @@
 import { file } from '@origingame/engine/author';
 
-// The neon-vector far layer: glowing rounded hills and a village.
+// The Neon far layer: glowing rounded hills and a village.
 export default file.model({kind:'geometry',desc:{items:[
   {name:'hill',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[0.4,0.3,1],emissiveIntensity:0.6}}},
   {name:'far-hill',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[0.3,0.2,0.8],emissiveIntensity:0.6}}},

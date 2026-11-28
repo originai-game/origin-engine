@@ -31,6 +31,16 @@ never promises more than a game in that look draws (docs/art.md §2.6).
   the 3D set, the 2D art with its sizes, pixel unit, frame size and light).
   A look not listed draws the 3D scene with its base models.
 
+The catalogue now has five stylised looks and no variants. Entries keyed
+`<slug>@<view>` select another drawing of the same look. For joint release
+review, `--view <view> --screens` captures the real built-in title screen,
+play HUD and results screen over that view; `--stage-only` prepares it
+without running a renderer. Realistic is `realistic-default`, with no look.
+The checked-in preview pins currently retain the last recorded frames
+(Anime's restored historical frame included). New previews and commercial
+quality approval are deferred to the next development release's joint GPU
+verification; these pins are not approval of the consolidated looks.
+
 Draw them with the `og` and addon of the commit under test (a preset is
 `include_str!` into og-cook, so rebuild `og` after a preset edit):
 

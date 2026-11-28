@@ -13,19 +13,19 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/crate-planks")
+        "asset": ref("base/vfx/low-poly/emitters/crate-planks")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/crate-splinters")
+        "asset": ref("base/vfx/low-poly/emitters/crate-splinters")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/crate-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/crate-puffs")
       }
     },
     {

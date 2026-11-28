@@ -1,66 +1,67 @@
 import { file } from '@origingame/engine/author';
+// Poof: Where something appears or vanishes.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 16,
-    "frames": 14,
-    "h": 112,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 8,
-        "decay": 0.45,
-        "emit": 0.08,
-        "flat": 0.85,
-        "life": [
-          0.6,
-          1
-        ],
-        "r0": 0.2,
-        "r1": 0.4,
-        "ramp": "$main",
-        "rise": 0.15,
-        "spread": 0.35,
-        "type": "puffs"
-      },
-      {
-        "count": 5,
-        "drag": 2.6,
-        "life": [
-          0.35,
-          0.6
-        ],
-        "mode": "burst",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 5,
-        "speed": [
-          1.4,
-          2
-        ],
-        "t0": 0.1,
-        "type": "particles"
-      }
+ "recipe": {
+  "name": "Poof",
+  "w": 112,
+  "h": 112,
+  "frames": 14,
+  "fps": 16,
+  "loop": false,
+  "seed": 33,
+  "ramps": {
+   "main": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ],
+   "spark": [
+    "#e09a14",
+    "#ffd23c",
+    "#fff3a8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "puffs",
+    "ramp": "$main",
+    "count": 8,
+    "spread": 0.35,
+    "rise": 0.15,
+    "r0": 0.2,
+    "r1": 0.4,
+    "life": [
+     0.6,
+     1
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Poof",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ],
-      "spark": [
-        "#e09a14",
-        "#ffd23c",
-        "#fff3a8"
-      ]
-    },
-    "seed": 33,
-    "supersample": 4,
-    "w": 112
-  }
+    "emit": 0.08,
+    "decay": 0.45,
+    "flat": 0.85
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "burst",
+    "count": 5,
+    "speed": [
+     1.4,
+     2
+    ],
+    "drag": 2.6,
+    "life": [
+     0.35,
+     0.6
+    ],
+    "shape": "star",
+    "size": 5,
+    "t0": 0.1
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

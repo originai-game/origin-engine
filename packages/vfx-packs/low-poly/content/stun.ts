@@ -23,7 +23,7 @@ export default file.vfx({
           0.24,
           0.85
         ],
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           1,
           0.888,
@@ -50,7 +50,7 @@ export default file.vfx({
           0.24,
           0.85
         ],
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           1,
           0.888,
@@ -77,7 +77,7 @@ export default file.vfx({
           0.24,
           0.85
         ],
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "color": [
           1,
           0.888,
@@ -89,7 +89,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/stun-stars")
+        "asset": ref("base/vfx/low-poly/emitters/stun-stars")
       }
     }
   ]

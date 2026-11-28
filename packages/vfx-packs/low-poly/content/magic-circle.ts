@@ -31,7 +31,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -88,7 +88,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -145,7 +145,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -185,7 +185,7 @@ export default file.vfx({
       "at": 0.2,
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/circle-stars")
+        "asset": ref("base/vfx/low-poly/emitters/circle-stars")
       }
     },
     {

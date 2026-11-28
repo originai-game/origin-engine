@@ -13,13 +13,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/poof-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/poof-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/poof-stars")
+        "asset": ref("base/vfx/low-poly/emitters/poof-stars")
       }
     }
   ]

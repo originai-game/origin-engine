@@ -13,14 +13,14 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/explosion-core")
+        "asset": ref("base/vfx/low-poly/emitters/explosion-core")
       }
     },
     {
       "at": 0.04,
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/explosion-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/explosion-puffs")
       }
     },
     {
@@ -32,13 +32,13 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/explosion-soot")
+        "asset": ref("base/vfx/low-poly/emitters/explosion-soot")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/explosion-chips")
+        "asset": ref("base/vfx/low-poly/emitters/explosion-chips")
       }
     },
     {
@@ -62,7 +62,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [

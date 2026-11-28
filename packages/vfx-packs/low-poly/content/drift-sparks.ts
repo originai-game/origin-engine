@@ -8,13 +8,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/drift-sparks")
+        "asset": ref("base/vfx/low-poly/emitters/drift-sparks")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/drift-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/drift-puffs")
       }
     }
   ]

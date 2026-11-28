@@ -37,7 +37,7 @@ export default file.vfx({
       "node": {
         "kind": "emitter",
         "seed": 0,
-        "asset": ref("base/vfx/geometric/emitters/fragments")
+        "asset": ref("base/vfx/low-poly/geometric/emitters/fragments")
       }
     },
     {
@@ -72,7 +72,7 @@ export default file.vfx({
           0.11999999731779099,
           1
         ],
-        "effect": ref("base/vfx/geometric/flat"),
+        "effect": ref("base/vfx/low-poly/geometric/flat"),
         "faceCamera": false,
         "scale": {
           "kind": "curve",

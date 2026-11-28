@@ -1,63 +1,64 @@
 import { file } from '@origingame/engine/author';
+// On Fire: Loops on a burning character; it stands on the ground.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 16,
-    "h": 192,
-    "innerLine": 1,
-    "layers": [
-      {
-        "flick": 0.3,
-        "freq": 2,
-        "hgt": 2,
-        "ramp": "$main",
-        "rough": 0.35,
-        "speed": 1,
-        "taper": 0.4,
-        "type": "flame",
-        "w": 0.75,
-        "y": 1.1
-      },
-      {
-        "area": 0.5,
-        "count": 5,
-        "life": [
-          0.4,
-          0.8
-        ],
-        "mode": "rise",
-        "ramp": "$main",
-        "shape": "circle",
-        "size": 3,
-        "speed": [
-          0.8,
-          1.4
-        ],
-        "type": "particles",
-        "y": 0.4
-      }
+ "recipe": {
+  "name": "On Fire",
+  "w": 128,
+  "h": 192,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 76,
+  "ramps": {
+   "main": [
+    "#b8321c",
+    "#ee6a1e",
+    "#ffb22e",
+    "#ffe9a0"
+   ]
+  },
+  "layers": [
+   {
+    "type": "flame",
+    "ramp": "$main",
+    "w": 0.75,
+    "hgt": 2,
+    "taper": 0.4,
+    "freq": 2,
+    "rough": 0.35,
+    "speed": 1,
+    "flick": 0.3,
+    "y": 1.1
+   },
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "rise",
+    "count": 5,
+    "y": 0.4,
+    "area": 0.5,
+    "speed": [
+     0.8,
+     1.4
     ],
-    "line": 2,
-    "loop": true,
-    "name": "On Fire",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.7875
+    "life": [
+     0.4,
+     0.8
     ],
-    "ramps": {
-      "main": [
-        "#b8321c",
-        "#ee6a1e",
-        "#ffb22e",
-        "#ffe9a0"
-      ]
-    },
-    "scale": 0.75,
-    "seed": 76,
-    "supersample": 4,
-    "w": 128
-  }
+    "shape": "circle",
+    "size": 3
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.7875
+  ],
+  "scale": 0.75,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

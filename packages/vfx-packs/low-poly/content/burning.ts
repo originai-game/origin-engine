@@ -13,7 +13,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/burning-flames")
+        "asset": ref("base/vfx/low-poly/emitters/burning-flames")
       }
     },
     {
@@ -24,7 +24,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/burning-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/burning-puffs")
       }
     },
     {

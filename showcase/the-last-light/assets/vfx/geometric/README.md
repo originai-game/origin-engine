@@ -1,7 +1,8 @@
 # Geometric effects
 
-Install with `og vfx add geometric`; spawn `base/vfx/geometric/<name>`.
-Nine texture-free visual mechanisms for `faceted-low-poly`. Hard mesh silhouettes, one coral accent and
+This game keeps nine local geometric mechanisms from the Low-poly pack.
+For a new game install `og vfx add low-poly`; spawn `base/vfx/low-poly/geometric/<name>`.
+Hard mesh silhouettes, one coral accent and
 slate neutrals; no bloom, noisy textures or soft billboard smoke.
 
 | Effect | Placement |

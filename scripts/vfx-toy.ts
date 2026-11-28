@@ -5,13 +5,11 @@
 // The out dir defaults to packages/vfx-packs; `--spec=<dir>` also writes each
 // pack's `vfx-pack.ts manifest` spec there.
 //
-// Writes `toy-3d/` (the toy-3d look) and `toy-3d-paper` (its paper variant).
+// Writes `low-poly/`, the chunky mesh effects of the low-poly look.
 // Every effect is solid matter, the way a toy world is built: smoke and dust
 // are puffs that pop up and shrink away instead of fading, debris and sparks
 // are pieces, water is glossy drops, fire is flame-shaped pieces lit from
-// inside. A variant changes only what the pieces are made of: satin plastic
-// spheres and bevelled blocks (toy-3d) or thin cut card (paper). Names, timing and placement are the same in every pack, so a game
-// changes look by changing the pack.
+// inside. The geometric mechanisms share this pack under geometric/.
 //
 // Shapes the engine has no mesh for (a star, a coin, a heart, a flame, a
 // drop, a ribbon, a cloud cutout) are small glTF models the script
@@ -42,24 +40,6 @@ const f = (x: number) => {
 type RGB = [number, number, number];
 const parse = (c: string): RGB => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255) as RGB;
 const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-
-function rgbToHsl([r, g, b]: RGB): RGB {
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
-  if (max === min) return [0, 0, l];
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return [h / 6, s, l];
-}
-function hslToRgb([h, s, l]: RGB): RGB {
-  if (s === 0) return [l, l, l];
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-  const t = (x: number) => {
-    x = ((x % 1) + 1) % 1;
-    return x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p;
-  };
-  return [t(h + 1 / 3), t(h), t(h - 1 / 3)];
-}
 
 // ---------- the variants ----------
 
@@ -847,11 +827,6 @@ const circleOutline = (n: number, r = 0.5, wob = 0, k = 0): [number, number][] =
   });
 /** A teardrop, its point up: the side profile r(v). */
 const dropR = (v: number, sharp: number) => Math.pow(Math.sin(v / 2), sharp) * Math.sin(v);
-const dropOutline = (sharp: number): [number, number][] =>
-  Array.from({ length: 32 }, (_, i) => {
-    const v = (i / 32) * Math.PI * 2, vv = v <= Math.PI ? v : 2 * Math.PI - v;
-    return [(v <= Math.PI ? -1 : 1) * 0.5 * dropR(vv, sharp), 0.5 * Math.cos(vv)];
-  });
 const gemOutline = (): [number, number][] => [[0, 0.5], [-0.32, 0.2], [-0.42, 0.05], [0, -0.5], [0.42, 0.05], [0.32, 0.2]];
 
 const MODELS = {
@@ -862,15 +837,10 @@ const MODELS = {
     return [sg(Math.sin(v)) * sg(Math.cos(u)), sg(Math.cos(v)), sg(Math.sin(v)) * sg(Math.sin(u))];
   }, 24, 16)),
   star: () => fit(extrude(starOutline(5, 0.22), 0.16, 0.1)),
-  starFlat: () => fit(extrude(starOutline(5, 0.22), 0.03, 0)),
   coin: () => fit(extrude(circleOutline(24), 0.12, 0.02)),
-  coinFlat: () => fit(extrude(circleOutline(18), 0.03, 0)),
   heart: () => fit(extrude(heartOutline(), 0.18, 0.1, [0, -0.04])),
-  heartFlat: () => fit(extrude(heartOutline(), 0.03, 0, [0, -0.04])),
   drop: () => fit(surface((u, v) => { const r = dropR(v, 1.2); return [r * Math.cos(u), -Math.cos(v) * 1.15, r * Math.sin(u)].map((x, k) => (k === 1 ? -x : x)); }, 16, 12)),
-  dropFlat: () => fit(extrude(dropOutline(1.2), 0.03, 0)),
   flame: () => fit(surface((u, v) => { const r = dropR(v, 2) * (1 + 0.08 * Math.sin(3 * u)); return [r * Math.cos(u) * 0.8, Math.cos(v) * 1.5, r * Math.sin(u) * 0.8]; }, 14, 12)),
-  flameFlat: () => fit(extrude(dropOutline(2.2).map(([x, y]) => [x * 0.8, y * 1.5] as [number, number]), 0.04, 0)),
   ribbon: () => fit(surface((u, v) => {
     // A confetti strip, curled: a flat rounded box bent along its length.
     const p = [Math.sin(v) * Math.cos(u), Math.cos(v), Math.sin(v) * Math.sin(u)];
@@ -878,9 +848,6 @@ const MODELS = {
     return [Math.sin(a) / 1.6, y, z + (1 - Math.cos(a)) / 1.6];
   }, 16, 8)),
   gem: () => fit(extrude(gemOutline(), 0.3, 0.12, [0, 0.05])),
-  gemFlat: () => fit(extrude(gemOutline(), 0.03, 0, [0, 0.05])),
-  cloud: () => fit(extrude(circleOutline(30, 0.42, 0.18, 6), 0.03, 0)),
-  card: () => fit(extrude([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], 0.03, 0)),
 };
 type ModelName = keyof typeof MODELS;
 
@@ -924,8 +891,6 @@ function glb(m: Mesh): Buffer {
 
 // ---------- the packs ----------
 
-const hsl = (fn: (h: RGB) => RGB) => (c: RGB) => hslToRgb(fn(rgbToHsl(c)));
-
 function variant(pack: string, o: Omit<Variant, "pack" | "mesh" | "models"> & { use: Record<Kind, ModelName | "box" | "sphere"> }): Variant {
   const used = new Set(Object.values(o.use).filter((x): x is ModelName => x !== "box" && x !== "sphere"));
   return {
@@ -937,23 +902,14 @@ function variant(pack: string, o: Omit<Variant, "pack" | "mesh" | "models"> & { 
 }
 
 const VARIANTS: Variant[] = [
-  variant("toy-3d", {
-    title: "Toy",
-    looks: ["toy-3d"],
-    description: "Toy effects for toy-3d: satin plastic puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
+  variant("low-poly", {
+    title: "Low-poly",
+    looks: ["low-poly"],
+    description: "Chunky low-poly effects: satin puffs, bevelled blocks, stars, coins and hearts in bright clean colour; smoke and dust pop up and shrink away instead of fading.",
     use: { puff: "puff", chip: "block", bit: "puff", drop: "drop", star: "star", coin: "coin", heart: "heart", flame: "flame", ribbon: "ribbon", gem: "gem" },
     thin: () => undefined,
     roughness: 0.38, gloss: 0.12, glow: 1, segments: 48, translucency: 0,
     paint: (c) => c,
-  }),
-  variant("toy-3d-paper", {
-    title: "Paper",
-    looks: ["toy-3d", "paper"],
-    description: "Paper-craft effects for toy-3d's paper variant: thin cut card in soft, slightly warm colours: cloud cutouts for smoke and dust that stand facing the viewer, card squares and punched dots for debris, flat stars, hearts and flames that tumble as they fall.",
-    use: { puff: "cloud", chip: "card", bit: "coinFlat", drop: "dropFlat", star: "starFlat", coin: "coinFlat", heart: "heartFlat", flame: "flameFlat", ribbon: "card", gem: "gemFlat" },
-    thin: () => undefined,
-    roughness: 1, gloss: 0.85, glow: 0.7, segments: 20, translucency: 0.6, stand: ["puff"],
-    paint: hsl(([h, s, l]) => [h + (h > 0.1 && h < 0.6 ? -0.005 : 0.005), s * 0.68, Math.min(0.9, l * 0.94 + 0.05)]),
   }),
 ];
 
@@ -967,8 +923,8 @@ const MATERIALS: Record<string, [string, J]> = {
 
 function write(v: Variant): { effects: number; files: number } {
   const d = join(OUT, v.pack);
-  // The script owns every file but preview/ and assets.json.
-  for (const sub of ["content", "models"]) rmSync(join(d, sub), { recursive: true, force: true });
+  // The geometric/ sources are authored separately; preserve them.
+  for (const sub of ["content/emitters", "content/models", "models"]) rmSync(join(d, sub), { recursive: true, force: true });
   mkdirSync(join(d, "content", "emitters"), { recursive: true });
   mkdirSync(join(d, "content", "models"), { recursive: true });
   mkdirSync(join(d, "models"), { recursive: true });
@@ -1023,9 +979,8 @@ Every effect is solid matter, the way a toy world is built: puffs, pieces,
 drops and flame shapes drawn as small lit mesh particles (\`file.particles\`
 with a mesh \`render\`), with ring meshes and point lights in each
 \`file.vfx\` (\`content/<name>.ts\`). Sizes are in metres for a figure about
-1 m tall. The same names, timing and placement are in every toy pack
-(\`toy-3d\`, \`toy-3d-paper\`), so a game
-changes look by changing the pack. Effects that play once send their
+1 m tall. The geometric/ directory adds nine texture-free mechanisms.
+Effects that play once send their
 impact at the time in \`assets.json\`. No gameplay, scoring, damage or UI
 logic, and no sound.
 
@@ -1048,20 +1003,41 @@ const keywords = (v: Variant) => [...new Set(["3d", "toy", "craft", ...v.looks])
 
 /** The `vfx-pack.ts manifest --spec` input for a pack. */
 function manifestSpec(v: Variant) {
+  const geometric = [
+    ["celebration", "Coral Confetti", "ui"],
+    ["dust", "Slate Dust", "smoke"],
+    ["explosion", "Facet Burst", "explosion"],
+    ["impact", "Angular Impact", "hit-spark"],
+    ["magic", "Open Triangles", "magic-impact"],
+    ["muzzle", "Geometric Pulse", "gunfire"],
+    ["pickup", "Rising Cubes", "buff"],
+    ["splash", "Facet Splash", "splash"],
+    ["trail", "Facet Trail", "ambient"],
+  ];
   return {
     minEngine: "0.9.0",
     style: "stylised",
     dim: "3d",
     keywords: keywords(v),
     files: [{
+      glob: "content/geometric/*",
+      licence: "MIT",
+      source: { url: "https://github.com/originai-game/origin-engine" },
+      credit: "Origin Engine",
+      derived: "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code.",
+    }, {
       glob: "*",
       licence: "MIT",
       source: { url: "https://github.com/originai-game/origin-engine" },
       credit: "Origin Engine",
       derived: "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code.",
     }],
-    effects: Object.fromEntries(EFFECTS.map((e) =>
-      [`content/${e.name}.ts`, { title: e.title, category: e.category, ...(e.element ? { element: e.element } : {}), keywords: ["toy", e.category, ...e.name.split("-")].filter((x, i, a) => a.indexOf(x) === i) }])),
+    effects: Object.fromEntries([
+      ...EFFECTS.map((e) =>
+        [`content/${e.name}.ts`, { title: e.title, category: e.category, ...(e.element ? { element: e.element } : {}), keywords: ["toy", e.category, ...e.name.split("-")].filter((x, i, a) => a.indexOf(x) === i) }]),
+      ...geometric.map(([name, title, category]) =>
+        [`content/geometric/${name}.ts`, { title, category, keywords: ["geometric", name], ...(name === "dust" ? { element: "earth" } : name === "splash" ? { element: "water" } : {}) }]),
+    ]),
   };
 }
 

@@ -60,7 +60,7 @@ export default file.particles({
   "drag": 0.5,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/coin")
+    "mesh": ref("base/vfx/low-poly/models/coin")
   },
   "lit": true,
   "roughness": 0.38,

@@ -1,74 +1,75 @@
 import { file } from '@origingame/engine/author';
+// Land Dust: At the feet on landing.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 18,
-    "frames": 12,
-    "h": 112,
-    "innerLine": 1,
-    "layers": [
-      {
-        "cone": 180,
-        "count": 8,
-        "decay": 0.5,
-        "dir": -90,
-        "emit": 0.05,
-        "flat": 0.2,
-        "life": [
-          0.5,
-          0.9
-        ],
-        "r0": 0.12,
-        "r1": 0.28,
-        "ramp": "$main",
-        "rise": 0.12,
-        "speed": 1.4,
-        "spread": 0.9,
-        "type": "puffs",
-        "y": 0.55
-      },
-      {
-        "count": 6,
-        "dir": -90,
-        "drag": 1.2,
-        "gravity": 2.4,
-        "ground": 0.7,
-        "life": [
-          0.35,
-          0.6
-        ],
-        "mode": "burst",
-        "ramp": "$main",
-        "shape": "circle",
-        "size": 4,
-        "speed": [
-          1,
-          1.6
-        ],
-        "spread": 140,
-        "type": "particles",
-        "y": 0.55
-      }
+ "recipe": {
+  "name": "Land Dust",
+  "w": 192,
+  "h": 112,
+  "frames": 12,
+  "fps": 18,
+  "loop": false,
+  "seed": 42,
+  "ramps": {
+   "main": [
+    "#a37650",
+    "#cfa274",
+    "#f0d6ae"
+   ]
+  },
+  "layers": [
+   {
+    "type": "puffs",
+    "ramp": "$main",
+    "count": 8,
+    "spread": 0.9,
+    "flat": 0.2,
+    "rise": 0.12,
+    "r0": 0.12,
+    "r1": 0.28,
+    "life": [
+     0.5,
+     0.9
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Land Dust",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.7143
+    "emit": 0.05,
+    "dir": -90,
+    "cone": 180,
+    "speed": 1.4,
+    "decay": 0.5,
+    "y": 0.55
+   },
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "burst",
+    "count": 6,
+    "y": 0.55,
+    "dir": -90,
+    "spread": 140,
+    "speed": [
+     1,
+     1.6
     ],
-    "ramps": {
-      "main": [
-        "#a37650",
-        "#cfa274",
-        "#f0d6ae"
-      ]
-    },
-    "scale": 0.571429,
-    "seed": 42,
-    "supersample": 4,
-    "w": 192
-  }
+    "gravity": 2.4,
+    "drag": 1.2,
+    "ground": 0.7,
+    "life": [
+     0.35,
+     0.6
+    ],
+    "shape": "circle",
+    "size": 4
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.7143
+  ],
+  "scale": 0.571429,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

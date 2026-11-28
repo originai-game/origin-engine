@@ -112,11 +112,10 @@ export function words(text: string): string[] {
 export function pickStyle(premise: string, styles: readonly Style[], profile: Profile = "3d", view?: string): { style: Style; score: number } | null {
   const names: readonly [string, RegExp][] = [
     ["pixel", /\bpixel(?:[- ]art)?\b|\b(?:8|16)[- ]?bit\b|像素/i],
-    ["cartoon-2d", /\bcartoon\b|\bcel[- ]shad(?:ing|ed)\b|卡通|赛璐璐/i],
-    ["inked-comic-3d", /\bcartoon\b|\bcel[- ]shad(?:ing|ed)\b|\boutlines?\b|\bcomic\b|卡通|漫画|墨线|赛璐璐/i],
-    ["faceted-low-poly", /\blow[- ]poly\b|\bfaceted\b|低多边形|低模|切面/i],
-    ["toy-3d", /\btoy\b|玩具/i],
-    ["neon-vector", /\bneon\b|\bvector\b|霓虹|矢量/i],
+    ["anime", /\banime\b|二次元|动漫/i],
+    ["cartoon", /\bcartoon\b|\bcel[- ]shad(?:ing|ed)\b|\boutlines?\b|\bcomic\b|卡通|漫画|墨线|赛璐璐/i],
+    ["low-poly", /\blow[- ]poly\b|\bfaceted\b|\btoy\b|低多边形|低模|切面|玩具/i],
+    ["neon", /\bneon\b|\bvector\b|霓虹|矢量/i],
   ];
   for (const [slug, pattern] of names) {
     if (!pattern.test(premise)) continue;

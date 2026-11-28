@@ -21,9 +21,9 @@ export default file.vfx({
         "kind": "mesh",
         "shape": {
           "kind": "model",
-          "asset": ref("base/vfx/toy-3d/models/star")
+          "asset": ref("base/vfx/low-poly/models/star")
         },
-        "effect": ref("base/vfx/toy-3d/solid"),
+        "effect": ref("base/vfx/low-poly/solid"),
         "scale": {
           "kind": "curve",
           "keys": [
@@ -68,7 +68,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/star-ring")
+        "asset": ref("base/vfx/low-poly/emitters/star-ring")
       }
     },
     {
@@ -93,7 +93,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [

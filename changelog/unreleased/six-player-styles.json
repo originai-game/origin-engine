@@ -1,0 +1,14 @@
+{
+  "breaking": [
+    {
+      "member": "look presets and catalogue",
+      "change": "Six player-facing styles replace the descriptive preset list: lookless Realistic plus low-poly, cartoon, anime, pixel and neon. faceted-low-poly and toy-3d are merged; inked-comic-3d folds into Cartoon; anime-cel-3d returns as Anime. No old slug is an alias. All built-in variants are removed, including paper and topdown.",
+      "fix": "Write file.look({extends:['low-poly']}) instead of faceted-low-poly or toy-3d, ['cartoon'] instead of cartoon-2d or inked-comic-3d, ['anime'] instead of anime-cel-3d, and ['neon'] instead of neon-vector. Keep ['pixel'], but remove variant:'topdown' and choose creation view:'top-down-2d'. Remove variant:'paper'; there is no paper replacement. For Realistic omit look entirely; none is only the creation picker's sentinel. Read the new categories and view coverage from looks/catalogue.json and regenerate creation.json from this engine release."
+    },
+    {
+      "member": "look VFX packs and preview paths",
+      "change": "VFX cartoon-2d becomes cartoon; toy-3d and geometric are one low-poly pack; toy-3d-paper is removed. Old preview and preset paths are removed. The consolidated looks select the existing UI packs; this change renames or deletes no UI pack.",
+      "fix": "Install og vfx add cartoon or og vfx add low-poly; change base/vfx/cartoon-2d/* to base/vfx/cartoon/*, base/vfx/toy-3d/* to base/vfx/low-poly/* and base/vfx/geometric/* to base/vfx/low-poly/geometric/*. Remove paper effects. Low-poly uses @themes/candy, Cartoon @themes/cartoon, Anime @themes/anime, Pixel @themes/pixel and Neon @themes/neon. Fetch presets/{low-poly,cartoon,anime,pixel,neon}.json and previews/{low-poly,cartoon,anime,pixel,neon}.webp from the same release as creation.json; do not retain deleted cards, variant options or old cached preview URLs."
+    }
+  ]
+}

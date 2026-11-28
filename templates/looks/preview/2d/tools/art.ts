@@ -130,7 +130,7 @@ const TOP: Record<string, Beat> = {
 
 /** What one beat of a look needs said beyond its brief: what the scene asks of it that the brief cannot know. */
 const BEAT_NOTES: Record<string, Record<string, string>> = {
-  "pixel:topdown": {
+  "pixel@top-down-2d": {
     hero: "Proportions: a chibi figure two heads tall: the hooded head is half the figure's height and as wide as the body, with two dark eyes of one block each; the lantern is one bright yellow block in the hand. Drawn in exactly 16 x 24 large square blocks and nothing finer: every shape is at least two blocks wide.",
   },
 };
@@ -173,7 +173,7 @@ function plan(): Job[] {
   const out: Job[] = [];
   for (const name of todo) {
     const entry = table[name] as Entry;
-    const [slug, variant] = name.split(":") as [string, string | undefined];
+    const [slug, variant] = name.split("@")[0]!.split(":") as [string, string | undefined];
     const look = presetLook(slug, variant ? { variant } : {});
     const beats = entry.plan === "top" ? TOP : SIDE;
     for (const [beat, spec] of Object.entries(beats)) {

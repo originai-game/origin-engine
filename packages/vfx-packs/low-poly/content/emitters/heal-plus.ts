@@ -54,7 +54,7 @@ export default file.particles({
   "drag": 1,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/star")
+    "mesh": ref("base/vfx/low-poly/models/star")
   },
   "lit": true,
   "roughness": 0.38,

@@ -53,7 +53,7 @@ export default file.particles({
   "drag": 1.5,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/flame")
+    "mesh": ref("base/vfx/low-poly/models/flame")
   },
   "blend": "alpha",
   "colorOverLife": [

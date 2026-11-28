@@ -1,51 +1,52 @@
 import { file } from '@origingame/engine/author';
+// Run Dust: Loops behind running feet; +x is the way the runner faces.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 12,
-    "h": 64,
-    "innerLine": 1,
-    "layers": [
-      {
-        "cone": 40,
-        "count": 4,
-        "decay": 0.6,
-        "dir": 180,
-        "flat": 0.4,
-        "life": [
-          0.5,
-          0.9
-        ],
-        "r0": 0.1,
-        "r1": 0.2,
-        "ramp": "$main",
-        "rise": 0.25,
-        "speed": 0.8,
-        "spread": 0.2,
-        "type": "puffs",
-        "x": 0.3,
-        "y": 0.55
-      }
+ "recipe": {
+  "name": "Run Dust",
+  "w": 96,
+  "h": 64,
+  "frames": 12,
+  "fps": 12,
+  "loop": true,
+  "seed": 43,
+  "ramps": {
+   "main": [
+    "#a37650",
+    "#cfa274",
+    "#f0d6ae"
+   ]
+  },
+  "layers": [
+   {
+    "type": "puffs",
+    "ramp": "$main",
+    "count": 4,
+    "spread": 0.2,
+    "flat": 0.4,
+    "rise": 0.25,
+    "r0": 0.1,
+    "r1": 0.2,
+    "life": [
+     0.5,
+     0.9
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Run Dust",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.875
-    ],
-    "ramps": {
-      "main": [
-        "#a37650",
-        "#cfa274",
-        "#f0d6ae"
-      ]
-    },
-    "seed": 43,
-    "supersample": 4,
-    "w": 96
-  }
+    "dir": 180,
+    "cone": 40,
+    "speed": 0.8,
+    "decay": 0.6,
+    "x": 0.3,
+    "y": 0.55
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.875
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

@@ -1,42 +1,43 @@
 import { file } from '@origingame/engine/author';
+// Dizzy Stars: Loops over a stunned character's head.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 16,
-    "h": 64,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 4,
-        "life": [
-          1,
-          1
-        ],
-        "mode": "orbit",
-        "orbitR": 0.75,
-        "ramp": "$main",
-        "shape": "star",
-        "size": 7,
-        "squash": 0.35,
-        "turns": 1,
-        "type": "particles"
-      }
+ "recipe": {
+  "name": "Dizzy Stars",
+  "w": 112,
+  "h": 64,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 74,
+  "ramps": {
+   "main": [
+    "#e09a14",
+    "#ffd23c",
+    "#fff3a8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "orbit",
+    "count": 4,
+    "orbitR": 0.75,
+    "turns": 1,
+    "squash": 0.35,
+    "life": [
+     1,
+     1
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Dizzy Stars",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#e09a14",
-        "#ffd23c",
-        "#fff3a8"
-      ]
-    },
-    "seed": 74,
-    "supersample": 4,
-    "w": 112
-  }
+    "shape": "star",
+    "size": 7
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

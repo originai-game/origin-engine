@@ -4,7 +4,7 @@ export default file.look({
   // A finer grid, eight tones per channel through a gentle Bayer 4 dither: the
   // frame's quantise holds anything to the look, while art the cook conformed
   // (64 colours in 6-step ramps, ArtPalette) keeps its own colours.
-  name: "Pixel art",
+  name: "Pixel",
   mood: "bright",
   ui: "@themes/pixel",
   // The UI's seed colours (UiSeeds), so the default style matches the
@@ -25,7 +25,13 @@ export default file.look({
     ditherStrength: 0.5,
   },
   RenderSettings: {
+    sky: false,
+    bloom: false,
+    autoExposure: false,
     toneMapping: "none",
+  },
+  PostEffects: {
+    ao: false,
   },
   // The art contract (docs/art.md §2.1), from the catalogue entry's palette and
   // assets: 32 to 64 colours in 4- to 6-step ramps; 32 to 48 px characters on 16

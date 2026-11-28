@@ -2,12 +2,12 @@
   "format": 1,
   "engine": {
     "version": "0.9.0",
-    "revision": "e9589fa8dbd5761919f559e5c9f198d31c4890b2"
+    "revision": "0ad4579cd49b3b58e2b1ba916cbf9f9cfcad7cc7"
   },
   "files": [
     {
       "path": "README.md",
-      "sha256": "c38db7c1753f1a6b316ae231d0c11938a4dfe1a6b492b9befe61deddf4fb42c4",
+      "sha256": "26f8b9246b51a0407d3e0d9ebaec150e50acd92c3d7d0f8493bd7662f0fe4a09",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -17,7 +17,7 @@
     },
     {
       "path": "content/afterburner.ts",
-      "sha256": "ac07f5a35eb91d0336f1c95928d3bb492fd00a414cb440a95a5288c145cd84ad",
+      "sha256": "a89557b95e07a98aab81823c209859a3c533feab5e8b5e3d89920bf744defa4e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -27,7 +27,7 @@
     },
     {
       "path": "content/boost.ts",
-      "sha256": "8b6256add511b14c9779391fdd322f959be064a8699dfcf8b2ac58a07ad24680",
+      "sha256": "0ef4550651e89b83be41f403868924b31841c867611bff7f53ba6a2d301fd118",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -37,7 +37,7 @@
     },
     {
       "path": "content/break-block.ts",
-      "sha256": "48fa91b8086bdd71c4e412e9e61da5145097296f33a7ccb5be90445a4ee8caa1",
+      "sha256": "29b3f8eeb3bde7f57f71f70139c7610757d0db35b6b8bedb98046ef0d45a62fc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -47,7 +47,7 @@
     },
     {
       "path": "content/break-crate.ts",
-      "sha256": "af0260ac0e6b08944fa196508fcd4690c18fd86b7d3dfb6cbeb126f32f7aa604",
+      "sha256": "6c256db74bf2583badbfe5b48fe15ed85764bc40bcd7452de0fdf57a4b77caec",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -57,7 +57,7 @@
     },
     {
       "path": "content/break-ice.ts",
-      "sha256": "f2dd372ee445e0379a75892a34520260eef2c775eb108cb876ba2347f0841b96",
+      "sha256": "0834a7356ad148f6bddbc2d44d2742ed651607049f1317774c084045e0a9c5e3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -67,7 +67,7 @@
     },
     {
       "path": "content/break-rock.ts",
-      "sha256": "1f34a98a4ec83c83b2f89da71d4a2a03a320679c0374f85a6ed68f45518c4770",
+      "sha256": "6bec459181d5cc1538a253d85bb0c3747465a38fe0fc9795ae26a2a1dd1fb8d9",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -87,7 +87,7 @@
     },
     {
       "path": "content/bubbles.ts",
-      "sha256": "ec8f8cd44236f747ea408eb5b5eb872bbf767fd537dc75819ac707f2c8a9376d",
+      "sha256": "ee679302888bee214b93c0c4e6c08af31d91c93c2ddde47ecc945212253a9666",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -97,7 +97,7 @@
     },
     {
       "path": "content/buff.ts",
-      "sha256": "be72a5f101b465c8f476db316e48422540e1ecf9984a317060daacf72d63a274",
+      "sha256": "24d6e7caf4d0352bebddbb29947ddbdef1cef5a5f856a42d6c53755d8f9aceba",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -107,7 +107,7 @@
     },
     {
       "path": "content/build-place.ts",
-      "sha256": "2351714efbaafffaaa0a06f66f14540d67337fe0f99246a768b21daa7f578f33",
+      "sha256": "0d590b78cb3d78586b3371494ac63f72a56cf5cefd34cd9d3af24bb554eec3f4",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -117,7 +117,7 @@
     },
     {
       "path": "content/build-remove.ts",
-      "sha256": "fc634e33da7abe7211c1877ff24a2b83efea53d418e31debad0e19877152bf5c",
+      "sha256": "b616e0c80084ba962f71474a3ea88ad7e9dfacedb8b6b6f621d7542f5b3fdf4e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -127,7 +127,7 @@
     },
     {
       "path": "content/bullet.ts",
-      "sha256": "7ccf89768e9e7300823cfb29ef9eff525472fc29947228a65696e9354657b713",
+      "sha256": "1c1ced129735150b8c99b7bacdbb6cedf0916971804cd09123f73f33e476f8af",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -137,7 +137,7 @@
     },
     {
       "path": "content/burning.ts",
-      "sha256": "7628450af5f49b4f357d37474077547e735e4b56766fe3f1ccb74daf5456c040",
+      "sha256": "a4acd418e4e7c5cdea1cd06d40dbf711cbb79faf93aaccab69dac9a6c089e660",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -147,7 +147,7 @@
     },
     {
       "path": "content/campfire.ts",
-      "sha256": "0677687a6ca378e9edb5c0065e8a385cb1f5f9a815fd2295fdfd4040d05a9752",
+      "sha256": "8fbc966651df4d5243c7c3db4e4875e975be915e64ec205870a4b1b87b002226",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -157,7 +157,7 @@
     },
     {
       "path": "content/charge.ts",
-      "sha256": "f241da8bb70220ab7bf7ed1755cc9d4165d2582407b5c6c86eb4f52587ce9137",
+      "sha256": "c1d700f26a0929fbb6c5ddec21d51be314e37ac367905436c437b1dc7ad0bf92",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -167,7 +167,7 @@
     },
     {
       "path": "content/checkpoint.ts",
-      "sha256": "2e63b7e4fa4dfd0c27a439e45773f9317579893f366b8c9f828bbbae100c7b2f",
+      "sha256": "9e4b504ba3db1c21620b72fce8085ef2f09e701349885961e54ceae76c13d3b1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -177,7 +177,7 @@
     },
     {
       "path": "content/chest-open.ts",
-      "sha256": "23fb3e7c967c210e41aaf1a5b65b0e7450bbdb998f3cd25ea0ca3a86b0692522",
+      "sha256": "fbcde99dedc3009cb7d6b28a654043006dd8a13d3350957784c223aaefeb7007",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -187,7 +187,7 @@
     },
     {
       "path": "content/chimney-smoke.ts",
-      "sha256": "e99068561401134dbd6ad3699efc2673f2473f18fdf5e15f0d5f0e5e843ed935",
+      "sha256": "250aea399dd951fad262d6943b66d2789e849a74cbc2fff13ab03fd2ad7ea44f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -197,7 +197,7 @@
     },
     {
       "path": "content/coin.ts",
-      "sha256": "24f5d3438897a30b15d964d948f0c635556810c7d3c80a3a5fe798662390dfef",
+      "sha256": "ffc797cfbbd22e8e97b1a057dab6be81e6564a0be07a8040fd64274f5ff7a5f5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -207,7 +207,7 @@
     },
     {
       "path": "content/confetti-rain.ts",
-      "sha256": "813615c73ce40da157277762ba585c3d2d8f6c501c6b9734510ce954e88c845d",
+      "sha256": "b0d99408cfd86fd3565cc48b255af7308bb392fae083d2fa9c85a9060c9d43c6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -217,7 +217,7 @@
     },
     {
       "path": "content/confetti.ts",
-      "sha256": "052d5edc4d1be7e45c820e1799ac6ceaa767c0f81afdc9137b21ff3694534b28",
+      "sha256": "44e71dfaf8739c3fe3ccfabf2c118bf2ed1555548877039aadaf2411a98962f5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -227,7 +227,7 @@
     },
     {
       "path": "content/dash.ts",
-      "sha256": "3291dbe8ac36d4093165100191da11b5b2b2c6482267fc97be4e94645845c5a8",
+      "sha256": "9e219aca1907b7b175a36f608334c511e8c00baab3b144466294339c3dbc20f4",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -237,7 +237,7 @@
     },
     {
       "path": "content/debuff.ts",
-      "sha256": "ed7759d758c7366be5069d92bf2f92628bf030e92c6787f5f7abf7dfc9010c5d",
+      "sha256": "783deed79690b520d14ba627e773eef39d64135f7318998c95aac34168ec2f45",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -247,7 +247,7 @@
     },
     {
       "path": "content/double-jump.ts",
-      "sha256": "320a34d3d23df96a0d8abce3fb6d902c02822cf6c53fc35e952ee2e34555dd8c",
+      "sha256": "62a672cfeb88febb2a02561a60a50215378f20bce727316da09aecf4ec3247b7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -257,7 +257,7 @@
     },
     {
       "path": "content/drift-sparks.ts",
-      "sha256": "7a3eeac70f73c747b0317cbeb18378ef62890781b76a59a41aa3f932b72a496a",
+      "sha256": "39d2095c1f1b019209a964bdc00255cd9a8b3f4d8c3aa6207d5f0262036b0ef8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -267,7 +267,7 @@
     },
     {
       "path": "content/drip.ts",
-      "sha256": "be84fea7428e5fcdf999c68e4b8ec83b9ddf07538afa539878c413dac996db26",
+      "sha256": "74db8ced4754b393c389422c933413013a505a4c01beab5d6efbf494b8c36f0c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -277,7 +277,7 @@
     },
     {
       "path": "content/dust.ts",
-      "sha256": "12a2ca3728c3c0901b9c2d850ead7cac5f86ba81b3f15e4708b21406592ac147",
+      "sha256": "582b168a059d11cf7704bdd2eaf88b497bc1f64d7040a2c1a576a37b4853229f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -287,7 +287,7 @@
     },
     {
       "path": "content/emitters/block-bits.ts",
-      "sha256": "41520567bba90953d488745eed0737960a7e9a5f2c4e9ed10c45234bde5799d7",
+      "sha256": "e4febdc9b26e72d9193acf9ffbded3620af0163d64b148f82f663ebc2e57d83a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -297,7 +297,7 @@
     },
     {
       "path": "content/emitters/block-chunks.ts",
-      "sha256": "8c7693538f4eb9aabae33e486fd0d80b327181ca88360b8642f7366b8c449326",
+      "sha256": "e5d834084bd18ea7b5f75d8bf71a8f7aab4d253d5d33148e6345620c6edfa518",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -307,7 +307,7 @@
     },
     {
       "path": "content/emitters/block-puffs.ts",
-      "sha256": "0b95eefe10552b71ab11c96f97358441960f8e593e270a3ab6607c5ee0ed34b6",
+      "sha256": "3e9ebb30f99290b5730aeafac35f59fb3f3562f870d91c361a9b871dbd5186a1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -317,7 +317,7 @@
     },
     {
       "path": "content/emitters/bolt-bits.ts",
-      "sha256": "924fcb3fd9e3fc1c18c5866c511c74505f39ba7765487170b5e0a3bbc4f88ab1",
+      "sha256": "671ef667a3b3693495ee78f6bf8f15e3457dc2b61bd0810c92d25e087947876e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -327,7 +327,7 @@
     },
     {
       "path": "content/emitters/boost-flames.ts",
-      "sha256": "40d9e742baac495e783b30a3f4b1411474e01263aa6a95380e2ebf1a3c4de641",
+      "sha256": "d738bc81cf57c01f2a2cebe1e423cfcc19ed46b1ee3ee848252275d173b7e13f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -337,7 +337,7 @@
     },
     {
       "path": "content/emitters/boost-puffs.ts",
-      "sha256": "506b3ba7b3fa6476ba98578cfc5b7cc41eeca26f460e3499abddea82de409ed0",
+      "sha256": "105a6f7b0d7e6c14d32ea5c3ac645fb690ccbb254abd07054ed8a531628b11d2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -347,7 +347,7 @@
     },
     {
       "path": "content/emitters/boost-stars.ts",
-      "sha256": "1ff99a370ee3681670a36771daecf408636619dd0d1156baf843a2ebe8e6c09b",
+      "sha256": "02c0b42762176ce7dbe8b83594f0e273ec01274b55bef9ae8e2412cbad8d2e61",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -357,7 +357,7 @@
     },
     {
       "path": "content/emitters/bubbles-rise.ts",
-      "sha256": "8b079f6bd2828af8ea085bf01c489c2498edb1dd5069716305a9a0da4cb81bfa",
+      "sha256": "9523266d73b5f90c657652fdd4c28fce7cff15d1c145f78d5c0eec63c84d7913",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -367,7 +367,7 @@
     },
     {
       "path": "content/emitters/buff-arrows.ts",
-      "sha256": "ead847bd13fe0c8deaf29dbda78726655b0752aed2409d96f53f3393f50d26f6",
+      "sha256": "0d830505c2c754d0c3b50b22cbc0f7c691c7b84d4b907d70f0fad6cfd9834a10",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -377,7 +377,7 @@
     },
     {
       "path": "content/emitters/bullet-puffs.ts",
-      "sha256": "f9cc5cc015a604ac6cb4892f5e1a9225d35dad9fb8e50a2194957b540ed7d778",
+      "sha256": "7cc11d2cc0f860f5d8a1b9da549f42bb589bfa0126d7e0e7f95829f0dd3615ac",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -387,7 +387,7 @@
     },
     {
       "path": "content/emitters/burning-flames.ts",
-      "sha256": "c52c03570fc2759ca10045028ba883e1db671875cc4ffe0a88b158d82bb61c30",
+      "sha256": "0be0df232e35983878865a74cadbd3b64354fc3f5793827b299a45cb84898789",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -397,7 +397,7 @@
     },
     {
       "path": "content/emitters/burning-puffs.ts",
-      "sha256": "ebd3aef9261e5fcb5c5e2dff77450ef64c21724057029824dcd8195437516a43",
+      "sha256": "215e107cdc2b1a209130692254cd5367081fec642333c6075067fd79c46c361b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -407,7 +407,7 @@
     },
     {
       "path": "content/emitters/camp-embers.ts",
-      "sha256": "7bc1264160218bca6077488c50cf48311b4aa5f037ec872fdbacbe5e6b4e8048",
+      "sha256": "f94a76f4d4e06529ec50dcad19c995c9932a2ddf84dbf730669d676ec9bbd52a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -417,7 +417,7 @@
     },
     {
       "path": "content/emitters/camp-flames.ts",
-      "sha256": "eaf543d7d779360d85f57ce0efeaa0ee4eb147a6f130623b73fb2709ee86b7de",
+      "sha256": "ed0c5b174327c47a4568fb78baadaa261f7eefa535c702d3940079b9cbb17c70",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -427,7 +427,7 @@
     },
     {
       "path": "content/emitters/camp-puffs.ts",
-      "sha256": "05e5dbe86a4f5eb0d41bf3efcc3d07885a1dce1111022c65b0c2bd40ae2b5cd5",
+      "sha256": "09527b02a42e89259a2cf15ccd7535740fec4c622df53282d550c739632cf396",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -437,7 +437,7 @@
     },
     {
       "path": "content/emitters/charge-in.ts",
-      "sha256": "6498d6875271b15c9a1c2c51c123cd25a20a82f6f337e9e59df802d9304cf1f0",
+      "sha256": "db83f5694abc5fa1ef81a0f6ff15dd5ab809c4c832f73642b58a4dd565d1d8a7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -447,7 +447,7 @@
     },
     {
       "path": "content/emitters/check-confetti-a.ts",
-      "sha256": "dbc2bb67b7616f15d0b34b3ce7bfafc6ef1338ab9a25c1ee2cc23812711a84ad",
+      "sha256": "08bac469d7492123296a977d75585d58a9f3df407c095f637dcb7e35f8fd39ee",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -457,7 +457,7 @@
     },
     {
       "path": "content/emitters/check-confetti-b.ts",
-      "sha256": "e33bff9e274982149808bf887ad5ce6723da727c21995e95a1ff00b9c07e0e2c",
+      "sha256": "4626b8cfe3ce81ba2cf9db2b2fe1f057133349ae2ad79a70292f028865f653ed",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -467,7 +467,7 @@
     },
     {
       "path": "content/emitters/check-confetti-c.ts",
-      "sha256": "4d19c6b412d762bbe40cccebb886f26aec15d43a88c552bd5b74f42fd450efb6",
+      "sha256": "1b41f5393875f66d674ca792a4b732cb25bb766445ff9fd58563e83792ff0a7e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -477,7 +477,7 @@
     },
     {
       "path": "content/emitters/chest-coins.ts",
-      "sha256": "359db3ebe685d45ff07e90a0f4b448f10fc6cede7c2c63e41167f9c052f21c88",
+      "sha256": "97e25dac0bcab023e6f8f938215fc21de4b2604ebcc6a9d0dc35da8e5050fb81",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -487,7 +487,7 @@
     },
     {
       "path": "content/emitters/chest-stars.ts",
-      "sha256": "d61d3efeba21e84db2d5d3449bd6a96560fbb63f00a087b12ff5086aad71176c",
+      "sha256": "421a5bd163146c479bc6182cae4273aebeb4debe94d4dc2a2964403e7577f2b6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -497,7 +497,7 @@
     },
     {
       "path": "content/emitters/chimney-puffs.ts",
-      "sha256": "4711fa09c3474f5022483cd46cd5cd88c614168261bfb859b067e672c4a87012",
+      "sha256": "edef924542b9853d75d0435728cb072a7153249fcb94cea791242234afc074f1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -507,7 +507,7 @@
     },
     {
       "path": "content/emitters/circle-stars.ts",
-      "sha256": "8ee169ea0bb996350b9e9a65e4ef05c6e0f1393ca03f4b4e0baaf88a5f4e6fe6",
+      "sha256": "1b634e8d65dc9bf438df44874e95eb4067f0f58dcf3115215058db09a07aedcd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -517,7 +517,7 @@
     },
     {
       "path": "content/emitters/coin-stars.ts",
-      "sha256": "56524a276698ffe420c4b1d442a82fbdca16e6fcfc78c94d2bfbf28f702d3718",
+      "sha256": "94f1e52f4a64ea39e4a3354e5a1c9f9eb027dbaaa77c4978f7a640171a45af2f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -527,7 +527,7 @@
     },
     {
       "path": "content/emitters/confetti-0.ts",
-      "sha256": "c8ff8ce685530102980d6602410ec426a479791c6a1747ce0e31a35b631fb993",
+      "sha256": "7419f1928de72898c58d55abedc17f5501cdf89a5b9476eb5bd311e13633562f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -537,7 +537,7 @@
     },
     {
       "path": "content/emitters/confetti-1.ts",
-      "sha256": "2842e787f93b86e8e2db264d180b83d2365533990d03bc50852a55437b9d7083",
+      "sha256": "289b875d548e460e1e63f5e9390b5517f25ba56300d1d0f281fef6e02adfcddc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -547,7 +547,7 @@
     },
     {
       "path": "content/emitters/confetti-2.ts",
-      "sha256": "94dc53d143504dbc6223bc0de7ec0d82ffe866c3d1ff73b6320c899c972b4ed6",
+      "sha256": "81ebfb0f28f3eca2ab976a12def605d6f62ff1323f135728e62870bf9876cbd2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -557,7 +557,7 @@
     },
     {
       "path": "content/emitters/confetti-3.ts",
-      "sha256": "8177d6ed83901e637bdcd1f3a7e7d7e2277abf78b5abdab15929d501a6a86cf1",
+      "sha256": "f6950e99eadf3428bf1b82840534693dc999d9dd9db2ed82d7a9e50d8fd9eddb",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -567,7 +567,7 @@
     },
     {
       "path": "content/emitters/confetti-4.ts",
-      "sha256": "b9c9ca77cc52e01ced52d4f8f0e6acb1e767f88df734178facff57533cfaef26",
+      "sha256": "2d5721d95586c0f60326c91868591a709c6ddef3c4a46febe0a459215c37f772",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -577,7 +577,7 @@
     },
     {
       "path": "content/emitters/confetti-rain-0.ts",
-      "sha256": "d0e0c06b54cbe3c23a0ae11145c56152cfc3d338e4eb938bd28ccf0467af908d",
+      "sha256": "1be373a0ba5e33713c77672e8205bb5f4208ba6f09088ec95f479d879017b18b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -587,7 +587,7 @@
     },
     {
       "path": "content/emitters/confetti-rain-1.ts",
-      "sha256": "ee221dced84a533590a2ea1ced850847c88956f21126a343f6c96b1afd231c63",
+      "sha256": "077730cef997c8f710c93043b45b109c6f6697737c57d16f1ccdf10cef46d812",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -597,7 +597,7 @@
     },
     {
       "path": "content/emitters/confetti-rain-2.ts",
-      "sha256": "9a6e4e8748b667168f0c7fbfdd72f7a8068b009c65ecc4132fd9c4a7fa4ef39a",
+      "sha256": "f3a318c089c7412a654df53cd45e6677ca5e6ba0c460392cec6192c5cc2fb661",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -607,7 +607,7 @@
     },
     {
       "path": "content/emitters/confetti-rain-3.ts",
-      "sha256": "53b0128078fa37fad2f00eb789aac7cf36164204bad24a8784d14a0875d9ec60",
+      "sha256": "632619ea0d9913bcd4770e4783d6c68e3636ec4d2f837ffbc8c1679afa050c5a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -617,7 +617,7 @@
     },
     {
       "path": "content/emitters/confetti-rain-4.ts",
-      "sha256": "1b822021cad0456481429a1d79827ee4b9a6ec6a165e8f67aa67a73b335d245c",
+      "sha256": "3acba3dcbf2fc7f1ee002216683151fa145d77e654cad7504bb26837faf18de1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -627,7 +627,7 @@
     },
     {
       "path": "content/emitters/crate-planks.ts",
-      "sha256": "387430683fcc0d71a3a8330a870a485d48b6f46968f6c40f2f0f2a85bcbbf6ba",
+      "sha256": "09792d3382c0792a32a23e4aa6a8133d7a7911419a3b6338538eba6c09b200be",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -637,7 +637,7 @@
     },
     {
       "path": "content/emitters/crate-puffs.ts",
-      "sha256": "2ea914e77071044b56a26ed9ff9ae71e8cf17a68aead63aff717f9456f3aa0e9",
+      "sha256": "9a714011ae5fc0762a30d33e2c6ffd2d035edb7801f92df81510f822a747d2c7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -647,7 +647,7 @@
     },
     {
       "path": "content/emitters/crate-splinters.ts",
-      "sha256": "79577bf63bf70711463038ba36014b5105a973f8628e0f70900b6509645018ae",
+      "sha256": "9c2907fd29b4faa321d5244a2ee123e0ba73535a719f21f03b66c544d40b4e9c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -657,7 +657,7 @@
     },
     {
       "path": "content/emitters/dash-lines.ts",
-      "sha256": "d2dbcbcda76792d38ea4752cfd0d4f40ec9a149f208f4ddac6069e734f316eca",
+      "sha256": "2dd770c58418ec704cffb3c8ffc482faaa6eb3cc4edeffa858df283bd09ffdc1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -667,7 +667,7 @@
     },
     {
       "path": "content/emitters/dash-puffs.ts",
-      "sha256": "759464f97fa4aa0acb3fc73f31b47412438555e66f1bd6dd7730fd3c6a42dd6d",
+      "sha256": "5d20e8854f3c2a143d7f1030eb0dcb77a73ab29a6c87f177d224e8f505606f6d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -677,7 +677,7 @@
     },
     {
       "path": "content/emitters/debuff-drops.ts",
-      "sha256": "236e193e2ee49530f08d988f1f185f10bbe7f8d99ad53e8caa936b7f13d7f353",
+      "sha256": "127ec424ae90f9466a2df66e87369d63b78d0fc10116830d9029afb8c38e365d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -687,7 +687,7 @@
     },
     {
       "path": "content/emitters/debuff-puffs.ts",
-      "sha256": "88b40311d2c4c42759a8edd5e40c42a2cb9211b45a0b4094abbd1bcf3f288a63",
+      "sha256": "339837671ebd3b4a26214db042b9017dc7d379d68b52a70f06600ba394fdd611",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -697,7 +697,7 @@
     },
     {
       "path": "content/emitters/double-puffs.ts",
-      "sha256": "d82489a47552e4f951b9fd7f7604a51b4699f0b6c649001d3ffa42e238c5aca4",
+      "sha256": "e5c15fda9e966e03da5c3fcdde6fe37063d5fc41651d47590342796a82729d29",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -707,7 +707,7 @@
     },
     {
       "path": "content/emitters/double-stars.ts",
-      "sha256": "4a02fd29b6bbad4545a3ee0b53000b5e63e13f0af4b4b11480ccdd1af0ec2ff4",
+      "sha256": "c70984bde3e81686212250fd659eb3589a7a7efb4932a4eadbe2d7940ecb4bd2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -717,7 +717,7 @@
     },
     {
       "path": "content/emitters/drift-puffs.ts",
-      "sha256": "75595f26c5f8162e78ef20484fc963688298725e026ad67d567dfea9b77c5851",
+      "sha256": "ab77b04cf45ba03df5f2992abd0681b4abbda7875135a84f4c5ffe5ee3d736ec",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -727,7 +727,7 @@
     },
     {
       "path": "content/emitters/drift-sparks.ts",
-      "sha256": "fc6935e807139a3e23d2107ec117466fce7e80a80fe66f417d3976f0f35ca312",
+      "sha256": "f60a8b4814094e1f1f2cc41ae235888d1ceb5f7a79987e14843e977fa0b2638d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -737,7 +737,7 @@
     },
     {
       "path": "content/emitters/drip-drop.ts",
-      "sha256": "84e9441aeec344a54e7503e9b1061a83c76449044331e672622053558c351fd7",
+      "sha256": "87091885e65b5deb4e2251a3985de795cd70e8b141022e3f8dd0868c5255c228",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -747,7 +747,7 @@
     },
     {
       "path": "content/emitters/drip-plip.ts",
-      "sha256": "1bbf601c8ae9f698be8c5cb8bfacf2dbab0e295c8238c90d98c251184101d080",
+      "sha256": "6bc34df12c305f3ffca9102ebf3b8c91ab5a9cba0e2141aa198acb50bd7b0765",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -757,7 +757,7 @@
     },
     {
       "path": "content/emitters/dust-grit.ts",
-      "sha256": "30cf701aa9f5092c21f83bb3150d3f4994a7da5f4e5a1f4bb4dcfd62ac5f0f66",
+      "sha256": "704569c0a1a5e4366bd68ef58bbac6c3469f6c74b9efab2b6308fbcc0b637aab",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -767,7 +767,7 @@
     },
     {
       "path": "content/emitters/dust-puffs.ts",
-      "sha256": "5a016ad6ded2a31fd46b5582071f207f1576c123c02e7cca243c5e63c47a7726",
+      "sha256": "c700db2a515ab4f6e79d74521d2e7e67286db618703be39501e00329926e0a78",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -777,7 +777,7 @@
     },
     {
       "path": "content/emitters/exhaust-puffs.ts",
-      "sha256": "ba00ba6b11ebb2e6bfb03d532210efda4cb074cf61ee071a8b3554bd8309f80f",
+      "sha256": "0182b3954e0e93192c6c924b10b04985a2e34919d43e8808a18543260ec679b1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -787,7 +787,7 @@
     },
     {
       "path": "content/emitters/explosion-chips.ts",
-      "sha256": "9afd5214917226dfd5c262fb90863305c84d8b3d618c5c7a103c700753935dc5",
+      "sha256": "a77ea27936798d88aeb3ef2efc0c5a44c520c0cfd195bfa54b9502e5235ee129",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -797,7 +797,7 @@
     },
     {
       "path": "content/emitters/explosion-core.ts",
-      "sha256": "a698546bcdac658dfc963922446f996e5eeae398c8e8f0a8edaa614ff07ae544",
+      "sha256": "2f1d883468cd06319be3456e045030b0887610305539ef1092db8992c074839e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -807,7 +807,7 @@
     },
     {
       "path": "content/emitters/explosion-puffs.ts",
-      "sha256": "e937dbbb3a6b7762da7c4312827e8adf1589f3dbdf878b0f425c80c27c1d33c1",
+      "sha256": "c0bfc8231f7fbd20bce2020d82a265faeea3aac7ecd709d772e85c93949a042e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -817,7 +817,7 @@
     },
     {
       "path": "content/emitters/explosion-soot.ts",
-      "sha256": "140ed189c118a72882d8434fc44867edd220620b5afd7503eac07fd6f602d484",
+      "sha256": "f5f9f1ab2f4bc44ef2d7b8bdc63ea0bdea0b013e9ae630f714756cb42d9b28ec",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -827,7 +827,7 @@
     },
     {
       "path": "content/emitters/fireflies-drift.ts",
-      "sha256": "2ae1bc057b8bb2b56bf35d7edf1a8a7e336ffe96a893540e631355f8e3bbc12e",
+      "sha256": "2a28ed074a3c5a02877ce75f09c4e37c176fd6589a5de88c1f2c8d653062feb1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -837,7 +837,7 @@
     },
     {
       "path": "content/emitters/fountain-jet.ts",
-      "sha256": "be0ad646012b3bb8c466d7ae34e47e730b152c7604cc4039093152f98c23f88a",
+      "sha256": "1ccf800f6ba926efd714092ecc4fdd35cc5f4569da95cf7d5ce4235652a179ec",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -847,7 +847,7 @@
     },
     {
       "path": "content/emitters/frozen-crystals.ts",
-      "sha256": "5a49c938138d4ebe200168dddb4af3e214ef520024ff31c985ed2c57d1138887",
+      "sha256": "8e14abf86689e2d10554d841b80971434469c0b3cacea0cfcb53374710f7279a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -857,7 +857,7 @@
     },
     {
       "path": "content/emitters/frozen-flakes.ts",
-      "sha256": "912be0a71e65c634e43d74fd02dbc6f53657010367220c385239dacd25357a97",
+      "sha256": "54f8ead524a89d68252ac26db2fbea5f988921ed695dd1caa380076de57ee9eb",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -867,7 +867,7 @@
     },
     {
       "path": "content/emitters/fuse-stars.ts",
-      "sha256": "89f52f292ffa2da5fc4fc99c8c3b329f6ccac096f8e7f73803ca76d689a628fe",
+      "sha256": "c4931695c5a81093a57cce1ebf71e87958d02dd4d24fcc7aa42477f0c06a5194",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -877,7 +877,7 @@
     },
     {
       "path": "content/emitters/fw-burst-0.ts",
-      "sha256": "366bbbe4c80bd5e143c4b6ec08d98608b79740ee327d9b063891b9d16e8e24d6",
+      "sha256": "68fa73b523862ba5e891dfaa49986791718aad86180a16a61e73119ca76c6c8f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -887,7 +887,7 @@
     },
     {
       "path": "content/emitters/fw-burst-1.ts",
-      "sha256": "37b8609daa332dce00f40465ee48e75048c5073490e99953f6fdeee01ea8ca43",
+      "sha256": "b680ce60b66b1aab9385e53eaf24e25d66697baf350e78ce0300107d9017b9fe",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -897,7 +897,7 @@
     },
     {
       "path": "content/emitters/fw-burst-2.ts",
-      "sha256": "e68be5cd81d374a306358a3092f0490f5a44f19dc4d05d302d7fdf72e0681e4b",
+      "sha256": "13032d380bae0045523735e425929aebb6ef9e7c4d3e8cfbe44de35aac597079",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -907,7 +907,7 @@
     },
     {
       "path": "content/emitters/fw-rise.ts",
-      "sha256": "e80b8d4268e93f661365eb987726b81b3e05eb27204b812cce9a31c9bc233a42",
+      "sha256": "ee2096993c5f21a8ec1290b47c360cd39b8e366adc0467463ec9568523ae83e3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -917,7 +917,7 @@
     },
     {
       "path": "content/emitters/gem-bits.ts",
-      "sha256": "3719d99f6b985adb5a493cedbc71ea5cf6f61a87223e40d8a1e468fa6d876f12",
+      "sha256": "72091e9c34c513f63d47096eb6e2df3317b0633a10fd9632acb083bca91e7f03",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -927,7 +927,7 @@
     },
     {
       "path": "content/emitters/heal-hearts.ts",
-      "sha256": "2100a7ae7d75cbc91e1a7c63214af0903dd76d4a8790232b73060bbcbdbb9bbb",
+      "sha256": "6ca725c50171cff00d51491647b31d77d0d9e8a7f0a1eb29aa345d40704c7e23",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -937,7 +937,7 @@
     },
     {
       "path": "content/emitters/heal-plus.ts",
-      "sha256": "1a98c7668c2754f3af1f9e60307e5393ef2a133f42b4ae9323ecc94f28e47df8",
+      "sha256": "0bae702a1ae46b506a2424b9ca4c577111dac4b023daff03a6e23792f3a36b31",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -947,7 +947,7 @@
     },
     {
       "path": "content/emitters/heart-little.ts",
-      "sha256": "c7f4a8352f5eec193183f453c751b2d1d5381033a97bd027f6aaa85dee0a5c7d",
+      "sha256": "1bac00ebe8f9bb53581b0aba42b6dda7977fcf9a5da5f3ad8951d85017920ab1",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -957,7 +957,7 @@
     },
     {
       "path": "content/emitters/heavy-bits.ts",
-      "sha256": "10a4261a5fce63bcb2fb06cd48c55a817e8e1fcf13d7334b14bd85904e79b784",
+      "sha256": "b28b3d507a986059a006c7c1b9456c7975297de90b8a0aad2ffbee9135fd34d0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -967,7 +967,7 @@
     },
     {
       "path": "content/emitters/heavy-puffs.ts",
-      "sha256": "72814ec51ad84039a9323f3903569cf6272ef52005855c56414244071fdf39fc",
+      "sha256": "04b98f225d32e060cc25046bf002331aa06ec41774d7ce7505d596b999fe1061",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -977,7 +977,7 @@
     },
     {
       "path": "content/emitters/heavy-stars.ts",
-      "sha256": "3b4e176152a63e4dbe0b0b2260d4fa813e583170d4bdcbf64f135ea731279ee2",
+      "sha256": "199bc5334d7bf1479b59246b2cb3408b5b8bdf1174199d0cdd4e53617f9656f5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -987,7 +987,7 @@
     },
     {
       "path": "content/emitters/hit-bits.ts",
-      "sha256": "c47af14db1567340e1ff8fa5e2f9cbb5c55d435ebbc0d5d00f262dda5ccd2638",
+      "sha256": "d0516852ef9d10290075f703a94606dfa27fc9c1cda214ef5e2718bc1da8f575",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -997,7 +997,7 @@
     },
     {
       "path": "content/emitters/hit-stars.ts",
-      "sha256": "54a36c2444a27681be98fa1e0fca25e1f7e363623c8525b9a7b93e198f3580e5",
+      "sha256": "4164a7d664d810f91f613a034bd18ea2d5345eb439fe8f63c0a2a29bdec58e01",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1007,7 +1007,7 @@
     },
     {
       "path": "content/emitters/ice-glints.ts",
-      "sha256": "6fd0c103227a81cad4d39cb5e2d3500e53f3b45599d9d52c69cadffc71bd9c7b",
+      "sha256": "963c202ad5f89e5548d0910b7626ca433dafac2f128ddb6a38a7ed034fabe424",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1017,7 +1017,7 @@
     },
     {
       "path": "content/emitters/ice-shards.ts",
-      "sha256": "795e2df73b124fead035d17f30865513ed1b348eba628d15f71cd472e8d7c8b0",
+      "sha256": "b8a4e6ae0a7d68c9bf79cccab7c44c9b00337057248d35e905641effb5f906cb",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1027,7 +1027,7 @@
     },
     {
       "path": "content/emitters/jet-flames.ts",
-      "sha256": "cf32d4b5f8a4110d5cd6a1c78d0f19cfc80092acf546524d7b24e658210b8516",
+      "sha256": "eddaf3a8695a6720c506e4817e089231c8f5d86c02949fbad3856d3473387bc7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1037,7 +1037,7 @@
     },
     {
       "path": "content/emitters/jet-puffs.ts",
-      "sha256": "52a6ae31430ae82c596cf121585c4794420f44c2c26511e9d1d3dc057577701f",
+      "sha256": "d36939443f2ba6f28d95d07bd4dfc579f9d571bdf9c56ca35388ff95baf7a4d7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1047,7 +1047,7 @@
     },
     {
       "path": "content/emitters/jump-puffs.ts",
-      "sha256": "37987c1b3bb2788a523f3f9ae62553791739b5d2ec8907c9c617cf9bca173878",
+      "sha256": "e44a1a4ffc117a524db1f513d610bc232ef41a319e034104615d4306661bfca7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1057,7 +1057,7 @@
     },
     {
       "path": "content/emitters/land-puffs.ts",
-      "sha256": "e27862c364fd02fc2550c9e5a715a1c456eb8e01cc63eb48ed06198f07f9a5c3",
+      "sha256": "789c37aad87d7ae3b27e34a31b89d78ee7942df658113a0342e812a998721ba8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "content/emitters/laser-bits.ts",
-      "sha256": "6dda3c99f05863684aee1aff242f2751b0ac18a23321b48b8775cad4632d1e13",
+      "sha256": "c283af9046eea1e8fcbc8ae801cca3e81671966d29783a2a2d0ac28e4d2678d6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1077,7 +1077,7 @@
     },
     {
       "path": "content/emitters/laser-hit.ts",
-      "sha256": "6e90c67f31feacbdf3d704816f882b60669ea4226055fcd5075758c94eb4f822",
+      "sha256": "970a6045c2a17206b0515e708f61d7a044e58d084d53e65f6c9a318cd60678e8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1087,7 +1087,7 @@
     },
     {
       "path": "content/emitters/leaves-fall.ts",
-      "sha256": "83e2b9f5d45f5ecdabf8409c0521fd44cb02374b1eab2e0a92a3252764f854de",
+      "sha256": "3e6c09d37f05bdf9545653f36b3828e2da3270039a0e66702263f55c264cdcb0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1097,7 +1097,7 @@
     },
     {
       "path": "content/emitters/level-confetti.ts",
-      "sha256": "7416f55a01c7197c6908385a6daad1b3dc45c2caccc429d45faaf2f9e381e489",
+      "sha256": "efbbb7ada2b2fc30f43ab4c1c0e02be6ac98f46d088d21a6f5cabacd508c2491",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1107,7 +1107,7 @@
     },
     {
       "path": "content/emitters/level-stars.ts",
-      "sha256": "472795cf55a75d698141045dac642cd969db2f2ce3978f00397c38d1288f4340",
+      "sha256": "46a7e5a9ecff08a770551d1c40a484bc4829c9c9a1b2feff26689cba5e1f0880",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1117,7 +1117,7 @@
     },
     {
       "path": "content/emitters/magic-puffs.ts",
-      "sha256": "01b05ab6bdcdc8161c685a1420976bce89731a6b3c14a57ce10373e63b208995",
+      "sha256": "5419c085703613718470f058815516a5b3ae2e0923e5e8057f6fd6a40e65fbb5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1127,7 +1127,7 @@
     },
     {
       "path": "content/emitters/magic-stars.ts",
-      "sha256": "031477e0175be16ffb0022389626e3868e1066bbe344657f62b15fff1a17beb4",
+      "sha256": "5a2324c4238d99be389fb3bb79616049f7a21fe9aa517fe82f4b589bc8831801",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1137,7 +1137,7 @@
     },
     {
       "path": "content/emitters/muzzle-flame.ts",
-      "sha256": "c5e0ff0198843a485f937e7ef7a7d5835d37bb9d9c443ec26ffeb73ee1016307",
+      "sha256": "a8aaa773667e42e17ffeed83421b406c99606658e78530d1c6aef13835769efc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1147,7 +1147,7 @@
     },
     {
       "path": "content/emitters/muzzle-puffs.ts",
-      "sha256": "e5f70441edf1ebf3d04171f0518467da3c59c08c1a55bb61554484164710d81e",
+      "sha256": "552629e9c4bb7f2c8d9953410e475c69362aa77872bb05b90c246ee881e4320b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1157,7 +1157,7 @@
     },
     {
       "path": "content/emitters/muzzle-stars.ts",
-      "sha256": "7dad359a80d376fc2101efff454d89760d74e2e8e22fa02efacbac6ad5c0f710",
+      "sha256": "62d2df3173339c4bee788c67edb74c1ba924bc2853aa7fddb35ebd526052c747",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "content/emitters/place-puffs.ts",
-      "sha256": "89eb68c5c997e1744c6f74f90695d8fb9da042d183bd5ad48737be51ef7f6f7b",
+      "sha256": "a9d769bafca751422b070a350c1bcff6f11092f0a986dc102ef68f13e3fb3547",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1177,7 +1177,7 @@
     },
     {
       "path": "content/emitters/place-stars.ts",
-      "sha256": "a2d464b6ce6754aeba7bc2f7e440d7971fe8928d2cb3740023c096c06e96dca2",
+      "sha256": "d3a3ab9f2aea48c9d5525e788821db2746eab8bc217708ff32817b257d0fd504",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1187,7 +1187,7 @@
     },
     {
       "path": "content/emitters/poison-bubbles.ts",
-      "sha256": "f4de9584154343b8f7ce9663fb1f8609ad88859abec59b86670b71bcf4c35684",
+      "sha256": "76b73651beb5dcef68bdc13230ee020d0d00e99012c943b6f793722292722824",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1197,7 +1197,7 @@
     },
     {
       "path": "content/emitters/poof-puffs.ts",
-      "sha256": "accb0766b6ae2acadbeb2196266dde946ff3314e703c7befc8b7501869de715f",
+      "sha256": "9feb9a31e0b834d9157dfa3c1c9ca24b3f599914b7dcf0c83426d0459044105c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1207,7 +1207,7 @@
     },
     {
       "path": "content/emitters/poof-stars.ts",
-      "sha256": "56dc95379d48231d69f75ed83dba9de1e3c5ff30e6df372a542fcb275c9a5e3b",
+      "sha256": "799571dcd6a0a0aff836eb2ab22209465e147e10a2770d0f68aa2baf869ba732",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1217,7 +1217,7 @@
     },
     {
       "path": "content/emitters/portal-stars.ts",
-      "sha256": "1ec22cd3c19723e71132531cd4ddcf91abaece6ddf73cd04cc2e116a09fbab0f",
+      "sha256": "2e2654e1fe20ab35bc6694cc88c913ac9153cbf0ae327b449d2c28b5a3222795",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1227,7 +1227,7 @@
     },
     {
       "path": "content/emitters/power-stars.ts",
-      "sha256": "b4054405eaf08c1127125866d7941d327f148171554ed0266cdf71e7974d9155",
+      "sha256": "50af86cc668310540a9794866c51a6bc4b58e06a292a2fbf8b679f9f9cf07f3e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1237,7 +1237,7 @@
     },
     {
       "path": "content/emitters/remove-bits.ts",
-      "sha256": "c748b399fa53d391686284f4cacaa4ffe3da9cae723593f35204e364e00e7451",
+      "sha256": "9c9f56269e5387481817922f72cd85855e0ac6e47f5530a7537e0a1b65dec76b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1247,7 +1247,7 @@
     },
     {
       "path": "content/emitters/remove-puffs.ts",
-      "sha256": "08accb83cd676ff7846d5a4994d909f099d5043b5609795e8d82d3afefce62a3",
+      "sha256": "7d1f3aa25d7b9d1db3307030f0ea826082ee9727d67e5e3a4531131fe7f68990",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1257,7 +1257,7 @@
     },
     {
       "path": "content/emitters/reward-coins.ts",
-      "sha256": "2b38fd68b120d03ee9f6b3c935d670d0f595734e666d187e0b19ee110174372f",
+      "sha256": "28c7b4c59c59f87aae98a3893b54bf555f375e1c8d652fc25477e4862f1c304b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "content/emitters/reward-stars.ts",
-      "sha256": "a439291a51e5a060895e567d0439a8eee54ad74e87f03762b8d9b116a0e82632",
+      "sha256": "444f2a104d318a7948f5ae502522cb4451b6d23edb2f9d5c477fd3ae02c9a068",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1277,7 +1277,7 @@
     },
     {
       "path": "content/emitters/rock-bits.ts",
-      "sha256": "4a5eade3dc8922f897b4137e6328fb08c9b3e9dabdbef4ef597e42f84656d534",
+      "sha256": "674d6f4a4c7e3b23acb97ad872233df192ebed8c449b2f65ea1d2b6b407bbbcd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "content/emitters/rock-chunks.ts",
-      "sha256": "281a05fe8b05a9d84f980a2e9bfb2a1ef7bec408db27388d9568f14746e32806",
+      "sha256": "b94f9b2bcee9af1ee98e750d021df6ec2679a2c85692b5ac5aba033ab59065e0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1297,7 +1297,7 @@
     },
     {
       "path": "content/emitters/rock-puffs.ts",
-      "sha256": "18e3699df00727e1ca4e9f21c66c7f49e351a7798b1387b04d3c5666940ff340",
+      "sha256": "bbb896d119433d97b9cc8e245dd76098ebd1350f20b6549cfd65e262de0b7e35",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1307,7 +1307,7 @@
     },
     {
       "path": "content/emitters/rocket-flame.ts",
-      "sha256": "935f667938d0064c747af7adb969568754c36a53bce9328fd5c537ff6cff1677",
+      "sha256": "d50b358f4c53a8a852ea8aaeffe1ca3a49cc6ed9645496f3e94e2679285e50b5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1317,7 +1317,7 @@
     },
     {
       "path": "content/emitters/rocket-puffs.ts",
-      "sha256": "d1390cbcd1e803afb4d318ccd132fe3505928f8c5e632fc0e9f84b128e875384",
+      "sha256": "ee9a9f8485b98377d644ac620a1a229e414f0ea0ce3d8b98c9c4e29262a9b119",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1327,7 +1327,7 @@
     },
     {
       "path": "content/emitters/run-puffs.ts",
-      "sha256": "be7246817fefb2dcebb5e94ccb52a1cb3fa6e17b29d3cc2447ca91f785b1f332",
+      "sha256": "72ae5be4a89f2414e6bb5ebce3a6366d12c5280df700c84762876e1037d68400",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1337,7 +1337,7 @@
     },
     {
       "path": "content/emitters/shield-glints.ts",
-      "sha256": "f62aab1bf3122acb80c83434e2e14a1eab8b45b5cea775b7071fdd55724eb1d1",
+      "sha256": "6dfca75bbbf42ca54a001a88b536a11b58c3bc68b0f8cfffc79d45cf1aa7815c",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1347,7 +1347,7 @@
     },
     {
       "path": "content/emitters/shock-stars.ts",
-      "sha256": "66369143ac60eadd5234876e588e3abc0b9d7656dd04ca294d7668da7060a4fe",
+      "sha256": "87c3583683365788b25f2629b7c688d9333e69d0621ab7ebd91f46a7b2e62eac",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1357,7 +1357,7 @@
     },
     {
       "path": "content/emitters/skid-grit.ts",
-      "sha256": "c15e02a64143cf299df60e0aa31ef7e03e3e0a251cfbc2b92e8cd5732cad7ec4",
+      "sha256": "3122e770458859378822d860efb63553e595dea4c6fb0fc4df3ca2e306c743d8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1367,7 +1367,7 @@
     },
     {
       "path": "content/emitters/skid-puffs.ts",
-      "sha256": "59255aaf61bac8297784b354c7f168c72bfc77f8e4ab4df52427097a2999c344",
+      "sha256": "f2bd5a6fee1663f6640ccc4db33f382ed629aab0ede1fd5220d34d5a3ba0a261",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1377,7 +1377,7 @@
     },
     {
       "path": "content/emitters/small-chips.ts",
-      "sha256": "bab3bb2ba8f618427f4b7151d6666c013ff6412d56dd1f34f585222de16e4951",
+      "sha256": "995a48e93ffa1552b1dff5d40e335569d5bdb01b80fcdfaf8a7ab83fcdd9c724",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1387,7 +1387,7 @@
     },
     {
       "path": "content/emitters/small-core.ts",
-      "sha256": "40ded9ed0812ce9b8c15223bc46985ca2f2a7101c2bafe8a527387130cca711d",
+      "sha256": "f2979112aaa8e9e1ee32df4696a67810d7d608cb9e76c0bb87db13158c3b27d8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1397,7 +1397,7 @@
     },
     {
       "path": "content/emitters/small-crown.ts",
-      "sha256": "6e954d3bad5c1853d000ea244cb4e55cdf6b2e24c9ac73a90c5574ceb6639ac7",
+      "sha256": "eab6f01b8952826f242c85f248596128837bc3e2812a7a35427b8d500688c06d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "content/emitters/small-puffs.ts",
-      "sha256": "7f03cc25964469329f01a21b2c4cadb87d202a3d56426570d1e651d4f8b5db8c",
+      "sha256": "7d769890348812714837fb41852319ebddc062969faa2db4c8de2042836beb94",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "content/emitters/small-stars.ts",
-      "sha256": "439c409be2e5b5109ec35a90bfaff880b879b05f6cb6ad71667623bb143fdbe7",
+      "sha256": "2292ce2cabc4f10e55504fe28592e57c4fb7834e8cbfc2540d413ba97eaba2ea",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1427,7 +1427,7 @@
     },
     {
       "path": "content/emitters/splash-column.ts",
-      "sha256": "e89991efd92c01a6887ac6f02c65e71cda6d0e4b7aea25ba4bc10b9eb578206b",
+      "sha256": "fa839d4eab6970083779693b4b038ba2eec1b425d2ebc958e71297a954aa3206",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "content/emitters/splash-crown.ts",
-      "sha256": "c00207e13bd9c7fc5b52835a9ee2b1f12524e1f40da6065ff5d6c654bce0869f",
+      "sha256": "1325b9a4de37dba8fd03865a2e47a295513d1297eb935b1baf0346b54f86d3fd",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1447,7 +1447,7 @@
     },
     {
       "path": "content/emitters/splash-foam.ts",
-      "sha256": "672e9e1b714332461c32729550afec63c486266d8ce40bd37c6449eabf514473",
+      "sha256": "ec1738fd906c275eb225091a4f68094ca7fec40fdf4cfcec6907fb40d7c923f8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1457,7 +1457,7 @@
     },
     {
       "path": "content/emitters/star-ring.ts",
-      "sha256": "6ad8e4f5993177635a919d710b49cf36642a3895ea736209ea3806c55415aaa5",
+      "sha256": "84d36b3fc22cb305f2534a916eaa56e8ba031fa44569ff8af83f7c3358c4a79f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1467,7 +1467,7 @@
     },
     {
       "path": "content/emitters/steam-puffs.ts",
-      "sha256": "817b8a583f81d5c4d0d715a8bc2024b2e34a1c6d07e793cceecd52b8ba2f927d",
+      "sha256": "2295f06e36fae12f2ca4fcf40db365ed4238e5faca6c256e7c7f8f4afb0c0924",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1477,7 +1477,7 @@
     },
     {
       "path": "content/emitters/stomp-puffs.ts",
-      "sha256": "9757e559bc18f7f8f4c0e4124c4d36d6a89b7dc4f3297a136fdf4945abcb7e07",
+      "sha256": "04f289774e8bd1dc8de1ad0c4a06ea0ae4c57866fe26aa7d76a1dc06e62fc90d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1487,7 +1487,7 @@
     },
     {
       "path": "content/emitters/stomp-stars.ts",
-      "sha256": "0a95d84377653e0317100333081f668d375012e61af94c181ac307b7f998acb4",
+      "sha256": "b10a41614073abe619e329ea40eb238444941fb8aafd30b45f6457b46a691513",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "content/emitters/stun-stars.ts",
-      "sha256": "797b55cd483078c9563a01e60203c94b8e20feb71f1fee28c36a57a7d52d2072",
+      "sha256": "692aedb6d14ee8ef9a9766d2ecd99f0eee4c9177c0a9ee8f25a05c28c353d552",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1507,7 +1507,7 @@
     },
     {
       "path": "content/emitters/teleport-column.ts",
-      "sha256": "449c9f6beaf0c587b377acce21f9038d02c26504730eab2eb9e3fff9d5fbeca8",
+      "sha256": "a3c387a6c1be15d23d94753e96a59655ac9315b7d14fa1dc24ad47bb0ed0bff9",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1517,7 +1517,7 @@
     },
     {
       "path": "content/emitters/teleport-poof.ts",
-      "sha256": "e00b781282f2748d900c6eec21d840b603db2cc67269a36acd673594de99b4af",
+      "sha256": "2e48ebc6460fe80db8072434d1850f83ac73e44696196b2628a9f7bec38f01bf",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1527,7 +1527,7 @@
     },
     {
       "path": "content/emitters/tire-puffs.ts",
-      "sha256": "91c3647f1f3b81369511b14c807d3e7badd0698cacd5dec104578ffb886487a8",
+      "sha256": "6fc3840eba73c12535737a3cbbd0e71f37823823d7be2054c71fb76cad904663",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1537,7 +1537,7 @@
     },
     {
       "path": "content/emitters/torch-flames.ts",
-      "sha256": "d618b64e0af86eae909ca67d580794facb99b94fc06874b3b68ccab341944f93",
+      "sha256": "237434d2c837fb88f4a742d19908821a0dbfce68dd06e49d6e1445bf74b92857",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1547,7 +1547,7 @@
     },
     {
       "path": "content/emitters/twinkle-stars.ts",
-      "sha256": "fef4359821ac8215559c6921560be73ffc78f6394f4dbd5bb5a2b8b9bcb43bfe",
+      "sha256": "cef2e76243d74f2ac5a266e5624b104a67f63512caafe9e3d13fd3382c30ffcf",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1557,7 +1557,7 @@
     },
     {
       "path": "content/emitters/wake-drops.ts",
-      "sha256": "8cd70665010ab3404c152043cb02981dab4b4f999210a9fda0e855dc7d2cb6b4",
+      "sha256": "a7d9022172a37dc478146009b82195eb168a598bffd60ed71cd421f1ef2d5d18",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1567,7 +1567,7 @@
     },
     {
       "path": "content/emitters/wake-foam.ts",
-      "sha256": "8802fc87ed7c345c9297fc56f358fa8f91942517d32cf9809284af90d7d499e6",
+      "sha256": "36633e14cd43c18583d3e6c6158dbe37ea1e0aac33ed13eba69b38c957afa2e6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1577,7 +1577,7 @@
     },
     {
       "path": "content/emitters/wheel-grit.ts",
-      "sha256": "b263be047217e604e4bd9ea490dc07323f874aea8defa9dea68a1dca12bce869",
+      "sha256": "bb91dbebaf3d18b8ed3f2bb3958ada23187ec1fa99f80089db495202da8ed88f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1587,7 +1587,7 @@
     },
     {
       "path": "content/emitters/wheel-puffs.ts",
-      "sha256": "45e3488d29b1766131bffcc39e32fd189f145cd779265b5ca76aebaeed096b30",
+      "sha256": "bd54d2e42c8c69beb60bee9305546af5cee051325875cd3266e85366564b373b",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1597,7 +1597,7 @@
     },
     {
       "path": "content/exhaust.ts",
-      "sha256": "88f70c888446db498a95a15064ef71a3bc24e219b03bf8273d0fd50a798e058e",
+      "sha256": "dbc54fc7625954c5c148f91ff8af1b35536036352c3fb6197c578b7e6499743e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1607,7 +1607,7 @@
     },
     {
       "path": "content/explosion-small.ts",
-      "sha256": "0b4b4c2b50d025c0f11dcda704c99e9607d638373c1480223597c3cd49c542f2",
+      "sha256": "957b734fc691a56e41585baa9de362321cf3139c8a8f2e003f5c9eb9dad9ff17",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1617,7 +1617,7 @@
     },
     {
       "path": "content/explosion.ts",
-      "sha256": "b744ca6160e6335333e696c6a525e13d98b336de5347c5e29525ad56b37cd388",
+      "sha256": "d235fc3f5db3ddcebd801fd4ed1a51ffc2ec1489f1ec5ca2ce480ebb9134a510",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1637,7 +1637,7 @@
     },
     {
       "path": "content/fireflies.ts",
-      "sha256": "4c6b2e656dd0e783fb68b8c6004804a241e1ddbc29d6e779c03ce2ad8c598760",
+      "sha256": "76f4231cd8221eefd8e8a60f9bab672b72fb81894572e2a8fecd3763a71dda24",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1647,7 +1647,7 @@
     },
     {
       "path": "content/fireworks.ts",
-      "sha256": "009a70eb7e9c2f8bdb2fb1442efb1964d39e8f319f02fc34abf46ef3d8265b75",
+      "sha256": "e02358fcdfb79891cb0e288195abcc2b23a6cd095c01a27a979a2070de7a5217",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1657,7 +1657,7 @@
     },
     {
       "path": "content/fountain.ts",
-      "sha256": "fa6781d7ccd9eda2479e9e31b1efeb14f81218050dae5678a6d4214f0c8cbd64",
+      "sha256": "5a03a744ad9f2a598e1e475a08c133b9f755bd6f04dfab9e65cf31e1abad1d91",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1667,7 +1667,7 @@
     },
     {
       "path": "content/frozen.ts",
-      "sha256": "64279ef8e7c4fb3cc974a1971ad989433d9162403fcc3512621988cbcecb8db1",
+      "sha256": "a47497972cdf552c76ce93de3e37ce48c087fb60a8be286d35a05806913be3d0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1677,7 +1677,7 @@
     },
     {
       "path": "content/fuse.ts",
-      "sha256": "3cff85055026647fee9f7776616008d9f52e3f31679bbc9d39cad21c659b216b",
+      "sha256": "7def2ac6a32b4ee9e416944be09b27423d7113d354559b3327b9938187a2b600",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1687,7 +1687,7 @@
     },
     {
       "path": "content/gem.ts",
-      "sha256": "42eef07b4afd3ee0b7f5a7b30a2a91ed3f4d8f473a33ae3547fbd12c6db9dcca",
+      "sha256": "8060162f3360aea2944f5adab6b8965382b7990ba097db3d2e595ac4184458b0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1696,8 +1696,188 @@
       "derived": "Original effects, emitters and models written by scripts/vfx-toy.ts; no external images, models or code."
     },
     {
+      "path": "content/geometric/celebration.ts",
+      "sha256": "467745f3faefd5ac4e28d7857381164fde9bbb6086ec6c20bb1a741d792159e4",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/dust.ts",
+      "sha256": "e65b0c283033987dbc51a1fb5c93c103eb1b55c7ab0f3f1c762835f821b8eec7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/chips.ts",
+      "sha256": "afd8cb763135965846d2c4e2eeb08cbd72875670955a23f06bb19dd403155c9f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/confetti.ts",
+      "sha256": "6208da84bc2e7d57ee0fd62a1731ecd3160941121a325ef1a5d02f6e5544af1d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/dust.ts",
+      "sha256": "33df8ce77d967f8d9035f388daf8ad1f27ac9ed618ee91d3dd0b2c4e7cecb496",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/fragments.ts",
+      "sha256": "01d5b139eb9501da08236092f28af891f09850e1687bb9a262be3e71279946fd",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/pickup.ts",
+      "sha256": "5adbafc19df96c5b9513c68b0014a144bbac889f2e4487c4fca7bfa874f6656d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/pulse.ts",
+      "sha256": "bb5c617a74ba457ebcb305651fbd9d1bca4cc4f035562df72c54ced2e63ed880",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/splash.ts",
+      "sha256": "94895f8436b3a6e40676ae9836ceeefc8604fcbb44a0d506336edfd05d0b57c7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/emitters/trail.ts",
+      "sha256": "6eb64280576b3a09b1ead61d07e05a53baf12049c2903b5c13f4b4283c5ef520",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/explosion.ts",
+      "sha256": "e24501c7db7f6a4249c9357dcaf429237565441316e36c29ce875bb18514d9eb",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/flat.ts",
+      "sha256": "d3948d547768b3bc342be8bb55ce6888526ebaa54f287279300fcc4e8b407639",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/impact.ts",
+      "sha256": "f67502011c68cf8588927451b7cc7764818372d0386e6bf420a1e167bc00e244",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/magic.ts",
+      "sha256": "9202c6d482c0f00e93ace6d77ccd4e99f69e52e39c31655ded46525301c8c386",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/muzzle.ts",
+      "sha256": "41839256a588e9646da7009b62194ea95809fac3c52284488513fcfd4172489a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/pickup.ts",
+      "sha256": "c259910e3441f1fe83243a139987ed16f10860339f5819328526144bb3d9cf00",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/splash.ts",
+      "sha256": "d3001cf62d58fa3a5cff4277c1c32e98cf3e760d4db4e175d5c88538c8dc536c",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
+      "path": "content/geometric/trail.ts",
+      "sha256": "02ef6c8e749f848655625dccc669dae8d54ff259d200983ab1d1815b85e89368",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original texture-free native mesh-particle and polygon-ring composition, represented as checked TypeScript FX data. No external models, textures or code."
+    },
+    {
       "path": "content/heal.ts",
-      "sha256": "02a6c01d2c3d2f01fdf470445c2e4e7e54af03ae4e8eafacc881690a6540c2bb",
+      "sha256": "fe4df3469095aec45a0f05cf9a7b75a4115e790927b8fd5cee29648df546a524",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1707,7 +1887,7 @@
     },
     {
       "path": "content/heart.ts",
-      "sha256": "345bc010e49c023946afffb40175551bd905b28bc04038656def238b5b161829",
+      "sha256": "f56a2f9831508792a714ab328250f4d3c0efeb0e8abbd18fa8e70f4f9ed15aa9",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1717,7 +1897,7 @@
     },
     {
       "path": "content/hit-heavy.ts",
-      "sha256": "a6d35f66fdccd537f3fd7979b793415b6fdb281f576080ead35c0345fc4cc304",
+      "sha256": "b742f901c5af432260569f6fd622726649b94bd417bf98f8a00a191f4c4efa71",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1727,7 +1907,7 @@
     },
     {
       "path": "content/hit-small.ts",
-      "sha256": "7e00473635b832e80d9fdd39530a1c1e53b41b4c9a3efd187fa80471f116f6a1",
+      "sha256": "e92ddca0ca72ebceb80d089550e60323da76bd19c735bcd70b8a49c12564984a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1737,7 +1917,7 @@
     },
     {
       "path": "content/hit.ts",
-      "sha256": "d75a0cb754d918895ed7389bf45add147ba0561597a0203d98e854916cdb6e50",
+      "sha256": "af8afcc65e6375e21020778e020b049245a20bb0fb70cec52afbb2edd52a7226",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1747,7 +1927,7 @@
     },
     {
       "path": "content/jump-dust.ts",
-      "sha256": "52e96fdc11f76020c5a40a5443ed2bd418f78e05b24421ed2d48864f3bd27811",
+      "sha256": "d8e7b61d2e1235b580e3a90bc959f0f2b38c1dcf403355da587b1b7f57ceb395",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1757,7 +1937,7 @@
     },
     {
       "path": "content/land-dust.ts",
-      "sha256": "5dc8794ff3267086a6ef9237236ee168b50eb380009d14b9d4556aaffc1bcf5a",
+      "sha256": "c24fa152bc79939a8d92bbb9b3451b7f7cfc99c18e07d473015cdb4f1581a6ba",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1767,7 +1947,7 @@
     },
     {
       "path": "content/laser.ts",
-      "sha256": "66170ddecca8729e9224cd1b45950e1a97e6d048bd4e1cb838729772d433820a",
+      "sha256": "5d88fb68bb2f273c74a124570c95389b1c57896e54db2214f554cf5438909eee",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1777,7 +1957,7 @@
     },
     {
       "path": "content/leaves.ts",
-      "sha256": "afa67499c7833b9fcb734cbd58599619c948cd926652c495bd3c80c0c353437c",
+      "sha256": "8792195fc80da149ddbd9425ca46486ba2f5356ddfed2be1c7b97cc54be491c0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1787,7 +1967,7 @@
     },
     {
       "path": "content/level-up.ts",
-      "sha256": "3826d6592a5f00e9eaf6d603730eafa657d5ea9ab282a0b59cc18b43176d47a1",
+      "sha256": "de50fcfaba193bf6154b81c76127e166f5fdec1485aa713c3c71420616c514ff",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1797,7 +1977,7 @@
     },
     {
       "path": "content/magic-bolt.ts",
-      "sha256": "e2102494c8225278691c0bdc1e1ba2a2d733bb4c1337617ef80840e515ec54ce",
+      "sha256": "599873463057423a72fc1472465f29239c24a7d63837c9d1eb7cdd4e96b621ad",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1807,7 +1987,7 @@
     },
     {
       "path": "content/magic-circle.ts",
-      "sha256": "3152f9330db58be07b5285717de06bda813cb54528f3fe9585c22c76ac5f7bb0",
+      "sha256": "bf03e8f9d5bbbc9693f621dd3c410bc3d6c781fff95e7e90573931a16f9fd113",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1817,7 +1997,7 @@
     },
     {
       "path": "content/magic.ts",
-      "sha256": "7c9b688032a256a1a35718caed20041b1bc19b215baa90b9406c654db9591ef8",
+      "sha256": "4591f42437afc427d661503dcf883e19c2ef1152dcfb8c71e6c8f1ed1a7463ac",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1827,7 +2007,7 @@
     },
     {
       "path": "content/models/block.ts",
-      "sha256": "2e975dadf5484c8cd33512a554c4e82046808a88612935974255f26e0aae8845",
+      "sha256": "0e11131461a61c2b068475958a5e8154d9b133074c0fb55ee5ffa1544cce347f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1837,7 +2017,7 @@
     },
     {
       "path": "content/models/coin.ts",
-      "sha256": "6e438f509b055dbbae9079cfee19cf6f2be5a6a72adbb7a9d46ca0631180e9d7",
+      "sha256": "4f95a6ad4c779ea295f9d379c7b2304c750f1956829a81b7563afacee6812e11",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1847,7 +2027,7 @@
     },
     {
       "path": "content/models/drop.ts",
-      "sha256": "a5c0589395900c2fbb5942a7bae41482672ad0742899ba8b3badc00adb87f922",
+      "sha256": "6be02b62f1d8d1ab11c6dbf7f0fffdeaadc91845555828d21572f693530fb40d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1857,7 +2037,7 @@
     },
     {
       "path": "content/models/flame.ts",
-      "sha256": "16f58ba603a36b64a9624e3c505a92fbb766785e16a601a95558f26f709a2dc2",
+      "sha256": "93e3e57f1f24e012c240548edf8e5b9e4daeb06fb73f240b8122fe0c98c800a8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1867,7 +2047,7 @@
     },
     {
       "path": "content/models/gem.ts",
-      "sha256": "179ef70ac78296f2be2c996b8842fefda57d01ec80ba896679d586f0bb819957",
+      "sha256": "2c80e6059a9c1b5f50386108609413d79d2cfe22268e91a295d9c44f8ec846e2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1877,7 +2057,7 @@
     },
     {
       "path": "content/models/heart.ts",
-      "sha256": "cf1880c86b7ed792d635b9f69ddbcf1060a37748879b411698efd8e67dbfdcb9",
+      "sha256": "432361861ea1f9cecc2d76f01a8963614acb268d566938074eff2b0e4bc7dd79",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1887,7 +2067,7 @@
     },
     {
       "path": "content/models/puff.ts",
-      "sha256": "861b09dceed6ad228fbd5747192885f0bc6d6961403cb9b86d87ffb386a779b8",
+      "sha256": "e9dba4c4c25298625ff0cda84c02ad5c8e4283ee39d610506edcfd2f007524d8",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1897,7 +2077,7 @@
     },
     {
       "path": "content/models/ribbon.ts",
-      "sha256": "f58f59d4b0c7b474598298dd709a303543824920bd915bcab1ef3457ac548410",
+      "sha256": "3280530203f80356535df08a4dd77f58d1ac0746115476d8dc42f0f5d095092a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1907,7 +2087,7 @@
     },
     {
       "path": "content/models/star.ts",
-      "sha256": "9cc92c1816787e69f8f791aca3c933fb93391e6c58b479de3881e2f007f73bc1",
+      "sha256": "3415ab068ea9ef37cacbd13b1051c0e5f4654fa1f072b8e87f2eb7cc56b51a18",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1917,7 +2097,7 @@
     },
     {
       "path": "content/muzzle.ts",
-      "sha256": "a8c2b0cce613392c1022b452a06fefa7e54f3ba804c4624b7c2d69a24c9af9c5",
+      "sha256": "917277d2454a468c3ea4317a753612c323c7551eb22d73dc17b7e89ecd190424",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1927,7 +2107,7 @@
     },
     {
       "path": "content/poison.ts",
-      "sha256": "d302bcf66c0d0a141fc377a687bfb3771365544608e04a868be7b016bbeb1b3e",
+      "sha256": "95847b5f4a66fa6eb70d78074b9d47fa4ba2401ce14b16dcf8b4852b128f921e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1937,7 +2117,7 @@
     },
     {
       "path": "content/poof.ts",
-      "sha256": "58e2f0bccae758ea582edf8421c2a1212cdb86c597c0f589f8e34023512265f6",
+      "sha256": "76532d103f4f61633bce1e46168e3483b68baec3bfd5c133dc5c9856e51d7f55",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1947,7 +2127,7 @@
     },
     {
       "path": "content/portal.ts",
-      "sha256": "cf3fe14c859059500716793899e62f163d6e62768e92a4fe5efbc55494347554",
+      "sha256": "9ea421658140fbb9dc12abbd51a27ec9eb33677bca60531c853d43816405183d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1957,7 +2137,7 @@
     },
     {
       "path": "content/powerup.ts",
-      "sha256": "b7e7c3873e09829d93d616ad19270d85a2ee9c0a59aafbd63d4b17522801a8a5",
+      "sha256": "88e06845e5c2e340e35d2f5d0acbcff04f7ccd1b9b4767c6ccd21bb4c29caae5",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1967,7 +2147,7 @@
     },
     {
       "path": "content/reward-burst.ts",
-      "sha256": "48a7c404dbe85b0c7f8a83fd5bdea7d39df22adb32d09de1bcb1b9b04975d2c1",
+      "sha256": "587378123a081779d10fac14074d62cdd99d923e940152a1ba50cc366af45162",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1977,7 +2157,7 @@
     },
     {
       "path": "content/ripple.ts",
-      "sha256": "8a7a17c4a39a58b2700c16536ac45e18289e28c8e1623484abb7e8bb1a379085",
+      "sha256": "7f415ca515bfe4a99e4262a3d69236c374bbd3be247be0ee71c0e5d039b2e746",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1987,7 +2167,7 @@
     },
     {
       "path": "content/rocket.ts",
-      "sha256": "fa35f9847864aa2c469c2786e19109254547b89efb95b37121cc324d310ff2d3",
+      "sha256": "69f34fb5c877be66287ff83b4a76d6e12370f1e96ce171ccfddaa3e789722ada",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -1997,7 +2177,7 @@
     },
     {
       "path": "content/run-dust.ts",
-      "sha256": "6ddb3995d729a9d57fca375456d331448f7b1d3c99dbb99ceb3ce58bd8107618",
+      "sha256": "d10334a538537250d5cb16d1e89016936d4d5a1cf4490ec5fe5ed1bd138bccab",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2007,7 +2187,7 @@
     },
     {
       "path": "content/shield.ts",
-      "sha256": "cacadbbce39ed1973f3bce2ea822f91102a6962945d8217744ecc11ede0320da",
+      "sha256": "26c0751c9c59842f12831c632d4d3eb4a8c25250dbb7590cfff9d1fabdd52c8a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2017,7 +2197,7 @@
     },
     {
       "path": "content/shocked.ts",
-      "sha256": "387f6857c32a153c1645d1aac40059354c2f5ddc1385a5556003164899e796e8",
+      "sha256": "d623c0832ffdbd3da105eb0d0be376fb988f53a9821c4fed05c67a125a28d2dc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2027,7 +2207,7 @@
     },
     {
       "path": "content/skid.ts",
-      "sha256": "4dab91517753b924a068c36da0427852bed42638506646b827c2ecff80272194",
+      "sha256": "0a5337fc3b279db924620578a28111d3597571f53ea9c6513ecf01f9519c123a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2047,7 +2227,7 @@
     },
     {
       "path": "content/splash-small.ts",
-      "sha256": "22b9b26f7ee44a0375189cedb70dff1b5a33510ea8380d18fd482b748a507849",
+      "sha256": "ef5a5fc81c923b499d8d7ef63216b9dcc2f6a291755270161284768c2fdc4319",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2057,7 +2237,7 @@
     },
     {
       "path": "content/splash.ts",
-      "sha256": "93ccbc98677149bcf65465ea5a3f83bd65eadd09dd9912a8c84e1ed60fae1dbd",
+      "sha256": "155fc376a4c49ef60fcaabb7482121cefd83a27150536b59a03a4d8fa4fdf0a6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2067,7 +2247,7 @@
     },
     {
       "path": "content/star-collect.ts",
-      "sha256": "36f3c9a0efd8f78436610785e440641c0547f194109ce2a68342dd39112e269e",
+      "sha256": "195e54c4ca92b7aa7642ec0e3cefe6e6793b6f86051d7345fafd2795c0b12390",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2077,7 +2257,7 @@
     },
     {
       "path": "content/steam.ts",
-      "sha256": "9d00be0c84fa60093e5858dc168731064155ebaa43c7548e51d596c32cff91fc",
+      "sha256": "2ec8d1a0ae877d31bd56bc2a639342daa2bba35be77edf5a03281543d1548557",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2087,7 +2267,7 @@
     },
     {
       "path": "content/stomp.ts",
-      "sha256": "6fc152cdd6a953e0451b512f3baea2cc4d3ddbaf74166a12f4b3f078beb23b78",
+      "sha256": "3ac7bc7086de66fbbb2ee5469f1b8c7d73648923a8079a255048129fc6258d46",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2097,7 +2277,7 @@
     },
     {
       "path": "content/stun.ts",
-      "sha256": "f34b50026901305169670f1929e2116b746706902614f051897075d58a9d201a",
+      "sha256": "c2c0d026521367dad806bed2c88497fece0a83a9655b24fdf5a3d77264ac6f03",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2107,7 +2287,7 @@
     },
     {
       "path": "content/teleport.ts",
-      "sha256": "e3c8285d6dacb57253c174987945d23483152d0dd1fe929c98cfee4956db54ad",
+      "sha256": "3dd343f2548979d4f296ff1a29ba446c82b3fe9b10364ac6ed5f6a9a0ee01180",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2117,7 +2297,7 @@
     },
     {
       "path": "content/tire-smoke.ts",
-      "sha256": "3d79be4308733994ff1962d4382fafc8678e0a94c8b2baa68937ed6270dd36ec",
+      "sha256": "9dea59efc4711c7501bcd9145f1830688a7c0cd7e6e2b101ac25f68ada32100f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2127,7 +2307,7 @@
     },
     {
       "path": "content/torch.ts",
-      "sha256": "41116284a53efe24bb65c4a7d26b9f2b05140753fe741e28ba85630d02867dfb",
+      "sha256": "ea15db99ba68222559d216f0433ea0da32b962436b7fa0e5191abc7fdfc7918d",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2137,7 +2317,7 @@
     },
     {
       "path": "content/twinkle.ts",
-      "sha256": "ea7ce645a46e962683219fae07cd2a38dc9052a3c37f000e4f1996dd7d3a6265",
+      "sha256": "0173f8854e63f47ffb7b8ec21d42f7eff368664b89c4bdd96d41f7f79b7998c0",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2147,7 +2327,7 @@
     },
     {
       "path": "content/wake.ts",
-      "sha256": "9c1190ad14abd48e8b432fc034265b61e88097afc158637b915a7520bf166389",
+      "sha256": "90ae52271465ef6842df04592173941f2f8fe1f16cefd25e4b01af9e4806d1c9",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2157,7 +2337,7 @@
     },
     {
       "path": "content/wheel-dust.ts",
-      "sha256": "638e9c9089a14c6da1c19b42f1f1aed4c7964ac324f93d15cebd11a25a2e1450",
+      "sha256": "e0be8aa7b53b2d34b13ea40f532f4690eb44e920be9f105478d314fd3f75a5c3",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2167,7 +2347,7 @@
     },
     {
       "path": "extension.json",
-      "sha256": "3158ae935a515b3037e1c85ec62c266677d1753662e5de5a3d313c2c61037332",
+      "sha256": "ef416b70b62605fdc26395f316bb6fa627a9b88ca55de20aced5532982c48041",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -2789,6 +2969,125 @@
         "toy"
       ],
       "element": "light"
+    },
+    {
+      "path": "content/geometric/celebration.ts",
+      "type": "vfx",
+      "title": "Coral Confetti",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "ui",
+      "keywords": [
+        "celebration",
+        "geometric"
+      ]
+    },
+    {
+      "path": "content/geometric/dust.ts",
+      "type": "vfx",
+      "title": "Slate Dust",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "smoke",
+      "keywords": [
+        "dust",
+        "geometric"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/geometric/explosion.ts",
+      "type": "vfx",
+      "title": "Facet Burst",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "explosion",
+      "keywords": [
+        "explosion",
+        "geometric"
+      ]
+    },
+    {
+      "path": "content/geometric/impact.ts",
+      "type": "vfx",
+      "title": "Angular Impact",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "hit-spark",
+      "keywords": [
+        "geometric",
+        "impact"
+      ]
+    },
+    {
+      "path": "content/geometric/magic.ts",
+      "type": "vfx",
+      "title": "Open Triangles",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "magic-impact",
+      "keywords": [
+        "geometric",
+        "magic"
+      ]
+    },
+    {
+      "path": "content/geometric/muzzle.ts",
+      "type": "vfx",
+      "title": "Geometric Pulse",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "gunfire",
+      "keywords": [
+        "geometric",
+        "muzzle"
+      ]
+    },
+    {
+      "path": "content/geometric/pickup.ts",
+      "type": "vfx",
+      "title": "Rising Cubes",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "buff",
+      "keywords": [
+        "geometric",
+        "pickup"
+      ]
+    },
+    {
+      "path": "content/geometric/splash.ts",
+      "type": "vfx",
+      "title": "Facet Splash",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "splash",
+      "keywords": [
+        "geometric",
+        "splash"
+      ],
+      "element": "water"
+    },
+    {
+      "path": "content/geometric/trail.ts",
+      "type": "vfx",
+      "title": "Facet Trail",
+      "loop": false,
+      "durationSeconds": 0,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "geometric",
+        "trail"
+      ]
     },
     {
       "path": "content/heal.ts",

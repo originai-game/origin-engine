@@ -1,533 +1,149 @@
 {
   "schemaVersion": 3,
-  "about": "Origin Engine's style catalogue: 6 looks in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (a checked file.look TypeScript declaration; extends: [\"<slug>\"] in a game's own look builds on it), the built-in UI style its look's ui field names, its variants (one preset drawn another way: variant: \"<name>\" in a game's look lays templates/looks/variants/<slug>/<name>.ts over the preset; each variant has its own title, descriptor, mood, checks, intended traits, premise, palette, specs, art bible and, where it needs authored art, authored, which the brief and the critic read in place of the look's), palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of @origingame/engine/knowledge; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what, and a content style's `look.authored` the art it needs, each a kind of the art brief and what it must be (artBrief asks for exactly that, docs/art.md). `category` groups the styles in plain terms (`categories` names each group); `look.views` lists the views it suits (side-2d, top-down-2d, isometric-2.5d, third-person-3d, first-person-3d: the creation choice's words), only those its profiles draw; `look.mood` is the mood its preset is drawn in, one of bright, dark, warm, cold, soft and high-contrast, any of which a game's look may ask for instead (docs/art.md §2.10). The descriptions are original; no game or studio is the reference for a style.",
+  "about": "Five optional stylised looks; Realistic is the engine default with no look and is offered by creation.json, not as a preset here. Each style has one plain slug, one preset, a UI pack, an art direction and frame checks. Views select how a look is drawn, never a variant or another style: cartoon covers 2D and cel-shaded 3D, anime covers side-view 2D and cel-shaded 3D, pixel covers side-view and top-down 2D. A game's file.look extends [\"<slug>\"]. No retired slugs or variants are aliases. preview is the engine-rendered 960x540 previews/<slug>.webp relative to knowledge/. look.layers names frame, conform, runtime and authored requirements; support is content when authored art is needed, full when all other layers are implemented, partial otherwise. look.views lists only views the style draws. look.mood is the preset's mood; games may select any of the six base moods. checks and intended are read by the critic; intended describes deliberate traits without naming the style. The descriptions are original, not imitations of games or studios.",
   "categories": {
-    "pixel": "Pixel art",
-    "painted": "Hand-drawn and painted",
-    "toon-3d": "Toon and stylised 3D",
-    "crafted-3d": "Low-poly, toy and handmade 3D",
-    "graphic": "Flat and graphic"
+    "low-poly": "Low-poly",
+    "cartoon": "Cartoon",
+    "anime": "Anime",
+    "pixel": "Pixel",
+    "neon": "Neon"
   },
-  "ui": [
-    "default",
-    "anime",
-    "candy",
-    "cartoon",
-    "comic",
-    "fantasy",
-    "ink",
-    "minimal",
-    "neon",
-    "pixel",
-    "scifi",
-    "storybook",
-    "tactical",
-    "tactical-arctic"
-  ],
-  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>), re-coloured to this palette. Avoid: {avoid}. Proof: og-project.json selects the game's look as {look}, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
+  "ui": ["default", "anime", "candy", "cartoon", "comic", "fantasy", "ink", "minimal", "neon", "pixel", "scifi", "storybook", "tactical", "tactical-arctic"],
+  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a ui field in the game's look picks another, or the game's own theme), re-coloured to this palette. Avoid: {avoid}. Proof: og-project.json selects the game's look as {look}, extending \"{slug}\"; capture the title, play and results screens with og run in the selected view and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
     {
-      "slug": "inked-comic-3d",
-      "name": "Inked comic 3D",
-      "category": "toon-3d",
-      "descriptor": "Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth.",
-      "preview": "previews/inked-comic-3d.webp",
+      "slug": "low-poly",
+      "name": "Low-poly",
+      "category": "low-poly",
+      "descriptor": "Simple chunky models, visible planar facets and clean toy-bright material colours; soft contact shadows anchor every piece without blurring the playfield.",
+      "preview": "previews/low-poly.webp",
       "checks": [
-        "Thick black outlines on silhouettes and major creases.",
-        "Ink marks (hatching or strokes) are painted onto surfaces.",
-        "Proportions are exaggerated (oversized hands, heads or weapons)."
+        "Broad flat-shaded facets remain visible on round forms and silhouettes are readable at play distance.",
+        "Each piece carries clean local colour rather than detailed photographic texture; small bevels catch the light without smoothing away the facets.",
+        "Soft contact shadows ground the pieces, while distant layers lose contrast and the whole playfield stays sharp."
       ],
-      "intended": "Thick black outlines, ink strokes painted onto surfaces and exaggerated proportions are the style, not outline artefacts, dirty textures or broken models.",
-      "premise": {
-        "genre": "looter shooter, action, brawler",
-        "mood": "irreverent, loud, gritty",
-        "era": "contemporary comics",
-        "audience": "core players"
-      },
+      "intended": "Hard edges between broad planes, simplified chunky proportions and clean material colour are the style, not missing normals, missing detail or missing textures.",
+      "premise": {"genre": "exploration, platformer, puzzle, builder, racing", "mood": "playful, airy, cheerful", "era": "contemporary", "audience": "all ages"},
       "look": {
-        "preset": "templates/looks/inked-comic-3d.ts",
-        "presetReady": true,
-        "support": "full",
-        "layers": [
-          "frame",
-          "conform"
-        ],
-        "profiles": [
-          "3d"
-        ],
-        "views": [
-          "third-person-3d",
-          "first-person-3d"
-        ],
-        "mood": "high-contrast",
-        "primitives": [
-          "PostEffects.outline",
-          "StandardMaterialDesc.toon",
-          "Stylise.ink",
-          "Stylise.hatching",
-          "Stylise.hatchingSpace",
-          "Stylise.hatchingDepth"
-        ],
-        "missing": []
-      },
-      "ui": "comic",
-      "palette": {
-        "size": "free, saturated",
-        "rules": "Bold local colours, black ink for all shadow edges."
-      },
-      "assets": {
-        "logicalResolution": "native output",
-        "spriteScale": "characters 150 to 300 px",
-        "faceBudget": "10k to 30k triangles",
-        "outlinePx": "2 to 4",
-        "textureDensity": "hand-inked textures, 1 texel per screen pixel"
-      },
-      "artBible": {
-        "direction": "Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.",
-        "avoid": [
-          "photoreal textures",
-          "thin outlines",
-          "muted colour"
-        ]
-      },
-      "variants": []
-    },
-    {
-      "slug": "faceted-low-poly",
-      "name": "Faceted low poly",
-      "category": "crafted-3d",
-      "descriptor": "Visible polygon facets and simplified meshes, broad colour fields in place of textures, depth from silhouettes and layers.",
-      "preview": "previews/faceted-low-poly.webp",
-      "checks": [
-        "Facets are visible: each triangle shades flat with a hard edge to its neighbour.",
-        "Surfaces carry flat colour, not detailed textures.",
-        "Depth reads by value: farther layers are lighter or lower in contrast than nearer ones, and the play area keeps full contrast."
-      ],
-      "intended": "Hard edges between flat-shaded triangles and untextured colour fields are the style, not missing smooth normals or missing textures.",
-      "premise": {
-        "genre": "exploration, flight, puzzle, survival",
-        "mood": "serene, airy, contemplative",
-        "era": "modern indie",
-        "audience": "all ages"
-      },
-      "look": {
-        "preset": "templates/looks/faceted-low-poly.ts",
-        "presetReady": true,
-        "support": "full",
-        "layers": [
-          "frame",
-          "conform"
-        ],
-        "profiles": [
-          "3d"
-        ],
-        "views": [
-          "isometric-2.5d",
-          "third-person-3d",
-          "first-person-3d"
-        ],
-        "mood": "soft",
-        "primitives": [
-          "StandardMaterialDesc.flatShading",
-          "Fog",
-          "Sky"
-        ],
-        "missing": []
-      },
-      "ui": "minimal",
-      "palette": {
-        "size": "16 to 32 colours",
-        "rules": "Colour per material, gradients only from lighting and fog."
-      },
-      "assets": {
-        "logicalResolution": "native output",
-        "spriteScale": "characters 300 to 1500 triangles",
-        "faceBudget": "props 50 to 500 triangles",
-        "outlinePx": "0",
-        "textureDensity": "no textures or 1 palette texture"
-      },
-      "artBible": {
-        "direction": "Planar facets, flat material colours, depth from value and silhouette, fog only beyond the play area, silhouettes designed from few polygons.",
-        "avoid": [
-          "smooth normals",
-          "detailed textures",
-          "high polygon counts that hide the facets"
-        ]
-      }
-    },
-    {
-      "slug": "pixel",
-      "name": "Pixel art",
-      "category": "pixel",
-      "descriptor": "Sprites and tiles on a hard pixel grid with ramped shading, parallax layers behind the action and saturated colour; a topdown variant draws the world from above.",
-      "preview": "previews/pixel.webp",
-      "checks": [
-        "Background layers scroll at visibly different rates and never at the playfield's speed.",
-        "Shading on sprites steps through 4 to 6 tones per material with no smooth gradients.",
-        "Edges stay on the logical pixel grid when the camera moves (compare two captures 1 s apart at 400 %)."
-      ],
-      "intended": "Hard single-cell steps on a coarse grid, four to six flat tones per material with no smooth gradient, and outlines broken by light are the style, not banding, missing antialiasing or gaps in the line.",
-      "premise": {
-        "genre": "platformers, action adventure, racing, fighting",
-        "mood": "energetic, bright, heroic",
-        "era": "early 1990s consoles",
-        "audience": "nostalgic and general players"
-      },
-      "look": {
-        "preset": "templates/looks/pixel.ts",
-        "presetReady": true,
-        "support": "full",
-        "layers": [
-          "frame",
-          "conform",
-          "runtime"
-        ],
-        "profiles": [
-          "2d"
-        ],
-        "views": [
-          "side-2d",
-          "top-down-2d"
-        ],
-        "mood": "bright",
-        "primitives": [
-          "Stylise.pixelHeight",
-          "Stylise.pixelSnap",
-          "Antialias off",
-          "sprite layers for parallax"
-        ],
-        "missing": []
-      },
-      "ui": "pixel",
-      "palette": {
-        "size": "32 to 64 colours",
-        "rules": "Ramps of 4 to 6 steps; hue-shifted shadows (cooler) and highlights (warmer); saturated accents on characters, calmer backgrounds."
-      },
-      "assets": {
-        "logicalResolution": "320 x 180 or 384 x 216",
-        "spriteScale": "32 to 48 px characters, 16 x 16 tiles",
-        "faceBudget": "none (2D)",
-        "outlinePx": "1 dark pixel, selectively broken by light",
-        "textureDensity": "1 texel per logical pixel"
-      },
-      "artBible": {
-        "direction": "Volume from stepped shading, layered parallax for depth, lively multi-frame animation, saturated colour kept to the characters and pickups so the playfield reads.",
-        "avoid": [
-          "anti-aliased or mixed-resolution sprites",
-          "parallax layers that match the playfield speed",
-          "blur"
-        ]
-      },
-      "variants": [
-        {
-          "name": "topdown",
-          "title": "Top-down tile worlds",
-          "descriptor": "Overhead or three-quarter tile maps with upright sprites, where steps, cliffs and overlap make height and paths readable.",
-          "mood": "bright",
-          "checks": [
-            "Walkable floor, walls and drops are distinguishable in a greyscale capture.",
-            "Characters are drawn upright and are occluded by tall tiles in front of them (y-sorting works).",
-            "Tile seams are invisible: no gaps or bleeding lines between tiles at any camera position."
-          ],
-          "intended": "Hard pixel steps, a repeating tile grid and upright sprites drawn over the top-down map are the style, not aliasing, tiling or perspective errors.",
-          "premise": {
-            "genre": "action RPG, tactics, farming and life sims, overhead adventure",
-            "mood": "adventurous, cosy, curious",
-            "era": "16-bit era RPGs",
-            "audience": "general and RPG players"
-          },
-          "palette": {
-            "size": "32 to 64 colours",
-            "rules": "Floors desaturated and mid-value; walls darker on their faces; characters most saturated."
-          },
-          "assets": {
-            "logicalResolution": "384 x 216 or 480 x 270",
-            "spriteScale": "16 x 16 tiles, 16 x 24 to 24 x 32 characters",
-            "faceBudget": "none (2D)",
-            "outlinePx": "1 dark pixel on characters only",
-            "textureDensity": "1 texel per logical pixel"
-          },
-          "artBible": {
-            "direction": "A strict tile grid, height told by wall faces and drop shadows, upright characters sorted by their feet, paths readable before decoration.",
-            "avoid": [
-              "perspective mixed between tiles",
-              "decoration on walkable paths that hides edges",
-              "shadows that disagree in direction"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "slug": "neon-vector",
-      "name": "Neon vector lines",
-      "category": "graphic",
-      "descriptor": "Thin glowing lines, grids and bright particles on dark fields, like a vector display.",
-      "preview": "previews/neon-vector.webp",
-      "checks": [
-        "Mean luminance of a capture is below 0.15 and line pixels are near full brightness.",
-        "Lines glow: a halo wider than the line itself (bloom).",
-        "Geometry is drawn as lines or wireframes, not filled surfaces."
-      ],
-      "intended": "A nearly black frame, thin full-brightness lines with halos and unfilled wireframe geometry are the style, not underexposure, bloom bleed or missing surfaces.",
-      "premise": {
-        "genre": "arcade shooter, rhythm, racing",
-        "mood": "electric, hypnotic, intense",
-        "era": "1980s vector arcade, synthwave",
-        "audience": "arcade and rhythm players"
-      },
-      "look": {
-        "preset": "templates/looks/neon-vector.ts",
-        "presetReady": true,
-        "support": "content",
-        "layers": [
-          "frame",
-          "conform",
-          "authored"
-        ],
-        "profiles": [
-          "2d",
-          "3d"
-        ],
-        "views": [
-          "side-2d",
-          "top-down-2d",
-          "third-person-3d"
-        ],
-        "mood": "dark",
-        "primitives": [
-          "RenderSettings.bloom",
-          "emissive unlit materials",
-          "Trail",
-          "Beam",
-          "particles",
-          "PostEffects.chromaticAberration"
-        ],
-        "missing": [
-          "the line art is content: models built with black faces and emissive hue edges (templates/looks/neon-vector/models); the engine draws every lit material's feature edges and blooms them, but a model's own coloured faces still fill"
-        ],
-        "authored": [
-          {
-            "kind": "prop",
-            "what": "built as line art: near-black faces with one saturated emissive hue a part, so only its edges glow"
-          },
-          {
-            "kind": "character",
-            "what": "built as line art: near-black faces, an emissive hue for its outline and one accent, no textures"
-          }
-        ]
-      },
-      "ui": "neon",
-      "palette": {
-        "size": "black plus 2 to 4 saturated hues",
-        "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."
-      },
-      "assets": {
-        "logicalResolution": "native output",
-        "spriteScale": "line widths 1 to 3 px",
-        "faceBudget": "line geometry",
-        "outlinePx": "the line is the shape",
-        "textureDensity": "none (emissive colour)"
-      },
-      "artBible": {
-        "direction": "Luminous lines on black, grids for space, particle bursts, bloom as the material.",
-        "avoid": [
-          "filled shaded surfaces",
-          "grey backgrounds",
-          "too many hues"
-        ]
-      }
-    },
-    {
-      "slug": "toy-3d",
-      "name": "Toy 3D",
-      "category": "crafted-3d",
-      "descriptor": "Chunky toy pieces of satin plastic with rounded bevelled edges, bright colour and soft contact shadows, seen through a tilt-shift band that blurs the top and bottom of the frame: a world small enough to pick up.",
-      "preview": "previews/toy-3d.webp",
-      "checks": [
-        "Hard edges read rounded: a bevel catches a highlight along every box edge at play distance.",
-        "Surfaces have a satin sheen with soft highlights; no gritty texture, no metal or glass realism.",
-        "Pieces touching the ground or each other sit in soft ambient-occlusion shadow, and the frame's top and bottom blur round a sharp middle band, as in a tilt-shift photo of a model."
-      ],
-      "intended": "Rounded edges on simple chunky forms, a smooth satin sheen and bright saturated colour are the style, not missing detail, low-resolution models or oversaturation.",
-      "premise": {
-        "genre": "party, platformer, puzzle, builder, kart racing",
-        "mood": "cheerful, playful, cosy",
-        "era": "contemporary toys",
-        "audience": "all ages, families, casual"
-      },
-      "look": {
-        "preset": "templates/looks/toy-3d.ts",
-        "presetReady": true,
-        "support": "full",
-        "layers": [
-          "frame",
-          "conform"
-        ],
-        "profiles": [
-          "3d"
-        ],
-        "views": [
-          "isometric-2.5d",
-          "third-person-3d"
-        ],
-        "mood": "bright",
-        "primitives": [
-          "MaterialStyle.surface",
-          "ArtShape.bevel",
-          "PostEffects.ao",
-          "PostEffects.saturation",
-          "RenderSettings.toneMapping"
-        ],
-        "missing": []
+        "preset": "templates/looks/low-poly.ts", "presetReady": true, "support": "full",
+        "layers": ["frame", "conform"], "profiles": ["3d"],
+        "views": ["isometric-2.5d", "third-person-3d", "first-person-3d"], "mood": "bright",
+        "primitives": ["StandardMaterialDesc.flatShading", "MaterialStyle.surface", "ArtShape.bevel", "PostEffects.ao", "Fog", "Sky"], "missing": []
       },
       "ui": "candy",
-      "palette": {
-        "size": "24 to 48 bright colours",
-        "rules": "Clean saturated primaries and pastels, one colour per piece; shadows from light, not from dark paint."
-      },
-      "assets": {
-        "logicalResolution": "native output",
-        "spriteScale": "figures 1 to 2 m, chunky proportions",
-        "faceBudget": "props 500 to 3k triangles, figures under 8k, bevelled",
-        "outlinePx": "0",
-        "textureDensity": "flat colour or simple colour textures up to 32 px"
-      },
-      "artBible": {
-        "direction": "Everything is a toy: chunky simplified forms, rounded bevels, satin plastic, bright clean colour, soft shadows under a sunny sky.",
-        "avoid": [
-          "sharp machined edges",
-          "gritty or realistic textures",
-          "dull muddy colour"
-        ]
-      },
-      "variants": [
-        {
-          "name": "paper",
-          "title": "Paper craft",
-          "descriptor": "Folded planes, visible sheet thickness and layered cut paper become the world's construction.",
-          "mood": "soft",
-          "checks": [
-            "Surfaces are flat planes with crisp folds; no smooth organic curvature.",
-            "Paper grain or fibre is visible on lit surfaces.",
-            "Layered sheets cast soft contact shadows on the layer behind."
-          ],
-          "intended": "Crisp folds on flat planes, visible fibre and soft contact shadows between stacked sheets are the style, not low-poly faceting, noise or ambient-occlusion bugs.",
-          "premise": {
-            "genre": "puzzle, cosy adventure, platformer",
-            "mood": "calm, delicate, handmade",
-            "era": "handmade crafts",
-            "audience": "casual and all ages"
-          },
-          "palette": {
-            "size": "8 to 16 colours",
-            "rules": "Colours of real paper stock: muted, slightly warm; white is off-white."
-          },
-          "assets": {
-            "logicalResolution": "native output",
-            "spriteScale": "characters as 200 to 600 triangle folded shapes",
-            "faceBudget": "under 2k triangles per prop",
-            "outlinePx": "0 (folds and shadows)",
-            "textureDensity": "paper texture 1 texel per screen pixel"
-          },
-          "artBible": {
-            "direction": "Everything is cut, folded or stacked paper: planar facets, thin edges, soft contact shadows, paper grain.",
-            "avoid": [
-              "smooth shading",
-              "glossy materials",
-              "saturated digital colours"
-            ]
-          },
-          "authored": [
-            {
-              "kind": "character",
-              "what": "built as folded card: flat sheets with crisp folds, scored edges and visible thickness, no curved surfaces (the paper fold recipe)"
-            },
-            {
-              "kind": "prop",
-              "what": "built as card sheets folded and stood in layers, crisp creases and flat faces (the paper fold recipe)"
-            }
-          ]
-        }
-      ]
+      "palette": {"size": "16 to 32 colours", "rules": "One clean colour per material; saturated accents and warm light, cooler quieter distance."},
+      "assets": {"logicalResolution": "native output", "spriteScale": "chunky figures 1 to 2 m", "faceBudget": "props 50 to 500 triangles, characters 300 to 1500", "outlinePx": "0", "textureDensity": "flat colour or one palette texture"},
+      "artBible": {"direction": "Combine economical planar silhouettes with the tactile clarity of toy pieces: broad facets, tiny edge highlights, bright local colour and soft contact shadows. Keep every playable surface sharp.", "avoid": ["smooth high-poly forms that hide facets", "photographic textures", "tilt-shift blur across the playfield", "paper grain or folded-card construction"]}
     },
     {
-      "slug": "cartoon-2d",
-      "name": "Cartoon 2D",
-      "category": "painted",
-      "descriptor": "Flat cartoon colour: clean shapes filled with a few tones per material and a dark warm contour round every figure and prop.",
-      "preview": "previews/cartoon-2d.webp",
+      "slug": "cartoon",
+      "name": "Cartoon",
+      "category": "cartoon",
+      "descriptor": "Clean exaggerated shapes with warm dark contours and two or three flat tones per material: illustrated sprites in 2D, cel-shaded outlined models in 3D.",
+      "preview": "previews/cartoon.webp",
       "checks": [
-        "Each material is filled with two or three flat tones, stepped in value, with no smooth gradient.",
-        "Characters and props carry a dark warm contour, not a pure black one.",
-        "Shapes are simple and readable at a glance: no fine painterly texture inside the fills."
+        "Each material reads as two or three broad tones, without photographic texture or airbrushed gradients.",
+        "Figures and props keep a clean warm dark contour; in 3D the line follows silhouettes and major creases without covering the fills.",
+        "Exaggerated silhouettes and saturated characters read immediately against quieter layered backgrounds."
       ],
-      "intended": "Flat fills of a few tones, a warm dark contour round every figure and simple exaggerated shapes are the style, not banding, a halo or missing detail.",
-      "premise": {
-        "genre": "platformer, adventure, puzzle, casual, children's games",
-        "mood": "cheerful, whimsical, bright",
-        "era": "contemporary cartoons",
-        "audience": "all ages, casual and families"
-      },
+      "intended": "Flat stepped fills, warm dark contours and simple exaggerated proportions are the style, not banding, halos or missing surface detail.",
+      "premise": {"genre": "platformer, adventure, brawler, puzzle, casual", "mood": "cheerful, expressive, whimsical", "era": "contemporary illustration", "audience": "all ages and families"},
       "look": {
-        "preset": "templates/looks/cartoon-2d.ts",
-        "presetReady": true,
-        "support": "content",
-        "layers": [
-          "frame",
-          "conform",
-          "authored"
-        ],
-        "profiles": [
-          "2d"
-        ],
-        "views": [
-          "side-2d",
-          "top-down-2d"
-        ],
-        "mood": "bright",
-        "primitives": [
-          "Stylise.posterize",
-          "Stylise.posterizeMode",
-          "ArtLine.width",
-          "ArtPalette.rampSteps",
-          "PostEffects.vignette"
-        ],
-        "missing": [
-          "the drawing is content: characters, props and backdrops drawn as flat-colour cartoon illustration (the engine flattens their tones, holds them to the palette and draws the contour)"
-        ],
+        "preset": "templates/looks/cartoon.ts", "presetReady": true, "support": "content",
+        "layers": ["frame", "conform", "authored"], "profiles": ["2d", "3d"],
+        "views": ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"], "mood": "bright",
+        "primitives": ["StandardMaterialDesc.toon", "MaterialStyle.outlineWidth", "Stylise.posterize", "Stylise.posterizeMode", "ArtLine.width", "ArtPalette.rampSteps"],
+        "missing": ["2D illustration is authored content; conformance cannot invent characters or backdrops"],
         "authored": [
-          {
-            "kind": "character",
-            "what": "drawn as a cartoon character: simple exaggerated shapes, flat fills of two or three tones a material, a clean dark warm contour"
-          },
-          {
-            "kind": "backdrop",
-            "what": "drawn as a cartoon background: flat colour shapes, simple layered planes, lighter and less contrasted than the characters"
-          }
+          {"kind": "character", "what": "in 2D, a clean cartoon drawing with exaggerated shapes, two or three flat tones and a warm dark contour; in 3D, an expressive model with broad clean cel-shaded forms"},
+          {"kind": "backdrop", "what": "simple layered colour planes, lighter and less contrasted than the characters, composed for the selected side or top-down view"}
         ]
       },
       "ui": "cartoon",
-      "palette": {
-        "size": "16 to 32 colours",
-        "rules": "Ramps of three tones a material; saturated characters, softer backgrounds; contour a dark warm brown."
-      },
-      "assets": {
-        "logicalResolution": "native output",
-        "spriteScale": "characters 96 to 160 px",
-        "faceBudget": "none (2D)",
-        "outlinePx": "2 dark warm",
-        "textureDensity": "illustrations at 1x"
-      },
-      "artBible": {
-        "direction": "Clean cartoon shapes, flat fills stepped in two or three tones, a warm dark contour, characters brighter than the world behind them.",
-        "avoid": [
-          "photographic lighting",
-          "gradients and airbrush shading",
-          "pure black outlines"
+      "palette": {"size": "16 to 32 colours", "rules": "Three tones per material; saturated characters, softer backgrounds; contours dark warm brown."},
+      "assets": {"logicalResolution": "native output", "spriteScale": "2D characters 96 to 160 px", "faceBudget": "3D props and characters under 30000 triangles", "outlinePx": "2 warm dark", "textureDensity": "2D illustrations at 1x; 3D flat-colour or lightly drawn textures"},
+      "artBible": {"direction": "One cartoon language across drawings and volumes: clean flat fills, warm contours, expressive exaggerated silhouettes and readable staging. Retain the comic's strong crease accents, not its gritty hatching or print noise.", "avoid": ["photographic lighting", "airbrushed gradients", "dense hatching", "gritty surface marks"]}
+    },
+    {
+      "slug": "anime",
+      "name": "Anime",
+      "category": "anime",
+      "descriptor": "Expressive drawn characters and clean cel bands with cool violet shadows, delicate dark contours and luminous skies; side-view illustration in 2D and cel-shaded volumes in 3D.",
+      "preview": "previews/anime.webp",
+      "checks": [
+        "Characters have clean silhouettes, expressive faces and two decisive shadow tones rather than photographic gradients.",
+        "Cool violet shadows preserve the local colour, and fine dark contours thin with distance in 3D.",
+        "The characters stay crisp and more contrasted than the layered atmospheric background; bright accents never erase faces or line work."
+      ],
+      "intended": "Hard shadow bands, cool-tinted shade and fine drawn contours are the style, not lighting discontinuities, colour casts or outline artefacts.",
+      "premise": {"genre": "adventure, RPG, action, visual novel", "mood": "expressive, hopeful, dramatic", "era": "contemporary animation", "audience": "general and animation fans"},
+      "look": {
+        "preset": "templates/looks/anime.ts", "presetReady": true, "support": "content",
+        "layers": ["frame", "conform", "authored"], "profiles": ["2d", "3d"],
+        "views": ["side-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"], "mood": "bright",
+        "primitives": ["StandardMaterialDesc.toon", "MaterialStyle.shadowTint", "MaterialStyle.outlineWidth", "ArtPalette.rampSteps", "ArtLine.width"],
+        "missing": ["2D characters and backgrounds are authored illustration, not a post-process"],
+        "authored": [
+          {"kind": "character", "what": "an expressive side-view animation drawing, precise fine contour, two cel tones, cool violet shade and a clear pose; for 3D use smooth volumes designed for clean cel bands"},
+          {"kind": "backdrop", "what": "a side-view painted animation background with luminous sky and quiet layered distance, clear staging behind the character"}
         ]
       },
-      "variants": []
+      "ui": "anime",
+      "palette": {"size": "24 to 48 colours", "rules": "Two decisive tones per material, cool indigo shadows, warm light and restrained luminous accents."},
+      "assets": {"logicalResolution": "native output", "spriteScale": "2D characters 192 to 320 px", "faceBudget": "3D props and characters 15000 to 40000 triangles", "outlinePx": "2.5, thinning with distance in 3D", "textureDensity": "flat or lightly painted, up to 2048 texels"},
+      "artBible": {"direction": "Precise animation drawing and expressive silhouettes, cool-tinted cel shadows, restrained fine contours and layered luminous scenery. Draw side-view sprites as illustration; build 3D characters for clean shadow bands.", "avoid": ["photographic skin", "gritty ink hatching", "heavy black rims", "blown-out faces"]}
+    },
+    {
+      "slug": "pixel",
+      "name": "Pixel",
+      "category": "pixel",
+      "descriptor": "Crisp sprites and tiles with stepped colour ramps on a strict pixel grid, drawn from the side with parallax or from above with upright y-sorted figures and readable paths.",
+      "preview": "previews/pixel.webp",
+      "checks": [
+        "Sprite shading steps through four to six tones per material and edges stay on one logical pixel grid.",
+        "In side view the background layers separate from the playfield; from above, floor, cliff faces and paths read before decoration.",
+        "Tile seams have no gaps or bleeding and top-down figures overlap by their feet, with no mixed-resolution edges."
+      ],
+      "intended": "Hard single-cell steps, repeating tiles, stepped colour ramps and upright figures on an overhead map are the style, not aliasing, tiling errors or perspective mistakes.",
+      "premise": {"genre": "platformer, action RPG, tactics, farming, overhead adventure", "mood": "energetic, adventurous, cosy", "era": "early 1990s consoles", "audience": "general and nostalgic players"},
+      "look": {
+        "preset": "templates/looks/pixel.ts", "presetReady": true, "support": "full",
+        "layers": ["frame", "conform", "runtime"], "profiles": ["2d"], "views": ["side-2d", "top-down-2d"], "mood": "bright",
+        "primitives": ["Stylise.pixelHeight", "Stylise.pixelSnap", "Antialias off", "sprite layers for parallax"], "missing": []
+      },
+      "ui": "pixel",
+      "palette": {"size": "32 to 64 colours", "rules": "Four to six tone ramps; cool shadows and warm highlights; characters saturated, paths and floors quieter."},
+      "assets": {"logicalResolution": "480 x 270", "spriteScale": "16 x 16 tiles, 24 to 48 px characters", "faceBudget": "none (2D)", "outlinePx": "1 dark logical pixel, selectively broken by light", "textureDensity": "1 texel per logical pixel"},
+      "artBible": {"direction": "A single strict grid in both views: stepped volume, strong playable silhouettes, layered side-view parallax or overhead paths with upright characters sorted by their feet. The view is a camera and drawing choice, not a variant.", "avoid": ["antialiased or mixed-resolution sprites", "blur", "decoration hiding walkable paths"]}
+    },
+    {
+      "slug": "neon",
+      "name": "Neon",
+      "category": "neon",
+      "descriptor": "Luminous vector lines, grids and bright particles on dark fields; colour-coded silhouettes and restrained halos keep every shape legible.",
+      "preview": "previews/neon.webp",
+      "checks": [
+        "Thin bright contours and grids describe the playable shapes against a near-black field without losing their silhouettes.",
+        "A halo surrounds each bright line but leaves nearby lines and coloured parts distinguishable.",
+        "The geometry reads as luminous line work rather than filled shaded surfaces; distinct hues communicate player, hazard and reward."
+      ],
+      "intended": "Near-black fields, bright thin lines, luminous halos and unfilled geometry are the style, not underexposure, missing surfaces or an absent backdrop.",
+      "premise": {"genre": "arcade shooter, rhythm, racing", "mood": "electric, hypnotic, intense", "era": "vector arcade and contemporary neon", "audience": "arcade and rhythm players"},
+      "look": {
+        "preset": "templates/looks/neon.ts", "presetReady": true, "support": "content",
+        "layers": ["frame", "conform", "authored"], "profiles": ["2d", "3d"],
+        "views": ["side-2d", "top-down-2d", "third-person-3d"], "mood": "dark",
+        "primitives": ["RenderSettings.bloom", "emissive unlit materials", "Trail", "Beam", "particles", "PostEffects.chromaticAberration"],
+        "missing": ["line art is authored content: 2D luminous contours or 3D near-black faces with saturated emissive edges"],
+        "authored": [
+          {"kind": "prop", "what": "line art: black interiors, one saturated emissive hue per part and clean readable contours"},
+          {"kind": "character", "what": "a recognisable luminous silhouette with black interior, one outline hue and one accent, no shaded textures"}
+        ]
+      },
+      "ui": "neon",
+      "palette": {"size": "black plus 2 to 4 saturated hues", "rules": "One meaning per hue; white only at the hottest tiny centres."},
+      "assets": {"logicalResolution": "native output", "spriteScale": "line widths 1 to 3 px", "faceBudget": "line geometry", "outlinePx": "the line is the shape", "textureDensity": "none (emissive colour)"},
+      "artBible": {"direction": "Luminous lines on black, grids for space, controlled particle accents and bloom that never obscures the line work.", "avoid": ["filled shaded surfaces", "grey backgrounds", "too many hues", "halos hiding the silhouette"]}
     }
   ]
 }

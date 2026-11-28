@@ -1,56 +1,57 @@
 import { file } from '@origingame/engine/author';
+// Fuse Sparks: Loops at a lit fuse's tip.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 12,
-    "h": 64,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 10,
-        "dir": -90,
-        "drag": 1.2,
-        "gravity": 1.2,
-        "life": [
-          0.3,
-          0.6
-        ],
-        "mode": "spray",
-        "ramp": "$main",
-        "shape": "star",
-        "size": 4,
-        "speed": [
-          0.8,
-          1.6
-        ],
-        "spread": 160,
-        "type": "particles"
-      },
-      {
-        "pulse": 0.3,
-        "pulseRate": 3,
-        "r": 0.16,
-        "ramp": "$main",
-        "spin": 1,
-        "type": "orb"
-      }
+ "recipe": {
+  "name": "Fuse Sparks",
+  "w": 64,
+  "h": 64,
+  "frames": 12,
+  "fps": 12,
+  "loop": true,
+  "seed": 26,
+  "ramps": {
+   "main": [
+    "#d2461e",
+    "#ff8a24",
+    "#ffd040",
+    "#fff6c8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "spray",
+    "count": 10,
+    "dir": -90,
+    "spread": 160,
+    "speed": [
+     0.8,
+     1.6
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Fuse Sparks",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#d2461e",
-        "#ff8a24",
-        "#ffd040",
-        "#fff6c8"
-      ]
-    },
-    "seed": 26,
-    "supersample": 4,
-    "w": 64
-  }
+    "gravity": 1.2,
+    "drag": 1.2,
+    "life": [
+     0.3,
+     0.6
+    ],
+    "shape": "star",
+    "size": 4
+   },
+   {
+    "type": "orb",
+    "ramp": "$main",
+    "r": 0.16,
+    "pulse": 0.3,
+    "pulseRate": 3,
+    "spin": 1
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

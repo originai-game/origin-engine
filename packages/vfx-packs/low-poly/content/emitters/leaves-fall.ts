@@ -66,7 +66,7 @@ export default file.particles({
   },
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/ribbon")
+    "mesh": ref("base/vfx/low-poly/models/ribbon")
   },
   "lit": true,
   "roughness": 0.38,

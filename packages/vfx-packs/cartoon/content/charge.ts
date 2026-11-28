@@ -1,58 +1,59 @@
 import { file } from '@origingame/engine/author';
+// Charge Ball: Loops at the hand or barrel while a shot charges.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 12,
-    "h": 96,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 10,
-        "heat": [
-          0.6,
-          1.05
-        ],
-        "implodeR": 0.95,
-        "life": [
-          0.5,
-          1
-        ],
-        "mode": "implode",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 4,
-        "type": "particles"
-      },
-      {
-        "pulse": 0.15,
-        "pulseRate": 2,
-        "r": 0.34,
-        "ramp": "$main",
-        "rim": 0.2,
-        "spin": 1,
-        "type": "orb"
-      }
+ "recipe": {
+  "name": "Charge Ball",
+  "w": 96,
+  "h": 96,
+  "frames": 12,
+  "fps": 12,
+  "loop": true,
+  "seed": 24,
+  "ramps": {
+   "main": [
+    "#2f5ed8",
+    "#62bcff",
+    "#dff7ff"
+   ],
+   "spark": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "implode",
+    "count": 10,
+    "implodeR": 0.95,
+    "life": [
+     0.5,
+     1
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Charge Ball",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#2f5ed8",
-        "#62bcff",
-        "#dff7ff"
-      ],
-      "spark": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ]
-    },
-    "seed": 24,
-    "supersample": 4,
-    "w": 96
-  }
+    "shape": "star",
+    "size": 4,
+    "heat": [
+     0.6,
+     1.05
+    ]
+   },
+   {
+    "type": "orb",
+    "ramp": "$main",
+    "r": 0.34,
+    "pulse": 0.15,
+    "pulseRate": 2,
+    "spin": 1,
+    "rim": 0.2
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

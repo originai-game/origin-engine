@@ -53,7 +53,7 @@ describe("vfx archives", () => {
     expect(manifest.looks).toEqual({
       catalogue: { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/looks/catalogue.json", sha256: expect.stringMatching(/^[0-9a-f]{64}$/), size: expect.any(Number) },
       previews: {
-        "neon-vector": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/neon-vector.webp", sha256: sha("neon"), size: 4, engine: "1.2.3-dev.4" },
+        neon: { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/neon.webp", sha256: sha("neon"), size: 4, engine: "1.2.3-dev.4" },
         pixel: { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.webp", sha256: sha("pix"), size: 3, engine: "1.2.3-dev.4" },
         "pixel.8bit": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.8bit.webp", sha256: sha("8bit"), size: 4, engine: "1.2.3-dev.4" },
       },
@@ -88,14 +88,14 @@ const SLOTS: (Slot & { bytes: string })[] = [
   { path: "previews/realistic-default.webp", kind: "default", bytes: "realistic" },
   { path: "previews/pixel.webp", kind: "look", look: "pixel", bytes: "pix" },
   { path: "previews/pixel.8bit.webp", kind: "variant", look: "pixel", variant: "8bit", bytes: "8bit" },
-  { path: "previews/neon-vector.webp", kind: "look", look: "neon-vector", bytes: "neon" },
+  { path: "previews/neon.webp", kind: "look", look: "neon", bytes: "neon" },
   { path: "previews/ui/default.webp", kind: "ui", pack: "default", bytes: "ui" },
 ];
 /** A version directory with its previews as scripts/release.sh previews leaves them, and an engine package with a catalogue. */
 function drawLooks(dir: string, version: string, revision: string) {
   const engine = scratch("og-looks-engine-");
   mkdirSync(join(engine, "knowledge/looks"), { recursive: true });
-  const catalogue = `${JSON.stringify({ schemaVersion: 3, styles: [{ slug: "pixel", preview: "previews/pixel.webp" }, { slug: "neon-vector", preview: "previews/neon-vector.webp" }] }, null, 2)}\n`;
+  const catalogue = `${JSON.stringify({ schemaVersion: 3, styles: [{ slug: "pixel", preview: "previews/pixel.webp" }, { slug: "neon", preview: "previews/neon.webp" }] }, null, 2)}\n`;
   writeFileSync(join(engine, "knowledge/looks/catalogue.json"), catalogue);
   for (const s of SLOTS) {
     mkdirSync(join(dir, s.path, ".."), { recursive: true });

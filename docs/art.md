@@ -184,13 +184,19 @@ summary as warnings and never refuses a build.
   for `content` styles, `look.authored`, the art each brief kind must be;
   `artBrief` writes it into every request of the kind, and
   `authoredArt(look)` lists it.
-- `variants` (§2.11): the preset drawn other ways, each with its own text.
+- Views are drawing/camera choices, not variants (§2.11).
 
-Six looks, every one offered to a new game (`creationLooks`), with the
-UI theme their `ui` line names: toy-3d (candy); cartoon-2d (cartoon);
-inked-comic-3d (comic); faceted-low-poly (minimal); pixel (pixel);
-neon-vector (neon). A
-theme is a recipe in `templates/themes/<name>/`.
+Six player-facing styles: Realistic is the lookless engine default.
+Five looks, every one offered to a new game (`creationLooks`), with the
+UI theme their `ui` line names: low-poly (candy); cartoon (cartoon);
+anime (anime); pixel (pixel); neon (neon). Each theme is a recipe in
+`templates/themes/<slug>/`.
+Low-poly combines planar facets with tactile toy-bright materials. Cartoon
+draws both 2D illustrations and cel-shaded outlined 3D, retaining clear
+comic contours without gritty print effects. Anime draws side-view 2D
+illustration and outlined cel-shaded 3D with cool violet shadows. Pixel
+draws side-view and top-down 2D on the same pixel grid. Neon draws glowing
+vector contours in 2D and 3D. There are no built-in variants or aliases.
 The validator keeps a look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches
 each one.
@@ -332,31 +338,14 @@ change with the mood. The art brief's prompt gains a `Mood` line (§2.2).
 `og new` writes no mood line (mood is not a creation choice): a new game
 draws in its preset's or variant's mood until its look file names another.
 
-### 2.11 Variants: one look drawn another way
+### 2.11 Views, not variants
 
-A look takes `variant: "<name>"`, one of the variants of the preset its
-`extends` chain reaches: `templates/looks/variants/<slug>/<name>.ts`, a
-layer of the look's resources compiled into the cook (og-cook's
-`VARIANT_LAYERS`). The cook lays it over the preset field by field (a field
-it turns off is written at its default), then the mood's layer (§2.10),
-then the game's own looks, so the game's fields still win. Its `name` and
-`mood` replace the preset's; the nearest look's variant wins for the whole
-chain. A variant the preset lacks, a chain without a preset, and a preset
-naming a variant are refused. A mood reads the variant's own layer
-(`moods/<mood>/<slug>.<variant>.ts`) before the look's.
-
-Each variant is an entry of its look's `variants` in the catalogue, with its
-own title, descriptor, mood, three checks, `intended` traits, premise,
-palette, asset specs, art bible and, where its art is authored, `authored`.
-`readLook` and `presetLook(slug, { variant })` read the chain as the cook
-does, and the brief and the critic read the variant's text in place of the
-look's; the look's preview is not passed for a variant, whose palette and
-grid differ. The validator holds the files and entries equal.
-
-| Look | Variants |
-|---|---|
-| pixel | topdown |
-| toy-3d | paper |
+The built-in catalogue has no variants and `VARIANT_LAYERS` is empty.
+Choose the look's `look.views` camera/drawing view in creation; do not write
+a `variant`. In particular Pixel's `top-down-2d` view uses the Pixel preset
+itself. The former paper look is removed, not mapped to another style.
+Games that need a different treatment write the resources in their own
+checked `file.look`; the engine ships no retired preset aliases.
 
 ## 4. The platform: the style is chosen when a game is created
 

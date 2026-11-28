@@ -1,77 +1,78 @@
 import { file } from '@origingame/engine/author';
+// Falling Leaves: Loops over a play area under trees.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 24,
-    "h": 192,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 6,
-        "driftX": 0.06,
-        "fadeIn": 0.15,
-        "fallScale": 0.62,
-        "life": [
-          0.8,
-          0.95
-        ],
-        "mode": "fall",
-        "ramp": "$main",
-        "shape": "leaf",
-        "size": 14,
-        "spanX": 0.68,
-        "speed": [
-          0.4,
-          0.7
-        ],
-        "type": "particles",
-        "wiggle": 0.2,
-        "y": 0.3
-      },
-      {
-        "count": 5,
-        "driftX": 0.06,
-        "fadeIn": 0.15,
-        "fallScale": 0.62,
-        "life": [
-          0.8,
-          0.95
-        ],
-        "mode": "fall",
-        "ramp": "$alt",
-        "seed": 4,
-        "shape": "leaf",
-        "size": 14,
-        "spanX": 0.68,
-        "speed": [
-          0.4,
-          0.7
-        ],
-        "type": "particles",
-        "wiggle": 0.2,
-        "y": 0.3
-      }
+ "recipe": {
+  "name": "Falling Leaves",
+  "w": 192,
+  "h": 192,
+  "frames": 24,
+  "fps": 12,
+  "loop": true,
+  "seed": 94,
+  "ramps": {
+   "main": [
+    "#4f8a26",
+    "#86bf3a",
+    "#c8e46a"
+   ],
+   "alt": [
+    "#b4501c",
+    "#e88a2a",
+    "#f6c04a"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "fall",
+    "y": 0.3,
+    "fadeIn": 0.15,
+    "fallScale": 0.62,
+    "driftX": 0.06,
+    "count": 6,
+    "spanX": 0.68,
+    "speed": [
+     0.4,
+     0.7
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Falling Leaves",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "alt": [
-        "#b4501c",
-        "#e88a2a",
-        "#f6c04a"
-      ],
-      "main": [
-        "#4f8a26",
-        "#86bf3a",
-        "#c8e46a"
-      ]
-    },
-    "seed": 94,
-    "supersample": 4,
-    "w": 192
-  }
+    "life": [
+     0.8,
+     0.95
+    ],
+    "wiggle": 0.2,
+    "shape": "leaf",
+    "size": 14
+   },
+   {
+    "type": "particles",
+    "ramp": "$alt",
+    "mode": "fall",
+    "y": 0.3,
+    "fadeIn": 0.15,
+    "fallScale": 0.62,
+    "driftX": 0.06,
+    "count": 5,
+    "spanX": 0.68,
+    "speed": [
+     0.4,
+     0.7
+    ],
+    "life": [
+     0.8,
+     0.95
+    ],
+    "wiggle": 0.2,
+    "shape": "leaf",
+    "size": 14,
+    "seed": 4
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

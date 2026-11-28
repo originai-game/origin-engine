@@ -8,7 +8,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/twinkle-stars")
+        "asset": ref("base/vfx/low-poly/emitters/twinkle-stars")
       }
     }
   ]

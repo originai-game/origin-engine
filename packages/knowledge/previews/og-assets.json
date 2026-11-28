@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "anime.webp",
+      "sha256": "d272f16d6c6e7862b2791aa37c9ff4049263f32fe8404f622f929b89877f5ff5",
+      "size": 31334,
+      "visibility": "public"
+    },
+    {
+      "path": "cartoon.webp",
+      "sha256": "e791f3ec829b0166b7988988a36af43dda4da74ea53a321744d9b4a94212ef3c",
+      "size": 61320,
+      "visibility": "public"
+    },
+    {
+      "path": "low-poly.webp",
+      "sha256": "1b0f6e4aa484bb3e5fbc98b1b06fd1b0d7103436e8c7682ded48c584d387dfb4",
+      "size": 9606,
+      "visibility": "public"
+    },
+    {
+      "path": "neon.webp",
+      "sha256": "b4dc877e3a35beaa5c6ed17e323cd777be3202c864c23d5e1e419b64b5e3cbf8",
+      "size": 10670,
+      "visibility": "public"
+    },
+    {
+      "path": "pixel.webp",
+      "sha256": "17524d6b94b873621ee85bdddfbdb20f39a15221c03509755f3523b46c4ade5f",
+      "size": 84004,
+      "visibility": "public"
+    }
+  ]
+}

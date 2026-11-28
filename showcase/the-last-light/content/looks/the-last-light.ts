@@ -1,6 +1,6 @@
 import { file } from "@origingame/engine/author";
 export default file.look({
-  extends: ["faceted-low-poly"],
+  extends: ["low-poly"],
   mood: "warm",
   ui: "default",
   // The cover's grade: deeper shadows and shafts through the sea mist.

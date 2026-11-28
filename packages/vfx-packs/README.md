@@ -11,10 +11,8 @@ in `packages/engine/extensions/` instead; a pack is in one place, never both.
 | Pack | Effects |
 |---|---|
 | `cinematic-realism` | 89 realistic effects, independent of any look: explosions, fire and smoke, muzzle flashes, impacts and marks, sparks, steam, dust and fog. The bundled `realistic-starter` supplies seven smaller realistic effects. Discover both with `og vfx list`. |
-| `cartoon-2d` | 59 (hits, shooting, explosions, movement, water, pickups and rewards, status, magic, environment, destruction; flat 2D, supersampled, 2 px warm contour); cartoon-2d |
-| `toy-3d` | 72 (hits, shooting and projectiles, explosions, movement, vehicles, water, pickups and rewards, status, magic, fire, smoke, environment, building and destruction, celebration; lit satin-plastic meshes that pop up and shrink away); toy-3d |
-| `toy-3d-paper` | 72 (the same effects as cut card that lets light through); toy-3d paper |
-| `geometric` | 9 (explosion, hit-spark, gunfire, buff/pickup, magic-impact, smoke, splash, ambient/trail, ui); faceted-low-poly |
+| `cartoon` | 59 (hits, shooting, explosions, movement, water, pickups and rewards, status, magic, environment, destruction; flat 2D, supersampled, 2 px warm contour); Cartoon |
+| `low-poly` | 81 (72 bright tactile mesh effects plus 9 hard-geometry mechanisms under `geometric/`); Low-poly |
 | `effekseer-andrewfm01` | 15 (beam, explosion, fire, hit-spark, magic-impact, magic-projectile, portal, smoke, ui) |
 | `effekseer-effekseer01` | 15 (basic, beam) |
 | `effekseer-hato01` | 4 (ambient) |

@@ -5,7 +5,7 @@
 // The out dir defaults to packages/vfx-packs; `--spec=<dir>` also writes each
 // pack's `vfx-pack.ts manifest` spec there.
 //
-// Writes `cartoon-2d/` for the cartoon-2d look.
+// Writes `cartoon/` for the cartoon look's illustrated 2D effects.
 // Each effect is one checked `file.vfx2d` Pixel VFX Forge declaration
 // (`content/<name>.ts`), drawn supersampled (`supersample`)
 // so its edges are smooth, its fills flat bands of two to four tones and its
@@ -481,9 +481,9 @@ interface Pack {
 }
 
 const PACKS: Record<string, Pack> = {
-  "cartoon-2d": {
-    description: "Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
-    looks: ["cartoon-2d"],
+  "cartoon": {
+    description: "Flat cartoon effects: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
+    looks: ["cartoon"],
     style: { outline: "outside", outlineColor: "#3a2416", line: 2, innerLine: 1 },
     title: "Cartoon",
   },

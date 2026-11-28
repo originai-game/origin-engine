@@ -3,7 +3,7 @@
   "kind": "vfx",
   "name": "geometric",
   "version": "1.0.0",
-  "description": "Texture-free hard geometry for faceted-low-poly: nine visual mechanisms, no bloom or soft sprites.",
+  "description": "Texture-free hard geometry for Low-poly: nine visual mechanisms, no bloom or soft sprites.",
   "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
@@ -25,7 +25,7 @@
     ]
   },
   "keywords": [
-    "faceted-low-poly",
+    "low-poly",
     "geometric",
     "texture-free"
   ]

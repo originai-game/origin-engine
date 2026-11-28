@@ -1,9 +1,9 @@
 {
   "format": 1,
   "kind": "vfx",
-  "name": "cartoon-2d",
+  "name": "cartoon",
   "version": "1.0.0",
-  "description": "Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
+  "description": "Flat cartoon effects: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.",
   "minEngine": "0.9.0",
   "tags": {
     "style": "stylised",
@@ -47,7 +47,6 @@
   "keywords": [
     "2d",
     "cartoon",
-    "cartoon-2d",
     "flat"
   ]
 }

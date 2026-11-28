@@ -1,49 +1,50 @@
 import { file } from '@origingame/engine/author';
+// Twinkle: Loops on something shiny: a gem, a star, a secret.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 16,
-    "h": 128,
-    "innerLine": 1,
-    "layers": [
-      {
-        "area": 0.6,
-        "count": 4,
-        "life": [
-          0.5,
-          0.8
-        ],
-        "mode": "ambient",
-        "ramp": "$main",
-        "shape": "star",
-        "size": 16,
-        "spanX": 0.62,
-        "spanY": 0.62,
-        "speed": [
-          0,
-          0.1
-        ],
-        "twinkle": 2,
-        "type": "particles",
-        "wiggle": 0.04
-      }
+ "recipe": {
+  "name": "Twinkle",
+  "w": 128,
+  "h": 128,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 96,
+  "ramps": {
+   "main": [
+    "#e09a14",
+    "#ffd23c",
+    "#fff3a8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "ambient",
+    "count": 4,
+    "area": 0.6,
+    "spanX": 0.62,
+    "spanY": 0.62,
+    "speed": [
+     0,
+     0.1
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Twinkle",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#e09a14",
-        "#ffd23c",
-        "#fff3a8"
-      ]
-    },
-    "scale": 0.875,
-    "seed": 96,
-    "supersample": 4,
-    "w": 128
-  }
+    "wiggle": 0.04,
+    "life": [
+     0.5,
+     0.8
+    ],
+    "twinkle": 2,
+    "shape": "star",
+    "size": 16
+   }
+  ],
+  "scale": 0.875,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

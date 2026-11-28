@@ -1,88 +1,89 @@
 import { file } from '@origingame/engine/author';
+// Teleport: On the ground where a character vanishes or arrives.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 15,
-    "frames": 18,
-    "h": 208,
-    "innerLine": 1,
-    "layers": [
-      {
-        "breakup": 0.2,
-        "r0": 0.3,
-        "r1": 0.95,
-        "ramp": "$main",
-        "squash": 0.32,
-        "t1": 0.7,
-        "th": 0.14,
-        "type": "ring",
-        "y": 1.3
-      },
-      {
-        "grow": 0.1,
-        "hgt": 2.8,
-        "ramp": "$main",
-        "rough": 0.12,
-        "speed": 3,
-        "t0": 0.25,
-        "t1": 0.8,
-        "type": "pillar",
-        "w": 0.4,
-        "y": 1.3
-      },
-      {
-        "count": 8,
-        "drag": 2.5,
-        "life": [
-          0.3,
-          0.6
-        ],
-        "mode": "burst",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 5,
-        "speed": [
-          1,
-          1.8
-        ],
-        "t0": 0.35,
-        "type": "particles",
-        "y": 0.3
-      },
-      {
-        "dur": 0.12,
-        "r": 0.6,
-        "ramp": "$spark",
-        "squash": 1.6,
-        "t0": 0.3,
-        "type": "flash",
-        "y": 0.3
-      }
+ "recipe": {
+  "name": "Teleport",
+  "w": 144,
+  "h": 208,
+  "frames": 18,
+  "fps": 15,
+  "loop": false,
+  "seed": 85,
+  "ramps": {
+   "main": [
+    "#2856b8",
+    "#4a8ee8",
+    "#9cd0ff"
+   ],
+   "spark": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "ring",
+    "ramp": "$main",
+    "r0": 0.3,
+    "r1": 0.95,
+    "th": 0.14,
+    "squash": 0.32,
+    "breakup": 0.2,
+    "y": 1.3,
+    "t1": 0.7
+   },
+   {
+    "type": "pillar",
+    "ramp": "$main",
+    "w": 0.4,
+    "hgt": 2.8,
+    "speed": 3,
+    "rough": 0.12,
+    "grow": 0.1,
+    "y": 1.3,
+    "t0": 0.25,
+    "t1": 0.8
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "burst",
+    "count": 8,
+    "y": 0.3,
+    "t0": 0.35,
+    "speed": [
+     1,
+     1.8
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Teleport",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.8634
+    "drag": 2.5,
+    "life": [
+     0.3,
+     0.6
     ],
-    "ramps": {
-      "main": [
-        "#2856b8",
-        "#4a8ee8",
-        "#9cd0ff"
-      ],
-      "spark": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ]
-    },
-    "scale": 0.777778,
-    "seed": 85,
-    "supersample": 4,
-    "w": 144
-  }
+    "shape": "star",
+    "size": 5
+   },
+   {
+    "type": "flash",
+    "ramp": "$spark",
+    "y": 0.3,
+    "r": 0.6,
+    "squash": 1.6,
+    "t0": 0.3,
+    "dur": 0.12
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.8634
+  ],
+  "scale": 0.777778,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

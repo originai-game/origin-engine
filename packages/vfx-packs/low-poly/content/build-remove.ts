@@ -13,13 +13,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/remove-bits")
+        "asset": ref("base/vfx/low-poly/emitters/remove-bits")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/remove-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/remove-puffs")
       }
     }
   ]

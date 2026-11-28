@@ -8,13 +8,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/skid-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/skid-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/skid-grit")
+        "asset": ref("base/vfx/low-poly/emitters/skid-grit")
       }
     }
   ]

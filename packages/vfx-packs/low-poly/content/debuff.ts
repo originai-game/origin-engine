@@ -18,13 +18,13 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/debuff-drops")
+        "asset": ref("base/vfx/low-poly/emitters/debuff-drops")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/debuff-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/debuff-puffs")
       }
     }
   ]

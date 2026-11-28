@@ -1,69 +1,70 @@
 import { file } from '@origingame/engine/author';
+// Plop: On the water line where something small drops in.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 16,
-    "frames": 12,
-    "h": 120,
-    "innerLine": 1,
-    "layers": [
-      {
-        "count": 8,
-        "dir": -90,
-        "drag": 0.6,
-        "gravity": 3.2,
-        "life": [
-          0.45,
-          0.8
-        ],
-        "mode": "spray",
-        "ramp": "$main",
-        "shape": "drop",
-        "size": 5,
-        "speed": [
-          1,
-          1.8
-        ],
-        "spread": 90,
-        "type": "particles",
-        "y": 0.55
-      },
-      {
-        "breakup": 0.2,
-        "r0": 0.15,
-        "r1": 0.9,
-        "ramp": "$alt",
-        "squash": 0.28,
-        "th": 0.12,
-        "type": "ring",
-        "y": 0.65
-      }
+ "recipe": {
+  "name": "Plop",
+  "w": 120,
+  "h": 120,
+  "frames": 12,
+  "fps": 16,
+  "loop": false,
+  "seed": 52,
+  "ramps": {
+   "main": [
+    "#2a6cc0",
+    "#3f9fe6",
+    "#8fd8ff",
+    "#eefaff"
+   ],
+   "alt": [
+    "#7cc4ee",
+    "#c6ecff",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "spray",
+    "count": 8,
+    "y": 0.55,
+    "dir": -90,
+    "spread": 90,
+    "speed": [
+     1,
+     1.8
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Plop",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.78
+    "gravity": 3.2,
+    "drag": 0.6,
+    "life": [
+     0.45,
+     0.8
     ],
-    "ramps": {
-      "alt": [
-        "#7cc4ee",
-        "#c6ecff",
-        "#ffffff"
-      ],
-      "main": [
-        "#2a6cc0",
-        "#3f9fe6",
-        "#8fd8ff",
-        "#eefaff"
-      ]
-    },
-    "scale": 0.8,
-    "seed": 52,
-    "supersample": 4,
-    "w": 120
-  }
+    "shape": "drop",
+    "size": 5
+   },
+   {
+    "type": "ring",
+    "ramp": "$alt",
+    "r0": 0.15,
+    "r1": 0.9,
+    "th": 0.12,
+    "squash": 0.28,
+    "breakup": 0.2,
+    "y": 0.65
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.78
+  ],
+  "scale": 0.8,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

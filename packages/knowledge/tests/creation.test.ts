@@ -21,12 +21,12 @@ test("creation offers the lookless engine default and only explicit style words 
   expect(doc.schema.required).not.toContain("look");
   for (const choices of Object.values(doc.defaults.byForm)) expect(choices.look).toBeUndefined();
 
-  for (const [words, look] of [["low poly", "faceted-low-poly"], ["toy", "toy-3d"], ["低模赛车", "faceted-low-poly"], ["comic", "inked-comic-3d"], ["漫画射击", "inked-comic-3d"], ["卡通", "inked-comic-3d"], ["霓虹", "neon-vector"]]) {
+  for (const [words, look] of [["low poly", "low-poly"], ["toy", "low-poly"], ["低模赛车", "low-poly"], ["comic", "cartoon"], ["漫画射击", "cartoon"], ["卡通", "cartoon"], ["霓虹", "neon"], ["anime", "anime"], ["二次元冒险", "anime"]]) {
     expect(resolveCreationChoices(words!, { form: "3d" })).toMatchObject({ form: "3d", look });
   }
   expect(resolveCreationChoices("像素冒险", { form: "2d" }).look).toBe("pixel");
   expect(resolveCreationChoices("pixel adventure")).toMatchObject({ form: "2d", look: "pixel" });
-  expect(resolveCreationChoices("cartoon platformer", { form: "2d" }).look).toBe("cartoon-2d");
+  expect(resolveCreationChoices("cartoon platformer", { form: "2d" }).look).toBe("cartoon");
   expect(resolveCreationChoices("", { look: "pixel" })).toMatchObject({ form: "2d", look: "pixel" });
 });
 

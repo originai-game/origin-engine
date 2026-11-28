@@ -8,13 +8,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/wake-foam")
+        "asset": ref("base/vfx/low-poly/emitters/wake-foam")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/wake-drops")
+        "asset": ref("base/vfx/low-poly/emitters/wake-drops")
       }
     }
   ]

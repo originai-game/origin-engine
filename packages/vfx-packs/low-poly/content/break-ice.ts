@@ -13,13 +13,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/ice-shards")
+        "asset": ref("base/vfx/low-poly/emitters/ice-shards")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/ice-glints")
+        "asset": ref("base/vfx/low-poly/emitters/ice-glints")
       }
     },
     {

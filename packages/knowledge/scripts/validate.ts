@@ -503,8 +503,8 @@ export function artDoc(roots: Roots, problems: string[]): void {
   const tableAt = doc.indexOf("| Look | Variants |");
   const rows = tableAt < 0 ? [] : [...doc.slice(tableAt).matchAll(/^\| ([a-z0-9-]+) \| ([a-z0-9-, -]*[a-z0-9-])?\s*\|$/gm)].map((m) => ({ slug: m[1]!, variants: (m[2] ?? "").split(", ").filter(Boolean) }));
   const at = "docs/art.md §2.11's variants table";
-  if (tableAt < 0) problems.push(`${at}: the doc has none`);
   const withVariants = styles.filter((s) => (s.variants?.length ?? 0) > 0);
+  if (tableAt < 0 && withVariants.length) problems.push(`${at}: the doc has none`);
   for (const row of rows) {
     const s = styles.find((x) => x.slug === row.slug);
     if (!s) problems.push(`${at} has a row for ${row.slug}, which the catalogue has no style for`);

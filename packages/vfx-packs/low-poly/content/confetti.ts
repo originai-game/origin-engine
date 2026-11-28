@@ -18,7 +18,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-0")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-0")
       }
     },
     {
@@ -29,7 +29,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-1")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-1")
       }
     },
     {
@@ -40,7 +40,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-2")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-2")
       }
     },
     {
@@ -51,7 +51,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-3")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-3")
       }
     },
     {
@@ -62,7 +62,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-4")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-4")
       }
     },
     {
@@ -86,7 +86,7 @@ export default file.vfx({
             "segments": 48
           }
         },
-        "effect": ref("base/vfx/toy-3d/fade"),
+        "effect": ref("base/vfx/low-poly/fade"),
         "scale": {
           "kind": "curve",
           "keys": [

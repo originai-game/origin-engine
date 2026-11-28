@@ -3,45 +3,29 @@
 /// the knowledge package's catalogue (`packages/knowledge/looks/catalogue.json`).
 pub const PRESETS: &[(&str, &str)] = &[
     (
-        "cartoon-2d",
-        include_str!("../../../../../templates/looks/cartoon-2d.ts"),
+        "anime",
+        include_str!("../../../../../templates/looks/anime.ts"),
     ),
     (
-        "faceted-low-poly",
-        include_str!("../../../../../templates/looks/faceted-low-poly.ts"),
+        "cartoon",
+        include_str!("../../../../../templates/looks/cartoon.ts"),
     ),
     (
-        "inked-comic-3d",
-        include_str!("../../../../../templates/looks/inked-comic-3d.ts"),
+        "low-poly",
+        include_str!("../../../../../templates/looks/low-poly.ts"),
     ),
     (
-        "neon-vector",
-        include_str!("../../../../../templates/looks/neon-vector.ts"),
+        "neon",
+        include_str!("../../../../../templates/looks/neon.ts"),
     ),
     (
         "pixel",
         include_str!("../../../../../templates/looks/pixel.ts"),
     ),
-    (
-        "toy-3d",
-        include_str!("../../../../../templates/looks/toy-3d.ts"),
-    ),
 ];
 
-/// The presets' variants (`templates/looks/variants/<slug>/<variant>.ts`,
-/// docs/art.md §2.11), compiled into the cook as `(slug, variant, text)`.
-pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[
-    (
-        "pixel",
-        "topdown",
-        include_str!("../../../../../templates/looks/variants/pixel/topdown.ts"),
-    ),
-    (
-        "toy-3d",
-        "paper",
-        include_str!("../../../../../templates/looks/variants/toy-3d/paper.ts"),
-    ),
-];
+/// No built-in variants. A view is a camera/drawing choice, not a look layer.
+pub const VARIANT_LAYERS: &[(&str, &str, &str)] = &[];
 
 /// The moods' layers (`templates/looks/moods/`, docs/art.md §2.10), compiled
 /// into the cook: `(mood, None)` is the layer for every style; a keyed entry

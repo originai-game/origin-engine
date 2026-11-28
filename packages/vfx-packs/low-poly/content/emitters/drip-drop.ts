@@ -54,7 +54,7 @@ export default file.particles({
   "drag": 0.4,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/drop")
+    "mesh": ref("base/vfx/low-poly/models/drop")
   },
   "lit": true,
   "roughness": 0.12,
@@ -88,7 +88,7 @@ export default file.particles({
   "subEmitters": [
     {
       "trigger": "death",
-      "emitter": ref("base/vfx/toy-3d/emitters/drip-plip"),
+      "emitter": ref("base/vfx/low-poly/emitters/drip-plip"),
       "count": 6,
       "inheritVelocity": 0
     }

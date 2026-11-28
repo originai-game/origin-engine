@@ -8,13 +8,13 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/wheel-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/wheel-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/wheel-grit")
+        "asset": ref("base/vfx/low-poly/emitters/wheel-grit")
       }
     }
   ]

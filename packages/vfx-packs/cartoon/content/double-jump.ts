@@ -1,61 +1,62 @@
 import { file } from '@origingame/engine/author';
+// Air Jump: At the feet of a second jump in the air.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 18,
-    "frames": 10,
-    "h": 80,
-    "innerLine": 1,
-    "layers": [
-      {
-        "breakup": 0.3,
-        "r0": 0.2,
-        "r1": 0.95,
-        "ramp": "$main",
-        "squash": 0.35,
-        "th": 0.16,
-        "type": "ring",
-        "y": 0.4
-      },
-      {
-        "count": 6,
-        "drag": 3,
-        "life": [
-          0.3,
-          0.5
-        ],
-        "mode": "burst",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 4,
-        "speed": [
-          1.2,
-          1.8
-        ],
-        "squash": 0.4,
-        "type": "particles",
-        "y": 0.4
-      }
+ "recipe": {
+  "name": "Air Jump",
+  "w": 112,
+  "h": 80,
+  "frames": 10,
+  "fps": 18,
+  "loop": false,
+  "seed": 45,
+  "ramps": {
+   "main": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ],
+   "spark": [
+    "#e09a14",
+    "#ffd23c",
+    "#fff3a8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "ring",
+    "ramp": "$main",
+    "r0": 0.2,
+    "r1": 0.95,
+    "th": 0.16,
+    "squash": 0.35,
+    "breakup": 0.3,
+    "y": 0.4
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "burst",
+    "count": 6,
+    "y": 0.4,
+    "squash": 0.4,
+    "speed": [
+     1.2,
+     1.8
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Air Jump",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "ramps": {
-      "main": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ],
-      "spark": [
-        "#e09a14",
-        "#ffd23c",
-        "#fff3a8"
-      ]
-    },
-    "seed": 45,
-    "supersample": 4,
-    "w": 112
-  }
+    "drag": 3,
+    "life": [
+     0.3,
+     0.5
+    ],
+    "shape": "star",
+    "size": 4
+   }
+  ],
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

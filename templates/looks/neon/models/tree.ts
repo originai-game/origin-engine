@@ -1,6 +1,6 @@
 import { file } from '@origingame/engine/author';
 
-// The neon-vector stepped tree: glowing tiers over a pink trunk.
+// The Neon stepped tree: glowing tiers over a pink trunk.
 export default file.model({kind:'geometry',desc:{items:[
   {name:'bark',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[1,0.3,0.8],emissiveIntensity:0.6}}},
   {name:'leaves',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[0.2,1,0.5],emissiveIntensity:0.6}}},

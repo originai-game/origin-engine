@@ -23,7 +23,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/dash-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/dash-puffs")
       }
     },
     {
@@ -39,7 +39,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/dash-lines")
+        "asset": ref("base/vfx/low-poly/emitters/dash-lines")
       }
     }
   ]

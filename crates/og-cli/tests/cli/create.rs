@@ -131,7 +131,7 @@ fn create_without_a_terminal_writes_the_chosen_look() {
         "--id",
         "neon-run",
         "--look",
-        "neon-vector",
+        "neon",
         "--premise",
         "a cozy fishing village",
         "--force",
@@ -151,7 +151,7 @@ fn create_without_a_terminal_writes_the_chosen_look() {
     assert_eq!(manifest["engine"], package["version"]);
     assert_eq!(manifest["id"], "neon-run");
     assert_eq!(manifest["startup"]["look"], "base/looks/neon-run");
-    assert_eq!(manifest["input"]["create"]["look"], "neon-vector");
+    assert_eq!(manifest["input"]["create"]["look"], "neon");
     assert!(game.join("content/looks/neon-run.ts").is_file());
     assert_eq!(
         std::fs::read_to_string(game.join("notes.txt")).unwrap(),
@@ -162,7 +162,7 @@ fn create_without_a_terminal_writes_the_chosen_look() {
     assert_eq!(refused.status.code(), Some(1), "{}", text(&refused));
     let t = text(&refused);
     assert!(
-        t.contains("no look preset 'no-such-look'") && t.contains("neon-vector"),
+        t.contains("no look preset 'no-such-look'") && t.contains("neon"),
         "{t}"
     );
     assert!(!dir.join("other/og-project.json").exists(), "{t}");

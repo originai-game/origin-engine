@@ -55,6 +55,9 @@ const record = flag("--record", "");
 const webp = args.includes("--webp");
 const gpu = args.includes("--gpu");
 const slotsFile = flag("--slots", "");
+const view = flag("--view", "");
+const screens = args.includes("--screens");
+const stageOnly = args.includes("--stage-only");
 const names = args.filter((a) => !a.startsWith("--"));
 /** One preview to draw: create-game's PreviewSlot (bin/creation.ts). */
 interface Slot {
@@ -146,8 +149,9 @@ for (const slot of slots) {
     if (!frame || !toWebp(frame, preview)) failed++;
     continue;
   }
-  const scene: Scene = table[name] ?? table[slug] ?? { scene: "3d" };
-  const dir = join(repo, "target/look-previews", name.replace(":", "@"));
+  const scene: Scene = table[`${name}@${view}`] ?? table[name] ?? table[slug] ?? { scene: "3d" };
+  const captureName = `${name.replace(":", "@")}${view ? `@${view}` : ""}`;
+  const dir = join(repo, "target/look-previews", captureName);
   rmSync(dir, { recursive: true, force: true });
   cpSync(join(import.meta.dir, scene.scene), dir, { recursive: true, filter: (from) => !/\/2d\/(tools|stage\.ts)/.test(from) });
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
@@ -183,14 +187,43 @@ for (const slot of slots) {
   } else {
     stage2d(dir, name, scene, looks, repo);
   }
-  const file = `${name.replace(":", "@")}.png`;
+  if (screens || view) {
+    const entry = join(dir, "src/main.ts");
+    let source = readFileSync(entry, "utf8");
+    if (view && scene.scene === "3d") {
+      const eye = view === "first-person-3d" ? { x: -0.5, y: 1.6, z: 1.1 }
+        : view === "isometric-2.5d" ? { x: 9, y: 10, z: 11 } : { x: 3.4, y: 4.6, z: 9.2 };
+      source = source.replace("const eye = { x: 3.4, y: 4.6, z: 9.2 };", `const eye = ${JSON.stringify(eye)};`);
+      if (view === "first-person-3d") source = source.replace('    model(world, "hero", -0.5, 0.9, 0.35);', "");
+      if (view === "isometric-2.5d") source = source.replace("    cam.fov = 40;", "    cam.orthographic = true; cam.height = 13;");
+    }
+    if (screens) {
+      const config = join(dir, "tsconfig.json");
+      const tsconfig = JSON.parse(readFileSync(config, "utf8"));
+      tsconfig.compilerOptions.jsx = "preserve";
+      tsconfig.include.push("src/**/*.tsx");
+      writeFileSync(config, JSON.stringify(tsconfig, null, 2) + "\n");
+      cpSync(join(import.meta.dir, "screens.tsx"), join(dir, "src/screens.tsx"));
+      source = `import { reviewUi, screen } from './screens.tsx';\n${source}`
+        .replace("  start(world) {", "  ui: reviewUi,\n  commands: { screen },\n  start(world) {")
+        .replace("  systems: [Hud],\n", "")
+        .replace("    hud(world);\n", "");
+    }
+    writeFileSync(entry, source);
+  }
+  if (stageOnly) { console.log(`staged ${dir}`); continue; }
+  const file = `${captureName}.png`;
   rmSync(join(out, file), { force: true });
-  const run = spawnSync(og, ["run", dir, "--headless", "--size", size || scene.size || "960x540", "--out", out, "--commands", `1.5:screenshot:${file};1.6:quit`, ...(gpu ? ["--json", "--require-checked"] : [])], {
+  const commands = screens
+    ? `0:screen:title;1.5:screenshot:${captureName}.title.png;1.6:screen:play;2.5:screenshot:${captureName}.play.png;2.6:screen:results;4:screenshot:${captureName}.results.png;4.1:quit`
+    : `1.5:screenshot:${file};1.6:quit`;
+  const run = spawnSync(og, ["run", dir, "--headless", "--size", size || scene.size || "960x540", "--out", out, "--commands", commands, ...(gpu ? ["--json", "--require-checked"] : [])], {
     encoding: "utf8",
     timeout: 300_000,
     env,
   });
-  if (run.status !== 0 || !existsSync(join(out, file))) {
+  if (screens && existsSync(join(out, `${captureName}.play.png`))) cpSync(join(out, `${captureName}.play.png`), join(out, file));
+  if (run.status !== 0 || !existsSync(join(out, file)) || (screens && ["title", "play", "results"].some(s => !existsSync(join(out, `${captureName}.${s}.png`))))) {
     failed++;
     console.log(`${name}: run failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
     continue;

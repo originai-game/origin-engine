@@ -1,92 +1,93 @@
 import { file } from '@origingame/engine/author';
+// Heal: On the ground under the healed character.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 15,
-    "frames": 18,
-    "h": 192,
-    "innerLine": 1,
-    "layers": [
-      {
-        "breakup": 0.25,
-        "r0": 0.3,
-        "r1": 0.95,
-        "ramp": "$main",
-        "squash": 0.32,
-        "th": 0.14,
-        "type": "ring",
-        "y": 1.1
-      },
-      {
-        "area": 0.65,
-        "areaY": 0.25,
-        "count": 8,
-        "emit": 0.5,
-        "heat": [
-          1.05,
-          0.7
-        ],
-        "life": [
-          0.5,
-          0.85
-        ],
-        "mode": "rise",
-        "ramp": "$main",
-        "shape": "plus",
-        "size": 5,
-        "speed": [
-          0.8,
-          1.5
-        ],
-        "type": "particles",
-        "y": 1
-      },
-      {
-        "area": 0.7,
-        "count": 6,
-        "emit": 0.6,
-        "life": [
-          0.4,
-          0.8
-        ],
-        "mode": "rise",
-        "ramp": "$spark",
-        "shape": "star",
-        "size": 3,
-        "speed": [
-          0.5,
-          1
-        ],
-        "twinkle": 2,
-        "type": "particles",
-        "y": 1
-      }
+ "recipe": {
+  "name": "Heal",
+  "w": 144,
+  "h": 192,
+  "frames": 18,
+  "fps": 15,
+  "loop": false,
+  "seed": 71,
+  "ramps": {
+   "main": [
+    "#2a9046",
+    "#56cc68",
+    "#aef29a",
+    "#effff0"
+   ],
+   "spark": [
+    "#d8cfc4",
+    "#f4efe8",
+    "#ffffff"
+   ]
+  },
+  "layers": [
+   {
+    "type": "ring",
+    "ramp": "$main",
+    "r0": 0.3,
+    "r1": 0.95,
+    "th": 0.14,
+    "squash": 0.32,
+    "breakup": 0.25,
+    "y": 1.1
+   },
+   {
+    "type": "particles",
+    "ramp": "$main",
+    "mode": "rise",
+    "count": 8,
+    "y": 1,
+    "area": 0.65,
+    "areaY": 0.25,
+    "speed": [
+     0.8,
+     1.5
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Heal",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.8354
+    "life": [
+     0.5,
+     0.85
     ],
-    "ramps": {
-      "main": [
-        "#2a9046",
-        "#56cc68",
-        "#aef29a",
-        "#effff0"
-      ],
-      "spark": [
-        "#d8cfc4",
-        "#f4efe8",
-        "#ffffff"
-      ]
-    },
-    "scale": 0.777778,
-    "seed": 71,
-    "supersample": 4,
-    "w": 144
-  }
+    "emit": 0.5,
+    "shape": "plus",
+    "size": 5,
+    "heat": [
+     1.05,
+     0.7
+    ]
+   },
+   {
+    "type": "particles",
+    "ramp": "$spark",
+    "mode": "rise",
+    "count": 6,
+    "y": 1,
+    "area": 0.7,
+    "speed": [
+     0.5,
+     1
+    ],
+    "life": [
+     0.4,
+     0.8
+    ],
+    "emit": 0.6,
+    "shape": "star",
+    "size": 3,
+    "twinkle": 2
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.8354
+  ],
+  "scale": 0.777778,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

@@ -13,7 +13,7 @@ export default file.vfx({
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/muzzle-flame")
+        "asset": ref("base/vfx/low-poly/emitters/muzzle-flame")
       }
     },
     {
@@ -25,13 +25,13 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/muzzle-puffs")
+        "asset": ref("base/vfx/low-poly/emitters/muzzle-puffs")
       }
     },
     {
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/muzzle-stars")
+        "asset": ref("base/vfx/low-poly/emitters/muzzle-stars")
       }
     },
     {

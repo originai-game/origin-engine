@@ -1,6 +1,6 @@
 import { file } from '@origingame/engine/author';
 
-// The lantern keeper in neon-vector: black faces and glowing hues.
+// The lantern keeper in Neon: black faces and glowing hues.
 export default file.model({kind:'geometry',desc:{items:[
   {name:'coat',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[0.1,0.9,1],emissiveIntensity:0.6}}},
   {name:'skin',input:{kind:'material',desc:{color:[0.02,0.02,0.04],roughness:1,emissive:[1,0.3,0.8],emissiveIntensity:0.6}}},

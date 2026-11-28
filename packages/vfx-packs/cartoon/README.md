@@ -1,7 +1,7 @@
 # Cartoon 2D effects
 
-Install with `og vfx add cartoon-2d`; spawn `base/vfx/cartoon-2d/<name>` as an
-og.Sprite flipbook (`og api show anim`). Flat cartoon effects for cartoon-2d: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.
+Install with `og vfx add cartoon`; spawn `base/vfx/cartoon/<name>` as an
+og.Sprite flipbook (`og api show anim`). Flat cartoon effects: clean shapes in two to four flat tones with a 2 px dark warm contour, drawn smooth.
 
 Every effect is a `file.vfx2d` recipe drawn supersampled (`supersample: 4`):
 the cook renders it at four canvas pixels an output pixel, outlines it and

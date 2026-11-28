@@ -1,52 +1,53 @@
 import { file } from '@origingame/engine/author';
+// Jump Dust: At the feet as a jump leaves the ground.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 18,
-    "frames": 10,
-    "h": 112,
-    "innerLine": 1,
-    "layers": [
-      {
-        "cone": 200,
-        "count": 6,
-        "decay": 0.55,
-        "dir": 180,
-        "emit": 0.06,
-        "flat": 0.2,
-        "life": [
-          0.5,
-          0.9
-        ],
-        "r0": 0.12,
-        "r1": 0.26,
-        "ramp": "$main",
-        "rise": 0.12,
-        "speed": 0.9,
-        "spread": 0.5,
-        "type": "puffs",
-        "y": 0.55
-      }
+ "recipe": {
+  "name": "Jump Dust",
+  "w": 160,
+  "h": 112,
+  "frames": 10,
+  "fps": 18,
+  "loop": false,
+  "seed": 41,
+  "ramps": {
+   "main": [
+    "#a37650",
+    "#cfa274",
+    "#f0d6ae"
+   ]
+  },
+  "layers": [
+   {
+    "type": "puffs",
+    "ramp": "$main",
+    "count": 6,
+    "spread": 0.5,
+    "flat": 0.2,
+    "rise": 0.12,
+    "r0": 0.12,
+    "r1": 0.26,
+    "life": [
+     0.5,
+     0.9
     ],
-    "line": 2,
-    "loop": false,
-    "name": "Jump Dust",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.7143
-    ],
-    "ramps": {
-      "main": [
-        "#a37650",
-        "#cfa274",
-        "#f0d6ae"
-      ]
-    },
-    "scale": 0.571429,
-    "seed": 41,
-    "supersample": 4,
-    "w": 160
-  }
+    "emit": 0.06,
+    "dir": 180,
+    "cone": 200,
+    "speed": 0.9,
+    "decay": 0.55,
+    "y": 0.55
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.7143
+  ],
+  "scale": 0.571429,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

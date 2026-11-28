@@ -19,7 +19,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/fw-rise")
+        "asset": ref("base/vfx/low-poly/emitters/fw-rise")
       }
     },
     {
@@ -31,7 +31,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/fw-burst-0")
+        "asset": ref("base/vfx/low-poly/emitters/fw-burst-0")
       }
     },
     {
@@ -43,7 +43,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/fw-burst-1")
+        "asset": ref("base/vfx/low-poly/emitters/fw-burst-1")
       }
     },
     {
@@ -55,7 +55,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/fw-burst-2")
+        "asset": ref("base/vfx/low-poly/emitters/fw-burst-2")
       }
     },
     {

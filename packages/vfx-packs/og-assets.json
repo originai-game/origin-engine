@@ -2,361 +2,361 @@
   "version": 1,
   "files": [
     {
-      "path": "cartoon-2d/preview/block.png",
+      "path": "cartoon/preview/block.png",
       "sha256": "3e166adc59ddb30cec8512806889c0e471e71efd69f53f9d24a84161ffc117d4",
       "size": 828640,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/break-crate.png",
+      "path": "cartoon/preview/break-crate.png",
       "sha256": "6fd9accba1aef82b1b9b59fde8a019edb9c7e2fa81a743c8c4df6b1108bae1f1",
       "size": 292092,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/break-ice.png",
+      "path": "cartoon/preview/break-ice.png",
       "sha256": "e4f6245469f945f4fdcad7b8336b1166e6f74cb501b5334f1b81ed7c92a9583b",
       "size": 409296,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/break-rock.png",
+      "path": "cartoon/preview/break-rock.png",
       "sha256": "572ffce17236681db31199eeda814cb3cdcb9859fc2dd6a0022ff6d7c1651464",
       "size": 402710,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/bubbles.png",
+      "path": "cartoon/preview/bubbles.png",
       "sha256": "5bef9d2e97f05f075dd9bcc1c03693c60cd71e2264249498a3658aa571c328f7",
       "size": 259465,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/buff.png",
+      "path": "cartoon/preview/buff.png",
       "sha256": "969eedcc99afc460f281a1994076d6645ad72113b138cfca58f90c7824c493b6",
       "size": 360839,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/bullet-hit.png",
+      "path": "cartoon/preview/bullet-hit.png",
       "sha256": "6dffcf2c76963576b7d8981e364115660d9c94a31f35221c92e660a24833ed8b",
       "size": 622884,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/bullet.png",
+      "path": "cartoon/preview/bullet.png",
       "sha256": "43e2e7d4d4898656d426aab5e4c206f6f94e4f6c77a842f31fe0f450b4037ce2",
       "size": 474321,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/burning.png",
+      "path": "cartoon/preview/burning.png",
       "sha256": "2f7c323f422f8c127b0b82cad778e4609081816e53ad5be7793753f3e8c86c37",
       "size": 749506,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/campfire.png",
+      "path": "cartoon/preview/campfire.png",
       "sha256": "b4f2d921952a476470536629bd6a89151f1b7c5a085bb4d6f73341ef1aae848d",
       "size": 666062,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/charge.png",
+      "path": "cartoon/preview/charge.png",
       "sha256": "6d79e107356deddec3af952c0a2d7ac3aec40f2fafc6f8ff122e022515f3460c",
       "size": 695694,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/checkpoint.png",
+      "path": "cartoon/preview/checkpoint.png",
       "sha256": "e0613eb4fe49996180b0e1801312c026ee971a573625ed5638d66457ace992e4",
       "size": 449780,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/chest-open.png",
+      "path": "cartoon/preview/chest-open.png",
       "sha256": "3a27a335afb86df700f1f9b216a26ef9437834b0b539b971b995a7624b9008b8",
       "size": 472249,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/chimney-smoke.png",
+      "path": "cartoon/preview/chimney-smoke.png",
       "sha256": "ad607d447f7a8c1cac8530735425112f6ac81b47c9d706e820c84afb78d37a94",
       "size": 218664,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/coin.png",
+      "path": "cartoon/preview/coin.png",
       "sha256": "ce359addde2616736c6a1cd6b8f077c8fb6e226615b18939703fd02cba7e01a9",
       "size": 290827,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/confetti-rain.png",
+      "path": "cartoon/preview/confetti-rain.png",
       "sha256": "5cd082e8be52683809c89517de554efe3494aa2c076407bad4a6577f40284e63",
       "size": 479793,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/confetti.png",
+      "path": "cartoon/preview/confetti.png",
       "sha256": "1b33139c2fdbc710166030cb334704da602d60b692d9baa5ee8e40ad6405c384",
       "size": 306348,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/cover.png",
+      "path": "cartoon/preview/cover.png",
       "sha256": "2b4cbedb8287844e4af64840707feae87891fce26dbda655a96bef4167963c62",
       "size": 91399,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/dash.png",
+      "path": "cartoon/preview/dash.png",
       "sha256": "b5b1cbd7992150ac77cc5af3a6c67c955cc41b5f43c7f8a6c51cd8d81eef2e5d",
       "size": 280732,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/debuff.png",
+      "path": "cartoon/preview/debuff.png",
       "sha256": "8b67d886f5a3a3bf4972463a9a39237b1f85380e47cbec3b8ba3bbbe956b35c1",
       "size": 172636,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/double-jump.png",
+      "path": "cartoon/preview/double-jump.png",
       "sha256": "98f885982facf9de503fa1bf639eb15961eeb30213aa14fef11e889a740f8623",
       "size": 556646,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/explosion-small.png",
+      "path": "cartoon/preview/explosion-small.png",
       "sha256": "1e7a7b55673db9cf79e7c989e3da6a487c882605b271253badb79e08597e200a",
       "size": 553620,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/explosion.png",
+      "path": "cartoon/preview/explosion.png",
       "sha256": "16c3ff473f7d3481a7899d539c8d02dd0a75833020b984527630bab5f2d33f4e",
       "size": 390559,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/fireflies.png",
+      "path": "cartoon/preview/fireflies.png",
       "sha256": "93e18e11cc9590f3e4359c96264b45642a6fb7e62376f7e36dcae3cd4c167757",
       "size": 690948,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/fireworks.png",
+      "path": "cartoon/preview/fireworks.png",
       "sha256": "cd3cb54e84b7c4939fb986cc973a0c62e8d83a861165624c1ac519d326ea5948",
       "size": 316059,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/frozen.png",
+      "path": "cartoon/preview/frozen.png",
       "sha256": "eb411c9d71c8a2e477c14d899d8f256e8c5e52527931d3ba21f523c5fea9cbb7",
       "size": 498452,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/fuse.png",
+      "path": "cartoon/preview/fuse.png",
       "sha256": "73295e4b477b115bca941c0c6965dc65af1381cfb52c9ddd9d15c900dd215c1b",
       "size": 427221,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/gem.png",
+      "path": "cartoon/preview/gem.png",
       "sha256": "7a54ac28f928b1fa0ca4e35a67b8324494f53f0f6b4cec36abf13ea51f2dd33b",
       "size": 442246,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/heal.png",
+      "path": "cartoon/preview/heal.png",
       "sha256": "893e4f9ef1493b949380302e3322faac745f50f954c04dc106509c28f706b808",
       "size": 327200,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/heart.png",
+      "path": "cartoon/preview/heart.png",
       "sha256": "b7dc264814369b2bebf57f90c84b5ecb2713d780c4beade55286f0b75843a32e",
       "size": 437025,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/hit-heavy.png",
+      "path": "cartoon/preview/hit-heavy.png",
       "sha256": "e0949ea5ef9e51940aa21c47831a8ec5f34999cee503f36238662ad2f45e3391",
       "size": 787073,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/hit-small.png",
+      "path": "cartoon/preview/hit-small.png",
       "sha256": "198de4424023011b0bd8a59c907e8c4332cfd414b569c7cdf41b7099fbbcd04a",
       "size": 542431,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/hit.png",
+      "path": "cartoon/preview/hit.png",
       "sha256": "fc4f966c171d1677f4179afd029fd3598939e8f0732c1e9bf8b7cde175e8226d",
       "size": 821848,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/jump-dust.png",
+      "path": "cartoon/preview/jump-dust.png",
       "sha256": "348d9192524c452e4558a42a09d0c427ffdefa4633ffefc4d6fbdfab634f5ebf",
       "size": 188710,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/land-dust.png",
+      "path": "cartoon/preview/land-dust.png",
       "sha256": "0750fa55ced6047515153c79b3f77404c610c29e705aea3e601eeaa9666b184b",
       "size": 213205,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/laser.png",
+      "path": "cartoon/preview/laser.png",
       "sha256": "4da0c38846b1c46b8f42af08ec11a7b652799bf54be47506c99b6ddad7c4fd40",
       "size": 639126,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/leaves.png",
+      "path": "cartoon/preview/leaves.png",
       "sha256": "8962e0a8dace54526ea6ba47efbd2464efebbc834260f2f6bcde14e033114b19",
       "size": 363348,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/magic-bolt.png",
+      "path": "cartoon/preview/magic-bolt.png",
       "sha256": "b0873770c17ca258db3a375b56ef278c24b1fcd1322c11e30f7a9adf2f725b70",
       "size": 700222,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/magic-circle.png",
+      "path": "cartoon/preview/magic-circle.png",
       "sha256": "09ced3fd99c7c58f97572cdc61fa37a230e40d685942c5069ada328c0de110a5",
       "size": 461600,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/magic.png",
+      "path": "cartoon/preview/magic.png",
       "sha256": "a7b3f095bd0d817261b84d6816fe80d31dc2e41b60ec7584fb932ca33e7a61fa",
       "size": 828049,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/muzzle.png",
+      "path": "cartoon/preview/muzzle.png",
       "sha256": "6e3153982f648af308b337ee99677cc49ae7d3e9e9b945cf4cc186f5b5834b76",
       "size": 381753,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/poison.png",
+      "path": "cartoon/preview/poison.png",
       "sha256": "21e1dddd65d967270d55b14ee3289b147c001341989795e75406f5615c623e81",
       "size": 167233,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/poof.png",
+      "path": "cartoon/preview/poof.png",
       "sha256": "8327dbaa30e33054fbaa2a5d590f7e4d566be3afb39bfc169086e93d223d6a2f",
       "size": 542534,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/portal.png",
+      "path": "cartoon/preview/portal.png",
       "sha256": "8bb126bd4d4f471eb28f92cefe9d9b267236cd05dc79fe4ab69a1193d27a39dc",
       "size": 787645,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/powerup.png",
+      "path": "cartoon/preview/powerup.png",
       "sha256": "25dd3fdd03fec7298226e7f5f158181f810a8bb8f594ee898f73e2cd9ad4eae3",
       "size": 732887,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/ripple.png",
+      "path": "cartoon/preview/ripple.png",
       "sha256": "083935ac60317246232b08eaf7b5d0ccc80fd40d0cf11d65b49f83e2b8530266",
       "size": 441137,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/run-dust.png",
+      "path": "cartoon/preview/run-dust.png",
       "sha256": "b047e452ca2cf12bfe9cc61557f991158db9c5abea3d4706281c5e70e6f39267",
       "size": 240414,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/shield.png",
+      "path": "cartoon/preview/shield.png",
       "sha256": "99a50a6d7eb8b4d574ab766d1818eb44e4e4005eb2c4091814d99323b80b47f6",
       "size": 1008154,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/shocked.png",
+      "path": "cartoon/preview/shocked.png",
       "sha256": "9792f650f0bb593a8157dd21133be09d0690af1abbf4fa89bacb5898b18085be",
       "size": 419724,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/skid.png",
+      "path": "cartoon/preview/skid.png",
       "sha256": "22822c76b2ae9d2a3f41462dea6597d64ac133068c51289e15048f215b2574da",
       "size": 329796,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/slash.png",
+      "path": "cartoon/preview/slash.png",
       "sha256": "30a39e5dd52ccdb9fab9d4abea1b20e9ec8d4eb6fdf4bbe57448b683bca2bd60",
       "size": 443898,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/splash-small.png",
+      "path": "cartoon/preview/splash-small.png",
       "sha256": "1e7b40c7c61a5d8b5f653f001a4acb4fe6d0576b373ba00f355411b5313a2000",
       "size": 365447,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/splash.png",
+      "path": "cartoon/preview/splash.png",
       "sha256": "146b200accd2cb40bde0c0d06fcde6871be01af74e0459bb4c7d11010340ee77",
       "size": 550370,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/star-collect.png",
+      "path": "cartoon/preview/star-collect.png",
       "sha256": "d744e327e57c8173f9b91d0327ba7167c1225ba9fab92cbf7b68bc0a0e58fa73",
       "size": 1030850,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/stomp.png",
+      "path": "cartoon/preview/stomp.png",
       "sha256": "0d6fc0fbfcb24a21822d5cf7a81ca1c161b90576ea73d4e003077c9e28449666",
       "size": 479046,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/stun.png",
+      "path": "cartoon/preview/stun.png",
       "sha256": "36db6c7df585f87d165c6d2b18e3b176b23d71aa4669f86ffa01d351b72a36e7",
       "size": 503762,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/teleport.png",
+      "path": "cartoon/preview/teleport.png",
       "sha256": "d44b511fe9c0ccec20f95e15495e8568e61fae2d9018ff572f97e32a50cdfeca",
       "size": 514519,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/torch.png",
+      "path": "cartoon/preview/torch.png",
       "sha256": "8ac2b9991978a2606e81c292dd0d1b2f9686a15afcdf317e19a501c1b3f2beec",
       "size": 609886,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/twinkle.png",
+      "path": "cartoon/preview/twinkle.png",
       "sha256": "bceea25becc1b387289d9a1de252e0f5f82a1e1684eb25f94d75eb1978289256",
       "size": 540503,
       "visibility": "public"
     },
     {
-      "path": "cartoon-2d/preview/whirlwind.png",
+      "path": "cartoon/preview/whirlwind.png",
       "sha256": "c2e44187bb0194207da61fb960030685214b20855445d0a0250181723602c74e",
       "size": 875723,
       "visibility": "public"
@@ -4496,1039 +4496,493 @@
       "visibility": "public"
     },
     {
-      "path": "geometric/preview/celebration.png",
-      "sha256": "d6506b7ee010bc4ae67a3f0cbd924cab1e09d4f2ddb7e4076751eab22e7f41e9",
-      "size": 3148980,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/cover.png",
-      "sha256": "fab8fd33443771b97e6d6a953b403e82939ac76efc293f653d65b154337cba82",
-      "size": 82488,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/dust.png",
-      "sha256": "174dc23dab71fe9f93449b310402425c0981be08a85791bafcca133ebf68d918",
-      "size": 3158984,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/explosion.png",
-      "sha256": "475912b1a7935f3c46944400ab9413660d65024658a5b47aee286f948d758969",
-      "size": 3159110,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/impact.png",
-      "sha256": "97227ee409e42d5d3ae0571c7703d8e4966ba4ff4cabcd7f8fdc8e62d1d9c6f6",
-      "size": 3163071,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/magic.png",
-      "sha256": "c40d0a0a93efb15ed604c65adbfe3469bbab61f6734bd4be74980dfb11956ab6",
-      "size": 3195354,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/muzzle.png",
-      "sha256": "a85f452d99a7f5417244d6f21534a890f78c225ea1ba1402befe84de23e0970e",
-      "size": 3146002,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/pickup.png",
-      "sha256": "097a9570ec898c80a52f7c7bd302b6dca67488dbc4be942358ef6e7f58fb5b92",
-      "size": 3153888,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/splash.png",
-      "sha256": "3dc153dea789ce05ed8ae6fbd121ef6c8bbe3ccef6a114c79cabaeb833d99499",
-      "size": 3147783,
-      "visibility": "public"
-    },
-    {
-      "path": "geometric/preview/trail.png",
-      "sha256": "a61431d3af5f0fb4bbb73d80a079ab9592c0342fa0c784166abc4643d4247de5",
-      "size": 3144097,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/card.glb",
-      "sha256": "292f4bdd4dc53502f544e7225c2ffaa8477502b55a8c48410d934d7f290c8a4f",
-      "size": 1972,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/cloud.glb",
-      "sha256": "22e4b2002165623461598c96a26dbfdc0a94125b525b950e7d7a5675cb9f6207",
-      "size": 10184,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/coinFlat.glb",
-      "sha256": "ef4efe6e2e723502694f2961dacd49a83d650911e8ffb051da5db809bb638a9f",
-      "size": 6380,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/dropFlat.glb",
-      "sha256": "0c19d6ac151f35a83ab43c46df88675f19817d11be36acf5b58c1e07758b3b9e",
-      "size": 10748,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/flameFlat.glb",
-      "sha256": "39a8045f627fdbf47f94fdb03932d55e7658ac8f2af3e77a501966daf0d89e33",
-      "size": 10776,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/gemFlat.glb",
-      "sha256": "6f34f7baf81ce413d11b7c77277a85f3538e934caa29e3c03a6476f8bc17cc75",
-      "size": 2600,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/heartFlat.glb",
-      "sha256": "882a5c166ac56f81e2825c2d9e178ffe91d5eaa4b3a42601c49d98d8981f64f0",
-      "size": 13252,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/models/starFlat.glb",
-      "sha256": "291c87011d34b71c9c93927d868911460151a4717c5887f1e7c2d3f33fcb86fb",
-      "size": 3912,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/afterburner.png",
-      "sha256": "474540c0bb59acbb87102b777ccff41814a2652055f4450f7fb08cee96781786",
-      "size": 650840,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/boost.png",
-      "sha256": "579d1ff51666031b777517b8f57d11ecfc0cefedfda456b4fb467a407c02e263",
-      "size": 1072251,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/break-block.png",
-      "sha256": "81e5dd41c5283736e14922ba5945464e4eb1e50954775e79fcf403714dcd30d4",
-      "size": 283471,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/break-crate.png",
-      "sha256": "3b1cf46fa9a989c971788e5666fefeec1ec2eac6347d5cdf3dee59d9ff53bc4e",
-      "size": 260867,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/break-ice.png",
-      "sha256": "eac4240cb0d03fd04510fb6655ab7d95d56772d9519d0afeaf6011504189d2b0",
-      "size": 262029,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/break-rock.png",
-      "sha256": "25f55f0f8281db13838755a7b4853dec7168f62698302bb928eb6e246dce419d",
-      "size": 267852,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/bubbles.png",
-      "sha256": "7cf3c93fd674c057a247253cd3db15da7e06e9a76f636ed4a22dc1049977e55a",
-      "size": 269282,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/buff.png",
-      "sha256": "a421b431bed47239942c84d5d58a6641b8bf1b3ff15d7a661eab43a01565277e",
-      "size": 321786,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/build-place.png",
-      "sha256": "1a0921bb54625fb936e95aefa7907834e902498e272da33264e1b5e24c2e2cd6",
-      "size": 321000,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/build-remove.png",
-      "sha256": "725f2a14c82f764d35b4821237be8e8236e8b1b41397b63d4c1e3c07db9e8730",
-      "size": 284184,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/bullet.png",
-      "sha256": "382b2c35e528c0d16b970afbb43f02677deb442bd4556645a0ae2965630a7038",
-      "size": 266908,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/burning.png",
-      "sha256": "1eb766052a204e1e56063186ba4b594dcfbb1e0c270028d3d4bf94aac5f581f2",
-      "size": 770344,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/campfire.png",
-      "sha256": "cc13c1ed93fbde0b801670c10e73b8b96ed2ca99f4f6fc6375df9dc7feef5b8d",
-      "size": 953369,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/charge.png",
-      "sha256": "3c3f2ba42b405c77f5b39bec2e72fec56ae81d92acdc45817a9ad70a69e61c4a",
-      "size": 790147,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/checkpoint.png",
-      "sha256": "33c71cb8a632101151cadf6ce7a4b4b8b98f2b554f9b6317f31ee01d168bc375",
-      "size": 360614,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/chest-open.png",
-      "sha256": "37ea1c88bf6724ab94a0d534facc92036adb652b26eeb999fd5af079afb07bf9",
-      "size": 781028,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/chimney-smoke.png",
-      "sha256": "e19edf312038a4d9e07f1ecd201786194bd4a09b7d05f3871377adadb718a217",
-      "size": 295652,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/coin.png",
-      "sha256": "48dd668cac3c31b9505121317367353b5001655bda28d067d8126d1a08f5cdcb",
-      "size": 285351,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/confetti-rain.png",
-      "sha256": "18213f7a8cfa9ec72b354107672130731e05297b153151c64d234233e4d37152",
-      "size": 332440,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/confetti.png",
-      "sha256": "ab01b35d319d70ddc1a19a37946813af6d2379df1673b456c4f9135e9bbde250",
-      "size": 324915,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/cover.png",
-      "sha256": "3b5bc665c9481b86335e501dda85fd3ef2bedee44fdb133e3e68aae06558f0f6",
-      "size": 212722,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/dash.png",
-      "sha256": "f8856f260439c871e93b702735ae268dc8be7c556077d183b2fe2f5240a41480",
-      "size": 305646,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/debuff.png",
-      "sha256": "602f8500f8accd7343169922c79dc3a477259019386fdc608695cf3d53733fd8",
-      "size": 276379,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/double-jump.png",
-      "sha256": "72400843e3ef400b1028927d86bd75654c795827e7f1e2e6f1bd0bd6f0a2b9b3",
-      "size": 313640,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/drift-sparks.png",
-      "sha256": "10648f570d9419b0a86f80989a54edf37e76fe3d3af4265322a45ce3cc060311",
-      "size": 409768,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/drip.png",
-      "sha256": "d0444839fe63bca9bf593f19a0fbbf0011b50ea8bd3b9e947cea21630125c1a2",
-      "size": 253094,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/dust.png",
-      "sha256": "80adfaa27be9d16d322945eea58e8f95d5d798104ae9288cb9aa7571d1f0d8dc",
-      "size": 303079,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/exhaust.png",
-      "sha256": "72b0f0dc4d113831f90f5b27dac1a26956a8202ca6868ce9842e2008a0ffd16f",
-      "size": 277817,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/explosion-small.png",
-      "sha256": "98d70278477a6abc3eb05c37481a9d50d39ef1bafad323795727113d0f536d87",
-      "size": 532331,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/explosion.png",
-      "sha256": "6f4b9ea28ffac8c676a484a168e74567dcbe5cc13e3e42a8f3804091b447250e",
-      "size": 513798,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/fireflies.png",
-      "sha256": "fbc553b4e29bc7373c90fa390a03e45fcfd05db440e6e1134224091bb3876675",
-      "size": 264273,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/fireworks.png",
-      "sha256": "ae2b3ddbb98fe10303502d8366fd73b4a19c5283410460b5da49a8542341250c",
-      "size": 286761,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/fountain.png",
-      "sha256": "b46f322f6a166544c8a200d143df4bb9cae4a817fea2866dafef4246772645e7",
-      "size": 546485,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/frozen.png",
-      "sha256": "9484beafe999f8b77a464573569411d8fdf194826ce49641a61de061b3f797f6",
-      "size": 283518,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/fuse.png",
-      "sha256": "f41eb05cc10a1bd1a0d1f9d689af31bf500a69a539b443fc1d8555647176294f",
-      "size": 774310,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/gem.png",
-      "sha256": "d68065ea08432418ed907e7a2e17d7ff1155e0cc7eb5dc68fa7bdbeae8d50219",
-      "size": 323516,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/heal.png",
-      "sha256": "6a752abb0ffa5ba039f289dccb1c9971bf17c01691a7db405fea59cf53ce6cfa",
-      "size": 567623,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/heart.png",
-      "sha256": "5c48cb48a320b83bf17f17c85a3a9404adf0309a003795242031c91e18f4b1d5",
-      "size": 267397,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/hit-heavy.png",
-      "sha256": "7a4e02a39a76178197bc34c25de508cc0402b514e8e6e69e2f6b74a55cb64884",
-      "size": 380263,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/hit-small.png",
-      "sha256": "d8e101a825433b6bb62095621282af49a48f8419c0ee521b9c115a7b5f9534ea",
-      "size": 345407,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/hit.png",
-      "sha256": "b29be51c3ac6d1cfd958634b18659e1c8a66dcb1c6531d83878dbc8c845ef29e",
-      "size": 334519,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/jump-dust.png",
-      "sha256": "1766ecacd46508c43bed53c9eccf7701cac652bbf92a4abcd41c7fcbfe9bb140",
-      "size": 273349,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/land-dust.png",
-      "sha256": "c017037229ede3afd14415963447e03c57dcefeffff2bc1d229fc3cdd0bceca2",
-      "size": 317066,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/laser.png",
-      "sha256": "1d658cbfb6be3722e60e9733c11ad8ede5fcfc95504dc743dbebfcc4160d0664",
-      "size": 473403,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/leaves.png",
-      "sha256": "29b90a8ee076db6e6b6d2b978f952ecd0fdbb8bcb8294311919439d95166e98d",
-      "size": 253574,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/level-up.png",
-      "sha256": "93bfff46a19c126ea65bdb0e4cabaea4512280b74edba503541cbf6edce13f3e",
-      "size": 622452,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/magic-bolt.png",
-      "sha256": "8287c22a89115c3f82197d95c770ad8153ce660f62a52544b5eeb366e7c14688",
-      "size": 693492,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/magic-circle.png",
-      "sha256": "6617d7848d74fdf3980771c183ce470f7c79725780aee07ed3d010b34a70b2f6",
-      "size": 529531,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/magic.png",
-      "sha256": "81e9d37fdc2528d1c100953bb36babda023556ff643890aafc3544fd0c05418c",
-      "size": 578189,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/muzzle.png",
-      "sha256": "e5b2d8f37f60d6cf0e2131f0ccf5b347cb492b646a251ce1b64248e20215556f",
-      "size": 442281,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/poison.png",
-      "sha256": "896fedba20edf9185a4a62c0e97dbe58bfe14c2962004dea76adf021d0eb81f1",
-      "size": 280459,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/poof.png",
-      "sha256": "25c0acb61b6351acc6934a7c52127baf627949841ed15135f90c5a63705ae1b0",
-      "size": 330398,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/portal.png",
-      "sha256": "aa2d452d78cf709f50631c047dac64ea9084ff4a97ca783860db14de883997c1",
-      "size": 408139,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/powerup.png",
-      "sha256": "2d0f205c2afc96f50968273ddcab9e0e9934ec15303e920fc9dc9662e8ad1531",
-      "size": 711518,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/reward-burst.png",
-      "sha256": "d447c21d797bf98151cbbfa6d2d60b001abcd29a466fc4c28078b982f916be47",
-      "size": 296952,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/ripple.png",
-      "sha256": "849633652cceed0aaddd945fa6046070b293eeb008b40f2e653d93d43fb4b019",
-      "size": 456135,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/rocket.png",
-      "sha256": "aa58bd5b1d356b998cd875389237a1f4e248d7c6266763cc66b1f4357436dd55",
-      "size": 985590,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/run-dust.png",
-      "sha256": "f5c3b74ce769225347849524686184e05d9e2633d1d5d57b94c905a9e690d7cf",
-      "size": 267295,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/shield.png",
-      "sha256": "ee6a3f756a5615f7857e607190cfb42422f13887007aa586c798bcf29a5cb673",
-      "size": 556037,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/shocked.png",
-      "sha256": "64322be4e7aeb66adb951ff0b46da0c4856a8e3ffca5a53ec37745aa2e3e2767",
-      "size": 907765,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/skid.png",
-      "sha256": "845c57090a856d2c3165e1592de84fa29b5d7b0fefc5854d7166e3e5c7120053",
-      "size": 294258,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/splash-small.png",
-      "sha256": "f8399269b2086b8bcdeed2a10d5c22fea15df43b09745050c31621c5e3979fa7",
-      "size": 318338,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/splash.png",
-      "sha256": "2a7de71b3015028462d3e432eb81ff8e9aeed0857bb20521020ec586db45801d",
-      "size": 340977,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/star-collect.png",
-      "sha256": "f2cfdcf412ba1518db8ba4ac79ae39c47c2315743d8c8d7fceef8a0619edc591",
-      "size": 612238,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/steam.png",
-      "sha256": "5a5dec326c87830c88e6f558baf983de4b2a0af170247f5dd2406d6baed529e2",
-      "size": 336179,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/stomp.png",
-      "sha256": "5505c8986b2b2992740dd20817e74a1dcabe9dbba3a33118eb75bb9d723eb8a4",
-      "size": 333078,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/stun.png",
-      "sha256": "a717846b37d68cbf6203eaffd36f424d89e15fdc3b56a69fa97b77b5dd5274c2",
-      "size": 290403,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/teleport.png",
-      "sha256": "282c0e4348613ac4651f8348c26554322a7211b57206159dd3873dc8fac09211",
-      "size": 789851,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/tire-smoke.png",
-      "sha256": "2ed0ab5d7d3e4c55cc3da8437fe043cd6f6ff63b791f1b3f3a87bdc918c0a1ed",
-      "size": 322524,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/torch.png",
-      "sha256": "65d95a2b87e79ad5b63094145f4f78596444c3e692430031a02d7f7ad8b0c491",
-      "size": 977797,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/twinkle.png",
-      "sha256": "3bc68c9c857d9110d3a759f4a90d661dad0ad889f714e920cf6184bc3a9d6d5a",
-      "size": 362883,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/wake.png",
-      "sha256": "8b90ffca6a27993109e2705db60614e7db38094346dd1f53d7bc6f90857b62bd",
-      "size": 330684,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d-paper/preview/wheel-dust.png",
-      "sha256": "4647f401bc9b9dc3c54720d16e24ea6157e00ff3ffb08643120cc95ffa138884",
-      "size": 301280,
-      "visibility": "public"
-    },
-    {
-      "path": "toy-3d/models/block.glb",
+      "path": "low-poly/models/block.glb",
       "sha256": "478ae1d8362ccb2de44550c70ebbcb6d63d6bcf6b93153119d6347c2be701ff1",
       "size": 15132,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/coin.glb",
+      "path": "low-poly/models/coin.glb",
       "sha256": "182d5eea8e58b47de9b364677248cdac5155770f1fa5127aa91f58cd24a37709",
       "size": 8216,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/drop.glb",
+      "path": "low-poly/models/drop.glb",
       "sha256": "16b3ca1c46893e4778576739792a852b4d76988c137a3b90d6445b97f624b96c",
       "size": 8088,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/flame.glb",
+      "path": "low-poly/models/flame.glb",
       "sha256": "2adfcedf68c1c9926248c7c6c4968ba0c078808df6cf8f70719907ee25274e5c",
       "size": 7172,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/gem.glb",
+      "path": "low-poly/models/gem.glb",
       "sha256": "5ffea1b777b1a06b7677c6cab0eb6cdeeb18c3e1af3db6ec97324295b25cf5e6",
       "size": 2596,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/heart.glb",
+      "path": "low-poly/models/heart.glb",
       "sha256": "ff0f268365e5ba083fd5acc3f71ca31b36c53d40e6849c3c38068149a5983ed5",
       "size": 13248,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/puff.glb",
+      "path": "low-poly/models/puff.glb",
       "sha256": "ce3ef5f35418888c0cd5ed5bde4065d42632ed80cee451215a819445c2fc8ad6",
       "size": 9848,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/ribbon.glb",
+      "path": "low-poly/models/ribbon.glb",
       "sha256": "09bef5f3387e051942f4e47202d6372efc2fc9cf145a4aa25e3672d9039e0af0",
       "size": 5784,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/models/star.glb",
+      "path": "low-poly/models/star.glb",
       "sha256": "31b6786855f562f089d42fe05a68e0a516bb4bd8bd1634722f717c0f30b20bbe",
       "size": 3912,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/afterburner.png",
+      "path": "low-poly/preview/afterburner.png",
       "sha256": "1bb7282a676af3475215b9349aa69196f568e3bd31b7b7fd075783159eb13760",
       "size": 901687,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/boost.png",
+      "path": "low-poly/preview/boost.png",
       "sha256": "b0a5a118f19092e3ad935b44cdbc0e46a6daf969f4317bda84d684478a0aa1cc",
       "size": 1127670,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/break-block.png",
+      "path": "low-poly/preview/break-block.png",
       "sha256": "05f73e6d20240820684b8ee081f1d07d14978c50adeded2b47b54fd7aa95a90a",
       "size": 327085,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/break-crate.png",
+      "path": "low-poly/preview/break-crate.png",
       "sha256": "525a6c0619499ee466070aaf3c27ca04372f1adc506b174b4758b7fdcb13b418",
       "size": 281598,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/break-ice.png",
+      "path": "low-poly/preview/break-ice.png",
       "sha256": "6df119cf4893016bd3f5ca63211ba2227383978ef254a47065a7d80a5a97700e",
       "size": 303867,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/break-rock.png",
+      "path": "low-poly/preview/break-rock.png",
       "sha256": "08c206323eaba82a35ffd3c95affabb06c1e01eeab056da9b7829ba49a1d75e4",
       "size": 296689,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/bubbles.png",
+      "path": "low-poly/preview/bubbles.png",
       "sha256": "a52c11396fb4416180a218fbd8395b64b595839ff7a970c8771cd90d0fd4811a",
       "size": 306719,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/buff.png",
+      "path": "low-poly/preview/buff.png",
       "sha256": "eb8b9dd0e29f9365ebcdca79dd38cb7dc819eb5eb0c016c50311b856fc194f61",
       "size": 377841,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/build-place.png",
+      "path": "low-poly/preview/build-place.png",
       "sha256": "d8670b722e5c705d4ee07a905febda8bbe33143b6a0046264b855a0bff73bf9d",
       "size": 362933,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/build-remove.png",
+      "path": "low-poly/preview/build-remove.png",
       "sha256": "9aa66f5d142fce721498c25f86bc8fda5773f78dbe32948e0d0aeebdc7ae5aed",
       "size": 331582,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/bullet.png",
+      "path": "low-poly/preview/bullet.png",
       "sha256": "c928c3e5c62c30110573f12946eb7f249631893d7ae8352e1ae0c8137eb6a46a",
       "size": 330052,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/burning.png",
+      "path": "low-poly/preview/burning.png",
       "sha256": "0194f57d1aa4c7adb1890fa5fe3e5e830dbb3729c9bb296f119285d6738314e7",
       "size": 1009361,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/campfire.png",
+      "path": "low-poly/preview/campfire.png",
       "sha256": "79a3461f7d2d12c144f84d4fa515ddae1ac1c751640f80db841975731e9ca74f",
       "size": 1019678,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/charge.png",
+      "path": "low-poly/preview/charge.png",
       "sha256": "e41aa7231f46ca7b29c4e7424412b3fa6937bf0858776e8e710a203639b41cf7",
       "size": 904595,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/checkpoint.png",
+      "path": "low-poly/preview/checkpoint.png",
       "sha256": "c500f44d2e6da07c2f15f74ea5ae74ad1b590b8b2186766186207cf468095fe5",
       "size": 370304,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/chest-open.png",
+      "path": "low-poly/preview/chest-open.png",
       "sha256": "f96de788469ce88017e6e6a659e885accdb4e6ce9ee2cba5cd3cd07809b4cbca",
       "size": 795043,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/chimney-smoke.png",
+      "path": "low-poly/preview/chimney-smoke.png",
       "sha256": "5e8e722a45d019f7b582ffcca42be3cd505e43f00ce9aa7be15f1b63dd38ff6d",
       "size": 353693,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/coin.png",
+      "path": "low-poly/preview/coin.png",
       "sha256": "c0e2f4e66601bb6a1f5989a6a934061f5d605c757bec2935b894947ac1cfd8cd",
       "size": 398204,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/confetti-rain.png",
+      "path": "low-poly/preview/confetti-rain.png",
       "sha256": "dcd13a7bb451c8c79912dea74629012a487e43bf1f48f4e93ac3a8318d7f9009",
       "size": 301523,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/confetti.png",
+      "path": "low-poly/preview/confetti.png",
       "sha256": "dafaefb1222df3249c8ce45f671725dc697250dca7706f44db483acf33421662",
       "size": 308166,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/cover.png",
+      "path": "low-poly/preview/cover.png",
       "sha256": "6c1a491d606ae0ab81ffe2709d96648b4b1dc500a82353b19f911291ccaa1faa",
       "size": 227734,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/dash.png",
+      "path": "low-poly/preview/dash.png",
       "sha256": "b208eff0f7996fe90618ac5a1d0348e5777105bf1693651f9090dc267b6c55c4",
       "size": 432892,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/debuff.png",
+      "path": "low-poly/preview/debuff.png",
       "sha256": "cb3801f63ecb8cc90a336d2283f4ae7947b6210dba596406d31a84348aa95a83",
       "size": 312874,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/double-jump.png",
+      "path": "low-poly/preview/double-jump.png",
       "sha256": "972613151a769afb96337c17b8124910da6efb0ff543defc20b4f17b8d7cd39d",
       "size": 312849,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/drift-sparks.png",
+      "path": "low-poly/preview/drift-sparks.png",
       "sha256": "9a3c3af9e2e5ef48b3c41760346c1e5502ed1f44757cb27070bddbb634ad7172",
       "size": 619243,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/drip.png",
+      "path": "low-poly/preview/drip.png",
       "sha256": "25ccc47098a6b50cfb69440ffe4679df56bd4f5b7b1f1337dddaf0da5de802da",
       "size": 255757,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/dust.png",
+      "path": "low-poly/preview/dust.png",
       "sha256": "6d9b1cc2f6ed93e07b20f1f4cbedc83cc5f2dc85ab72d86c88329d6c856bbee9",
       "size": 413221,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/exhaust.png",
+      "path": "low-poly/preview/exhaust.png",
       "sha256": "02d6c2339246904b53f21b3073e15ac6541b4d8f093a5c25c1c9732494a7dd5e",
       "size": 307588,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/explosion-small.png",
+      "path": "low-poly/preview/explosion-small.png",
       "sha256": "1dc83ee5e42cfc55052b3bd70c073b8d5b3a0910bdfe2281ca74c67b7cf914d1",
       "size": 559375,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/explosion.png",
+      "path": "low-poly/preview/explosion.png",
       "sha256": "e6c912ff0149ddd4548895f25065723a2460fb250ab1a97c8c0b66c43db018bc",
       "size": 538624,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/fireflies.png",
+      "path": "low-poly/preview/fireflies.png",
       "sha256": "1a7fa6fb59f559d8994a60a19c893280f041d74498ed82b6cc5c16152f801210",
       "size": 433702,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/fireworks.png",
+      "path": "low-poly/preview/fireworks.png",
       "sha256": "15222b46a55340e22ad8bdc80439d220e0489aba271fb81214d370601f2b8e6c",
       "size": 368289,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/fountain.png",
+      "path": "low-poly/preview/fountain.png",
       "sha256": "917879889eba8abcc50844505abc382a004038b823b28adc297f4393f8b499d6",
       "size": 575877,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/frozen.png",
+      "path": "low-poly/preview/frozen.png",
       "sha256": "f24eca687f423d47f214be61a093ba8deb16999b3e021449ee01c699283d1944",
       "size": 304301,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/fuse.png",
+      "path": "low-poly/preview/fuse.png",
       "sha256": "d4c815d17d8d6de17d52a4f902e6415db135053dd4d8761381e7299453f07562",
       "size": 889091,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/gem.png",
+      "path": "low-poly/preview/gem.png",
       "sha256": "5aaecd00f817ef557a60fc22d0e861c01b20dd26d6d321e2bdadc0d3482ef9d0",
       "size": 352674,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/heal.png",
+      "path": "low-poly/preview/heal.png",
       "sha256": "150b1dd690798f7b895e71c2001cba2caa70b274ff098852d51f78e11c1b543a",
       "size": 594487,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/heart.png",
+      "path": "low-poly/preview/heart.png",
       "sha256": "3e5cf81500ea45bd96f8d5548d9c328453548734b701dc73ff1706c2832dd957",
       "size": 348829,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/hit-heavy.png",
+      "path": "low-poly/preview/hit-heavy.png",
       "sha256": "839dd47521562fdfdd09e9744ab4d4dd003a140a9d68d45e1170e53dc6720e39",
       "size": 438006,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/hit-small.png",
+      "path": "low-poly/preview/hit-small.png",
       "sha256": "fb1f3b77e2c6264556d70c2985d9e601208045a1a4df5148bab2241aa4bbf060",
       "size": 370912,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/hit.png",
+      "path": "low-poly/preview/hit.png",
       "sha256": "82218b8740d5d1c62ea3c6a5a8191e76169d7e61068b1351f790ec59157c2852",
       "size": 362287,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/jump-dust.png",
+      "path": "low-poly/preview/jump-dust.png",
       "sha256": "59658c38f04c0f5857982b577f650cda31511a799b8d582ce71819009351a5de",
       "size": 319149,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/land-dust.png",
+      "path": "low-poly/preview/land-dust.png",
       "sha256": "d6c5d8a4ef8f58c62c2f8423af0fb64fe7d779631dd43c589ed19b560de2107d",
       "size": 363808,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/laser.png",
+      "path": "low-poly/preview/laser.png",
       "sha256": "93ac07d8f2fba9beaa34012f2ae84312b218d4b97eb56724975e69ec425fbdd2",
       "size": 533437,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/leaves.png",
+      "path": "low-poly/preview/leaves.png",
       "sha256": "2593cbbedd49fb76f759d68b0318e70f26afce8f7dc7e4d1aff2d4caf9fd8e22",
       "size": 247926,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/level-up.png",
+      "path": "low-poly/preview/level-up.png",
       "sha256": "3dd2e2c27c1316e6724e0a3a9de0f33db06652296cc407a3097b498744088a2d",
       "size": 677770,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/magic-bolt.png",
+      "path": "low-poly/preview/magic-bolt.png",
       "sha256": "a32677ca74270405d7e01764700e4d50a72e6b211e5aef1ea447816666a92a67",
       "size": 728484,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/magic-circle.png",
+      "path": "low-poly/preview/magic-circle.png",
       "sha256": "6c798d0978e81d9d61c869eb99d4aed03c6a471b5820463fba0dabbf75b2b989",
       "size": 710505,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/magic.png",
+      "path": "low-poly/preview/magic.png",
       "sha256": "f1fcfda5463683e73e16ed0acac039c27be250f6a6274b7e1e02c9cbb8101483",
       "size": 613880,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/muzzle.png",
+      "path": "low-poly/preview/muzzle.png",
       "sha256": "ddba4fa662347aceff600d45b995881aa8dd28b5680c9890438343fcb097c195",
       "size": 471005,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/poison.png",
+      "path": "low-poly/preview/poison.png",
       "sha256": "d0353c176c833d31c77938f7565984a5be4f585f606698ad5505766c9fdea22e",
       "size": 340146,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/poof.png",
+      "path": "low-poly/preview/poof.png",
       "sha256": "fd52e8c829d15b63542cc8a25692220bcfb61dde4386431114f117c21de6b091",
       "size": 441664,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/portal.png",
+      "path": "low-poly/preview/portal.png",
       "sha256": "c190f55d481630843b05946d7326eb608a65f2f9a02537163b9e7894640e3241",
       "size": 659679,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/powerup.png",
+      "path": "low-poly/preview/powerup.png",
       "sha256": "81c940318671326ea1afa5e0c0b5e7df27fb0ed7fdde70cd28e3ad287be53654",
       "size": 799196,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/reward-burst.png",
+      "path": "low-poly/preview/reward-burst.png",
       "sha256": "df3c6eabd3cf5c96a723e6a4f986d7311aa49e7c6b9eaf15df62335563133c87",
       "size": 309207,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/ripple.png",
+      "path": "low-poly/preview/ripple.png",
       "sha256": "4fa41488a0236af8907acc16b71a27cc92529e964e72de1c56040dd958f17b2e",
       "size": 478025,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/rocket.png",
+      "path": "low-poly/preview/rocket.png",
       "sha256": "2e266ffba342696d19d4953abab73c7a280c90e34c8ee087d53676028c62573b",
       "size": 862411,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/run-dust.png",
+      "path": "low-poly/preview/run-dust.png",
       "sha256": "15e448d71e51a1958280173c00911f43a838ae3f96eed83a2c60734f6f5d7e60",
       "size": 297425,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/shield.png",
+      "path": "low-poly/preview/shield.png",
       "sha256": "6261aaa6467d9f008c3e8688a2cfa57040da59c2fc20f694b02e07efdca778be",
       "size": 749223,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/shocked.png",
+      "path": "low-poly/preview/shocked.png",
       "sha256": "b1a89554cedbd9e1b299f9a74237ac3dfabf3cb9549708a2a2d51bf6beae8d6f",
       "size": 1034459,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/skid.png",
+      "path": "low-poly/preview/skid.png",
       "sha256": "e30c8f017465fff761ed113ee1347c7ca90db3eb071994671e04b0eb0606c30e",
       "size": 356530,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/splash-small.png",
+      "path": "low-poly/preview/splash-small.png",
       "sha256": "137f6b2bcabeb1560997bbefdb2c41d58d8807a086516f873342b331f89c6e8e",
       "size": 337531,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/splash.png",
+      "path": "low-poly/preview/splash.png",
       "sha256": "3f39917892a958dc16b1c32bd47fd2c8843ba0e6bd342e0520f8e83a5b49ddad",
       "size": 357626,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/star-collect.png",
+      "path": "low-poly/preview/star-collect.png",
       "sha256": "c7f05fd6998092c17ad4ca9a8d869ec44021635c63ebb68c2920725dbca3307a",
       "size": 657675,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/steam.png",
+      "path": "low-poly/preview/steam.png",
       "sha256": "d540deff74c0df75c32b3fa946593d6073c172c3005bed07f5f281405015e530",
       "size": 434587,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/stomp.png",
+      "path": "low-poly/preview/stomp.png",
       "sha256": "9110cf17d6e1a03853cf25fb4e409452dfeea5515b3cccb4b9ce8937fbea5587",
       "size": 371138,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/stun.png",
+      "path": "low-poly/preview/stun.png",
       "sha256": "eedfdcabc9100f91234f8a6b6fc797cb8c8a7120506df313170bb3d1b6ef4fc9",
       "size": 316566,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/teleport.png",
+      "path": "low-poly/preview/teleport.png",
       "sha256": "8d736d23e68c0796635a03ccb43c5f0bea2af4aebd0c108ac7fb208d4498578c",
       "size": 844346,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/tire-smoke.png",
+      "path": "low-poly/preview/tire-smoke.png",
       "sha256": "6a06860753b270c8553668a999a5aa3ed81012469412e6cc476346d1d1f28b17",
       "size": 431617,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/torch.png",
+      "path": "low-poly/preview/torch.png",
       "sha256": "b5333e50f4c8361d9c6cd759baf715042c7a77468461572737acce08922c414a",
       "size": 1038750,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/twinkle.png",
+      "path": "low-poly/preview/twinkle.png",
       "sha256": "12a354a21afd54a1bccb77b30ffc84e3fbfd3bc08e9d2cf8987afd035825f8cd",
       "size": 554869,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/wake.png",
+      "path": "low-poly/preview/wake.png",
       "sha256": "ef12839b7315500904cbbc4574645707dd871e32b1964c8ff733ad9f56fa0c0f",
       "size": 487881,
       "visibility": "public"
     },
     {
-      "path": "toy-3d/preview/wheel-dust.png",
+      "path": "low-poly/preview/wheel-dust.png",
       "sha256": "ccdc9d6af5ccdcdfee42af175ec0d890f9bca52a09165bfc3ebf11c8ec987dd9",
       "size": 392116,
       "visibility": "public"

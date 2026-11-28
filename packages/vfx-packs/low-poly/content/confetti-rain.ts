@@ -13,7 +13,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-rain-0")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-rain-0")
       }
     },
     {
@@ -24,7 +24,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-rain-1")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-rain-1")
       }
     },
     {
@@ -35,7 +35,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-rain-2")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-rain-2")
       }
     },
     {
@@ -46,7 +46,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-rain-3")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-rain-3")
       }
     },
     {
@@ -57,7 +57,7 @@ export default file.vfx({
       ],
       "node": {
         "kind": "emitter",
-        "asset": ref("base/vfx/toy-3d/emitters/confetti-rain-4")
+        "asset": ref("base/vfx/low-poly/emitters/confetti-rain-4")
       }
     }
   ]

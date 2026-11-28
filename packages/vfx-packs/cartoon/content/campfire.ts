@@ -1,70 +1,71 @@
 import { file } from '@origingame/engine/author';
+// Campfire: Loops on the ground at the logs.
 export default file.vfx2d({
-  "recipe": {
-    "cleanup": false,
-    "fps": 12,
-    "frames": 16,
-    "h": 172,
-    "innerLine": 1,
-    "layers": [
-      {
-        "flick": 0.3,
-        "freq": 2,
-        "hgt": 1.6,
-        "ramp": "$main",
-        "rough": 0.35,
-        "speed": 1,
-        "taper": 0.5,
-        "type": "flame",
-        "w": 0.8,
-        "y": 0.9
-      },
-      {
-        "area": 0.3,
-        "count": 5,
-        "life": [
-          0.4,
-          0.8
-        ],
-        "mode": "rise",
-        "ramp": "$alt",
-        "shape": "circle",
-        "size": 3,
-        "speed": [
-          0.8,
-          1.4
-        ],
-        "type": "particles",
-        "wiggle": 0.3,
-        "y": 0.2
-      }
+ "recipe": {
+  "name": "Campfire",
+  "w": 124,
+  "h": 172,
+  "frames": 16,
+  "fps": 12,
+  "loop": true,
+  "seed": 91,
+  "ramps": {
+   "main": [
+    "#b8321c",
+    "#ee6a1e",
+    "#ffb22e",
+    "#ffe9a0"
+   ],
+   "alt": [
+    "#d2461e",
+    "#ff8a24",
+    "#ffd040",
+    "#fff6c8"
+   ]
+  },
+  "layers": [
+   {
+    "type": "flame",
+    "ramp": "$main",
+    "w": 0.8,
+    "hgt": 1.6,
+    "taper": 0.5,
+    "freq": 2,
+    "rough": 0.35,
+    "speed": 1,
+    "flick": 0.3,
+    "y": 0.9
+   },
+   {
+    "type": "particles",
+    "ramp": "$alt",
+    "mode": "rise",
+    "count": 5,
+    "y": 0.2,
+    "area": 0.3,
+    "speed": [
+     0.8,
+     1.4
     ],
-    "line": 2,
-    "loop": true,
-    "name": "Campfire",
-    "outline": "outside",
-    "outlineColor": "#3a2416",
-    "pivot": [
-      0.5,
-      0.7651
+    "life": [
+     0.4,
+     0.8
     ],
-    "ramps": {
-      "alt": [
-        "#d2461e",
-        "#ff8a24",
-        "#ffd040",
-        "#fff6c8"
-      ],
-      "main": [
-        "#b8321c",
-        "#ee6a1e",
-        "#ffb22e",
-        "#ffe9a0"
-      ]
-    },
-    "scale": 0.774194,
-    "seed": 91,
-    "supersample": 4,
-    "w": 124
-  }
+    "wiggle": 0.3,
+    "shape": "circle",
+    "size": 3
+   }
+  ],
+  "pivot": [
+   0.5,
+   0.7651
+  ],
+  "scale": 0.774194,
+  "supersample": 4,
+  "cleanup": false,
+  "outline": "outside",
+  "outlineColor": "#3a2416",
+  "line": 2,
+  "innerLine": 1
+ }
 });

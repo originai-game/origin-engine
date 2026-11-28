@@ -59,7 +59,7 @@ export default file.particles({
   "wind": 0.6,
   "render": {
     "kind": "mesh",
-    "mesh": ref("base/vfx/toy-3d/models/puff")
+    "mesh": ref("base/vfx/low-poly/models/puff")
   },
   "lit": true,
   "roughness": 0.38,
