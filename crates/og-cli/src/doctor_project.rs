@@ -47,7 +47,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
                     "error",
                     "report-unreadable",
                     format!("{}: {e}", path.display()),
-                    "run `og cook --report` in the project",
+                    "run `og doctor --project .` to refresh diagnostics",
                 ));
                 return out;
             }
@@ -61,7 +61,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
                     root.display(),
                     crate::cook::COOK_REPORT
                 ),
-                "run `og cook --report` in the project",
+                "run `og doctor --project .` to refresh diagnostics",
             ));
             return out;
         }
@@ -77,7 +77,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
             "warning",
             "stale-report",
             "cooked/ changed after the cook report was written".into(),
-            "run `og cook --report` again",
+            "run `og doctor --project .` to refresh diagnostics",
         ));
     }
     for a in report["assets"].as_array().into_iter().flatten() {
@@ -232,6 +232,21 @@ pub fn run(args: &[&str]) -> ExitCode {
         return ExitCode::from(2);
     };
     let root = Path::new(&dir);
+    let refreshed = crate::cook::cook(root, 0, false).and_then(|report| {
+        crate::cook::write_cook_report(root, &report, &root.join(crate::cook::COOK_REPORT))
+            .map(|_| ())
+    });
+    if let Err(error) = refreshed {
+        if as_json {
+            println!(
+                "{}",
+                json!({"errors":1,"findings":[finding("error", "cook-failed", error, "fix the named source diagnostic and retry og doctor --project .")]})
+            );
+        } else {
+            eprintln!("og doctor: {error}");
+        }
+        return ExitCode::FAILURE;
+    }
     let found = findings(root);
     let errors = found.iter().filter(|f| f["severity"] == "error").count();
     let warnings = found.iter().filter(|f| f["severity"] == "warning").count();

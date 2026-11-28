@@ -75,7 +75,7 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
     const result = Bun.spawnSync([process.env.OG_BIN!, "cook", dir, "--json"]);
     expect(result.exitCode, new TextDecoder().decode(result.stderr)).toBe(0);
   };
-  expect(() => readLook(dir)).toThrow("run og cook");
+  expect(() => readLook(dir)).toThrow("prepare it automatically");
   cook();
   const look = readLook(dir);
   expect([look.profile, look.style?.slug, look.mood]).toEqual(["2d", "pixel", "cold"]);
@@ -102,16 +102,16 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
     const path = join(dir, file);
     const original = readFileSync(path, "utf8");
     writeFileSync(path, original + (file.endsWith(".ts") ? "\n// edited\n" : "#fedcba\n"));
-    expect(() => readLook(dir)).toThrow("run og cook");
+    expect(() => readLook(dir)).toThrow("refresh it automatically");
     cook();
     expect(readLook(dir).mood).toBe("cold");
     rmSync(path);
-    expect(() => readLook(dir)).toThrow("run og cook");
+    expect(() => readLook(dir)).toThrow("restore the source");
     writeFileSync(path, original);
     cook();
   }
   writeFileSync(choices, 'export const choices = { form: "3d", music: "orchestral", genre: "strategy" };');
-  expect(() => readLook(dir)).toThrow("run og cook");
+  expect(() => readLook(dir)).toThrow("refresh it automatically");
   cook();
   expect(readLook(dir).profile).toBe("3d");
   expect(readAudioChoices(dir)).toEqual({ music: "orchestral", genre: "strategy", mood: "cold" });

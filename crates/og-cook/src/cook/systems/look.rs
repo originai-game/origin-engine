@@ -469,7 +469,7 @@ pub(crate) fn write_report(
                     .is_some_and(|before| before != *hash)
                 {
                     return Err(CookError(format!(
-                        "{file}: changed during look cook; run og cook again"
+                        "{file}: changed during asset preparation; retry the command against the new source"
                     )));
                 }
             }

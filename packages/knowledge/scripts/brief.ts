@@ -979,7 +979,7 @@ type CookedPalettes = Readonly<Record<string, { readonly format: "hex" | "gpl"; 
 function readPalette(handle: string, from: BriefPalette["from"], palettes: CookedPalettes | null, presets: string): BriefPalette {
   if (palettes !== null) {
     const palette = palettes[handle];
-    if (!palette) throw new Error(`the checked look report has no palette ${handle}; run og cook`);
+    if (!palette) throw new Error(`the checked look report has no palette ${handle}; check the look's palette declaration; og dev, run, build and test refresh the report automatically`);
     return { id: handle, from, colours: parsePalette(`palette.${palette.format}`, palette.text) };
   }
   if (handle.startsWith("@palettes/")) {
@@ -1035,23 +1035,23 @@ export interface ReadLookOptions {
 }
 
 /**
- * Read the last successful cook's checked .og/cook/look.json. Call og cook
- * after editing content, imported modules or palettes, before this function.
+ * Read the last successful cook's checked .og/cook/look.json. Platform tooling
+ * prepares it after creation; dev/run/build/test refresh it after edits.
  * No content source is parsed or evaluated here. Requires og (or OG_BIN) for
  * restricted project bootstrap; throws on missing/failed/mismatched cook.
  */
 export function readLook(projectDir: string, options: ReadLookOptions = {}): BriefLook {
   const dir = resolve(projectDir);
-  const report = readJson<{ id: string; profile: "2d" | "3d"; preset: string | null; look: PresetLookJson; palettes: CookedPalettes; fingerprints: Record<string, string> }>(join(dir, ".og/cook/look.json"), "run og cook before readLook");
-  if (!report.fingerprints || Object.keys(report.fingerprints).length === 0) throw new Error("look report lacks checked inputs; run og cook before readLook");
+  const report = readJson<{ id: string; profile: "2d" | "3d"; preset: string | null; look: PresetLookJson; palettes: CookedPalettes; fingerprints: Record<string, string> }>(join(dir, ".og/cook/look.json"), "project content is not prepared; og dev, run, build and test prepare it automatically");
+  if (!report.fingerprints || Object.keys(report.fingerprints).length === 0) throw new Error("look report lacks checked inputs; og dev, run, build and test refresh it automatically");
   for (const [file, hash] of Object.entries(report.fingerprints)) {
     let current: string;
     try { current = `sha384-${createHash("sha384").update(readFileSync(join(dir, file))).digest("base64")}`; }
-    catch { throw new Error(`${file}: look dependency missing; run og cook before readLook`); }
-    if (current !== hash) throw new Error(`${file}: look report is stale; run og cook before readLook`);
+    catch { throw new Error(`${file}: look dependency missing; restore the source before preparing the project`); }
+    if (current !== hash) throw new Error(`${file}: look report is stale; og dev, run, build and test refresh it automatically`);
   }
   const { look, profile } = checkedProject(dir).startup;
-  if (report.id !== look || report.profile !== profile) throw new Error("project differs from its checked look report; run og cook before readLook");
+  if (report.id !== look || report.profile !== profile) throw new Error("project differs from its checked look report; og dev, run, build and test refresh it automatically");
   return briefLook(blocksOf(report.look), report.preset, report.look.variant, report.look.mood, report.palettes, options.presets ?? presetsDir(), options.catalogue ?? catalogueFile(), profile);
 }
 

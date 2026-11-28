@@ -97,7 +97,7 @@ impl fmt::Display for LoadError {
         match self {
             LoadError::NotCooked { id } => write!(
                 f,
-                "{id}: not in cooked/ (run og cook; check the cook report for its error)"
+                "{id}: not in the prepared bundle; check its content declaration and the preparation diagnostics from og dev, run, build or test"
             ),
             LoadError::Blob(e) => e.fmt(f),
             LoadError::Io { path, reason } => write!(f, "{path}: {reason}"),
@@ -748,7 +748,9 @@ impl Bundle {
     ) -> Result<Bundle, LoadError> {
         let text = std::fs::read_to_string(path).map_err(|e| LoadError::Io {
             path: path.display().to_string(),
-            reason: format!("{e} (run og cook)"),
+            reason: format!(
+                "{e}; og dev, run, build and test prepare project content automatically"
+            ),
         })?;
         let mut b = Bundle::from_manifest(&text)?;
         b.dir = Some(cooked.to_path_buf());

@@ -72,7 +72,8 @@ Nothing follows the last payload.
 - **Typed tables**: `table::<T>` refuses a section whose row type hash or
   stride differs from what the loader asks for.
 - **Stale blobs are refused** by `open` with
-  `"<path>: cook stamp mismatch: the blob has <found>, the manifest expects <expected>; re-run og cook"`.
+  a cook stamp mismatch naming the found and expected values; dev, run,
+  build and test refresh stale project outputs automatically.
 
 ## What the runtime side must honour
 

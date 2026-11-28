@@ -104,7 +104,7 @@ export async function packageGame(o: PackageOptions): Promise<string> {
   const os = process.platform;
   const exe = os === "win32" ? ".exe" : "";
   const project = resolve(o.project);
-  if (!existsSync(join(project, "cooked"))) throw new Error(`${project} is not cooked: run og cook first`);
+  if (!existsSync(join(project, "cooked"))) throw new Error(`${project} has no prepared assets: run og build to prepare them automatically`);
   const name = o.name ?? basename(project);
   const repo = resolve(here, "../../../..");
   const hermes = resolve(o.hermes);

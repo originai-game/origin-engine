@@ -16,7 +16,7 @@ og.load.defaultBundle(world: World): Result<Asset>
 |---|---|---|---|
 | `world` | `World` | no | The world that owns the asset. |
 
-**Returns** `Result<Asset>`: Refused when cooked/ was missing or unreadable (run og cook); the reason names the path.
+**Returns** `Result<Asset>`: Refused when cooked/ was missing or unreadable; the reason names the path. Dev, run, build and test prepare content automatically.
 
 Binding symbol `og_load_default_bundle` · publish builds: kept
 
@@ -24,7 +24,7 @@ Binding symbol `og_load_default_bundle` · publish builds: kept
 fn defaultBundle {
   doc "The game's own bundle, opened before the first tick from `cooked/`."
   param world World "The world that owns the asset."
-  returns Result.Asset "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path."
+  returns Result.Asset "Refused when cooked/ was missing or unreadable; the reason names the path. Dev, run, build and test prepare content automatically."
 }
 ```
 

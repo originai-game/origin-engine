@@ -241,7 +241,7 @@ module load {
   fn defaultBundle {
     doc "The game's own bundle, opened before the first tick from `cooked/`."
     param world World "The world that owns the asset."
-    returns Result.Asset "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path."
+    returns Result.Asset "Refused when cooked/ was missing or unreadable; the reason names the path. Dev, run, build and test prepare content automatically."
   }
 
   fn gltf {
@@ -307,14 +307,14 @@ module load {
     doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `luts/warm.cube`."
-    returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+    returns Result.Lut "Refused for a content ID not declared in the bundle."
   }
 
   fn environment {
     doc "A prefiltered environment map for Environment.map, from a TS file.environment declaration (an equirectangular HDR/EXR or sRGB image, a KTX2 cube map, or six faces). The cook produces five GGX levels and nine diffuse irradiance harmonics; loading only uploads them. One in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The canonical content id, such as `base/env/studio`."
-    returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
+    returns Result.EnvironmentMap "Refused for a content ID not declared in the bundle or not an environment map."
   }
 
   struct EnvironmentSun {
@@ -411,21 +411,21 @@ module load {
     doc "Sprites (SpriteDesc.array, og.Sprite.array) and 2D particle emitters draw from it, one draw per array. In a streaming group it loads once the group is resident (refused before, naming the group), draws nothing while the group is away and returns under the same handle."
     param world World "The world whose renderer owns the array."
     param path String "The array's canonical asset id, such as `base/tiles/ground`."
-    returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
+    returns Result.TextureArrayInfo "Refused for a content ID not declared in the bundle, not a texture array, or layers that do not agree."
   }
 
   fn style {
     doc "Load the exact canonical pack content ID for UiDesc.style. Export file.pack or file.theme from content/**/*.ts; both cook to native packs. Built-ins use explicit @themes/<name> or @styles/<name>, bundled when a look names them. No filename suffix or directory is inferred. Loaded once per ID."
     param world World "The world whose UI uses it."
     param path String "The exact canonical pack ID, such as base/styles/main or @themes/tactical."
-    returns Result.Style "Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Run og cook with matching engine hosts."
+    returns Result.Style "Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Use matching engine tools and hosts."
   }
 
   fn look {
     doc "Load a cooked file.look TypeScript declaration by canonical content ID. Its name, extends (preset slugs or typed look refs), ui, antialias and reflected resource patches bind a frame's art direction as data. The cook validates every field and flattens extends into a native binary payload. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per ID."
     param world World "The world whose renderer owns it."
     param path String "The canonical content id, such as `base/looks/main`."
-    returns Result.Look "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load."
+    returns Result.Look "Refused for a content ID not declared in the bundle or an asset it names that cannot load."
   }
 
   fn lookInfo {
@@ -439,7 +439,7 @@ module load {
     doc "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `palettes/dusk.hex`."
-    returns Result.Palette "Refused for a path not in the bundle (the reason says to run og cook)."
+    returns Result.Palette "Refused for a content ID not declared in the bundle."
   }
 
   fn soundInfo {
@@ -489,14 +489,14 @@ module load {
     doc "Load a checked file.rig humanoid map for og.anim.retarget and og.anim.humanoid. Its native fields name the scheme, explicit bone overrides and optional ankle heights. Loading the same ID again answers the same handle."
     param world World "The world whose animation uses it."
     param path String "The canonical rig content ID, such as base/rigs/strider."
-    returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+    returns Result.Rig "Refused for a content ID not declared in the bundle or a cook stamp mismatch."
   }
 
   fn flipbook {
     doc "Load a cooked file.flipbook by canonical content ID and register its native sheet with og.flipbook. Author a texture ref with grid, frames or explicit atlas input, or animated GIF/WebP/APNG sources packed into <id>#sheet. array: true produces a texture array (FlipbookInfo.array), frame n drawn as layer n. A streaming sheet loads only when its group is resident; sprites draw nothing while it is away. Repeated loads return the same handles."
     param world World "The world whose animation and renderer own it."
     param path String "The sheet's canonical content ID, such as `base/sprites/hero`."
-    returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+    returns Result.FlipbookInfo "Refused for a content ID not declared in the bundle or a texture it cannot load."
   }
 
   fn tilemap {
@@ -510,7 +510,7 @@ module load {
     doc "Load cooked footage authored with file.video in content/**/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here. Loading the same path again answers the same handles."
     param world World "The world whose renderer and audio own it."
     param path String "The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts."
-    returns Result.VideoInfo "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video."
+    returns Result.VideoInfo "Refused for a content ID not declared in the bundle or not a video. Video preparation needs ffmpeg; og doctor names missing encoders."
   }
 
   fn videoInfo {
@@ -524,7 +524,7 @@ module load {
     doc "Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel."
     param world World "The world."
     param path String "The timeline's asset id, such as `timelines/intro.ogt`."
-    returns Result.TimelineAsset "Refused for a path not in the bundle (run og cook) or a file that is not a timeline."
+    returns Result.TimelineAsset "Refused for a content ID not declared in the bundle or a file that is not a timeline."
   }
 
   fn vfx {
@@ -532,14 +532,14 @@ module load {
     aliases "Effekseer, efkproj, efkefc, Effekseer import, import a particle effect"
     param world World "The world."
     param path String "The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`."
-    returns Result.VfxAsset "Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load."
+    returns Result.VfxAsset "Refused for a content ID not declared in the bundle, a file that is not a vfx, or an asset it names that will not load."
   }
 
   fn rig2d {
     doc "Load a cooked file.rig2d TS declaration by canonical content ID and its texture, and register it with og.skeleton2d. Authored fields, DragonBones exchange inputs and layered-art rigs cook directly to native data. Loading the same ID again answers the same handles."
     param world World "The world whose animation and renderer own it."
     param path String "The rig's canonical content ID, such as `base/rigs/hero`."
-    returns Result.Rig2DInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+    returns Result.Rig2DInfo "Refused for a content ID not declared in the bundle or a texture it cannot load."
   }
 
   struct LoadBudget {

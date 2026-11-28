@@ -84,7 +84,7 @@ fn resolve(eng: &Engine, scene: &str) -> Result<String, String> {
     let names: Vec<String> = eng.state.borrow().scenes.keys().cloned().collect();
     Err(if names.is_empty() {
         format!(
-            "no scene '{scene}': GameDesc.scenes names none, and no cooked scene has that asset id (run og cook)"
+            "no scene '{scene}': GameDesc.scenes names none; declare the scene in content/ and map its content ID in project.ts scenes"
         )
     } else {
         format!(

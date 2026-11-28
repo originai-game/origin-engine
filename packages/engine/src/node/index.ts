@@ -78,7 +78,7 @@ export interface NativeExtras {
  * (`og_node_formats`, undefined in a library older than it). Two stamps
  * differ exactly when og and the library were built from different sources,
  * one rebuilt and the other not; every loader would then refuse the blobs
- * ("holds type ..., re-run og cook") and no re-cook could help. The message
+ * ("holds type ...") and no re-cook could help. The message
  * names the command that rebuilds them together.
  */
 export function formatsMismatch(path: string, cook: string | undefined, host: string | undefined): string | null {

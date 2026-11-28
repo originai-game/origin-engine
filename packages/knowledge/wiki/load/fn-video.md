@@ -17,7 +17,7 @@ og.load.video(world: World, path: string): Result<VideoInfo>
 | `world` | `World` | no | The world whose renderer and audio own it. |
 | `path` | `string` | no | The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts. |
 
-**Returns** `Result<VideoInfo>`: Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.
+**Returns** `Result<VideoInfo>`: Refused for a content ID not declared in the bundle or not a video. Video preparation needs ffmpeg; og doctor names missing encoders.
 
 Binding symbol `og_load_video` · publish builds: kept
 
@@ -26,7 +26,7 @@ fn video {
   doc "Load cooked footage authored with file.video in content/**/*.ts, which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here. Loading the same path again answers the same handles."
   param world World "The world whose renderer and audio own it."
   param path String "The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts."
-  returns Result.VideoInfo "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video."
+  returns Result.VideoInfo "Refused for a content ID not declared in the bundle or not a video. Video preparation needs ffmpeg; og doctor names missing encoders."
 }
 ```
 

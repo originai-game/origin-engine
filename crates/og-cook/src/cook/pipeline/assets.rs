@@ -60,12 +60,16 @@ pub struct Omitted {
 impl Index {
     pub fn read(root: &Path) -> Result<Self, String> {
         let path = root.join("cooked").join(SIDECAR);
-        let text = std::fs::read_to_string(&path)
-            .map_err(|e| format!("{}: {e}; run og cook", path.display()))?;
+        let text = std::fs::read_to_string(&path).map_err(|e| {
+            format!(
+                "{}: {e}; retry the command to refresh cooked metadata",
+                path.display()
+            )
+        })?;
         let doc = Document::parse(&text).map_err(|e| e.to_string())?;
         if doc.ty != "assets" || doc.version != 1 {
             return Err(format!(
-                "{}: unsupported asset index; run og cook",
+                "{}: unsupported asset index; retry the command to refresh cooked metadata",
                 path.display()
             ));
         }
@@ -73,7 +77,11 @@ impl Index {
             b.get(key)
                 .and_then(|e| e.string(0).ok())
                 .map(str::to_owned)
-                .ok_or_else(|| format!("asset index: missing {key}; run og cook"))
+                .ok_or_else(|| {
+                    format!(
+                        "asset index: missing {key}; retry the command to refresh cooked metadata"
+                    )
+                })
         };
         let mut index = Self::default();
         for entry in &doc.body.entries {
@@ -121,7 +129,11 @@ impl Index {
                     prefix: string(b, "prefix")?,
                     reason: string(b, "reason")?,
                 }),
-                key => return Err(format!("asset index: unknown {key}; run og cook")),
+                key => {
+                    return Err(format!(
+                        "asset index: unknown {key}; retry the command to refresh cooked metadata"
+                    ));
+                }
             }
         }
         Ok(index)

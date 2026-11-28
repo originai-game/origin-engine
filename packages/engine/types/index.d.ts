@@ -39312,7 +39312,7 @@ export declare namespace og {
      * The game's own bundle, opened before the first tick from `cooked/`.
      *
      * @param world The world that owns the asset.
-     * @returns Refused when cooked/ was missing or unreadable (run og cook); the reason names the path.
+     * @returns Refused when cooked/ was missing or unreadable; the reason names the path. Dev, run, build and test prepare content automatically.
      */
     function defaultBundle(world: World): Result<Asset>;
     /**
@@ -39369,7 +39369,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `luts/warm.cube`.
-     * @returns Refused for a path not in the bundle (the reason says to run og cook).
+     * @returns Refused for a content ID not declared in the bundle.
      */
     function lut(world: World, path: string): Result<Lut>;
     /**
@@ -39377,7 +39377,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical content id, such as `base/env/studio`.
-     * @returns Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.
+     * @returns Refused for a content ID not declared in the bundle or not an environment map.
      */
     function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
@@ -39462,7 +39462,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns the array.
      * @param path The array's canonical asset id, such as `base/tiles/ground`.
-     * @returns Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.
+     * @returns Refused for a content ID not declared in the bundle, not a texture array, or layers that do not agree.
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
@@ -39470,7 +39470,7 @@ export declare namespace og {
      *
      * @param world The world whose UI uses it.
      * @param path The exact canonical pack ID, such as base/styles/main or @themes/tactical.
-     * @returns Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Run og cook with matching engine hosts.
+     * @returns Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Use matching engine tools and hosts.
      */
     function style(world: World, path: string): Result<Style>;
     /**
@@ -39478,7 +39478,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns it.
      * @param path The canonical content id, such as `base/looks/main`.
-     * @returns Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load.
+     * @returns Refused for a content ID not declared in the bundle or an asset it names that cannot load.
      */
     function look(world: World, path: string): Result<Look>;
     /**
@@ -39494,7 +39494,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `palettes/dusk.hex`.
-     * @returns Refused for a path not in the bundle (the reason says to run og cook).
+     * @returns Refused for a content ID not declared in the bundle.
      */
     function palette(world: World, path: string): Result<Palette>;
     /**
@@ -39550,7 +39550,7 @@ export declare namespace og {
      *
      * @param world The world whose animation uses it.
      * @param path The canonical rig content ID, such as base/rigs/strider.
-     * @returns Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+     * @returns Refused for a content ID not declared in the bundle or a cook stamp mismatch.
      */
     function rig(world: World, path: string): Result<Rig>;
     /**
@@ -39558,7 +39558,7 @@ export declare namespace og {
      *
      * @param world The world whose animation and renderer own it.
      * @param path The sheet's canonical content ID, such as `base/sprites/hero`.
-     * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+     * @returns Refused for a content ID not declared in the bundle or a texture it cannot load.
      */
     function flipbook(world: World, path: string): Result<FlipbookInfo>;
     /**
@@ -39574,7 +39574,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer and audio own it.
      * @param path The video's canonical asset id, such as `base/clips/intro` for content/clips/intro.ts.
-     * @returns Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.
+     * @returns Refused for a content ID not declared in the bundle or not a video. Video preparation needs ffmpeg; og doctor names missing encoders.
      */
     function video(world: World, path: string): Result<VideoInfo>;
     /**
@@ -39590,7 +39590,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param path The timeline's asset id, such as `timelines/intro.ogt`.
-     * @returns Refused for a path not in the bundle (run og cook) or a file that is not a timeline.
+     * @returns Refused for a content ID not declared in the bundle or a file that is not a timeline.
      */
     function timeline(world: World, path: string): Result<TimelineAsset>;
     /**
@@ -39598,7 +39598,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param path The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`.
-     * @returns Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load.
+     * @returns Refused for a content ID not declared in the bundle, a file that is not a vfx, or an asset it names that will not load.
      */
     function vfx(world: World, path: string): Result<VfxAsset>;
     /**
@@ -39606,7 +39606,7 @@ export declare namespace og {
      *
      * @param world The world whose animation and renderer own it.
      * @param path The rig's canonical content ID, such as `base/rigs/hero`.
-     * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+     * @returns Refused for a content ID not declared in the bundle or a texture it cannot load.
      */
     function rig2d(world: World, path: string): Result<Rig2DInfo>;
     /**

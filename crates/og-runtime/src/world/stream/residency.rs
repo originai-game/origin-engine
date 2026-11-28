@@ -728,7 +728,7 @@ pub(crate) fn add_sound(eng: &Engine, group: &str, id: &str) -> Result<(CookedSo
                 .cloned()
         })
         .ok_or_else(|| {
-            format!("{id}: its group '{group}' does not list its shape; run `og cook`")
+            format!("{id}: its group '{group}' does not list its shape; restart og dev or rebuild to refresh the bundle")
         })?
     };
     let link = og_audio::link(eng.id).ok_or_else(|| format!("{id}: this engine has no audio"))?;

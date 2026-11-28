@@ -295,7 +295,7 @@ async function preloadDirectory(
     manifest = new TextDecoder().decode(await bytesOf(manifestPath, undefined, undefined, manifestIntegrity));
   } catch (e) {
     tellLoadFailure(manifestPath, e);
-    const hint = manifestIntegrity ? "the asset base must serve this build's cooked/ (og-build.json `assets`)" : "run og cook and serve cooked/ next to the page";
+    const hint = manifestIntegrity ? "the asset base must serve this build's cooked/ (og-build.json `assets`)" : "rebuild with og build and serve its complete output together";
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); ${hint}`);
     seen.set(dir, { pin: manifestIntegrity, active: false });
     return { files: 0, failed: 1, streamed: 0, integrity: null };

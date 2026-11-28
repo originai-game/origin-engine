@@ -6994,7 +6994,7 @@
             }
           ],
           "returns": "Result<Asset>",
-          "returnsDoc": "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path.",
+          "returnsDoc": "Refused when cooked/ was missing or unreadable; the reason names the path. Dev, run, build and test prepare content automatically.",
           "publish": true
         },
         {
@@ -7145,7 +7145,7 @@
             }
           ],
           "returns": "Result<Lut>",
-          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
+          "returnsDoc": "Refused for a content ID not declared in the bundle.",
           "publish": true
         },
         {
@@ -7166,7 +7166,7 @@
             }
           ],
           "returns": "Result<EnvironmentMap>",
-          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or not an environment map.",
           "publish": true
         },
         {
@@ -7402,7 +7402,7 @@
             }
           ],
           "returns": "Result<TextureArrayInfo>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle, not a texture array, or layers that do not agree.",
           "publish": true
         },
         {
@@ -7423,7 +7423,7 @@
             }
           ],
           "returns": "Result<Style>",
-          "returnsDoc": "Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Run og cook with matching engine hosts.",
+          "returnsDoc": "Refused if the exact ID is absent, is not a native pack, or its native fields fail validation. Use matching engine tools and hosts.",
           "publish": true
         },
         {
@@ -7444,7 +7444,7 @@
             }
           ],
           "returns": "Result<Look>",
-          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or an asset it names that cannot load.",
           "publish": true
         },
         {
@@ -7486,7 +7486,7 @@
             }
           ],
           "returns": "Result<Palette>",
-          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
+          "returnsDoc": "Refused for a content ID not declared in the bundle.",
           "publish": true
         },
         {
@@ -7632,7 +7632,7 @@
             }
           ],
           "returns": "Result<Rig>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or a cook stamp mismatch.",
           "publish": true
         },
         {
@@ -7653,7 +7653,7 @@
             }
           ],
           "returns": "Result<FlipbookInfo>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a texture it cannot load.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or a texture it cannot load.",
           "publish": true
         },
         {
@@ -7695,7 +7695,7 @@
             }
           ],
           "returns": "Result<VideoInfo>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or not a video. Video preparation needs ffmpeg; og doctor names missing encoders.",
           "publish": true
         },
         {
@@ -7737,7 +7737,7 @@
             }
           ],
           "returns": "Result<TimelineAsset>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a file that is not a timeline.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or a file that is not a timeline.",
           "publish": true
         },
         {
@@ -7758,7 +7758,7 @@
             }
           ],
           "returns": "Result<VfxAsset>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle, a file that is not a vfx, or an asset it names that will not load.",
           "publish": true
         },
         {
@@ -7779,7 +7779,7 @@
             }
           ],
           "returns": "Result<Rig2DInfo>",
-          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a texture it cannot load.",
+          "returnsDoc": "Refused for a content ID not declared in the bundle or a texture it cannot load.",
           "publish": true
         },
         {

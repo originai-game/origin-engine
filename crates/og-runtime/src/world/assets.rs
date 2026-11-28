@@ -463,7 +463,7 @@ impl Assets {
             return Err(format!("{id}: {why}"));
         }
         Err(format!(
-            "{}: not in the cooked bundle; put it under assets/ and run `og cook`",
+            "{}: not in the cooked bundle; declare it in content/**/*.ts and reference its canonical content ID; og dev, run, build and test prepare it automatically",
             og_bundle::runtime::asset_id(id)
         ))
     }

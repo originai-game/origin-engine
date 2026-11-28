@@ -19,7 +19,7 @@ og.load.vfx(world: World, path: string): Result<VfxAsset>
 | `world` | `World` | no | The world. |
 | `path` | `string` | no | The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`. |
 
-**Returns** `Result<VfxAsset>`: Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load.
+**Returns** `Result<VfxAsset>`: Refused for a content ID not declared in the bundle, a file that is not a vfx, or an asset it names that will not load.
 
 Binding symbol `og_load_vfx` · publish builds: kept
 
@@ -29,7 +29,7 @@ fn vfx {
   aliases "Effekseer, efkproj, efkefc, Effekseer import, import a particle effect"
   param world World "The world."
   param path String "The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`."
-  returns Result.VfxAsset "Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load."
+  returns Result.VfxAsset "Refused for a content ID not declared in the bundle, a file that is not a vfx, or an asset it names that will not load."
 }
 ```
 

@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og test --no-check",
+      "summary": "Prepares missing or stale cooked content before unit suites as well as playtests; --no-check skips types, not incremental preparation. Dev, run and build retain their automatic cook. Asset queries and project diagnostics refresh their reports themselves."
+    },
+    {
+      "member": "cook diagnostics",
+      "summary": "Author help, runtime errors, blob errors and the API reference no longer ask agents to cook by hand. Missing declarations name content IDs and declaration sources; incompatible hosts name the matching-tools fix. Platform/CI/troubleshooting og cook and the post-new .og/cook/look.json contract remain available."
+    }
+  ]
+}

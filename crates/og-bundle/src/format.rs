@@ -298,7 +298,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
 /// cooked files. `og` hands its own to the engine's scripts and the native
 /// host reports its own, so an `og` and a host library built from different
 /// sources (one rebuilt, the other not) are told apart before a loader
-/// refuses a blob with "holds type ..., re-run og cook", which a re-cook
+/// refuses a blob with "holds type ...", which a re-cook
 /// cannot fix: the cook's up-to-date check already holds every kept file to
 /// this build's type hashes and schema versions ([`expected_header`]).
 pub fn format_stamp() -> u64 {

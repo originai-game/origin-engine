@@ -234,7 +234,7 @@ pub fn og_load_font(world: u32, path: String) -> Result<serde_json::Value, Strin
             && !bundle.manifest().preload.contains(&output.file)
         {
             return Err(format!(
-                "{path}: not declared for synchronous font loading; the web cannot prefetch this font. Reference its path in game TypeScript or add it to project.ogt publish.keep, then run `og cook`. Optional font-pack coverage is loaded through og.i18n, not og.load.font"
+                "{path}: not declared for synchronous font loading; the web cannot prefetch this font. Reference its path in game TypeScript or add it to project.ts publish.keep; og dev, run, build and test prepare it automatically. Optional font-pack coverage is loaded through og.i18n, not og.load.font"
             ));
         }
     }

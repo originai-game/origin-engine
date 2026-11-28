@@ -217,15 +217,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut unchecked = 0;
     let mut unchecked_suites = 0;
     let mut adapter_errors = std::collections::BTreeSet::new();
-    // The type check first: its failure leaves no bundle for the playtests.
+    // --no-check skips types, never freshness (unit tests can read cooked data too).
+    if p.has_assets()
+        && let Err(e) = crate::cook::cook(&p.root, 0, false)
+    {
+        eprintln!("og test: {e}");
+        return ExitCode::FAILURE;
+    }
     let checked = if check {
-        if p.has_assets() {
-            // Cook with the code's import graph (a bundle of it, cached).
-            if let Err(e) = crate::cook::cook(&p.root, 0, false) {
-                eprintln!("og test: {e}");
-                return ExitCode::FAILURE;
-            }
-        }
         match crate::check::gate(&p, &package, json) {
             Ok(r) => {
                 if !r.ok() {

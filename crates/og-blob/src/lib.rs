@@ -80,7 +80,7 @@ impl fmt::Display for BlobError {
             }
             BlobError::ContainerVersion { path, found } => write!(
                 f,
-                "{path}: .ogb container version {found} is not supported (this reader knows {CONTAINER_VERSION}); re-run og cook"
+                "{path}: .ogb container version {found} is not supported (this reader knows {CONTAINER_VERSION}); rebuild with matching engine tools and hosts"
             ),
             BlobError::TypeMismatch {
                 path,
@@ -88,7 +88,7 @@ impl fmt::Display for BlobError {
                 found,
             } => write!(
                 f,
-                "{path}: holds type {found:016x}, expected {expected:016x}; re-run og cook"
+                "{path}: holds type {found:016x}, expected {expected:016x}; rebuild with matching engine tools and hosts"
             ),
             BlobError::SchemaVersion {
                 path,
@@ -96,7 +96,7 @@ impl fmt::Display for BlobError {
                 found,
             } => write!(
                 f,
-                "{path}: schema version {found}, expected {expected}; re-run og cook"
+                "{path}: schema version {found}, expected {expected}; rebuild with matching engine tools and hosts"
             ),
             BlobError::StampMismatch {
                 path,
@@ -104,7 +104,7 @@ impl fmt::Display for BlobError {
                 found,
             } => write!(
                 f,
-                "{path}: cook stamp mismatch: the blob has {found:016x}, the manifest expects {expected:016x}; re-run og cook"
+                "{path}: cook stamp mismatch: the blob has {found:016x}, the manifest expects {expected:016x}; restart og dev or rebuild to refresh the bundle"
             ),
             BlobError::MissingSection { path, name } => write!(f, "{path}: no section '{name}'"),
             BlobError::SectionType { path, name, reason } => {

@@ -17,7 +17,7 @@ og.load.rig(world: World, path: string): Result<Rig>
 | `world` | `World` | no | The world whose animation uses it. |
 | `path` | `string` | no | The canonical rig content ID, such as base/rigs/strider. |
 
-**Returns** `Result<Rig>`: Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+**Returns** `Result<Rig>`: Refused for a content ID not declared in the bundle or a cook stamp mismatch.
 
 Binding symbol `og_load_rig` · publish builds: kept
 
@@ -26,7 +26,7 @@ fn rig {
   doc "Load a checked file.rig humanoid map for og.anim.retarget and og.anim.humanoid. Its native fields name the scheme, explicit bone overrides and optional ankle heights. Loading the same ID again answers the same handle."
   param world World "The world whose animation uses it."
   param path String "The canonical rig content ID, such as base/rigs/strider."
-  returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+  returns Result.Rig "Refused for a content ID not declared in the bundle or a cook stamp mismatch."
 }
 ```
 

@@ -56,6 +56,7 @@ fn query(args: &[&str]) -> Result<(), String> {
     if near.is_some() && !dupes {
         return Err("--near requires --dupes".into());
     }
+    crate::cook::cook(&root, 0, false)?;
     let index = Index::read(&root)?;
     let reachable = index.reachable();
     let text = text.map(str::to_lowercase);
@@ -192,7 +193,7 @@ fn move_asset(args: &[&str]) -> Result<(), String> {
         );
     } else {
         println!(
-            "moved {} to {}; rewrote {} files; run og cook to refresh cooked outputs",
+            "moved {} to {}; rewrote {} files; the next dev, run, test or build refreshes cooked outputs",
             report.from,
             report.to,
             report.rewritten.len()

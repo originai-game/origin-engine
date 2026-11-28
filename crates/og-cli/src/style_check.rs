@@ -828,7 +828,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
             return line(
                 "warning",
                 format!("style: the art contract could not be read: {e}"),
-                "run `og cook` in the project, then `og style check-project`",
+                "run `og style check-project` (it refreshes cooked assets)",
             );
         }
     };
@@ -836,7 +836,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
         return line(
             "warning",
             "style: nothing cooked to measure".into(),
-            "run `og cook`",
+            "run `og style check-project` (it refreshes cooked assets)",
         );
     }
     let opt_outs = report
@@ -888,7 +888,7 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
         Err(e) => line(
             "warning",
             format!("style: the cooked assets could not be measured: {e}"),
-            "run `og cook` in the project, then `og style check-project`",
+            "run `og style check-project` (it refreshes cooked assets)",
         ),
     }
 }

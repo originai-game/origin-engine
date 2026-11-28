@@ -268,7 +268,7 @@ function publishAssets(project: string, manifest: string): PublishAssets {
     && "removed_files" in value && Array.isArray(value.removed_files) && value.removed_files.every(file)
     && "omitted" in value && Array.isArray(value.omitted) && value.omitted.every((r: unknown) => typeof r === "object" && r !== null && "id" in r && typeof r.id === "string" && "file" in r && file(r.file) && "bytes" in r && typeof r.bytes === "number" && Number.isSafeInteger(r.bytes) && r.bytes >= 0)
     && "computed" in value && Array.isArray(value.computed) && value.computed.every((r: unknown) => typeof r === "object" && r !== null && "source" in r && typeof r.source === "string" && "line" in r && typeof r.line === "number" && Number.isSafeInteger(r.line) && r.line > 0 && "prefix" in r && typeof r.prefix === "string" && "reason" in r && typeof r.reason === "string")
-  )) throw new Error(`${path}: invalid or stale publication plan; run og cook`);
+  )) throw new Error(`${path}: invalid or stale publication plan; retry og build to refresh it`);
   return value as PublishAssets;
 }
 
@@ -1004,7 +1004,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const settings = given ?? settingsOf(project);
   const p = settings.publish;
   const cooked = join(project, "cooked");
-  if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
+  if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; retry og build to prepare it automatically`);
   const cookedManifest = readFileSync(join(cooked, ".cook.ogt"), "utf8");
   const deliveryPath = join(project, ".og/cook/delivery.json");
   const delivery: Array<{ directory: string; boot: boolean; files: string[] }> = existsSync(deliveryPath)
@@ -1012,13 +1012,13 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const deliveryManifests = delivery.map((pack) => ({ ...pack, text: readFileSync(join(cooked, pack.directory, ".cook.ogt"), "utf8") }));
   // The game's profile: the cook's, from project.ogt's creation form (og-bundle's look::project_profile).
   const profile = /^profile "(2d|3d)"$/m.exec(cookedManifest)?.[1] as GameProfile | undefined;
-  if (!profile) return fail(`${cooked}/.cook.ogt has no profile; run \`og cook ${project}\` again`);
+  if (!profile) return fail(`${cooked}/.cook.ogt has no profile; retry og build to refresh it`);
   let assets: PublishAssets | null = null;
   if (publish) {
     try {
       assets = publishAssets(project, cookedManifest);
     } catch (error) {
-      return fail(`cannot read publication plan: ${String(error)}; run og cook`);
+      return fail(`cannot read publication plan: ${String(error)}; retry og build to refresh it`);
     }
     for (const load of assets.computed) process.stderr.write(`og build: ${load.source}:${load.line}: ${load.reason}; retaining ${load.prefix ? `assets under ${load.prefix}` : "all assets"}\n`);
   }

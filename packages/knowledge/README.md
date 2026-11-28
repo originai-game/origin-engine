@@ -109,8 +109,9 @@ break, with a `changelog.json` breaking entry):
   variant, mood and captured palettes. It checks startup identity/profile
   against `og project --json` and hashes the captured project, TS/helper,
   referenced look and raw input dependencies. Missing or stale reports throw
-  with a `run og cook` instruction. After `og new`, the platform must run
-  `og cook` before requesting its first art brief; repeat after edits.
+  with a preparation diagnostic. After `og new`, the platform must run
+  `og cook` before requesting its first art brief; dev/run/build/test refresh
+  the report automatically after edits.
   `presetLook(slug, options?)`: a preset
   alone, for a game not written yet (the platform's style step).
   `readLook` and `readAudioChoices` require the matching installed `og` on PATH
