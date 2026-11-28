@@ -13,14 +13,14 @@ export interface StringTable {
   readonly entries: Readonly<Record<string, string>>;
 }
 
-export function readStringTables(root: string, builtins = false, og = process.env.OG_BIN || "og"): readonly StringTable[] {
+export function readStringTables(root: string, builtins: boolean, og: string): readonly StringTable[] {
   const result = spawnSync(og, ["i18n", "tables", root, "--json", ...(builtins ? ["--builtins"] : [])], { encoding: "utf8", maxBuffer: Infinity });
   return readProjectOutput<{tables: StringTable[]}>(result).tables;
 }
 
 // Bundling registers identities only; do not evaluate every locale or transfer
 // every message merely to intercept a runtime import in a large content tree.
-export function readStringTableIndex(root: string, og = process.env.OG_BIN || "og"): readonly Pick<StringTable, "id" | "path">[] {
+export function readStringTableIndex(root: string, og: string): readonly Pick<StringTable, "id" | "path">[] {
   const result = spawnSync(og, ["i18n", "tables", root, "--index", "--json"], { encoding: "utf8", maxBuffer: Infinity });
   return readProjectOutput<{tables: Pick<StringTable, "id" | "path">[]}>(result).tables;
 }

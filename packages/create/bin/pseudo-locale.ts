@@ -3,21 +3,20 @@
 // `content/strings/qps-ploc.ts`, every message of the base table with its
 // Latin letters accented, 40 % longer and in brackets, so a run in it shows
 // which words overflow their box and which never came from a table (they
-// stay plain). `og new --lang` writes it and copies this file into the game
-// as `tools/pseudo-locale.ts`; run it again after the base table changes
-// (tests/pseudo.og.ts fails until you do):
+// stay plain). Run this script from the engine distribution's create/bin/
+// after the base table changes:
 //
-//   bun tools/pseudo-locale.ts [project]
+//   bun create/bin/pseudo-locale.ts [project]
 //
 // The tag is `qps-ploc`, a private-use language, so no player's locale ever
 // negotiates to it: only `og run --locale qps-ploc` or a `locale:qps-ploc`
 // step selects it. Message syntax survives: arguments, plural and select
-// branches, `#`, quoted text and rich-text tags stay as written. This file
-// imports nothing but node's own modules.
+// branches, `#`, quoted text and rich-text tags stay as written.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
+import { ogBin } from "../../engine/src/node/project.ts";
 
 /** The pseudo-locale's tag. */
 export const PSEUDO_LOCALE = "qps-ploc";
@@ -138,7 +137,7 @@ export function pseudoTable(base: StringTable): string {
 
 /** The base table across project modules; never import author TS in Bun. */
 export function baseTable(project: string): StringTable | null {
-  const result = spawnSync(process.env.OG_BIN || "og", ["i18n", "tables", project, "--json"], {encoding: "utf8", maxBuffer: Infinity});
+  const result = spawnSync(ogBin(), ["i18n", "tables", project, "--json"], {encoding: "utf8", maxBuffer: Infinity});
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(result.stderr.trim() || `og i18n tables exited ${result.status}`);
   const output = result.stdout.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as {event?: string; tables?: StringTable[]});

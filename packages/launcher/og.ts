@@ -643,7 +643,7 @@ async function command(argv: string[], out: { report: Report; stdout: boolean })
     const dist = await install(c, v, out.report);
     const args = without(rest, "--engine");
     const create = join(dist, "create", "bin", "create.ts");
-    const r = spawnSync("bun", [create, ...args], { stdio: "inherit" });
+    const r = spawnSync("bun", [create, ...args], { stdio: "inherit", env: { ...process.env, OG_ENGINE_PACKAGE: join(dist, "engine") } });
     if (r.error) fail(`cannot start bun (${r.error.message}); the engine runs on bun: https://bun.sh`, "internal");
     if (r.status !== 0) return r.status ?? 1;
     const dir = args.find((a, i) => !a.startsWith("-") && !CREATE_VALUES.has(args[i - 1] ?? ""));

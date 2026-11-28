@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og new",
+      "summary": "Resolve the distribution's own CLI for scaffold string tables and pseudo-localization without requiring an og launcher on PATH."
+    }
+  ]
+}
