@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ResultsScreen",
-      "summary": "The verdict's rule under the title is a bare line: its small diamond sat on the rule's middle under a left-aligned title, off the grade's stars, and read as a stray mark on a phone."
-    }
-  ]
-}

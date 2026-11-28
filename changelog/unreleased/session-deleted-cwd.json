@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og session",
-      "summary": "A shared session host no longer drops a command after the directory an earlier command ran in was deleted and recreated, such as a regenerated UI gallery project. The host used to fail with `session disconnected before its result`."
-    }
-  ]
-}

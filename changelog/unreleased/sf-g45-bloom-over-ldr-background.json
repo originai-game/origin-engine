@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Bloom over an authored LDR sky (RenderSettings.bloom, Environment.background)",
-      "summary": "The glow round a bright shot now shows over an authored LDR sky and untonemapped sprites too. It used to be dropped there, so it showed only on the meshes near the shot and lit up their whole silhouettes."
-    }
-  ]
-}

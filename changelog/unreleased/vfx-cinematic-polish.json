@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "og vfx add cinematic-realism",
-      "change": "Rework all nine cinematic-realism effects: the explosion adds a flash, ground dust skirt, debris and a lingering smoke column (4.5 s, about 9 m reach); muzzle flash becomes a forward tongue with side petals and gun smoke; impact, dust, splash, exhaust, pickup, magic and celebration gain layered sparks, grit, water column, plume and glints.",
-      "fix": "Reinstall the pack with og vfx add cinematic-realism; leave room for the longer, larger explosion and retune any timing that assumed its old 3.2 s duration."
-    }
-  ]
-}

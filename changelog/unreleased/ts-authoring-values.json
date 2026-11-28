@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "og script / cook generators",
-      "change": "Cook modules reject dynamic import and await before execution. Source outputs reject undefined, functions, symbols, BigInt, promises, class instances, sparse arrays, hidden/accessor properties and cycles instead of silently dropping or coercing them through JSON.stringify.",
-      "fix": "Use synchronous static imports and explicit plain data. Omit optional fields rather than setting undefined; return numeric typed arrays or dense arrays. Type-only imports are erased before the executable dependency graph is collected."
-    }
-  ]
-}

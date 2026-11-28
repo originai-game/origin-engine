@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "bg-radial, bg-conic",
-      "summary": "Radial and conic gradient backgrounds (`bg-radial`, `bg-radial-[…]`, `bg-conic-*`, `-bg-conic-*` and `bg-[radial-gradient(…)]` / `bg-[conic-gradient(…)]`) paint in the TSX UI, with their centre, ending shape and start angle; they painted nothing before. A gradient keeps up to 16 stops (8 before), so a two-colour gradient mixed in Oklab keeps every one of them."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og cook",
-      "summary": "project.ogt's `cook { uses \"<cooked dir>\" }` names other cooked bundles whose textures and texture arrays a terrain may use as layer maps by asset id. The cook checks each name against that bundle's manifest and type and packs none of them, so many terrain packs can share one material pack instead of each carrying a copy. og.terrain.load finds them in the boot bundle or an open pack, as before; open the material pack first."
-    }
-  ]
-}

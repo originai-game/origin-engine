@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Clouds",
-      "summary": "A cloud deck seen from above no longer shows its fine noise as a grid of equal bumps. The detail volume was read once, a tile every thirty-second of Clouds.scale along the world's axes, so every tile drew the same billows in rows out to the horizon; it is now read on two lattices of different tile size and turn that share no period short of the cloud field's own, so the billows are of two sizes and repeat only where the field does. Clouds.detail, scale and every other setting mean what they did; the cloud pass takes one more volume sample where it reads detail (about a tenth more GPU time for the pass on an NVIDIA L4)."
-    }
-  ]
-}

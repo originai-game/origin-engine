@@ -1,6 +1,0 @@
-{
-  "fixed": [
-    "Built-in UI: a family's two-corner cut is a corner shape, not a hard-coded polygon. The 259 cut quest entries, HUD plates, party cards, tiles, sockets and tags are `border-radius: <cut> 0` with `corner-shape: var(--cut-shape)`, which follows `--plate-corner-shape`, so a style pack that rounds its plates rounds its cuts too, and one that sets `--cut-shape` parts them.",
-    "`clip-path: border-box` (and the other geometry boxes) now cuts along the box's own corners, each corner's radius and `corner-shape` included, where it was a round rectangle of one radius."
-  ]
-}

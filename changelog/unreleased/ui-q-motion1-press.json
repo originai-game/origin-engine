@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "Every enabled control a finger presses (a press or tap handler, or an action's touchButton) squashes under the press and springs back, by the pack's new Press.feedback slot: scale-96, in over 50 ms, back on a spring from motion.css's press row. Colours keep their own transition. A control whose classes move it under active: keeps its own; disabled controls and full-screen press catchers stay still."
-    }
-  ]
-}

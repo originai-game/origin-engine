@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og build --publish",
-      "summary": "A 3D game's engine no longer downloads the 3D world at boot: terrain, scattered copies and grass, planar water, the 3D fluids and volumetric fog's shaders (with og.terrain) are the on-demand engine module `world3d`, loaded when a game first calls og.terrain or a frame first draws one of them, and prefetched with a scene that places an og.Terrain (cooked/.cook.ogt `modules world3d`). The 3D primary is about 155 KB (brotli) smaller; a game that uses the 3D world downloads the module, about 207 KB. Nothing a game calls changes."
-    }
-  ]
-}

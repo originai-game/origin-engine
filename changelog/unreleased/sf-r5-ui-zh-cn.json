@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.i18n",
-      "summary": "The built-in UI speaks Simplified Chinese: every engine component and screen string table (`x.en.ogt`) ships a `x.zh-CN.ogt` beside it, bundled with it and registered as a translation of the English base, so under zh-CN PauseScreen reads 已暂停 / 继续游戏. A game's own zh-CN table still overrides any of its keys, and its base table stays the one every locale falls back to."
-    }
-  ]
-}

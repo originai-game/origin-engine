@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Style pack sounds",
-      "summary": "A pack may silence an event with `{ \"volume\": 0 }` and no `clips`; before, a sound without clips was refused even at volume 0."
-    }
-  ]
-}

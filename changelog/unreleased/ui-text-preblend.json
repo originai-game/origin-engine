@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui (TSX text)",
-      "summary": "UI text takes the weight Chrome on Linux gives it: each glyph's coverage goes through Skia's text preblend (gamma 1.2, contrast 0.2, keyed on the ink's luminance) before it is blended, so light text on a dark panel reads as full as a browser draws it and dark text on a light one as crisp. Every frame with TSX text moves towards Chrome's; fills, blurred shadows and the blend itself are unchanged, and a design made against a browser needs no change."
-    }
-  ]
-}

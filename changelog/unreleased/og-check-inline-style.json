@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og check OG9111",
-      "summary": "og check warns at a host element's inline style property that the UI never draws: a name no style property has (CSS's `background` and `inset` shorthands among them), which is dropped where it is applied, or one read into a field the UI does not draw (mixBlendMode, tintColor). The warning names the property's file, line and column and the class that draws it instead: `bg-<role>` for a theme colour, `backgroundColor` or `backgroundImage` for a colour from data."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "List (ui/controls/list)",
-      "summary": "A long list that makes only the rows near its view, as NSH's `List` does: give it `each`, a fixed `itemSize` and a row function; thousands of items cost what the visible rows cost, rows are kept by key while in view, and `overscan` adds rows beyond each end."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og run",
-      "summary": "A warm `og run`, `og test` or `og ui check` of an unchanged game reuses its native bundle again. Since development bundles carry the inspector's TSX panel, every bundle compiled an engine file the reuse plan did not list, so each run bundled the game again."
-    }
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "model.process.project",
-    "change": "Model processing can project explicitly registered authored views into prepared UV maps during cook, through the existing og-bake projection kernel.",
-    "fix": "Declare project.size and repeated view image paths with position, target and either fov or ortho. Images are square with alpha masks, tracked as content dependencies. Cameras are explicit; cook does not fit, draw or request concept images."
-  }]
-}

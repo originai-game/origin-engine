@@ -1,6 +1,6 @@
 {
   "name": "@origingame/design",
-  "version": "0.9.0",
+  "version": "dev.20261128.2",
   "description": "The design language Origin Engine and origin-agent share: the document and its tokens (the neutral ladder, flat glass on floating chrome only, borderless controls, the game roles). The engine's default UI style is generated from these tokens; origin-agent pins this package by version.",
   "license": "MIT",
   "repository": {

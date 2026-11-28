@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "__runtime_probe__.devFiles",
-      "summary": "A development build's page takes re-cooked files ([path, bytes][]) and applies them in place without a hot reload (the world and bundle stay; only the changed documents, styles and default style are read again): an edited document, style or (in an origin-engine checkout) default style shows without reloading the page. It answers each step's time in ms. The UI gallery (docs/ui.md §6.5) uses it."
-    }
-  ]
-}

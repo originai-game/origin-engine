@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "author source provenance",
-      "summary": "Recognizes direct imported file-kind factory calls before evaluation and maps literal edits to their argument, preserving original TypeScript spans and comments. Aliased factories, lookalike local objects, type-only imports and computed kind selections cannot masquerade as static content declarations. Candidate source overlays evaluate edits and helper changes with the existing closed executor, input tracking and cache without writing project files. This is the source/provenance foundation; persistent save integration and format cutovers remain separate."
-    }
-  ]
-}

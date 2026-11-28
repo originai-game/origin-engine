@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "Restarting a resident native renderer keeps its initialization future on the heap instead of overflowing an ordinary test or host thread's stack."
-    }
-  ]
-}

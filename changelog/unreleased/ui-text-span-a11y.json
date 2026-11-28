@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui Text",
-      "summary": "A `<Text>` span with `onPress` inside a paragraph is now its own node for screen readers: a link named by its text, with the bounds of its glyphs on its first line. Before, the paragraph swallowed it, so a reader could not find or activate it."
-    }
-  ]
-}

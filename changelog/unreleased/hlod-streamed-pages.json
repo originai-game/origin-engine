@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "scene hlod",
-      "summary": "An HLOD proxy's textures stream by level, as a model's `stream_textures` do, when the scene's `hlod.texels` passes the mip tail (256): spawning the scene or placing its cell loads each page's levels from 256 texels down, and the whole chain (`<page>#mips`) is read only while the proxy covers enough of the screen to want it, within the mip budget (`mip_stream`). A distant world no longer holds every proxy's full pages in GPU memory. The probe's `mip_stream:resident` makes them whole as before. Presentation only."
-    }
-  ]
-}

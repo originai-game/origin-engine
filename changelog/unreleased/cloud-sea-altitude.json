@@ -1,6 +1,0 @@
-{
-  "fixed": [
-    { "member": "og.Fog.sky", "summary": "Above a cumulus base, land fog no longer erases the cloud sea below the horizon; ground views retain their land fog." },
-    { "member": "og.Clouds.base", "summary": "Cloud bases can be below world y 0 and share PhysicalSky.altitude as the origin's sea-level height, so flying games need not move gameplay to high world coordinates." }
-  ]
-}

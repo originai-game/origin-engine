@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "type district",
-      "summary": "A district can name a terrain asset with `terrain \"terrain/land.ogt\" { depth 0.25 }` to carve its street and pavement footprint at cook time, using the existing TerrainStamp kernel. Block interiors and ground already lower are preserved. Region grids and path turns work alike; tiles, terrain colliders, sampling and terrain nav bakes use the same carved heights. District and terrain share local coordinates; streets remain at y = 0, without runtime generation or automatic grade selection."
-    }
-  ]
-}

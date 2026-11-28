@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "Built-in components",
-      "summary": "`export const ground = \"panel\"` in Steps, Avatar, Pips, ItemSlot, CardPiles and KeyValues: they are pieces of a panel and draw on its ground, never straight over the scene. The UI gallery mounts such a component inside a panel's frame."
-    }
-  ]
-}

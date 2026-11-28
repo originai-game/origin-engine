@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ShooterRadar",
-      "summary": "The radar's sweep is a conic fan masked to its inner range ring, as it was before the TSX port, instead of filling the whole well; its rim, range rings, blip rims, vignette and top sheen take the pack's theme roles, so a pack and the light scheme restyle them (the light radar no longer wears a black vignette). The map, the blips and the player's arrow are placed in percentages of the radar's own side: they had all stood at its top-left corner, and the compact radar now places them alike."
-    }
-  ]
-}

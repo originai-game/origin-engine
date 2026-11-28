@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og test restart, og run --restart-at",
-      "summary": "The restart check leaves out og.audio's own counters, which no game can turn back: og.AudioStream's hash, commands and nextVoice, og.AudioMix.rng, og.AudioPlayback.voice, og.AudioEvent's played and last, og.AudioEventVoice.play, and the voice id of og.SoundStarted and og.SoundEnded. Of each event queue it compares only the events the compared tick sent, not those carried from the tick before (a fresh start's music started in GameDesc.start). A game that plays music from start and restarts no longer needs these in `keep`."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og-ui input (TSX)",
-      "summary": "The arrow keys, the gamepad's d-pad and its left stick move the focus between TSX controls. Focus goes to the nearest control in that direction, its own row or column first, and wraps to the far end of the row or column. With nothing focused, a move lands on the first control. The stick repeats while held, after the theme's slow duration and then every fast one. A focused node that listens to `onKey` (a slider) gets the arrows itself; the d-pad still moves the focus from it."
-    }
-  ]
-}

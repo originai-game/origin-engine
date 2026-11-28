@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "dump_ui",
-      "summary": "`dump_ui` carries `moving`: whether the TSX UI's transitions, exits and finite keyframe animations (an entrance's `animate-pop`) are still running. Loops that never end (`animate-spin`, `animate-shimmer`) do not count, so a capture can wait for `moving: false` before it judges a frame."
-    }
-  ]
-}

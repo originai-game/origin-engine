@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "type video alpha",
-      "summary": "`alpha true` in a `type video` keeps the source's alpha (ProRes 4444, QuickTime Animation, PNG in .mov, VP8 or VP9 WebM with alpha; a source without alpha is refused). A clip's frames hold it; a stream packs the matte below the colour in each AV1, HEVC or H.264 unit, folded back into the texture's alpha by the decoder natively and on the GPU on the web, so keyed footage drawn over a live scene shows the scene where the matte is clear. The cook fills the colour under a clear matte from the visible edge, so a screen's green (or any colour the source keeps there) never fringes the edge through chroma subsampling or filtering. og.VideoInfo.alpha reports it. The flow guide §3."
-    }
-  ]
-}

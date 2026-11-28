@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og cook (flow dialogues)",
-      "summary": "A flow node whose segment holds for the game (`flow.hold`) and branches on the story's variables before its choices are taken (an `<<if>>` in its body, or a choice's condition) is a cook warning naming the line, the variables and the fix: og.flow runs the node as its segment starts, before the game is played, so give each result a choice tagged `#outcome:<name>` and call og.flow.advance(world, flow, \"<name>\") when it is decided. The dialogue still cooks."
-    }
-  ]
-}

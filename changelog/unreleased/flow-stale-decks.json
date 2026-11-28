@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "og.flow decks",
-      "summary": "A spare deck warmed for a segment the flow can no longer cut to (the outcome or choice not taken, or any once the flow ends) is let go on the next tick, its player stopped and the scenes its segment placed no longer prepared, instead of holding them until a later warm needed the deck. The decks' records change, so a flow's world hash differs from 0.9.x before this; nothing else a flow shows or when it cuts does."
-    }
-  ]
-}

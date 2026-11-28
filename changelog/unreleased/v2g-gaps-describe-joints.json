@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "DescribedJoint",
-      "summary": "The probe's describe lists the joints of an entity with og.Skeleton: DescribedEntity.joints is `[{ name, point, depth, visible }]`, its skin's joints as the last tick posed them, projected through the main camera. A joint is named by its humanoid role when og.anim.humanoid recognises the rig (`hips`, `head`, `leftFoot`, `rightHand` ...), else by its node name. `visible` means on screen, in front of the camera, and hidden by nothing else drawn and no opaque UI. describe's new `joints` param is `all` (the default), `humanoid` or `none`. The field is additive: other entities and secondary views carry none."
-    }
-  ]
-}

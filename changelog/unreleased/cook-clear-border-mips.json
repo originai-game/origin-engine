@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "A texture whose border is fully transparent (a UI plate, a nine-slice frame, a sprite) keeps its clear texels clear in every mip level. The encoder's own mip filter spread alpha one or two texels past the art's edge, so a chamfered button drawn small showed a faint dark line beside its cut corner. Recook to take it."
-    }
-  ]
-}

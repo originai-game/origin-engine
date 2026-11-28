@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "PlaytestDesc.restart",
-      "change": "A restart event payload mismatch reports the first differing event's zero-based index and fields (with start and now values) in restart.diff.events, and names its index, field and values in restart.first, instead of reporting only queue counts.",
-      "fix": "Read index and fields for payload differences; start and now on each event queue remain its counts. Entity fields still compare through the same structural pairing as components; event order remains significant."
-    }
-  ]
-}

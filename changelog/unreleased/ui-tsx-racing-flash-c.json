@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "RacingBanner, RacingBonus, RacingBoost, RacingCar, RacingGarage, RacingLapHud, RacingPedals, RacingResults, RacingStandings, RacingTelemetry, RacingTrackMap",
-      "summary": "The racing HUD components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. The engine draws no shapes, so the telemetry dial's rev arc and red zone stand in as linear overlays and the track map's path becomes a sampled Line polyline; a key cap hides under a touch screen through pointer-coarse, and skew, glyph-glow filters and container-relative sizing are approximated or dropped."
-    }
-  ]
-}

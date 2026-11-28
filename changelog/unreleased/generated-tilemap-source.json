@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "type tilemap generate",
-      "summary": "Deterministic TS generators return typed row-major tile grids for named authored layers. Cook validates dimensions and tile ids and uses the normal tilemap compiler; scripts can compose shared BSP and WFC without rerunning generation at game startup. Authored tilesets, layer properties and objects are retained."
-    }
-  ]
-}

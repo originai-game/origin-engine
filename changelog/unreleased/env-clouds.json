@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Clouds",
-      "summary": "The existing cloud march now composites over authored LDR, HDR and colour backgrounds as well as procedural skies, using the DirectionalLight and environment SH ambient. Decks below the camera show sunlit tops and distance fading without a horizon cut; authored LDR gaps retain their display colours."
-    }
-  ]
-}

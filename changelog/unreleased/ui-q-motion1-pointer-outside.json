@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A pointer not over the surface hovers nothing: before the mouse first moved, the control at the top-left corner showed hover:, as did the one under the mouse's last place."
-    }
-  ]
-}

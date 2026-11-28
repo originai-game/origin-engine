@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "PlaytestDesc.restart",
-      "summary": "The restart check no longer compares the queue of an event the input path delivered (og.input.intent, a replayed intent): og-input's sink marks each intent's event type as input, and its queue is left out as og.KeyDown's is. A game whose fresh start came from two intents (pick a stage, launch) and whose restart from one (Again) failed on `event queue <Type> holds 1, a fresh start's 2`; what the intents did to the world is still compared."
-    }
-  ]
-}

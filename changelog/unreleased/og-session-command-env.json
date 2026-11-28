@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og session (og run, og test, og ui check on a shared host)",
-      "summary": "Commands run on the worktree's shared host again instead of each \"running alone\". A command's request now carries the environment its script runs with, og's plus what og sets for it (OG_COOK_FORMATS), which is the environment the host was started with."
-    }
-  ]
-}

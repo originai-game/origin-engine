@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI images",
-      "summary": "On og-ui's new core, a box's image can be tinted by its fill (`bg-*`) instead of the text colour: the white mask takes the fill's colour and the fill is not drawn under it, so a pack's plate art follows the theme and colour scheme."
-    }
-  ]
-}

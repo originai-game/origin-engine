@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    "The web renderer compiles its frame pipelines with wgpu's asynchronous pipeline calls (the fork's port of gfx-rs/wgpu#10438) instead of wrapping GPUDevice in the Worker; `publish { pipelines }` and the probe's boot pipeline counts work as before."
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "components guide",
-      "summary": "`og api show components --guide` lists every built-in component, control and screen that @origingame/engine/ui/components exports, one section each: what it draws, its props with their types and docs (from its `<Name>Props` interface), the row types those props name, the pack slots it dresses, whether it is a piece of a panel, its fixtures and the input actions it answers. `og api gen` writes it from the components' own source and `og api check` fails on any difference, so it cannot drift; `og api find` ranks its sections (`og api find health bar` answers with the components that draw one), and the `ui` module points at it. It replaces the CSS-era catalogue removed with og-ui."
-    }
-  ]
-}

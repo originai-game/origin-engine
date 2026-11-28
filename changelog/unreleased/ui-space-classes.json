@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "space-x-*, space-y-*, space-x-reverse, space-y-reverse",
-      "summary": "TSX `space-*` classes parsed but did nothing; they now give each child but the last its end margin (the start one with `-reverse`, the left side of `space-x` swapped in a right-to-left locale), as Tailwind 4 does. A child's own margin on that side wins."
-    }
-  ]
-}

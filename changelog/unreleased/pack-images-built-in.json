@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Style pack images",
-      "summary": "A nine-slice image may set `tint: true`: a shape the element's fill colours (its alpha kept), so a chamfered plate follows the theme in either scheme; unset, the image is a picture drawn as it is. The built-in fantasy pack names its filigree frame and its iron and red button plates as images, and scifi its corner-bracket frame (per scheme) and its chamfered frame, plate, button, cell, chip and field cuts."
-    }
-  ]
-}

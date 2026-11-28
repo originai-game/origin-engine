@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "project.ts.packs / og cook --pack / cooked bundle dependencies",
-      "change": "Checked delivery packs now partition native payloads into independent runtime bundles. The base manifest contains only base outputs and pins its declared dependency manifests; other packs live under cooked/delivery/<id>/.cook.ogt. Stream group names are pack-qualified with explicit packs. Bundle loaders wait for pinned dependencies, protect them from release, and reject duplicate global asset identities rather than resolving by requester or open order. Web builds ship runtime files only and keep non-boot packs out of preload and offline precaching. Cook JSON adds pack selection and per-delivery file/byte/reference reports.",
-      "fix": "Assign canonical content IDs with project.ts.packs include patterns and explicit dependsOn/roots. Use og cook --pack ID only for scoped iteration and a full cook before export. Load region/DLC directories with og.load.bundle and address stream groups as pack/local-name. Platforms must ship nested manifests and their relative files intact, consume delivery metadata in og-build.json, and stop assuming cooked/.cook.ogt lists every project asset. Duplicate bundle IDs are errors, not overrides. Build tooling can read the complete internal .og/cook/manifest.ogt; never publish it. Projects without packs keep the single-bundle layout."
-    }
-  ]
-}

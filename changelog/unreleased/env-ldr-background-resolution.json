@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "EnvironmentMap",
-      "summary": "Authored LDR backgrounds keep source detail in a separate cube: nearest power of two to source width / 4, capped at 2048, with box mips for minification and blur. Lighting size and GGX levels no longer reduce background resolution. Recook environments for blob schema 4. Upper-hemisphere sources report null lowerMirrorMean and lowerBlueFraction because they contain no lower hemisphere; wrap and clip still measure the source. The loading guide now shows the full DirectionalLight aim with lookAt."
-    }
-  ]
-}

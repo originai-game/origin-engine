@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Scatter",
-      "summary": "Scattered copies, their impostors, model impostors and crowd cards compile their lit and prepass pipelines with only the optional lit features the frame uses, as meshes and terrain do, instead of with every feature: on a cold web driver each took seconds before the first frame. The full pipeline draws once it is compiled; captures draw with it as before. Frames are the same."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "object-contain, object-cover, object-none, object-scale-down, object-fill, object-<position>",
-      "summary": "TSX `object-*` classes parsed but did nothing; an `<Image>`'s source now fits its box by its texture's size as CSS's `object-fit` and `object-position` place it: `object-contain` letterboxes it, `object-cover` fills the box and crops it about `object-<position>` (the centre by default), `object-none` shows it at its size. An image with no `object-*` still stretches to its box."
-    }
-  ]
-}

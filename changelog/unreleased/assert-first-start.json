@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.assert",
-      "summary": "Assertions in start are recorded on the first engine boot, rather than only after an earlier engine has initialized the build type."
-    }
-  ]
-}

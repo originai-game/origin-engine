@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "glide-<name> on an element with transition-layout makes it slide, when put on screen, from where the nearest element of that name was drawn (the one it replaces, shown or removed in the last half second), as Framer Motion's layoutId does. The new pack slot Tab.indicator (a spring of damping 0.8 and 300 ms response from motion.css's glide row) carries it; the built-in tabs and segmented choices (Shop, Settings, Results, Backpack, Collection, the RPG menu bar, idle purchase amounts) draw one gliding indicator under the selected one in place of their static underlines."
-    }
-  ]
-}

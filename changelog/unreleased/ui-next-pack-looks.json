@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "uiCore",
-      "summary": "On `uiCore next`, the cook compiles each document's styles against the project's style packs too, and the runtime maps the cooked look of the active pack, so a pack restyles the new core's documents without compiling a look at run time."
-    }
-  ]
-}

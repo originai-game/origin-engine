@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui",
-      "summary": "`<Line points={[x0, y0, x1, y1, …]} closed class=\"stroke-accent stroke-2\" />`: a polyline in its box (CSS px from its top left), stroked with round joins and caps by `stroke-*` classes (the ink and 1 px without), for charts, graphs and paths drawn from data. It has no fill, curves or dashes."
-    }
-  ]
-}

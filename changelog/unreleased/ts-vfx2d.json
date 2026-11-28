@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "file.vfx2d and og vfx add/preview",
-    "change": "Pixel effects use checked TypeScript recipe data and native flipbook fields. OGT headers, inline/external JSON author recipes and their field tables are removed. Pack content/ declarations install atomically alongside assets; previews accept canonical pixel-effect IDs and read cooked pivots.",
-    "fix": "Write export default file.vfx2d({recipe: {...}, duration?, loop?, impact?, events?}) under content/ and use module/content-relative IDs. Move shared recipe data to pure lib/ imports, migrate pack content/ and metadata paths, and re-cook with matching hosts. Old authored OGT and cooked flipbook blobs are unsupported."
-  }]
-}

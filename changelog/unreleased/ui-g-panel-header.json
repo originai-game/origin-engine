@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Theme recipes",
-      "summary": "A material's panel dressing (`panel.header`, a coloured header band) reaches the generated panel art; the `flat` material's panel draws a thin header band in the theme's accent, inside every panel's padding."
-    }
-  ]
-}

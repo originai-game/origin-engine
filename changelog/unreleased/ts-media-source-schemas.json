@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "cook author input schemas",
-      "summary": "Register structured Rust/JSON Schema inputs for animgraph, rig, motion-action, timeline, flipbook, rig2d, tileset, tilemap, video, vfx2d, behaviour, dialogue, quest, shader, post and ui-material. The same closed input types drive serde decoding, structural validation and TypeScript declarations, with tagged content references and field units/ranges. Dialogue defaults to typed nodes, lines, conditions and commands; Yarn is an explicit import and WGSL remains text. This schema foundation does not switch file formats or connect the author factories to cooking."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderOptions.upscaler",
-      "summary": "TAAU excludes closer occluder taps as well as farther background when resampling camera-reprojected history. A mixed visibility footprint could previously retain the colour of an object that had moved away from thin foreground detail. Reconstruction filters, local depth-slope allowance, blend weights and defaults are unchanged."
-    }
-  ]
-}

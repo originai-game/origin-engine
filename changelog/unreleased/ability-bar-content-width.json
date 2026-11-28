@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "AbilityBar",
-      "summary": "A strip that sizes to its content (in a centred row, such as a hotbar along the bottom) is as wide as its slots again, each --ability-bar-slot-size, instead of their minimum: its last slot no longer breaks onto a second line when the row has room."
-    }
-  ]
-}

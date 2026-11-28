@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Author schema tooling",
-      "summary": "Content input schemas share an exact, ordered registry and a type-erased check that retains both schema validation and Rust decoding. Reflected schemas can bind an expanded document to the same decoder. Content references have one closed identity token instead of duplicating path and runtime-handle conventions. This is registration infrastructure, not a file-format switch or complete kind coverage."
-    }
-  ]
-}

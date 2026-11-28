@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.TerrainScatter",
-      "summary": "A large scatter no longer stops the frame on WebGPU. The GPU cull wrote every visible copy of every chunk into one list, bound whole; past about two million copies the list outgrew the 128 MiB a WebGPU storage binding may be, the device rejected the cull and no frame was drawn. The list now fills pages within the device's binding limit, each chunk wholly in one, so a scatter of any size culls and draws."
-    }
-  ]
-}

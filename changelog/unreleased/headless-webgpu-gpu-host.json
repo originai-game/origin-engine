@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og run --device chrome",
-      "summary": "On a Linux host with a GPU, the headless Chrome it starts draws its WebGPU canvas. With only `--enable-features=WebGPU`, Chrome on an NVIDIA host (an L4, Chrome 157) offered only SwiftShader adapters and lost the device at the first present, as on a host without a GPU; the switches that reach the NVIDIA adapter left the compositor in software, so the page showed its background while the game drew. Headless Chrome on Linux now always starts with ANGLE on Vulkan over SwiftShader (`--use-angle=vulkan --use-vulkan=swiftshader --enable-features=WebGPU,Vulkan`), so WebGPU and the compositor share one device; headed Chrome on a host with a GPU keeps `--enable-features=WebGPU`."
-    }
-  ]
-}

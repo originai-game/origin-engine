@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Theme recipes",
-      "summary": "A compiled theme dresses a danger button (`Button.plate.danger`) in its generated danger art, with its own solved ink, instead of the plain button's."
-    }
-  ]
-}

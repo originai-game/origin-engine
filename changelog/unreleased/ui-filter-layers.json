@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "blur-* and drop-shadow-*",
-      "summary": "A TSX element's `blur-*` and `drop-shadow-*` (CSS `filter: blur()` and `drop-shadow()`) are drawn: the element and its subtree draw through a layer of their own, blurred or shadowed in the order the classes list them, with its opacity and mask applied after the filter as CSS applies them. A transformed element's blur and shadow offset turn and scale with it. A frame draws at most 16 such layers covering at most 1.5 screens together; past that an element draws unfiltered and the log says so once, naming it. Like CSS's filter, the element is a stacking context: a `z-*` descendant orders inside it and stays filtered."
-    }
-  ]
-}

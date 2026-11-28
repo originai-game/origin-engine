@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "Ten more HUD components as TSX, beside their .svelte: HudBar, StatBar, HudTimer, AmmoCounter, HudHint, ActionButton, HoldButton, Crosshair, Combo and Celebration. Styles are Tailwind classes; SVG arcs (rings, the crosshair's circle, charges) stand in on Views, the bars' tick masks are drawn views, and the celebrations' particle emitters, burst keyframes and play sounds are dropped."
-    }
-  ]
-}

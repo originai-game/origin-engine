@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "project.ts storyFunctions.body",
-      "change": "Pure story function bodies use the same structured expression schema as file.dialogue and file.quest. Yarn expression strings and the public standalone Yarn expression parser are removed.",
-      "fix": "Replace body:'$value * 2' with body:{kind:'binary',op:'mul',left:{kind:'variable',name:'value'},right:{kind:'literal',value:2}}. Keep existing typed parameters and returns. External Yarn files remain explicit file.dialogue input.text imports."
-    }
-  ]
-}

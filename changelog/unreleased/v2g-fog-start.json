@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Fog.volumetric",
-      "summary": "Volumetric fog now honours start for global distance density, end's additional linear distance ramp, and maxOpacity for the global distance and height fog together, in both froxel and raymarch rendering and beyond volumetricDistance. start does not delay height fog, local FogVolumes or underwater media; the default start=0, end=0 and maxOpacity=1 retain the existing path. sunColor and sunPower remain plain-fog controls, now documented as such; anisotropy shapes volumetric scattering."
-    }
-  ]
-}

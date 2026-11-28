@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "Two new pack slots: Screen.frame (a screen fades in from 1.04x and out to 0.98x on motion.css's enter and exit rows) and Modal.frame (a dialog pops in from 0.9x on the emphasis spring). A game's own screen or dialog takes them with packClass(\"Screen\", \"frame\") or packClass(\"Modal\", \"frame\")."
-    }
-  ]
-}

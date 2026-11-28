@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Weather",
-      "summary": "Scripted frames wait for newly enabled surface weather, including snow and its tracks, instead of drawing an older shader variant while the complete one compiles. Live display frames keep their non-blocking fallback."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "scheme-dark, scheme-light",
-      "summary": "TSX classes that name the scheme an element's art is drawn in, as Tailwind's color-scheme utilities: the element and everything inside it resolve their theme roles (`text-fg`, `bg-surface`, a pack's images) in that scheme whatever the page's is, so dark art keeps light ink on a light page. A nearer `scheme-*` inside wins; they take no variant."
-    }
-  ]
-}

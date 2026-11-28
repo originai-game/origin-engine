@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og build --publish",
-      "summary": "The publish engine boots on a smaller primary wasm; physics, story, nav, motion, destruction and video are separate modules on the engine version's CDN directory. The modules a game references download beside the primary during the loading screen, the rest on their first call, and og-build.json records them under `modules`. `--modules local` copies them into the output for an offline or self-hosted build; otherwise the page's Content-Security-Policy must allow `connect-src https://origingame.ai`."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "web host",
-      "summary": "Boot, cooked assets, fonts and lazy wasm/decoder loads share a body-limited fetch budget and retry HTTP 429, 503 and network failures with Retry-After and bounded backoff; exhausted errors name the URL and status."
-    }
-  ]
-}

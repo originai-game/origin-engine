@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "typed project bootstrap",
-      "summary": "Adds Rust-schema-derived defineProject/defineModule author declarations and a closed project bootstrap over the existing deterministic executor and binary data boundary. Bootstrap validates the installed engine pin, canonical source paths, independent module/delivery dependency graphs, optional-pack boundaries and candidate overlays without running the game entry or content. Real imported manifest helpers support original-source literal diagnostics and patches. This is foundation only: CLI/scaffold/project consumers and legacy author readers switch together in a later format cutover."
-    }
-  ]
-}

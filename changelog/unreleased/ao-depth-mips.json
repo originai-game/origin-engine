@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "PostEffects.ao",
-      "summary": "GTAO reads its far taps from a MIP chain of the view depth (XeGTAO's depth prefilter, a new `depth-mips` compute pass before `ao` where the device has compute) instead of the full-resolution depth: the same occlusion at less GPU time per frame, most at high resolutions and large aoRadius. og.render's gpuPasses and `og run --trace` list the new pass."
-    }
-  ]
-}

@@ -1,5 +1,0 @@
-{
-  "added": [
-    { "member": "og launcher 2", "summary": "Installs report their progress as events a tool reads (docs/release.md §1 The launcher's events): `og engine install [<v>|latest] --json`, or with no version its project's pin, prints resolve, download (bytes, total), retry, verify, unpack and installed as JSON Lines, or error with a stable code (network, not_found, checksum, signature, disk_full, ...) and retryable, exiting 1. Any other command that installs its engine first prints the same events on stdout with --json, on stderr when stderr is not a terminal. Downloads retry network failures with backoff and resume an interrupted archive with a Range request." }
-  ]
-}

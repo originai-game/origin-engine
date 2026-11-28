@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui style",
-      "summary": "An inline style's border widths and radii take CSS lengths: `style={{ \"border-top-width\": \"4px\" }}`, `\"border-radius\": \"0.5rem\"` and the per-corner radii now apply instead of being dropped, so a box with only inline border widths draws its border."
-    }
-  ]
-}

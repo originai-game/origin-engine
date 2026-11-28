@@ -1,3 +1,0 @@
-{
-  "added": [{ "member": "og video study", "summary": "Study arbitrary footage using source PTS: streamed timed PNGs and a contact sheet capped at 24 evenly spaced frames (indices in study.json), Oklab palettes per clip and cut segment, scene-change candidates, adjacent-sample FLIP and chronological window mean/median. No window ranking or quality verdict." }]
-}

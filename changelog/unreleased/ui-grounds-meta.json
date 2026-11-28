@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Meta components",
-      "summary": "MetaAchievements, Chat, DailyQuests, DailyRewards, Friends, Inbox, News, PassTrack, Profile, Reveal, Shop and ShopConfirm draw their rows on Row.frame, their tags on Chip.frame, their wells and bubbles on opaque and glass grounds in those grounds' inks, their rims on rim roles and their state fills whole with their own inks, so their text reads over a bright scene in every pack (the channel tabs, the reward calendar's today claim and the shop's Sold out, Owned and Not enough tags)."
-    }
-  ]
-}

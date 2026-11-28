@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og run --perf",
-      "summary": "The perf report gives every GPU pass's cost alone, even when passes overlap: one frame in 30 runs serially and its main and prepass passes are timed per draw class (`main: terrain`, `main: scatter`, `prepass: grass`, …). The table `gpu cost per pass, alone` and the JSON `costs` list them with their sum and the real frame's span; the other lines come from the real frames only (perf guide §2)."
-    }
-  ]
-}

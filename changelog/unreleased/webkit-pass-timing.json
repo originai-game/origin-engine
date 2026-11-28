@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og build (web)",
-      "summary": "Development builds on WebKit no longer stall the game clock to read GPU pass timestamps. CPU pass timings remain available. Rendering and the device features used by games are unchanged."
-    }
-  ]
-}

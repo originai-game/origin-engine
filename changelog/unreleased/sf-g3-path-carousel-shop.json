@@ -1,8 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    { "member": "PuzzleLevelPath", "summary": "The roads between levels run from disc to disc again (they all stood at the lane's left edge), and a disc's Play, Open or Selected tag sits under it instead of over it." },
-    { "member": "Carousel", "summary": "The Next button draws its arrow, sized as Prev's (it was empty)." },
-    { "member": "Shop", "summary": "An offer's art has its height and a visible icon, and the Featured tag sits on the art at its top left in the accent instead of over the offer's name." }
-  ]
-}

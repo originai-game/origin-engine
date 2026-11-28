@@ -1,6 +1,6 @@
 [package]
 name = "og-core-derive"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

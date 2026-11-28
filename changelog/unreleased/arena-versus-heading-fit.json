@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "@ui/components/arena/versus",
-      "summary": "A long team name in the versus reveal breaks only between words and steps its type down until it fits three lines, instead of breaking mid-word (INVITATION / AL) and running to five lines in a wide face."
-    }
-  ]
-}

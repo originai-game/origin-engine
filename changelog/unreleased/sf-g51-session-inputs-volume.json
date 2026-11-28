@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og session (og run, og test, og ui check on a shared host)",
-      "summary": "A project on another volume than the temp directory (an external or second APFS volume on macOS) is frozen into its own `.og/session-inputs`, where its files clone, instead of being copied across volumes and failing with \"session inputs exceed 512 MiB of copies\"."
-    }
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "file.animgraph and og.anim.graph / GraphDesc.text",
-    "change": "Animation graphs are structured TypeScript data. GraphDesc.text, the OGT author parser, grammar and field tables are removed. Cook and runtime use the same named graph builder and native validation. Blend children are named objects, not tuples.",
-    "fix": "Export file.animgraph({sprite:true,motions:{idle:{kind:'clip',clip:'idle'}},layers:[{name:'base',entry:'idle',states:[{name:'idle',motion:'idle'}]}]}) under content/. Use canonical ref IDs in skeletal bindings and canonical IDs in og.load.animgraph. At runtime pass params/motions/layers to og.anim.graph instead of text. Write blend children as {motion,threshold} or {motion,point:[x,y]}. Re-cook with matching hosts."
-  }]
-}

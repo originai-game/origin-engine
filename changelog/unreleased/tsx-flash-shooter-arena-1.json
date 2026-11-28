@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "The shooter HUD's ability bar, squad, vitals, loadout and combat frame and the arena's round HUD, ready check, lobby, roster, versus reveal, spectator bar and vote as TSX, beside their .svelte: ShooterAbilities, ShooterSquad, ShooterVitals, ShooterLoadout, ShooterCombatHud, ArenaRoundHud, ArenaReady, ArenaLobby, ArenaRoster, ArenaVersus, ArenaSpectator and ArenaVote. Styles are Tailwind classes; the roster's and lobby's cut corners, portraits' octagons, the versus seal's hexagon and the ability slots' conic cooldown masks are approximations (rounded corners, top-down veils), the arena cards' and verdicts' gradient text fills are solid inks with glows and the team inks are the default blue and red (the game's seed-team colours have no class surface), the round HUD's banner entrance and the versus reveal's entrance replay are dropped, and the touch controls and damage numbers stay svelte: their roots are world anchors, which have no TSX surface."
-    }
-  ]
-}

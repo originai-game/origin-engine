@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "scaffold AGENTS.md",
-      "summary": "A new project starts with AGENTS.md: the project layout (og-project.json, project.ts, content/**/*.ts with their base/ IDs, assets/, src/, tests/), how to look up the API, file types and UI components with `og api find`, `og api show` and `og api list --kind`, the everyday og commands, and the rules to use the built-in UI and theme and keep simulation deterministic."
-    }
-  ]
-}

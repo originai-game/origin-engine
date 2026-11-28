@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "TouchControls",
-      "summary": "floatingStick centres the move stick at finger-down; lookPad feeds per-tick drag deltas through the same action and multi-pointer path. Custom UI uses floatingStick and touchLook."
-    }
-  ]
-}

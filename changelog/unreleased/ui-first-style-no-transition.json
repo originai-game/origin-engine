@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "transition",
-      "summary": "An element mounted into a UI already on screen shows its classes at once, or enters from its `starting:` classes, instead of transitioning from no style over its `duration-*` (a screen mounted mid-game no longer fades its grounds in)."
-    }
-  ]
-}

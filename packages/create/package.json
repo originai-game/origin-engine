@@ -1,6 +1,6 @@
 {
   "name": "@origingame/create-game",
-  "version": "0.9.0",
+  "version": "dev.20261128.2",
   "description": "Scaffolds an Origin Engine game from the project template: og new runs it from the engine's dist (create/).",
   "license": "MIT",
   "repository": {

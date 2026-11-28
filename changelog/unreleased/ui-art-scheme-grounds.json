@@ -1,6 +1,0 @@
-{
-  "fixed": [
-    "Built-in UI: the game components follow the colour scheme. In a light scheme (a style pack's parchment or daylight, or `og.ui.configure({ scheme: \"light\" })`) their grounds, wells, rows, tiles, cards, plates and shades turn light, recessed still darker than raised, and their white inks (`--hud-ink`, `--hud-label-ink`, `--hud-ink-dim`, `--front-ink` and the rest) take the palette's inks; inks held light for dark glass (rarity, difficulty, card type, judgement) are deepened in their own hue. The dark scheme is unchanged. Inks on a coloured fill, the map and radar glass and keycaps keep one value.",
-    "Built-in UI: the garage holds a long car name to three lines and a smaller cap, so its ratings and Drive stay in view in wider fonts."
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "overflow-hidden on a rounded element",
-      "summary": "A rounded `overflow-hidden` element now clips everything under it to its rounded padding box, antialiased: an image, a glyph, an icon, a line or a particle crossing a rounded corner (a minimap's grid and marks inside its round bezel) is cut round instead of square, as CSS clips."
-    }
-  ]
-}

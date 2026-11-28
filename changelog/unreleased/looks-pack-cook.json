@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Style pack pack.json",
-      "summary": "A style pack directory may hold a `pack.json` (og-ui-next's CONVENTIONS.md §Theme and packs: scheme, seeds, a Tailwind theme with `{ light, dark }` values, `Component.slot` variants, fonts, icons and sounds). The cook checks it (unknown keys, every variant's classes against its theme over the default in both schemes, every asset it names) and writes an `og.UiPack` blob. The built-in cartoon, fantasy and scifi packs carry theirs, ported from their CSS tokens."
-    }
-  ]
-}

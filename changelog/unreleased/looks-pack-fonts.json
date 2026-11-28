@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Style pack fonts",
-      "summary": "A pack.json face's `weight` may be a range `[min, max]`, as CSS `font-weight: 100 900`: on a variable face the part of its `wght` axis the entry serves, on a static face the weights it draws without synthesis. Omitted, it is 400 for a static face and the whole axis for a variable one. The built-in packs ship option A's faces: cartoon is Lilita One with ZCOOL KuaiLe for display, and Fredoka (variable, 300–700) with Noto Sans SC (variable) for text and labels. Fantasy is Cinzel (variable, 400–900) and Newsreader (variable, 200–800), each with Noto Serif SC (variable). Scifi is Chakra Petch SemiBold and Bold with Barlow Semi Condensed, each with Noto Sans SC (variable). Every role's family ends in its Chinese face, and the families no longer end in a generic family such as `sans-serif`."
-    }
-  ]
-}

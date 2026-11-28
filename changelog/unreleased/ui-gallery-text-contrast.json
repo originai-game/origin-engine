@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og probe",
-      "summary": "A TSX element that draws text reports it in its UI dump's detail as drawn: ink (sRGB 0-255 and alpha 0-1, its opacity included), fontSize and textLines (each laid-out line's box on screen, in CSS px, bounded under a transform). The UI gallery reads each line's ground from its frame and lists text under the screens guide's contrast bar (4.5:1, 3:1 over 24 px) in defects.txt; disabled controls are exempt. The gallery's --only also takes a comma list."
-    }
-  ]
-}

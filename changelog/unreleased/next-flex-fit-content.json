@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui layout",
-      "summary": "A flex row sized to its content (a `justify-items-center` grid item, an absolutely placed box) now counts a `grow basis-0` item at its content width, as CSS does, instead of at its zero basis, capped by the room it has: a prompt between two rules is as wide as its text instead of squeezed to its widest word."
-    }
-  ]
-}

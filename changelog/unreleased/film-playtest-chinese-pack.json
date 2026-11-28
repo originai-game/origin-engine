@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og font add chinese-simplified",
-      "summary": "The chinese-simplified font pack holds GB 2312 whole (6,763 hanzi, both levels) instead of level 1 alone (3,755), so a less common character such as 薇 in a name draws instead of a box. Its glyphs are still drawn from the outlines when first shown; run `og font add chinese-simplified` again to take the new face."
-    }
-  ]
-}

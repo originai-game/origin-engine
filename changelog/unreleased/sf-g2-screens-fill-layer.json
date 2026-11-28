@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TitleScreen",
-      "summary": "Every built-in full-screen screen (title, main menu, mode select, splash, loading, pause, settings, HUD editor, save and load, results, game over, leaderboard, calibration, credits, creator tools, the film's chapter, chart and gallery screens) fills the layer it is mounted in, also inside a game's own column, instead of shrinking to its content (a title drawn as a 133 px band, results cut to its buttons). Each takes a `class`, applied after its own, for the game's placement."
-    }
-  ]
-}

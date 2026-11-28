@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.TerrainScatter",
-      "summary": "A terrain that moves now carries its scattered copies without placing them again: copies are placed about the terrain's position (with its turn and scale) and drawn moved to where it stands, so changing an `og.Terrain`'s position, or the scene's render origin, keeps every placed chunk. Before, any move re-placed every chunk in range each frame (85 chunks a step on the grass test scene). A copy's motion vectors follow the terrain's move. The hashes that pick which copies thin out with distance and each copy's wind phase now read its place about the terrain, so they stay put as it moves; for a terrain at the world's origin the frames are unchanged."
-    }
-  ]
-}

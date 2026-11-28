@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A node not laid out yet reads an empty box: a control classed while its screen is being built no longer read another node's box, or crashed the native host (rune-taffy store.rs) when it was the first."
-    }
-  ]
-}

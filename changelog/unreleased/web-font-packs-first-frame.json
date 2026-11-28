@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "web export",
-      "summary": "A game whose UI uses a font pack (First Light's Instrument Sans and Noto Sans faces) draws its first frame on the web. The faces fetched after the first tick joined the font chain only on a later tick, and behind the play gate no tick runs, so the first frame waited for them, and the page stayed on its loading screen, for good."
-    }
-  ]
-}

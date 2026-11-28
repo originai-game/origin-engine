@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "cooked/.cook.ogt modules",
-      "summary": "The cook records the engine modules each asset needs (`modules physics nav` in its block: its records' and those of every scene, prefab, model or clip it places or plays) and the ones the bundle needs (a top-level `modules` line: the boot scene's). og.scene.preload, og.scene.change, og.load.scene and og.load.bundle fetch them as the content is prepared, so a later level's physics or a cutscene's video no longer loads at its first call. og build's og-build.json `modules.referenced` takes the boot scene's from the manifest, beside the modules the game's code names; other scenes' modules load as those scenes are prepared, not at boot."
-    }
-  ]
-}

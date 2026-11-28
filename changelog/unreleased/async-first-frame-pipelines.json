@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "publish { pipelines }",
-      "summary": "A large scene no longer loses its GPU device before its first frame on a desktop GPU with a cold shader cache: `auto` makes pipelines asynchronously on every GPU but Apple's, compute pipelines included, and every pipeline a frame makes is asked for asynchronously. Before the first frame a dispatch still compiling skips the rest of that frame, and grass, GPU-placed scatter, the environment and live sky bakes, the clouds' noise and shadow bakes, the cached shadow layers and the compute before the frame's passes (the wind field, the terrain's corner cache, GPU instance, meshlet and scatter culling) wait for their pipelines instead of drawing from unfilled buffers or compiling synchronously; meanwhile instances are culled on the CPU."
-    }
-  ]
-}

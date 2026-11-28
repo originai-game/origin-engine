@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og probe dump_ui, UI gallery",
-      "summary": "A TSX text element in dump_ui lists brokenWords: each place its laid-out lines cut a word where UAX #14 gives no break (`end|start`), the sign of a text measured narrower than it draws. The gallery lists them in defects.txt and exits non-zero."
-    }
-  ]
-}

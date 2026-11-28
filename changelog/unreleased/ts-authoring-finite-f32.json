@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Author input numeric validation",
-      "summary": "Derived f32 inputs now reject finite JSON numbers outside the Rust f32 range before serde can convert them to infinity. Source schemas intersect float bounds with existing domain ranges, including nested and context-expanded schemas; f64 values and schema default/example data remain unchanged."
-    }
-  ]
-}

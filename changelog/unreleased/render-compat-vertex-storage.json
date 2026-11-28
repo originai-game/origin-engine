@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    "At the compatibility tier (`RenderTier.compat`), no vertex stage reads storage and no fragment stage reads more than four storage buffers or textures, so WebGPU's compatibility mode accepts every pipeline outside the meshlet path. The UI overlay and paint pass, the skinning palette, morph targets and baked clips, the terrain's corners, the grass, the 2D skin, the tile chunks and the strips read their data from textures. The GPU tilemap, strips and 2D skinning now run at that tier instead of falling back to the CPU. The UI paint pass draws its own layer there because views keep their texture's format. Frames look the same."
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "fx-showcase cinematic sound declarations",
-    "change": "The showcase's installed cinematic pack now uses the same sixteen checked file.sfx declarations and canonical sound references as the shipped pack. The synthesized audio is unchanged.",
-    "fix": "Keep the showcase's content/vfx/cinematic-realism/audio declarations with its assets when copying the project; remove the obsolete assets/vfx/cinematic-realism/sounds OGT files."
-  }]
-}

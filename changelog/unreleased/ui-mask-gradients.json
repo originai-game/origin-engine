@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "mask-[…], mask-none",
-      "summary": "TSX classes that mask an element and everything inside it with a gradient's alpha, as CSS's `mask-image`: `mask-[linear-gradient(to_right,black,transparent)]`, a radial or conic gradient the same way; opaque draws, transparent hides. The gradient is measured over the element's own box, and an inner mask replaces an outer one. `mask-none` clears it. Only gradients mask; an image URL is no class."
-    }
-  ]
-}

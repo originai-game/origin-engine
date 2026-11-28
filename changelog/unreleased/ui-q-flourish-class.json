@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "Flourish takes `class`, merged after its own: it hugs what it decorates by default, and `w-full` lets a full-width target (a tile's art well, a card's foot) fill its place."
-    }
-  ]
-}

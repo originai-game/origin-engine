@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og run, og test (resident session)",
-      "summary": "A command run right after a session went away (its host crashed or retired, its supervisor still letting go of the worktree) waits for that session to release the worktree and starts a new one, instead of failing with \"another session owns this worktree\"; a batch of sequential runs no longer loses the run after a crash."
-    }
-  ]
-}

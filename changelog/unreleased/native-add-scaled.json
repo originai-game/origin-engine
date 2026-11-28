@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ArchetypeView.addScaled",
-      "summary": "target += source * scale over a view's rows in the engine, one call per archetype in place of a JavaScript loop over its entities (position += velocity * dt). The same bits as the loop; an f32 field or vector each, the target among the system's writes."
-    }
-  ]
-}

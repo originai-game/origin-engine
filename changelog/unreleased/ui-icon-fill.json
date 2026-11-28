@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "fill-*, fill-current, fill-none",
-      "summary": "TSX `fill-*` classes parsed but did nothing; they now paint the icons in an element and its subtree, as CSS's `fill` inherits: `fill-red-500` colours them, `fill-current` gives them the text colour again and `fill-none` hides them. An icon with no fill takes the text colour as before."
-    }
-  ]
-}

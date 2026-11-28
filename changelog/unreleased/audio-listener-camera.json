@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "og.AudioListener",
-      "summary": "Spatial audio now hears from the camera when a world sets no og.AudioListener entity (Godot's rule: the view is the ear), its pose og.Camera's, its movement the ear's Doppler velocity; the origin looking down -Z is left for worlds with no camera. A world that puts an og.AudioListener entity on its camera rig hears unchanged."
-    }
-  ]
-}

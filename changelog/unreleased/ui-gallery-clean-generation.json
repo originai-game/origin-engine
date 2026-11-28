@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI gallery",
-      "summary": "Generated gallery projects pin the running engine package's version, including dev releases, and are rebuilt from an empty project directory. Each run clears its previous diagnostics, index and selected captures before preparation, so an early failure cannot report old contrast findings."
-    }
-  ]
-}

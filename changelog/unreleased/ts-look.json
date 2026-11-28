@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "file.look / og new / og project --json / readLook / Look binary payload",
-      "change": "Looks, engine presets, variants and mood layers are checked TypeScript declarations. The look author OGT parser, text serialization and same-slug project fallback are removed. Cook validates reflected fields, composes inheritance and emits only native binary look payloads. Startup and runtime use canonical content IDs. readLook consumes the last successful cook's checked report and rejects missing or stale source/dependency snapshots; its signature and BriefLook result shape are unchanged.",
-      "fix": "Write content/looks/<id>.ts exporting file.look({extends:[\"pixel\"], ...resourcePatches}); use typed ref('module/looks/id') for another project look and full IDs such as ref('@canvas/paper.png') for engine art. Name base/looks/<id> in og-project.json and runtime loads, not looks/<id>.ogt. Re-cook all look payloads. Platforms must run og cook after og new before the first readLook/artBrief, and after editing the project, look, imported helpers or raw dependencies. Ship .og/cook/look.json with the editable project for brief generation; it is not a runtime payload. Catalogue preset paths now end in .ts. No old project or cooked look compatibility remains."
-    }
-  ]
-}

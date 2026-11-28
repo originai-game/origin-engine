@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ArenaVersus, ArenaRoster, ArenaLobby",
-      "summary": "Their icons draw again: a fighter without a portrait shows its icon, the roster shows each champion's, the lobby each slot's and its ready state. The TSX port passed them as glyph, which names an input binding, instead of name. ArenaVersus draws on a panel ground (the Panel.frame variant), so its team names and fighters read over any scene; a compact versus shrinks its portraits, and the local fighter's character and rank read in fg."
-    }
-  ]
-}

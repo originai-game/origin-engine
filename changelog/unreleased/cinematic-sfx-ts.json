@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "cinematic-realism sound content IDs",
-    "change": "The pack's sixteen synthesized sounds are checked file.sfx declarations under content/audio; its effect tracks use canonical installed content IDs. Synth descriptions, PCM, WAV and cooked QOA bytes are unchanged.",
-    "fix": "Reinstall cinematic-realism and replace vfx/cinematic-realism/sounds/<name>.ogt with base/vfx/cinematic-realism/audio/<name>."
-  }]
-}

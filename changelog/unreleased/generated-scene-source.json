@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "type scene generate",
-      "summary": "Deterministic TS modules return SceneSource entity trees and reflected resource fields. Cook appends declarations to the authored scene and uses the existing prefab, reflection, reference and cycle validation; models and sub-scenes are asset paths, not runtime handles."
-    }
-  ]
-}

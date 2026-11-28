@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.DayNight",
-      "summary": "The drawn directional light is chosen once, by one key-light stage that the frame, the probe and `og bake lightmaps` all read. og.DayNight's sun and moon are its candidates in place of the og.DirectionalLight it drives, so the shadow settings are always that light's (they came from whichever light was brightest by its stored intensity), the sun and moon hand over by the same curve as two lights do (there were two curves), and another og.DirectionalLight brighter than the cycle at that hour (a lamp at night) is drawn instead of being lost. The probe's `get` answers the light it drives, not the first in entity order, and every og.DirectionalLight gains `keyShare`, its share of the light drawn. The lightmap bake bounces only the light drawn, not every directional light at its stored intensity. Dawn and dusk frames move."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "A font and a style pack are shared through the cook cache by their own input, as textures and sounds are, and so is the list of assets a pack's CSS names; no cached asset of its own input is keyed by the game's component schemas. Another project, or the same one after a code edit that changes a component, takes them from the cache instead of cooking them again. `og cook --watch --json` reports each cook's stages and its `watching` line the built-in styles' directory."
-    }
-  ]
-}

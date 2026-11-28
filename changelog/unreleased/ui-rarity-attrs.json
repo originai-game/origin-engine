@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "@ui/components/base/item-slot, @ui/components/shooter/pickups",
-      "summary": "rarity draws again: an item slot's rim and a pickup's edge and count take the rarity's colour. data-* attributes are on or off, so `data-rarity={\"rare\"}` never matched `data-rarity-rare:`; each rarity is now its own attribute."
-    }
-  ]
-}

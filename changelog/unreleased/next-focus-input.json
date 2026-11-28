@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og-ui input (TSX)",
-      "summary": "TSX nodes answer input. `hover:`, `active:`, `focus:`, `focus-visible:`, `focus-within:` and `disabled:` classes follow the pointer, the press (which stays active within 8 px of its node, where a release still presses), and the keyboard focus. Tab and Shift+Tab move focus: positive `tabIndex` first, then tree order. Enter, Space or the `confirm` action presses the focused control, and the ring shows only for focus the keys moved. A `modal` node keeps focus and presses inside it while it shows, then returns focus. `onAction={{ confirm, details }}` (the `actions` prop and event 10) gets the UI's input actions on the focused node or around it. `<Glyph action>` (the `glyph` prop) shows an action's current binding. A double press sets `value` \"2\", and `onWheel`, `onKey`, `onFocus`, `onBlur` and the pointer events fire as CONVENTIONS.md §Input says."
-    }
-  ]
-}

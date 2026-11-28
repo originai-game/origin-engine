@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "file:strings / og i18n / og ui eject / og new",
-    "change": "Locale tables are typed file.strings declarations, evaluated in the restricted cook realm and cooked directly into native fields. The strings OGT parser and its author entry are deleted. UI string imports register canonical cooked IDs without executing author code in the game. Creation, extraction, pseudo-localization and UI eject now write TS; ejected components live under src/ui and tables under content/ui.",
-    "fix": "Write content/strings/<locale>.ts exporting file.strings({locale, entries, fonts?}) from @origingame/engine/author, use canonical ref IDs for fonts, and load <module>/strings/<locale>. Import these TS declarations instead of OGT tables. Regenerate project types and re-cook. Source-bound extraction edits direct literals only; edit computed/shared expressions in source. Host tools can read checked module tables with og i18n tables --json, or shipped UI tables with --builtins. Platform scaffold consumers must include content/ and preserve the matching knowledge/scripts/string-tables.ts reader."
-  }]
-}

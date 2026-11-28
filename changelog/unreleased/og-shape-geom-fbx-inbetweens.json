@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.model",
-      "summary": "An FBX blend shape with in-between shapes now cooks each shape as a morph target of its own (the full shape keeps the channel's name, an in-between is named `<channel>@<percent>`), and the channel's weight and animated DeformPercent are spread over them as Maya does. Before, only the full shape was kept, and a face posed through an in-between was off by millimetres; Maya's in-between test file now lands within 0.05 mm."
-    }
-  ]
-}

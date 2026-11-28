@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui.mount",
-      "summary": "A TSX UI follows the game while it plays: a display frame now sends the UI's changes at each tick boundary, as an advance does, so a store or signal a system writes reaches the screen instead of the screen keeping its first build."
-    }
-  ]
-}

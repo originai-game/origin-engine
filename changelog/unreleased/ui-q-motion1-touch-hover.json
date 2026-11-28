@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A finger hovers nothing: on a touch screen hover: no longer lights the control a finger last touched (sticky hover), and what the mouse lit goes out when the player switches to touch."
-    }
-  ]
-}

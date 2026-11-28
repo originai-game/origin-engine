@@ -1,6 +1,6 @@
 {
   "name": "@origingame/engine",
-  "version": "0.9.0",
+  "version": "dev.20261128.2",
   "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api/<module>.ogt, its runtime on the web (wasm in a Worker) and native (napi addon) hosts, the player shell, and the agents' knowledge (wiki, guides, look catalogue) in knowledge/.",
   "license": "MIT",
   "repository": {
@@ -90,12 +90,12 @@
     "bun": ">=1.3"
   },
   "dependencies": {
-    "@origingame/create-game": "0.9.0"
+    "@origingame/create-game": "dev.20261128.2"
   },
   "optionalDependencies": {
-    "@origingame/engine-darwin-arm64": "0.9.0",
-    "@origingame/engine-linux-x64": "0.9.0",
-    "@origingame/engine-win32-x64": "0.9.0",
+    "@origingame/engine-darwin-arm64": "dev.20261128.2",
+    "@origingame/engine-linux-x64": "dev.20261128.2",
+    "@origingame/engine-win32-x64": "dev.20261128.2",
     "@tsrs/darwin-arm64": "7.1.0-beta.tsrs5",
     "@tsrs/linux-arm64-gnu": "7.1.0-beta.tsrs5",
     "@tsrs/linux-arm64-musl": "7.1.0-beta.tsrs5",

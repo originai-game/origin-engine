@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "author input schemas",
-      "summary": "Add typed field, PCM sound, icons, vector, texture-array and environment inputs with structural validation and generated TypeScript declarations. Raw texture kind names and omitted source-dependent environment overrides remain author data; existing OGT readers are unchanged."
-    }
-  ]
-}

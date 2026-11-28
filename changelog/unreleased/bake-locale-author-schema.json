@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "navmesh, lightmap, strings and font-extension author schemas",
-      "summary": "Tooling has closed Rust-derived inputs and readonly TS declarations for navigation sources/profiles/areas/links, complete baked lighting bindings and probes, locale ICU messages and font packs. Navigation model placement reuses Transform reflection; resource identities use content references and lightmap u64 hashes remain lossless hex text. Domain normalization, topology, locale agreement and font coverage stay with their validators. This does not switch source formats or change another font's cook settings."
-    }
-  ]
-}

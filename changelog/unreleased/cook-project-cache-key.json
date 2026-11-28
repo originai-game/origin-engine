@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook: shared cook cache",
-      "summary": "Outputs keyed by the project's inputs (model blobs, LOD surfaces, #anim, scenes, documents) now hit the shared cook cache (OG_COOK_CACHE) in a fresh checkout. Their key was never made: it named every input by its path in the project, and the engine's built-in UI manifest is outside it. The key now also covers the files outside the project a cook reads (style packs, built-in documents), so a change to one recooks."
-    }
-  ]
-}

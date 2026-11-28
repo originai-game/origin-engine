@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    { "member": "og.ui.configure / UiDesc.scheme", "summary": "A game that names no scheme now takes its UI style pack's own scheme: light packs (minimal, ink, cartoon, storybook) no longer draw their light buttons and panels on the dark default page." }
-  ]
-}

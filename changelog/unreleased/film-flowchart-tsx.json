@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components: FilmFlowchartScreen",
-      "summary": "An interactive film's story-so-far screen as TSX: og.film.chart drawn through NodeGraph (nodes, links with their points, view as [0, 0, width, height], zoom and pan), the picked node's detail and Play from here. It reports onPick(e, id), onPlay (only while canPlay), onZoom, onPan and onBack."
-    }
-  ]
-}

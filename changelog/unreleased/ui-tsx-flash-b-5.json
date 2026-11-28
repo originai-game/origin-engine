@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "The screens HudEditor, KeyValues, Leaderboard, Loading, MainMenu, ModeSelect, Notifications, ObjectiveTracker, Pagination and Pause as TSX beside their Svelte sources, same props, states, interaction and accessibility. The Svelte sources stay until the port's deletion head."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "web export boot",
-      "summary": "The engine Worker asks for its WebGPU adapter once, where boot first needs the device: after the wasm and the first world, as the renderer attaches to the canvas. Before, it also asked before fetching the wasm, which a cold Chrome could answer with null while its GPU process started. A browser with navigator.gpu but no adapter now downloads the wasm before the player shell says it is not supported; the page's own navigator.gpu check is unchanged."
-    }
-  ]
-}

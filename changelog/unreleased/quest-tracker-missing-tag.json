@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RpgQuestTracker",
-      "summary": "A step row without a `tag` field draws no tag, as one with an empty tag; it used to draw an empty tag box after the step's text."
-    }
-  ]
-}

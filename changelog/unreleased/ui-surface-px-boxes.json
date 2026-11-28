@@ -1,9 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.virtualCursor",
-      "summary": "Answers the cursor in the surface's CSS px, as its doc says, at any og-ui unit: it answered the tree's units, off by the unit (unitScale 2 put the middle of a 1280×720 surface at 320, 180)."
-    },
-    "The inspector's panel takes the pointer over its whole box at any og-ui unit: its box was read in the tree's units and compared with the pointer in CSS px, so at a unit of 1.5 (a 1080p desktop) clicks on its lower right third reached the game."
-  ]
-}

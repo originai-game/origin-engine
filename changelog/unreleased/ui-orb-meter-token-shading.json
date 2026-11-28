@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "OrbMeter",
-      "summary": "The orb's depth, rim shade and gleam are drawn from the style's tokens (--color-shadow and --orb-meter-light) rather than fixed black and white, through three new roles a style pack can set (--orb-meter-lume-fill, --orb-meter-depth-fill and --orb-meter-shade-fill); its look is otherwise unchanged."
-    }
-  ]
-}

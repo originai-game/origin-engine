@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.load.font",
-      "summary": "Explicitly referenced font-pack faces are fetched before GameDesc.start on the web, including conservative candidates of computed paths and escaped loaders. Loading a declared font in start returns a ready, stable handle on both hosts, even outside the locale's font chain. Other pack faces remain on demand for og.i18n. Undeclared synchronous pack-face loads are refused on both hosts, independent of residency; declare hidden paths with project.ogt publish.keep and recook. The boot report lists each explicit face and its bytes, and the service worker precaches it; no simulation-timed completion or rendering behavior changes. Recook and rebuild existing games to update the bundle's optional preload entries."
-    }
-  ]
-}

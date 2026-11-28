@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "model program surface",
-      "summary": "A model program's `material` takes a procedural `surface`: layers of noise, ridged, craters, strata, stripes, panels, rivets, veins, edges (convex wear) and cavities (dirt), cooked deterministically into base-colour, metallic-roughness, normal and emissive maps on a fresh atlas at `density` texels per metre. Props, pickups and displaced rocks carry patterned, lit surfaces with no painted image; `og model preview` draws them as the cook writes them."
-    }
-  ]
-}

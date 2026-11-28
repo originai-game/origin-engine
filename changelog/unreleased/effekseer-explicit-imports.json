@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "og vfx import and effekseer-* packs",
-      "change": "Effekseer conversion writes explicit file.import declarations for textures and meshes, with native model settings. All ten packs include declarations for their 243 textures and 41 meshes; model OGT sidecars are removed.",
-      "fix": "Reinstall the packs or rerun og vfx import into content/. Keep its generated file.import declarations alongside file.vfx, file.particles and file.effect. Raw textures/models alone no longer cook; edit conform:'effect' in the model declaration instead of a sidecar."
-    }
-  ]
-}

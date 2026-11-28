@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Built-in UI components",
-      "summary": "Components that leaned on React Native's flex defaults lay out under CSS's: racing Results' standings column stretches to its grid row, so a long list scrolls above Retry and Continue instead of under them; Table's figure cells align right and every cell centres in its row; Daily quests' bar sits beside its count with no wrapper. Racing Results' player position reads 2nd, 3rd, 11th and so on, not 2th."
-    }
-  ]
-}

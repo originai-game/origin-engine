@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "FieldOptions",
-      "summary": "An Entity field a game declares can be `weak` (`Entity(0, { weak: true })`): it may outlive the entity it names, such as a handle to an effect that despawns itself, and the default live-entity invariant no longer reports it once that entity is gone. Only an Entity field takes the option; on any other field, the declaration is refused."
-    }
-  ]
-}

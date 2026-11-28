@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "flipbook key",
-      "change": "Only the tolerance band is discarded as background; beyond it, the matte grows through locally explained blends instead of a second tolerance-wide alpha ramp. Colour-difference fitting and the Smith–Blinn alpha bound preserve neutral steel and prevent clipped RGB unmixing from inventing colours.",
-      "fix": "Keep key colours, tolerance and holes settings. Re-cook animated-source flipbooks to get the corrected matte; tolerance still sets the fully removed background band and holes still includes enclosed pockets."
-    }
-  ]
-}

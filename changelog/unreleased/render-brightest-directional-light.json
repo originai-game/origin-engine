@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.DirectionalLight",
-      "summary": "A scene with several directional lights draws the brightest (intensity times the colour's luminance), not the first found: a dawn sun rising while the moon, spawned first, fades to 0 now lights the scene instead of leaving it dark. Its cascades, the sky's sun, the clouds and the weather follow it; two within 1.5x of each other hand over, the drawn light turning from one to the other, so neither the light nor the shadows jump. A development build warns, naming them, when another shines with a quarter of the drawn one's light or more, as one directional light is drawn."
-    }
-  ]
-}

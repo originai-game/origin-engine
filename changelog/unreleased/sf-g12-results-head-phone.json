@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ResultsScreen",
-      "summary": "The verdict's rule shows: the port drew its diamond alone, with no line and no width, under a head that had lost its row (the verdict's column shrank to the title). The head is a row again and the rule a 560 px line fading at both ends with the diamond at its middle. On a phone (compact) the panel hugs its page and buttons and sits centred, not a full-height panel with an empty block under the stats; it still scrolls from the verdict on a short phone."
-    }
-  ]
-}

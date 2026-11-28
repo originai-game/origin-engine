@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Clouds",
-      "summary": "The cloud march uses five fine samples per stride instead of six, reducing density and lighting evaluations without changing authored cloud settings, field shape or lighting."
-    }
-  ]
-}

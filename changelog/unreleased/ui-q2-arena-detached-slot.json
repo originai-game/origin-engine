@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "Opening a screen after closing a large one no longer aborts the game: a node taken out of the UI tree kept its layout slot after the store compacted, and reading its box (a scroller's, a hit test's) indexed past the end. A node out of the tree now reads an empty box."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og build (web)",
-      "summary": "2D web games no longer report WebGPU validation errors from the disabled 3D foliage and grass-trample features."
-    }
-  ]
-}

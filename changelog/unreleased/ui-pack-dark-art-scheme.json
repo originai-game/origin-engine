@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Style packs (cartoon, fantasy, scifi)",
-      "summary": "In the light scheme the packs' dark art holds dark-scheme content: cartoon's and scifi's `Panel.frame` every pack's `Plate.frame`, `Chip.frame` and `Button.plate`, and fantasy's and scifi's `Button.plate.primary` carry `scheme-dark` (cartoon's gold primary carries `scheme-light`), so `text-fg`, `text-fg-muted` and the other roles inside them resolve in the dark scheme, where they were the page's dark inks on dark art (panel headings, tab labels, lap times, quest text, a button's price or count). Fantasy's panel is a frame over the theme's ground and follows the page's scheme as before."
-    }
-  ]
-}

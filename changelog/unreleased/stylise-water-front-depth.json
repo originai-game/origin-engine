@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "rendering",
-      "summary": "With object-space stylise, water surfaces and MSAA together, the water's front depth tests against the scene's real prepass depth. Before, the stylise pass discarded that depth, and the water was tested against zeros or undefined contents."
-    }
-  ]
-}

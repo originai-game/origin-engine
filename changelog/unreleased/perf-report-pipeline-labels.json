@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og run --perf",
-      "summary": "The perf report names each pipeline it lists by its label as well as the engine line that made it (`shadow (renderer/pipelines.rs:625)`), so the late pipelines of one builder are told apart."
-    }
-  ]
-}

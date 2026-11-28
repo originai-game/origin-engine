@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Style pack variants",
-      "summary": "A built-in pack's variants that paint their own ground (cartoon, fantasy and scifi's Button.plate, Button.plate.primary, Plate.frame and Chip.frame, and cartoon and scifi's Panel.frame) now set the ink for it, from the pack's new `art-fg` and `art-primary-fg` colours, so a label no longer takes the component's ink chosen for another ground: Loadout's Equipped, Results' Next, Daily quests' Claim and the hand's Play read in every pack. The default pack's Plate.frame is a nearly opaque `bg-glass` with `text-fg`, so a HUD plate's text reads over a bright scene (a notification's title over a light stage). `og check` reports a game pack's variant that paints a fill or untinted art without an ink (OG9107)."
-    }
-  ]
-}

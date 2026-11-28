@@ -1,6 +1,6 @@
 {
   "name": "@origingame/engine-knowledge",
-  "version": "0.9.0",
+  "version": "dev.20261128.2",
   "description": "Origin Engine knowledge for agents: source-generated API reference read by og api find and og api show; the style catalogue and look presets the art brief reads; and the project scaffold description, laid out for the OriginGame platform's scaffold overlay. Not published on its own: @origingame/engine carries it as knowledge/ (docs/release.md §2).",
   "license": "MIT",
   "private": true,

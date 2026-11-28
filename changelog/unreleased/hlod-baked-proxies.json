@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "scene hlod",
-      "summary": "`og bake lightmaps` lights a scene's HLOD proxies by its static models' bake: each proxy takes the irradiance the models' lightmap holds where it stands for them, written into the scene's lightmap as an entry keyed by the proxy's asset. A proxy whose entry matches its geometry draws lightmapped while RenderSettings.bakedLighting is on, so a baked town no longer turns flat-lit where it turns to proxies; a stale bake leaves the proxies unbaked as it leaves the models. dump_render's `hlod` gains `lit`, the proxies drawn with their bake. Run `og bake lightmaps` again to light existing scenes' proxies."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og cook model programs",
-      "summary": "A model program (`.shape.json`) that a `type model` variant names now cooks as a model of its own at its own values as well, as the model guide says. Before, the variant consumed it, so a game loading the program itself got \"not in the cooked bundle\"."
-    }
-  ]
-}

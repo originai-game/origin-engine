@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A screen that replaces one leaving enters once the leaving one has gone, instead of fading over it: an absolutely placed element put on screen beside an absolutely placed sibling on its way out (a <Show> branch, another mount) holds its starting: pose until that sibling's exit ends. Rows that flow, such as a list's, still come and go together."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Screen components",
-      "summary": "The screens draw their rows, plates and washes on pack slots and opaque theme grounds in those grounds' inks, so their text reads over a bright scene in every pack: the menu and pause rows, the settings and leaderboard rows, the save-load slots, the results and game-over titles, the mode-select and leaderboard backdrops and the subtitles band."
-    }
-  ]
-}

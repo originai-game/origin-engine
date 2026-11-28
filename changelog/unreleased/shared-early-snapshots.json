@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og world-server load",
-      "summary": "The load report counts snapshots that overtake an avatar's enter under loss as `early`, apart from decode errors; og.shared drops these early snapshots without a warning."
-    }
-  ]
-}

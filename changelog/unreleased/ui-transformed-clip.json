@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui: overflow under a transform",
-      "summary": "A box that cuts its overflow (overflow-hidden, a Scroll) under a translate, scale or rotate now cuts where it is drawn, not where it was laid out. A lifted card in a hand lost its title, type, text and cost and showed its art offset; anything translated more than its own height lost its clipped content. Under a rotation the cut is the box that bounds the rotated one."
-    }
-  ]
-}

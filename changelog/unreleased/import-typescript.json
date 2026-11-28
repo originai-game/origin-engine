@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "file.import and external asset identity",
-      "change": "External models, textures, sounds, fonts, Rive and Tiled/LDtk maps require checked content/**/*.ts file.import declarations with exact owning-module assets/ or sources/ inputs. Cooked IDs are canonical module/content IDs; native controls and captured external dependencies replace OGT import sidecars, directory defaults, merge rules and filename guessing. Source moves keep content IDs stable.",
-      "fix": "Declare each external asset with file.import({kind, source, ...controls}), share settings through TS imports, bind model libraries and map textures/tilesets with ref('module/content-id'), and load the declaration ID. Remove type import documents, import.ogt defaults and raw-filename loads. Bundled and downloadable FX packs, including installed copies, declare their raw resources the same way; effect meshes state conform: 'effect' on their model imports."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "The compass, minimap, minimap view and seven shooter HUD blocks as TSX, beside their .svelte: ShooterPrompt, ShooterDamage, ShooterEffects, ShooterObjectives, ShooterPickups, ShooterRadar and ShooterRound. Styles are Tailwind classes; the compass band's mask fade, the minimaps' region crop, the radar's sweep mask and range rings and the effects', pickups' and round plates' cut corners are approximations (rounded corners, full-surface overlays), the radar's filled player arrow is a stroked Line and the objective diamonds are rotate-45 squares. The ten world-anchored world blocks (loot-label, nameplate, overhead-bars, path-line, placement-ghost, selection-ring, telegraph, waypoint, speech-bubble, interaction-prompt) stay svelte: their roots are world anchors, which have no TSX surface."
-    }
-  ]
-}

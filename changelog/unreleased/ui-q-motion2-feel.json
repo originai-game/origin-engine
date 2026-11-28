@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "The default pack's motion is stronger: a control squashes to 0.94x under a press and springs back with a visible bounce (damping 0.42); a screen leaves in 120 ms and the next one enters in 180 ms from 1.04x; a dialog pops in from 0.9x on its own spring (damping 0.45, 340 ms response) with one overshoot. motion.css's pop row takes a damping and a duration like the press row."
-    }
-  ]
-}

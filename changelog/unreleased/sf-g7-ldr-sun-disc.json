@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook environment sun extract",
-      "summary": "An LDR sky's sun is the white region holding the most light, not the last clipped pixel. Every clipped pixel ties at full luminance, so in a space or night sky the extraction took whichever star sat nearest the horizon: four of Star Focus's five AI skies got a deep-red sun under 6° up instead of their disc at 40–52°. Skies whose sun was found before measure the same disc."
-    }
-  ]
-}

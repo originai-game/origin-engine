@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.TerrainScatter",
-      "summary": "Scattered copies cull far faster on the GPU. The cull ran one dispatch of one workgroup per chunk, which Metal runs one after another: The Last Light's 38k flowers and grasses took 8.3 ms a frame at 2560x1440. The chunks' copies now share a pool of pages, and a frame's chunks are culled in one dispatch per page, a workgroup per chunk. What is drawn is unchanged."
-    }
-  ]
-}

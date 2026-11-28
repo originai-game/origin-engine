@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "scoped content preparation",
-      "summary": "Indexed TS content now has a closed preparation path that checks every executable helper import against declared pure roots and direct module dependencies before reading it, including already captured helpers. Literal inputs are captured from the entry module's assets/ or sources/, never another helper's root. Stale entry snapshots are refused; actual source import edges and raw inputs are recorded separately. This foundation does not yet validate content references, bind contextual records or switch CLI/scaffold author formats."
-    }
-  ]
-}

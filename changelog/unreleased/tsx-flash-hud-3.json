@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "The last twelve HUD components as TSX, beside their .svelte: CombatLog, DamageDirection, HeroButton, PerfReadout, HudPortrait, ProgressRing, QtePrompt, RadialMenu, RadialMeter, HudSlot, StarBar and StatusGrid. Styles are Tailwind classes; the radial menu's and the damage direction's SVG wedges and arcs are sampled Line polylines, cooldown sweeps, charge rings and the effects' time wipe stand as top-down veils until the wipe surface covers rings, the slots' and portraits' octagon and hexagon cuts are rounded, and the status grid's type notch is dropped (the rim carries the type). DamageNumbers and TouchControls stay svelte: the first is nothing but world anchors, the second needs the joystick and dpad widgets."
-    }
-  ]
-}

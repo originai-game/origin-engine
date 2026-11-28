@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "districts guide",
-      "summary": "A ground-storey composition shows recessed entrances, framed shop windows and a projecting plinth using the existing grammar mechanisms, with residential and retail variants chosen by the building seed. Aging is assigned to the actual ground-floor surfaces, not only walls above its height band; structural glazing stays in every LOD. The district-street validation fixture keeps these authored rules separate from engine presets."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Panel, shooter and RPG components",
-      "summary": "The panels, shooter loadout and effects, and rpg character, menu-bar, prompt and stats components draw their rows, plates and chips on pack slots and opaque theme grounds in those grounds' inks, so their text reads over a bright scene in every pack (rows take the pack's Row with its selected state, plates bg-glass, keycaps their own pair, and muted lines the muted ink)."
-    }
-  ]
-}

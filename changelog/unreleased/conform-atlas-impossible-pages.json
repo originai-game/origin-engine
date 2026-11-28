@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "Model UV conformance rejects atlas pages that cannot contain their chart footprints before running xatlas, and stops retrying once every chart is at its four-texel floor. Highly fragmented models under toy-3d no longer spend minutes repacking impossible pages; the existing source-atlas fallback preserves authored UVs and native texture resolution."
-    }
-  ]
-}

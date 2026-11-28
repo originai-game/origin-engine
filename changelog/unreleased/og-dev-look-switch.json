@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og dev --web",
-      "summary": "A look's `ui` switch shows in well under a second: the server warms the cook cache with the built-in packs the project does not use, in the background after each cold build, and the page fetches a change's cooked files in one request (`_dev/files`); each change's timings name the files and bytes fetched."
-    }
-  ]
-}

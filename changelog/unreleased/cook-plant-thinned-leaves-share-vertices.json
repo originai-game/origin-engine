@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "cook: plant leaf levels",
-      "summary": "A plant's thinned leaf levels now draw the full mesh's own vertices, each kept leaf enlarged about its anchor by the level's leaf scale, instead of storing enlarged copies. The built-in pine, oak and willow kinds now cook within the default budgets.vertices of 65,536 (pine 95,697 to 63,297, oak 86,045 to 54,020, willow 76,343 to 50,828), and every leafy plant needs about a third less vertex memory. Triangles, levels, their errors and the drawn crowns are unchanged."
-    }
-  ]
-}

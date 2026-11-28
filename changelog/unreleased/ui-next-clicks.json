@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.docEvents",
-      "summary": "Documents on og-ui's new core answer clicks and taps again: a press and a release over the same enabled button, or an element with onclick or ontap, reports `click` with its id and then `emit` with the handler its onclick or ontap names, with the key of the `{#each}` row it is in. A disabled one, or a release over another element, clicks nothing."
-    }
-  ]
-}

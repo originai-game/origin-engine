@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "RpgBackpack",
-      "summary": "The TSX backpack's tiles drag again: a tile dropped on another reports onMove with { dragged, target }, the two items' keys, by pointer, touch, keys or pad. A locked tile is not picked up; the game reorders, swaps or stacks."
-    }
-  ]
-}

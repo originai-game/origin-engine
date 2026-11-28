@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "overflow-hidden on a rounded element",
-      "summary": "A rounded element with `overflow-hidden` cut its children square: a child's background or gradient filling it (a slot's ground inside its round ring) showed square corners. A child's fill, gradient, border or inset shadow that reaches a corner now takes the clip's inner radius there, as CSS clips to the rounded padding box. An image or text crossing the corner is still cut square."
-    }
-  ]
-}

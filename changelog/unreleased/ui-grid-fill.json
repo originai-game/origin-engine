@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "Classes grid-cols-fill-<steps>, grid-cols-fit-<steps>",
-      "summary": "A grid of tiles names its tile's least width on the spacing scale: `grid-cols-fill-33` is `repeat(auto-fill, minmax(132px, 1fr))` and `grid-cols-fit-48` is `repeat(auto-fit, minmax(192px, 1fr))`; `grid-rows-fill-*` and `grid-rows-fit-*` do the same for rows."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "@origingame/engine/author",
-      "summary": "Cook scripts can call input.bytes/text with literal root-relative paths. Cook captures transitive helper inputs before evaluation, hashes their bytes into the action key and refuses dynamic paths, symlinks, root escapes and input capability aliases. Bytes are independent Uint8Array copies; text is strict UTF-8. The module also exposes the existing offline procgen mechanisms. This establishes the input foundation, not a file-kind or project-format switch."
-    }
-  ]
-}

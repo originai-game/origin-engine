@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Model impostor",
-      "summary": "An impostor's card outline is cooked from the same ray-march rules the shader draws by (stated once in og-render-data and written into the shader), and those rules are part of the cooked model's stamp: a change to them cooks every impostor's outline again, so a card can no longer be trimmed by an older rule than the one it is drawn by. Impostors cooked before this version are cooked again once."
-    }
-  ]
-}

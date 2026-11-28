@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.Projectile",
-      "summary": "A shot's damage beside its og.HitVolume, carried out by og.systems.combat without an og.Attack: each projectile is its own owner, so it strikes a target once and two strike it twice; a hit takes its `damage` under the target's og.Hurt (invulnerability, stagger, knockback) and reports og.Damaged and og.Died from its `shooter`, which it never strikes. Only a strike that takes damage counts towards `pierce`: a target without og.Health (a graze ring), a dead one or one in its i-frames lets it pass. Once `pierce` strikes have taken damage it is spent and og.systems.combat despawns it before it strikes again; a pierce of 0 is never spent. Projectiles never enter og.CombatAttackers, so a bullet hell has no cap."
-    }
-  ]
-}

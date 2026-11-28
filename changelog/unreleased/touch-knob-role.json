@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "TouchControls",
-      "summary": "The stick's knob is filled with the theme's `knob` role instead of a thinned `fg` (`bg-fg/45`): it is opaque, so the ring's pressed tone no longer shows through it, and it follows a pack's `knob` colour."
-    }
-  ]
-}

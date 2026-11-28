@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Rhythm components",
-      "summary": "RhythmChain, RhythmGauge, RhythmLaneKeys, RhythmResults, RhythmSongPlate, RhythmSongProgress, RhythmSongSelect and RhythmTiming draw on pack slots and opaque theme grounds (rim roles on the jacket edges, key-hi keycaps, shade-deep dividers and veils, tile and surface rows) in those grounds' inks, so their text reads over a bright scene in every pack."
-    }
-  ]
-}

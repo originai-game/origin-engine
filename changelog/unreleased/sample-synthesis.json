@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "audio.SfxLayerDesc.sample",
-    "change": "Synthesis layers accept explicit mono PCM, sample rate, tuning reference and looping through the same Rust synth as type sfx. File layers can reference an authored audio file with tracked content dependencies.",
-    "fix": "Set sample instead of an oscillator waveform; keep the envelope duration explicit. Stereo file sources average to mono; FM is oscillator-only and rejected for sample layers."
-  }]
-}

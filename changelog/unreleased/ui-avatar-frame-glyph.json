@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Avatar.frame",
-      "summary": "An Avatar with a frame and no portrait shows its person glyph in a style pack that gives pictures a fill (fantasy, scifi, cartoon): the frame's ring no longer paints that fill over the glyph."
-    }
-  ]
-}

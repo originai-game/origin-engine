@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "TouchControls",
-      "summary": "A stick's knob stays inside its ring when pushed to the edge (the ring's radius less the knob's), instead of hanging half over it; the stick's value still reads the finger to the ring's edge. Any node marked `knob` is held inside its touchStick the same way."
-    }
-  ]
-}

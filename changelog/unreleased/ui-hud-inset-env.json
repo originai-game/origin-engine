@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "A class may pad by the HUD's safe area: `env(hud-inset-top|right|bottom|left)` in a padding (`pt-[calc(env(hud-inset-top)+16px)]`)."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI style packs: cut corners",
-      "summary": "Large HUD panels and effect tiles expose their cut radius as role tokens, and song rows and world-map plates read their existing roles directly. Style packs can change these radii without local component aliases hiding the inputs; the default dimensions are unchanged."
-    }
-  ]
-}

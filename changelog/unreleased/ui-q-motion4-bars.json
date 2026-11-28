@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui",
-      "summary": "New pack slots Bar.fill (a fill easing to a new value, 240 ms ease-out) and Bar.trail (what was just lost draining after the fill, 350 ms after a 450 ms hold), from motion.css's bar and trail rows. HudBar's fill now eases (it jumped), and BossBar, ProgressBar, StatBar, Meter and Progress take them; the ghosts keep their colours (BossBar's stays light)."
-    }
-  ]
-}

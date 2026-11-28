@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "breaking": [{
-    "member": "file.materials / og materials brief / og materials make",
-    "change": "Material libraries are checked TypeScript declarations only. The OGT materials author parser and field tables are removed. Districts reference the library's canonical content ID; generated maps use canonical #map-N texture outputs. Material tools evaluate the same declaration as cook.",
-    "fix": "Move libraries to content/**/*.ts and export file.materials({materials:[{name,labels,surface:{...}}]}). Use canonical refs in file.district. Keep image paths and generate.source relative to the owning module's assets/. Pass the .ts entry path to og materials brief/make; there is no OGT fallback.",
-    "find": ["type materials", "og materials", "file.materials"]
-  }]
-}

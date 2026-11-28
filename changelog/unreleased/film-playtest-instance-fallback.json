@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.i18n",
-      "summary": "Text drawn at a weight or width of a variable face (the default UI face's bold, as the built-in film-choices and subtitles screens draw) now loads the installed font pack for characters the face lacks, as localization §3 says, before any strings table is loaded: Chinese in those screens no longer draws as boxes without a warning."
-    }
-  ]
-}

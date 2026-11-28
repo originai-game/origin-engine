@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "EnvironmentMap",
-      "summary": "The environment cook accepts sRGB PNG, JPG and WebP panoramas or six faces through the existing prefilter, keeps authored LDR background colours apart from lighting, supports upper-hemisphere ground fill, and reports seam/clipping/lower-hemisphere cues and an estimated extracted sun. EnvironmentSun includes its angularSize; environmentSun accepts optional Environment rotation and intensity, returning world direction and strength directly assignable to DirectionalLight. Recook environment assets for the extended blob format."
-    }
-  ]
-}

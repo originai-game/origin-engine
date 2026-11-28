@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og ui check",
-      "summary": "A TSX element's frame entry says how it moves: press (a press squashes it), presence (enter and/or exit: it has starting: and exit: records) and modal."
-    }
-  ]
-}

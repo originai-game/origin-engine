@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook: skinned and morphed models",
-      "summary": "A model's #anim blob no longer cooks the model's primitives a second time (with their LOD bakes) for its skin and morph streams: it indexes them by the primitives the model cook made, and its intermediate passes for libraries and mirrors write no streams. The blobs are byte-identical; Night Shift's four #anim outputs take 0.04 s instead of 9.4 s."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI documents",
-      "summary": "On og-ui's new core, a .svelte document mounted before play is built, laid out and painted behind the web page's play gate (with its glyphs), so the first played frame draws it whole instead of building it."
-    }
-  ]
-}

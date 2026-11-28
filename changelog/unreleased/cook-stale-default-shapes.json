@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "A game with a UI fails its cook, naming the image and the styles directory, when that directory lacks one of the default pack's shapes (an engine's styles/ older than og, or an OG_STYLES_DIR without shared/shapes/). Before, it cooked without them and every `nine-disc`, `nine-ring`, `nine-tile` and `nine-*-cut` drew nothing at run time, warning only there. Fix: point OG_STYLES_DIR at the engine's own styles, or reinstall the engine package."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "og.VideoPlayer",
-      "summary": "og.video advances a playing player's `time` by `speed / rate` each tick, the one step the tick rate og.Time keeps gives, instead of multiplying a rounded tick length by `speed` (two roundings a tick): the playhead still moves with its sound's, and the step is exact to f64 from the integer rate. The frame a step lands on is unchanged (its 1e-6 slack); over an hour of playback `time` can read a hair earlier than the last engine summed it."
-    }
-  ]
-}

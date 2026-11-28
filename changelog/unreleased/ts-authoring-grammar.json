@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "grammar author input",
-    "change": "Building grammars use checked TypeScript declarations consumed directly as native shape rules. The grammar OGT author parser and grammar tables are deleted; there is no TS-to-OGT stage.",
-    "fix": "Export file.grammar({params,start,rules}) from content/**/*.ts. Write ordered discriminated operations in each named rule; each ends in exactly one terminal operation. Numbers are literals or declared parameter names. Insert models use canonical content refs. District buildings.rule names the grammar's canonical module/content ID instead of an assets/*.ogt path. Re-cook; old grammar sources are unsupported."
-  }]
-}

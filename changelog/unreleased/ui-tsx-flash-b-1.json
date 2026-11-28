@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "The idle set (IdleResources, IdleGenerators, IdlePurchases, IdlePrestige, IdleOffline), the puzzle set (PuzzleGoals, PuzzleBoosters, PuzzleLevelPath, PuzzleSummary) and CardPiles as TSX beside their Svelte sources, same props, states, interaction and accessibility. The Svelte sources stay until the port's deletion head."
-    }
-  ]
-}

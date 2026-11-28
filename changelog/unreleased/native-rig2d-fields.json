@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "cooked 2D rigs",
-    "change": "2D rig blobs store validated native bones, slots, attachments, constraints, animation channels, skins and child armatures instead of canonical OGT text. Old rig blobs are rejected.",
-    "fix": "Re-cook 2D rigs and use matching native and web hosts."
-  }]
-}

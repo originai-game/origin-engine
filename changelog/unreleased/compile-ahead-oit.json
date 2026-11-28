@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.render.compile",
-      "summary": "Compile-ahead now requests the full depth-prepass and order-independent transparency variants, including the weighted front and mark passes. A newly enabled lighting feature reuses the warmed full pipeline when no existing specialization covers it, rather than compiling another specialization during play; existing specialized pipelines remain in use."
-    }
-  ]
-}

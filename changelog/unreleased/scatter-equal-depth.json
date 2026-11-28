@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "TerrainScatter",
-      "summary": "The main camera's lit pass draws scattered copies over the prepass's depth with an equal depth test and no depth write (single-sampled, with the prepass), so the GPU rejects hidden fragments before shading them: the same frame at less GPU time where copies overlap densely. A material with alpha to coverage keeps the old test."
-    }
-  ]
-}

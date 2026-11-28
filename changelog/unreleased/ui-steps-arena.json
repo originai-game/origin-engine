@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Arena components, MinimapView",
-      "summary": "The arena components (draft, lobby, roster, round HUD, scoreboard, versus, vote) write theme steps and roles only: type, tracking, leading, sizes and radii on the theme's scale, and their rims, lit edges and team glows as the named shadows and rings in the teams' roles, where they wrote brackets and literal colours a pack could not move. MinimapView's heading cone is a conic gradient in the HUD accent's role, where it wrote the role's variable into the class."
-    }
-  ]
-}

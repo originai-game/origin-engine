@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Clouds",
-      "summary": "Far cumulus under og.PhysicalSky no longer cuts a near-black, brown band out of a night or dusk sky down to the horizon. The air in front of a distant cloud, which replaces the air it hides, was lit by the sun alone, so with the sun set it was near black while the sky behind was lit by og.DayNight's moon and the night's floor. That air is now lit as the sky behind it is, by the sun, the moon and the floor: under a high moon the far clouds fade into the moonlit horizon's blue. Daytime clouds are unchanged. The clouds' own light at night is still the sky's ambient; direct moonlight on them is not drawn yet."
-    }
-  ]
-}

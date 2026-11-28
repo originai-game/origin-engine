@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og build --publish",
-      "summary": "A published game's page loads only the engine modules it uses. Before, its first frames loaded `motion`, `nav`, `physics` and `world3d` whatever the game held: the probe stepped og.motion without an agent, the tick log asked the AI for warnings in the `nav` module, the play gate's warm-up built a physics view without a collider, and every frame looked for water. The probe GI, the vegetation's wind field and trample map and the crowds' impostor bake are now the on-demand module `render3d`, loaded the first frame that draws one, and the terrain's decoding joins `world3d`. Nothing a game calls changes."
-    }
-  ]
-}

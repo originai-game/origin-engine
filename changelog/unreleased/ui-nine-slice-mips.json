@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui nine-slice images",
-      "summary": "A nine-slice image drawn much smaller than its art (a pack's chip or button in a small box) is no longer blurred at its edges and corners. Each slice now picks its texture detail from its own scale, not from the whole image's scale across the box, and a stretched middle filters by the scale across its stretch, so its thin edge line stays sharp."
-    }
-  ]
-}

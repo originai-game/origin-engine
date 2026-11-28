@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "author input schemas",
-      "summary": "Add typed style-pack inputs and the complete 23-kind model geometry union, with content references, reflected Transform placements, structural validation and generated TypeScript declarations. This prepares the TS author format without changing existing file readers."
-    }
-  ]
-}

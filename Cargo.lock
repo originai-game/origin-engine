@@ -3315,7 +3315,7 @@ dependencies = [
 
 [[package]]
 name = "og-ai"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "og-ai",
@@ -3328,7 +3328,7 @@ dependencies = [
 
 [[package]]
 name = "og-anim"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "bytemuck",
@@ -3348,7 +3348,7 @@ dependencies = [
 
 [[package]]
 name = "og-api"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "og-anim",
@@ -3364,7 +3364,7 @@ dependencies = [
 
 [[package]]
 name = "og-audio"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "cpal",
  "og-core",
@@ -3375,7 +3375,7 @@ dependencies = [
 
 [[package]]
 name = "og-bake"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "cc",
  "glam 0.34.1",
@@ -3385,14 +3385,14 @@ dependencies = [
 
 [[package]]
 name = "og-blob"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bytemuck",
 ]
 
 [[package]]
 name = "og-bundle"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "basis-universal",
  "bincode",
@@ -3413,7 +3413,7 @@ dependencies = [
 
 [[package]]
 name = "og-cli"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "gltf",
@@ -3453,7 +3453,7 @@ dependencies = [
 
 [[package]]
 name = "og-cook"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "basis-universal",
  "blake3",
@@ -3522,7 +3522,7 @@ dependencies = [
 
 [[package]]
 name = "og-core"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bytemuck",
  "glam 0.34.1",
@@ -3537,7 +3537,7 @@ dependencies = [
 
 [[package]]
 name = "og-core-derive"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3547,7 +3547,7 @@ dependencies = [
 
 [[package]]
 name = "og-css"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "color",
  "og-core",
@@ -3556,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "og-draw"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bytemuck",
  "glam 0.34.1",
@@ -3567,7 +3567,7 @@ dependencies = [
 
 [[package]]
 name = "og-ecs"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bytemuck",
  "glam 0.34.1",
@@ -3577,14 +3577,14 @@ dependencies = [
 
 [[package]]
 name = "og-env"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
 ]
 
 [[package]]
 name = "og-generation"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-api",
  "og-core",
@@ -3595,7 +3595,7 @@ dependencies = [
 
 [[package]]
 name = "og-host-c"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "arboard",
  "gilrs-core",
@@ -3615,7 +3615,7 @@ dependencies = [
 
 [[package]]
 name = "og-host-node"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "napi",
  "napi-build",
@@ -3637,7 +3637,7 @@ dependencies = [
 
 [[package]]
 name = "og-host-web"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "js-sys",
  "log",
@@ -3658,7 +3658,7 @@ dependencies = [
 
 [[package]]
 name = "og-i18n"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "fixed_decimal",
  "icu_casemap",
@@ -3676,7 +3676,7 @@ dependencies = [
 
 [[package]]
 name = "og-idl"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "pulldown-cmark",
@@ -3684,7 +3684,7 @@ dependencies = [
 
 [[package]]
 name = "og-input"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "og-ecs",
@@ -3693,7 +3693,7 @@ dependencies = [
 
 [[package]]
 name = "og-lanes"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "rayon",
  "wasm-bindgen",
@@ -3702,7 +3702,7 @@ dependencies = [
 
 [[package]]
 name = "og-net"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "ring",
@@ -3715,7 +3715,7 @@ dependencies = [
 
 [[package]]
 name = "og-physics"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "glam 0.34.1",
@@ -3731,7 +3731,7 @@ dependencies = [
 
 [[package]]
 name = "og-physics-data"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "glam 0.34.1",
@@ -3742,14 +3742,14 @@ dependencies = [
 
 [[package]]
 name = "og-play"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
 ]
 
 [[package]]
 name = "og-probe"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "miniz_oxide 0.8.9",
  "og-api",
@@ -3762,7 +3762,7 @@ dependencies = [
 
 [[package]]
 name = "og-reactive"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "og-draw",
@@ -3773,11 +3773,11 @@ dependencies = [
 
 [[package]]
 name = "og-records"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 
 [[package]]
 name = "og-render"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "ash",
  "bytemuck",
@@ -3811,7 +3811,7 @@ dependencies = [
 
 [[package]]
 name = "og-render-data"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bytemuck",
  "glam 0.34.1",
@@ -3825,7 +3825,7 @@ dependencies = [
 
 [[package]]
 name = "og-rive"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "og-css",
@@ -3839,7 +3839,7 @@ dependencies = [
 
 [[package]]
 name = "og-runtime"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "glam 0.34.1",
@@ -3886,14 +3886,14 @@ dependencies = [
 
 [[package]]
 name = "og-sccache-wrap"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
 ]
 
 [[package]]
 name = "og-shape"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "gltf",
@@ -3909,7 +3909,7 @@ dependencies = [
 
 [[package]]
 name = "og-shape-formats"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "image-webp",
  "miniz_oxide 0.9.1",
@@ -3920,7 +3920,7 @@ dependencies = [
 
 [[package]]
 name = "og-shared"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "futures-util",
  "og-core",
@@ -3941,7 +3941,7 @@ dependencies = [
 
 [[package]]
 name = "og-story"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "bincode",
  "og-core",
@@ -3953,7 +3953,7 @@ dependencies = [
 
 [[package]]
 name = "og-tests"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "image",
@@ -3975,7 +3975,7 @@ dependencies = [
 
 [[package]]
 name = "og-tests-cooked"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "image",
@@ -3992,7 +3992,7 @@ dependencies = [
 
 [[package]]
 name = "og-tests-web"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "js-sys",
  "og-render",
@@ -4005,7 +4005,7 @@ dependencies = [
 
 [[package]]
 name = "og-text"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "fdsm",
  "font-rs",
@@ -4026,7 +4026,7 @@ dependencies = [
 
 [[package]]
 name = "og-tilemap"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "glam 0.34.1",
  "og-core",
@@ -4034,7 +4034,7 @@ dependencies = [
 
 [[package]]
 name = "og-timeline"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "serde_json",
@@ -4042,7 +4042,7 @@ dependencies = [
 
 [[package]]
 name = "og-tween"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "og-ecs",
@@ -4051,7 +4051,7 @@ dependencies = [
 
 [[package]]
 name = "og-ui-model"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-core",
  "og-css",
@@ -4059,7 +4059,7 @@ dependencies = [
 
 [[package]]
 name = "og-ui-next"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "accesskit",
  "bincode",
@@ -4087,7 +4087,7 @@ dependencies = [
 
 [[package]]
 name = "og-video"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "libc",
  "rav1d",
@@ -4095,7 +4095,7 @@ dependencies = [
 
 [[package]]
 name = "og-video-wasm"
-version = "0.9.0"
+version = "0.9.0+dev.20261128.2"
 dependencies = [
  "og-video",
 ]

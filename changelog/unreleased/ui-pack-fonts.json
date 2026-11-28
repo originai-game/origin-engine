@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.load.style",
-      "summary": "A style pack's text draws again: its pack.json `fonts` register their faces, and its theme's `fontFamily` gives body, display, mono and rounded text the first of their families that has a face. A role whose families have no face draws in the default face instead of drawing nothing (the cartoon, fantasy and scifi packs drew no text)."
-    }
-  ]
-}

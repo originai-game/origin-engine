@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/design rarity colours",
-      "summary": "The design tokens name the six rarity colours, `--color-common` to `--color-mythic` (each a status colour, so it keeps that colour's contrast in both schemes); tokens.json carries them as `color.common` … `color.mythic`."
-    }
-  ]
-}

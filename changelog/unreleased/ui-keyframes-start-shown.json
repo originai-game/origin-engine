@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "animate-float, animate-pop and the other animate-* classes",
-      "summary": "A keyframe animation on an element added to a UI that had not drawn for a while (a damage number over an idle HUD) started as if it had been playing since the UI last drew, so `animate-float` showed nothing at all. Animations now start at the frame that first shows them."
-    }
-  ]
-}

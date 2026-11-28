@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Every release and dev build now draws its own look previews on the GPU host with its own og and addon, and publishes them beside the catalogue and the creation document at <version>/looks/catalogue.json, <version>/previews/ and <version>/creation.json, named in manifest.json's looks and creation sections and signed in SHA256SUMS, so a preview never shows an older engine's frame."
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "filter, blur-*, drop-shadow-* and backdrop-*",
-      "summary": "A filter's offscreen targets are kept from frame to frame and shared between its passes, so a steady frame makes no new GPU textures. Before, each pass took a target of its own and the pool was cut back to 32 every frame: a HUD with 14 filtered elements made some 50 textures a frame, and native GPU memory climbed until the device ran out. A target no frame uses for 8 frames is freed."
-    }
-  ]
-}

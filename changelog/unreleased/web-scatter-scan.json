@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "TerrainScatter",
-      "summary": "Scattered grass and models no longer lose visible copies in Chrome's WebGPU path: each scan step explicitly resets its addend, keeping compacted instance offsets correct without disabling GPU placement, culling or indirect drawing."
-    }
-  ]
-}

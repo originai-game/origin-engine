@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "StrategyAlerts, StrategyClock, StrategyCommands, StrategyGroups, StrategyMinimap, StrategyQueue, StrategyResources, StrategySelection, StrategyTower, StrategyWave",
-      "summary": "The strategy HUD components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. The art keeps its size at any text scale; a cooldown's radial sweep and a queue tile's radial wipe stand in as top-down bars until the radial wipe reaches TSX, and art that the game marks unready dims under a veil instead of a filter."
-    }
-  ]
-}

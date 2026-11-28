@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og build",
-      "summary": "A development build (without --publish) measures its size table and downloads with brotli -q 5, codec \"brotli-5\" in og build --json, instead of brotli -q 11: -q 11 over the 61 MB development engine took over five minutes on the first build after the engine changed, so og build --json could outlast a caller's timeout; -q 5 takes about 3 s and reads about 30% larger for the engine module. A --publish build still measures brotli -q 11 (codec \"brotli-11\"), the numbers the size budget and the release report use; judge download size on a publish build."
-    }
-  ]
-}

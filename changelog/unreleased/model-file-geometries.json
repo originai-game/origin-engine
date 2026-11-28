@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "type model part geometry",
-      "summary": "Model files accept ringGeometry, circleGeometry and tubeGeometry through the same Rust primitives as og.render. Tubes accept explicit xyz points or an authored path, including closed paths, and participate in normal model cook, instancing and detail budgets."
-    }
-  ]
-}

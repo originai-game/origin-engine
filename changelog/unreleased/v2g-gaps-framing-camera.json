@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "FramingCamera",
-      "summary": "og.FramingCamera frames the entity carrying it by beats, the way a shot list or a reference clip states them. Each beat gives a time, the subject's height as a fraction of the frame, where its centre sits (x and y from the top left), and the view's yaw and pitch. og.systems.cameras' new og.framingCamera solves the camera's distance and place from og.Camera's fov and the play surface's aspect, and eases between beats. Its clock (`time`, `speed`, `ticks`) can follow the world or be set by the game. The camera guide's §5 has a recipe."
-    }
-  ]
-}

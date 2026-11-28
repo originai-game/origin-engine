@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ModelShape",
-      "summary": "The model cook records each model's shape in its own space: its long axis (`forward`) and `up` from a principal-axis fit of its triangles, its `length`, its centre, and its `top` surface at 16 stations along its length. og.load.gltfInfo answers it as GltfInfo.shape (null for og.load.gltfData), and the probe's dump_entity shows it under `render.shape` for an og.Model. The physics guide's §6.1 explains how to stand a character on a moving or turned model: a trimesh collider and a downward og.physics.castRay each tick (og.render.raycast is a render query). It has a recipe. Every model re-cooks once (cooker r33)."
-    }
-  ]
-}

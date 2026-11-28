@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Racing components",
-      "summary": "RacingBanner, RacingBoost, RacingGarage, RacingLapHud, RacingPedals, RacingResults, RacingStandings and RacingTrackMap draw on pack slots and opaque theme grounds (the lap times on a glass plate, lit and shade position cells, sheen highlights, key-hi keycaps) in those grounds' inks, so their text reads over a bright scene in every pack; the lap hud's split tag keeps its ahead and behind fills with their own inks."
-    }
-  ]
-}

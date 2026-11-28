@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Terrain heightfield generators",
-      "summary": "Generator data is validated against the schema derived from its Rust input before decoding. Invalid values report their JSON Pointer within the result; cross-field height counts and finite-value checks remain terrain validation. This establishes the shared author-schema foundation, not a terrain file-format switch."
-    }
-  ]
-}

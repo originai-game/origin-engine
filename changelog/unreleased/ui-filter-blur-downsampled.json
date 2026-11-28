@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "filter blur, drop-shadow-* and backdrop-blur-*",
-      "summary": "A wide blur runs on a downsampled chain, as browsers do: the layer is halved until the remaining σ is at most 4 px (2 px for a shadow's alpha), blurred there and scaled back with the variance of each halving taken out, so it lands as the Gaussian asked for. A drop shadow is one fused pass, and a colour filter after a blur is applied in the blur's last pass. Adjacent siblings with the same filter whose boxes are apart (a blur's reach included) share one offscreen layer unless that would change the stacking order. A 1080p HUD with 14 filtered elements went from about 8 ms of GPU time to about 0.5 ms. Wide blurs look the same; edges of a very wide blur are a little softer than a full-resolution Gaussian, never banded or blocky."
-    }
-  ]
-}

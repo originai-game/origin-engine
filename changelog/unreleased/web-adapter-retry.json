@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "web renderer startup",
-      "summary": "A cold browser GPU process may initially return no adapter. Both the player's canvas renderer and offscreen renderers now retry adapter selection for up to 30 seconds, then report a timed-out adapter request with its reason instead of immediately rejecting a supported GPU. A request that never resolves is bounded too. Native adapter selection is unchanged."
-    }
-  ]
-}

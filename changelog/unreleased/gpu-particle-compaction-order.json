@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ParticleSystem",
-      "summary": "GPU particles keep a stable draw order when compacting live particles across workgroups, so repeated seeded runs and jumping to a tick render the same frame, including additive particles and paired trails."
-    }
-  ]
-}

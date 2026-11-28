@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Water.planarReflection",
-      "summary": "A water surface's planar reflection is drawn only while the surface is in view, as a second one's already was: with RenderOptions.planarReflections 1 (the default) nothing else reads the mirror, so a lake behind the camera no longer costs a second scene pass every frame, and it no longer takes the one mirror from another surface that is in view. In view is now the surface's own bounds against the frustum, not a sphere round them, which held a camera on the shore of a wide lake whichever way it looked. With planarReflections 2 the first surface still mirrors out of view, because material shaders read it (planar_reflection)."
-    }
-  ]
-}

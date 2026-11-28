@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook string tables",
-      "summary": "The cook's locale check reads only the game's own string tables. Since the engine ships zh-CN tables for its built-in UI, a game whose code mounts a built-in got every one of its keys reported missing from its zh-CN table and every built-in key reported as not in its base table (over a thousand warnings for a complete table). The built-ins' tables are kept in step by the engine's own test."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "A look's `ui \"<style>\"` cooks again. Since the CSS style readers were removed, a look naming a built-in style (`ui \"cartoon\"`, as the toy-3d, neon-vector and pixel-3d-hybrid looks do) or a game's own `styles/<slug>` failed with \"the look names asset(s) not under assets/: @styles/cartoon\": the cook looked for the style's directory as an asset, and a style is now its directory's `pack.json`."
-    }
-  ]
-}

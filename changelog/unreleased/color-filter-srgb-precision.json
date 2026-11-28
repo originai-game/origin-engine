@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.configure.colorVision",
-      "summary": "Colour-vision filters explicitly decode stored sRGB bytes with the CPU filter's transfer curve instead of using approximate hardware texture decoding. On L4 Chrome, all correction and simulation modes now stay within 1/255 of the CPU result, including tritanopia correction near black. No author changes are required."
-    }
-  ]
-}

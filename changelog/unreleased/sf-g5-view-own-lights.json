@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.CameraView",
-      "summary": "A secondary camera is lit by the local lights its own view reaches. Before, it shaded only the lights the main camera kept, so a view looking where the main camera does not (a hangar turntable above the field, a portrait or minimap camera) drew its point, spot and rect lights as if absent. A light only the view sees is unshadowed; one the main camera also keeps keeps its shadow and cookie."
-    }
-  ]
-}

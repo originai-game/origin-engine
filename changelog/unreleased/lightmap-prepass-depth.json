@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og bake lightmaps",
-      "summary": "A baked static model draws again in a frame with one sample a pixel (TAA, FXAA or no antialiasing, the default): its lightmapped surfaces failed the depth test against the depth prepass and left the background showing where the model stands. 4x MSAA frames were unaffected."
-    }
-  ]
-}

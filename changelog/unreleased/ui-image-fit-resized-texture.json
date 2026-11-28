@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "FlowPicture",
-      "summary": "An image whose texture is resized in place fits by its new size: a streamed video (FlowPicture, FlowScreen, a title screen's footage) starts as a 1x1 texture and takes its frame size when it plays, and `object-cover` kept fitting it as a square, so a 768x1344 clip after a flow jump was drawn 1.75 times too wide and cropped at the sides."
-    }
-  ]
-}

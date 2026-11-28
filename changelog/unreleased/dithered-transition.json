@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.render.reveal",
-      "summary": "A model fading in, an HLOD cross-fade, a model's level cross-fade and a scattered copy crossing to its impostor are cut by one dither (interleaved gradient noise turned with every drawn frame, the clock TAA's jitter turns by) instead of three: a scattered copy's crossfade used its own blue-noise tile and the reveal turned by the scene clock. A capture draws the same pattern whatever was drawn before it."
-    }
-  ]
-}

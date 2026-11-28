@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderOptions.upscaler",
-      "summary": "TAAU carries moving surfaces' previous depth into history resampling, applying the existing two-sided surface test instead of bypassing it for object motion. History filters, slope bounds, blend weights and defaults are unchanged."
-    }
-  ]
-}

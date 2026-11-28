@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.render.compile",
-      "summary": "The first frame after the play gate no longer stalls for most of a second. Behind the gate, and once after og.render.compile, the engine builds, lays out and paints the game's UI documents on a copy of the UI, and physics builds its height fields' chunk shapes, without a tick, so that frame reuses their compiled code, shaped text and shapes. The UI's own pipelines (shapes, vectors, layer composites, mass elements) are now among those the gate and og.render.compile make ahead, so a HUD draws on the first played frame instead of seconds into play. The world, the UI, its stores and events are unchanged."
-    }
-  ]
-}

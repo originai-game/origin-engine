@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "file.flipbook and og sprite inspect",
-    "change": "Flipbooks use checked TypeScript declarations and native sheet fields. The OGT sheet/animated-source parsers, writer, grammar tables and sibling-file guessing are removed. Animated sheets expose #sheet; array sheets expose actual #array and #array#layerN outputs.",
-    "fix": "Export file.flipbook from content/**/*.ts. Use canonical texture refs or sources with explicit owning-module assets/ or sources/ paths, and input.text for external Aseprite/TexturePacker JSON. Clips name frames rather than falling back to numeric indexes. Inspect animated content entries by their .ts path. Re-cook with matching hosts; old author text and blobs are unsupported."
-  }]
-}

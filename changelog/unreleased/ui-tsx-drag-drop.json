@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "draggable",
-      "summary": "TSX elements drag and drop: `draggable` (the data it carries) makes an element one to pick up with the mouse or a finger, `dropTarget` (an id) one that takes it, with `onDragStart`, `onDragMove` (the target under it), `onDragEnd` (the target, empty when cancelled) and `onDrop` on the target. Keyboards and gamepads do the same: Enter or confirm picks the focused element up, focus moves over the targets, Enter or confirm puts it down, Escape or back puts it back."
-    }
-  ]
-}

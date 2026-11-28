@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui (TSX components: translucent colours, shadows, masks and edges)",
-      "summary": "The TSX UI blends in sRGB-encoded values, as CSS and every browser do, instead of in linear light: `bg-black/50` over a white panel is the mid grey (128) a browser draws, not the lighter 188, a shadow is as dark as its colour says, and an antialiased edge is as heavy as a browser's. Every frame with translucent UI moves to where a browser puts it; a design made against a browser needs no change. The pass draws in the output's plain format (the output itself, or its plain view where it is sRGB); an sRGB output on a backend without view formats, and an HDR display, take the UI as one layer blended this way and drawn over the frame, so there only a translucent pixel directly over the game's frame meets it in linear light."
-    }
-  ]
-}

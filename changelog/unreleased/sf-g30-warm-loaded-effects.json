@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.render.compile",
-      "summary": "`og.render.compile(world)` now also makes the draw pipelines of every particle emitter and effect material the game has loaded, not only those of systems already alive, with the particle simulation and, for alpha billboards, their order-independent pass. A game that loads its effects at start no longer compiles particle pipelines on the frame its first effect appears (Star Focus: the first kill's 29.5 ms hitch is gone)."
-    }
-  ]
-}

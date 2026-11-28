@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Built-in components: state variants",
-      "summary": "43 data-X: classes that read an attribute only an ancestor carries now use group-data-X/<name>: against that ancestor, so they apply. Visible changes: compact rosters, versus and star bars, team-local fighter rows, combo, effect and status states, timer warn and critical, radial menu choice, rarity tiers in backpack, crafting and difficulty, racing leader and player rows, hit kinds, quest steps, ultimate abilities, confirm's danger button and table figures. Ten pressed-state classes became active:, objectives mark the current goal again, and four dead data-muted: classes are gone."
-    }
-  ]
-}

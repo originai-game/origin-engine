@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og build --publish (asset index)",
-      "summary": "The assets a game's code loads are read from the modules its bundle holds (the bundler's import graph), not from every TypeScript file under the project: a file the entry never imports (a scratch script, a playtest under tests/) no longer keeps an asset in the publish build, and its computed og.load no longer keeps a whole directory."
-    }
-  ]
-}

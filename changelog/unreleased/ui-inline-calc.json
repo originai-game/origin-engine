@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TSX style lengths (left, top, right, bottom, width, height, min/max sizes, margin, padding, gap)",
-      "summary": "An inline `calc()`, `min()`, `max()` or `clamp()` over lengths (px, pt, rem) and percentages, with `+ - * /` and parentheses, now resolves against the containing block at layout, as a browser resolves it (`left: calc(50% - 0.0715rem)`, `width: clamp(8px, 25%, 40px)`). It used to be dropped, so the element sat at 0: the crosshair collapsed into its corner, and the compass, star bar, boss bar, slider thumbs, minimap markers and tree indents were misplaced."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "model programs (.shape.json)",
-      "summary": "og cook builds an og-shape program as a model, deterministically: the program file itself, or a `type model` text naming it (`program \"chair.shape.json\"`) with `params { height 1100 }` over the program's \"params\" and `material \"<name>\" { color map metalness roughness opacity emissive }` blocks over its materials. A program declares \"params\": {\"height\": 900} and gives any operation's field as \"$height\". A field may also be an expression over the params and numbers (\"($width - 40) / 2\": + - * / and parentheses), evaluated in f64 at cook time; an undeclared name, a stray character or a division by zero is an error naming the expression."
-    }
-  ]
-}

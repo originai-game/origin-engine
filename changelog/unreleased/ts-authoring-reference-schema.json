@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "schema-bound content references",
-      "summary": "Author input schemas mark actual content-reference positions, including reflected handle fields. Reference extraction validates with the same schema and Rust decoder, selects applicable union branches with the original validator, preserves container kind constraints and JSON Pointer locations, and ignores token-shaped arbitrary JSON. A reusable schema graph prunes numeric payloads from reference traversal. This foundation does not yet resolve content identities or subresources, validate module access, assemble the evaluated project graph or switch CLI/scaffold author formats."
-    }
-  ]
-}

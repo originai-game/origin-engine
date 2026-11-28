@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Path2.getPoints",
-      "summary": "og.Path2 and og.Shape arcs and ellipses flatten with the same f64 sine and cosine as the engine's mesh generators (og-core's), so a shape's points are the ones the cook and og model build from the same outline, bit for bit on both hosts. Points move by at most a few units in the last place."
-    }
-  ]
-}

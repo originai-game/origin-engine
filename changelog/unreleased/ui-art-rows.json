@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Built-in UI: a row that stands alone in a list (an achievement, a daily quest, an inbox or news entry, a chat line, a deck list's card, a card) no longer draws as a grey slab. Its ground was a white wash over dark glass, which the engine's linear-light blending turns grey; it is now the frame's glass one step nearer (the new `--entry-fill`, from `--color-entry-hi` and `--color-entry-lo`, which follow the scheme). A locked, hidden or missed one, and an unowned card, wear faint stripes of that glass (`--entry-grain`, `--entry-dim-fill`) instead of a bright hatch. A style pack retunes all of them through these tokens."
-  ]
-}

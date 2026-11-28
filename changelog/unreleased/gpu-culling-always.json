@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderInfo.compute",
-      "summary": "Every device with compute and indirect draws culls on the GPU, whatever the scene's size: small scenes no longer switch to the CPU path below 16,384 instances, so a scene that grows past that draws through the same path all along. Only a device without them (the GL tier) culls on the CPU."
-    }
-  ]
-}

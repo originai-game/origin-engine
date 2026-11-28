@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "og vfx preview",
-      "change": "Ignore animated film grain while measuring an effect's bounds instead of framing the changing noise as a 96-metre effect. Shown frames keep the project's authored grain.",
-      "fix": "Regenerate effect previews made in a look with film grain enabled; their cameras now frame the effect rather than the full measuring viewport."
-    }
-  ]
-}

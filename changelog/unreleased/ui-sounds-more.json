@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui sound",
-      "summary": "Five new pack sound events, with clips in the default set and all seven theme sound sets: `tick` (a count rolling up), `step` (a slider notch), `swipe` (a page or card turned), `notify` and `unlock`. Play them with `sound=\"unlock\"` like the other events. A pack without them falls back: tick, step and swipe to `select`, notify to `open`, unlock to `reward`."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "simulation": "unchanged",
-  "breaking": [{
-    "member": "cook delivery references / Web pruning / manifest dependencies",
-    "change": "Delivery validation, publish pruning and manifest dependencies now follow retained native payload references, not author declaration strings or all outputs sharing a source. Embedded cook inputs no longer create download edges. Runtime companions, texture layers, scene relocations and all video playback variants remain reachable. Existing index checkpoints are invalidated.",
-    "fix": "Re-cook before exporting. Keep dependsOn for references actually loaded across delivery packs; remove edges needed only for embedded author inputs if desired. Declare publish.keep for otherwise unreachable assets loaded through external conventions; computed game-code loads remain conservative."
-  }]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.load.bundle",
-      "summary": "On the web every Basis texture is prepared the way it is natively: the engine asks the Worker's pool of transcoders for each texture when it needs it, whichever bundle, pack or runtime bundle it read it from, and keys the prepared copy by its bytes and encoding as the native cache does. Two open bundles' textures of one id no longer share a copy, a pack's textures no longer depend on the Worker finding its bundle's manifest, and a texture that fails to transcode stays failed instead of being transcoded again on every ask. The boot still prepares the game's bundle's textures before the first frame, by asking for them the same way."
-    }
-  ]
-}

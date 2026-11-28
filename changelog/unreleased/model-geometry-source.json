@@ -1,1 +1,0 @@
-{"added":[{"member":"model.part.modelGeometry","summary":"Use a source model and optional mesh node as a static rest-geometry operand in model parts, CSG or merges. Normal import and generation run first; UVs, colors, tangent frames and affine placements are retained. The outer part owns materials; skins and animation are not copied."}]}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI",
-      "summary": "Documents on og-ui's new core paint through one uber-shader pass made at boot: panels, gradients, built-in icons and text draw in the same first frame instead of icons and panels appearing after text, and a one-value change reallocates no paint."
-    }
-  ]
-}

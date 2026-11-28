@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og model preview --views --unlit",
-      "summary": "`--unlit` with named views draws each part its material's own colour with no edges, as og model compare draws it, so a preview shows the colours compare measures. It was ignored with --views."
-    }
-  ]
-}

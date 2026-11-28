@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og render, og run --ticks",
-      "summary": "Rendering continues through a game's snapshot restore instead of mistaking a rewound world tick for quit. Recording frames and local run limits count executed steps independently of snapshot time; scripted commands keep their remaining delays, including in native playtests."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "CreatorTools, ModeSelect, Settings, PassTrack, Commands, Tutorial, QuestDetail",
-      "summary": "The last hand-written values outside shooter/radar are theme steps: `og check` reads no OG9109 or OG9108 in any other built-in component. Grid templates keep only `auto` and `fr` tracks, and the lengths they wrote are sizes on the items (CreatorTools' side panels `w-70` and `w-90` and its catalogue `h-50`, ModeSelect's tiles `min-h-80`, PassTrack's lane label `w-27.5`, Commands' cells `h-12.75`); Settings' rows are two equal columns. Tutorial's card and progress glow are the named shadows. QuestDetail's Track button writes the ink of its accent fill (`text-accent-fg`; it read 1.1:1 in `accent-ink`), and its Locate and Untrack buttons hover on `surface-hover`."
-    }
-  ]
-}

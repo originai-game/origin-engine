@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "texture (SVG)",
-      "summary": "An SVG texture's `currentColor` now decodes white, as in a cooked vector, so a single-colour SVG is a mask its draw colour tints; before it decoded black. Cooked SVG textures re-cook."
-    }
-  ]
-}

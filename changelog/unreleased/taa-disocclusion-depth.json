@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderOptions.upscaler",
-      "summary": "TAA and TAAU reject an occluder's history on newly uncovered camera-reprojected background using the previous frame's depth, including its jitter. Colour clipping alone could retain that foreground colour when it fit the background's colour range. Depth is preserved with presentation checkpoints; history filters, blend weights and mode defaults are unchanged."
-    }
-  ]
-}

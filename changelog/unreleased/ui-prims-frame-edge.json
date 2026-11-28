@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "nine-* frames (border, outline)",
-      "summary": "A nine-sliced frame is its box's edge, as CSS border-image is: a box that draws a nine-* image with slices no longer also draws its border (the border keeps only its room in the layout), and its outline, the focus ring included, draws as the frame's own silhouette grown by the outline's width and positive offset, under the frame, instead of a rectangle round it. Before, a cut or rounded plate showed a second, rectangular edge."
-    }
-  ]
-}

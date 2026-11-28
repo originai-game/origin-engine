@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Theme recipes",
-      "summary": "Ten engine themes a look's `ui \"<name>\"` names: anime, minimal, scifi, tactical, fantasy, storybook, cartoon, candy, pixel and ink, plus tactical-arctic, a theme derived from tactical with `extends`. A game derives its own the same way in `assets/styles/<name>/theme.json`. A new material, `matte`, gives a clean flat face with a hairline and a soft drop."
-    }
-  ]
-}

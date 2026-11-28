@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "RpgPrompt, RpgQuestDetail, RpgSkills, RpgStats, RpgTurnOrder, RpgVitals, RpgWorldMap",
-      "summary": "The character HUD's panel components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. HudSlot has no TSX port yet, so skills renders its slots inline to swap when it lands; quest-detail and world-map report their intents through new onTrack, onLocate, onZoom, onPan, onGrab, onRelease and onChoose callback props the documents left internal; a key cap hides under a touch screen through pointer-coarse, and clip-path shapes, glows and container queries are approximated or dropped."
-    }
-  ]
-}

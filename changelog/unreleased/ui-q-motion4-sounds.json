@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "Celebration's levelUp sounds the pack's levelup event (it sounded reward), and RacingBanner sounds countdown on each step of its count. Other built-ins already sound hover, press, select, confirm and back through their input."
-    }
-  ]
-}

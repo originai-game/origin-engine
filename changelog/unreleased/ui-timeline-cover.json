@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.timeline transition tracks",
-      "summary": "A transition's cover (fade, wipe, slide, iris, dissolve) is drawn by the TSX UI's paint, over everything, in CSS px: a dissolve's cells are 24 CSS px and an iris's bands 2 CSS px at every surface size. It draws in a game with no UI mounted, and reduced motion still makes it a fade."
-    }
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "file.particles / file.effect / file.vfx",
-    "change": "FX authoring now evaluates checked TypeScript directly into native emitter, material and timeline fields. The OGT author parsers, grammars, field tables and EffectSource generation wrapper are removed. Runtime hosts bind native resource tables without parsing text; old FX blobs are unsupported. Built-in HUD effects, shipped starter/non-Effekseer packs, showcases and fixtures use the same checked inputs.",
-    "fix": "Export file.particles, file.effect or file.vfx from content/<name>.ts and use canonical ref('module/content-id') references. Load and preview that ID without a filename suffix, reinstall updated packs and re-cook with matching hosts. Share pure TS inputs rather than generating OGT text. Engine HUD asset-ID imports now use .particles.ts?asset."
-  }]
-}

@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "A UI text whose content changes (a clock, a counter) is measured into a layout og-text keeps between measures, with each face's family and the features' settings made once, instead of a new layout, run list and style strings each time: a measure of a text in a face already seen allocates 3 times inside Parley instead of about 20."
-  ]
-}

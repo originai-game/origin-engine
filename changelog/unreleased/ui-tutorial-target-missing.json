@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TutorialScreen",
-      "summary": "A step whose target is not on screen (no element of that name, or one hidden) no longer dims the whole screen and hides its card: nothing is dimmed and the card stands at x and y until the target shows, then the shade and the card under the target take over in the same frame."
-    }
-  ]
-}

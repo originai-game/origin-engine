@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "web export",
-      "summary": "A TSX UI no longer stops the engine on the page's first frame (an index out of bounds in the layout store): the accessibility tree waits for the layout to give its nodes their boxes."
-    }
-  ]
-}

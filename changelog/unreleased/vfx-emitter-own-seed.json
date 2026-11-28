@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "vfx emitter element",
-      "change": "Each emitter element of a vfx now draws its own random stream, mixed from the effect's seed, its `seed` and its place in the file. Before, every emitter whose `seed` was left at 0 drew the same stream, so emitters alike but for colour (five confetti colours, two checkpoint streamers) threw their particles to the same places and only the last colour drawn showed. Every multi-emitter effect's particles now land in other places than before.",
-      "fix": "Nothing to write; drop `seed` lines that only existed to pull look-alike emitters apart. Re-check captures of multi-emitter effects whose exact particle placement a test or a shot relied on."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderSettings.autoExposure",
-      "summary": "Auto exposure meters a frame the same on every GPU. On a GPU with subgroup operations (most desktop cards) the meter still dropped the darkest tenth and the brightest twentieth of the frame and counted black no lower than 2^-10, while the meter of every other host takes the mean log luminance of the whole frame down to 1e-5: the same view was exposed differently from one machine to the next, most where a frame holds large black or very bright areas. The subgroup meter now takes that same mean. A view with auto exposure may come out a little darker or brighter on such a GPU than it did; Camera.exposure compensates as before."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "evaluated author content graph",
-      "summary": "Indexed TS entries now have a tooling stage for scoped deterministic evaluation, original-schema validation and reference closure. It checks actual primary/subresource kinds, direct module permissions, project roots and snapshot completeness, and records executable imports, captured inputs, schema identity and reverse reference edges without retaining every source/IR. Original reference expression locations are mapped in a single source pass. Domain producers must report actual derived outputs; suffixes are never guessed. This foundation does not yet switch CLI/scaffold formats, discover project records, schedule domain cook jobs, assign packs or implement transitive action caches."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og-ui accessibility (TSX)",
-      "summary": "On the web, screen readers read the TSX UI: the page's accessibility mirror is built from the new core's tree (each node's tag, its `role`, `label`, `description`, `checked`, `selected`, `expanded`, `pressed`, `busy`, `hidden`, `modal`, `current`, `disabled`, `tabIndex`, `level`, `live`, `valueMin`, `valueMax`, `valueNow` and `valueText` props, and whether it listens to press or tap), and a frame carries only the nodes that changed. A view that listens to press is a button named by its text; a plain layout view is left out. A status, an alert or a `live` node is announced by the page itself as its text changes."
-    }
-  ]
-}

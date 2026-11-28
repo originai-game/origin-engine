@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "Ten more HUD components as TSX, beside their .svelte: ActionHints, Cooldown, HudEffect, BossBar, Killfeed, HudLootEntry, OrbMeter, OverlayBar, PickupFeed and ProgressBar. Styles are Tailwind classes; SVG waves, weapon silhouettes and glare arcs are dropped (the orb's liquid is a flat fill, the killfeed's weapons show in words), the boss bar's phase thresholds stand as diamonds, and the overlays bar's horizontal scroll has no surface yet."
-    }
-  ]
-}

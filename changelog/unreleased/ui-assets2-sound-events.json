@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "style pack sounds",
-      "summary": "Five more pack sound events: `toggle`, `tab`, `levelup`, `purchase` and `countdown`, which a node's `sound` prop names and a pack.json's `sounds` remaps or mutes like the others. An event a pack has no clip for sounds the nearest one it has: toggle and tab fall back to select, purchase to confirm, levelup to reward, countdown to press (and confirm and back to press, as before), so a pack without the new clips still sounds."
-    }
-  ]
-}

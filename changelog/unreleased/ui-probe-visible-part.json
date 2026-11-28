@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og probe dump_ui: TSX elements under a scroller",
-      "summary": "A TSX element is listed with the part of it that shows: a Scroll or a box cutting its overflow that hides part of it sets clipped and its bounds are that part, and one it hides entirely is not listed. Before, every TSX element was listed at its whole box with clipped false, so a row scrolled out of view read as on screen."
-    }
-  ]
-}

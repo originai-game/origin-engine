@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "@origingame/engine/author.file",
-      "summary": "Adds schema-derived typed content factories and immutable ref(id) identities in the closed cook realm. Each factory returns one kind-tagged descriptor without cooking other entries. og api gen/check now generate and drift-check author-inputs.d.ts from the Rust domain input schemas. Project-bound scene, prefab and table inputs require contextual record schemas; no global arbitrary-object fallback is provided. This foundation does not switch existing file parsers or project formats."
-    }
-  ]
-}

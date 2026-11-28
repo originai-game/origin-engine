@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Clouds",
-      "summary": "Clouds under og.PhysicalSky are now lit by the moon at night. They were lit by the sun alone, so once it had set even the undersides facing a bright moon stayed as dark as the sky's ambient left them. The clouds now take their key light the way og.DayNight takes the scene's: whichever of the sun and the moon is brighter at the cloud base, dimmed through the handover where the two are about equal, so the light passes from the setting sun to the moon without a jump. Moonlit cumulus stand pale against the night sky, and a rising moon lights the undersides on its side. Daytime and sunset clouds are unchanged, and the clouds still march one light column."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "@ui/components",
-      "summary": "A built-in component's row that leaves out an optional text field (a tag, glyph, key, cost, player, rank, grade and the like) now reads it as none, as an empty string does, instead of drawing an empty box or caption for it: the fields were tested with != '', which a missing field passed (arena, idle, racing, rhythm, rpg, shooter, strategy, card, world, panels and the credits, settings, mode select and key-values screens)."
-    }
-  ]
-}

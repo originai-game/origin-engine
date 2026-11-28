@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ring-0",
-      "summary": "A box shadow that is neither moved, blurred nor spread (`ring-0`, `inset-ring-0`, a shadow transitioned to nothing) paints nothing, as in CSS; it used to leave a faint rim on rounded corners."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "RenderOptions.upscaler",
-      "summary": "TAAU tests newly uncovered background against its own motion and depth before borrowing foreground motion from a neighbouring sample. Borrowed object motion could otherwise disable the background's visibility rejection and retain unrelated history at moving edges. Foreground-motion dilation, history filters, blend weights and mode defaults are unchanged."
-    }
-  ]
-}

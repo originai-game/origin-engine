@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og run --perf",
-      "summary": "`og run --perf <dir>` records every drawn frame and writes perf.txt and perf.json at the end: each line of the frame's cost (the interval, the GPU's frame, overlap and idle time, each pass alone and in flight, the CPU's ticks, physics, UI, game and engine systems, its wait for the GPU and the render's sync, build, encode and submit) with its median, p95 and max, flagged against project.ogt's `perf { budget \"<line>\" <ms> }` or `--budget <line>=<ms>`, and every hitch with its cause (the line that grew, or a pipeline compiled in the frame). The web shell's `perf(\"start\" | \"stop\" | \"report\", budgets)` reads the same record in the engine Worker. Guide perf."
-    }
-  ]
-}

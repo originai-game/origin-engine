@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook: model vertex streams",
-      "summary": "A normal-mapped model's MikkTSpace tangent is stored as its angle across the vertex normal (15 bits and the bitangent sign) in the position's spare fourth u16, instead of 8 more bytes a vertex: a third of a normal-mapped vertex stream, the tangent within 0.03 degrees of the one before (an 8-bit normal map resolves about 0.45) (og.ModelPrimitive 5). Blobs re-cook; shading is unchanged."
-    }
-  ]
-}

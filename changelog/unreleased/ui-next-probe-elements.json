@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og probe",
-      "summary": "On `uiCore next`, the UI dump's elements list each element of the new core with a document id, with its box on screen and its text, so `touch_move_to` and `find_by_id` reach the HUD's elements."
-    }
-  ]
-}

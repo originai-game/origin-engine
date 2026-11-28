@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "web export accessibility mirror",
-      "summary": "A page served with a strict Content-Security-Policy (`style-src 'self'`, no `'unsafe-inline'`, as a platform's page is) no longer refuses the accessibility mirror's style: it added an inline `<style>` element, so the browser logged a `style-src-elem` violation and drew the mirrored sliders' native thumbs and tracks over the canvas. Its rules are now a constructed stylesheet the document adopts."
-    }
-  ]
-}

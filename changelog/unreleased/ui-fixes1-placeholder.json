@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Input placeholder (ui element)",
-      "summary": "A field with no placeholder colour of its own draws its placeholder in the theme's `fg-muted`, which the ink solver holds at 4.5:1 on every ground, instead of half its text's opacity, which read too faint on dark art (scifi, fantasy, pixel). `placeholder:text-*` still sets a field's own."
-    }
-  ]
-}

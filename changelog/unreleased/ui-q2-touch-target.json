@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "On a touch screen a finger that lands just off a small control (an icon button, a breadcrumb, a 32 px cancel) presses it: a press on no control goes to the nearest enabled one whose box, grown to 44 px square, holds it, and the press stays held while the finger stays in that grown box. A mouse still takes only the box."
-    }
-  ]
-}

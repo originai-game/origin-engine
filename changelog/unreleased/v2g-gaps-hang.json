@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Hang",
-      "summary": "og.Hang hangs a skeleton from a rope. og.anim places the skeleton entity's og.Transform so the grip joint, as this tick's clips pose it, sits at `point`. The body's +Y runs from the grip towards `anchor` by `lay`, and its front turns towards `facing`. Each of `limbs` (og.IkChain entities) gets its target on the rope at its `reach` from the grip. `weight` blends the hang in and out, and `held` reports it. It runs after root motion and before foot locks and IK chains. The animation guide's §8 has the swing recipe."
-    }
-  ]
-}

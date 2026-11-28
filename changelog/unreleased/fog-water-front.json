@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Fog.volumetric",
-      "summary": "Volumetric fog over water now ends at the water's surface. The water, drawn blended, was not in the depth the fog was applied to, so each pixel of a sea, lake or river was fogged out to the sky or the bed behind it, through the water and under it, where height fog thickens without bound: any height fog flattened the sea to the fog's grey (a heightDensity of 0.0002 left a fifth of the waves' light and dark, 0.006 none). The waves now show through it as through the same fog drawn plain."
-    }
-  ]
-}

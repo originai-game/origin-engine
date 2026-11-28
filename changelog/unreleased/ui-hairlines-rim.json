@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Built-in components (Compass, Chart, Menu, TooltipCard, Stats, Character, Minimap, MinimapView, SplitView, Tree, Calibration, LevelPath, SpeechBubble, SplashScreen, RadialMeter, Garage)",
-      "summary": "Hairlines, ticks, separators and grid lines are drawn in `rim` (`rim-soft` for the compass's minor ticks, the split view's handle and the tree's guides) and tracks in `track`, where they used the highlight roles `lit` and `sheen`, which are white in the light scheme and vanished on a pale ground. Garage's empty picture is a `tile`."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.t, og.ui.formatNumber, og.ui.formatCompact, og.ui.formatDuration, og.ui.formatCurrency",
-      "summary": "A TSX component's strings and formatted numbers follow og.i18n.setLocale: they were read from the host with no dependency on the locale, so every string stayed in the language it was built in. They read the renderer's locale, set at each tick boundary, and redraw in the new language on the next frame."
-    }
-  ]
-}

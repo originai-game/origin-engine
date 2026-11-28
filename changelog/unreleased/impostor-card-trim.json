@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TerrainScatter",
-      "summary": "An impostor card is drawn over the cook's outline of what its frames can show from any view, instead of its bounding sphere's whole square, so the lit, prepass and shadow passes no longer shade the transparent corners only to discard them. First Light's trees' cards cover 64 to 77% of the square they did. Models with `impostor true` are cooked again to carry the outline."
-    }
-  ]
-}

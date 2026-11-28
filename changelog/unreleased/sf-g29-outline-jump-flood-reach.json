@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "look outlinePlace",
-      "summary": "A look that draws its lines outside the silhouettes (`outlinePlace outside` or `both`) no longer runs all six full-resolution jump-flood passes every frame whatever its line's width: the flood starts from the widest line the frame can draw (the post outline's, the look's grown to its near cap, and each drawn material's), dropping its steps in pairs. anime-cel-3d's 2.5 px line runs four jumps instead of six, a 1 px line two, with the same image."
-    }
-  ]
-}

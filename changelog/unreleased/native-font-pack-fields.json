@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "og.FontPack cooked payload",
-    "change": "Font-pack indexes store native metadata, ordered face IDs, language tags and Unicode coverage rows. Runtime no longer parses an index text document and old blobs are refused.",
-    "fix": "Re-cook font packs with the matching engine; rebuild native and web hosts together with the cook. Font files, their import settings, lazy downloads and conditional hyphenation/segmentation dictionaries retain their behavior."
-  }]
-}

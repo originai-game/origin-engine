@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook",
-      "summary": "The cook reads what the game's code reaches from its bundle's import graph (the bundler's metafile), not from the project's source text: a game carries the string tables of exactly the engine components its bundle imports (no longer all of them, nor none for one imported by its path), the default face and the default pack's images when its bundle reaches the TSX UI, and a raycast BVH in its models only when a module the bundle holds reads `raycast` (a word in a comment, a document, a scene or a file the entry never imports no longer counts). og cook, og build and the other cooking commands bundle the code first (from the bundle cache when it is unchanged), so code that does not bundle stops the cook with the bundler's error; og run, og test and og dev type-check, bundle, then cook."
-    }
-  ]
-}

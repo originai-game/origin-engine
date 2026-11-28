@@ -1,8 +1,0 @@
-{
-  "breaking": [{
-    "member": "file.field / og cook / terrain preserve / particle field / generate.FieldSource",
-    "change": "Field author OGT, its generator wrapper and its text codec are removed. Field cooking, terrain preserve (including navigation and projected scatter), and particle force fields share one checked TS lattice snapshot; consumer stamps include the native lattice identity.",
-    "fix": "Export file.field({dimensions:[2,2,1],channels:1,values:[0,0.5,1,0]}) from content/protect.ts and load base/protect. Compose procgen, static TS imports and input.bytes/text directly. For separately typed helpers use Parameters<typeof file.field>[0], not the removed hand-maintained generate.FieldSource interface. Existing terrain generate.preserve and particle field strings name base/protect or another canonical module/content ID, never protect.ogt. See og api show file:field.",
-    "find": ["type field", "file:field.generate", "vectors.ogt", "protect.ogt"]
-  }]
-}

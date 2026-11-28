@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "guide model",
-      "summary": "`og api show model`: model programs (.shape.json) — units and axes, primitives, generators (extrude, revolve, sweep, loft, wire, body), CSG, bevels, materials, params and variants — with a checked recipe, and the og model commands with their --json contract."
-    }
-  ]
-}

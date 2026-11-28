@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "onContextMenu (ui element event)",
-      "summary": "A node hears `onContextMenu` when the secondary button (a right click) goes down over it, at the pointer, or when Shift+F10 or the Menu key is pressed while the focus is in it, with `value` \"key\" and at its box's bottom start: the innermost node that listens, as a page's `contextmenu`."
-    }
-  ]
-}

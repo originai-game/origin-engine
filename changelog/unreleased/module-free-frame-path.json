@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og build --publish",
-      "summary": "A game that uses no optional module no longer downloads physics, story, nav, motion and destruction before its first frame: the split keeps in the primary wasm everything a frame, a canvas attach and a geometry call reach, and a generated geometry reaches physics only when a collider names it."
-    }
-  ]
-}

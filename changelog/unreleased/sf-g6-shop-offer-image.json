@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Shop offers[].image",
-      "summary": "An offer may carry a picture (a Texture, such as a render of the item) that fills its art well in place of the icon; 0 or absent keeps the icon. Additive: existing offers draw as before."
-    }
-  ]
-}

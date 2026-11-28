@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.ui.View",
-      "summary": "Any TSX node takes anchor (an Entity, or a world point [x, y, z]) and lift (a world offset): it leaves its parent's flow and its box's top left sits where the tick's camera sees the point, at its laid-out size, offset and pivoted by translate-* classes. A target off the screen, behind the camera or a dead entity hides it: it paints nothing, takes no press and leaves the accessibility tree and the probe's elements. For nameplates, damage numbers, interaction prompts, waypoints and speech bubbles; no occlusion and no scaling with distance."
-    }
-  ]
-}

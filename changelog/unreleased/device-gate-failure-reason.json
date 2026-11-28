@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og run --device",
-      "summary": "When a tap on the play gate does not start play, the error carries the page's failure card or its first console error instead of only saying the tap did not start play."
-    }
-  ]
-}

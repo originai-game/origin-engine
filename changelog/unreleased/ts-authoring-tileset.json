@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "tileset author input and native tilemap snapshots",
-    "change": "Tilesets are checked TypeScript declarations with native binary payloads. The tileset author parser, text writer, grammar tables and old cooked-text loader are removed. Embedded Tiled/LDtk tilesets and tilemap snapshots use the same native codec.",
-    "fix": "Write file.tileset under content/ with tileWidth, tileHeight, columns, rows, tiles and terrains. Use an optional canonical texture ref with a different ID from the tileset. Animations use matching frames and positive durations; uniform fps is frames.map(() => 1 / fps). Tiled external TSX/TSJ and LDtk image overrides use explicit tilemap import bindTileset source-path canonical-ID settings, never guessed siblings. Update map tileset IDs, re-cook and install matching hosts; old tileset files, cooked maps and saves are unsupported."
-  }]
-}

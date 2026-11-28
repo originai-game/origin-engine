@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "dump_render scatter",
-      "summary": "The render dump reports the og.TerrainScatter copies the frame drew, which its `triangles` never counted: `scatter.chunkDraws` and `scatter.built` (the main pass's chunk draws and the chunks placed for the frame) and, under the GPU cull, `scatter.scatters`, one row per scatter entity with the chunks it took, the copies placed in them, the copies the main camera drew at each level of detail (`levels`) and as the impostor's card (`cards`), and their triangles across every part of the model. The rows are counted on the GPU and read back `countsLag` frames later (usually 1 or 2); `scatters` is null before the first count arrives or without the GPU cull. Drawing is unchanged."
-    }
-  ]
-}

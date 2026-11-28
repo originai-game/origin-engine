@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "type scatter",
-      "summary": "Cook authored or deterministic TS-generated points and transforms as normal model/prefab scene placements. Compose the shared Poisson mechanism in TS; optional terrain projection and normal alignment use the runtime terrain sampler, rejecting holes and off-surface points. No gameplay composition or distribution is inferred."
-    }
-  ]
-}

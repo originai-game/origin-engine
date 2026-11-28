@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "web harness frame",
-      "summary": "A web harness's `frame` (the shell's `call(\"frame\")`) answers once one frame is left on the GPU, as a native offscreen frame waits for frame N-2. No display paces those frames, and a software GPU fell a minute behind them: a probe `capture` asked next waited out its 20 s and answered null."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui.mount",
-      "summary": "A game whose UI is TSX alone draws its text: the cook bundles the default face when the game's code imports `@origingame/engine/ui`, as it does for a `.svelte` document, and a cook after a code change that starts importing it bundles the face too."
-    }
-  ]
-}

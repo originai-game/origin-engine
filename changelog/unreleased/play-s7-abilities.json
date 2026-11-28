@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.systems.abilities",
-      "summary": "Abilities, statuses and stats: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool (an og.Stat) holds its cost, sending og.AbilityUsed; its charges return one at a time every rechargeTicks, holding through a hit stop. An og.Status spawned on a target merges with one of the same kind by refresh, stack (to maxStacks) or strongest, and runs out after its ticks with its og.Modifier children. An og.Stat's value is its base with its modifiers: adds, then the percents' sum, then each multiply, each kind in ascending order, whatever order they came in. List `...og.systems.abilities` in GameDesc.systems. Guide: `og api show abilities`."
-    }
-  ]
-}

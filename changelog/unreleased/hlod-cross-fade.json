@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "scene hlod",
-      "summary": "An HLOD proxy no longer replaces its models in one frame: where a node turns between its proxy and its models (or its children's proxies), both are drawn for 0.4 s and dithered against each other in the lit, prepass and shadow passes, the side fading out keeping exactly the pixels the side fading in leaves, so no pixel is drawn twice or left empty. Turning back during a fade reverses it from where it is. A node with a model destroyed, hidden, moved or given a look of its own, or a cell not loaded, still switches at once. While a fade runs dump_render's `hlod.replaced` does not count its models. Presentation only: world state, events and hashes are unchanged."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og check",
-      "summary": "A .ts or .tsx that imports a string table (`import \"./x.en.ogt\"`) that is not beside it fails with OG9106, naming the importer and the line: a bad import now fails the author's check instead of the cook, where it dropped every table of the asset."
-    }
-  ]
-}

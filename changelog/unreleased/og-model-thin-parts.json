@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og model compare widthPx, resolved, iouOnePixel, byWidth",
-      "summary": "Beside each view's IoU: each part's width in the image's pixels, the share of its pixels on its edge and whether it is at least two pixels wide (`resolved`), the IoU the model's own silhouette keeps when off by one pixel (`iouOnePixel`, the most a fit at this size can show), and `byWidth` ranking the parts thinnest first over every view. A low IoU on thin legs reads as the view's resolution, not as a wrong shape."
-    }
-  ]
-}

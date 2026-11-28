@@ -1,9 +1,0 @@
-{
-  "breaking": [
-    {
-      "member": "file.scene / file.prefab / file.scatter and Inspector/Tune persistence",
-      "change": "Scenes, prefabs and scatter are checked TS content snapshots packed directly into native scene rows. Their OGT author parsers, generation wrappers, loose generator interfaces and runtime OGT source writer are removed. Prefab inheritance and ordered edits, resource patches, paths, streaming, HLOD, district scene output and navigation consumers share the native snapshot. Authored content refs are relocated through registered runtime column loaders; cooked values never invent asset handles. Runtime Save/Apply, saveScene, save_scene, apply_prefab and SavedScene are removed; Revert is memory-only. Project startup resolves canonical TS scene identities without executing content.",
-      "fix": "Export file.scene, file.prefab or file.scatter from content/**/*.ts; use full reflected record names and canonical ref('module/content-id') tokens. Generate project-bound types with og api gen --project. Move generated arrays into ordinary TS expressions/helpers. Use og set for checked direct literal edits; computed/shared values require editing their source expressions. Platforms must retire OGT-only scene_saved and prefab writeback affordances, preserve read_source for read-only TS diagnostics, and consume canonical scene startup IDs."
-    }
-  ]
-}

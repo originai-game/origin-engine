@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "World.setName",
-    "change": "Name or rename live entities through World.setName(entity, name); find/nameOf observe the change immediately and snapshots retain it. Spawn and rename share the ECS name grammar, including the 256-byte limit.",
-    "fix": "Use world.setName for runtime names. Invalid names, including overlong names and invalid names spawned inside systems, are now refused before queuing."
-  }]
-}

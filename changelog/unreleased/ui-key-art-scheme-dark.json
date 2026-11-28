@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TitleScreen, MainMenuScreen",
-      "summary": "Both screens sit over a picture (the key art, the background or the scene) and carry `scheme-dark`, so in the light scheme their veils darken the art as in the dark scheme instead of washing it pale, and their text keeps the dark scheme's light ink."
-    }
-  ]
-}

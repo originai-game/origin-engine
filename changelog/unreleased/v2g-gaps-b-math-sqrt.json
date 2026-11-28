@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "math.sqrt",
-      "summary": "`math.sqrt(x)`, Math.sqrt under its `math` name (correctly rounded, so already the same bits on every host): OG9001's advice to write Math.sinh, cbrt, hypot and the rest with math.exp, math.log and math.sqrt now names functions that all exist, where `math.sqrt` used to throw."
-    }
-  ]
-}

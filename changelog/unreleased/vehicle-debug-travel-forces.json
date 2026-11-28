@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "debug:physics",
-      "summary": "The 3D vehicle overlay shows the full suspension travel with cyan end stops beside the green current length, and arrowheads distinguish tyre-force and normal-load directions. Wheel outlines retain the simulated wheel poses, and force lengths retain their existing scale."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "pack variant Focus.ring",
-      "summary": "Every control a keyboard or pad focuses shows a focus ring, the pack's `Focus.ring` slot (default `outline-2 outline-focus -outline-offset-2`, drawn inside the control so no edge cuts it), as a browser's :focus-visible outline does; a press shows none. A component whose classes read `focus-visible:` or set an outline keeps its own look. A pack or the game's own pack restyles the ring through the slot."
-    }
-  ]
-}

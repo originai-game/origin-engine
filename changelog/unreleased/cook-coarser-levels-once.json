@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og cook: model LOD indices",
-      "summary": "A model's coarser levels of detail are stored once, in their meshlet draw order, instead of twice (simulation order and draw order): nothing simulates them. LOD 0, the mesh physics and og.render.raycast use, keeps its own order and its separate draw stream (og.ModelPrimitive 6). Drawn triangles, clusters and errors are unchanged."
-    }
-  ]
-}

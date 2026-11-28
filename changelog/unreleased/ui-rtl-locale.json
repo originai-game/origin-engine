@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "rtl:, ltr:, ps-*, pe-* and the other start and end classes",
-      "summary": "In a right-to-left locale (Arabic, Hebrew, Persian, the ar-XB pseudo-locale) the TSX classes now read the locale's direction: start and end classes put the start on the right, and `rtl:` variants hold. Before, every locale was treated as left to right."
-    }
-  ]
-}

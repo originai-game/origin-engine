@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "added": [
-    {
-      "member": "Camera, VirtualCamera, CameraBrain",
-      "summary": "Opt-in physical shutter seconds scale motion blur to its simulation-time motion inputs, including fixed-tick captures and interrupted mixed-mode shots. TileMax/NeighborMax preserve the authored sample budget and centred shutter support. Snapshot-owned CoC primitives retain exact interruption state with observable four-source overflow; aperture/focus and manual physical exposure remain reserved. Artistic DoF is unchanged."
-    }
-  ]
-}

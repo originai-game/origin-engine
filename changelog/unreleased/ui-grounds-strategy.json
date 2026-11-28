@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "Strategy components",
-      "summary": "StrategyAlerts, StrategyCommands, StrategyGroups, StrategyMinimap, StrategyQueue and StrategyTower draw on pack slots and opaque theme grounds (bg-well rows, sheen tile bodies, shade-deep sweeps, key-hi keycaps) in those grounds' inks, so their text reads over a bright scene in every pack."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "@origingame/engine/ui/components",
-      "summary": "Exports every built-in component, control and screen (211), not 21; each module is also importable by its path (`@origingame/engine/ui/components/hud/ability-bar.tsx`, `ui/controls/*`, `ui/screens/*`) with its `fixtures`."
-    }
-  ]
-}

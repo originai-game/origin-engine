@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "author source persistence",
-      "summary": "Persist validated source overlays with a cross-process project lock, snapshot conflict checks, conditional multi-file rollback and interrupted-save recovery; author semantics remain the caller's responsibility."
-    }
-  ]
-}

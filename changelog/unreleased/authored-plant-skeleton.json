@@ -1,7 +1,0 @@
-{
-  "breaking": [{
-    "member": "og.procgen.plant / model.plant",
-    "change": "Plants accept a complete parent-first authored branch skeleton with per-ring radii and a centreline growth box, through the same cook/runtime growth implementation.",
-    "fix": "Write branches in parent-first order (root parent -1) with path and radii, or repeated model.plant.branch blocks. Branches and trunk path are exclusive. Bounds stop procedural centreline growth, not foliage triangles."
-  }]
-}

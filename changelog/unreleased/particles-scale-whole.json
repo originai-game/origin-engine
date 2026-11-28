@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.vfx.spawn scale",
-      "summary": "A scaled particle system is now the same effect larger: an effect spawned with `scale`, or an emitter under a scaled parent, has its particles' size (and so their trails' width and mesh particles) scaled with it, and in world space its gravity, noise strength and attractors' pull too, on the GPU and CPU paths alike. Before, only the birth shape and speed scaled, so a large explosion threw small sparks fast through unscaled gravity: long thin streaks instead of the same burst, and a small one crowded its sparks. Drag is a rate and is unchanged; noise frequency stays the world's."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI text and Input",
-    "summary": "Draw decoration styles and underline offsets, resolve em font sizes against the parent, and honor placeholder, caret and selection colors. Inputs support Shift-arrow/Home/End selections and Control/Command-A, replacing or deleting selections at grapheme boundaries."
-  }]
-}
