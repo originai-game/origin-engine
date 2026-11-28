@@ -45,6 +45,52 @@ impl Content {
         &self.data
     }
 
+    /// Resolve the declaration closure before scanning or importing raw assets.
+    pub(crate) fn selection(
+        root: &Path,
+        project: &Project,
+        roots: &[String],
+        progress: bool,
+    ) -> Result<BTreeSet<String>, Diagnostic> {
+        let index = Index::open(root, project)?;
+        let records = super::source_records::Records::open(root, project)
+            .map_err(|e| diagnostic(&project.source, "project.ts", "", e))?;
+        let mut evaluator = Evaluator::default();
+        let mut selected = BTreeSet::new();
+        let mut todo = roots.to_vec();
+        while let Some(id) = todo.pop() {
+            let primary = id.split('#').next().unwrap_or(&id);
+            let entry = index.entries.get(primary).ok_or_else(|| {
+                diagnostic(
+                    &project.source,
+                    "project.ts",
+                    "",
+                    format!("unknown preview content root {id}"),
+                )
+            })?;
+            if !selected.insert(entry.id.clone()) {
+                continue;
+            }
+            if progress {
+                eprintln!("og cook: selecting {}", entry.id);
+            }
+            let content = evaluator.evaluate(
+                root,
+                project,
+                entry,
+                &BTreeMap::new(),
+                records.contexts[&entry.module].schema(&entry.factory),
+            )?;
+            for reference in &content.references {
+                let primary = reference.id.split('#').next().unwrap_or(&reference.id);
+                if index.entries.contains_key(primary) {
+                    todo.push(primary.to_owned());
+                }
+            }
+        }
+        Ok(selected)
+    }
+
     /// Domain importers discover additional raw dependencies without executing
     /// another author entry. Retain these exact captured paths for dev watch.
     pub(crate) fn inputs(&mut self, paths: impl IntoIterator<Item = String>) {
@@ -385,12 +431,18 @@ impl<'a> GraphBuilder<'a> {
                 r,
             )
         };
+        let root_refs = if self.project.selection.is_some() {
+            Vec::new()
+        } else {
+            root_refs
+        };
         let mut roots: Vec<_> = located(&self.project.source, &root_refs)?
             .into_iter()
             .map(|r| resolve("project.ts", None, r))
             .collect::<Result<_, _>>()?;
-        if let Some(super::source_schemas::procedural::LookBase::Asset(look)) =
-            &self.project.metadata.look
+        if self.project.selection.is_none()
+            && let Some(super::source_schemas::procedural::LookBase::Asset(look)) =
+                &self.project.metadata.look
         {
             roots.push(resolve(
                 super::source_metadata::FILE,

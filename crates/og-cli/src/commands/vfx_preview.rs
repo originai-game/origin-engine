@@ -78,7 +78,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day] [--project-look | --look asset.ogt] [--scene asset.ogt] [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
+const USAGE: &str = "usage: og vfx preview <effect-id|content/effect.ts>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day] [--project-look | --look content-id] [--scene content-id] [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
 
 mod measure;
 
@@ -453,6 +453,11 @@ fn asset_id(
     arg: &str,
     index: &og_cook::cook::source_index::Index,
 ) -> Result<Effect, String> {
+    if arg.ends_with(".ogt") {
+        return Err(format!(
+            "{arg}: legacy .ogt effects are no longer supported; write content/<name>.ts with `import {{ file, ref }} from '@origingame/engine/author'; export default file.vfx({{ duration: 1, elements: [] }});` (use file.particles and file.effect for emitters and materials), then preview its canonical base/<name> ID or .ts path; `og vfx add realistic-starter` installs complete examples"
+        ));
+    }
     let relative = Path::new(arg)
         .strip_prefix(root)
         .ok()
@@ -1089,17 +1094,37 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         .unwrap_or_else(|| p.root.join("og-out/vfx-preview"));
     std::fs::create_dir_all(&out).map_err(|e| fail(format!("{}: {e}", out.display())))?;
     let record_path = |e: &Effect| out.join(format!("{}.json", e.id));
-    if p.has_assets() {
-        let report = crate::cook::cook(&p.root, 0, false).map_err(fail)?;
-        if report
-            .assets
-            .iter()
-            .flat_map(|a| a.outputs.iter())
-            .any(|o| o.cooked)
-        {
-            eprintln!("{}", crate::cook::summary(&report));
-        }
+    let look = if a.project_look {
+        crate::project::snapshot(&p.root).map_err(fail)?["startup"]["look"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| {
+                (
+                    2,
+                    "--project-look requires og-project.json's look declaration".into(),
+                )
+            })?
+    } else {
+        a.look.clone()
+    };
+    let mut roots: Vec<_> = effects.iter().map(|e| e.id.clone()).collect();
+    for context in [&look, &a.scene]
+        .into_iter()
+        .filter(|id| !id.is_empty() && !id.starts_with('@'))
+    {
+        let id = index
+            .entries
+            .get(context)
+            .or_else(|| index.entries.values().find(|e| &e.file == context))
+            .ok_or_else(|| fail(format!("{context}: no checked preview context declaration")))?;
+        roots.push(id.id.clone());
     }
+    eprintln!(
+        "og vfx preview: cooking {} selected root(s) and their dependencies",
+        roots.len()
+    );
+    let report = crate::cook::cook_roots(&p.root, roots).map_err(fail)?;
+    eprintln!("og vfx preview: {}", crate::cook::summary(&report));
     let scratch = p.work_dir().join("vfx-preview");
     let _ = std::fs::remove_dir_all(&scratch);
     std::fs::create_dir_all(&scratch).map_err(|e| fail(format!("{}: {e}", scratch.display())))?;
@@ -1114,19 +1139,6 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     std::fs::write(scratch.join("project.ts"), format!(
         "import {{ defineProject }} from '@origingame/engine/author';\nexport default defineProject({{id:'vfx-preview',entry:'entry.ts',create:{{form:'{dim}'}}}});\n"
     )).map_err(|e| fail(e.to_string()))?;
-    let look = if a.project_look {
-        crate::project::snapshot(&p.root).map_err(fail)?["startup"]["look"]
-            .as_str()
-            .map(str::to_owned)
-            .ok_or_else(|| {
-                (
-                    2,
-                    "--project-look requires og-project.json's look declaration".into(),
-                )
-            })?
-    } else {
-        a.look.clone()
-    };
     let context = json!({
         "enabled": !look.is_empty() || !a.scene.is_empty() || a.camera.is_some() || a.position != [0.0; 3],
         "look": look, "scene": a.scene, "position": a.position, "camera": a.camera,
@@ -1200,13 +1212,16 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
             records.push(record);
         }
     } else {
+        eprintln!("og vfx preview: measuring effect timing");
         let timing = timings(&stage, &show, &effects).map_err(fail)?;
+        eprintln!("og vfx preview: measuring bounds");
         let boxes = if dim == "3d" {
             let measure = stage.bundle(dim, &pixel, a.size, "off").map_err(fail)?;
             bounds(&stage, &measure, &effects, &timing).map_err(fail)?
         } else {
             vec![None; effects.len()]
         };
+        eprintln!("og vfx preview: drawing {} effect sheet(s)", effects.len());
         let sheets = shots(&stage, &show, a.size, &effects, &timing, &boxes, &out).map_err(fail)?;
         for (((e, tm), b), s) in effects.iter().zip(&timing).zip(&boxes).zip(&sheets) {
             let core = b.map(|m| json!({ "min": round2(m.core.min), "max": round2(m.core.max) }));

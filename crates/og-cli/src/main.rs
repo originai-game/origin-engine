@@ -265,8 +265,10 @@ commands:
                       an Effekseer file in assets/ cooks directly to native FX. A
                       one-shot effect gets an impact where the most starts at once; --hit
                       adds a light and a camera shake there (hits, explosions)
-  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day]
-              [--project-look | --look asset.ogt] [--scene asset.ogt]
+  vfx list [project] [--json]
+                      every bundled and downloadable pack, with its effects and installation state.
+  vfx preview <effect-id|content/effect.ts>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day]
+              [--project-look | --look content-id] [--scene content-id]
               [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov]
               [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]
                       play each effect (type vfx, or canonical file.vfx2d ID in a 2D project) alone on a
@@ -544,6 +546,7 @@ fn main() -> ExitCode {
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
         ["vfx", "add", rest @ ..] => ui::extensions::add(rest, "vfx"),
+        ["vfx", "list", rest @ ..] => ui::extensions::list_vfx(rest),
         ["font", "add", rest @ ..] => ui::extensions::add(rest, "font"),
         ["font", "list", rest @ ..] => ui::extensions::list_fonts(rest),
         ["vfx", "import", rest @ ..] => vfx_import::run(rest),

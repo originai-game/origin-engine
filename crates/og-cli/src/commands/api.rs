@@ -271,6 +271,48 @@ fn reference_pages(root: &Path) -> Result<Vec<og_idl::Generated>, String> {
             });
         }
     }
+    let packs = super::ui::extensions::vfx_catalogue(root)?;
+    files.push(og_idl::Generated {
+        path: "packages/knowledge/vfx/catalogue.json".into(),
+        contents: serde_json::to_string_pretty(&packs).map_err(|e| e.to_string())? + "\n",
+    });
+    for pack in &packs {
+        let name = &pack.manifest.name;
+        let path = format!("reference/vfx-{name}.md");
+        index.push_str(&format!("- [`og vfx add {name}`]({path})\n"));
+        let mut body = format!(
+            "<!-- Generated from crates/og-api/api.ogt and checked effect pack catalogues by og api gen. -->\n\n<a id=\"pack-{name}\"></a>\n### `vfx:{name}`\n\n{} {} pack. Install with `og vfx add {name}`; list every effect with `og vfx list`.\n\n",
+            pack.manifest.description,
+            if pack.bundled {
+                "Bundled"
+            } else {
+                "Downloadable"
+            }
+        );
+        for effect in &pack.effects {
+            let path = effect["path"]
+                .as_str()
+                .ok_or("effect catalogue entry has no path")?
+                .trim_start_matches("content/")
+                .trim_end_matches(".ts");
+            let title = effect["title"].as_str().unwrap_or(path);
+            let category = effect["category"].as_str().unwrap_or("effect");
+            let keywords = effect["keywords"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            body.push_str(&format!("<a id=\"vfx-{}\"></a>\n### `base/vfx/{name}/{path}`\n\n{title}: {category} effect in the {name} pack ({keywords}). Install with `og vfx add {name}`, then preview with `og vfx preview base/vfx/{name}/{path} --no-cost`.\n\n", path.replace('/', "-")));
+        }
+        files.push(og_idl::Generated {
+            path: format!("{}/{path}", og_idl::WIKI_DIR),
+            contents: body,
+        });
+    }
     files.push(og_idl::Generated {
         path: format!("{}/reference.md", og_idl::WIKI_DIR),
         contents: index,

@@ -16,6 +16,7 @@
   "type": "module",
   "files": [
     "wiki",
+    "vfx",
     "looks",
     "scaffold",
     "rules",

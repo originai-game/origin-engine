@@ -83,12 +83,48 @@ fn effekseer_import_writes_checked_content_and_matching_native_fx() {
             assert_eq!(texture.source, "assets/fx/textures/leaf.png");
         }
     }
+    std::fs::write(dir.join("content/keep.ts"), "import {file} from '@origingame/engine/author';export default file.vfx({duration:7,elements:[]});").unwrap();
     let report = og_cook::cook::cook_project(&dir, &Default::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = og_bundle::runtime::Bundle::open(&dir.join("cooked")).unwrap();
     let bytes = bundle.read(&imported.id).unwrap();
     assert_eq!(
         bundle.vfx(&imported.id, &bytes).unwrap().duration,
+        conversion.vfx.duration
+    );
+    let keep = bundle.read("base/keep").unwrap().to_vec();
+    // A preview must not evaluate/import unrelated content, follow boot
+    // roots, or remove old payloads. Its schema refs still bring the emitter,
+    // material and image through the ordinary cook/load path.
+    std::fs::write(dir.join("content/broken.ts"), "import {file} from '@origingame/engine/author';export default file.import({kind:'model',source:'assets/does-not-exist.glb'});").unwrap();
+    std::fs::write(dir.join("project.ts"), "import {defineProject,ref} from '@origingame/engine/author';export default defineProject({id:'preview',entry:'src/main.ts',scenes:{main:ref('base/missing-boot')}});").unwrap();
+    std::fs::remove_file(
+        dir.join("cooked")
+            .join(&bundle.output(&imported.id).unwrap().file),
+    )
+    .unwrap();
+    let partial = og_cook::cook::cook_project(
+        &dir,
+        &og_cook::CookOptions {
+            roots: Some(vec![imported.id.clone()]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(partial.ok(), "{:?}", partial.errors());
+    assert!(
+        partial
+            .assets
+            .iter()
+            .all(|a| a.source != "base/keep" && a.source != "base/broken")
+    );
+    let bundle = og_bundle::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    assert_eq!(bundle.read("base/keep").unwrap().as_ref(), keep.as_slice());
+    assert_eq!(
+        bundle
+            .vfx(&imported.id, &bundle.read(&imported.id).unwrap())
+            .unwrap()
+            .duration,
         conversion.vfx.duration
     );
     assert!(efk::import(&source, &dir.join("assets/wrong"), Some(&dir), false).is_err());

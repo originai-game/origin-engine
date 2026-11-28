@@ -45,6 +45,8 @@ pub fn files(root: &Path) -> std::io::Result<Vec<std::path::PathBuf>> {
 /// Checked bootstrap data. Source namespaces and output delivery units have
 /// independent dependency orders. Neither is a scene streaming partition.
 pub struct Project {
+    /// A partial cook's declaration closure, selected before domain import.
+    pub(crate) selection: Option<BTreeSet<String>>,
     pub metadata: Metadata,
     pub input: ProjectInput,
     pub modules: BTreeMap<String, ModuleInput>,
@@ -230,6 +232,7 @@ impl Project {
             super::integrity(&metadata_bytes),
         );
         let project = Self {
+            selection: None,
             metadata,
             input,
             modules,

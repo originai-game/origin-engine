@@ -1,0 +1,13 @@
+{
+  "added": [
+    { "member": "og vfx add", "summary": "Restore the bundled realistic-starter (7 effects) and downloadable cinematic-realism (89 effects), independent of looks." },
+    { "member": "og vfx list", "summary": "List bundled and downloadable effect packs and their effects; og api find searches the same generated catalogue, also mounted as game/vfx/catalogue.json." }
+  ],
+  "fixed": [
+    { "member": "og vfx preview", "summary": "Cook only selected effects and their schema-reference dependencies over existing cooked state, report progress, and explain the checked TypeScript replacement for legacy .ogt effects." },
+    { "member": "og vfx add", "summary": "Migrate FX Showcase's stale font membership into checked TypeScript so its installed font no longer blocks name-based extension discovery." }
+  ],
+  "breaking": [
+    { "member": "knowledge mount", "change": "The knowledge payload now includes game/vfx/catalogue.json with every bundled and downloadable VFX pack and effect.", "fix": "Accept the generated VFX catalogue in the game knowledge payload; use og vfx list or og api find to discover effects independently of looks." }
+  ]
+}

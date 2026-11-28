@@ -132,6 +132,13 @@ impl Index {
                         ));
                     };
                     let id = format!("{}/{stem}", module.id);
+                    if project
+                        .selection
+                        .as_ref()
+                        .is_some_and(|ids| !ids.contains(&id))
+                    {
+                        continue;
+                    }
                     if let Some(previous) = folded.insert(id.to_lowercase(), file.clone()) {
                         return Err(diagnostic(
                             &file,

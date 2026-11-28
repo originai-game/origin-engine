@@ -135,6 +135,13 @@ pub fn cook(root: &Path, threads: usize, web: bool) -> Result<Report, String> {
     cook_for(root, threads, web, false)
 }
 
+/// A tooling preview cooks its own roots, never the game's entry or boot scene.
+pub fn cook_roots(root: &Path, roots: Vec<String>) -> Result<Report, String> {
+    let mut options = options(root, 0, false, CodeGraph::default())?;
+    options.roots = Some(roots);
+    checked_cook(root, &options)
+}
+
 /// [`cook`] for a publish (`og build --publish`): a prefab override that
 /// no longer does anything is refused, naming it.
 pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result<Report, String> {

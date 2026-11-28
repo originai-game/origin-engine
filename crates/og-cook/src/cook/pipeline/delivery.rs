@@ -88,6 +88,9 @@ impl<'a> Delivery<'a> {
     }
 
     pub(crate) fn contains(&self, id: &str, source: &str) -> Result<bool, CookError> {
+        if let Some(ids) = &self.project.selection {
+            return Ok(ids.contains(source) || ids.contains(id.split('#').next().unwrap_or(id)));
+        }
         Ok(self.selected.contains(&self.owner(id, source)?))
     }
 

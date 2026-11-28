@@ -269,6 +269,9 @@ impl FontSettings {
 /// Everything the cook's output depends on besides the sources.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CookOptions {
+    /// Prepare only these content roots and their schema-reference closure,
+    /// retaining unrelated payloads from the existing cook.
+    pub roots: Option<Vec<String>>,
     /// Build only this delivery pack and its declared prerequisites. Other
     /// packs' retained payloads are not validated as current by this cook.
     pub pack: Option<String>,

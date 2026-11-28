@@ -82,6 +82,100 @@ pub struct Extension {
     pub installed: bool,
 }
 
+/// The release's complete catalogue, including packs not installed in a game.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct VfxPack {
+    pub manifest: Manifest,
+    pub bundled: bool,
+    pub effects: Vec<serde_json::Value>,
+}
+
+/// Source-backed catalogue shared by listing and API reference generation.
+pub fn vfx_catalogue(root: &Path) -> Result<Vec<VfxPack>, String> {
+    let mut packs = Vec::new();
+    for (directory, bundled) in [
+        ("packages/engine/extensions", true),
+        ("packages/vfx-packs", false),
+    ] {
+        for entry in std::fs::read_dir(root.join(directory)).map_err(|e| e.to_string())? {
+            let dir = entry.map_err(|e| e.to_string())?.path();
+            if !dir.join("extension.json").is_file() {
+                continue;
+            }
+            let extension = read(&dir, false)?;
+            if extension.manifest.kind != "vfx" {
+                continue;
+            }
+            let metadata: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(dir.join("assets.json")).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+            packs.push(VfxPack {
+                manifest: extension.manifest,
+                bundled,
+                effects: metadata["effects"].as_array().cloned().unwrap_or_default(),
+            });
+        }
+    }
+    packs.sort_by(|a, b| a.manifest.name.cmp(&b.manifest.name));
+    Ok(packs)
+}
+
+pub fn list_vfx(args: &[&str]) -> ExitCode {
+    outcome((|| {
+        let json = args.contains(&"--json");
+        let positional: Vec<_> = args.iter().copied().filter(|a| *a != "--json").collect();
+        let project = match positional.as_slice() {
+            [] => ".",
+            [p] => p,
+            _ => return Err("usage: og vfx list [project] [--json]".into()),
+        };
+        let package = crate::project::engine_package(Some(Path::new(project)))
+            .ok_or(crate::project::NO_ENGINE)?;
+        let published = package.join("knowledge/vfx/catalogue.json");
+        let source = package.join("../knowledge/vfx/catalogue.json");
+        let bytes = std::fs::read(if published.is_file() {
+            published
+        } else {
+            source
+        })
+        .map_err(|e| e.to_string())?;
+        let packs: Vec<VfxPack> = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+        let installed = discover(Path::new(project))?;
+        let rows: Vec<_> = packs.into_iter().map(|p| {
+            let present = installed.iter().any(|e| e.installed && e.manifest.kind == "vfx" && e.manifest.name == p.manifest.name);
+            serde_json::json!({"manifest": p.manifest, "availability": if present { "installed" } else if p.bundled { "bundled" } else { "downloadable" }, "effects": p.effects})
+        }).collect();
+        if json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&rows).map_err(|e| e.to_string())?
+            );
+        } else {
+            for row in rows {
+                let name = row["manifest"]["name"].as_str().unwrap_or_default();
+                println!(
+                    "{name} ({}) — {}",
+                    row["availability"].as_str().unwrap_or_default(),
+                    row["manifest"]["description"].as_str().unwrap_or_default()
+                );
+                for effect in row["effects"].as_array().into_iter().flatten() {
+                    let path = effect["path"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .trim_start_matches("content/")
+                        .trim_end_matches(".ts");
+                    println!(
+                        "  base/vfx/{name}/{path} — {}",
+                        effect["title"].as_str().unwrap_or(path)
+                    );
+                }
+            }
+        }
+        Ok(())
+    })())
+}
+
 pub(super) fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
         for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {

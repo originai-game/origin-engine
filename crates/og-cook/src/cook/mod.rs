@@ -385,11 +385,22 @@ pub fn cook_project_with_texture_cache(
         return Ok(report);
     }
     let look_report = root.join(look::REPORT);
-    if look_report.exists() {
+    if options.roots.is_none() && look_report.exists() {
         std::fs::remove_file(&look_report)
             .map_err(|e| CookError(format!("{}: {e}", look_report.display())))?;
     }
-    let project = Project::read(root)?;
+    let mut project = Project::read(root)?;
+    if let Some(roots) = &options.roots {
+        project.source.selection = Some(
+            source_content::Content::selection(root, &project.source, roots, options.progress)
+                .map_err(|e| CookError(e.to_string()))?,
+        );
+        project.boot = None;
+        project.flow = None;
+        // Preview assets are not conformed to the game's look. An explicit
+        // preview look is an ordinary selected declaration for the stage.
+        project.source.metadata.look = None;
+    }
     laps.lap("project");
     let assets_dir = &project.assets_dir;
     let cooked_dir = &project.cooked_dir;
@@ -642,19 +653,21 @@ pub fn cook_project_with_texture_cache(
         elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
         stages: Vec::new(),
     };
-    if report.ok() {
+    if report.ok() && options.roots.is_none() {
         look::write_report(root, &project.source, &content, &sources, &|id| {
             known.contains(id)
         })?;
     }
-    save(
-        &cook_index,
-        &report,
-        before_code,
-        &sources,
-        assets_dir,
-        texture_cache,
-    );
+    if options.roots.is_none() {
+        save(
+            &cook_index,
+            &report,
+            before_code,
+            &sources,
+            assets_dir,
+            texture_cache,
+        );
+    }
     laps.lap("save");
     report.stages = laps.stages;
     Ok(report)

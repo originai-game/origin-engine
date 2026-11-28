@@ -589,8 +589,20 @@ pub(crate) fn finish(
     // og.motion's model, for a project whose code uses it (in the manifest,
     // outside its outputs: never in the boot bundle).
     let mut motion_warnings = Vec::new();
-    let uses_motion = motion::uses_motion(root);
-    manifest.motion = motion::cook(uses_motion, cooked_dir, &mut keep, &mut motion_warnings)?;
+    let partial = cx.options.roots.is_some();
+    let uses_motion = !partial && motion::uses_motion(root);
+    if partial {
+        manifest.motion = old.motion.clone();
+        keep.extend(old.motion.iter().map(|m| m.file.clone()));
+        manifest.preload = old.preload.clone();
+        for (scene, lightmap) in &old.lightmaps {
+            if !cx.delivery.contains(scene, scene)? {
+                manifest.lightmaps.insert(scene.clone(), lightmap.clone());
+            }
+        }
+    } else {
+        manifest.motion = motion::cook(uses_motion, cooked_dir, &mut keep, &mut motion_warnings)?;
+    }
     let mut removed = Vec::new();
     let old_files = old
         .outputs()
@@ -612,7 +624,15 @@ pub(crate) fn finish(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    let mut index = assets::build(root, &manifest, sources, threads)?;
+    // Only decode selected payloads. Besides avoiding another whole-project
+    // pass, this preserves old reference facts and module needs verbatim.
+    let mut selected = manifest.clone();
+    if partial {
+        selected
+            .assets
+            .retain(|a| sources.iter().any(|s| s.rel == a.source));
+    }
+    let mut index = assets::build(root, &selected, sources, threads)?;
     let mut runtime_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for asset in &index.assets {
         runtime_refs
@@ -621,21 +641,52 @@ pub(crate) fn finish(
             .extend(asset.refs.iter().cloned());
     }
     needs::record(
-        &mut manifest,
+        &mut selected,
         sources,
         &runtime_refs,
         cx.boot,
         cx.flow,
         cx.profile,
     );
+    if partial {
+        for asset in &mut manifest.assets {
+            if let Some(updated) = selected.assets.iter().find(|a| a.source == asset.source) {
+                asset.modules = updated.modules.clone();
+                asset.dependencies = updated.dependencies.clone();
+            }
+        }
+        manifest.modules = old
+            .modules
+            .iter()
+            .chain(&selected.modules)
+            .cloned()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let previous = assets::Index::read(root).unwrap_or_default();
+        for asset in previous.assets {
+            if !cx.delivery.contains(&asset.id, &asset.source)? {
+                index.assets.push(asset);
+            }
+        }
+        index.roots.extend(previous.roots);
+        index.users.extend(previous.users);
+        index.computed.extend(previous.computed);
+    } else {
+        manifest = selected;
+    }
     let before_code = BeforeCode {
         uses_motion,
         roots: index.roots.clone(),
         users: index.users.clone(),
         computed: index.computed.clone(),
     };
-    assets::add_code(root, &manifest, &mut index, &cx.options.code)?;
-    manifest.preload = index.font_preloads();
+    if !partial {
+        assets::add_code(root, &manifest, &mut index, &cx.options.code)?;
+    }
+    manifest.preload.extend(index.font_preloads());
+    manifest.preload.sort();
+    manifest.preload.dedup();
     let text = manifest.to_text();
     if std::fs::read_to_string(&manifest_path).ok().as_deref() != Some(text.as_str()) {
         std::fs::write(&manifest_path, text)
@@ -646,7 +697,11 @@ pub(crate) fn finish(
     // Each asset's cook time: this run's (its outputs' summed) when it
     // cooked, else the one recorded; written only when one changed.
     let old_times = CookTimes::read(cooked_dir);
-    let mut times = CookTimes::default();
+    let mut times = if partial {
+        old_times.clone()
+    } else {
+        CookTimes::default()
+    };
     for r in reports.iter_mut().filter(|r| r.error.is_none()) {
         let now: Vec<f64> = r
             .outputs
@@ -664,7 +719,9 @@ pub(crate) fn finish(
         }
     }
     let log_path = cooked_dir.join(CONFORM_LOG);
-    if log.is_empty() {
+    if partial {
+        // A preview does not replace the project's art-conformance report.
+    } else if log.is_empty() {
         if log_path.exists() {
             std::fs::remove_file(&log_path)
                 .map_err(|e| CookError(format!("{}: {e}", log_path.display())))?;
