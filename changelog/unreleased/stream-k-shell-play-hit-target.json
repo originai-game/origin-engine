@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "web player Play gate",
+      "summary": "Shell overlays sit above the game's transparent accessibility hit targets, so a full-screen game button cannot intercept Play or the error card. This also fixes og run --device reporting a Play-gate timeout with no page error on untouched projects."
+    }
+  ]
+}

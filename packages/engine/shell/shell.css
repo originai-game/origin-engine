@@ -35,6 +35,9 @@ body { position: fixed; inset: 0; overflow: hidden; height: 100dvh; }
 .og-layer {
   position: absolute;
   inset: 0;
+  /* The game's accessibility hit targets sit just above its canvas (z=1).
+     Shell gates and errors must own input until they are dismissed. */
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
