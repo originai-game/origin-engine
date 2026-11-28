@@ -21,8 +21,9 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
       "colors": {
-        "fg": { "light": "#22142e", "dark": "#fff6e3" }, "fg-muted": { "light": "#4f3d5c", "dark": "#e6d6bd" }, "fg-subtle": { "light": "#7d6a86", "dark": "#b8a88f" },
+        "fg": { "light": "#22142e", "dark": "#fff6e3" }, "fg-muted": { "light": "#4f3d5c", "dark": "#e6d6bd" }, "fg-subtle": { "light": "#62506d", "dark": "#b8a88f" },
         "part-fg": "#22142e", "part-on": "#ffffff", "part-gold": "#ffc61a", "part-orange": "#ff7a1a",
         "accent": "#2fae45", "accent-fg": "#ffffff", "track": "#3a2f52"
       },
@@ -35,7 +36,7 @@ export default file.theme({
     "variants": {
       "Ability.box": "size-18 compact:size-12", "Ability.box.ultimate": "size-26 compact:size-15",
       "Screen.heading": "font-display text-display-2xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg text-shadow-wordmark -rotate-1",
-      "Screen.note": "text-sm font-bold text-fg-muted",
+      "Screen.note": "text-sm font-bold text-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 px-7 pt-2 pb-4 nine-button-primary scheme-light text-part-on text-stroke-3 text-stroke-part-fg font-display text-xl",
       "Screen.veil": "bg-scrim",
       "Title.wordmark": "font-display text-display-4xl leading-none text-part-gold text-stroke-6 text-stroke-part-fg text-shadow-wordmark -rotate-2",

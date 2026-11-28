@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "@themes/pixel, @themes/minimal, @themes/candy, @themes/cartoon, @themes/comic, @themes/neon",
+      "change": "The look packs set a larger type scale for game screens at 720p (body 17 px, base 18 px, sm 16 px, xs 14 px, up to 2xl 28 px), their fg-subtle is darkened (lightened on neon) to read at 4.5:1 on their parts, and a screen's note (Screen.note) reads in fg instead of fg-muted.",
+      "fix": "A game that fitted text into a fixed box under one of these packs checks the box at the new sizes, or sets its own text size."
+    }
+  ]
+}

@@ -18,8 +18,9 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
       "colors": {
-        "fg": { "light": "#3b1d0b", "dark": "#ffe6b3" }, "fg-muted": { "light": "#6e3d18", "dark": "#e6c08a" }, "fg-subtle": { "light": "#9a6a3e", "dark": "#b38b5c" },
+        "fg": { "light": "#3b1d0b", "dark": "#ffe6b3" }, "fg-muted": { "light": "#6e3d18", "dark": "#e6c08a" }, "fg-subtle": { "light": "#7a4e28", "dark": "#b38b5c" },
         "part-fg": "#3b1d0b", "part-on": "#fff1c2", "part-gold": "#ffd23d", "part-night": "#1d1430",
         "accent": "#2f8f37", "accent-fg": "#ffffff", "track": "#1d1430",
       },
@@ -53,7 +54,7 @@ export default file.theme({
       "MenuList.line": "text-start text-sm text-fg-muted whitespace-nowrap overflow-hidden",
       "MenuList.chevron": "hidden",
       "Screen.heading": "font-display text-display-xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg",
-      "Screen.note": "text-sm text-fg-muted text-stroke-2 text-stroke-part-fg",
+      "Screen.note": "text-sm text-fg text-stroke-2 text-stroke-part-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 px-6 py-2 nine-plate scheme-light text-part-fg font-display text-xl",
       "Screen.veil": "bg-scrim",
       "Title.wordmark": "font-display text-display-3xl leading-none text-part-gold text-stroke-4 text-stroke-part-fg",

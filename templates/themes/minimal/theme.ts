@@ -20,8 +20,9 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
       "colors": {
-        "fg": { "light": "#2d3440", "dark": "#f3ede2" }, "fg-muted": { "light": "#525a68", "dark": "#c9c2b5" }, "fg-subtle": { "light": "#7d8493", "dark": "#9a9488" },
+        "fg": { "light": "#2d3440", "dark": "#f3ede2" }, "fg-muted": { "light": "#525a68", "dark": "#c9c2b5" }, "fg-subtle": { "light": "#5b6372", "dark": "#9a9488" },
         "part-fg": "#2d3440", "part-on": "#f3ede2", "part-gold": "#b97a12",
         "accent": "#2d3440", "accent-fg": "#f3ede2", "track": "#c8bba3"
       },
@@ -33,7 +34,7 @@ export default file.theme({
     "variants": {
       "Ability.box": "size-15 compact:size-10", "Ability.box.ultimate": "size-22 compact:size-13",
       "Screen.heading": "font-display font-light text-display-xl leading-none uppercase tracking-kicker text-fg",
-      "Screen.note": "text-xs uppercase tracking-label text-fg-muted",
+      "Screen.note": "text-xs uppercase tracking-label text-fg",
       "Screen.prompt": "flex-row items-center gap-x-3 py-2 px-5 font-display font-light text-lg uppercase tracking-kicker text-fg",
       "Screen.veil": "bg-scrim",
       "Title.wordmark": "font-display font-light text-display-3xl leading-none uppercase tracking-display-3xl text-fg",
