@@ -36,8 +36,8 @@
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
-//   9. core default needs no style pack; a generated style cooks with
-//      shared fonts and icons read from the installed engine's styles/
+//   9. core default needs no style pack; a generated theme cooks with
+//      shared fonts/icons and its declared CJK fallback from the installed engine's styles/
 //  10. no effect pack in a game that installs none: the demo's cook and build carry no file of a bundled
 //      vfx pack, packages/vfx-packs/ or the fixture pack (tests/fixtures/vfx-release); that pack, once
 //      og vfx add installs it, is in the cook
@@ -294,7 +294,8 @@ function host(): void {
       for (const f of ["og-project.json", "project.ts", "src/main.ts", "tests", "assets/.gitkeep", ".gitignore", ".gitattributes"]) {
         if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
       }
-      const manifest2d = JSON.parse(og(step, flat, "project", ".", "--json").stdout);
+      const { readProjectOutput } = require(join(enginePkg, "knowledge/scripts/project-output.ts"));
+      const manifest2d = readProjectOutput(og(step, flat, "project", ".", "--json"));
       if (manifest2d.input.create?.view !== "side-2d" || "profile" in manifest2d.input) step.fail("the 2D view must appear only in create");
       if (readFileSync(join(flat, "src/main.ts"), "utf8") !== readFileSync(join(demo, "src/main.ts"), "utf8")) step.fail("the view changed the skeleton's code");
       const pinned2d = manifest2d.engine;
@@ -336,6 +337,8 @@ function host(): void {
       mkdirSync(join(sound, "assets", "audio"), { recursive: true });
       // tone.mp3: 1 s, 44.1 kHz stereo, a 0.5-amplitude sine (og-cook's tests/fixtures/audio/tone.mp3).
       cpSync(join(HERE, "fixtures", "tone.mp3"), join(sound, "assets", "audio", "tone.mp3"));
+      mkdirSync(join(sound, "content", "audio"), { recursive: true });
+      writeFileSync(join(sound, "content", "audio", "tone.ts"), 'import {file} from "@origingame/engine/author";export default file.import({kind:"sound",source:"assets/audio/tone.mp3"});\n');
       writeFileSync(
         join(sound, "src", "main.ts"),
         `import { og } from "@origingame/engine";
@@ -344,7 +347,7 @@ function host(): void {
     tick: 60,
     seed: 1,
     start(world) {
-      const sound = og.load.sound(world, "audio/tone.mp3");
+      const sound = og.load.sound(world, "base/audio/tone");
       if (!sound.ok) throw new Error(sound.reason);
       const voice = world.spawn({ name: "tone" });
       if (!voice.ok) throw new Error(voice.reason);
@@ -365,16 +368,19 @@ function host(): void {
       if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
       log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
 
-      // 9. Core default is asset-free. A generated game-owned CSS style (og style new, named by a look's
-      // `ui`) cooks only the engine's shared style assets from the installed archive, and a screen drawn
-      // with it still draws its text (the empty skeleton draws no UI, so a fresh game shows @ui pause).
+      // 9. Bare core is asset-free; the creation shell deliberately selects a theme.
+      // A generated game-owned theme cooks only its shared assets and declared CJK fallback
+      // from the installed archive, with localized controls laid out and focusable.
       step = new Step("9 core default and generated UI style dependencies");
       const stylePacks = (game: string): Set<string> => {
         og(step, game, "cook", ".");
         const cooked = readFileSync(join(game, "cooked", ".cook.ogt"), "utf8");
         return new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map((m) => m[1]!));
       };
-      const before = stylePacks(demo);
+      const core = scaffold(step, work, "demo-core", "--name", "Demo Core");
+      writeFileSync(join(core, "src", "main.ts"), 'import {og} from "@origingame/engine";export default og.game({});\n');
+      writeFileSync(join(core, "content", "looks", "demo-core.ts"), 'import {file} from "@origingame/engine/author";export default file.look({ui:"default"});\n');
+      const before = stylePacks(core);
       if (before.size) step.fail(`core default cooked style assets: ${[...before].join(", ")}`);
       const styledGame = scaffold(step, work, "demo-style", "--name", "Demo Style");
       writeFileSync(
@@ -390,22 +396,42 @@ export default og.game({
 });
 `,
       );
-      og(step, styledGame, "style", "new", "install-check");
-      if (!existsSync(join(styledGame, "assets", "styles", "install-check", "main.css"))) step.fail("og style new install-check wrote no assets/styles/install-check/main.css");
-      mkdirSync(join(styledGame, "content", "looks"), { recursive: true });
-      writeFileSync(join(styledGame, "content", "looks", "generated-ui.ts"), 'import {file} from "@origingame/engine/author";export default file.look({ui:"install-check"});\n');
+      og(step, styledGame, "style", "init", "install-check");
+      if (!existsSync(join(styledGame, "content", "styles", "install-check.ts"))) step.fail("og style init install-check wrote no content/styles/install-check.ts");
+      writeFileSync(join(styledGame, "content", "looks", "demo-style.ts"), 'import {file,ref} from "@origingame/engine/author";export default file.look({ui:ref("base/styles/install-check")});\n');
       const after = stylePacks(styledGame);
-      if (!after.has("shared")) step.fail("a generated style cooked no @styles/shared/ asset");
-      const others = [...after].filter((p) => p !== "shared");
+      if (!after.has("shared") || !after.has("cjk")) step.fail("a generated minimal theme needs its shared assets and declared CJK fallback");
+      const others = [...after].filter((p) => p !== "shared" && p !== "cjk");
       if (others.length) step.fail(`a generated style cooked other packs: ${others.join(", ")}`);
-      const styledUi = run(step, [...ogCmd, "ui", "check", ".", "--styles", "install-check", "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--json"], styledGame, { allowFail: true });
-      if (styledUi.status !== 0) step.fail(`og ui check --styles install-check exited ${styledUi.status}\n${styledUi.stderr.slice(-2000)}`);
+      const styledUi = run(step, [...ogCmd, "ui", "check", ".", "--styles", "base/styles/install-check", "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--json"], styledGame, { allowFail: true });
+      if (styledUi.status !== 0) step.fail(`og ui check --styles base/styles/install-check exited ${styledUi.status}\n${styledUi.stderr.slice(-2000)}`);
       const styledReport = (JSON.parse(styledUi.stdout.trim().split("\n").at(-1)!) as { report: string }).report;
       const styledCells = (JSON.parse(readFileSync(styledReport, "utf8")) as { cellList: Array<{ cell: string; uiFrame: string }> }).cellList;
       if (styledCells.length !== 1) step.fail(`og ui check --styles install-check laid out ${styledCells.length} cells`);
-      const drawn = JSON.parse(readFileSync(join(dirname(styledReport), styledCells[0]!.uiFrame), "utf8")) as { draws: number; texts: unknown[] };
-      if (!(drawn.draws > 0) || drawn.texts.length === 0) step.fail(`the pause screen in the generated style draws ${drawn.draws} commands and ${drawn.texts.length} texts`);
-      log(`   core default is asset-free; the generated style cooks @styles/shared/ only; pause draws ${drawn.draws} commands, ${drawn.texts.length} text(s)`);
+      // Restore strict paint assertions when crates/og-host-node/src/ui_check.rs's paint-list reading lands; paint/GPU is unchecked here.
+      const frame = JSON.parse(readFileSync(join(dirname(styledReport), styledCells[0]!.uiFrame), "utf8")) as {
+        viewport: { width: number; height: number };
+        elements: Array<{ path: string; role: string; name: string; text: string; x: number; y: number; width: number; height: number; clipped: boolean; disabled: boolean; states: string[] }>;
+        a11y: { focused: string; focusOrder: string[] };
+      };
+      const labels = ["Resume", "Settings", "Controls", "Save", "Load", "Quit to menu", "Quit game"];
+      const controls = frame.elements.filter((e) => e.role === "button");
+      if (JSON.stringify(controls.map((e) => e.name)) !== JSON.stringify(labels)) step.fail("pause controls lack their localized labels or have the wrong order");
+      for (const label of ["Paused", ...labels]) {
+        const text = frame.elements.find((e) => e.text === label);
+        if (!text || text.clipped || !(text.width > 0 && text.height > 0)) step.fail(`pause text ${label} is missing or has no visible layout`);
+      }
+      for (const [i, control] of controls.entries()) {
+        const { x, y, width, height } = control;
+        if (![x, y, width, height].every(Number.isFinite) || x < 0 || y < 0 || width <= 0 || height <= 0
+          || x + width > frame.viewport.width || y + height > frame.viewport.height || control.clipped || control.disabled
+          || (i > 0 && controls[i - 1]!.y + controls[i - 1]!.height > y)) step.fail(`pause control ${control.name} is clipped, disabled, outside the viewport or overlaps its predecessor`);
+      }
+      if (JSON.stringify(frame.a11y.focusOrder) !== JSON.stringify(controls.map((e) => e.path))
+        || frame.a11y.focused !== controls[0]!.path
+        || controls.filter((e) => e.states.includes("focused")).length !== 1
+        || !controls[0]!.states.includes("focused")) step.fail("pause focus must start on Resume and follow the visible control order");
+      log("   core default is asset-free; generated theme cooks only shared assets and CJK fallback; localized pause text, 7 controls, bounds and focus checked; paint/GPU UNCHECKED (L4 reference suites cover paint)");
 
       // 10. Effect packs ship apart from games (docs/vfx-packs.md §5): a game with none installed cooks and
       // builds no file of a bundled vfx pack (the dist's engine/extensions/<pack> of kind vfx), of
@@ -429,7 +455,7 @@ export default og.game({
       og(step, demo, "cook", ".");
       const cookText = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
       const leaks: string[] = [];
-      if (/^asset "vfx\//m.test(cookText)) leaks.push(`.cook.ogt cooks ${[...cookText.matchAll(/^asset "(vfx\/[^"]+)"/gm)].map((m) => m[1]).join(", ")}`);
+      if (/^asset "base\/vfx\//m.test(cookText)) leaks.push(`.cook.ogt cooks ${[...cookText.matchAll(/^asset "(base\/vfx\/[^"]+)"/gm)].map((m) => m[1]).join(", ")}`);
       for (const top of ["cooked", "dist"]) {
         for (const f of filesOf(join(demo, top))) {
           const rel = f.slice(demo.length + 1);
@@ -441,7 +467,7 @@ export default og.game({
       if (leaks.length) step.fail(`a game with no effect pack ships pack files:\n  ${leaks.join("\n  ")}`);
       og(step, runner, "vfx", "add", fixture, ".");
       og(step, runner, "cook", ".");
-      if (!readFileSync(join(runner, "cooked", ".cook.ogt"), "utf8").includes('asset "vfx/spark-pack/burst.ogt"')) step.fail("og vfx add of the fixture pack cooked no vfx/spark-pack/burst.ogt: the check above cannot see a pack");
+      if (!readFileSync(join(runner, "cooked", ".cook.ogt"), "utf8").includes('asset "base/vfx/spark-pack/burst"')) step.fail("og vfx add of the fixture pack cooked no base/vfx/spark-pack/burst: the check above cannot see a pack");
       log(`   ${packDirs.length} pack(s) checked (${packNames.join(", ")}), ${packBytes.size} file(s): none in demo's cooked/ or dist/; spark-pack cooks once added`);
 
     
