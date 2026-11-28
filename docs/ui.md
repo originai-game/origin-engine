@@ -497,7 +497,7 @@ rest when capturing an entered screen, not an arbitrary entrance frame.
 [--schemes dark,light] [--only TEXT] [--size WxH] [--og <og>]` reads TSX
 exports and fixtures under components, controls and screens. It writes one
 project (`target/ui-gallery/project`), cooks once, then captures pages per
-pack/scheme on a two-tone stage. It captures after 12 ticks and retries
+pack/scheme on a stage of key art (`--no-art`: the pack's fallback backdrop). It captures after 12 ticks and retries
 moving entrances after a second. The default scheme is dark.
 
 Output is `<out>/<pack>/` and `<out>/<pack>-light/` (default
