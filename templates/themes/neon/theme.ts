@@ -18,8 +18,9 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
-      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2], "3xl": [32, 1.2], "4xl": [38, 1.15] },
       "colors": {
+        "stage-hi": "#2a0b3d", "stage-lo": "#04040a", "stage-glow": "#ff2bd6",
         "fg": { "light": "#0b0a18", "dark": "#e8fbff" }, "fg-muted": { "light": "#2f3c52", "dark": "#9fc7d0" }, "fg-subtle": { "light": "#56627a", "dark": "#7fa9b3" },
         "part-fg": "#e8fbff", "part-on": "#04040a", "part-gold": "#ffe94a", "part-cyan": "#36f1ff", "part-magenta": "#ff2bd6",
         "accent": "#36f1ff", "accent-fg": "#04040a", "track": "#0c6f7a"
@@ -31,6 +32,9 @@ export default file.theme({
       "stroke": {"arc": 10}
     },
     "variants": {
+      "MenuList.frame": "flex-col nine-panel scheme-dark text-part-fg p-3",
+      "Screen.glow": "bg-radial from-stage-glow to-transparent to-60% opacity-dim",
+      "Screen.backdrop": "bg-linear-to-b from-stage-hi to-stage-lo",
       "Ability.box": "size-15 compact:size-10", "Ability.box.ultimate": "size-22 compact:size-13",
       "Screen.heading": "font-display font-black text-display-xl leading-none uppercase tracking-label text-fg text-shadow-wordmark",
       "Screen.note": "text-xs uppercase tracking-label text-fg",
@@ -58,8 +62,8 @@ export default file.theme({
       "MenuList.indicator": "absolute inset-0 nine-entry-on pointer-events-none transition-layout duration-120 ease-out glide-menu",
       "MenuList.indicator.danger": "",
       "MenuList.cursor": "absolute left-2 top-1/2 w-4 h-5 -translate-y-1/2 nine-cursor animate-pulse",
-      "MenuList.label": "text-start font-display font-bold text-2xl leading-tight uppercase tracking-label group-data-current/entry:text-shadow-neon-hot",
-      "MenuList.label.md": "text-xl",
+      "MenuList.label": "text-start font-display font-bold text-3xl leading-tight uppercase tracking-label group-data-current/entry:text-shadow-neon-hot",
+      "MenuList.label.md": "text-2xl",
       "MenuList.line": "text-start text-sm uppercase tracking-label text-fg-muted whitespace-nowrap overflow-hidden",
       "MenuList.chevron": "hidden",
       "Tab.list": "flex-row items-end gap-2",

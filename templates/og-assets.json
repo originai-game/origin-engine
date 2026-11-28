@@ -3507,14 +3507,14 @@
     },
     {
       "path": "styles/shared/ui/candy/button-primary-down.png",
-      "sha256": "aa02700fb961ec20642e10f323b6e337bcb8c84bbe784caa4e9496b4ffa24aee",
-      "size": 3665,
+      "sha256": "de9fd931e4fc4f682452bb227f1a4c65091b461ffc58262415d9b7eacc745696",
+      "size": 3652,
       "visibility": "public"
     },
     {
       "path": "styles/shared/ui/candy/button-primary.png",
-      "sha256": "30c9e783a2dbc2128486ff59ee1c70a106a0a97920cd53dbd2f862363a36678d",
-      "size": 14431,
+      "sha256": "adca8aedfa5b77302049952083b509e791a39a060efd2620f538f683f778aa7a",
+      "size": 14306,
       "visibility": "public"
     },
     {
@@ -3525,8 +3525,8 @@
     },
     {
       "path": "styles/shared/ui/candy/check-on.png",
-      "sha256": "af3d0fa029f3d465f3cf50ba2a37b55259c887b53eb46c46aa2013e2b8433b8b",
-      "size": 2301,
+      "sha256": "2888278a90f72e96b174151c396e54ca23b3f1f88b8379c5bb304e750ebca4d8",
+      "size": 2282,
       "visibility": "public"
     },
     {
@@ -3561,8 +3561,8 @@
     },
     {
       "path": "styles/shared/ui/candy/range.png",
-      "sha256": "f52dc7c88da185af81987f2852c14f87b02515e839cad562e9fd8fab222c2f5c",
-      "size": 1797,
+      "sha256": "88d00aa824db6a8fd9f1709f40c94a0062be3035d3090c8dc07a9160e264e064",
+      "size": 1801,
       "visibility": "public"
     },
     {
@@ -3573,8 +3573,8 @@
     },
     {
       "path": "styles/shared/ui/candy/tab-on.png",
-      "sha256": "30c9e783a2dbc2128486ff59ee1c70a106a0a97920cd53dbd2f862363a36678d",
-      "size": 14431,
+      "sha256": "adca8aedfa5b77302049952083b509e791a39a060efd2620f538f683f778aa7a",
+      "size": 14306,
       "visibility": "public"
     },
     {
@@ -3615,8 +3615,8 @@
     },
     {
       "path": "styles/shared/ui/cartoon/button-down.png",
-      "sha256": "75a82ab809ac11849ee57870dfa8cb533c0ddc8a2d5c0a20b96c297e9626aa78",
-      "size": 4222,
+      "sha256": "7fade5fe98adb40bd91b47181fc75cf6f1795d450aab6368def2249b6d802344",
+      "size": 4122,
       "visibility": "public"
     },
     {
@@ -3633,8 +3633,8 @@
     },
     {
       "path": "styles/shared/ui/cartoon/button.png",
-      "sha256": "b7d433eca393697073c9781e47e50370a5a8ff93f08a684b7c6879dc8fd80148",
-      "size": 5816,
+      "sha256": "5e61f179950e3b19d0b1a26bd78f8425fd3597c4e45c0efda5f19edfc0705383",
+      "size": 5717,
       "visibility": "public"
     },
     {
@@ -3657,8 +3657,8 @@
     },
     {
       "path": "styles/shared/ui/cartoon/entry.png",
-      "sha256": "b7d433eca393697073c9781e47e50370a5a8ff93f08a684b7c6879dc8fd80148",
-      "size": 5816,
+      "sha256": "5e61f179950e3b19d0b1a26bd78f8425fd3597c4e45c0efda5f19edfc0705383",
+      "size": 5717,
       "visibility": "public"
     },
     {
@@ -4083,14 +4083,14 @@
     },
     {
       "path": "styles/shared/ui/pixel/button-primary-down.png",
-      "sha256": "34dad248ba1d174078d89126df96a48721c8b1973f49bbe72161274e993801be",
-      "size": 379,
+      "sha256": "5754dad132ff18c8e06c6131a3e60b40f1ccd66bfaa8287d722cdd75e21eb515",
+      "size": 371,
       "visibility": "public"
     },
     {
       "path": "styles/shared/ui/pixel/button-primary.png",
-      "sha256": "df588392486651f3e7068eff4c7adf159e33ecb06cbf824444d880969568fd6f",
-      "size": 394,
+      "sha256": "f43a676463d0e149574b40b57f3700f4f1240103fce2b621fe230e19ee0676e9",
+      "size": 384,
       "visibility": "public"
     },
     {

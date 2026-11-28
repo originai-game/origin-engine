@@ -402,8 +402,8 @@ function pixel(): Pack {
   };
   p.add("button", plateButton(PX["wood-lt"], PX["wood-md"], PX["wood-hi"], PX["wood-dk"]), 5 * k);
   p.add("button-down", plateButton(PX["wood-md"], PX.wood, PX["wood-lt"], PX["wood-dk"], true), 5 * k);
-  p.add("button-primary", plateButton(PX.green, PX["green-dk"], PX["green-hi"], PX["green-dk"]), 5 * k);
-  p.add("button-primary-down", plateButton(PX.green, PX["green-dk"], PX["green-hi"], PX["green-dk"], true), 5 * k);
+  p.add("button-primary", plateButton(PX.gold, PX["gold-dk"], PX["gold-hi"], PX["gold-dk"]), 5 * k);
+  p.add("button-primary-down", plateButton(PX.gold, PX["gold-dk"], PX["gold-hi"], PX["gold-dk"], true), 5 * k);
   p.add("button-danger", plateButton(PX.red, PX["red-dk"], PX["red-hi"], PX["red-dk"]), 5 * k);
   p.add("button-danger-down", plateButton(PX.red, PX["red-dk"], PX["red-hi"], PX["red-dk"], true), 5 * k);
 
@@ -814,7 +814,7 @@ function neon(): Pack {
 // Astro's Playroom)
 
 const CA = {
-  white: "#ffffff", lip: "#c3cae8", navy: "#2a1f5c", shadow: "#2a1f5c", pink: "#e0185f", "pink-lip": "#98093c",
+  white: "#ffffff", lip: "#c3cae8", navy: "#2a1f5c", shadow: "#2a1f5c", pink: "#c80f50", "pink-lip": "#860632",
   yellow: "#ffd23a", "yellow-lip": "#d68a00", red: "#d93a2c", "red-lip": "#8f1c12", lav: "#e4e7fb", "lav-lip": "#b9bfe6",
   groove: "#cdd2f0", "groove-dk": "#aab1e0",
 };
@@ -837,18 +837,18 @@ function candy(): Pack {
       : framed(bw, bh, pill(bw, bh, 13 * S), face, { lip: lipc, lipH: lip, gloss: "#ffffff55", soft: CA.shadow, softR: 3 * S, softDy: 2 * S, softA: 0.25, halo, haloW: 3 * S });
   p.add("button", btn([CA.white, "#eef0fd"], CA.lip), sl);
   p.add("button-down", btn("#eef0fd", CA.lip, true), sl);
-  p.add("button-primary", btn(["#f03a7a", CA.pink], CA["pink-lip"]), sl);
+  p.add("button-primary", btn(["#d8216a", CA.pink], CA["pink-lip"]), sl);
   p.add("button-primary-down", btn(CA.pink, CA["pink-lip"], true), sl);
   p.add("button-danger", btn(["#e85440", CA.red], CA["red-lip"]), sl);
   p.add("button-danger-down", btn(CA.red, CA["red-lip"], true), sl);
   p.add("entry", btn([CA.white, "#eef0fd"], CA.lip), sl);
   p.add("entry-on", btn(["#ffe066", CA.yellow], CA["yellow-lip"], false, CA.white), sl);
   p.add("tab", btn([CA.lav, "#d9ddf8"], CA["lav-lip"]), sl);
-  p.add("tab-on", btn(["#f03a7a", CA.pink], CA["pink-lip"]), sl);
+  p.add("tab-on", btn(["#d8216a", CA.pink], CA["pink-lip"]), sl);
   const tw = 40 * S, th = 20 * S;
   const groove = (c: Canvas) => c.rrect(2 * S, 2 * S, tw - 2 * S, th - 2 * S, 8 * S);
   p.add("track", framed(tw, th, groove, [CA["groove-dk"], CA.groove]), [0, 10 * S, 0, 10 * S]);
-  p.add("range", framed(tw, th, groove, ["#f03a7a", CA.pink], { gloss: "#ffffff59" }), [0, 10 * S, 0, 10 * S]);
+  p.add("range", framed(tw, th, groove, ["#d8216a", CA.pink], { gloss: "#ffffff59" }), [0, 10 * S, 0, 10 * S]);
   p.add("thumb", framed(32 * S, 32 * S, (c) => c.ellipse(4 * S, 3 * S, 28 * S, 25 * S), [CA.white, "#eef0fd"], { lip: CA.lip, lipH: 3 * S, gloss: "#ffffff80", soft: CA.shadow, softR: 2.5 * S, softDy: 2 * S, softA: 0.35 }), 0);
   p.add("bar", framed(tw, 24 * S, (c) => c.rrect(2 * S, 2 * S, tw - 2 * S, 20 * S, 9 * S), CA.navy + "d9", { lip: CA.lip, lipH: 2 * S }), [0, 11 * S, 0, 11 * S]);
 
@@ -874,7 +874,7 @@ function candy(): Pack {
 
 const CT: Record<string, string> = {
   ink: "#22142e", cream: "#fff6e3", "cream-dk": "#f1dfbd", "cream-lip": "#d9bd8c",
-  blue: "#2a6fe0", "blue-hi": "#58a2ff", "blue-lip": "#173f99",
+  blue: "#1f5bc8", "blue-hi": "#3f86ec", "blue-lip": "#123382",
   yellow: "#ffc61a", "yellow-hi": "#ffe86a", "yellow-lip": "#c47b00",
   red: "#d42c24", "red-hi": "#ff6f5c", "red-lip": "#8c130f",
   orange: "#ff7a1a", "orange-hi": "#ffb04a", "orange-lip": "#b84a00",

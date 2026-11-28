@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "@themes/pixel, @themes/candy, @themes/cartoon, @themes/anime, @themes/neon, @themes/minimal, @themes/comic",
+      "change": "The packs dress the new slots: each sets stage-hi, stage-lo and stage-glow for its fallback backdrop, its menu frame and larger menu labels; anime takes the larger 720p type scale. Pixel's primary button is gold, cartoon's buttons a deeper blue with ink-coloured words on the primary, candy's pink is deeper; minimal's menu is type over the veil with a gold bar for the current entry.",
+      "fix": "A game that matched these packs' former colours in its own UI takes the new ones."
+    }
+  ]
+}

@@ -20,11 +20,12 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
-      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2], "3xl": [32, 1.2], "4xl": [38, 1.15] },
       "colors": {
+        "stage-hi": "#7b5cf0", "stage-lo": "#3a1f8c", "stage-glow": "#ff9ad5",
         "fg": { "light": "#2a1f5c", "dark": "#ffffff" }, "fg-muted": { "light": "#4e4486", "dark": "#d9d6f2" }, "fg-subtle": { "light": "#5d5691", "dark": "#a8a3d0" },
-        "part-fg": "#2a1f5c", "part-on": "#ffffff", "part-gold": "#ffd23a", "part-pink": "#e0185f",
-        "accent": "#e0185f", "accent-fg": "#ffffff", "track": "#cdd2f0"
+        "part-fg": "#2a1f5c", "part-on": "#ffffff", "part-gold": "#ffd23a", "part-pink": "#c80f50",
+        "accent": "#c80f50", "accent-fg": "#ffffff", "track": "#cdd2f0"
       },
       "textShadow": { "wordmark": "0 4px 0 #98093c, 0 7px 0 #2a1f5c", "pop": "0 3px 0 #2a1f5c" },
       "duration": {"ready-pulse": 900, "flash": 320, "damage": 1000, "damage-stagger": 80, "trail-hold": 400, "trail": 700, "hit": 500, "arc": 800},
@@ -33,6 +34,9 @@ export default file.theme({
       "stroke": {"arc": 16}
     },
     "variants": {
+      "MenuList.frame": "flex-col gap-1.5",
+      "Screen.glow": "bg-radial from-stage-glow to-transparent to-60% opacity-dim",
+      "Screen.backdrop": "bg-linear-to-b from-stage-hi to-stage-lo",
       "Ability.box": "size-18 compact:size-12", "Ability.box.ultimate": "size-27 compact:size-16",
       "Screen.heading": "font-display text-display-2xl leading-none text-part-on text-stroke-4 text-stroke-part-pink text-shadow-wordmark -rotate-1",
       "Screen.note": "text-sm font-semibold text-fg",
@@ -56,12 +60,12 @@ export default file.theme({
       "Button.plate.ghost-faint": "nine-none bg-transparent text-fg-subtle hover:text-fg-muted",
       "Button.plate.outline": "nine-plate scheme-light text-part-fg",
       "Button.plate.menu": "relative w-full justify-start py-2 pl-7 pr-5 pb-3 nine-entry scheme-light text-part-fg data-current:scale-105 disabled:text-fg-subtle",
-      "Button.plate.menu-danger": "relative w-full justify-start py-2 pl-7 pr-5 pb-3 nine-entry text-fg-muted data-current:text-part-fg data-current:scale-105 disabled:text-fg-subtle",
+      "Button.plate.menu-danger": "relative w-full justify-start py-2 pl-7 pr-5 pb-3 nine-entry scheme-light text-part-pink data-current:text-part-fg data-current:scale-105 disabled:text-fg-subtle",
       "MenuList.indicator": "absolute -inset-1 nine-entry-on pointer-events-none glide-menu",
       "MenuList.indicator.danger": "",
       "MenuList.cursor": "hidden",
-      "MenuList.label": "text-start font-display text-2xl leading-tight",
-      "MenuList.label.md": "text-xl",
+      "MenuList.label": "text-start font-display text-3xl leading-tight",
+      "MenuList.label.md": "text-2xl",
       "MenuList.line": "text-start text-sm font-semibold text-fg-muted whitespace-nowrap overflow-hidden",
       "MenuList.chevron": "hidden",
       "Tab.list": "flex-row items-end gap-2",

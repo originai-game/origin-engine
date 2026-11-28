@@ -20,8 +20,9 @@ export default file.theme({
   "pack": {
     "images": images,
     "theme": {
-      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2] },
+      "fontSize": { "2xs": [13, 1.25], "xs": [14, 1.3], "meta": [15, 1.3], "caption": [15, 1.3], "sm": [16, 1.35], "body": [17, 1.4], "reading": [18, 1.45], "base": [18, 1.35], "lg": [21, 1.3], "xl": [24, 1.25], "2xl": [28, 1.2], "3xl": [32, 1.2], "4xl": [38, 1.15] },
       "colors": {
+        "stage-hi": "#2b3a6b", "stage-lo": "#0e1020", "stage-glow": "#ffd23d",
         "fg": { "light": "#17151c", "dark": "#f7efdc" }, "fg-muted": { "light": "#3b3745", "dark": "#cfc5ad" }, "fg-subtle": { "light": "#55505e", "dark": "#9b927f" },
         "part-fg": "#0d0c10", "part-on": "#ffffff", "part-gold": "#ffd21f", "part-red": "#d92631",
         "accent": "#ffd21f", "accent-fg": "#0d0c10", "track": "#17151c"
@@ -33,6 +34,9 @@ export default file.theme({
       "stroke": {"arc": 14}
     },
     "variants": {
+      "MenuList.frame": "flex-col nine-panel scheme-dark text-fg p-4",
+      "Screen.glow": "bg-radial from-stage-glow to-transparent to-60% opacity-dim",
+      "Screen.backdrop": "bg-linear-to-b from-stage-hi to-stage-lo",
       "Ability.box": "size-16 compact:size-11", "Ability.box.ultimate": "size-24 compact:size-14",
       "Screen.heading": "font-display text-display-2xl leading-none uppercase text-part-gold text-stroke-4 text-stroke-part-fg text-shadow-punch -rotate-2",
       "Screen.note": "text-sm font-semibold text-fg text-shadow-punch",
