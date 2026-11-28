@@ -207,6 +207,12 @@ only for code, IDs, keys, prices and logs. Sentence case; no uppercase labels.
 | `text-display-lg` | 40 / 44 | −0.02em | 50 |
 | `text-display-xl` | 48 / 52 | −0.022em | 60 |
 | `text-display-2xl` | 56 / 60 | −0.025em | 68 |
+| `text-display-3xl` | 72 / 72 | −0.02em | 84 |
+| `text-display-4xl` | 96 / 92 | −0.02em | 108 |
+
+`display-3xl` and `display-4xl` are a game's wordmark and headline steps (a
+title screen's name set in type, a VICTORY banner), for the one word a
+screen is about; the platform's pages stop at `display-2xl`.
 
 The interface steps `text-xl` 20 … `text-8xl` 64 keep their own tracking.
 Tracking belongs to the type step: Latin display steps tighten, Chinese

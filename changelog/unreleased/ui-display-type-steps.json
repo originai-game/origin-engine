@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Title.wordmark, text-display-3xl, text-display-4xl",
+      "summary": "A game's name set in type takes the pack's `Title.wordmark` slot; the type ramp gains the wordmark and headline steps `display-3xl` (72) and `display-4xl` (96)."
+    }
+  ]
+}

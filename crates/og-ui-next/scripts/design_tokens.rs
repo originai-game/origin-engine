@@ -60,6 +60,8 @@ const GROUPS: &[&str] = &[
     "font.scale.body",
     "font.scale.caption",
     "font.scale.display-2xl",
+    "font.scale.display-3xl",
+    "font.scale.display-4xl",
     "font.scale.display-lg",
     "font.scale.display-md",
     "font.scale.display-sm",

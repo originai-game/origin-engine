@@ -70,6 +70,15 @@
   --font-scale-display-2xl-size: 56px;
   --font-scale-display-2xl-line-height: 60px;
   --font-scale-display-2xl-letter-spacing: -0.025em;
+  /* A game's wordmark and headline steps (a title screen's name set in
+     type, a VICTORY banner): beyond the editorial ramp, for the one word a
+     screen is about. */
+  --font-scale-display-3xl-size: 72px;
+  --font-scale-display-3xl-line-height: 72px;
+  --font-scale-display-3xl-letter-spacing: -0.02em;
+  --font-scale-display-4xl-size: 96px;
+  --font-scale-display-4xl-line-height: 92px;
+  --font-scale-display-4xl-letter-spacing: -0.02em;
   /* Chinese text (any element under lang="zh…"): PingFang and its peers are set
      at zero tracking, and display steps get looser leading because CJK glyphs
      fill the em box. build.mjs emits these as overrides of the --text-*
@@ -88,6 +97,8 @@
   --font-cjk-line-height-display-lg: 50px;
   --font-cjk-line-height-display-xl: 60px;
   --font-cjk-line-height-display-2xl: 68px;
+  --font-cjk-line-height-display-3xl: 84px;
+  --font-cjk-line-height-display-4xl: 108px;
   /* Leading as a ratio of the size, for text a component sizes itself:
      `flat` a figure or a one-line plate, `tight` a display line, `snug` a
      wrapped label, `normal` running text, `loose` a key cap's or a chip's

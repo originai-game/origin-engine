@@ -140,6 +140,36 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "bg-danger",
     ),
     (
+        "MenuList.cursor",
+        "the mark beside a menu list's current entry (MenuList): a pack's pointer, arrow or glint at the entry's leading edge, over the indicator; none in the default pack, whose indicator is the selection",
+        "hidden",
+    ),
+    (
+        "MenuList.cursor.danger",
+        "the mark beside a current entry that ends something (Quit game)",
+        "",
+    ),
+    (
+        "MenuList.label",
+        "a menu entry's words (MenuEntry): the main menu's size; the pack sets the face, case and treatment",
+        "text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg",
+    ),
+    (
+        "MenuList.label.md",
+        "a pause menu's entry words (MenuEntry size md)",
+        "text-title compact:text-xl",
+    ),
+    (
+        "MenuList.line",
+        "the line under a menu entry's words (where the last save stands)",
+        "text-start text-base font-medium opacity-quiet whitespace-nowrap overflow-hidden",
+    ),
+    (
+        "MenuList.chevron",
+        "the chevron at a major menu entry's trailing end, shown while it is the current one",
+        "relative opacity-0 size-4 transition-opacity duration-control group-data-current/entry:opacity-100 rtl:-scale-x-100 rtl:scale-y-100",
+    ),
+    (
         "Button.spinner",
         "what a busy button shows before its label",
         "size-4 shrink-0 rounded-capsule border-regular border-current border-t-transparent animate-spin",
@@ -403,6 +433,21 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Panel.frame",
         "a window or panel's frame (the first glass layer)",
         "rounded-panel bg-linear-to-b from-glass-hi to-glass-lo backdrop-blur-regular text-fg shadow-panel inset-ring-hairline inset-ring-border",
+    ),
+    (
+        "Title.wordmark",
+        "a game's name set in type where it has no logo (a title or main menu's wordmark): the pack's display face, size and treatment",
+        "font-display text-display-2xl leading-tight font-bold text-fg text-shadow-xs text-shadow-bg",
+    ),
+    (
+        "Panel.body",
+        "a titled panel's inside (Panel): the room between its frame and its content, and the gap between its parts",
+        "flex-col gap-4 p-6 compact:p-4",
+    ),
+    (
+        "Panel.title",
+        "a titled panel's heading (Panel): its words or the band they sit on",
+        "font-display text-title font-bold leading-tight text-fg",
     ),
     (
         "Plate.frame",
