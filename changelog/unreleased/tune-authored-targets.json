@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "RuntimeProbe.bounds and probe wire bounds.items",
+      "change": "Tunable rows now expose an optional authoredTarget containing the canonical scene or prefab ID, authored entity path, component and field. The mapping comes from cooked declaration sites and live scene placements, not runtime labels.",
+      "fix": "Use bounds(id)[parameter].authoredTarget (wire: bounds.items[].authoredTarget) as the structured Stage edit target, adding value. Omit source-edit actions when absent. Inherited fields edit their defining source; computed expressions still refuse with a location and no write. Runtime patch remains memory-only."
+    }
+  ]
+}

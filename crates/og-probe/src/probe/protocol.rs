@@ -366,6 +366,14 @@ impl Probe {
                 let path = format!("{}.{}", schema.name, f.name);
                 let mut tunable = Map::new();
                 tunable.insert("path".into(), Value::String(path.clone()));
+                if let Some(target) = self
+                    .host
+                    .scene_author
+                    .as_ref()
+                    .and_then(|author| author.authored_target(world, e, &path))
+                {
+                    tunable.insert("authoredTarget".into(), target);
+                }
                 if let Some(label) = &f.label {
                     tunable.insert("label".into(), Value::String(label.clone()));
                 }

@@ -21305,10 +21305,57 @@ pub mod probe {
         }
     }
 
+    /// `AuthoredTarget`: packages/knowledge/wiki/probe.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AuthoredTarget {
+        pub scene: String,
+        pub entity: String,
+        pub component: String,
+        pub field: String,
+    }
+
+    impl Default for AuthoredTarget {
+        fn default() -> Self {
+            Self {
+                scene: Default::default(),
+                entity: Default::default(),
+                component: Default::default(),
+                field: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AuthoredTarget {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                scene: field(o, "scene", d.scene)?,
+                entity: field(o, "entity", d.entity)?,
+                component: field(o, "component", d.component)?,
+                field: field(o, "field", d.field)?,
+            })
+        }
+    }
+
+    impl ToJson for AuthoredTarget {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("scene".into(), self.scene.to_json());
+            o.insert("entity".into(), self.entity.to_json());
+            o.insert("component".into(), self.component.to_json());
+            o.insert("field".into(), self.field.to_json());
+            Value::Object(o)
+        }
+    }
+
     /// `ProbeTunable`: packages/knowledge/wiki/probe.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct ProbeTunable {
         pub path: String,
+        pub authored_target: Option<AuthoredTarget>,
         pub label: Option<String>,
         pub min: Option<f32>,
         pub max: Option<f32>,
@@ -21319,6 +21366,7 @@ pub mod probe {
         fn default() -> Self {
             Self {
                 path: Default::default(),
+                authored_target: Default::default(),
                 label: Default::default(),
                 min: Default::default(),
                 max: Default::default(),
@@ -21335,6 +21383,7 @@ pub mod probe {
             let o = object(v)?;
             Ok(Self {
                 path: field(o, "path", d.path)?,
+                authored_target: field(o, "authoredTarget", d.authored_target)?,
                 label: field(o, "label", d.label)?,
                 min: field(o, "min", d.min)?,
                 max: field(o, "max", d.max)?,
@@ -21347,6 +21396,9 @@ pub mod probe {
         fn to_json(&self) -> Value {
             let mut o = Map::new();
             o.insert("path".into(), self.path.to_json());
+            if let Some(x) = &self.authored_target {
+                o.insert("authoredTarget".into(), x.to_json());
+            }
             if let Some(x) = &self.label {
                 o.insert("label".into(), x.to_json());
             }

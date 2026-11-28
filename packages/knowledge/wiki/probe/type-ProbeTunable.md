@@ -11,6 +11,7 @@ One published tunable parameter and the range it means something over.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `path` | `string` | `""` | — | — | — | Where the value lives, as `Health.hp`. |
+| `authoredTarget` | `AuthoredTarget` | `{ scene: "", entity: "", component: "", field: "" }` | — | — | optional | Source-edit target; absent for runtime-only or unauthored fields. Discovery does not guarantee the expression is a writable literal. |
 | `label` | `string` | `""` | — | — | optional | The person-facing name. |
 | `min` | `number` | `0` | — | — | optional | The smallest meaningful value. |
 | `max` | `number` | `0` | — | — | optional | The largest meaningful value. |
@@ -20,6 +21,9 @@ One published tunable parameter and the range it means something over.
 struct ProbeTunable {
   doc "One published tunable parameter and the range it means something over."
   field path String "Where the value lives, as `Health.hp`."
+  field authoredTarget AuthoredTarget "Source-edit target; absent for runtime-only or unauthored fields. Discovery does not guarantee the expression is a writable literal." {
+    optional true
+  }
   field label String "The person-facing name." {
     optional true
   }
@@ -35,4 +39,4 @@ struct ProbeTunable {
 }
 ```
 
-<sub>Module `probe` line 44</sub>
+<sub>Module `probe` line 52</sub>

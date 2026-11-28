@@ -29466,10 +29466,30 @@ export interface UiPickElement {
   readonly rules: readonly UiPickRule[];
 }
 
+/**
+ * A development source-edit target accepted by og set and Stage. Inherited fields resolve to their defining source; computed declarations refuse edits with their location.
+ */
+export interface AuthoredTarget {
+  /** Canonical scene or prefab content ID. */
+  readonly scene: string;
+  /**
+   * Expanded entity path accepted by og set within that declaration. Pass it unchanged; it is not a runtime probe ID.
+   */
+  readonly entity: string;
+  /** Authored component name. */
+  readonly component: string;
+  /** Authored field name. */
+  readonly field: string;
+}
+
 /** One published tunable parameter and the range it means something over. */
 export interface ProbeTunable {
   /** Where the value lives, as `Health.hp`. */
   readonly path: string;
+  /**
+   * Source-edit target; absent for runtime-only or unauthored fields. Discovery does not guarantee the expression is a writable literal.
+   */
+  readonly authoredTarget?: AuthoredTarget;
   /** The person-facing name. */
   readonly label?: string;
   /** The smallest meaningful value. */
@@ -30811,7 +30831,7 @@ export interface RuntimeProbe {
    */
   entity(id: string): Readonly<Record<string, unknown>> | null;
   /**
-   * The ranges of one entity's tunable fields, from the schema.
+   * The ranges and authored source-edit targets of one entity's tunable fields. Targets are development-only; the probe never writes source.
    *
    * @param id The probe id.
    * @returns Null for an unknown entity.

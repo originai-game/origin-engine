@@ -13736,6 +13736,7 @@
         "PickResult",
         "UiPickRule",
         "UiPickElement",
+        "AuthoredTarget",
         "ProbeTunable",
         "ProbeEntityRef",
         "ProbeTimings",
@@ -13966,7 +13967,7 @@
             },
             {
               "name": "bounds",
-              "doc": "The ranges of one entity's tunable fields, from the schema.",
+              "doc": "The ranges and authored source-edit targets of one entity's tunable fields. Targets are development-only; the probe never writes source.",
               "params": [
                 {
                   "name": "id",
@@ -52805,6 +52806,37 @@
       ],
       "additionalProperties": false
     },
+    "AuthoredTarget": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A development source-edit target accepted by og set and Stage. Inherited fields resolve to their defining source; computed declarations refuse edits with their location.",
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Canonical scene or prefab content ID."
+        },
+        "entity": {
+          "type": "string",
+          "description": "Expanded entity path accepted by og set within that declaration. Pass it unchanged; it is not a runtime probe ID."
+        },
+        "component": {
+          "type": "string",
+          "description": "Authored component name."
+        },
+        "field": {
+          "type": "string",
+          "description": "Authored field name."
+        }
+      },
+      "required": [
+        "scene",
+        "entity",
+        "component",
+        "field"
+      ],
+      "additionalProperties": false
+    },
     "ProbeTunable": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
@@ -52814,6 +52846,10 @@
         "path": {
           "type": "string",
           "description": "Where the value lives, as `Health.hp`."
+        },
+        "authoredTarget": {
+          "$ref": "#/$defs/AuthoredTarget",
+          "description": "Source-edit target; absent for runtime-only or unauthored fields. Discovery does not guarantee the expression is a writable literal."
         },
         "label": {
           "type": "string",

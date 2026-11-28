@@ -88,12 +88,13 @@ export function wireBounds(declared: unknown, values: unknown): { items: Array<R
   return {
     items: Object.entries(d).map(([parameter, row]) => {
       const r = plain(row) ?? {};
-      const { label, path, min, max, step } = r;
+      const { label, path, min, max, step, authoredTarget } = r;
       const value = v[parameter];
       return {
         parameter,
         ...(typeof label === "string" && label ? { label } : {}),
         ...(typeof path === "string" && path ? { path } : {}),
+        ...(plain(authoredTarget) ? { authoredTarget } : {}),
         ...(finite(min) && finite(max) && max >= min ? { min, max } : {}),
         ...(finite(step) && step > 0 ? { step } : {}),
         ...(finite(value) ? { value } : {}),

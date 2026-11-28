@@ -346,6 +346,14 @@ pub trait SceneView {
 /// Source provenance and memory-only prefab resets supplied by the host.
 /// This hook never edits an author's source files.
 pub trait SceneAuthor {
+    /// Checked scene/prefab target accepted by `og set` and Stage source edits:
+    /// `{scene, entity, component, field}`. None for fields without an authored
+    /// declaration. Computed declarations may resolve but refuse source edits.
+    fn authored_target(&self, world: &World, entity: Entity, parameter: &str) -> Option<Value> {
+        let _ = (world, entity, parameter);
+        None
+    }
+
     /// Where an entity is declared: `content/scenes/main.ts:12`, the
     /// captured expression in its scene, or for one the game
     /// spawned at run time the line that spawned it (SpawnDesc.source:

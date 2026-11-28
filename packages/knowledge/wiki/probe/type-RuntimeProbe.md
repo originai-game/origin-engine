@@ -15,7 +15,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 812</sub>
+<sub>Module `probe` line 823</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -35,7 +35,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>Module `probe` line 816</sub>
+<sub>Module `probe` line 827</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -59,7 +59,7 @@ fn tick {
 }
 ```
 
-<sub>Module `probe` line 819</sub>
+<sub>Module `probe` line 830</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -83,7 +83,7 @@ fn state {
 }
 ```
 
-<sub>Module `probe` line 824</sub>
+<sub>Module `probe` line 835</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -112,7 +112,7 @@ fn advance {
 }
 ```
 
-<sub>Module `probe` line 829</sub>
+<sub>Module `probe` line 840</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -135,7 +135,7 @@ fn pause {
 }
 ```
 
-<sub>Module `probe` line 835</sub>
+<sub>Module `probe` line 846</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -158,7 +158,7 @@ fn resume {
 }
 ```
 
-<sub>Module `probe` line 839</sub>
+<sub>Module `probe` line 850</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -187,7 +187,7 @@ fn input {
 }
 ```
 
-<sub>Module `probe` line 843</sub>
+<sub>Module `probe` line 854</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -210,7 +210,7 @@ fn accepted {
 }
 ```
 
-<sub>Module `probe` line 849</sub>
+<sub>Module `probe` line 860</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -241,7 +241,7 @@ fn pick {
 }
 ```
 
-<sub>Module `probe` line 853</sub>
+<sub>Module `probe` line 864</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -270,13 +270,13 @@ fn entity {
 }
 ```
 
-<sub>Module `probe` line 860</sub>
+<sub>Module `probe` line 871</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
 #### `RuntimeProbe.bounds`
 
-The ranges of one entity's tunable fields, from the schema.
+The ranges and authored source-edit targets of one entity's tunable fields. Targets are development-only; the probe never writes source.
 
 ```ts
 RuntimeProbe.bounds(id: string): Readonly<Record<string, ProbeTunable>> | null
@@ -292,13 +292,13 @@ Binding symbol `og_runtime_probe_bounds` · publish builds: dropped
 
 ```ogt
 fn bounds {
-  doc "The ranges of one entity's tunable fields, from the schema."
+  doc "The ranges and authored source-edit targets of one entity's tunable fields. Targets are development-only; the probe never writes source."
   param id String "The probe id."
   returns Option.Map.ProbeTunable "Null for an unknown entity."
 }
 ```
 
-<sub>Module `probe` line 866</sub>
+<sub>Module `probe` line 877</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -330,7 +330,7 @@ fn patch {
 }
 ```
 
-<sub>Module `probe` line 871</sub>
+<sub>Module `probe` line 882</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -359,4 +359,4 @@ fn run {
 }
 ```
 
-<sub>Module `probe` line 878</sub>
+<sub>Module `probe` line 889</sub>

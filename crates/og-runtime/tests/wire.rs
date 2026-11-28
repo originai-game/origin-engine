@@ -4,6 +4,110 @@
 #[path = "../../../tests/temp.rs"]
 mod temp;
 
+/// Tune discovers checked targets even for unnamed prefab instances; runtime
+/// ids and overridden instance names are not author identities.
+#[test]
+fn tune_discovers_authored_targets_from_live_scene_placements() {
+    use og_runtime::*;
+    use serde_json::{Value, json};
+    use std::rc::Rc;
+    struct Files;
+    impl Hooks for Files {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(bytes) => Fetch::Ready(bytes),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+    }
+    let root = temp::TempDir::new("tune-authored-targets");
+    crate::init_project(&root);
+    std::fs::create_dir_all(root.join("content")).unwrap();
+    std::fs::write(root.join("content/rig.ts"), "import {file} from '@origingame/engine/author';export default file.prefab({entity:{name:'rig',children:[{name:'lens',components:{'og.OrbitCamera':{distance:13}}}]}});").unwrap();
+    std::fs::write(root.join("content/room.ts"), "import {file,ref} from '@origingame/engine/author';export default file.scene({entities:[{name:'placed',prefab:ref('base/rig'),edits:[{kind:'override',path:'lens',components:{'og.OrbitCamera':{azimuth:0.7}}}]}]});").unwrap();
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    set_hooks(Rc::new(Files));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({"seed":1}).to_string()));
+    let created: Value = serde_json::from_str(&og_engine_create(
+        game,
+        json!({"root":root.to_str().unwrap()}).to_string(),
+    ))
+    .unwrap();
+    assert_eq!(created["ok"], true, "{created}");
+    let engine = created["value"].as_u64().unwrap() as u32;
+    let scene = og_load_scene(engine, "base/room".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    og_world_instantiate(engine, scene, None).unwrap();
+    let bounds: Value =
+        serde_json::from_str(&og_runtime_probe_bounds(engine, "placed/lens".into())).unwrap();
+    for field in ["distance", "azimuth"] {
+        assert_eq!(
+            bounds[format!("og.OrbitCamera.{field}")]["authoredTarget"],
+            json!({"scene":"base/room","entity":"placed/placed/lens","component":"og.OrbitCamera","field":field})
+        );
+    }
+    assert!(
+        bounds["og.OrbitCamera.polar"]
+            .get("authoredTarget")
+            .is_none()
+    );
+    let prefab = og_load_prefab(engine, "base/rig".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    for _ in 0..2 {
+        let placed = og_world_instantiate(engine, prefab, None)
+            .unwrap()
+            .as_f64()
+            .unwrap();
+        let rig = og_world_children(engine, placed)[0].as_f64().unwrap();
+        let lens = og_world_children(engine, rig)[0].as_f64().unwrap();
+        let entity = og_ecs::Entity::from_bits(lens as u64);
+        let id = format!("#{}.{}", entity.index(), entity.generation());
+        let bounds: Value = serde_json::from_str(&og_runtime_probe_bounds(engine, id)).unwrap();
+        assert_eq!(
+            bounds["og.OrbitCamera.distance"]["authoredTarget"],
+            json!({"scene":"base/rig","entity":"rig/lens","component":"og.OrbitCamera","field":"distance"})
+        );
+        assert!(
+            bounds["og.OrbitCamera.azimuth"]
+                .get("authoredTarget")
+                .is_none()
+        );
+    }
+    // A source site is development data, not a second authoring path in a
+    // publish blob. Even a development probe cannot recover it after refresh.
+    let published = og_cook::cook_project(
+        &root,
+        &og_cook::CookOptions {
+            publish: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(published.ok(), "{:?}", published.errors());
+    let refreshed = dev_refresh(engine).unwrap();
+    assert_eq!(refreshed["warnings"], json!([]));
+    let bounds: Value =
+        serde_json::from_str(&og_runtime_probe_bounds(engine, "placed/lens".into())).unwrap();
+    assert!(bounds.as_object().is_some_and(|rows| !rows.is_empty()));
+    assert!(
+        bounds
+            .as_object()
+            .unwrap()
+            .values()
+            .all(|row| row.get("authoredTarget").is_none())
+    );
+    assert!(og_engine_destroy(engine));
+}
+
 /// A delivery dependency is available before its parent's completion, cannot
 /// be released under that parent, and cannot shadow an already-open identity.
 #[test]

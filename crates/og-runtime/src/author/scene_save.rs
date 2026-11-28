@@ -60,6 +60,41 @@ fn node_path(scene: &og_bundle::runtime::SceneDesc, node: usize) -> Option<Strin
 }
 
 impl SceneAuthor for RuntimeAuthor {
+    fn authored_target(&self, _: &World, entity: Entity, parameter: &str) -> Option<Value> {
+        let eng = engine(self.engine).ok()?;
+        let (index, row) = placement(&eng, entity)?;
+        let assets = eng.assets.borrow();
+        let Payload::Scene(scene) = &assets.entries[index].payload else {
+            return None;
+        };
+        let (component, field) = parameter.rsplit_once('.')?;
+        let state = eng.state.borrow();
+        // Use the same registered-name resolution as scene spawning. An
+        // author's `Transform` and the runtime's `og.Transform` are one type.
+        let authored_component = scene.sources.get(row)?.keys().find_map(|key| {
+            let (name, f) = key.rsplit_once('.')?;
+            let layout = state
+                .layouts
+                .get(name)
+                .or_else(|| state.layouts.get(&format!("og.{name}")))?;
+            (f == field && layout.schema == component).then_some(name)
+        })?;
+        let mut names = Vec::new();
+        let mut at = Some(row);
+        while let Some(i) = at {
+            let node = scene.entities.get(i)?;
+            names.push(node.name.as_str());
+            at = node.parent;
+        }
+        names.reverse();
+        Some(json!({
+            "scene": scene.id,
+            "entity": names.join("/"),
+            "component": authored_component,
+            "field": field,
+        }))
+    }
+
     fn source(&self, _: &World, entity: Entity) -> Option<String> {
         let eng = engine(self.engine).ok()?;
         if let Some((index, row)) = placement(&eng, entity) {

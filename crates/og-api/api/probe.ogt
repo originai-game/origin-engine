@@ -41,9 +41,20 @@ module probe {
     field rules List.UiPickRule "Every style rule that dresses its part, in the order they apply."
   }
 
+  struct AuthoredTarget {
+    doc "A development source-edit target accepted by og set and Stage. Inherited fields resolve to their defining source; computed declarations refuse edits with their location."
+    field scene String "Canonical scene or prefab content ID."
+    field entity String "Expanded entity path accepted by og set within that declaration. Pass it unchanged; it is not a runtime probe ID."
+    field component String "Authored component name."
+    field field String "Authored field name."
+  }
+
   struct ProbeTunable {
     doc "One published tunable parameter and the range it means something over."
     field path String "Where the value lives, as `Health.hp`."
+    field authoredTarget AuthoredTarget "Source-edit target; absent for runtime-only or unauthored fields. Discovery does not guarantee the expression is a writable literal." {
+      optional true
+    }
     field label String "The person-facing name." {
       optional true
     }
@@ -864,7 +875,7 @@ module probe {
       returns Option.Map.Json "Null for an unknown entity."
     }
     fn bounds {
-      doc "The ranges of one entity's tunable fields, from the schema."
+      doc "The ranges and authored source-edit targets of one entity's tunable fields. Targets are development-only; the probe never writes source."
       param id String "The probe id."
       returns Option.Map.ProbeTunable "Null for an unknown entity."
     }

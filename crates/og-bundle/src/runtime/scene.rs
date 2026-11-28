@@ -88,6 +88,9 @@ pub struct SceneDesc {
     pub resource_bindings: RecordBindings,
     /// Original TS file per entity, omitted in publish cooks and imported models.
     pub origins: Vec<String>,
+    /// Captured declaration sites by entity row and `Component.field`.
+    /// Empty for publish cooks and imported models; never inferred from names.
+    pub sources: Vec<std::collections::BTreeMap<String, serde_json::Value>>,
     pub overrides: std::collections::BTreeMap<usize, Vec<String>>,
 }
 
@@ -324,6 +327,16 @@ impl SceneDesc {
         {
             return Err(bad("source origin entity index out of range".into()));
         }
+        let sources: Vec<std::collections::BTreeMap<String, serde_json::Value>> =
+            match blob.raw_opt("sources") {
+                Some(bytes) => {
+                    serde_json::from_slice(bytes).map_err(|e| bad(format!("source sites: {e}")))?
+                }
+                None => Vec::new(),
+            };
+        if !sources.is_empty() && sources.len() != out.len() {
+            return Err(bad("source site entity index out of range".into()));
+        }
         Ok(SceneDesc {
             id: id.to_string(),
             name: s(meta.name_offset, meta.name_len)?,
@@ -335,6 +348,7 @@ impl SceneDesc {
             bindings,
             resource_bindings,
             origins,
+            sources,
             overrides,
         })
     }

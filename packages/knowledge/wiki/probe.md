@@ -38,6 +38,7 @@ module probe {
 | [`PickResult`](probe/type-PickResult.md) | struct |  | What a screen point resolved to in the scene. |
 | [`UiPickRule`](probe/type-UiPickRule.md) | struct |  | A style rule that dresses a picked element's part. |
 | [`UiPickElement`](probe/type-UiPickElement.md) | struct |  | The UI element under a point (docs/ui.md §6): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through. |
+| [`AuthoredTarget`](probe/type-AuthoredTarget.md) | struct |  | A development source-edit target accepted by og set and Stage. |
 | [`ProbeTunable`](probe/type-ProbeTunable.md) | struct |  | One published tunable parameter and the range it means something over. |
 | [`ProbeEntityRef`](probe/type-ProbeEntityRef.md) | struct |  | One entity the probe publishes in state(). |
 | [`ProbeTimings`](probe/type-ProbeTimings.md) | struct |  | The fixed timings head of state(). |
@@ -164,4 +165,4 @@ const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe progra
 const CAPTURE_FIT u32 1280 "The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region)."
 ```
 
-<sub>Module `probe` line 173</sub>
+<sub>Module `probe` line 184</sub>

@@ -382,6 +382,14 @@ computed/shared expressions require an explicit source edit. Inspector/Tune
 changes memory only. Runtime Save/Apply refuse persistence; Revert restores
 selected fields from the cooked prefab in memory. `og set` supplies a checked,
 source-bound edit for direct TS literals, never a runtime entity serializer.
+`RuntimeProbe.bounds(id)[parameter].authoredTarget` discovers the exact
+`{scene, entity, component, field}` target that `og set` and Stage source edits
+accept; the shell wire carries it in `bounds.items[].authoredTarget`. Scene
+and prefab placements resolve through cooked declaration sites, including
+inherited fields. Pass the expanded entity path unchanged, not the runtime
+id or label. Runtime-only and default-only fields omit the target; computed
+declarations can resolve but still refuse edits with their source location.
+Publish cooks carry no sites and publish probes expose no `bounds` member.
 
 **Determinism.** Flattening is a pure function of captured native declarations.
 
