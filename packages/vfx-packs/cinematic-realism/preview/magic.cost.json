@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.9.0",
+    "revision": "a90673779220d035041cc7eb4b1ef05dd3540eb9"
+  },
+  "device": "NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540)",
+  "peakFrameMs": {
+    "sim": 0.019,
+    "total": 0.086,
+    "transparent": 0.013
+  },
+  "peakParticles": 64,
+  "draws": 14,
+  "bounds": {
+    "anchor": "centre",
+    "belowOrigin": 0.21,
+    "clipped": false,
+    "max": [
+      0.58,
+      0.8,
+      0.59
+    ],
+    "min": [
+      -0.59,
+      -0.2,
+      -0.59
+    ],
+    "size": [
+      1.17,
+      1.0,
+      1.19
+    ]
+  }
+}

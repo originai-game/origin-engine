@@ -1010,6 +1010,48 @@
       "visibility": "public"
     },
     {
+      "path": "extensions/realistic-starter/textures/dirt.png",
+      "sha256": "232ded677f1fdba0585fcd8c0971936c50d69dcf65d47765928cffb783fdb85f",
+      "size": 280833,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/fire.png",
+      "sha256": "b0fde238e03d5d407588713f7c28555b6ad3e2352d5117834626681622d888ff",
+      "size": 114197,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/flame.png",
+      "sha256": "d4890fd59cdcc93e11be41b0a9a1987b686577243ecd46b24c2938ff565b565e",
+      "size": 117394,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/muzzle.png",
+      "sha256": "1ff07057dc1f6ac5cb05ddc3dd4ad6adaec5ba81a5b5183c0979f5b56e528e4f",
+      "size": 144063,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/ring.png",
+      "sha256": "513ee482c5602e7a738eb61dc170461a9f75bf0e5f339a95a80dc2df8c859513",
+      "size": 38480,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/scorch.png",
+      "sha256": "ce46d67d70f0d0ac8653dcf9e360fcba0c7aa7bcb5b1ba84db0819e3a0dc17c6",
+      "size": 35839,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/smoke.png",
+      "sha256": "396d44615ff1257213f63b9133334e317533341aefb0087019abec1d9aa0fcdc",
+      "size": 174645,
+      "visibility": "public"
+    },
+    {
       "path": "motion/model.safetensors",
       "sha256": "ee488c6d72e6e1b547ed583847c24cb4b81ea5563f1359699a3536331216e6fe",
       "size": 35353890,

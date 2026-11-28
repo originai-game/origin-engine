@@ -182,6 +182,13 @@ motion/
 /extensions/pixel-scenario/preview/teleport-blink.png
 /extensions/pixel-scenario/preview/triple-slash-combo-with-blue-energy.png
 /extensions/pixel-scenario/preview/water-splash.png
+/extensions/realistic-starter/textures/dirt.png
+/extensions/realistic-starter/textures/fire.png
+/extensions/realistic-starter/textures/flame.png
+/extensions/realistic-starter/textures/muzzle.png
+/extensions/realistic-starter/textures/ring.png
+/extensions/realistic-starter/textures/scorch.png
+/extensions/realistic-starter/textures/smoke.png
 /motion/model.safetensors
 /shell/brand/icon-192.png
 /shell/brand/icon-512.png

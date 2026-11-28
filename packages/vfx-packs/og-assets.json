@@ -362,6 +362,666 @@
       "visibility": "public"
     },
     {
+      "path": "cinematic-realism/preview/afterburner.png",
+      "sha256": "f3ff396428f48a9dceb36b82a0a9b4665a486f2fec09b094bde9aba3698e054a",
+      "size": 810023,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/barrier.png",
+      "sha256": "2046d3fc95ed037a6dfd6bd3a3917c674ce610218a6bf1eb47857ecff757edab",
+      "size": 684945,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/beacon.png",
+      "sha256": "e309a235feca5398c6849e64a9e6f19b3bae4aa1191ac9e7e34f184ca61096a5",
+      "size": 287179,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/bolt.png",
+      "sha256": "14f987709eca1337c2a3bc2b8b5a8352e42c8c204875fdd1437f4cf07e335ed2",
+      "size": 778194,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/boost.png",
+      "sha256": "462064476e82963bca2843292e18b5512bb0b05eb1e0bc4158d287644c878b40",
+      "size": 510895,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/break-glass.png",
+      "sha256": "e7eff47229b77941e626dbf728ac326410281f1689e064ca29feae17f0d2cbc3",
+      "size": 259264,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/break-stone.png",
+      "sha256": "b76b70d8f4c829829d9ceb9279e31a57bef8bee41af8dabb93f5f0a6d17f7d44",
+      "size": 294367,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/break-wood.png",
+      "sha256": "9814064e834ce1903d4336c30ab9fa5858a7f8e5ea570259d0322799ef671683",
+      "size": 261023,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/buff.png",
+      "sha256": "76a8eb9232553d2661a98877670d330034e5734060914bc3b5abea9c3fa981ba",
+      "size": 581640,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/burning.png",
+      "sha256": "78d89808338557ea9b26cc77a9a5c439ade56ac1794f44505166f23243fa1125",
+      "size": 904264,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/campfire.png",
+      "sha256": "589ef2708a50e762aaa081b6aeae394d86ee09d831574eaea0f3141dd30f1f87",
+      "size": 1021985,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/car-exhaust.png",
+      "sha256": "9b561d2a50a0d5b3a1938776e197e0db4a1ea00d0bc245dcdec94af5c6497d50",
+      "size": 338216,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/celebration.png",
+      "sha256": "c9425593f5c18e9153af69476a87c6d5a3d57d694aee46529d15adb1ea78c72a",
+      "size": 259587,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/charge.png",
+      "sha256": "e717adfff3aa31794aeb1432b2dc50f5b57c3013df63ae02ebc778318f328924",
+      "size": 1106129,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/chest-open.png",
+      "sha256": "f4a2e26f907144b7c7a544d0213348a41c6f2b440102501f73bc906d22fe9f6a",
+      "size": 963289,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/cover.png",
+      "sha256": "fb8839c76beef4303d443b28e6cab4634dc348004bde7ea054ea28f5b504f9e6",
+      "size": 167722,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/damage-smoke.png",
+      "sha256": "c362b9f4a534c0a77bcfd54095e8490dfb9fef98fa5964789e70c110e5576e1f",
+      "size": 374767,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/dash.png",
+      "sha256": "8f16deb830b9067e9d19050f3c5bd67eee541de901529de9c710806cf1b96693",
+      "size": 213501,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/debuff.png",
+      "sha256": "8eb8886ca7b2a6f9800a2d066d244a05eec56ff05190d3cb666a8b31476b3eb6",
+      "size": 689632,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/dissolve.png",
+      "sha256": "9375746693c7e52883a17d25cbc2b85da7915b24bd7bf61b2ceafe29c9f27965",
+      "size": 349817,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/downwash.png",
+      "sha256": "ae3e13a84a2a46494c525c4bb04a531d5351e7611911b0bc440ef8d0f403029f",
+      "size": 399356,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/drip.png",
+      "sha256": "b750daad788a10c8f00d5644b8194b089bbd432ca0aa9e6cb995c27a99446221",
+      "size": 237956,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/dust.png",
+      "sha256": "155e7358d9e5b3059f7c24f09bcca837a38118e3ce470dbcdcc10f3d717979fa",
+      "size": 376046,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/electric-sparks.png",
+      "sha256": "2d6d17c8e64ae2d1d74607906c5d9ed9c002484ad641dfb08a8ad2354e25d14c",
+      "size": 474666,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/embers.png",
+      "sha256": "884f85defb05d5627adc3258339d8c07bd8c50c8cb68bdf80253057e5f72b899",
+      "size": 177478,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/exhaust.png",
+      "sha256": "2936c48486f1994b3157ee29ce6d338e69cf8e1a190642c7f11b2e346502a542",
+      "size": 864756,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion-air.png",
+      "sha256": "9913ef9fa0197c387a0d41d669d69059bae22ebc926451751c0ae0b1eb6341e4",
+      "size": 372613,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion-energy.png",
+      "sha256": "c02bf6899ac3cb6c542e7ff843749b39250f3c34250a7a7aa7c33b907db8db4c",
+      "size": 535244,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion-large.png",
+      "sha256": "b7cf316bfcaf1b03070ab2593884a474d26d167ffcec181eea5ae27a51f7919e",
+      "size": 592044,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion-small.png",
+      "sha256": "1ff618c53ca5def683bb42b77a6858d676ce549c8780244678a0c22eaf5e0ef4",
+      "size": 528750,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion-water.png",
+      "sha256": "fb9d42a04470036968f78ba09d8682094c029f6c249f7c9d1affb27a85930bd4",
+      "size": 436130,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/explosion.png",
+      "sha256": "2baeb24569bd2953e99d8d6b58acdc679fb401b695ffbbdbb8459b9dcf474519",
+      "size": 738637,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/fire-large.png",
+      "sha256": "c85be13ec0c4134b30ceba24a34eb1f94ff3386b20f5dba97251ee53619c09b3",
+      "size": 913588,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/fireflies.png",
+      "sha256": "0f7b6967b97e3a9970b54017ac311a3462673e4a43c2cd64c83400f8f2f55308",
+      "size": 177654,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/fireworks.png",
+      "sha256": "79fdcd4ee181cb5b6884ea0efe38a21b40cfacb1b7f99c59edc3c6c46af6fcea",
+      "size": 356037,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/flamethrower.png",
+      "sha256": "92c42beb6d607a2f0c09e037b7423bbf8503d443283b4dd4cd73900df9f2338d",
+      "size": 958279,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/flashbang.png",
+      "sha256": "45686fb8c3caaf986043fe2642aa667621e11df1e8cc97e9f71e8b8876ef458a",
+      "size": 491800,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/footstep-dust.png",
+      "sha256": "41ce51c95a1f0e24ba7dc87beb7b4cdbf561d2917917a6f01a22e8ea81cc1f8f",
+      "size": 303746,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/footstep-water.png",
+      "sha256": "d71b2c8a2bc7e2610ea9e7cbaa033295362a50aeccb00d1e7a9fc932d5d5b13e",
+      "size": 294173,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/fountain.png",
+      "sha256": "f54aa90d929271e773222cedd38f50869708b2741aada0cfcecc6c2bdbeb2d17",
+      "size": 468046,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/frozen.png",
+      "sha256": "6ddb6ee799a4b6f262453f4d00dfde43d7a9e3784026de44ecdc82a1fcf37565",
+      "size": 514726,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/grenade-trail.png",
+      "sha256": "a8e6733e6c48d5ab85c6db35d8286631c69117ed2c7f0ef19a48eababb3b037c",
+      "size": 346505,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/ground-fog.png",
+      "sha256": "d607aff642ed39b1893bafefb2110d58df3ab9faa138f108d02c410f7ba0e3ef",
+      "size": 372561,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/heal.png",
+      "sha256": "49f87834e44696291e2c39b5644fb0ef67041c8bd0434311d5b6f78710dd7b89",
+      "size": 603790,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-concrete.png",
+      "sha256": "13528792b2867bdd59859a7003a5d0075cdf63da96288697e95857cee43fabf6",
+      "size": 313485,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-dirt.png",
+      "sha256": "a37080ba558cdd14a039f2ac5bd96f3aa2c7adbbeb7ae2c98676e28b4f06fd09",
+      "size": 336201,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-flesh.png",
+      "sha256": "586d4abe80a19439b0e91f516cc6344a0b833a8a28af2e4b3c9c8fbb8fa84b8a",
+      "size": 275325,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-glass.png",
+      "sha256": "7c7221111b44180059531088b126521101a9e6f7fe7f42685a8f8f99c89ce940",
+      "size": 229299,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-water.png",
+      "sha256": "7065a82c4bd42d5407a9f893a4fd5a0a59bffa8c18447ba77ec9b79263afe923",
+      "size": 272225,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact-wood.png",
+      "sha256": "5d9113eb850c3350f0b24f94a041f995bfcd370e84d0282cf15296455f7ee58a",
+      "size": 276573,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/impact.png",
+      "sha256": "25b0c2467d3cdede34fff027b81d14e3dc771442aa0bc6975da450fcde7bf813",
+      "size": 363053,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/landing.png",
+      "sha256": "dd5b0e315fed004bbc247b63528103f5a75e1879489d651f483e2378b667abf6",
+      "size": 336629,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/laser.png",
+      "sha256": "b8f9c1523ac0c41b4cccb10520b2496ac2254d6dab00256f7f455756f8e7aca7",
+      "size": 196815,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/leaves.png",
+      "sha256": "faff77025d490268175ec33c43d14494e0f88b51626dd680990641e9de9eb28f",
+      "size": 226564,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/level-up.png",
+      "sha256": "9f79717019006fd0e1d3ee833acc71de43a80e19110d205d882f5db40d0e67c2",
+      "size": 521750,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/loot-glow.png",
+      "sha256": "3451ce17a7027d471d31922cd55098275bd66ef14877dbf3f445dd3590101da7",
+      "size": 618498,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/magic-bolt.png",
+      "sha256": "a509ee1f52adc3f08b39d1d54291a75f57e355e82b1d7ccde74302e8e7bc1381",
+      "size": 771696,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/magic-circle.png",
+      "sha256": "47dbe617f708b22c6a4d13c61f9740585508a177095b83835904001b8b3c0a97",
+      "size": 996710,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/magic.png",
+      "sha256": "6d45963e1ec4cf35a323ffa6ed617f914b6eff3ff6e1405c51f46c733ce894b4",
+      "size": 649033,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/mark-bullet.png",
+      "sha256": "1caa54585b9bfb3db1f96bf6565d53956de11c24808c386fcdf9adf15b6e9f80",
+      "size": 255959,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/mark-burn.png",
+      "sha256": "d0efd410bda9f8cd4bb3e0ff1ba2c202d76e3aa89ff34406dbf30385203e198f",
+      "size": 459329,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/mark-wet.png",
+      "sha256": "b7520a7997106d3ce8d445a8249a4d447f11d8e15425723b515b37c1b8d10f06",
+      "size": 273533,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/muzzle-auto.png",
+      "sha256": "cb65c7eb5ab5dedbf62a137e948c50536f22a542a807970672035411e171a89e",
+      "size": 565635,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/muzzle-heavy.png",
+      "sha256": "155af32f3be6d04f1be309aeebdab305e6b38f18e0ec1c0099ce4dafd53a588f",
+      "size": 515865,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/muzzle-suppressed.png",
+      "sha256": "442a094b3e40d1c13da7b23e0b9979645dcd45537e5f6d7a9b1b6c6d4ba3d27f",
+      "size": 283790,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/muzzle.png",
+      "sha256": "208272153250005322adfedfb8768f846673b057fe003077cf5367cf64fba7de",
+      "size": 463912,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/pickup.png",
+      "sha256": "5b367835c6ae849e4f723f6ae0eaf9f465856615e3b6d074e1622b6ffb358e6b",
+      "size": 519346,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/poison.png",
+      "sha256": "7d5d9a0dcd72750634cbd6c30504c1d2da519862d24eeac49165965daac82ea9",
+      "size": 457883,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/portal.png",
+      "sha256": "fffc149a2501bac2613fda2f687947b2bb0a50224bb3eb4423291255cfca5aeb",
+      "size": 1238612,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/reward-burst.png",
+      "sha256": "7504e065b5ee0f8dee8718c46d638c12e08d4aeacfe1c23dd4e9d1c1a6691c05",
+      "size": 257814,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/rocket.png",
+      "sha256": "89f61d8ba0d4133e5cab5bcc0861e01a6fd74af766180dd18c0257cb90a581f6",
+      "size": 872201,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/shell.png",
+      "sha256": "15c599f3a4e8323df982a54b7d69b64aeff641b9b4e512922e37f2cf715d5ac1",
+      "size": 249371,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/shield-hit.png",
+      "sha256": "f3408fab2f87231e0320ca12bb9405a2c557975e65d606cf5f77c3a055289d07",
+      "size": 522668,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/shocked.png",
+      "sha256": "e971b42d802194fdafd986ca67eb57560dc311e98cfb75bf5c85919691c8df5c",
+      "size": 768039,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/skid.png",
+      "sha256": "b774a35f8d1018882ff8cbc51810f6e1bef8fb1f1b55d2589dd538eec220b580",
+      "size": 273078,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/slash.png",
+      "sha256": "a132956f9c8c463907d2121e323a79998762588321a91e9ef380bc7283cf9080",
+      "size": 230831,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/smoke-grenade.png",
+      "sha256": "ce46dc96f6ab98c3fffd3acd0c3fcc900ae8b9db179f397b73733ae10229e795",
+      "size": 407333,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/smoke-plume.png",
+      "sha256": "3cc563cae0479cea0974c3d30f4259ca72f64527dcfebaf485f212e196267f8d",
+      "size": 355829,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/splash-small.png",
+      "sha256": "96d15b98e92ab5b5c820ccdb0b8661bc18d15bdb6191c1bee00cc0643b37b695",
+      "size": 307192,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/splash.png",
+      "sha256": "3166ddb309510f901281f1b707d3bb775f2e59e1ba55a944e472bb567d1f6e0e",
+      "size": 445234,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/steam.png",
+      "sha256": "c9ab9d396ef5d6e27643570457deed4b6201b2930ca492e8e84d97ec4c56c4d4",
+      "size": 449396,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/sunbeam-dust.png",
+      "sha256": "024b1dd9e2d4bf4ec4a15328c4f60d79a62e436ea7cba4b866fd66b80a96ef82",
+      "size": 178037,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/teleport.png",
+      "sha256": "441bc4e1ee41340c2eb0ced04be26b4f575b67f548b1c2fac21af5222807a44d",
+      "size": 444028,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/thruster.png",
+      "sha256": "ca04ba2c019ab3c21e81062307ef3cba13fc0a1d3e4217544dbcfad6332fa8f1",
+      "size": 253330,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/tire-smoke.png",
+      "sha256": "55bacbf10f7647040fb2c0297ceac50a855df5558d43758af9703304ed574847",
+      "size": 413066,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/tracer.png",
+      "sha256": "e402397b381729e02d9ad12d6e719c84b805b41a64c661d05e385961cdbff92a",
+      "size": 295031,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/wake.png",
+      "sha256": "6269a8bd8978ccc93f21764683d90ea73f25097f105abc450e4a27bcb753d422",
+      "size": 431467,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/warp.png",
+      "sha256": "c8c793bb196224acc190a85101b3fc546af611fdfec82cc15ff924d7d5a5a889",
+      "size": 248937,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/waterfall-mist.png",
+      "sha256": "cba863dc6daf046f1b832651f8fc9599561604e4cc41b0579ac47555e333be14",
+      "size": 471853,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/preview/wheel-dust.png",
+      "sha256": "378b7d8952bce617723dc44aac1ff0d5f3729da8f48e8ebda59424623ebc39fd",
+      "size": 432235,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/chip-normal.png",
+      "sha256": "9dbe8a73420a7f2c92afcec1b9095f7027a7336c3152c14c8758ce9a0967906f",
+      "size": 14038,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/chip.png",
+      "sha256": "f6c5160ebb65d5c83488222701f423931304d5dd284c09aac97b48f285e97798",
+      "size": 25704,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/dent-normal.png",
+      "sha256": "038cd2eff5957fb403777b73299f7cc011d15d378e7114611ac0de036a5183ad",
+      "size": 8297,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/dent.png",
+      "sha256": "9f19e71af39491b83c0a985d1e323e9a056920af4efc0cfb7b53cdb3003a3479",
+      "size": 24796,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/dust.png",
+      "sha256": "2c4283a7e381e1ac458c9a5d5beefdc3033bc2fde8b8241bc741bdf36397d4f9",
+      "size": 713735,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/embers.png",
+      "sha256": "5d971cad0e59c9c36a921909a6adff15382a256155f8a145cbbfc9428149a1b5",
+      "size": 88905,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/explosion.png",
+      "sha256": "3b4e9dd52598f5d0ede4dc00223646cd3cd96fdf064a46c8979143b0f57ae0f4",
+      "size": 701310,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/flames.png",
+      "sha256": "e977974dfd80a93c5dd7b7609ac8fc1af8390776ca020a52aca748c6dbeb8848",
+      "size": 318933,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/fracture-normal.png",
+      "sha256": "6b2e86d5dde73b3aed89eecb9e412fe8a2924ecf2f35a96541d34f01d6df3a9d",
+      "size": 42277,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/fracture.png",
+      "sha256": "c95dd27e2456114695981b2354daadc4dd7c246dd0947f52c6ce49efb3efe5e9",
+      "size": 23154,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/gouge-normal.png",
+      "sha256": "7d18b3ac057a6e2a8a269bb7726f16427d3b7eb00ab4f607d640e8db10b4725c",
+      "size": 15782,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/gouge.png",
+      "sha256": "bb1d1044aad118e15817e321666716861edf6b863221e2f6e3bd4493a3fc41c9",
+      "size": 48679,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/leaves.png",
+      "sha256": "c6c474a6e69df8f9ff8f26a5f43396ed0bf48c437786fa9d65a0acc3ef3c528e",
+      "size": 74120,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/scorch-normal.png",
+      "sha256": "87d94a99338203833c51fff03d8160756df590134f831eea527bf7d733227646",
+      "size": 163232,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/scorch.png",
+      "sha256": "79a659846671ce10b11691a0ecf4544b43335fb5c9358becdc626d7cd21c6094",
+      "size": 213010,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/sigil.png",
+      "sha256": "1c02245724d61a352321dbdbf5dd1a2ff3abbc61717bbffb9f0d40c4f05afe4f",
+      "size": 74555,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/skid.png",
+      "sha256": "65b22e2689a1e802f4772ab3394e122841d0b8aacbbf200371dd25df3b26ac05",
+      "size": 23041,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/streak.png",
+      "sha256": "fad40ac3418ff8f08211e8adf06e63aececc670b71eaa12525dacb3f604dbaa2",
+      "size": 809,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/taper.png",
+      "sha256": "19965237439411e91d4e4ebb6f7314b0a563423c53fabd869b39f6b7080e6b88",
+      "size": 152,
+      "visibility": "public"
+    },
+    {
+      "path": "cinematic-realism/textures/wet.png",
+      "sha256": "fec4572bcae0fa3eea9896e25bb8f5024d4bf40825f6a83dfd7c12fbadf6dc4e",
+      "size": 12587,
+      "visibility": "public"
+    },
+    {
       "path": "effekseer-andrewfm01/preview/actionLines_halo.png",
       "sha256": "6ede9798bf18d0d57d1b54b0f5e7fbc3db34a7d42842a2c2aa12c64bac594bd8",
       "size": 197159,

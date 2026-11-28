@@ -1,0 +1,636 @@
+{
+  "format": 1,
+  "engine": {
+    "version": "0.8.0",
+    "revision": "d1f0419b9313904ec600f35be2338fe5b9d1281b"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "e555762d823fa02410895d036b3b6723e1d39046f969b1a86fa66f12e1ce7314",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "content/ambient-dust.ts",
+      "sha256": "78c32a040591c5276d7fa233f176895443fb643247644d4d6ef283f34e013be1",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/ambient-dust/motes.emitter.ts",
+      "sha256": "9a25c11d9a2e260976336b2fc72cf5db03a2d7518f116d97435bccf4c19d1b6a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/bullet-impact.ts",
+      "sha256": "8d6240fc376c80276c6f0935be6c8b209073ff0d3639735ac72e360787dac378",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/bullet-impact/chips.emitter.ts",
+      "sha256": "ea3e5b7a84ce930db832eaff59d555b090a4b168c930d67c5487a3f58d3a46f3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/bullet-impact/dust.emitter.ts",
+      "sha256": "81a02254b91d57cd34f8aa8713d1d652713a9ab37c6e37cc3aaded689b6d483e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/bullet-impact/mark.emitter.ts",
+      "sha256": "37e96c239597889c3e111219206384ca1bbe62f6b5466fea535bd0210232dcde",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/bullet-impact/sparks.emitter.ts",
+      "sha256": "95b17bc015dd1273110dc96f87273bda2684d0e19ddcf6aad1a2515a7d25159b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/dust-burst.ts",
+      "sha256": "fd4d0f2139ec625c99a31f7b5bda8cf9a10c69703c9e1fb886b99a51f9ef9d3a",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/dust-burst/chunks.emitter.ts",
+      "sha256": "402f893448dd9b70446264c459f58e6feb27620cbba7c895841abda0180d8268",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/dust-burst/cloud.emitter.ts",
+      "sha256": "53019440788b637e7ef147159a39dcdb78990e9cfacb1b88dc7ab43c4776e8ad",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/dust-burst/grit.emitter.ts",
+      "sha256": "b0354ca5532502afa89090ec96b7d899c23b48ec5abb6371e38e9430db62904f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion.ts",
+      "sha256": "9219dbafa7974a5ceaee84a5c93c354fa8115ddb8c276836cd48e75797f52875",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/debris.emitter.ts",
+      "sha256": "7ff34712114c59b81379fc16b2f22aa3b17a65b387778927bcac1b482969dd48",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/dust.emitter.ts",
+      "sha256": "ca3e7275c85ec43341aa951db011602c17179ccb69c343cf78cc3b417a3d43c7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/fireball.emitter.ts",
+      "sha256": "aaf9ac65bf86ba35d184077a02c11468814234ffe0e8a4336ee3adf5874c20bd",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/scorch.emitter.ts",
+      "sha256": "82158f03de5cccce21c85e3a8fbc1b7b03fd886bf2022bb13d35ce96ba6af60f",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/shock.effect.ts",
+      "sha256": "d143ad7ba2149c7517bf435ff063ab045f4bc84dd2f4727bf220a5c3225ba079",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/smoke.emitter.ts",
+      "sha256": "1ef85d3f07a4335eb7fbab20c07e049c1c6a884a734418d28b484423a2331e55",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/explosion/sparks.emitter.ts",
+      "sha256": "7c1b8ad67bbdb277ecf9a96ae8d1157d943470fbcdc4d651b70ff294f97ecef3",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle-flash.ts",
+      "sha256": "f99584cda1e3da121b49293453b5fa8b0ff0385735d67301054dc75606ab49b0",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle-flash/flash.emitter.ts",
+      "sha256": "c641baffca525a346f031b02414060a4c22ca69742c5436621d1c508c9f0a806",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle-flash/plume.emitter.ts",
+      "sha256": "506008581a3daa33d9bd8dc7b1fdc9e94d03cb2210e77f3badc10138cd33d4ba",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle-flash/smoke.emitter.ts",
+      "sha256": "653aa324526581f518bc997aa334dc8b79fda498989f39ff0125f80515e8770b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/muzzle-flash/sparks.emitter.ts",
+      "sha256": "f27764f4d5129874c4aa9c5d3ef6d70fe98b07dd58ff38c69f28baaef3b049df",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/textures/dirt.ts",
+      "sha256": "8d315721c517d9a01376ce6bbfa4946b00401aff4fe492db3a471f2f44acd127",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/fire.ts",
+      "sha256": "4136798ba7cc9c5e58893a6f5837c6eb8ee5a26e26587c44f42df3235a5344a0",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/flame.ts",
+      "sha256": "ff3a831e783c29b7143146f83224e349ab031a325abc4cdd0948f89e01eeadab",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/muzzle.ts",
+      "sha256": "add59ef85ad8aebedb483517dc6775ec4220da3cdc92c461edd7ea9433d8b55e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/ring.ts",
+      "sha256": "14d7d128723ce0f47386a4f7dcd08a919e2504272f9c35bac9946edfc6f0cbcf",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/scorch.ts",
+      "sha256": "0bbb214e1f98a0939ddd620045dec3d80d5e4bc2d71f20bdd9eb985c5c5249e8",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/textures/smoke.ts",
+      "sha256": "07355a072f80e9cd694cf9a2288cb371fef248617b2a06fadac292595bcedef2",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine; explicit checked TypeScript import declaration"
+    },
+    {
+      "path": "content/torch-fire.ts",
+      "sha256": "77511fd97ce0728f7f12029f9f6c151b2eeb6a5f3a99f43d124deca894fe1b9d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/torch-fire/embers.emitter.ts",
+      "sha256": "d9049ce4de2dada7bc7003f62fc9a29360155eccfe912a74f21a1cc523d1cf9b",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/torch-fire/flames.emitter.ts",
+      "sha256": "e5f9d75e3b0318ac505c1d6341271d6645eb4d98502c07d472c6b4175057cc36",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/torch-fire/smoke.emitter.ts",
+      "sha256": "3665e5ce0ce3d8b2b2e9e341d11df34e2ce25d13bd55d0301a839a6d07668fc8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/water-splash.ts",
+      "sha256": "8c4f8393b4a1eeb30b8c251c48d4ed0279cc9e220ad167726c8833ba5e52d45d",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/water-splash/drops.emitter.ts",
+      "sha256": "c7d68f4799f861ba3c897cb03adf2b22a325e4e3347da0fa73322c5692817e1e",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/water-splash/mist.emitter.ts",
+      "sha256": "86beb5b50d43cf1fa8c5fb39be69f2f898a14a8746d3e6e4b68235382335f3d7",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/water-splash/ripple.emitter.ts",
+      "sha256": "126d65ebd56b91cbb05594f04a777b7c6340e98b4fa8801692302f35c4c67205",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "content/water-splash/spray.emitter.ts",
+      "sha256": "e096619c3326c5ef93c069c69da46ae133222412fe575f1baad5c51d43591760",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine; represented as checked TypeScript FX data"
+    },
+    {
+      "path": "extension.json",
+      "sha256": "d1cd3925210834846167864013d59153c525e716541380950af811b3e11b2008",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "authored by Origin Engine"
+    },
+    {
+      "path": "textures/dirt.png",
+      "sha256": "232ded677f1fdba0585fcd8c0971936c50d69dcf65d47765928cffb783fdb85f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/fire.png",
+      "sha256": "b0fde238e03d5d407588713f7c28555b6ad3e2352d5117834626681622d888ff",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/flame.png",
+      "sha256": "d4890fd59cdcc93e11be41b0a9a1987b686577243ecd46b24c2938ff565b565e",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/muzzle.png",
+      "sha256": "1ff07057dc1f6ac5cb05ddc3dd4ad6adaec5ba81a5b5183c0979f5b56e528e4f",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/ring.png",
+      "sha256": "513ee482c5602e7a738eb61dc170461a9f75bf0e5f339a95a80dc2df8c859513",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/scorch.png",
+      "sha256": "ce46d67d70f0d0ac8653dcf9e360fcba0c7aa7bcb5b1ba84db0819e3a0dc17c6",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    },
+    {
+      "path": "textures/smoke.png",
+      "sha256": "396d44615ff1257213f63b9133334e317533341aefb0087019abec1d9aa0fcdc",
+      "licence": "CC0-1.0",
+      "source": {
+        "url": "https://kenney.nl/assets/particle-pack"
+      },
+      "credit": "Kenney (www.kenney.nl), Particle Pack",
+      "derived": "Kenney Particle Pack images converted to greyscale with alpha and packed into a sheet by Origin Engine"
+    }
+  ],
+  "effects": [
+    {
+      "path": "content/ambient-dust.ts",
+      "type": "vfx",
+      "title": "Ambient Dust",
+      "loop": true,
+      "durationSeconds": 8,
+      "impact": false,
+      "category": "ambient",
+      "keywords": [
+        "air",
+        "ambient",
+        "dust",
+        "loop",
+        "motes",
+        "room",
+        "sunbeam"
+      ]
+    },
+    {
+      "path": "content/bullet-impact.ts",
+      "type": "vfx",
+      "title": "Bullet Impact",
+      "loop": false,
+      "durationSeconds": 1.8,
+      "impact": true,
+      "category": "hit-spark",
+      "keywords": [
+        "bullet",
+        "bullet hole",
+        "chips",
+        "dust",
+        "hit",
+        "impact",
+        "ricochet",
+        "sparks"
+      ]
+    },
+    {
+      "path": "content/dust-burst.ts",
+      "type": "vfx",
+      "title": "Dust Burst",
+      "loop": false,
+      "durationSeconds": 3.6,
+      "impact": true,
+      "category": "debris",
+      "keywords": [
+        "break",
+        "collapse",
+        "crash",
+        "debris",
+        "destruction",
+        "dust",
+        "landing",
+        "rubble"
+      ],
+      "element": "earth"
+    },
+    {
+      "path": "content/explosion.ts",
+      "type": "vfx",
+      "title": "Explosion",
+      "loop": false,
+      "durationSeconds": 4,
+      "impact": true,
+      "category": "explosion",
+      "keywords": [
+        "blast",
+        "debris",
+        "explosion",
+        "fireball",
+        "grenade",
+        "scorch",
+        "shockwave",
+        "smoke"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/muzzle-flash.ts",
+      "type": "vfx",
+      "title": "Muzzle Flash",
+      "loop": false,
+      "durationSeconds": 1.2,
+      "impact": true,
+      "category": "gunfire",
+      "keywords": [
+        "flash",
+        "gun",
+        "gunshot",
+        "muzzle",
+        "pistol",
+        "rifle",
+        "shot",
+        "smoke"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/torch-fire.ts",
+      "type": "vfx",
+      "title": "Torch Fire",
+      "loop": true,
+      "durationSeconds": 4,
+      "impact": false,
+      "category": "fire",
+      "keywords": [
+        "brazier",
+        "embers",
+        "fire",
+        "flame",
+        "light",
+        "loop",
+        "smoke",
+        "torch"
+      ],
+      "element": "fire"
+    },
+    {
+      "path": "content/water-splash.ts",
+      "type": "vfx",
+      "title": "Water Splash",
+      "loop": false,
+      "durationSeconds": 1.6,
+      "impact": true,
+      "category": "splash",
+      "keywords": [
+        "droplets",
+        "mist",
+        "ripple",
+        "splash",
+        "spray",
+        "water"
+      ],
+      "element": "water"
+    }
+  ]
+}
