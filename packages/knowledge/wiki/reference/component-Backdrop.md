@@ -14,6 +14,6 @@ What a full-screen built-in stands on: the key art cropped to the screen, or, wi
 | `over?` | `boolean \| undefined` | It stands over the running game, not a picture of its own: with no art, only the veil is drawn and the game shows through it. |
 | `class?` | `string \| undefined` | Classes after its own. |
 
-Pack slots: `Screen.backdrop`, `Screen.glow`, `Screen.veil`, `Screen.veil.foot`, `Screen.veil.side`, `Screen.vignette`.
+Pack slots: `Screen.backdrop`, `Screen.glow`, `Screen.veil.foot`, `Screen.veil.full`, `Screen.veil.side`, `Screen.vignette`.
 
 Fixtures: `default`, `side`.

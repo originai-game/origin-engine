@@ -35,7 +35,7 @@ Each `PauseRow`:
 | `danger?` | `boolean` | Tinted as a danger when hovered, as Quit game is. |
 | `disabled?` | `boolean` | Drawn grey and takes no press. |
 
-Pack slots: `Panel.frame`, `Screen.frame`.
+Pack slots: `MenuList.frame`, `Plate.frame`, `Screen.frame`, `Screen.heading`.
 
 Fixtures: `default`, `ownRows`.
 

@@ -14,7 +14,7 @@ The main menu over the key art: the logo or the name as a wordmark, Continue wit
 | `saveLine` | `string` | Under Continue: where the last save stands (chapter, time played). |
 | `version` | `string` | The build's version, shown small in the corner. |
 | `news` | `string` | A line for the news card (empty: no card). |
-| `keyArt` | `Texture \| 0` | The key art's texture behind the menu (og.load.texture; 0: the style's dark ground). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. |
+| `keyArt` | `Texture \| 0` | The key art's texture behind the menu (og.load.texture; 0: the pack's designed backdrop, Screen.backdrop). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. |
 | `logo` | `Texture \| 0` | The game's logo texture (og.load.texture; 0: the name set as a wordmark). |
 | `name` | `string` | The game's name, set as a wordmark where there is no logo (empty: the logo slot's placeholder). |
 | `background?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the background snippet). |
@@ -27,7 +27,7 @@ The main menu over the key art: the logo or the name as a wordmark, Continue wit
 | `onQuit?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quit event, with the row's key where it comes from a row. |
 | `onSettings?` | `((e: UiEvent, key?: string) => void) \| undefined` | The settings event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`, `Screen.frame`.
+Pack slots: `MenuList.frame`, `Plate.frame`, `Screen.frame`, `Screen.note`, `Title.wordmark`.
 
 Fixtures: `default`.
 

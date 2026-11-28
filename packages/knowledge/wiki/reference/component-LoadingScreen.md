@@ -21,8 +21,8 @@ The key art fills the screen. At its foot, over a shade that grows with the word
 | `onContinue?` | `(e: UiEvent, key?: string) => void` | The continue event, with the row's key where it comes from a row. |
 | `onNextTip?` | `(e: UiEvent, key?: string) => void` | The nextTip event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Panel.frame`, `Screen.frame`.
+Pack slots: `Screen.frame`, `Screen.heading`, `Screen.note`.
 
-Fixtures: `default`.
+Fixtures: `default`, `ready`.
 
 Actions: `confirm` (Continue).

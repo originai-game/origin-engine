@@ -1,5 +1,8 @@
 import {createSignal, For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { Backdrop } from "../controls/backdrop";
 import { Button } from "../controls/button";
+import { HintBar } from "../controls/hint-bar";
+import { InputGlyph } from "../controls/input-glyph";
 import { Select } from "../controls/select";
 import { Slider } from "../controls/slider";
 import { Switch } from "../controls/switch";
@@ -11,8 +14,8 @@ export interface SettingsScreenProps {
   class?: string | undefined;
   /** A line under the title (Some changes apply after a restart); empty: none. */
   note: string;
-  /** The settings' pages as a keyed collection of { id, name }: a tab each. */
-  pages: ReadonlyArray<{ id: string; name: string }>;
+  /** The settings' pages as a keyed collection of { id, name, icon? }: a tab each, with the icon (an icon set's name) before its name. */
+  pages: ReadonlyArray<{ id: string; name: string; icon?: string }>;
   /** The settings as a keyed collection of { id, page, name, description, kind: toggle|range|select|binding, value, min, max, step, options, action }, shown on their page's tab; each value is written back as the player changes it (two-way via onChange). */
   entries: ReadonlyArray<{ id: string; page: string; name: string; description: string; kind: string; value: boolean | number | string; min?: number; max?: number; step?: number; options?: ReadonlyArray<string>; action?: string }>;
   /** The id of the page shown (two-way via onPage: the game writes it back as the player picks a tab); empty: no tree of pages, the `tree` content alone. */
@@ -60,7 +63,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   };
   return (
     <View
-      class={`absolute inset-0 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+1.5rem)] pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] text-fg gap-y-4 overflow-hidden compact:pt-[calc(env(hud-inset-top)+1rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] compact:gap-y-3 ${packClass("Screen", "frame")} ${props.class ?? ""}`}
+      class={`absolute inset-0 items-center justify-center pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+4.5rem)] pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] text-fg overflow-hidden portrait:justify-start portrait:pl-[calc(env(hud-inset-left)+1.5rem)] portrait:pr-[calc(env(hud-inset-right)+1.5rem)] compact:pt-[calc(env(hud-inset-top)+1rem)] compact:pb-[calc(env(hud-inset-bottom)+3rem)] compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] ${packClass("Screen", "frame")} ${props.class ?? ""}`}
       onAction={{
         back: (e) => {
           if (listening()) {
@@ -77,81 +80,77 @@ export function SettingsScreen(props: SettingsScreenProps) {
         tabNext: (e) => stepPage(e, 1),
       }}
     >
-      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
-      <View class={`flex-row min-h-12 items-center gap-x-5 compact:flex-wrap compact:gap-y-1`}>
-        <Show when={props.onBack}>
-          <Button size="sm" class="shrink" autofocus onPress={(e) => props.onBack?.(e)}>
-            <View class="flex-row items-center gap-x-1">
-              <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
-              <Text class="shrink">{t("screen.common.back")}</Text>
-            </View>
-          </Button>
-        </Show>
-        <View class="flex-row grow shrink basis-0 items-baseline flex-wrap gap-x-4 gap-y-0.5 compact:grow compact:shrink-0 compact:basis-full compact:items-start compact:flex-col">
-          <Text class={`m-0 shrink ${packClass("Screen", "heading")} compact:text-3xl`}>
+      <Backdrop art={0} over veil="full" />
+      <View class="flex-col gap-y-4 w-full max-w-240 min-h-0 max-h-full portrait:grow compact:grow compact:gap-y-3">
+        <View class="flex-row min-h-12 items-end gap-x-5 compact:flex-wrap compact:gap-y-1">
+          <Show when={props.onBack}>
+            <Button size="sm" class="shrink self-center" autofocus onPress={(e) => props.onBack?.(e)}>
+              <View class="flex-row items-center gap-x-1">
+                <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
+                <Text class="shrink">{t("screen.common.back")}</Text>
+              </View>
+            </Button>
+          </Show>
+          <Text class={`m-0 shrink ${packClass("Screen", "heading")} compact:text-display-md`}>
             {t("screen.settings.title")}
           </Text>
-          <Show when={props.note !== ""}>
-            <Text class={`mr-0 ml-auto line-clamp-2 my-0 compact:ml-0 shrink ${packClass("Screen", "note")} text-sm`}>
-              {props.note}
-            </Text>
-          </Show>
         </View>
-      </View>
-      <View class={`grow shrink basis-0 gap-y-4 min-h-0 px-7 pt-5 pb-7 compact:px-4 compact:pt-4 compact:pb-5 ${packClass("Panel", "frame")}`}>
-        <Show when={props.page}>
-          <View class={`flex-row items-center gap-x-3`}>
-            <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
-            <Scroll class="grow shrink compact:-mx-4">
-              <Tabs class="border-b-0 gap-x-2 px-2" label={t("screen.settings.title")}>
-                <For each={props.pages}>
-                  {(p) => (
-                    <Tab class="shrink-0" selected={props.page === p().id} onPress={(e) => props.onPage?.(e, p().id)}>
-                      <Text class="whitespace-nowrap">{p().name}</Text>
-                    </Tab>
-                  )}
-                </For>
-              </Tabs>
-            </Scroll>
-            <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
-          </View>
-          <View class="grow shrink basis-0 min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-8 portrait:grid-cols-1 compact:grid-cols-1">
-            <Scroll class={`grow shrink basis-0 gap-y-0.5 p-0 m-0 ${packClass("List", "cascade")}`}>
+        <View class={`shrink min-h-0 flex-col gap-y-4 px-7 pt-5 pb-6 compact:px-4 compact:pt-4 compact:pb-4 ${packClass("Panel", "frame")}`}>
+          <Show when={props.page}>
+            <View class="flex-row items-center gap-x-3">
+              <InputGlyph class="flex-none" action="tabPrev" size="lg" />
+              <Scroll class="grow shrink compact:-mx-2">
+                <Tabs class="border-b-0 gap-x-2 px-1" label={t("screen.settings.title")}>
+                  <For each={props.pages}>
+                    {(p) => (
+                      <Tab class="shrink-0 gap-x-2" selected={props.page === p().id} onPress={(e) => props.onPage?.(e, p().id)}>
+                        <Show when={p().icon}>
+                          <Icon class="size-5" name={p().icon!} />
+                        </Show>
+                        <Text class="whitespace-nowrap text-base">{p().name}</Text>
+                      </Tab>
+                    )}
+                  </For>
+                </Tabs>
+              </Scroll>
+              <InputGlyph class="flex-none" action="tabNext" size="lg" />
+            </View>
+            <Scroll class={`shrink min-h-0 gap-y-1.5 p-0 m-0 ${packClass("List", "cascade")}`}>
               <For each={props.entries} key={(entry) => entry.id}>
                 {(entry) => (
                   <Show when={entry().page === props.page}>
                     <View
-                      class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")} ${packClass("List", "item")}`}
+                      class={`group/row text-fg transition duration-control data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")} data-selected:${packClass("Row", "frame", "selected")} ${packClass("List", "item")}`}
                       label={entry().description}
                       data-selected={inspected()?.id === entry().id}
                       onFocus={() => activeEntryId.set(entry().id)}
                       onPointerDown={() => activeEntryId.set(entry().id)}
                     >
                       <Show when={entry().kind === "toggle"}>
-                        <Switch class="min-h-16 text-lg text-fg-muted py-1 px-4 compact:text-base compact:py-2 compact:px-3 group-hover/row:text-fg" checked={entry().value === true} onChange={(e, on) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, on); }}>
-                          <Text class="grow shrink">{entry().name}</Text>
+                        <Switch class="min-h-14 text-lg py-2 px-5 compact:text-base compact:px-3" checked={entry().value === true} onChange={(e, on) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, on); }}>
+                          <Text class="grow shrink font-semibold">{entry().name}</Text>
                         </Switch>
                       </Show>
                       <Show when={entry().kind === "range"}>
-                        <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
-                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
-                            {entry().name}
-                          </Text>
-                          <Slider
-                            value={typeof entry().value === "number" ? (entry().value as number) : (entry().min ?? 0)}
-                            min={entry().min}
-                            max={entry().max}
-                            step={entry().step}
-                            label={entry().name}
-                            onChange={(e, v) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, v); }}
-                          />
+                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
+                          <Text class="grow shrink font-semibold m-0">{entry().name}</Text>
+                          <View class="flex-row items-center gap-x-4">
+                            <Slider
+                              class="grow shrink"
+                              value={typeof entry().value === "number" ? (entry().value as number) : (entry().min ?? 0)}
+                              min={entry().min}
+                              max={entry().max}
+                              step={entry().step}
+                              label={entry().name}
+                              onChange={(e, v) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, v); }}
+                            />
+                            <Text class="m-0 w-12 text-end tabular-nums font-bold">{String(entry().value)}</Text>
+                          </View>
                         </View>
                       </Show>
                       <Show when={entry().kind === "select"}>
-                        <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
-                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
-                            {entry().name}
-                          </Text>
+                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
+                          <Text class="grow shrink font-semibold m-0">{entry().name}</Text>
                           <Select
                             value={String(entry().value)}
                             options={(entry().options ?? []).map((o) => ({ value: o, label: o }))}
@@ -163,7 +162,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         </View>
                       </Show>
                       <Show when={entry().kind === "binding"}>
-                        <View class={`grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => { activeEntryId.set(entry().id); listening.set(listening() === entry().id ? "" : entry().id); }} onKey={(e) => {
+                        <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base compact:grid-cols-[minmax(0,1fr)_auto] data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => { activeEntryId.set(entry().id); listening.set(listening() === entry().id ? "" : entry().id); }} onKey={(e) => {
                           if (listening() !== entry().id) return;
                           if (e.key === "Escape") {
                             listening.set("");
@@ -172,10 +171,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
                           props.onRebind?.(e, entry().id, e.key);
                           listening.set("");
                         }}>
-                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg group-data-listening/row:text-hud-accent-fg">
-                            {entry().name}
-                          </Text>
-                          <Show when={listening() === entry().id} fallback={<Text class="justify-self-end" glyph={entry().action} />}>
+                          <Text class="grow shrink font-semibold m-0 group-data-listening/row:text-hud-accent-fg">{entry().name}</Text>
+                          <Show when={listening() === entry().id} fallback={<InputGlyph class="justify-self-end" action={entry().action} size="lg" />}>
                             <Text class="justify-self-end font-semibold text-hud-accent-fg whitespace-nowrap">{t("screen.settings.pressAKey")}</Text>
                           </Show>
                         </View>
@@ -185,38 +182,42 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 )}
               </For>
             </Scroll>
-            <View class="flex-col justify-start gap-y-2 portrait:hidden compact:hidden">
-              <Show when={inspected()}>
-                {(item) => (
-                  <Show when={item().description}>
-                    <View class={`flex-col gap-y-2 p-5 ${packClass("Slot", "frame")}`}>
-                      <Text class="font-display text-xl font-bold leading-snug text-fg m-0">{item().name}</Text>
-                      <Text class="text-base leading-normal text-fg-muted m-0">{item().description}</Text>
-                    </View>
-                  </Show>
-                )}
+            <Show when={inspected()}>
+              {(item) => (
+                <Show when={item().description}>
+                  <View class={`flex-col gap-y-1 py-3 px-5 ${packClass("Slot", "frame")}`}>
+                    <Text class="font-display text-lg font-bold leading-snug m-0">{item().name}</Text>
+                    <Text class="text-base leading-normal m-0">{item().description}</Text>
+                  </View>
+                </Show>
+              )}
+            </Show>
+            <View class="flex-row flex-wrap items-center justify-end gap-y-2 gap-x-3 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <Show when={props.note !== ""}>
+                <Text class="mr-auto text-base text-fg-muted m-0 shrink line-clamp-2 portrait:w-full compact:col-span-full">{props.note}</Text>
+              </Show>
+              <Show when={props.onDefaults}>
+                <Button class="shrink" onPress={(e) => props.onDefaults?.(e)}>
+                  <Text>{t("screen.settings.defaults")}</Text>
+                </Button>
+              </Show>
+              <Show when={props.onRevert}>
+                <Button class="min-w-36 compact:min-w-0 shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+                  <Text>{t("screen.settings.revert")}</Text>
+                </Button>
+              </Show>
+              <Show when={props.onApply}>
+                <Button variant="primary" class="min-w-36 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+                  <Text>{t("screen.settings.apply")}</Text>
+                </Button>
               </Show>
             </View>
-          </View>
-          <View class="flex-row flex-wrap items-center justify-end gap-y-2 gap-x-3 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Show when={props.onDefaults}>
-              <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink`} onPress={(e) => props.onDefaults?.(e)}>
-                <Text>{t("screen.settings.defaults")}</Text>
-              </Button>
-            </Show>
-            <Show when={props.onRevert}>
-              <Button class="min-w-40 compact:min-w-0 shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
-                <Text>{t("screen.settings.revert")}</Text>
-              </Button>
-            </Show>
-            <Show when={props.onApply}>
-              <Button variant="primary" class="min-w-40 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
-                <Text>{t("screen.settings.apply")}</Text>
-              </Button>
-            </Show>
-          </View>
-        </Show>
-        {props.tree?.()}
+          </Show>
+          {props.tree?.()}
+        </View>
+      </View>
+      <View class="absolute inset-x-0 bottom-0 flex-row pointer-events-none pb-[calc(env(hud-inset-bottom)+1.5rem)] pl-[calc(env(hud-inset-left)+3rem)] portrait:pl-[calc(env(hud-inset-left)+1.5rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+1rem)]">
+        <HintBar hints={[{ action: "confirm", label: t("screen.common.select") }, { action: "back", label: t("screen.common.back") }, { action: "tabNext", label: t("screen.settings.page") }]} />
       </View>
     </View>
   );
@@ -226,7 +227,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
 const press = () => {};
 
 export const fixtures: Record<string, Partial<SettingsScreenProps>> = {
-  default: {"note":"Some changes apply after a restart.","pages":[{"id":"general","name":"General"}],"page":"general","pending":true,"entries":[{"id":"subtitles","page":"general","name":"Subtitles","description":"Show dialogue captions.","kind":"toggle","value":true},{"id":"volume","page":"general","name":"Master volume","description":"Adjust all game audio.","kind":"range","value":75,"min":0,"max":100,"step":5},{"id":"quality","page":"general","name":"Quality","description":"Choose the rendering quality.","kind":"select","value":"High","options":["Low","High"]},{"id":"interact","page":"general","name":"Interact","description":"Choose the interaction key.","kind":"binding","value":"E","action":"interact"}],"onBack":press,"onDefaults":press,"onRevert":press,"onApply":press},
+  default: {"note":"Some changes apply after a restart.","pages":[{"id":"general","name":"General","icon":"settings"},{"id":"audio","name":"Audio","icon":"sound"},{"id":"video","name":"Video","icon":"video"},{"id":"controls","name":"Controls","icon":"gamepad"}],"page":"general","pending":true,"entries":[{"id":"subtitles","page":"general","name":"Subtitles","description":"Show dialogue captions.","kind":"toggle","value":true},{"id":"volume","page":"general","name":"Master volume","description":"Adjust all game audio.","kind":"range","value":75,"min":0,"max":100,"step":5},{"id":"quality","page":"general","name":"Quality","description":"Choose the rendering quality.","kind":"select","value":"High","options":["Low","High"]},{"id":"language","page":"general","name":"Language","description":"The language of menus and subtitles.","kind":"select","value":"English","options":["English","中文"]},{"id":"textSize","page":"general","name":"Text size","description":"Scale every word on screen.","kind":"range","value":100,"min":80,"max":150,"step":10},{"id":"vibration","page":"general","name":"Vibration","description":"Rumble on hits and rewards.","kind":"toggle","value":false},{"id":"interact","page":"general","name":"Interact","description":"Choose the interaction key.","kind":"binding","value":"E","action":"interact"}],"onBack":press,"onDefaults":press,"onRevert":press,"onApply":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

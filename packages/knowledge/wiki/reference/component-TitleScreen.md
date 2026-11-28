@@ -18,7 +18,7 @@ The title screen over the key art, staged like a console attract screen: it fade
 | `background?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the background snippet). |
 | `onStart?` | `((e: UiEvent, key?: string) => void) \| undefined` | The start event, with the row's key where it comes from a row. |
 
-Pack slots: `Screen.frame`.
+Pack slots: `Screen.frame`, `Screen.note`, `Screen.prompt`, `Title.wordmark`.
 
 Fixtures: `default`.
 

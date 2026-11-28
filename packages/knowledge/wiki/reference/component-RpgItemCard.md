@@ -28,7 +28,7 @@ Dropped against the .svelte: the art's drop-shadow filter and the hero glow's ra
 | `onDiscard?` | `(e: UiEvent, key?: string) => void` | The discard event, with the row's key where it comes from a row. |
 | `onEquip?` | `(e: UiEvent, key?: string) => void` | The equip event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`.
+Pack slots: `Card.rarity`, `Card.rarity.epic`, `Card.rarity.legendary`, `Card.rarity.mythic`, `Card.rarity.rare`, `Card.rarity.uncommon`, `Panel.frame`.
 
 Fixtures: `default`, `plain`, `refused`.
 

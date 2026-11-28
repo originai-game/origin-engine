@@ -3,6 +3,8 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.settings.page": "Page",
+    "screen.common.select": "Select",
     "screen.common.back": "Back",
     "screen.settings.apply": "Apply",
     "screen.settings.defaults": "Defaults",

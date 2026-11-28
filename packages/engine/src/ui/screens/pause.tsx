@@ -1,4 +1,6 @@
 import {For, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import { Backdrop } from "../controls/backdrop";
+import { HintBar } from "../controls/hint-bar";
 import { MenuEntry, MenuList } from "../controls/menu-list";
 import "./pause.en.strings.ts";
 
@@ -90,31 +92,30 @@ function pauseRows(props: PauseScreenProps): Entry[] {
 export function PauseScreen(props: PauseScreenProps) {
   return (
     <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onResume?.(e) }}>
-      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
-      <View class={`flex-col gap-5 w-120 max-w-full h-full pt-[calc(env(hud-inset-top)+3rem)] pb-[calc(env(hud-inset-bottom)+3rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-6 transition duration-base ease-out starting:opacity-0 starting:-translate-x-6 portrait:w-full portrait:items-stretch portrait:pt-[calc(env(hud-inset-top)+5rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:w-full compact:gap-3 compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:pt-3 short:pb-3`}>
+      <Backdrop art={0} over veil="full" />
+      <View class={`flex-col justify-center gap-6 w-130 max-w-full h-full pt-[calc(env(hud-inset-top)+3rem)] pb-[calc(env(hud-inset-bottom)+5rem)] pl-[calc(env(hud-inset-left)+5rem)] pr-6 transition duration-base ease-out starting:opacity-0 starting:-translate-x-6 portrait:w-full portrait:items-stretch portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:w-full compact:gap-4 compact:pt-[calc(env(hud-inset-top)+1.5rem)] compact:pb-[calc(env(hud-inset-bottom)+3.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:gap-3 short:pt-3 short:pb-12`}>
         <Text class={`m-0 ${packClass("Screen", "heading")} portrait:self-center portrait:text-center compact:self-center compact:text-center`}>
           {t("screen.pause.title")}
         </Text>
-        <View class={`flex-col gap-y-1 self-start w-full py-3 px-5 short:hidden ${packClass("Plate", "frame")}`}>
+        <View class={`flex-col gap-y-1 w-full py-4 px-5 short:hidden ${packClass("Plate", "frame")}`}>
           <Show when={props.objective !== ""}>
-            <Text class="text-2xs font-bold tracking-kicker uppercase text-fg-muted m-0">
+            <Text class="text-sm font-bold tracking-kicker uppercase text-fg-muted m-0">
               {t("screen.pause.objectiveLabel")}
             </Text>
-            <Text class="text-lg leading-snug font-semibold line-clamp-2 m-0 compact:text-base">
+            <Text class="text-xl leading-snug font-semibold line-clamp-2 m-0 compact:text-lg">
               {props.objective}
             </Text>
           </Show>
-          <Text class="m-0 text-sm tabular-nums text-fg-muted">
+          <Text class="m-0 text-base tabular-nums text-fg-muted">
             {t("screen.pause.Played", { played: formatDuration(props.played) })}
           </Text>
         </View>
-        <View class="grow min-h-2" />
-        <MenuList wrap label={t("screen.pause.title")} class={`w-full p-3 ${packClass("Panel", "frame")} short:grid short:grid-cols-[1fr_1fr] short:gap-x-3`}>
+        <MenuList wrap label={t("screen.pause.title")} class={`w-full ${packClass("MenuList", "frame")} short:grid short:grid-cols-[1fr_1fr] short:gap-x-3`}>
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
                 <Show when={r().apart}>
-                  <View class="h-3 short:h-1" />
+                  <View class="h-4 short:h-1" />
                 </Show>
                 <MenuEntry id={r().name} size="md" label={r().label} minor={r().minor} danger={r().danger} autofocus={r().key === "resume"} disabled={r().disabled === true} onPress={(e) => r().press(e)} />
               </>
@@ -123,6 +124,9 @@ export function PauseScreen(props: PauseScreenProps) {
         </MenuList>
       </View>
       <View class="grow shrink basis-0 items-center justify-center p-8 portrait:hidden compact:hidden">{props.side?.()}</View>
+      <View class="absolute inset-x-0 bottom-0 flex-row pointer-events-none pb-[calc(env(hud-inset-bottom)+1.5rem)] pl-[calc(env(hud-inset-left)+5rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)]">
+        <HintBar hints={[{ action: "confirm", label: t("screen.common.select") }, { action: "back", label: t("screen.pause.resume") }]} />
+      </View>
     </View>
   );
 }

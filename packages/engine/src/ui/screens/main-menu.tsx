@@ -1,6 +1,8 @@
 import type { Texture } from "@origingame/engine";
 import {Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
+import { Backdrop } from "../controls/backdrop";
+import { HintBar } from "../controls/hint-bar";
 import { MenuEntry, MenuList } from "../controls/menu-list";
 import "./main-menu.en.strings.ts";
 
@@ -15,7 +17,7 @@ export interface MainMenuScreenProps {
   version: string;
   /** A line for the news card (empty: no card). */
   news: string;
-  /** The key art's texture behind the menu (og.load.texture; 0: the style's dark ground). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. */
+  /** The key art's texture behind the menu (og.load.texture; 0: the pack's designed backdrop, Screen.backdrop). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. */
   keyArt: Texture | 0;
   /** The game's logo texture (og.load.texture; 0: the name set as a wordmark). */
   logo: Texture | 0;
@@ -51,21 +53,18 @@ export interface MainMenuScreenProps {
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
     <View class={`absolute inset-0 scheme-dark text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <Show when={props.keyArt !== 0}>
-        <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
-      </Show>
+      <Backdrop art={props.keyArt} />
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class={`absolute inset-y-0 left-0 w-3/5 bg-linear-to-r from-bg via-scrim to-transparent portrait:inset-x-0 portrait:top-auto portrait:h-3/4 portrait:w-full portrait:bg-linear-to-t portrait:via-scrim compact:inset-x-0 compact:top-auto compact:h-3/4 compact:w-full compact:bg-linear-to-t compact:via-scrim`} />
-      <View class={`absolute inset-0 flex-col gap-6 pt-[calc(env(hud-inset-top)+3.5rem)] pb-[calc(env(hud-inset-bottom)+3rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:items-stretch portrait:pt-[calc(env(hud-inset-top)+6rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:items-stretch compact:gap-4 compact:pt-[calc(env(hud-inset-top)+4rem)] compact:pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:pt-[calc(env(hud-inset-top)+1rem)] short:pb-[calc(env(hud-inset-bottom)+1rem)]`}>
+      <Backdrop art={0} over veil="side" />
+      <View class={`absolute inset-0 flex-col justify-center gap-10 pt-[calc(env(hud-inset-top)+3rem)] pb-[calc(env(hud-inset-bottom)+5rem)] pl-[calc(env(hud-inset-left)+5rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:justify-end portrait:items-stretch portrait:gap-8 portrait:pt-[calc(env(hud-inset-top)+4rem)] portrait:pb-[calc(env(hud-inset-bottom)+5rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:justify-end compact:items-stretch compact:gap-5 compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+3.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:gap-4 short:pt-[calc(env(hud-inset-top)+1rem)] short:pb-[calc(env(hud-inset-bottom)+2.5rem)]`}>
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class="self-start w-120 max-w-full aspect-12/5 h-auto object-contain portrait:self-center portrait:w-4/5 compact:self-center compact:w-4/5 short:w-72" kind="logo" src={props.logo} />
         }>
-          <Text class={`self-start max-w-140 ${packClass("Title", "wordmark")} portrait:self-center portrait:text-center portrait:max-w-full compact:self-center compact:text-center compact:max-w-full compact:text-display-xl short:text-display-lg`}>
+          <Text class={`self-start max-w-130 ${packClass("Title", "wordmark")} portrait:self-center portrait:text-center portrait:max-w-full compact:self-center compact:text-center compact:max-w-full compact:text-display-xl short:text-display-lg`}>
             {props.name}
           </Text>
         </Show>
-        <View class="grow min-h-4" />
-        <MenuList label={t("screen.main-menu.title")} class={`w-110 max-w-full p-3 ${packClass("Panel", "frame")} portrait:w-full compact:w-full`}>
+        <MenuList label={t("screen.main-menu.title")} class={`w-120 max-w-full ${packClass("MenuList", "frame")} portrait:w-full compact:w-full`}>
           <Show when={props.canContinue && props.onContinue}>
             <MenuEntry id="continue" label={t("screen.main-menu.continue")} line={props.saveLine} onPress={(e) => props.onContinue?.(e)} autofocus />
           </Show>
@@ -79,7 +78,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
             <MenuEntry id="settings" label={t("screen.main-menu.settings")} onPress={(e) => props.onSettings?.(e)} />
           </Show>
           <Show when={(props.onNewGame || props.onModes || props.onSettings || (props.canContinue && props.onContinue)) && (props.onCredits || props.onQuit)}>
-            <View class="h-3 short:h-1" />
+            <View class="h-4 short:h-1" />
           </Show>
           <Show when={props.onCredits}>
             <MenuEntry id="credits" label={t("screen.main-menu.credits")} onPress={(e) => props.onCredits?.(e)} minor />
@@ -91,23 +90,28 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         </MenuList>
       </View>
       <Show when={props.news !== ""}>
-        <View class={`flex-row absolute right-16 bottom-12 items-center gap-x-3 w-90 py-3 px-4 portrait:hidden compact:hidden ${packClass("Plate", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={props.onNews ? 0 : -1}>
-          <View class="gap-y-0.5 grow shrink">
-            <Text class="text-xs font-bold tracking-kicker uppercase text-fg-muted m-0">
-              {t("screen.main-menu.newsEyebrow")}
-            </Text>
-            <Text class="text-lg leading-snug font-semibold line-clamp-2 m-0">
-              {props.news}
-            </Text>
+        <View class="absolute bottom-0 right-0 pb-[calc(env(hud-inset-bottom)+5rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:hidden compact:hidden">
+          <View class={`flex-row items-center gap-x-3 w-90 py-3 px-4 ${packClass("Plate", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={props.onNews ? 0 : -1}>
+            <View class="gap-y-0.5 grow shrink">
+              <Text class="text-sm font-bold tracking-kicker uppercase text-fg-muted m-0">
+                {t("screen.main-menu.newsEyebrow")}
+              </Text>
+              <Text class="text-lg leading-snug font-semibold line-clamp-2 m-0">
+                {props.news}
+              </Text>
+            </View>
+            <Show when={props.onNews}>
+              <Icon class="size-5 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+            </Show>
           </View>
-          <Show when={props.onNews}>
-            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
-          </Show>
         </View>
       </Show>
-      <Text class={`absolute right-4 bottom-3 tabular-nums m-0 ${packClass("Screen", "note")} compact:right-3 compact:bottom-1`}>
-        {props.version}
-      </Text>
+      <View class="absolute inset-x-0 bottom-0 flex-row items-center justify-between gap-x-6 pb-[calc(env(hud-inset-bottom)+1.5rem)] pl-[calc(env(hud-inset-left)+5rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)]">
+        <HintBar hints={[{ action: "confirm", label: t("screen.common.select") }]} />
+        <Text class={`tabular-nums m-0 ${packClass("Screen", "note")}`}>
+          {props.version}
+        </Text>
+      </View>
     </View>
   );
 }

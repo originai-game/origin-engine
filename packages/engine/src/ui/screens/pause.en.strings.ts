@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "Select",
     "screen.pause.Played": "Played {played}",
     "screen.pause.controls": "Controls",
     "screen.pause.load": "Load",

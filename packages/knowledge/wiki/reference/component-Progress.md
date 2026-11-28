@@ -14,7 +14,7 @@ A linear progress bar (NSH base's `Progress`): it owns its role, its range 0 to 
 | `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
 | `label?` | `string \| undefined` | What screen readers say is in progress. |
 
-Pack slots: `Bar.fill`, `Progress.indeterminate`, `Progress.track`.
+Pack slots: `Bar.fill`, `Progress.fill`, `Progress.indeterminate`, `Progress.track`.
 
 A piece of a panel: drawn on a panel's ground.
 

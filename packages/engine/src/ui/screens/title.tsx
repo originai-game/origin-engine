@@ -1,6 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { Art } from "../controls/art";
+import { Backdrop } from "../controls/backdrop";
 import { InputGlyph } from "../controls/input-glyph";
 import "./title.en.strings.ts";
 
@@ -35,16 +36,14 @@ export function TitleScreen(props: TitleScreenProps) {
   return (
     <View class={`absolute inset-0 scheme-dark text-fg p-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} autofocus onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
       <View class="absolute inset-0 transition-transform duration-orbit ease-out starting:scale-lift">
-        <Show when={props.keyArt !== 0}>
-          <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
-        </Show>
+        <Backdrop art={props.keyArt} />
         <View class="absolute inset-0">{props.background?.()}</View>
       </View>
       <View class="absolute inset-0 bg-linear-to-b from-material-thin via-transparent via-30% to-transparent" />
       <View class="absolute inset-0 bg-linear-to-t from-bg via-scrim via-25% to-transparent to-60%" />
       <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto] justify-items-center h-full pt-12 pb-8 px-14 portrait:px-8 compact:pt-8 compact:pb-5 compact:px-5">
         <View class="row-[2] items-center max-w-full transition duration-pulse delay-spring ease-out starting:opacity-0 starting:translate-y-6">
-          <View class="absolute -inset-x-24 -inset-y-16 bg-radial from-scrim to-transparent to-65% pointer-events-none compact:-inset-x-8" />
+          <View class="absolute -inset-x-24 -inset-y-16 bg-radial from-bg via-scrim via-30% to-transparent to-70% pointer-events-none compact:-inset-x-8" />
           <Show when={props.logo === 0 && props.name !== ""} fallback={
               <Art class={`aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
           }>

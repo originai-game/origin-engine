@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "Select",
     "screen.game-over.Best": "Best {best, number}",
     "screen.game-over.Left": "{value}",
     "screen.game-over.Revive": "Revive · {price}",

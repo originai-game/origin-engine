@@ -1,0 +1,19 @@
+{
+  "breaking": [
+    {
+      "member": "MainMenuScreen, PauseScreen, SettingsScreen, GameOverScreen, LoadingScreen, CreditsScreen, TitleScreen",
+      "change": "Each screen stands on Backdrop: with no key art the menus, title, loading and credits show the pack's designed ground, never a flat colour; pause, settings and game over lay one veil over the game. Each shows a HintBar footer. The main menu and pause menu stack their heading, objective and menu as one vertically centred column in MenuList.frame; settings rows are 56 px with the value shown, tabs take an icon and the description sits under the list; game over sets the score in Screen.figure over one centred column of actions; credits' role labels are 18 px and Back is a hint (a button on touch).",
+      "fix": "A game that placed its own content against the former layouts checks its screens; one that wants a former layout copies the screen's source."
+    },
+    {
+      "member": "SettingsScreenProps.pages",
+      "change": "A page is { id, name, icon? }: the icon is drawn before the tab's name.",
+      "fix": "Pass an icon set's name in `icon` for a page that should show one."
+    },
+    {
+      "member": "RpgItemCard",
+      "change": "The card is at most 480 px wide and centred, with a rarity band and its frame in Card.rarity; its labels, compare columns and change chips are larger.",
+      "fix": "A layout that gave the card a wider column gets the card centred in it."
+    }
+  ]
+}

@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "选择",
     "screen.main-menu.continue": "继续",
     "screen.main-menu.credits": "制作人员",
     "screen.main-menu.modes": "模式",

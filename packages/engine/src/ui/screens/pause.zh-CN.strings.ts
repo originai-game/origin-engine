@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "选择",
     "screen.pause.Played": "游戏时长 {played}",
     "screen.pause.controls": "操作设置",
     "screen.pause.load": "读取",

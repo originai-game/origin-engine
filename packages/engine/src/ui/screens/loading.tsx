@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import {Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Spinner } from "../components/base/spinner";
-import { Art } from "../controls/art";
+import { Backdrop } from "../controls/backdrop";
 import { Button } from "../controls/button";
 import "./loading.en.strings.ts";
 import { InputGlyph } from "../controls/input-glyph";
@@ -43,44 +43,41 @@ export function LoadingScreen(props: LoadingScreenProps) {
   const percent = () => (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress) * 100;
   return (
     <View class={`absolute inset-0 text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onNextTip?.(e)}>
-      <Show when={props.keyArt}>
-        <Art class="absolute object-cover inset-0" kind="tutorial" src={props.keyArt} />
-      </Show>
-      <View class="absolute inset-x-0 bottom-0 h-3/5 bg-linear-to-t from-bg via-scrim to-transparent portrait:h-3/4" />
-      <View class="absolute inset-x-0 bottom-0 flex-col gap-5 pb-[calc(env(hud-inset-bottom)+2.5rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-[calc(env(hud-inset-right)+4rem)] portrait:gap-4 portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:gap-3 compact:pb-[calc(env(hud-inset-bottom)+1.25rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)]">
-        <View class="flex-row items-end gap-8 portrait:flex-col portrait:items-stretch portrait:gap-4 compact:flex-col compact:items-stretch compact:gap-3">
+      <Backdrop art={props.keyArt} veil="foot" />
+      <View class="absolute inset-x-0 bottom-0 flex-col gap-6 pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+5rem)] pr-[calc(env(hud-inset-right)+5rem)] portrait:gap-5 portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:gap-4 compact:pb-[calc(env(hud-inset-bottom)+1.25rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)]">
+        <View class="flex-row items-end gap-10 portrait:flex-col portrait:items-stretch portrait:gap-5 compact:flex-col compact:items-stretch compact:gap-4">
           <View class="flex-col gap-1 grow shrink basis-0 min-w-0 transition duration-base ease-out starting:opacity-0 starting:translate-y-2 portrait:basis-auto compact:basis-auto">
-            <Text class={`m-0 ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>{t("screen.loading.entering")}</Text>
+            <Text class={`m-0 ${packClass("Screen", "note")} text-base uppercase tracking-kicker font-bold`}>{t("screen.loading.entering")}</Text>
             <Text class={`m-0 ${packClass("Screen", "heading")} compact:text-display-md`}>{props.place}</Text>
           </View>
-          <View class={`flex-col gap-1.5 w-120 max-w-full px-5 py-4 compact:w-full compact:px-4 compact:py-3 transition duration-base ease-out starting:opacity-0 starting:translate-y-2 portrait:w-full ${packClass("Plate", "frame")}`}>
-            <View class="flex-row items-center gap-2">
-              <Text class="text-xs font-bold tracking-label uppercase text-fg-muted m-0 grow">{t("screen.loading.tip")}</Text>
-              <View class="flex-row items-center gap-x-1 text-xs font-semibold tracking-label text-fg-muted pointer-coarse:min-h-11" role="button" onPress={(e) => props.onNextTip?.(e)}>
-                <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.nextKey")} size="sm" />
+          <View class="flex-col gap-2 w-130 max-w-full shrink transition duration-base ease-out starting:opacity-0 starting:translate-y-2 portrait:w-full compact:w-full">
+            <View class="flex-row items-center gap-3">
+              <Text class={`m-0 grow ${packClass("Screen", "note")} text-base font-bold tracking-kicker uppercase`}>{t("screen.loading.tip")}</Text>
+              <View class={`flex-row items-center gap-x-2 pointer-coarse:min-h-11 ${packClass("Screen", "note")} text-base font-semibold`} role="button" onPress={(e) => props.onNextTip?.(e)}>
+                <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.nextKey")} size="md" />
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
-            <Text class="text-base leading-snug m-0">{props.tip}</Text>
-            <View class="text-caption text-fg-muted short:hidden">{props.lore?.()}</View>
+            <Text class={`m-0 ${packClass("Screen", "note")} text-xl leading-snug font-semibold normal-case tracking-normal`}>{props.tip}</Text>
+            <View class="text-base text-fg-muted short:hidden">{props.lore?.()}</View>
           </View>
         </View>
         <View class="flex-row items-center gap-5 compact:gap-3">
-          <Progress class="grow shrink" value={percent()} label={props.place} />
           <Show when={!props.ready}>
-            <Spinner size={22} name={t("screen.loading.busy")} />
+            <Spinner size={24} name={t("screen.loading.busy")} />
           </Show>
+          <Progress class="grow shrink" value={percent()} label={props.place} />
           <Show when={!props.ready && props.status}>
-            <Text class={`m-0 shrink ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>{props.status}</Text>
+            <Text class={`m-0 shrink ${packClass("Screen", "note")} text-base uppercase tracking-label font-semibold`}>{props.status}</Text>
           </Show>
           <Show when={!(props.ready && props.waits)}>
-            <Text class={`m-0 min-w-18 text-end tabular-nums whitespace-nowrap ${packClass("Screen", "heading")} text-display-sm compact:text-title`}>
+            <Text class={`m-0 min-w-20 text-end tabular-nums whitespace-nowrap ${packClass("Screen", "heading")} text-display-sm compact:text-title`}>
               {t("screen.loading.Percent", { progress: `${formatNumber(percent(), { decimals: 0 })}%` })}
             </Text>
           </Show>
           <Show when={props.ready && props.waits}>
             <Button variant="primary" class="gap-x-2 animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
-              <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.continueKey")} size="sm" />
+              <InputGlyph class="pointer-coarse:hidden" action="confirm" size="md" />
               <Text class="pointer-coarse:hidden">{t("screen.loading.continue")}</Text>
               <Text class="hidden pointer-coarse:flex">{t("screen.loading.tapContinue")}</Text>
             </Button>

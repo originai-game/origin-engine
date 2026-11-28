@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "选择",
     "screen.game-over.Best": "最佳 {best, number}",
     "screen.game-over.Left": "{value}",
     "screen.game-over.Revive": "复活 · {price}",

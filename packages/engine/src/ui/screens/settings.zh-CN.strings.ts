@@ -3,6 +3,8 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.settings.page": "切换页",
+    "screen.common.select": "选择",
     "screen.common.back": "返回",
     "screen.settings.apply": "应用",
     "screen.settings.defaults": "恢复默认",

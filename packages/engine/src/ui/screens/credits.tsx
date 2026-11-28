@@ -1,10 +1,11 @@
 import {For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
+import { Backdrop } from "../controls/backdrop";
+import { HintBar } from "../controls/hint-bar";
 import { Button } from "../controls/button";
 import { engineCredits } from "./engine-credits";
 import "./credits.en.strings.ts";
-import { InputGlyph } from "../controls/input-glyph";
 
 export interface CreditsScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
@@ -37,11 +38,8 @@ export interface CreditsScreenProps {
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
     <View class={`absolute inset-0 text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e), back: (e) => props.onBack?.(e) }}>
-      <Show when={props.keyArt !== 0}>
-        <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
-      </Show>
-      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
-      <View class="grow shrink basis-0 overflow-hidden">
+      <Backdrop art={props.keyArt} veil="full" />
+      <View class="grow shrink basis-0 overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_6%,black_80%,transparent_90%)]">
         <View class="absolute top-0 inset-x-0 items-center gap-y-14 pt-24 pb-16 px-6 compact:gap-y-10 compact:pt-16" style={{ translate: `0 ${-props.offset}px` }}>
           <Show when={props.logo === 0} fallback={<Art class="w-full max-w-115 aspect-12/5 h-auto object-contain" kind="logo" src={props.logo} />}>
             <Show when={props.name}>
@@ -51,7 +49,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <For each={[...props.sections, ...engineCredits.map((s) => ({ ...s, title: t(s.title) }))]}>
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-5">
-              <Text class={`m-0 ${packClass("Screen", "note")} text-sm font-bold uppercase tracking-kicker text-fg`}>
+              <Text class={`m-0 ${packClass("Screen", "note")} text-lg font-bold uppercase tracking-kicker text-fg`}>
                 {s().title}
               </Text>
               <For each={s().names}>
@@ -61,7 +59,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
                     {n().name}
                   </Text>
                   <Show when={n().role}>
-                    <Text class={`m-0 ${packClass("Screen", "note")} uppercase tracking-label font-semibold`}>
+                    <Text class={`m-0 ${packClass("Screen", "note")} text-base uppercase tracking-label font-bold`}>
                       {n().role}
                     </Text>
                   </Show>
@@ -75,15 +73,14 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <View class="w-full max-w-140">{props.licences?.()}</View>
         </View>
       </View>
-      <View class="absolute top-[calc(env(hud-inset-top)+1.5rem)] left-[calc(env(hud-inset-left)+2rem)] compact:top-[calc(env(hud-inset-top)+0.75rem)] compact:left-[calc(env(hud-inset-left)+1rem)]">
+      <View class="absolute inset-x-0 bottom-0 flex-row justify-end pointer-events-none pb-[calc(env(hud-inset-bottom)+1.5rem)] pr-[calc(env(hud-inset-right)+3rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)]">
+        <HintBar hints={[{ action: "back", label: t("screen.common.back") }, { action: "confirm", label: t("screen.credits.faster") }]} />
+      </View>
+      <View class="absolute top-0 left-0 pt-[calc(env(hud-inset-top)+1rem)] pl-[calc(env(hud-inset-left)+1rem)] hidden pointer-coarse:flex">
         <Button size="sm" onPress={(e) => props.onBack?.(e)}>
           <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronLeft" />
           <Text>{t("screen.common.back")}</Text>
         </Button>
-      </View>
-      <View class={`flex-row absolute right-8 bottom-6 items-center gap-x-2 pointer-coarse:hidden compact:hidden ${packClass("Screen", "note")}`}>
-        <InputGlyph keyLabel={t("screen.credits.fasterKey")} size="sm" />
-        <Text>{t("screen.credits.faster")}</Text>
       </View>
     </View>
   );

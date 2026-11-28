@@ -1,5 +1,7 @@
 import {Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import { Backdrop } from "../controls/backdrop";
 import { Button } from "../controls/button";
+import { HintBar } from "../controls/hint-bar";
 import "./game-over.en.strings.ts";
 
 export interface GameOverScreenProps {
@@ -43,63 +45,66 @@ export interface GameOverScreenProps {
  */
 export function GameOverScreen(props: GameOverScreenProps) {
   return (
-    <View class={`absolute inset-0 flex-col justify-center items-center gap-6 p-8 compact:gap-4 compact:p-5 short:flex-row short:gap-8 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <View class={`absolute inset-0 ${packClass("Screen", "veil")}`} />
-      <Text sound="error" class={`max-w-full text-center m-0 ${packClass("Screen", "heading")} text-display-2xl compact:text-display-lg short:text-display-md short:shrink short:basis-0 short:grow`}>
-        {props.title}
-      </Text>
-      <View class={`flex-col items-stretch gap-5 w-110 max-w-full px-8 pt-6 pb-8 compact:px-5 compact:pt-5 compact:pb-6 ${packClass("Panel", "frame")}`}>
-        <View class="flex-row flex-wrap justify-center items-end gap-y-1 gap-x-8">
-          <View class="items-center">
-            <Text class="tracking-label uppercase text-fg-muted text-xs font-semibold m-0">
-              {t("screen.game-over.score")}
-            </Text>
-            <Text class="tabular-nums text-5xl leading-flat font-bold m-0">
-              {t("screen.game-over.Value", { value: props.score })}
-            </Text>
-          </View>
-          <Text class="text-fg-muted text-title font-bold tabular-nums m-0">
+    <View class={`absolute inset-0 flex-col justify-center items-center gap-8 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+4.5rem)] px-8 text-fg compact:gap-5 compact:px-5 short:flex-row short:gap-10 short:pb-12 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+      <Backdrop art={0} over veil="full" />
+      <View class="flex-col items-center gap-4 max-w-full short:shrink short:basis-0 short:grow">
+        <Text sound="error" class={`max-w-full text-center m-0 ${packClass("Screen", "heading")} text-display-3xl tracking-display-3xl compact:text-display-xl short:text-display-lg`}>
+          {props.title}
+        </Text>
+        <View class="flex-col items-center gap-1">
+          <Text class={`m-0 ${packClass("Screen", "note")} text-base font-bold uppercase tracking-kicker`}>
+            {t("screen.game-over.score")}
+          </Text>
+          <Text class={`m-0 ${packClass("Screen", "figure")} ${packClass("Count", "roll")} compact:text-display-xl`}>
+            {t("screen.game-over.Value", { value: props.score })}
+          </Text>
+          <Text class={`m-0 ${packClass("Screen", "note")} text-lg font-bold tabular-nums`}>
             {t("screen.game-over.Best", { best: props.best })}
           </Text>
         </View>
         <View class="self-stretch">{props.stats?.()}</View>
+      </View>
+      <View class="flex-col items-stretch gap-3 w-100 max-w-full">
         <Show when={props.offer} fallback={
-            <View class="flex-col items-stretch gap-3">
-              <Show when={props.onRetry}>
-                <Button variant="primary" onPress={(e) => props.onRetry?.(e)} autofocus>
-                  <Text>{t("screen.game-over.retry")}</Text>
-                </Button>
-              </Show>
-              <Show when={props.checkpoint && props.onCheckpoint}>
-                <Button onPress={(e) => props.onCheckpoint?.(e)}>
-                  <Text>{t("screen.game-over.checkpoint")}</Text>
-                </Button>
-              </Show>
-              <Show when={props.onQuit}>
-                <Button variant="ghost-muted" onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
-              </Show>
-            </View>
+          <>
+            <Show when={props.onRetry}>
+              <Button variant="primary" size="lg" onPress={(e) => props.onRetry?.(e)} autofocus>
+                <Text>{t("screen.game-over.retry")}</Text>
+              </Button>
+            </Show>
+            <Show when={props.checkpoint && props.onCheckpoint}>
+              <Button onPress={(e) => props.onCheckpoint?.(e)}>
+                <Text>{t("screen.game-over.checkpoint")}</Text>
+              </Button>
+            </Show>
+            <Show when={props.onQuit}>
+              <Button variant="ghost-muted" onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+            </Show>
+          </>
         }>
-          <View class={`flex-col items-center gap-3 p-5 ${packClass("Slot", "frame")}`}>
-            <Text class="text-center leading-22 text-display-md font-bold tabular-nums m-0 size-22 rounded-full inset-ring-marker inset-ring-gold short:leading-16 short:size-16">
+          <View class="flex-row items-center justify-center gap-4">
+            <Text class="text-center leading-18 text-display-sm font-bold tabular-nums m-0 size-18 rounded-full inset-ring-marker inset-ring-accent text-fg short:leading-14 short:size-14">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>
-            <Text class="text-title font-bold tracking-md uppercase text-center m-0">
+            <Text class={`m-0 shrink ${packClass("Screen", "note")} text-xl font-bold`}>
               {t("screen.game-over.revive")}
             </Text>
-            <View class="self-stretch">{props.offerArt?.()}</View>
-            <Show when={props.onRevive}>
-              <Button variant="primary" class="self-stretch" onPress={(e) => props.onRevive?.(e)} autofocus>
-                <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
-              </Button>
-            </Show>
-            <Show when={props.onDecline}>
-              <Button variant="ghost-muted" class="self-stretch" onPress={(e) => props.onDecline?.(e)}>
-                <Text>{t("screen.game-over.decline")}</Text>
-              </Button>
-            </Show>
           </View>
+          <View class="self-stretch">{props.offerArt?.()}</View>
+          <Show when={props.onRevive}>
+            <Button variant="primary" size="lg" onPress={(e) => props.onRevive?.(e)} autofocus>
+              <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
+            </Button>
+          </Show>
+          <Show when={props.onDecline}>
+            <Button variant="ghost-muted" onPress={(e) => props.onDecline?.(e)}>
+              <Text>{t("screen.game-over.decline")}</Text>
+            </Button>
+          </Show>
         </Show>
+      </View>
+      <View class="absolute inset-x-0 bottom-0 flex-row justify-center pointer-events-none pb-[calc(env(hud-inset-bottom)+1.5rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)]">
+        <HintBar hints={[{ action: "confirm", label: t("screen.common.select") }]} />
       </View>
     </View>
   );

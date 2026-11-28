@@ -13,13 +13,14 @@ The credits: the sections' titles and names rolling over the key art's veil, the
 | `sections` | `ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>` | The sections: { title, names: [{ name, role }] }. The engine's own credits (its art's authors) follow them. |
 | `offset` | `number` | How far the roll has run, CSS px. |
 | `keyArt` | `Texture \| 0` | The key art's texture under the roll's veil (og.load.texture; 0: the style's dark ground). |
-| `logo` | `Texture \| 0` | The game's logo texture at the head of the roll (og.load.texture; 0: the logo slot's placeholder). |
+| `logo` | `Texture \| 0` | The game's logo texture at the head of the roll (og.load.texture; 0: the name set as a wordmark). |
+| `name?` | `string \| undefined` | The game's name, set as the pack's wordmark at the head of the roll where there is no logo. |
 | `end?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the end snippet). |
 | `licences?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the licences snippet). |
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
 | `onFaster?` | `(e: UiEvent, key?: string) => void` | The faster event, with the row's key where it comes from a row. |
 
-Pack slots: `Screen.frame`.
+Pack slots: `Screen.frame`, `Screen.heading`, `Screen.note`, `Title.wordmark`.
 
 Fixtures: `default`.
 

@@ -25,8 +25,8 @@ Game over: the defeat's line, the run's score and the best, an optional revive o
 | `onRetry?` | `((e: UiEvent, key?: string) => void) \| undefined` | The retry event, with the row's key where it comes from a row. |
 | `onRevive?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revive event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`, `Screen.frame`.
+Pack slots: `Count.roll`, `Screen.figure`, `Screen.frame`, `Screen.heading`, `Screen.note`.
 
-Fixtures: `default`.
+Fixtures: `default`, `retry`.
 
 Actions: `confirm` (Retry).

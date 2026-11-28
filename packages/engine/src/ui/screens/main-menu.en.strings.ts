@@ -3,6 +3,7 @@ export default file.strings({
   "base": false,
   "direction": "ltr",
   "entries": {
+    "screen.common.select": "Select",
     "screen.main-menu.continue": "Continue",
     "screen.main-menu.credits": "Credits",
     "screen.main-menu.modes": "Modes",
