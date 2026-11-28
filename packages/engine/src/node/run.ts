@@ -619,7 +619,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         names?: Array<{ entity: string; start: string | null; now: string | null }>;
         entities?: { missing: string[]; extra: string[] };
         resources?: Array<{ resource: string; fields?: Fields; only?: string }>;
-        events?: Array<{ event: string; start: number; now: number }>;
+        events?: Array<{ event: string; start: number; now: number; index?: number; fields?: Fields }>;
         blocks?: Array<{ block: string }>;
         records?: Array<{ block: string; entity?: string; record?: string; global?: string; fields?: Fields; only?: string; start?: unknown; now?: unknown }>;
         unchecked?: string[];
@@ -631,6 +631,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       const c = d.components?.[0];
       const r = d.resources?.[0];
       const n = d.names?.[0];
+      const e = d.events?.[0];
       const { missing = [], extra = [] } = d.entities ?? {};
       // A module's record by its entity: `hero og.physics body.linear is [0,0,4], a fresh start's [0,0,0]`.
       const record = (m: NonNullable<Diff["records"]>[number]) =>
@@ -657,8 +658,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
                 ? `${n.entity} is named ${JSON.stringify(n.now)}, a fresh start's ${JSON.stringify(n.start)}`
                 : r
                   ? `resource ${r.resource}${r.only === "start" ? " is missing" : r.only === "now" ? " is not in a fresh start" : field(r.fields)}`
-                  : d.events?.[0]
-                    ? `event queue ${d.events[0].event} holds ${d.events[0].now}, a fresh start's ${d.events[0].start}`
+                  : e
+                    ? e.index !== undefined
+                      ? `event queue ${e.event}[${e.index}]${field(e.fields)}`
+                      : `event queue ${e.event} holds ${e.now}, a fresh start's ${e.start}`
                     : d.records?.[0]
                       ? record(d.records[0])
                       : d.blocks?.[0]

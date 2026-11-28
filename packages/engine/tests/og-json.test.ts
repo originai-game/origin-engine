@@ -152,15 +152,18 @@ const go = (world: any) => { og.input.intent(world, Go, { k: 1 }); };
 export default og.game({ systems: [Tick], commands: { start: (w) => { go(w); go(w); }, again: (w) => go(w) } });
 `;
 
-const respawnGame = (leak: boolean) => `import { defineComponent, defineResource, defineSystem, Entity, og, u32 } from "@origingame/engine";
+const respawnGame = (leak: boolean, changedEvent = false) => `import { defineComponent, defineEvent, defineResource, defineSystem, Entity, og, u32 } from "@origingame/engine";
 const Count = defineResource("Count", { n: u32() });
 const Piece = defineComponent("Piece", { v: u32() });
 const Target = defineComponent("Target", { coin: Entity() });
+const Spawned = defineEvent("Spawned", { coin: Entity(), v: u32() });
 const spawnAll = (world: any) => {
   const coins = [1, 2, 3].map((v) => {
     const e = world.spawn({ bare: true });
     if (!e.ok) throw new Error(e.reason);
     world.insert(e.value, Piece, { v });
+    const sent = world.emit(Spawned, { coin: e.value, v: ${changedEvent ? "v === 2 && world.resource(Count).value.n > 0 ? 7 : v" : "v"} });
+    if (!sent.ok) throw new Error(sent.reason);
     return e.value;
   });
   const hero = world.spawn({ name: "hero", bare: true });
@@ -175,7 +178,7 @@ const Clear = defineSystem("Clear", { reads: [Count], writes: [Piece] }, (q, _t,
   for (const a of q.archetypes()) for (let i = 0; i < a.count; i++) all.push(a.entity(i));
   for (const e of all.slice(${leak ? 1 : 0})) world.despawn(e);
 });
-const Round = defineSystem("Round", { reads: [], writes: [Count, Piece, Target] }, (_q, _t, world) => {
+const Round = defineSystem("Round", { reads: [], writes: [Count, Piece, Target, Spawned] }, (_q, _t, world) => {
   const c = world.resource(Count);
   if (!c.ok) return;
   if (c.value.n === 0 || c.value.n === 29) spawnAll(world);
@@ -317,12 +320,16 @@ test("restarts", async () => {
 });`);
     rmSync(join(game, "tests/budget.og.ts"));
     // Despawning everything and spawning it again is a restart; one entity left over is not, by name.
-    for (const leak of [false, true]) {
-      writeFileSync(original, respawnGame(leak));
+    for (const [leak, changedEvent] of [[false, false], [true, false], [false, true]] as const) {
+      writeFileSync(original, respawnGame(leak, changedEvent));
       const ran = og("test", game, "--json");
       const restart = lines(ran.stdout).find((e) => e.playtest === "restart") as Record<string, any> | undefined;
       if (!restart) throw new Error(ran.stdout + ran.stderr);
-      if (!leak) {
+      if (changedEvent) {
+        expect(restart).toMatchObject({ ok: false, status: "failed", restart: { tick: 30, ok: false } });
+        expect(restart.restart.first).toBe("event queue Spawned[1].v is 7, a fresh start's 2");
+        expect(restart.restart.diff.events).toEqual([{ event: "Spawned", start: 3, now: 3, index: 1, fields: [{ field: "v", start: 2, now: 7 }] }]);
+      } else if (!leak) {
         expect(restart, JSON.stringify(restart.restart)).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null, unchecked: [] } });
         expect(restart.restart.hash).toBe(restart.restart.startHash);
       } else {

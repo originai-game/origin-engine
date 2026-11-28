@@ -1549,7 +1549,7 @@ fn block_changes(
 ///   names: [{ entity, start, now }],
 ///   entities: { missing: [path], extra: [path] },
 ///   resources: [{ resource, fields | only }],
-///   events: [{ event, start, now }]     (counts the compared tick sent)
+///   events: [{ event, start, now, index?, fields? }]  (counts, first differing payload's zero-based index and fields)
 ///   blocks: [{ block, startBytes, nowBytes }]   (a block that holds no entity id, by its bytes)
 ///   records: [{ block, entity, record, fields | only } | { block, global, start, now }],
 ///   unchecked: ["<block>: <why>"], truncated: n }
@@ -1688,19 +1688,28 @@ pub fn restart_diff(
         }
         let theirs = now.events.iter().find(|r| now.type_name(r.ty) == name);
         let skip = ignored(ignore, name).unwrap_or(&[]);
-        let same_list = |a: &[Vec<u8>], b: &[Vec<u8>], r: &Queue| {
-            a.len() == b.len()
-                && a.iter().zip(b).all(|(x, y)| {
-                    record_changes((start, q.ty, x), (now, r.ty, y), skip, map, handles).is_empty()
-                })
-        };
         // Only what the compared tick sent (`pending`): the events it was
         // delivered were sent the tick before, which for a restart is the
         // old game's last tick and for a fresh start its start.
-        let same = theirs.is_some_and(|r| same_list(&q.pending, &r.pending, r));
-        if !same {
-            let count = |r: Option<&Queue>| r.map_or(0, |r| r.pending.len());
-            events.push(json!({ "event": name, "start": count(Some(q)), "now": count(theirs) }));
+        let changed = theirs.and_then(|r| {
+            q.pending
+                .iter()
+                .zip(&r.pending)
+                .enumerate()
+                .find_map(|(index, (x, y))| {
+                    let fields =
+                        record_changes((start, q.ty, x), (now, r.ty, y), skip, map, handles);
+                    (!fields.is_empty()).then_some((index, fields))
+                })
+        });
+        let count = theirs.map_or(0, |r| r.pending.len());
+        if theirs.is_none() || q.pending.len() != count || changed.is_some() {
+            let mut event = json!({ "event": name, "start": q.pending.len(), "now": count });
+            if let Some((index, fields)) = changed {
+                event["index"] = json!(index);
+                event["fields"] = json!(fields);
+            }
+            events.push(event);
         }
     }
     let (mut blocks, mut records, mut unchecked) = (Vec::new(), Vec::new(), Vec::new());
