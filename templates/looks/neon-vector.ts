@@ -6,7 +6,7 @@ export default file.look({
   // emissive light, blooming, with a bright outline round the silhouettes.
   name: "Neon vector-like graphics",
   mood: "dark",
-  ui: "@themes/scifi",
+  ui: "@themes/neon",
   MaterialStyle: {
     outlineWidth: 2,
     outlineColor: "#40f0ff",

@@ -1,0 +1,14 @@
+{
+  "breaking": [
+    {
+      "member": "looks inked-comic-3d, neon-vector",
+      "change": "The inked-comic-3d look's ui is the new `@themes/comic` pack (charcoal panels under an ink rim, slanted yellow slabs, a hand-drawn arrow, Bangers capitals), no longer `@themes/ink`; the neon-vector look's is the new `@themes/neon` pack (glowing cyan line frames on black, Orbitron capitals), no longer `@themes/scifi`.",
+      "fix": "A game that wants the old UI on these looks writes `ui: \"@themes/ink\"` or `ui: \"@themes/scifi\"` in its look."
+    },
+    {
+      "member": "@themes/pixel, @themes/minimal, @themes/candy, @themes/cartoon",
+      "change": "The packs dress the built-in controls with drawn nine-slice parts (frames, plates, buttons and their pressed faces, the current menu entry, a cursor, tabs, slider and switch pieces, checkboxes, bar frames) and their own display faces, instead of recoloured token slots. pixel is carved wood around parchment in the light scheme; minimal sets Jost; candy is light white plastic with Titan One; cartoon sets Luckiest Guy and Nunito. Their inks are the parts' own (`part-fg`, `part-on`, `part-gold`).",
+      "fix": "A game's own components on these packs read `text-part-fg` on a part and draw a part with its class (`nine-panel`, `nine-plate`, `nine-button`); a game that wanted the former look extends its own theme from the dimensions it used."
+    }
+  ]
+}

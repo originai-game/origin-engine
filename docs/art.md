@@ -190,8 +190,8 @@ summary as warnings and never refuses a build.
 
 Six looks, every one offered to a new game (`creationLooks`), with the
 UI theme their `ui` line names: toy-3d (candy); cartoon-2d (cartoon);
-inked-comic-3d (ink); faceted-low-poly (minimal); pixel (pixel);
-neon-vector (scifi). A
+inked-comic-3d (comic); faceted-low-poly (minimal); pixel (pixel);
+neon-vector (neon). A
 theme is a recipe in `templates/themes/<name>/`.
 The validator keeps a look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches

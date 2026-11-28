@@ -87,7 +87,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -209,7 +209,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -336,7 +336,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -454,7 +454,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -569,7 +569,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -685,7 +685,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",
@@ -782,7 +782,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "@themes/ink",
+        "ui": "@themes/comic",
         "uiSeeds": {
           "accent": "#ffd23f",
           "neutral": "#0a0810",

@@ -64,7 +64,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -154,7 +154,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -224,7 +224,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -313,7 +313,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -399,7 +399,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -483,7 +483,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },
@@ -570,7 +570,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "@themes/scifi",
+        "ui": "@themes/neon",
         "uiSeeds": {},
         "variant": null
       },

@@ -13,9 +13,11 @@
     "anime",
     "candy",
     "cartoon",
+    "comic",
     "fantasy",
     "ink",
     "minimal",
+    "neon",
     "pixel",
     "scifi",
     "storybook",
@@ -68,7 +70,7 @@
         ],
         "missing": []
       },
-      "ui": "ink",
+      "ui": "comic",
       "palette": {
         "size": "free, saturated",
         "rules": "Bold local colours, black ink for all shadow edges."
@@ -315,7 +317,7 @@
           }
         ]
       },
-      "ui": "scifi",
+      "ui": "neon",
       "palette": {
         "size": "black plus 2 to 4 saturated hues",
         "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."
