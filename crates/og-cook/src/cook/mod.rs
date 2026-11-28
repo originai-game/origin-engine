@@ -451,6 +451,13 @@ pub fn cook_project_with_texture_cache(
         s.hash = stage::source_hash(s);
     }
     navmesh::bind(&mut sources, &content)?;
+    if options.entry_only {
+        stage::reachable_sources(&mut sources, &content, &project.source, &options.code)?;
+    }
+    ui_packs::fonts(&mut sources, &project.source, &options.code)?;
+    if options.entry_only {
+        stage::reachable_sources(&mut sources, &content, &project.source, &options.code)?;
+    }
     let boot = project
         .boot
         .as_ref()
@@ -487,7 +494,15 @@ pub fn cook_project_with_texture_cache(
         groups,
         group_of,
         pack_faces,
-    } = group(&sources, &known, &mut early_errors, threads, &delivery);
+    } = group(
+        &sources,
+        &known,
+        &mut early_errors,
+        threads,
+        &delivery,
+        &content,
+        &options.code,
+    );
     laps.lap("group");
     let schemas: BTreeMap<String, Schema> = options
         .schemas

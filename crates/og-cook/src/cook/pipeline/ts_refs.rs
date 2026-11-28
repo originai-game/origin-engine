@@ -1,8 +1,8 @@
 //! Static asset references and conservative computed-load prefixes in game code.
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    CallExpression, Expression, IdentifierReference, StaticMemberExpression, StringLiteral,
-    TemplateLiteral,
+    CallExpression, Expression, IdentifierReference, JSXText, StaticMemberExpression,
+    StringLiteral, TemplateLiteral,
 };
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
@@ -160,6 +160,10 @@ impl<'a> Visit<'a> for Visitor<'_> {
 
     fn visit_identifier_reference(&mut self, id: &IdentifierReference<'a>) {
         self.refs.names.insert(id.name.as_str().to_owned());
+    }
+
+    fn visit_jsx_text(&mut self, text: &JSXText<'a>) {
+        self.refs.fragments.push(text.value.as_str().to_owned());
     }
 
     fn visit_static_member_expression(&mut self, m: &StaticMemberExpression<'a>) {

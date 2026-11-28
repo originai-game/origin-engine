@@ -138,7 +138,8 @@ pub fn cook(root: &Path, threads: usize, web: bool) -> Result<Report, String> {
 /// [`cook`] for a publish (`og build --publish`): a prefab override that
 /// no longer does anything is refused, naming it.
 pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result<Report, String> {
-    cook_with(root, threads, web, publish, code_graph(root)?)
+    let options = options(root, threads, web, code_graph(root)?)?;
+    checked_cook(root, &CookOptions { publish, ..options })
 }
 
 /// What the code of the project at `root` reaches: the import graph of a
@@ -166,7 +167,11 @@ pub fn cook_with(
     code: CodeGraph,
 ) -> Result<Report, String> {
     let options = options(root, threads, web, code)?;
-    let options = CookOptions { publish, ..options };
+    let options = CookOptions {
+        publish,
+        entry_only: true,
+        ..options
+    };
     checked_cook(root, &options)
 }
 

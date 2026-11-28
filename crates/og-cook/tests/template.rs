@@ -132,6 +132,85 @@ fn typed_styles_load_native_layers_and_refresh_inherited_inputs() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     assert_eq!(load().1, 13.);
+
+    // An entry's closure includes stream declarations and shared roots, not
+    // another entry's catalogue. Native style payloads, private images and
+    // faces must still be readable out of the stream transport's pack.
+    write(
+        "content/unused.ts",
+        "import {file} from '@origingame/engine/author';export default file.theme({extends:'@themes/anime'});",
+    );
+    write(
+        "content/lazy.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.theme({extends:'@themes/candy',pack:{images:{private:{src:ref('base/paint'),slice:[1,1,1,1]}}}});",
+    );
+    write(
+        "content/paint.ts",
+        "import {file} from '@origingame/engine/author';export default file.import({kind:'texture',source:'assets/paint.png'});",
+    );
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    image::RgbaImage::from_pixel(3, 5, image::Rgba([59, 23, 139, 255]))
+        .save(root.join("assets/paint.png"))
+        .unwrap();
+    write(
+        "content/scene.ts",
+        "import {file,ref} from '@origingame/engine/author';export default file.scene({streams:{switch:{assets:[ref('base/lazy')]}}});",
+    );
+    let mut options = CookOptions {
+        entry_only: true,
+        code: og_cook::cook::CodeGraph {
+            tsx: true,
+            files: vec![root.join("src/main.ts")],
+            text: ["base/scene".to_owned()].into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    for chinese in [false, true, false] {
+        options.code.text = ["base/scene".to_owned()].into();
+        if chinese {
+            options.code.text.insert("你好".into());
+        }
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let default = bundle.output(og_ui_next::pack::DEFAULT_FONT_ASSET).unwrap();
+        assert!(
+            default.group.is_none(),
+            "the default face cannot depend on a style's residency"
+        );
+        assert!(bundle.manifest().preload.contains(&default.file));
+        assert!(bundle.output("base/unused").is_err());
+        assert!(bundle.output("base/styles/plain").is_err());
+        assert!(
+            bundle.output("base/styles/child").is_ok(),
+            "project look is shared"
+        );
+        let group = &bundle.manifest().streams[0];
+        let files: BTreeMap<_, _> = og_cook::runtime::unpack(
+            &std::fs::read(root.join("cooked").join(&group.file)).unwrap(),
+        )
+        .unwrap()
+        .into_iter()
+        .collect();
+        let output = bundle.output("base/lazy").unwrap();
+        assert_eq!(output.group.as_deref(), Some(group.name.as_str()));
+        assert_eq!(bundle.output("base/paint").unwrap().group, output.group);
+        let layer =
+            Layer::from_bytes(&bundle.pack_data("base/lazy", &files[&output.file]).unwrap())
+                .unwrap();
+        assert_eq!(!layer.fallback_fonts.is_empty(), chinese);
+        for id in layer.assets() {
+            assert!(bundle.output(id).is_ok(), "missing style dependency: {id}");
+        }
+        assert!(
+            !bundle
+                .manifest()
+                .preload
+                .iter()
+                .any(|f| f.contains("/cjk/") || f.starts_with("@fonts/"))
+        );
+    }
     write(
         "content/styles/child.ts",
         &child.replace("north/paint", "north/missing"),

@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og build entry asset closure",
+      "change": "Runs and builds cook the selected entry's imports and asset-reference closure, plus project scenes, look, delivery-pack roots and publish.keep. Unreferenced content belonging to another entry no longer ships. Standalone og cook still prepares the authoring catalogue.",
+      "fix": "Import or reference each entry's assets from that entry. Declare genuinely shared assets in project roots or publish.keep; computed og.load prefixes retain their matching assets. Rebuild each entry separately."
+    },
+    {
+      "member": "og.UiPack and theme font delivery",
+      "change": "Style packs can be scene-stream members. Their private resources travel with the group; shared resources stay independent. Fallback-only fonts are selected by reached text and project languages, never preloaded just because a theme lists them. Optional faces fetch when text first needs them. The cooked UI layer format is now version 3.",
+      "fix": "Re-cook with the matching runtime. Request a style's stream group before og.load.style and og.ui.configure. Declare supported languages in create.lang or import their string tables; reference a font explicitly when it must be synchronous."
+    }
+  ]
+}

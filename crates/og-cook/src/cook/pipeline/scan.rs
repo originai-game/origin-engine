@@ -726,7 +726,7 @@ pub(crate) fn plan_groups(
                 let fits = src.kind.streams;
                 if !fits || skinned {
                     refused = Some(format!(
-                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",
+                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks, style packs and colour LUTs",
                         g.name,
                         if skinned {
                             "a skinned or morphed model".to_string()

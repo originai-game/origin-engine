@@ -148,7 +148,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if p.has_assets() {
         build_trace("cook-start");
-        match crate::cook::cook_for(&p.root, 0, true, publish) {
+        let cooked = crate::cook::code_graph(&p.entry)
+            .and_then(|code| crate::cook::cook_with(&p.root, 0, true, publish, code));
+        match cooked {
             Ok(r) => {
                 if !json {
                     println!("{}", crate::cook::summary(&r));

@@ -324,7 +324,7 @@ row!(
 
 row!(
     /// The root of a checked style layer.
-    PackMeta, "og.UiPack", 2 {
+    PackMeta, "og.UiPack", 3 {
         /// Bytes of the native layer in `data`.
         data_bytes: u32,
     }

@@ -20,13 +20,182 @@ pub(crate) static PACK: KindDef = KindDef {
     extensions: &[],
     types: &[],
     by_content: false,
-    streams: false,
+    streams: true,
     plan: plan_pack,
 };
 
 /// Planning, grouping and execution consume the same prepared native fields.
 pub(crate) fn pack_layer(s: &Source) -> Result<og_ui_next::pack::Layer, CookError> {
     og_ui_next::pack::Layer::from_bytes(&s.bytes).map_err(|e| CookError(format!("{}: {e}", s.rel)))
+}
+
+/// Resolve optional font coverage from the project's languages and reached
+/// text, not a theme's fallback list. Primary role families keep their full
+/// faces; fallback-only faces are fetched when text first needs their cmap.
+pub(crate) fn fonts(
+    sources: &mut Vec<Source>,
+    project: &source_project::Project,
+    code: &super::CodeGraph,
+) -> Result<(), CookError> {
+    use icu_properties::{CodePointMapData, PropertyNamesShort, props::Script};
+    use std::collections::BTreeSet;
+    let mut languages: Vec<String> = project
+        .input
+        .create
+        .as_ref()
+        .and_then(|c| c.lang.clone())
+        .unwrap_or_else(|| vec!["en".into()]);
+    languages.extend(
+        sources
+            .iter()
+            .filter(|s| !s.rel.starts_with("@ui/"))
+            .filter_map(|s| s.strings.as_ref().map(|t| t.locale.clone())),
+    );
+    let mut text = code.text.iter().cloned().collect::<String>();
+    for table in sources
+        .iter()
+        .filter_map(|s| s.strings.as_ref())
+        .filter(|t| {
+            languages
+                .iter()
+                .any(|l| og_i18n::locale::language(l) == og_i18n::locale::language(&t.locale))
+        })
+    {
+        for (value, _) in table.entries.values() {
+            text.push_str(value);
+        }
+    }
+    let text: BTreeSet<char> = text.chars().collect();
+    let scripts = CodePointMapData::<Script>::new();
+    let names = PropertyNamesShort::<Script>::new();
+    let mut wanted: BTreeSet<String> = languages
+        .iter()
+        .filter_map(|l| {
+            let mut locale: icu_locale::Locale = l.parse().ok()?;
+            icu_locale::LocaleExpander::new_extended().maximize(&mut locale.id);
+            locale.id.script.map(|s| s.to_string())
+        })
+        .collect();
+    // Unicode uses Hani for Han; BCP 47 uses Hans/Hant, Jpan and Kore
+    // for writing systems containing Han (and kana or Hangul).
+    if wanted
+        .iter()
+        .any(|s| matches!(s.as_str(), "Hans" | "Hant" | "Jpan" | "Kore"))
+    {
+        wanted.insert("Hani".into());
+    }
+    if wanted.contains("Jpan") {
+        wanted.extend(["Hira".into(), "Kana".into()]);
+    }
+    if wanted.contains("Kore") {
+        wanted.insert("Hang".into());
+    }
+    let fonts: BTreeMap<_, _> = sources
+        .iter()
+        .filter(|s| s.kind == &super::font::FONT)
+        .map(|s| (s.rel.clone(), s.bytes.clone()))
+        .collect();
+    for source in sources.iter_mut().filter(|s| s.kind == &PACK) {
+        let mut layer = pack_layer(source)?;
+        let primary: BTreeSet<String> = layer
+            .theme
+            .iter()
+            .filter_map(|t| t.get("fontFamily"))
+            .filter_map(serde_json::Value::as_object)
+            .flat_map(|m| m.values())
+            .filter_map(serde_json::Value::as_str)
+            .filter_map(|v| v.split(',').next())
+            .map(|v| v.trim().trim_matches(['\'', '"']).to_string())
+            .collect();
+        let primary_faces: Vec<_> = layer
+            .fonts
+            .iter()
+            .filter_map(|id| fonts.get(id))
+            .filter_map(|bytes| ttf_parser::Face::parse(bytes, 0).ok())
+            .filter(|face| {
+                primary.is_empty()
+                    || face.names().into_iter().any(|n| {
+                        matches!(
+                            n.name_id,
+                            ttf_parser::name_id::FAMILY | ttf_parser::name_id::TYPOGRAPHIC_FAMILY
+                        ) && n.to_string().is_some_and(|n| primary.contains(&n))
+                    })
+            })
+            .collect();
+        let mut primary_scripts = BTreeSet::new();
+        for face in &primary_faces {
+            if let Some(cmap) = face.tables().cmap {
+                for sub in cmap.subtables.into_iter().filter(|s| s.is_unicode()) {
+                    sub.codepoints(|point| {
+                        if let Some(c) = char::from_u32(point)
+                            && face.glyph_index(c).is_some()
+                            && let Some(name) = names.get(scripts.get(c))
+                        {
+                            primary_scripts.insert(name);
+                        }
+                    });
+                }
+            }
+        }
+        let mut kept = Vec::new();
+        for id in std::mem::take(&mut layer.fonts) {
+            let Some(bytes) = fonts.get(&id) else {
+                kept.push(id);
+                continue;
+            };
+            let face = ttf_parser::Face::parse(bytes, 0).map_err(|e| CookError(e.to_string()))?;
+            let is_primary = primary.is_empty()
+                || face.names().into_iter().any(|n| {
+                    matches!(
+                        n.name_id,
+                        ttf_parser::name_id::FAMILY | ttf_parser::name_id::TYPOGRAPHIC_FAMILY
+                    ) && n.to_string().is_some_and(|n| primary.contains(&n))
+                });
+            if is_primary {
+                kept.push(id);
+                continue;
+            }
+            let mut points = Vec::new();
+            if let Some(cmap) = face.tables().cmap {
+                for sub in cmap.subtables.into_iter().filter(|s| s.is_unicode()) {
+                    sub.codepoints(|c| {
+                        if face
+                            .glyph_index(char::from_u32(c).unwrap_or('\0'))
+                            .is_some()
+                        {
+                            points.push(c);
+                        }
+                    });
+                }
+            }
+            let needed = points.iter().filter_map(|&c| char::from_u32(c)).any(|c| {
+                let script = scripts.get(c);
+                !primary_faces.iter().any(|f| f.glyph_index(c).is_some())
+                    && (text.contains(&c)
+                        || script != Script::Common
+                            && script != Script::Inherited
+                            && names.get(script).is_some_and(|s| {
+                                wanted.contains(s) && !primary_scripts.contains(s)
+                            }))
+            });
+            if needed {
+                layer.fallback_fonts.push(og_ui_next::pack::FallbackFont {
+                    id,
+                    coverage: og_i18n::font_pack::ranges(points),
+                });
+            }
+        }
+        layer.fonts = kept;
+        source.bytes = layer.to_bytes().map_err(CookError)?;
+        source.hash = super::pipeline::stage::source_hash(source);
+    }
+    // The scanner supplies the engine's automatic Han coverage, but a
+    // project without that language or text must not ship its dictionary
+    // and face. Explicitly installed packs have project identities instead.
+    if !wanted.contains("Hani") && !text.iter().any(|&c| scripts.get(c) == Script::Han) {
+        sources.retain(|s| !s.rel.starts_with("@fonts/"));
+    }
+    Ok(())
 }
 
 /// Resolve an explicit engine identity. This is shared by look composition,

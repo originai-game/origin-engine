@@ -1014,7 +1014,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const profile = /^profile "(2d|3d)"$/m.exec(cookedManifest)?.[1] as GameProfile | undefined;
   if (!profile) return fail(`${cooked}/.cook.ogt has no profile; retry og build to refresh it`);
   let assets: PublishAssets | null = null;
-  if (publish) {
+  {
     try {
       assets = publishAssets(project, cookedManifest);
     } catch (error) {

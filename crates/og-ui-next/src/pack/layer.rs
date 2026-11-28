@@ -1,6 +1,13 @@
 //! Native style layers, shared by the cook and both runtime hosts.
 use super::*;
 
+/// A style's optional coverage, fetched only when its text needs it.
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct FallbackFont {
+    pub id: String,
+    pub coverage: Vec<std::ops::RangeInclusive<u32>>,
+}
+
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Layer {
     pub scheme: Option<Scheme>,
@@ -13,6 +20,7 @@ pub struct Layer {
     pub variants: BTreeMap<String, String>,
     /// Canonical face IDs, in fallback order. Metadata belongs to each face.
     pub fonts: Vec<String>,
+    pub fallback_fonts: Vec<FallbackFont>,
     pub icons: BTreeMap<String, String>,
     pub icon_set: Option<String>,
     pub images: [BTreeMap<String, NineSlice>; 2],
@@ -54,6 +62,7 @@ impl Layer {
 
     pub fn assets(&self) -> Vec<&str> {
         let mut out: Vec<&str> = self.fonts.iter().map(String::as_str).collect();
+        out.extend(self.fallback_fonts.iter().map(|f| f.id.as_str()));
         out.extend(self.icons.values().map(String::as_str));
         out.extend(self.icon_set.as_deref());
         out.extend(
@@ -81,6 +90,7 @@ impl Layer {
             }
         };
         self.fonts.iter_mut().for_each(at);
+        self.fallback_fonts.iter_mut().for_each(|f| at(&mut f.id));
         self.icons.values_mut().for_each(at);
         self.icon_set.iter_mut().for_each(at);
         for m in &mut self.images {

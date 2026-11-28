@@ -235,7 +235,7 @@ impl Index {
         options.code.files.clear();
         let options = cache::key(
             &crate::format::Area::ALL,
-            "index-v4-native-runtime-refs",
+            "index-v6-entry-font-demand",
             &[format!(
                 "{options:?} {:?} {}",
                 super::texture::encoder_name(&options.texture),

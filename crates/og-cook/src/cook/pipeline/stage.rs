@@ -99,6 +99,121 @@ impl Project {
 /// A problem found before the cook ran: the asset, its kind and the error.
 pub(crate) type EarlyError = (String, &'static str, String);
 
+/// Restrict domain cooking to the entry's import/reference closure and the
+/// project's explicit roots. A library cook without a code graph still
+/// prepares the whole content catalogue for tooling.
+pub(crate) fn reachable_sources(
+    sources: &mut Vec<Source>,
+    content: &source_content::Graph,
+    project: &source_project::Project,
+    code: &CodeGraph,
+) -> Result<(), CookError> {
+    if code.files.is_empty() {
+        return Ok(());
+    }
+    let mut roots: BTreeSet<String> = content.roots.iter().map(|e| e.target.clone()).collect();
+    let mut edges: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (id, node) in &content.nodes {
+        edges
+            .entry(id.clone())
+            .or_default()
+            .extend(node.references.iter().map(|r| r.target.clone()));
+    }
+    for (id, output) in &content.outputs {
+        edges
+            .entry(id.clone())
+            .or_default()
+            .insert(output.asset.clone());
+        // Domain subresources are owned by their producer, not guessed
+        // from file suffixes. Reaching one retains its producer's inputs.
+        if id != &output.entry {
+            edges
+                .entry(id.clone())
+                .or_default()
+                .insert(output.entry.clone());
+        }
+    }
+    let known: BTreeSet<_> = sources
+        .iter()
+        .map(|s| s.rel.clone())
+        .chain(content.outputs.keys().cloned())
+        .collect();
+    let keep = project
+        .input
+        .publish
+        .as_ref()
+        .map_or(&[][..], |p| p.keep.as_slice());
+    roots.extend(
+        known
+            .iter()
+            .filter(|id| keep.iter().any(|p| conform::matches(p, id)))
+            .cloned(),
+    );
+    roots.extend(
+        code.text
+            .iter()
+            .filter(|s| known.contains(crate::runtime::asset_id(s)))
+            .map(|s| crate::runtime::asset_id(s).to_owned()),
+    );
+    roots.extend(code.ids.iter().cloned());
+    for prefix in &code.prefixes {
+        roots.extend(
+            known
+                .iter()
+                .filter(|id| id.starts_with(crate::runtime::asset_id(prefix)))
+                .cloned(),
+        );
+    }
+    for source in sources.iter() {
+        if source.kind == &ui_packs::PACK {
+            let layer = ui_packs::pack_layer(source)?;
+            edges
+                .entry(source.rel.clone())
+                .or_default()
+                .extend(layer.assets().into_iter().map(str::to_owned));
+        } else if source.kind == &look::LOOK {
+            let look = crate::look::LookFile::from_bytes(&source.bytes).map_err(CookError)?;
+            let refs = edges.entry(source.rel.clone()).or_default();
+            refs.extend(look.ui);
+            for block in look.blocks {
+                for (_, values, _) in block.fields {
+                    refs.extend(
+                        values
+                            .iter()
+                            .filter_map(|v| v.as_str())
+                            .filter(|id| known.contains(*id))
+                            .map(str::to_owned),
+                    );
+                }
+            }
+        }
+        if code.tables.contains_key(&source.rel) || source.rel.starts_with("@fonts/") {
+            roots.insert(source.rel.clone());
+        }
+    }
+    if code.tsx {
+        roots.insert(og_ui_next::pack::DEFAULT_FONT_ASSET.to_owned());
+        roots.extend(
+            og_ui_next::pack::Layer::default_pack()
+                .assets()
+                .into_iter()
+                .filter(|id| known.contains(*id))
+                .map(str::to_owned),
+        );
+    }
+    let mut seen = BTreeSet::new();
+    let mut todo: Vec<_> = roots.into_iter().collect();
+    while let Some(id) = todo.pop() {
+        if seen.insert(id.clone())
+            && let Some(refs) = edges.get(&id)
+        {
+            todo.extend(refs.iter().cloned());
+        }
+    }
+    sources.retain(|s| seen.contains(&s.rel));
+    Ok(())
+}
+
 /// The scan stage's sources, with the sources expanded from others and
 /// the files those consumed.
 pub(crate) struct Scanned {
@@ -994,9 +1109,65 @@ pub(crate) fn group(
     early_errors: &mut Vec<EarlyError>,
     threads: usize,
     delivery: &super::delivery::Delivery<'_>,
+    content: &source_content::Graph,
+    code: &CodeGraph,
 ) -> Grouped {
     // Streaming groups (phase 3): every scene's, read before anything cooks.
-    let (groups, group_of) = plan_groups(sources, known, early_errors, threads, delivery);
+    let (mut groups, mut group_of) = plan_groups(sources, known, early_errors, threads, delivery);
+    // A style's private resources travel with it. Shared resources remain
+    // independent: putting one into an arbitrary group's pack would make
+    // another style depend on that group's residency. Optional fallback
+    // faces stay lazy even when the style itself is streamed.
+    let mut users: BTreeMap<String, BTreeSet<Option<String>>> = BTreeMap::new();
+    for source in sources.iter().filter(|s| s.kind == &ui_packs::PACK) {
+        if let Ok(layer) = ui_packs::pack_layer(source) {
+            for id in layer
+                .assets()
+                .into_iter()
+                .filter(|id| !layer.fallback_fonts.iter().any(|f| f.id == *id))
+            {
+                users
+                    .entry(id.to_owned())
+                    .or_default()
+                    .insert(group_of.get(&source.rel).cloned());
+            }
+        }
+    }
+    for source in sources.iter().filter(|s| s.kind != &ui_packs::PACK) {
+        if let Some(node) = content.nodes.get(&source.rel) {
+            for reference in &node.references {
+                if let Some(users) = users.get_mut(&reference.target) {
+                    users.insert(group_of.get(&source.rel).cloned());
+                }
+            }
+        }
+    }
+    let default = og_ui_next::pack::Layer::default_pack();
+    let default_assets = default.assets();
+    for (id, users) in &mut users {
+        if code.text.contains(id)
+            || code.prefixes.iter().any(|p| id.starts_with(p))
+            || content.roots.iter().any(|r| r.target == *id)
+            || code.tsx
+                && (id == og_ui_next::pack::DEFAULT_FONT_ASSET
+                    || default_assets.contains(&id.as_str()))
+        {
+            users.insert(None);
+        }
+    }
+    for (id, users) in users {
+        if users.len() == 1
+            && let Some(Some(group)) = users.first()
+            && !group_of.contains_key(&id)
+        {
+            group_of.insert(id.clone(), group.clone());
+            groups
+                .get_mut(group)
+                .expect("declared group")
+                .assets
+                .push(id);
+        }
+    }
     // Font packs' faces and every face a style pack's `fonts` names
     // (docs/ui.md §3.4): cooked as fonts by their own settings, to
     // `<id>.face.ogb`, which the web reads after the boot; text draws
@@ -1014,6 +1185,7 @@ pub(crate) fn group(
             layer
                 .fonts
                 .iter()
+                .chain(layer.fallback_fonts.iter().map(|f| &f.id))
                 .map(|f| crate::runtime::asset_id(f).to_owned()),
         );
     }

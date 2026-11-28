@@ -24,9 +24,14 @@ pub struct CodeGraph {
     /// read from: its components' string tables, and the emitters they
     /// draw (`@ui/components/hud/fx/sparks.particles.ts`).
     pub tables: BTreeMap<String, PathBuf>,
-    /// The built-in `@ui/` documents and `@styles/` files the code names by
-    /// id.
+    /// Canonical content imports and built-in `@ui/` and `@styles/` IDs.
     pub ids: BTreeSet<String>,
+    /// Reached code's text participates in font-demand planning and its cache key.
+    #[serde(default)]
+    pub text: BTreeSet<String>,
+    /// Conservative prefixes of computed or escaped asset loads.
+    #[serde(default)]
+    pub prefixes: BTreeSet<String>,
     /// The code reads `raycast` (og.render.raycast): its models carry a
     /// cooked raycast BVH.
     pub raycast: bool,
@@ -111,6 +116,10 @@ impl CodeGraph {
                 || refs.literals.iter().any(|l| l.value == "raycast");
             graph.hyphens |= hyphens_auto(&refs);
             graph.nine.extend(nine_names(strings(&refs)));
+            graph.text.extend(strings(&refs).map(str::to_owned));
+            graph
+                .prefixes
+                .extend(refs.computed.iter().map(|c| c.prefix.clone()));
             graph.ids.extend(
                 refs.literals
                     .into_iter()
@@ -118,6 +127,17 @@ impl CodeGraph {
                     .filter(|v| v.starts_with(TABLE_PREFIX) || v.starts_with("@styles/")),
             );
             graph.files.push(file);
+        }
+        // Content imports are replaced by IDs by the bundler (notably the
+        // game's string tables). Their original TS need not name its own ID.
+        let project =
+            super::super::source_project::Project::open(&root).map_err(|e| e.to_string())?;
+        let index =
+            super::super::source_index::Index::open(&root, &project).map_err(|e| e.to_string())?;
+        for entry in index.entries.values() {
+            if graph.files.contains(&root.join(&entry.file)) {
+                graph.ids.insert(entry.id.clone());
+            }
         }
         Ok(graph)
     }

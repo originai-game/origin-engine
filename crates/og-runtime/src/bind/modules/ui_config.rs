@@ -207,6 +207,7 @@ pub(crate) struct LoadedStyle {
     /// once it is fetched (the web reads them after the boot,
     /// `bind::i18n::apply`).
     pub files: Vec<String>,
+    pub fallback_fonts: Vec<og_ui_next::pack::FallbackFont>,
     /// Its pack's `scheme` is light: its art was drawn for a light page,
     /// which the UI takes while the game names no scheme of its own.
     pub light: bool,
@@ -249,6 +250,7 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     Ok(LoadedStyle {
         id: id.to_owned(),
         files: layer.fonts,
+        fallback_fonts: layer.fallback_fonts,
         light: layer.scheme == Some(og_ui_next::pack::Scheme::Light),
     })
 }

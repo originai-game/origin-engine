@@ -210,8 +210,13 @@ impl Index {
     pub(crate) fn font_preloads(&self) -> Vec<String> {
         let mut graph = self.clone();
         for asset in &mut graph.assets {
-            if asset.kind == "fontpack" {
-                asset.refs.clear();
+            if matches!(asset.kind.as_str(), "fontpack" | "uipack") {
+                // A style's fonts belong to the active style, not every
+                // style reachable from this entry. Explicit font loads
+                // remain roots and therefore synchronous.
+                asset
+                    .refs
+                    .retain(|id| !self.assets.iter().any(|a| a.id == *id && a.kind == "font"));
             }
         }
         let explicit = graph.reachable();
@@ -614,11 +619,45 @@ pub(crate) fn add_code(
     root: &Path,
     manifest: &Manifest,
     index: &mut Index,
-    files: &[PathBuf],
+    code: &super::CodeGraph,
 ) -> Result<(), CookError> {
     let known = known(manifest);
+    index.roots.extend(
+        code.ids
+            .iter()
+            .filter(|id| known.contains_key(*id))
+            .cloned(),
+    );
+    // These are implicit references from modules the bundler retained, not
+    // every asset in the engine install. The host registers the tables and
+    // discovers the automatic font extension without a game-side load call.
+    index.roots.extend(
+        code.tables
+            .keys()
+            .filter(|id| known.contains_key(*id))
+            .cloned(),
+    );
+    index.roots.extend(
+        index
+            .assets
+            .iter()
+            .filter(|a| a.kind == "fontpack" && a.id.starts_with("@fonts/"))
+            .map(|a| a.id.clone()),
+    );
+    if code.tsx {
+        index
+            .roots
+            .insert(og_ui_next::pack::DEFAULT_FONT_ASSET.to_owned());
+        index.roots.extend(
+            og_ui_next::pack::Layer::default_pack()
+                .assets()
+                .into_iter()
+                .filter(|id| known.contains_key(*id))
+                .map(str::to_owned),
+        );
+    }
     let canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    for path in files {
+    for path in &code.files {
         // By its path under the project; a reached module outside it (a
         // shared directory beside the game) by its own.
         let source = path

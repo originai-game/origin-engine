@@ -423,7 +423,42 @@ pub(crate) fn ensure_packs(eng: &Engine) {
 /// installed pack not yet in the chain covers load that pack (the
 /// locale's CJK forms first) and are answered as drawn from next frame;
 /// the rest are returned, still missing.
-pub(crate) fn resolve_missing(eng: &Engine, missing: Vec<char>) -> Vec<char> {
+pub(crate) fn resolve_missing(eng: &Engine, mut missing: Vec<char>) -> Vec<char> {
+    // Only the active style can supply a fallback. Its tiny cmap metadata
+    // is resident with the layer; the face's bytes are not requested until
+    // a character actually needs them.
+    let style = eng
+        .state
+        .borrow()
+        .ui_desc
+        .get("style")
+        .and_then(Value::as_f64)
+        .and_then(crate::world::assets::index_of);
+    let mut style_added = false;
+    if let Some(i) = style {
+        let mut assets = eng.assets.borrow_mut();
+        if let Some(style) = assets.styles.get_mut(i) {
+            let mut fresh = BTreeSet::new();
+            missing.retain(|c| {
+                if let Some(font) = style
+                    .fallback_fonts
+                    .iter()
+                    .find(|f| f.coverage.iter().any(|r| r.contains(&(*c as u32))))
+                {
+                    if !style.files.contains(&font.id) {
+                        fresh.insert(font.id.clone());
+                    }
+                    return false;
+                }
+                true
+            });
+            style_added = !fresh.is_empty();
+            style.files.extend(fresh);
+        }
+    }
+    if style_added && let Err(e) = apply(eng) {
+        note(eng.id, format!("style fonts: {e}"));
+    }
     let locale = language(eng.id);
     let (out, added) = with(eng.id, |s| {
         let Some(packs) = s.packs.as_deref().filter(|p| !p.is_empty()) else {

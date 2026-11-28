@@ -634,7 +634,7 @@ pub(crate) fn finish(
         users: index.users.clone(),
         computed: index.computed.clone(),
     };
-    assets::add_code(root, &manifest, &mut index, &cx.options.code.files)?;
+    assets::add_code(root, &manifest, &mut index, &cx.options.code)?;
     manifest.preload = index.font_preloads();
     let text = manifest.to_text();
     if std::fs::read_to_string(&manifest_path).ok().as_deref() != Some(text.as_str()) {
@@ -738,7 +738,7 @@ pub(crate) fn cook_code(
         users: before.users.clone(),
         computed: before.computed.clone(),
     };
-    assets::add_code(root, &manifest, &mut index, &code.files)?;
+    assets::add_code(root, &manifest, &mut index, code)?;
     let preload = index.font_preloads();
     if manifest.preload != preload {
         manifest.preload = preload;

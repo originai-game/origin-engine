@@ -140,8 +140,8 @@ pub type Haptics = BTreeMap<String, String>;
 
 mod cooked;
 mod layer;
-pub use layer::Layer;
 use layer::merge;
+pub use layer::{FallbackFont, Layer};
 
 /// The layers merged: what the cook compiles and the runtime loads.
 #[derive(Clone, Debug)]

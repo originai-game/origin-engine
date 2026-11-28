@@ -288,6 +288,9 @@ pub struct CookOptions {
     /// A publish's cook (`og build --publish`): a prefab override that no
     /// longer does anything is refused instead of noted.
     pub publish: bool,
+    /// A run or entry build cooks its reference closure; catalogue tooling
+    /// (`og cook`) still prepares all content for inspection and authoring.
+    pub entry_only: bool,
     /// What the game's code reaches, as its bundle resolved it
     /// ([`CodeGraph`]): the built-in UI and string tables the cook adds.
     /// Default: code that reaches none of them.

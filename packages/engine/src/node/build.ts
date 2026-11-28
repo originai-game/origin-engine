@@ -203,6 +203,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
   }
   const gameRoot = projectRoot(absEntry) ?? dirname(absEntry);
   const checkedProject = readProject(gameRoot);
+  const languages = new Set((checkedProject?.input.create?.lang ?? ["en"]).map((tag) => new Intl.Locale(tag).language));
   const flowScreen = checkedProject?.startup.flow ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
   const localeTables = checkedProject ? readStringTableIndex(gameRoot) : [];
   const localeIds = new Map(localeTables.map(t => [resolve(gameRoot, t.path), t.id]));
@@ -293,11 +294,12 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         if (a.path.endsWith(".ogt")) {
           throw new Error(`${a.path}: OGT author imports are removed; import a checked TS declaration under content/`);
         }
-        // An engine table's translations (`x.zh-CN.strings.ts` beside `x.en.strings.ts`)
-        // come with it: bundled with it, and registered as translations of it.
+        // Only the project's languages bring an engine table's translations.
+        // Explicit imports remain explicit; a sibling alone is not demand.
         const translations = engineTable && a.path.endsWith(".en.strings.ts")
           ? readdirSync(dirname(a.path))
               .filter((f) => f.startsWith(basename(a.path, ".en.strings.ts") + ".") && f.endsWith(".strings.ts") && f !== basename(a.path) && /^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(f.slice(basename(a.path, ".en.strings.ts").length + 1, -11)))
+              .filter((f) => languages.has(new Intl.Locale(f.slice(basename(a.path, ".en.strings.ts").length + 1, -11)).language))
               .sort()
               .map((f) => `import ${JSON.stringify(join(dirname(a.path), f))};\n`)
               .join("")
