@@ -33,6 +33,19 @@ found=0
 for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; do
   [ -f "$f" ] || continue
   found=1
+  transport='const { fetchResource, fetchState } = await import(new URL("./fetch.js", import.meta.url).href);'
+  if ! grep -qF "$transport" "$f"; then
+    awk -v transport="$transport" '
+      /await fetch\(import.meta.url\)/ {
+        indent = $0; sub(/let .*/, "", indent)
+        print indent transport
+        print indent "fetchState(globalThis.__ogPoolSplit?.network);"
+        sub(/await fetch\(import.meta.url\)/, "await fetchResource(import.meta.url)")
+      }
+      { print }
+    ' "$f" > "$f.tmp"
+    mv "$f.tmp" "$f"
+  fi
   old='pkg.default(data.module, data.memory)'
   new='pkg.default({ module_or_path: data.module, memory: data.memory })'
   if grep -qF "$old" "$f"; then
@@ -45,15 +58,15 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
   fi
   # wasm-bindgen-rayon 1.3's two lines: `let scriptBlob = await fetch(import.meta.url)…;`
   # then `let url = URL.createObjectURL(scriptBlob);`, which become one.
-  prior='let url = new URL(import.meta.url).origin === self.location.origin ? import.meta.url : URL.createObjectURL(await fetch(import.meta.url).then(r => r.blob()));'
-  own='let url = ((!self.location && new URL(import.meta.url).protocol === "file:") || new URL(import.meta.url).origin === self.location?.origin) ? import.meta.url : URL.createObjectURL(await fetch(import.meta.url).then(r => r.blob()));'
-  if grep -qF 'let scriptBlob = await fetch(import.meta.url).then(r => r.blob());' "$f" || grep -qF "$prior" "$f"; then
+  prior='let url = new URL(import.meta.url).origin === self.location.origin ? import.meta.url : URL.createObjectURL(await fetchResource(import.meta.url).then(r => r.blob()));'
+  own='let url = ((!self.location && new URL(import.meta.url).protocol === "file:") || new URL(import.meta.url).origin === self.location?.origin) ? import.meta.url : URL.createObjectURL(await fetchResource(import.meta.url).then(r => r.blob()));'
+  if grep -qF 'let scriptBlob = await fetchResource(import.meta.url).then(r => r.blob());' "$f" || grep -qF "$prior" "$f"; then
     awk -v own="$own" '
       index($0, "let url = new URL(import.meta.url).origin === self.location.origin") {
         indent = $0; sub(/let url.*/, "", indent)
         print indent own; next
       }
-      index($0, "let scriptBlob = await fetch(import.meta.url).then(r => r.blob());") {
+      index($0, "let scriptBlob = await fetchResource(import.meta.url).then(r => r.blob());") {
         indent = $0; sub(/let scriptBlob.*/, "", indent)
         print indent "// origin-engine (scripts/rayon-worker.sh): on the page'"'"'s origin, from this file itself, which"
         print indent "// a CSP without `worker-src blob:` allows; elsewhere, from the blob copy."
@@ -101,6 +114,7 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
   # relatively.
   cp "$(dirname "$0")/og-pool-split.js" "$(dirname "$f")/og-pool-split.js"
   cp "$(dirname "$0")/../src/web/split-protocol.js" "$(dirname "$f")/split-protocol.js"
+  cp "$(dirname "$0")/../src/web/fetch.js" "$(dirname "$f")/fetch.js"
   init='  const pkg = await import(data.mainJS);'
   install='  if (data.split) (await import(data.poolSplitJS)).installPoolSplit(data.split);'
   handed='    split: globalThis.__ogPoolSplit ?? null, poolSplitJS: new URL("./og-pool-split.js", import.meta.url).href,'

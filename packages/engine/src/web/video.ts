@@ -28,6 +28,8 @@
 // behind it or past the next key frame, starts again at the key frame at
 // or before it; a looping player decodes on into frame 0.
 
+import { fetchResource } from "./fetch.js";
+
 /** Frames decoded ahead of the one wanted (VideoFrames hold decoder memory). */
 export const AHEAD = 4;
 
@@ -465,9 +467,7 @@ function av1WorkerMain(): void {
     const m = e.data;
     if (m.type === "load") {
       try {
-        const r = await fetch(m.url);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        mod = await g.av1Module(await r.arrayBuffer());
+        mod = await g.av1Module(m.bytes);
         ctx.postMessage({ type: "ready" });
       } catch (err) {
         ctx.postMessage({ type: "failed", reason: `cannot load the AV1 decoder ${m.url}: ${String(err)}` });
@@ -694,8 +694,17 @@ export class VideoStreams {
           console.warn(`og.video: ${this.failure}`);
           resolve(false);
         };
+        // The decoder consumes bytes fetched on the engine Worker, sharing
+        // boot/lazy-asset concurrency even without cross-origin isolation.
+        void fetchResource(new URL(this.fallbackUrl, location.href)).then(async (r) => {
+          const bytes = await r.arrayBuffer();
+          w.postMessage({ type: "load", bytes, url: this.fallbackUrl }, [bytes]);
+        }).catch((e: unknown) => {
+          this.failure = String(e);
+          console.warn(`og.video: ${this.failure}`);
+          resolve(false);
+        });
       });
-      w.postMessage({ type: "load", url: new URL(this.fallbackUrl, location.href).href });
     } catch (e) {
       if (url) URL.revokeObjectURL(url);
       this.failure = `cannot start the AV1 decoder Worker: ${String(e)}`;

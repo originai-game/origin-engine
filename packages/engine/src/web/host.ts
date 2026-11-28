@@ -9,6 +9,7 @@ import { ARRAYS, bindHost, boundHost, type ColumnArray, type HostBinding } from 
 import type { HostAbi } from "../generated/abi.ts";
 import bindings from "../../types/bindings.json" with { type: "json" };
 import { fetchModuleHost, instantiateSplit, type ModuleHost } from "./split.ts";
+import { fetchResource } from "./fetch.js";
 
 export { fetchModuleHost, loadEngineModules, loadedEngineModules, type ModuleHost } from "./split.ts";
 
@@ -132,7 +133,8 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
   const bound = boundHost();
   if (bound) return bound;
   const host = modules ?? (typeof wasm === "string" || wasm instanceof URL ? fetchModuleHost(wasm) : null);
-  const exports = await instantiateSplit(host, () => glue.default(wasm === undefined ? undefined : { module_or_path: wasm }));
+  const input = typeof wasm === "string" || wasm instanceof URL ? await fetchResource(wasm) : wasm;
+  const exports = await instantiateSplit(host, () => glue.default(input === undefined ? undefined : { module_or_path: input }));
   if (threads !== undefined) {
     if (!glue.initThreadPool || !glue.og_lanes_ready) throw new Error("the module is not the lanes variant (no initThreadPool)");
     const init = glue.initThreadPool;

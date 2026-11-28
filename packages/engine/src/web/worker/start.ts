@@ -8,6 +8,7 @@ import { boundHost, createEngine, isPublishBuild, systemClock, type GameToken } 
 import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
 import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installTranscoder, installVideo, onBar, preloadBundle, prepareTextures } from "../boot.ts";
+import { fetchResource, fetchState } from "../fetch.js";
 import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
 import { settle, SETTLE_FIRST_MS, SETTLE_MS } from "../settle.ts";
@@ -27,8 +28,8 @@ async function loadOwnSourceMap(): Promise<void> {
   if (!at) return;
   const bundle = at.href;
   try {
-    const r = await fetch(new URL(`${at.pathname.slice(at.pathname.lastIndexOf("/") + 1)}.map`, bundle));
-    if (r.ok) useSourceMap(bundle, new SourceMap(await r.text()));
+    const r = await fetchResource(new URL(`${at.pathname.slice(at.pathname.lastIndexOf("/") + 1)}.map`, bundle));
+    useSourceMap(bundle, new SourceMap(await r.text()));
   } catch {
     // No map: spawned entities have no source.
   }
@@ -37,6 +38,7 @@ async function loadOwnSourceMap(): Promise<void> {
 /** Boots `game` as `data` asks; a failure is the run's crash (an `error` before ready). */
 export async function start(game: GameToken, data: Start, run: Run, gate: Gate, loop: FrameLoop): Promise<void> {
   try {
+    fetchState(data.network);
     gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
     // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
@@ -45,22 +47,17 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
       self.postMessage({ type: "progress", value: onBar(stage, value), fraction: Math.max(0, Math.min(1, value)), stage, loaded: received.loaded, total: received.total });
     progress(0, "wasm");
     run.boot.restart();
-    // The wasm streams through a counting body, so its bytes move the bar while it compiles.
+    // Every wasm variant uses the same body-limited loader, even without a size estimate.
     const counted = async (url: string, expected: number | undefined): Promise<unknown> => {
-      if (!expected || typeof Response !== "function" || typeof ReadableStream !== "function") return url;
-      const r = await fetch(url);
-      if (!r.ok || !r.body) throw new Error(`cannot fetch ${url} (HTTP ${r.status})`);
-      const reader = r.body.getReader();
-      const body = new ReadableStream<Uint8Array>({
-        async pull(controller) {
-          const { done, value } = await reader.read();
-          if (done) return controller.close();
-          received.loaded += value.length;
+      let counted = 0;
+      const r = await fetchResource(url, {}, (loaded) => {
+        if (expected) {
+          received.loaded += loaded - counted;
+          counted = loaded;
           progress(received.value, "wasm");
-          controller.enqueue(value);
-        },
+        }
       });
-      return new Response(body, { headers: { "content-type": "application/wasm" } });
+      return new Response(await r.arrayBuffer(), { headers: { "content-type": "application/wasm" } });
     };
     // Lanes: the atomics build on a pool of Workers sharing its memory. A
     // variant that does not load or whose pool does not start falls back

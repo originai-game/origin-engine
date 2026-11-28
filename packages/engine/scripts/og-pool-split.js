@@ -15,17 +15,13 @@
 // arrives late changes no result.
 
 import { moduleUrl, placeholderTable, withPlaceholderNamespaces } from "./split-protocol.js";
+import { fetchResourceSync, fetchState } from "./fetch.js";
 
 /** Module `name`'s bytes at `url`: a blocking request, or a file read where the host has no XMLHttpRequest (Bun, Node: the web host run outside a browser). */
-function bytes(name, url) {
+function bytes(url) {
   const fs = url.protocol === "file:" ? globalThis.process?.getBuiltinModule?.("node:fs") : undefined;
   if (fs) return fs.readFileSync(url);
-  const x = new XMLHttpRequest();
-  x.open("GET", url.href, false);
-  x.responseType = "arraybuffer";
-  x.send();
-  if (x.status !== 200) throw new Error(`a lanes Worker cannot fetch engine module ${name} from ${url.href} (HTTP ${x.status})`);
-  return x.response;
+  return fetchResourceSync(url);
 }
 
 /**
@@ -35,6 +31,7 @@ function bytes(name, url) {
  */
 export function installPoolSplit(split) {
   if (!split) return;
+  fetchState(split.network);
   let exports = null;
   const loaded = new Set();
   const table = () => {
@@ -44,7 +41,7 @@ export function installPoolSplit(split) {
   };
   const load = (name) => {
     if (loaded.has(name)) return;
-    new WebAssembly.Instance(new WebAssembly.Module(bytes(name, moduleUrl(name, split.files, split.base))), { primary: exports });
+    new WebAssembly.Instance(new WebAssembly.Module(bytes(moduleUrl(name, split.files, split.base))), { primary: exports });
     loaded.add(name);
   };
   const keep = (r) => {

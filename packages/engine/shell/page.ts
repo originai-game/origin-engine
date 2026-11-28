@@ -44,6 +44,7 @@ import { localPlatform, memoryPersistence, type PlatformHost, type PlatformNotic
 import type { HostError } from "../src/web/shell.ts";
 import type { FrameStats } from "./telemetry.ts";
 import { mapStack } from "../src/sourcemap.ts";
+import { fetchResource } from "../src/web/fetch.js";
 import { PROBE_GLOBAL, REPLAY_SEED_PARAM } from "../src/generated/consts.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
 import type { EngineModules } from "../src/web/split.ts";
@@ -559,7 +560,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
     // A dev build serves its maps (§Source maps): the card shows the game's .ts lines.
     if (!(typeof __OG_PUBLISH__ !== "undefined" && __OG_PUBLISH__) && config.build === "dev") {
       void (async () => {
-        const readMap = (f: string) => within(fetch(new URL(`./${f}.map`, location.href)).then((r) => (r.ok ? r.text() : null)));
+        const readMap = (f: string) => within(fetchResource(new URL(`./${f}.map`, location.href)).then((r) => r.text()).catch(() => null));
         const [game, play] = await Promise.all([readMap("game.js"), readMap("play.js")]);
         if (game || play) {
           const mapped = mapStack(message, { "game.js": game, "play.js": play });
@@ -665,7 +666,16 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // (every call succeeds), a publish page never does (they are `unavailable`).
   const fake = config.build === "dev" ? {} : undefined;
   // A content base (og build --content) also answers catalog heads from its <catalog>/head.json.
-  const alone = () => provided.platform ?? localPlatform(platformStore, fake, config.content ? { base: config.content } : undefined);
+  const alone = () => provided.platform ?? localPlatform(platformStore, fake, config.content ? {
+    base: config.content,
+    read: async (url) => {
+      try { return await (await fetchResource(url, { cache: "no-store" })).text(); }
+      catch (e) {
+        if ((e as { status?: number }).status === 404) return null;
+        throw e;
+      }
+    },
+  } : undefined);
   // og.load.data's content base: the page's provider names it, else the build's. A page that
   // waits for a Player learns it with the platform (the hello's `content`); its loads wait till then.
   const deferred = linked || !!page;

@@ -15,6 +15,8 @@
 // wrapped), never evaluated from text, so it loads under a CSP without
 // 'unsafe-eval' (docs/web-export.md §Hosting).
 
+import { fetchResource } from "./fetch.js";
+
 /**
  * The texture formats this module transcodes to, named as og-render's
  * `TextureFormat::name` names them: BC5 and EAC RG11 hold a normal map's x
@@ -96,8 +98,7 @@ async function bytesOf(source: string | URL | ArrayBuffer | Uint8Array): Promise
     const { fileURLToPath } = await import("node:url");
     return new Uint8Array(readFileSync(fileURLToPath(url)));
   }
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`cannot fetch the Basis transcoder ${url.href}: HTTP ${response.status}`);
+  const response = await fetchResource(url);
   return new Uint8Array(await response.arrayBuffer());
 }
 

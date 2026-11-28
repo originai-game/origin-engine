@@ -1,7 +1,8 @@
 // The Web boot's delivery DAG: shared dependencies arrive once, unrelated
 // regions stay lazy, and conflicting/cyclic manifests cannot start a game.
 import { expect, test } from "bun:test";
-import { preloadBundle } from "../src/web/boot.ts";
+import { installFetcher, preloadBundle } from "../src/web/boot.ts";
+import type { WebExtras } from "../src/web/host.ts";
 import { downloadsOf } from "../src/node/web-build.ts";
 
 declare const Bun: {
@@ -61,3 +62,75 @@ test("delivery boot follows pinned dependencies without fetching other regions",
     server.stop(true);
   }
 });
+
+test("web boot and lazy fonts share body slots and recover Retry-After refusals", async () => {
+  const boot = Array.from({ length: 12 }, (_, i) => ({ id: `asset${i}`, file: `asset${i}.ogb`, type: "og.Scene" }));
+  const face = "required.ttf.face.ogb";
+  const manifest = JSON.stringify([...boot, { id: "required", file: face, type: "og.Font", preload: true }]);
+  const seen = new Map<string, number[]>();
+  let active = 0, peak = 0, overflow = 0;
+  const server = Bun.serve({ port: 0, fetch(req) {
+    const path = new URL(req.url).pathname;
+    const times = seen.get(path) ?? [];
+    times.push(Date.now());
+    seen.set(path, times);
+    if (path.endsWith(".cook.ogt")) return new Response(manifest);
+    if (active >= 6) {
+      overflow++;
+      return new Response("busy", { status: 429, headers: { "retry-after": "1" } });
+    }
+    if (times.length === 1 && (path.endsWith(face) || path.includes("lazy"))) {
+      return new Response("busy", { status: path.endsWith(face) ? 429 : 503, headers: { "retry-after": "1" } });
+    }
+    active++;
+    peak = Math.max(peak, active);
+    // Headers and the first byte arrive immediately; the slot lives until
+    // the rest of the body, not merely until fetch() resolves.
+    const bytes = new TextEncoder().encode(`payload:${path}`);
+    return new Response(new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(bytes.slice(0, 1));
+        await new Promise((r) => setTimeout(r, 40));
+        controller.enqueue(bytes.slice(1));
+        controller.close();
+        active--;
+      },
+    }), { headers: { "content-length": String(bytes.length) } });
+  } });
+  try {
+    const root = `http://localhost:${server.port}`;
+    const puts = new Map<string, string>();
+    const failures: string[] = [];
+    let ask!: (path: string) => void;
+    let arrived!: () => void;
+    const lazy = new Promise<void>((r) => { arrived = r; });
+    const glue = {
+      og_web_bundle_files: (text: string) => text,
+      og_web_bundle_integrity: () => "{}",
+      og_web_set_fetcher: (fetch: (path: string) => void) => { ask = fetch; },
+      og_web_put_file: (path: string, bytes: Uint8Array) => {
+        puts.set(new URL(path).pathname, new TextDecoder().decode(bytes));
+        if (puts.has("/cooked/lazy0.face.ogb") && puts.has("/cooked/lazy1.face.ogb")) arrived();
+      },
+      og_web_fail_file: (_path: string, reason: string) => { failures.push(reason); arrived(); },
+    } as unknown as WebExtras;
+    installFetcher(glue);
+    const loading = preloadBundle(glue, root, () => {});
+    for (let i = 0; i < 2; i++) ask(`${root}/cooked/lazy${i}.face.ogb`);
+    const [loaded] = await Promise.all([loading, lazy]);
+    expect(failures).toEqual([]);
+    expect(loaded).toMatchObject({ files: 13, failed: 0 });
+    for (const file of [...boot.map((f) => f.file), face, "lazy0.face.ogb", "lazy1.face.ogb"]) {
+      expect(puts.get(`/cooked/${file}`)).toBe(`payload:/cooked/${file}`);
+    }
+    expect(overflow).toBe(0);
+    expect(peak).toBeLessThanOrEqual(6);
+    for (const file of [face, "lazy0.face.ogb", "lazy1.face.ogb"]) {
+      const times = seen.get(`/cooked/${file}`)!;
+      expect(times).toHaveLength(2);
+      expect(times[1]! - times[0]!).toBeGreaterThanOrEqual(1000);
+    }
+  } finally {
+    server.stop(true);
+  }
+}, 15_000);

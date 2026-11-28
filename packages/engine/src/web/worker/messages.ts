@@ -31,6 +31,8 @@ export interface Start {
   canvas?: OffscreenCanvas;
   seed?: number;
   ring?: SharedArrayBuffer;
+  /** The page and engine/lane Workers' shared download budget, when isolated. */
+  network?: SharedArrayBuffer;
   rpc?: RpcRings;
   autoplay?: boolean;
   /** The page draws the loading screen (project.ogt `loading page`, fork s61): the canvas covered until og.loading.done. */

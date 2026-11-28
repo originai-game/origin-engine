@@ -4,7 +4,8 @@
 // Workers when there are many), and the fetcher, inflater, image decoder and
 // video streams the wasm asks for what it loads later.
 
-import { type BasisTranscoder, TEXTURE_FORMATS, type TextureFormat, loadBasisTranscoder, transcodeKtx2 } from "./basis.ts";
+import { type BasisTranscoder, TEXTURE_FORMATS, type TextureFormat, VENDORED, loadBasisTranscoder, transcodeKtx2 } from "./basis.ts";
+import { FETCH_CONCURRENCY, fetchResource } from "./fetch.js";
 import type { WebExtras } from "./host.ts";
 import { FALLBACK_URL, VideoStreams, chooseDecoder } from "./video.ts";
 
@@ -32,16 +33,6 @@ export class Received {
     return this.total > 0 ? this.loaded / this.total : 0;
   }
 }
-
-/**
- * How long one file's fetch may take, its body included, before it fails:
- * generous, since a pack can be large on a slow network; only a fetch that
- * hangs reaches it.
- */
-export const FETCH_DEADLINE_MS = 300_000;
-
-/** How many of the first group's files the boot fetches at once. */
-export const FETCH_CONCURRENCY = 24;
 
 /**
  * The device the engine renders with, for field telemetry: its limits,
@@ -119,77 +110,17 @@ export function onBar(stage: string, value: number): number {
 }
 
 async function bytesOf(url: string, received?: Received, onChunk?: () => void, integrity?: string): Promise<Uint8Array> {
-  // Fork s61: a fetch that failed (not refused: HTTP 4xx) is tried again, up to 5 times, backing off;
-  // its bytes already counted come off the progress first.
-  for (let attempt = 0; ; attempt++) {
-    const before = received ? received.loaded : 0;
-    try {
-      return await bytesOnce(url, received, onChunk, integrity);
-    } catch (e) {
-      if (received) received.loaded = before;
-      // An integrity failure is the bytes, not the network: the same on every try.
-      if (attempt >= 5 || /HTTP 4\d\d|integrity/.test(String(e))) throw e;
-      console.warn(`fetch ${url} failed (${e instanceof Error ? e.message : String(e)}), retry ${attempt + 1}`);
-      await new Promise((ok) => setTimeout(ok, 500 * 2 ** attempt));
+  let counted = 0;
+  const response = await fetchResource(url, integrity ? { integrity } : {}, (loaded, total) => {
+    if (received) {
+      // Only this attempt's bytes are rolled back, not other concurrent files'.
+      received.loaded += loaded - counted;
+      if (received.fromResponse && total > 0) received.total = total;
     }
-  }
-}
-
-/** `bytes` when their SHA-384 is `sri`'s (`sha384-<base64>`); otherwise an `integrity` error naming both. */
-async function checkIntegrity(bytes: Uint8Array, sri: string): Promise<Uint8Array> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-384", bytes as Uint8Array<ArrayBuffer>));
-  let bin = "";
-  for (const b of digest) bin += String.fromCharCode(b);
-  const got = `sha384-${btoa(bin)}`;
-  if (got !== sri) throw new Error(`integrity: the bytes are ${got}, expected ${sri}`);
-  return bytes;
-}
-
-async function bytesOnce(url: string, received?: Received, onChunk?: () => void, integrity?: string): Promise<Uint8Array> {
-  // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
-  // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
-  // With `integrity` (a package from an asset base) the browser refuses
-  // bytes whose hash differs: a TypeError, named here.
-  const init: RequestInit = {
-    ...(typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {}),
-    ...(integrity ? { integrity } : {}),
-  };
-  let r: Response;
-  try {
-    r = await fetch(url.replaceAll("#", "%23"), init);
-  } catch (e) {
-    if (integrity && e instanceof TypeError) throw new Error(`refused: the network, CORS or its integrity (${integrity.slice(0, 15)}…) failed (${e.message})`);
-    throw e;
-  }
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  if (received?.fromResponse && !r.headers.get("content-encoding")) {
-    const length = Number(r.headers.get("content-length"));
-    if (length > 0) received.total = length;
-  }
-  if (!received || !r.body) {
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    if (received) received.loaded += bytes.length;
+    counted = loaded;
     onChunk?.();
-    return bytes;
-  }
-  const reader = r.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    length += value.length;
-    received.loaded += value.length;
-    onChunk?.();
-  }
-  const out = new Uint8Array(length);
-  let at = 0;
-  for (const c of chunks) {
-    out.set(c, at);
-    at += c.length;
-  }
-  return out;
+  });
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 export interface Preloaded {
@@ -209,8 +140,9 @@ export interface Preloaded {
  * Streamed video's decoders for this Worker (video.ts): the decoder this
  * browser plays AV1 with, reported by og.video.capabilities; the rav1d
  * fallback module (`av1`, dist/av1/og-av1.wasm by default) is fetched only
- * when WebCodecs cannot decode AV1, by its own Worker (`worker`, its script
- * av1/av1-worker.js beside a built page), when a stream first plays.
+ * when WebCodecs cannot decode AV1, when a stream first plays. The engine
+ * Worker fetches it through the shared loader and sends its bytes to the
+ * decoder Worker (`worker`, av1/av1-worker.js beside a built page).
  */
 export async function installVideo(glue: WebExtras, av1: string | undefined, worker?: string): Promise<VideoStreams | null> {
   if (!glue.og_web_install_video) return null;
@@ -389,7 +321,7 @@ function poolSize(): number {
  * Worker is a copy of the engine's, which also posts its console's lines (`log`) and what stops it
  * outside a job (`error`, `crash`): only the answer to this job is one.
  */
-function askWorker(w: Worker, id: number, job: { readonly ktx2: Uint8Array; readonly target: string }, basis: { js: string; wasm: string } | undefined): Promise<BasisAnswer | null> {
+function askWorker(w: Worker, id: number, job: { readonly ktx2: Uint8Array; readonly target: string }, basis: { js: string; wasm: Uint8Array } | undefined): Promise<BasisAnswer | null> {
   return new Promise((resolve) => {
     w.onmessage = (e: MessageEvent) => {
       const m = e.data as BasisAnswer | { type: "error" | "crash" | "log" };
@@ -404,7 +336,7 @@ function askWorker(w: Worker, id: number, job: { readonly ktx2: Uint8Array; read
 
 /** This Worker as one of the transcoders' pool: a Basis transcode, answered with its levels (transferred). */
 let poolTranscoder: Promise<BasisTranscoder> | null = null;
-export async function basisJob(data: { id: number; ktx2: Uint8Array; target: string; basis?: { js: string; wasm: string } }): Promise<void> {
+export async function basisJob(data: { id: number; ktx2: Uint8Array; target: string; basis?: { js: string; wasm: Uint8Array } }): Promise<void> {
   try {
     poolTranscoder ??= data.basis ? loadBasisTranscoder(data.basis.js, data.basis.wasm) : loadBasisTranscoder();
     const out = transcodeKtx2(await poolTranscoder, data.ktx2, isTextureFormat(data.target) ? data.target : "rgba8");
@@ -426,7 +358,8 @@ export async function basisJob(data: { id: number; ktx2: Uint8Array; target: str
 function transcodeHelpers(basis: { js: string; wasm: string } | undefined): (ktx2: Uint8Array, target: string) => Promise<BasisAnswer | null> {
   const url = (globalThis as { location?: { href: string } }).location?.href;
   const most = Math.max(1, poolSize());
-  const lanes: { worker: Worker; last: Promise<BasisAnswer | null>; jobs: number }[] = [];
+  const lanes: { worker: Worker; last: Promise<BasisAnswer | null>; jobs: number; initialized: boolean }[] = [];
+  let binary: Promise<Uint8Array> | undefined;
   let off = !url || typeof Worker !== "function";
   let asked = 0;
   return (ktx2, target) => {
@@ -434,7 +367,7 @@ function transcodeHelpers(basis: { js: string; wasm: string } | undefined): (ktx
     let lane = lanes.reduce<(typeof lanes)[number] | undefined>((least, l) => (least && least.jobs <= l.jobs ? least : l), undefined);
     if (!lane || (lane.jobs > 0 && lanes.length < most)) {
       try {
-        lane = { worker: new Worker(url!, { type: "module" }), last: Promise.resolve(null), jobs: 0 };
+        lane = { worker: new Worker(url!, { type: "module" }), last: Promise.resolve(null), jobs: 0, initialized: false };
       } catch {
         off = true;
         return Promise.resolve(null);
@@ -444,7 +377,18 @@ function transcodeHelpers(basis: { js: string; wasm: string } | undefined): (ktx
     const mine = lane;
     mine.jobs++;
     mine.last = mine.last.then(async () => {
-      const answer = off ? null : await askWorker(mine.worker, asked++, { ktx2, target }, basis);
+      // Fetch once on the engine Worker, under the same budget as assets,
+      // even on pages without SAB; helper Workers receive bytes, not URLs.
+      let answer: BasisAnswer | null = null;
+      try {
+        binary ??= fetchResource(basis?.wasm ?? VENDORED.wasm).then(async (r) => new Uint8Array(await r.arrayBuffer()));
+        const init = mine.initialized ? undefined : { js: basis?.js ?? VENDORED.js, wasm: await binary };
+        if (!off) answer = await askWorker(mine.worker, asked++, { ktx2, target }, init);
+        mine.initialized = true;
+      } catch {
+        // The owning Worker reports the exhausted transport error if its
+        // fallback also fails, as for a helper that did not start.
+      }
       mine.jobs--;
       // One that did not load or broke: no Worker is asked again, and each stops once its jobs are answered.
       if (!answer) off = true;
@@ -530,14 +474,9 @@ export function installFetcher(glue: WebExtras, integrity: Readonly<Record<strin
     // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
     const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
     const progress = got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined;
-    // A content catalog's file comes with its integrity (og.load.data), checked here so a
-    // network or CORS failure stays one (the browser's `integrity` refuses both alike); a
-    // bundle's file is checked by the browser against its bundle's manifest (sriOf).
-    const fetched =
-      given !== undefined
-        ? bytesOf(path, got, progress).then(async (bytes) => (given ? checkIntegrity(bytes, given) : bytes))
-        : bytesOf(path, got, progress, sriOf(path));
-    fetched
+    // Content catalogs and bundle manifests use the same integrity check,
+    // after transient HTTP failures have been retried by the loader.
+    bytesOf(path, got, progress, given ?? sriOf(path))
       .then((bytes) => {
         if (path.endsWith("/.cook.ogt")) {
           const listed = JSON.parse(glue.og_web_bundle_integrity(new TextDecoder().decode(bytes))) as Record<string, string>;

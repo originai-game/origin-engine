@@ -4,6 +4,7 @@
 
 import { createRing } from "../input.ts";
 import { laneChoice } from "../lanes.ts";
+import { fetchState } from "../fetch.js";
 import { createRpcRings, type RpcRings } from "../rpc-ring.ts";
 import type { ShellOptions } from "../shell.ts";
 import { pagePreferences, pixelSize, storedLowPower } from "./viewport.ts";
@@ -136,10 +137,12 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
   const choice = laneChoice(!!options.lanes, !!globalThis.crossOriginIsolated, globalThis.navigator?.hardwareConcurrency ?? 0);
   const displayKey = options.displayKey ?? `og.display:${globalThis.location?.pathname ?? "/"}`;
   const lowPower = options.lowPower ?? storedLowPower(displayKey);
+  const network = fetchState();
   worker.postMessage(
     {
       type: "start",
       lowPower,
+      ...(network ? { network } : {}),
       ...(options.renderTier ? { renderTier: options.renderTier } : {}),
       ...(globalThis.matchMedia ? { highDynamicRange: globalThis.matchMedia("(dynamic-range: high)").matches } : {}),
       glue: options.glue,

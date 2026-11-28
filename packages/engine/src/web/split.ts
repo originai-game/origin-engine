@@ -39,6 +39,7 @@ export interface ModuleHost {
 export interface PoolSplit {
   readonly base: string;
   readonly files: Readonly<Record<string, string>>;
+  readonly network?: SharedArrayBuffer;
 }
 
 /**
@@ -50,6 +51,7 @@ declare global {
 }
 
 import { moduleUrl, placeholderNamespace, placeholderTable, withPlaceholderNamespaces } from "./split-protocol.js";
+import { fetchResource, fetchResourceSync, fetchState } from "./fetch.js";
 
 /** The loaded engine's split modules: one per process, as the binding is. */
 interface Split {
@@ -171,9 +173,9 @@ function sriOf(hex: string | undefined): string | undefined {
 
 /**
  * The browser's module host: `files[name]` (else `modules/<name>.wasm`)
- * under `base`, fetched in CORS mode and compiled as it streams, with
- * Subresource Integrity when `hashes` gives its sha256 (the browser refuses
- * other bytes); synchronously a blocking request, which a Worker may make
+ * under `base`, fetched in CORS mode with the shared transport budget and
+ * checked against `hashes`' sha256 before instantiation; synchronously a
+ * blocking request, which a Worker may make
  * and which checks no digest (Web Crypto answers only asynchronously), as
  * the lanes pool Workers' fetches (scripts/og-pool-split.js) do not. The
  * modules in `start` are fetched at once, so they download beside the
@@ -188,26 +190,20 @@ export function fetchModuleHost(
   const url = (name: string) => moduleUrl(name, files, base).href;
   const get = async (name: string) => {
     const integrity = sriOf(hashes[name]);
-    const r = await fetch(url(name), { mode: "cors", credentials: "omit", ...(integrity ? { integrity } : {}) });
-    if (!r.ok) throw new Error(`cannot fetch engine module ${name} from ${url(name)} (HTTP ${r.status})`);
-    return r;
+    return fetchResource(url(name), { mode: "cors", credentials: "omit", ...(integrity ? { integrity } : {}) });
   };
   const started = new Map(start.map((name) => [name, get(name)] as const));
   for (const p of started.values()) p.catch(() => {});
+  const network = fetchState();
   return {
-    pool: { base: String(base), files },
+    pool: { base: String(base), files, ...(network ? { network } : {}) },
     async load(name, imports) {
       const r = await (started.get(name) ?? get(name));
       started.delete(name);
       return (await WebAssembly.instantiateStreaming(r, imports)).instance;
     },
     loadSync(name, imports) {
-      const x = new XMLHttpRequest();
-      x.open("GET", url(name), false);
-      x.responseType = "arraybuffer";
-      x.send();
-      if (x.status !== 200) throw new Error(`cannot fetch engine module ${name} from ${url(name)} (HTTP ${x.status})`);
-      return new WebAssembly.Instance(new WebAssembly.Module(x.response as ArrayBuffer), imports);
+      return new WebAssembly.Instance(new WebAssembly.Module(fetchResourceSync(url(name))), imports);
     },
   };
 }

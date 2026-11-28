@@ -62,6 +62,7 @@ declare const OG_SW: {
 };
 
 import { laneChoice } from "../src/web/lanes.ts";
+import { fetchResource } from "../src/web/fetch.js";
 
 interface SwScope {
   readonly registration: { readonly scope: string; readonly navigationPreload?: { enable(): Promise<void> } };
@@ -72,6 +73,20 @@ interface SwScope {
   addEventListener(type: "message", fn: (e: { data: unknown; waitUntil(p: Promise<unknown>): void }) => void): void;
 }
 const scope = globalThis as unknown as SwScope;
+
+// CacheStorage.addAll starts an unbounded second download path. Populate
+// serially through the host loader instead: an installing worker can run
+// beside the game's four async bodies and its reserved sync body (six total).
+async function precache(cache: Cache, files: readonly string[]): Promise<void> {
+  for (const url of files) await cache.put(url, await fetchResource(url));
+}
+
+// Preserve the exhausted URL/status at the service-worker boundary instead
+// of turning a rejected respondWith into an opaque browser network error.
+function unavailable(error: unknown): Response {
+  const status = (error as { status?: number }).status ?? 0;
+  return new Response(String(error), { status: status >= 400 ? status : 503 });
+}
 
 /** FNV-1a, 32 bits, as 8 hex digits: a short stable name for the scope, not a secret. */
 function scopeHash(text: string): string {
@@ -140,7 +155,7 @@ scope.addEventListener("install", (e) => {
         // already had, carried over unchanged; only the rest is fetched.
         const left = await carryOver(cache, [...urls]);
         await carryOver(cache, [...lazy]);
-        await cache.addAll(left);
+        await precache(cache, left);
         await cache.put(INDEX, new Response(JSON.stringify(Object.fromEntries(hashes)), { headers: { "Content-Type": "application/json" } }));
       })
       .then(() => scope.skipWaiting()),
@@ -168,7 +183,7 @@ scope.addEventListener("message", (e) => {
       .then(async (cache) => {
         const missing: string[] = [];
         for (const h of wanted) if (!(await cache.match(h))) missing.push(h);
-        if (missing.length > 0) await cache.addAll(missing);
+        await precache(cache, missing);
       })
       .catch(() => {}),
   );
@@ -204,10 +219,10 @@ scope.addEventListener("fetch", (e) => {
       caches.open(CACHE).then(async (cache) => {
         const hit = await cache.match(key);
         if (hit) return hit;
-        const r = await fetch(e.request);
+        const r = await fetchResource(e.request);
         if (r.ok) await cache.put(key, r.clone());
         return r;
-      }),
+      }).catch(unavailable),
     );
     return;
   }
@@ -218,14 +233,14 @@ scope.addEventListener("fetch", (e) => {
       if (page) {
         try {
           const preloaded = e.request.mode === "navigate" ? await e.preloadResponse : undefined;
-          return preloaded ?? (await fetch(e.request));
+          return preloaded ?? (await fetchResource(e.request));
         } catch (err) {
           const hit = await cache.match(index);
           if (hit) return hit;
           throw err;
         }
       }
-      return (await cache.match(key)) ?? fetch(e.request);
-    }),
+      return (await cache.match(key)) ?? fetchResource(e.request);
+    }).catch(unavailable),
   );
 });

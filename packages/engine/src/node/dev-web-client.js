@@ -7,6 +7,8 @@
 //   files: saveToCookedMs (the server: the save seen, the cook) + fetchMs + applyMs (the
 //          Worker's devFiles; workerMs and its steps inside) + frameMs (the next drawn frame)
 //   code:  bundleMs, writtenToFrameMs = fetch/import + reload (Worker) + frame
+import { fetchResource } from "../play.js";
+
 const base = document.baseURI;
 const reloads = (window.__og_dev_reloads__ = []);
 /** The build this page booted (dev-web.ts writes it into the page): a reconnect to another reloads. */
@@ -90,7 +92,7 @@ async function fetchFiles(paths) {
   const out = [];
   await Promise.all(batches.map(async (names) => {
     const url = new URL(`_dev/files?${names.map((n) => `f=${encodeURIComponent(n)}`).join("&")}`, base);
-    const body = new Uint8Array(await (await fetch(url, { cache: "no-store" })).arrayBuffer());
+    const body = new Uint8Array(await (await fetchResource(url, { cache: "no-store" })).arrayBuffer());
     const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
     const text = new TextDecoder();
     for (let at = 0; at < body.length; ) {

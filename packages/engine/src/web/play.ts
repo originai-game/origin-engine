@@ -16,6 +16,7 @@
 import { play } from "../../shell/page.ts";
 
 export { play };
+export { fetchResource } from "./fetch.js";
 
 void play().catch(() => {
   /* the error card is already on screen */
