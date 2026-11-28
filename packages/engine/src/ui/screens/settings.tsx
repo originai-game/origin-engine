@@ -81,7 +81,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       }}
     >
       <Backdrop art={0} over veil="full" />
-      <View class="flex-col gap-y-4 w-full max-w-240 min-h-0 max-h-full portrait:grow compact:grow compact:gap-y-3">
+      <View class="flex-col gap-y-4 w-full max-w-240 min-h-0 max-h-full transition duration-base ease-out starting:opacity-0 starting:translate-y-4 compact:gap-y-3">
         <View class="flex-row min-h-12 items-end gap-x-5 compact:flex-wrap compact:gap-y-1">
           <Show when={props.onBack}>
             <Button size="sm" class="shrink self-center" autofocus onPress={(e) => props.onBack?.(e)}>
@@ -120,19 +120,19 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 {(entry) => (
                   <Show when={entry().page === props.page}>
                     <View
-                      class={`group/row text-fg transition duration-control data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")} data-selected:${packClass("Row", "frame", "selected")} ${packClass("List", "item")}`}
+                      class={`group/row text-fg transition duration-control data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame", inspected()?.id === entry().id ? "selected" : undefined)} ${packClass("List", "item")}`}
                       label={entry().description}
                       data-selected={inspected()?.id === entry().id}
                       onFocus={() => activeEntryId.set(entry().id)}
                       onPointerDown={() => activeEntryId.set(entry().id)}
                     >
                       <Show when={entry().kind === "toggle"}>
-                        <Switch class="min-h-14 text-lg py-2 px-5 compact:text-base compact:px-3" checked={entry().value === true} onChange={(e, on) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, on); }}>
+                        <Switch class="min-h-14 text-lg portrait:text-xl py-2 px-5 compact:text-base compact:px-3" checked={entry().value === true} onChange={(e, on) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, on); }}>
                           <Text class="grow shrink font-semibold">{entry().name}</Text>
                         </Switch>
                       </Show>
                       <Show when={entry().kind === "range"}>
-                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
+                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg portrait:text-xl compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
                           <Text class="grow shrink font-semibold m-0">{entry().name}</Text>
                           <View class="flex-row items-center gap-x-4">
                             <Slider
@@ -149,7 +149,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         </View>
                       </Show>
                       <Show when={entry().kind === "select"}>
-                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
+                        <View class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg portrait:text-xl compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base">
                           <Text class="grow shrink font-semibold m-0">{entry().name}</Text>
                           <Select
                             value={String(entry().value)}
@@ -162,7 +162,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         </View>
                       </Show>
                       <Show when={entry().kind === "binding"}>
-                        <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base compact:grid-cols-[minmax(0,1fr)_auto] data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => { activeEntryId.set(entry().id); listening.set(listening() === entry().id ? "" : entry().id); }} onKey={(e) => {
+                        <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 min-h-14 py-2 px-5 text-lg portrait:text-xl compact:grid-cols-1 compact:items-stretch compact:gap-y-1 compact:px-3 compact:text-base compact:grid-cols-[minmax(0,1fr)_auto] data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => { activeEntryId.set(entry().id); listening.set(listening() === entry().id ? "" : entry().id); }} onKey={(e) => {
                           if (listening() !== entry().id) return;
                           if (e.key === "Escape") {
                             listening.set("");

@@ -26,6 +26,7 @@ export function Backdrop(props: BackdropProps) {
       <Show when={props.art !== 0} fallback={
         <Show when={!props.over}>
           <View class={`absolute inset-0 ${packClass("Screen", "backdrop")}`} />
+          <View class={`absolute inset-0 ${packClass("Screen", "texture")}`} />
           <View class={`absolute inset-0 ${packClass("Screen", "glow")}`} />
         </Show>
       }>
@@ -35,7 +36,7 @@ export function Backdrop(props: BackdropProps) {
         <View class={`absolute inset-0 ${packClass("Screen", "vignette")}`} />
       </Show>
       <Show when={veil() === "side"}>
-        <View class={`absolute inset-y-0 left-0 w-3/4 portrait:inset-x-0 portrait:top-auto portrait:h-3/4 portrait:w-full compact:inset-x-0 compact:top-auto compact:h-3/4 compact:w-full ${packClass("Screen", "veil", "side")}`} />
+        <View class={`absolute inset-y-0 left-0 w-3/4 portrait:inset-x-0 portrait:top-auto portrait:h-full portrait:w-full compact:inset-x-0 compact:top-auto compact:h-full compact:w-full ${packClass("Screen", "veil", "side")}`} />
       </Show>
       <Show when={veil() === "foot"}>
         <View class={`absolute inset-x-0 bottom-0 h-3/5 portrait:h-3/4 ${packClass("Screen", "veil", "foot")}`} />

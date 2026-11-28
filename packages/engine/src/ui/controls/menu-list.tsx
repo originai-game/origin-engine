@@ -81,7 +81,7 @@ export function MenuEntry(props: MenuEntryProps) {
         <View class={packClass("MenuList", "indicator", props.danger ? "danger" : undefined)} />
         <View class={`pointer-events-none ${packClass("MenuList", "cursor", props.danger ? "danger" : undefined)}`} />
       </Show>
-      <View class="relative grow shrink">
+      <View class="relative grow shrink transition-transform duration-control ease-out group-data-current/entry:translate-x-2 rtl:group-data-current/entry:-translate-x-2">
         <Text class={`${packClass("MenuList", "label")} ${props.size === "md" ? packClass("MenuList", "label", "md") : ""}`}>{props.label}</Text>
         <Show when={props.line}>
           <Text class={packClass("MenuList", "line")}>{props.line}</Text>

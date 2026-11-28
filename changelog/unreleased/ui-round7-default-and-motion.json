@@ -1,0 +1,34 @@
+{
+  "breaking": [
+    {
+      "member": "Button size",
+      "change": "Each size's type is one step larger: sm text-sm, md text-base, lg text-lg, so a primary label reads at body size and a secondary at 14 px or more on a 720p frame. RpgItemCard's Equip and Drop are lg.",
+      "fix": "A button that must keep the former type passes its own text-* class."
+    },
+    {
+      "member": "MenuList.indicator, Button.plate.menu, Title.wordmark, Screen.backdrop, Screen.glow",
+      "change": "The default pack's current menu entry is a warm-white leading bar over a translucent plate with a soft glow, in the fg ink, not a filled cyan block; its wordmark is text-display-3xl with tight tracking; its fallback ground is graded cool to warm under a warm light.",
+      "fix": "A pack that wants the former look sets these slots in its variants."
+    },
+    {
+      "member": "Card.rarity, Row.frame.selected",
+      "change": "RpgItemCard and SettingsScreen now apply the rarity and selected variants (a variant behind a data-* prefix never expanded). Every rarity past common gets a glow in its own colour, epic and higher a 2 px rim, and the card's header a radial light in the rarity's colour.",
+      "fix": "A pack that relied on the variants being inert sets them to what it wants shown."
+    },
+    {
+      "member": "GameOverScreen, PauseScreen, TitleScreen, MenuList.label, MenuList.label.md, Row.frame.selected, Screen.prompt",
+      "change": "Game over's primary actions are text-xl and its others text-lg, and in portrait its result sits in the upper third with the actions four-fifths wide in the lower third. Portrait menus set their entries one step larger, portrait pause its heading at display-xl. The title screen's wordmark is text-display-4xl, its prompt text-lg. A selected settings row carries a leading focus bar. RpgItemCard's stat names are text-base on one line.",
+      "fix": "A game that wants the former sizes passes its own classes or sets these slots."
+    }
+  ],
+  "added": [
+    {
+      "member": "Screen.texture",
+      "summary": "A faint pattern over a screen's fallback backdrop where the game has no key art, in the pack's idiom (scanlines, stripes, a sunburst, a grid, speed lines); empty in the default pack."
+    },
+    {
+      "member": "MenuEntry, Button, MainMenuScreen, GameOverScreen, SettingsScreen, RpgItemCard",
+      "summary": "Motion: the current menu entry's words slide in by 8 px, a pressed button scales by the theme's press scale, and these screens enter with a fade and rise. Portrait main menus set their title and menu in the lower-middle third."
+    }
+  ]
+}

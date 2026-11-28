@@ -67,7 +67,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
   const tiered = () => tier() !== "common";
   return (
     <View
-      class={`group/card relative self-center shrink w-full max-w-120 min-h-0 max-h-full p-5 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")} ${packClass("Card", "rarity")} data-tier-uncommon:${packClass("Card", "rarity", "uncommon")} data-tier-rare:${packClass("Card", "rarity", "rare")} data-tier-epic:${packClass("Card", "rarity", "epic")} data-tier-legendary:${packClass("Card", "rarity", "legendary")} data-tier-mythic:${packClass("Card", "rarity", "mythic")}`}
+      class={`group/card relative self-center shrink w-full max-w-120 transition duration-base ease-out starting:opacity-0 starting:translate-y-4 min-h-0 max-h-full p-5 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")} ${packClass("Card", "rarity", tiered() ? tier() : undefined)}`}
       label={props.name}
       onAction={{ details: (e) => props.onEquip?.(e) }}
       data-tier-common={tier() === "common"}
@@ -81,7 +81,8 @@ export function RpgItemCard(props: RpgItemCardProps) {
       <View class="shrink w-full gap-1 overflow-auto">
         <View class="w-full gap-0 compact:flex-row compact:items-center compact:gap-2">
           <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-border-muted gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
-            <View class="absolute opacity-dim inset-0 bg-linear-to-b from-current to-transparent to-70% compact:hidden" />
+            <View class="absolute inset-0 bg-linear-to-b from-common/25 to-transparent to-80% group-data-tier-uncommon/card:from-uncommon/45 group-data-tier-rare/card:from-rare/45 group-data-tier-epic/card:from-epic/45 group-data-tier-legendary/card:from-legendary/45 group-data-tier-mythic/card:from-mythic/45 compact:hidden" />
+            <View class="absolute inset-0 bg-radial from-transparent to-transparent to-70% group-data-tier-uncommon/card:from-uncommon/55 group-data-tier-rare/card:from-rare/55 group-data-tier-epic/card:from-epic/55 group-data-tier-legendary/card:from-legendary/55 group-data-tier-mythic/card:from-mythic/55 compact:hidden" />
             <Show when={props.art} fallback={
               <Icon class="relative size-[max(4rem,min(8.286rem,16vh))] compact:size-4/5" name={props.icon} />
             }>
@@ -153,7 +154,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
                 <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-control flex-wrap min-h-12 text-lg border-t border-border-muted py-1 hover:bg-surface-hover" role="row">
                   <View class="flex-row items-center grow shrink basis-20 text-fg-muted gap-1">
                     <Icon class="size-6" name={s().icon} />
-                    <Text class="shrink" role="rowheader">{s().label}</Text>
+                    <Text class="shrink text-base whitespace-nowrap" role="rowheader">{s().label}</Text>
                   </View>
                   <View class="flex-row items-center ml-auto gap-1">
                     <Text class="tabular-nums text-fg text-lg w-14 font-bold text-end whitespace-nowrap shrink" role="cell">
@@ -191,13 +192,13 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </Show>
           <View class="flex-row items-center w-full gap-1">
             <Show when={props.primary}>
-              <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-12.75 gap-1 compact:min-h-11`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
+              <Button variant="primary" size="lg" class={`grow-[1.4] shrink basis-0 min-h-12.75 gap-1 compact:min-h-11`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
                 <Text glyph="details" class={keyCap} />
                 <Text>{props.primary}</Text>
               </Button>
             </Show>
             <Show when={props.secondary}>
-              <Button class={`grow shrink basis-0 min-h-12.75 gap-1 compact:min-h-11`} disabled={!props.canSecondary} onPress={(e) => props.onDiscard?.(e)}>
+              <Button size="lg" class={`grow shrink basis-0 min-h-12.75 gap-1 compact:min-h-11`} disabled={!props.canSecondary} onPress={(e) => props.onDiscard?.(e)}>
                 <Text>{props.secondary}</Text>
               </Button>
             </Show>

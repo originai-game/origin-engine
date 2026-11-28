@@ -47,7 +47,7 @@ export function TitleScreen(props: TitleScreenProps) {
           <Show when={props.logo === 0 && props.name !== ""} fallback={
               <Art class={`aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
           }>
-            <Text class={`max-w-full text-center m-0 ${packClass("Title", "wordmark")} compact:text-display-xl`}>
+            <Text class={`max-w-full text-center m-0 ${packClass("Title", "wordmark")} text-display-4xl compact:text-display-xl`}>
               {props.name}
             </Text>
           </Show>

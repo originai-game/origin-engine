@@ -94,7 +94,7 @@ export function PauseScreen(props: PauseScreenProps) {
     <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onResume?.(e) }}>
       <Backdrop art={0} over veil="full" />
       <View class={`flex-col justify-center gap-6 w-130 max-w-full h-full pt-[calc(env(hud-inset-top)+3rem)] pb-[calc(env(hud-inset-bottom)+5rem)] pl-[calc(env(hud-inset-left)+5rem)] pr-6 transition duration-base ease-out starting:opacity-0 starting:-translate-x-6 portrait:w-full portrait:items-stretch portrait:pl-[calc(env(hud-inset-left)+2rem)] portrait:pr-[calc(env(hud-inset-right)+2rem)] compact:w-full compact:gap-4 compact:pt-[calc(env(hud-inset-top)+1.5rem)] compact:pb-[calc(env(hud-inset-bottom)+3.5rem)] compact:pl-[calc(env(hud-inset-left)+1.25rem)] compact:pr-[calc(env(hud-inset-right)+1.25rem)] short:gap-3 short:pt-3 short:pb-12`}>
-        <Text class={`m-0 ${packClass("Screen", "heading")} portrait:self-center portrait:text-center compact:self-center compact:text-center`}>
+        <Text class={`m-0 ${packClass("Screen", "heading")} portrait:self-center portrait:text-center portrait:text-display-xl compact:self-center compact:text-center`}>
           {t("screen.pause.title")}
         </Text>
         <View class={`flex-col gap-y-1 w-full py-4 px-5 short:hidden ${packClass("Plate", "frame")}`}>
@@ -102,7 +102,7 @@ export function PauseScreen(props: PauseScreenProps) {
             <Text class="text-sm font-bold tracking-kicker uppercase text-fg-muted m-0">
               {t("screen.pause.objectiveLabel")}
             </Text>
-            <Text class="text-xl leading-snug font-semibold line-clamp-2 m-0 compact:text-lg">
+            <Text class="text-xl leading-snug font-semibold line-clamp-2 m-0 portrait:text-2xl compact:text-lg">
               {props.objective}
             </Text>
           </Show>

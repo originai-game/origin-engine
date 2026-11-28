@@ -122,7 +122,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Button.plate.menu",
         "a front-end menu entry (MenuEntry: the main menu's, the pause menu's): type, not a box, dim until it is the current one, then in the ink of the MenuList.indicator gliding under it",
-        "relative w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-transparent hover:shadow-none hover:inset-ring-0 active:bg-none active:bg-transparent data-current:text-hud-accent-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
+        "relative w-full justify-start py-2 px-4 rounded-button text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-transparent hover:shadow-none hover:inset-ring-0 active:bg-none active:bg-transparent data-current:text-fg disabled:bg-none disabled:bg-transparent disabled:text-fg-subtle disabled:inset-ring-0",
     ),
     (
         "Button.plate.menu-danger",
@@ -131,13 +131,13 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "MenuList.indicator",
-        "the bar behind a menu list's current entry (MenuList): it glides from the entry it leaves to the one hovered or focused (Timing::indicator)",
-        "absolute inset-0 rounded-button bg-hud-accent pointer-events-none",
+        "the bar behind a menu list's current entry (MenuList): it glides from the entry it leaves to the one hovered or focused (Timing::indicator); the default pack's is a premium console menu's, a warm-white leading bar over a translucent plate that fades out, not a filled block",
+        "absolute inset-0 rounded-sm bg-linear-to-r from-sheen to-transparent border-s-4 border-fg shadow-glow shadow-sheen pointer-events-none",
     ),
     (
         "MenuList.indicator.danger",
         "the bar behind a current entry that ends something (Quit game)",
-        "bg-danger",
+        "from-danger/40 border-danger",
     ),
     (
         "MenuList.cursor",
@@ -152,17 +152,17 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "MenuList.label",
         "a menu entry's words (MenuEntry): the main menu's size; the pack sets the face, case and treatment",
-        "text-start text-4xl leading-tight font-semibold text-shadow-xs text-shadow-bg",
+        "text-start text-4xl leading-tight font-semibold text-shadow-xs text-shadow-bg portrait:text-5xl",
     ),
     (
         "MenuList.label.md",
         "a pause menu's entry words (MenuEntry size md)",
-        "text-3xl compact:text-2xl",
+        "text-3xl portrait:text-4xl compact:text-2xl",
     ),
     (
         "MenuList.line",
         "the line under a menu entry's words (where the last save stands)",
-        "text-start text-base font-medium opacity-quiet whitespace-nowrap overflow-hidden",
+        "text-start text-base font-medium opacity-quiet group-data-current/entry:opacity-100 whitespace-nowrap overflow-hidden",
     ),
     (
         "MenuList.chevron",
@@ -442,7 +442,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Title.wordmark",
         "a game's name set in type where it has no logo (a title or main menu's wordmark): the pack's display face, size and treatment",
-        "font-display text-display-2xl leading-tight font-bold text-fg text-shadow-xs text-shadow-bg",
+        "font-display text-display-3xl leading-none font-bold tracking-tight text-fg text-shadow-sm text-shadow-bg",
     ),
     (
         "Screen.veil",
@@ -467,17 +467,22 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Screen.prompt",
         "a title screen's call to start (Press any button): its plate, if any, and its type",
-        "flex-row items-center gap-x-3 py-2 px-5 text-base font-semibold uppercase tracking-kicker text-fg text-shadow-sm text-shadow-bg",
+        "flex-row items-center gap-x-3 py-2 px-5 text-lg font-semibold uppercase tracking-kicker text-fg text-shadow-sm text-shadow-bg",
     ),
     (
         "Screen.backdrop",
-        "what a full-screen built-in stands on where the game has no key art (the art slot is empty): the pack's own ground, a gradient in its palette, never a flat colour",
-        "bg-linear-to-br from-layer-3 via-bg to-bg",
+        "what a full-screen built-in stands on where the game has no key art (the art slot is empty): the pack's own ground, a gradient in its palette, never a flat colour; the default pack grades it cool to warm",
+        "bg-layer-2 bg-linear-to-br from-info/40 via-layer-2 to-warn/35",
     ),
     (
         "Screen.glow",
-        "a soft light over the backdrop (Screen.backdrop), so the empty ground reads as lit: a radial wash in the pack's accent",
-        "bg-radial from-accent to-transparent to-60% opacity-dim",
+        "a soft light over the backdrop (Screen.backdrop), so the empty ground reads as lit: a radial wash, warm in the default pack, in a pack's accent",
+        "bg-radial from-warn/30 via-warn/10 to-transparent to-90%",
+    ),
+    (
+        "Screen.texture",
+        "a faint pattern over the backdrop (Screen.backdrop) where the game has no key art, in the pack's idiom (a dither, dots, a halftone, a grid, speed lines): none in the default pack, whose ground is light alone",
+        "",
     ),
     (
         "Screen.vignette",
@@ -517,27 +522,27 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Card.rarity.uncommon",
         "an uncommon card's frame: a rim in the rarity's colour",
-        "inset-ring-regular inset-ring-uncommon",
+        "inset-ring-regular inset-ring-uncommon shadow-glow shadow-uncommon/40",
     ),
     (
         "Card.rarity.rare",
         "a rare card's frame: a rim in the rarity's colour",
-        "inset-ring-regular inset-ring-rare",
+        "inset-ring-regular inset-ring-rare shadow-glow shadow-rare/40",
     ),
     (
         "Card.rarity.epic",
         "an epic card's frame: a rim and a glow in the rarity's colour",
-        "inset-ring-regular inset-ring-epic shadow-glow",
+        "inset-ring-2 inset-ring-epic shadow-glow shadow-epic/70",
     ),
     (
         "Card.rarity.legendary",
         "a legendary card's frame: a rim and a glow in the rarity's colour",
-        "inset-ring-regular inset-ring-legendary shadow-glow",
+        "inset-ring-2 inset-ring-legendary shadow-glow shadow-legendary/70",
     ),
     (
         "Card.rarity.mythic",
         "a mythic card's frame: a rim and a glow in the rarity's colour",
-        "inset-ring-regular inset-ring-mythic shadow-glow",
+        "inset-ring-2 inset-ring-mythic shadow-glow shadow-mythic/70",
     ),
     (
         "MenuList.frame",
@@ -1218,7 +1223,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Row.frame.selected",
         "the chosen row, or the local player's",
-        "rounded-control bg-layer-4 text-fg inset-shadow-bar",
+        "rounded-control bg-layer-4 text-fg border-s-4 border-fg shadow-glow shadow-sheen",
     ),
     (
         "Row.frame.muted",

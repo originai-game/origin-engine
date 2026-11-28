@@ -45,9 +45,9 @@ export interface GameOverScreenProps {
  */
 export function GameOverScreen(props: GameOverScreenProps) {
   return (
-    <View class={`absolute inset-0 flex-col justify-center items-center gap-8 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+4.5rem)] px-8 text-fg compact:gap-5 compact:px-5 short:flex-row short:gap-10 short:pb-12 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 flex-col justify-center items-center gap-8 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+4.5rem)] px-8 text-fg portrait:justify-between portrait:pt-[calc(env(hud-inset-top)+14rem)] portrait:pb-[calc(env(hud-inset-bottom)+7rem)] compact:gap-5 compact:px-5 short:flex-row short:gap-10 short:pb-12 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <Backdrop art={0} over veil="full" />
-      <View class="flex-col items-center gap-4 max-w-full short:shrink short:basis-0 short:grow">
+      <View class="flex-col items-center gap-4 max-w-full transition duration-pulse ease-out starting:opacity-0 starting:scale-lift short:shrink short:basis-0 short:grow">
         <Text sound="error" class={`max-w-full text-center m-0 ${packClass("Screen", "heading")} text-display-3xl tracking-display-3xl compact:text-display-xl short:text-display-lg`}>
           {props.title}
         </Text>
@@ -64,40 +64,40 @@ export function GameOverScreen(props: GameOverScreenProps) {
         </View>
         <View class="self-stretch">{props.stats?.()}</View>
       </View>
-      <View class="flex-col items-stretch gap-3 w-100 max-w-full">
+      <View class="flex-col items-stretch gap-3 w-100 max-w-full portrait:w-4/5 transition duration-pulse delay-spring ease-out starting:opacity-0 starting:translate-y-4">
         <Show when={props.offer} fallback={
           <>
             <Show when={props.onRetry}>
-              <Button variant="primary" size="lg" onPress={(e) => props.onRetry?.(e)} autofocus>
+              <Button variant="primary" size="lg" class="text-xl" onPress={(e) => props.onRetry?.(e)} autofocus>
                 <Text>{t("screen.game-over.retry")}</Text>
               </Button>
             </Show>
             <Show when={props.checkpoint && props.onCheckpoint}>
-              <Button onPress={(e) => props.onCheckpoint?.(e)}>
+              <Button class="text-lg" onPress={(e) => props.onCheckpoint?.(e)}>
                 <Text>{t("screen.game-over.checkpoint")}</Text>
               </Button>
             </Show>
             <Show when={props.onQuit}>
-              <Button variant="ghost-muted" onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+              <Button variant="ghost-muted" class="text-lg" onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
             </Show>
           </>
         }>
-          <View class="flex-row items-center justify-center gap-4">
+          <View class="flex-row items-center justify-center gap-4 -mx-20 compact:mx-0">
             <Text class="text-center leading-18 text-display-sm font-bold tabular-nums m-0 size-18 rounded-full inset-ring-marker inset-ring-accent text-fg short:leading-14 short:size-14">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>
-            <Text class={`m-0 shrink ${packClass("Screen", "note")} text-xl font-bold`}>
+            <Text class={`m-0 shrink ${packClass("Screen", "note")} text-xl font-bold whitespace-nowrap compact:whitespace-normal`}>
               {t("screen.game-over.revive")}
             </Text>
           </View>
           <View class="self-stretch">{props.offerArt?.()}</View>
           <Show when={props.onRevive}>
-            <Button variant="primary" size="lg" onPress={(e) => props.onRevive?.(e)} autofocus>
+            <Button variant="primary" size="lg" class="text-xl" onPress={(e) => props.onRevive?.(e)} autofocus>
               <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
             </Button>
           </Show>
           <Show when={props.onDecline}>
-            <Button variant="ghost-muted" onPress={(e) => props.onDecline?.(e)}>
+            <Button variant="ghost-muted" class="text-lg" onPress={(e) => props.onDecline?.(e)}>
               <Text>{t("screen.game-over.decline")}</Text>
             </Button>
           </Show>

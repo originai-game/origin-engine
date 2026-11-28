@@ -24,7 +24,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `List.cascade`, `List.item`, `Panel.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`, `Screen.heading`, `Slot.frame`.
+Pack slots: `List.cascade`, `List.item`, `Panel.frame`, `Row.frame.…`, `Screen.frame`, `Screen.heading`, `Slot.frame`.
 
 Fixtures: `default`.
 

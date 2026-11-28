@@ -56,9 +56,9 @@ export interface ButtonProps {
 
 /** Each size's padding, gap and type; every one at least a touch target tall. */
 const SIZE = {
-  sm: "min-h-11 px-3 gap-1.5 text-xs",
-  md: "min-h-11 px-4 gap-2 text-sm",
-  lg: "min-h-14 px-6 gap-2 text-base",
+  sm: "min-h-11 px-3 gap-1.5 text-sm",
+  md: "min-h-11 px-4 gap-2 text-base",
+  lg: "min-h-14 px-6 gap-2 text-lg",
 };
 
 /**
@@ -75,7 +75,7 @@ export function Button(props: ButtonProps) {
       {...props}
       role={props.role ?? "button"}
       data-pressed={props.pressed}
-      class={`flex-row items-center justify-center font-semibold ${SIZE[size()]} ${packClass("Button", "plate", variant())} ${props.class ?? ""}`}
+      class={`flex-row items-center justify-center font-semibold transition-transform duration-control active:scale-press ${SIZE[size()]} ${packClass("Button", "plate", variant())} ${props.class ?? ""}`}
     >
       <Show when={props.busy}>
         <View class={packClass("Button", "spinner")} />
