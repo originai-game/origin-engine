@@ -104,12 +104,12 @@ break, with a `changelog.json` breaking entry):
 - `ArtBrief { kind, subject, style, medium: "image" | "model", prompt,
   avoid, palette, references: BriefReference[], image?: ImageParams,
   model?: ModelParams, ui?: UiParams }`.
-- `readLook(projectDir, options?)`: a project's checked look from the last
+- `readLook(projectDir, options?)`: without a configured look, returns empty art blocks, null style/palette/mood and the checked project's actual profile, with no cook required. Otherwise reads a project's checked look from the last
   successful cook's `.og/cook/look.json`, including its flattened inheritance,
   variant, mood and captured palettes. It checks startup identity/profile
   against `og project --json` and hashes the captured project, TS/helper,
   referenced look and raw input dependencies. Missing or stale reports throw
-  with a preparation diagnostic. After `og new`, the platform must run
+  with a preparation diagnostic. After `og new` with a look, the platform must run
   `og cook` before requesting its first art brief; dev/run/build/test refresh
   the report automatically after edits.
   `presetLook(slug, options?)`: a preset

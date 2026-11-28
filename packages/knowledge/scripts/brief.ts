@@ -575,6 +575,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   const avoid: string[] = [...(style?.artBible.avoid ?? [])];
 
   if (style) lines.push(`Style: ${style.name}. ${style.descriptor} ${style.artBible.direction}`);
+  else if (look.extends === null && Object.keys(art).length === 0) lines.push("Realistic (engine default): natural proportions, materials and surface detail. No stylised art contract, imposed palette, outline or polygon budget.");
   const made = style?.look.authored?.find((a) => a.kind === kind);
   if (made) lines.push(`Authored: this style's ${kind} art is made for it, not something the engine adds: ${made.what}.`);
   const mood = look.mood ?? style?.look.mood ?? null;
@@ -1035,13 +1036,16 @@ export interface ReadLookOptions {
 }
 
 /**
- * Read the last successful cook's checked .og/cook/look.json. Platform tooling
- * prepares it after creation; dev/run/build/test refresh it after edits.
+ * Without a look, return the checked project's profile and an empty contract.
+ * With a look, read the last successful cook's checked .og/cook/look.json.
+ * Platform tooling prepares it after creation; dev/run/build/test refresh it after edits.
  * No content source is parsed or evaluated here. Requires og (or OG_BIN) for
  * restricted project bootstrap; throws on missing/failed/mismatched cook.
  */
 export function readLook(projectDir: string, options: ReadLookOptions = {}): BriefLook {
   const dir = resolve(projectDir);
+  const { look, profile } = checkedProject(dir).startup;
+  if (look === undefined) return { extends: null, art: {}, style: null, palette: null, mood: null, profile };
   const report = readJson<{ id: string; profile: "2d" | "3d"; preset: string | null; look: PresetLookJson; palettes: CookedPalettes; fingerprints: Record<string, string> }>(join(dir, ".og/cook/look.json"), "project content is not prepared; og dev, run, build and test prepare it automatically");
   if (!report.fingerprints || Object.keys(report.fingerprints).length === 0) throw new Error("look report lacks checked inputs; og dev, run, build and test refresh it automatically");
   for (const [file, hash] of Object.entries(report.fingerprints)) {
@@ -1050,7 +1054,6 @@ export function readLook(projectDir: string, options: ReadLookOptions = {}): Bri
     catch { throw new Error(`${file}: look dependency missing; restore the source before preparing the project`); }
     if (current !== hash) throw new Error(`${file}: look report is stale; og dev, run, build and test refresh it automatically`);
   }
-  const { look, profile } = checkedProject(dir).startup;
   if (report.id !== look || report.profile !== profile) throw new Error("project differs from its checked look report; og dev, run, build and test refresh it automatically");
   return briefLook(blocksOf(report.look), report.preset, report.look.variant, report.look.mood, report.palettes, options.presets ?? presetsDir(), options.catalogue ?? catalogueFile(), profile);
 }

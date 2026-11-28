@@ -1,6 +1,8 @@
 # The art contract: a game's style as a contract on every asset, not a filter on the frame
 
-A look (`file.look` in TypeScript) holds the frame's render resources and the UI style;
+Origin Engine is a realistic engine. A project without a look uses the engine's own rendering and default UI pack, with no stylised art contract: no ArtShape simplification budget, ArtTexels limit or ArtLine treatment is imposed. This is the default for every form, including 2D, 2.5D, 3D and interactive films. A genre never selects an art style.
+
+A look is optional stylisation layered on that baseline. A look (`file.look` in TypeScript) holds the frame's render resources and the UI style;
 the art contract adds what a style asks of the assets themselves, so the
 assets carry the style instead of a filter put over whatever the game has.
 The platform's part (the style chosen at creation) is §4.
@@ -53,17 +55,15 @@ and overrides it field by field.
 **The project names its look.** The cook needs the contract before game
 code runs, so `og-project.json` has `look: {"$ogRef":"base/looks/<id>"}`.
 That is also the canonical ID `GameDesc.look` takes and its fallback.
-`og new` writes the metadata and `content/looks/<id>.ts`. A project without
-a look conforms nothing. Author OGT and same-slug project fallback are removed.
+`og new` writes the look reference and `content/looks/<id>.ts` only when a look is selected. Without `--look` or explicit style words in the premise it writes neither; `--look none` explicitly selects the engine default. A project without a look conforms nothing. Author OGT and same-slug project fallback are removed.
 
 **Creation choices precede the art contract.** `og new` records
-`genre`, `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`,
+`form`, `genre`, `view`, optional `look` and `variant`, `ui`, `platform`, `input`, `players`,
 `lang` and `music` (its flags of those names) in `project.ts`'s `create` object.
 `packages/knowledge/scripts/creation.ts` owns the vocabulary and exports its JSON
 schema, premise inference and `resolveCreationChoices` through
 `@origingame/create-game`; these are additive public contracts beside the
-art brief. The UI choice defaults to the look's `ui` line and the mood to
-the look's own (§2.10). Music records intent only.
+art brief. The UI choice defaults to the engine's default pack without a look, otherwise the look's `ui` line. Mood is not a creation choice; an optional look declares its own (§2.10). Music records intent only.
 
 ### 2.2 Produce: every request carries the contract
 
@@ -73,9 +73,7 @@ hold equal) compiles the flattened look and its catalogue entry into the
 request for one asset: the prompt (direction, palette as named colours and
 hex, sizes, line, shape language, avoid list), the style's reference images
 and the generator's parameters. It is a pure function, so the platform and
-an agent in a sandbox read the same. `readLook(projectDir)` reads the last
-successful cook's `.og/cook/look.json` and checks its input hashes, never
-parsing TS or OGT. Platforms run `og cook` after `og new` before the first
+an agent in a sandbox read the same. `readLook(projectDir)` first reads the checked bootstrap. Without a look it returns an empty art contract, no style, palette or mood, and the game's actual profile; it needs no cook report. `artBrief` then requests realistic art without inventing face budgets, palette restrictions or outlines. With a look, it reads the last successful cook's `.og/cook/look.json` and checks its input hashes, never parsing TS or OGT. Platforms run `og cook` after `og new` with a look before the first
 brief, and after any source/dependency/palette edit. A missing or stale
 report throws with that instruction. `presetLook(slug)` reads a preset
 alone. Their signatures, the kinds and what each kind decides are the
@@ -365,15 +363,8 @@ grid differ. The validator holds the files and entries equal.
 Creation on the platform (origin-agent; ask 12 of `docs/platform-asks.md`)
 asks for the style:
 
-- **The picker** shows the catalogue as cards, the three best matches for
-  the premise first (`pickStyle`, exported by `@origingame/create-game`). A
-  style must be picked before Create, and it can be changed until the first
-  build.
-- **Created with it.** The scaffold writes the look (`--look <slug>`),
-  `project.ogt`'s `look` and the art bible into the game's design graph.
-  The agent's first prompt says the look is a contract: every asset
-  request goes through `artBrief`, and `og style check-project` runs
-  before a screen is called done.
+- **The picker** uses `creation.json` schema 2: its first, default choice is Realistic (engine default) / 写实（引擎默认）, ID `none`, preview `previews/realistic-default.webp`. It works with every form and view and has no variants. The remaining cards are the catalogue's optional stylisations. `pickStyle` matches explicit style words in English and Chinese, never genres, moods, settings or audiences. Omitted `look` and input `none` both become an absent look in the resolved choices; the picker must display that absence as `none`.
+- **Created with it.** The scaffold writes `og-project.json`'s optional `look` and a checked look declaration only for a selected stylisation. Without one, the agent uses realistic engine rendering and no stylised art bible or contract checks. With one, asset requests go through `artBrief` and `og style check-project` reports the contract's facts.
 - **The critic** receives the entry's checks and the captured frames.
 - **Previews** come from the engine package (`knowledge/previews/`), each an
   engine render of its preset scene; no image is copied by hand.

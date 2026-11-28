@@ -44,7 +44,6 @@ Dev, run, test and build cook assets themselves.
 
 ## Rules
 
-- Use the built-in UI components and the project's look and theme before
-  writing your own UI.
+- Use the built-in UI components and the engine's default UI pack before writing your own UI. A look is optional: without one the engine renders realistically, with no stylised art contract. Genre never implies a look. Only apply a stylised look when the game asks for that style.
 - Simulation is deterministic: use the engine's seeded randomness and tick
   time, never `Math.random()` or the wall clock in game logic.

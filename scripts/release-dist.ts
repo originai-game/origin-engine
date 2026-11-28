@@ -424,7 +424,7 @@ export const RENDER_RECORD = "looks-render.json";
 /** One preview a version publishes: create-game's PreviewSlot (bin/creation.ts), or a catalogue look's before it. */
 export interface Slot {
   path: string;
-  kind: "look" | "variant" | "ui";
+  kind: "default" | "look" | "variant" | "ui";
   look?: string;
   variant?: string;
   pack?: string;

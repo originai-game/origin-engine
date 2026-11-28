@@ -13,7 +13,7 @@ import type { Style } from "./create.ts";
 /** A picture an option shows, by its path under the version root. */
 export interface PreviewSlot {
   readonly path: string;
-  readonly kind: "look" | "variant" | "ui";
+  readonly kind: "default" | "look" | "variant" | "ui";
   /** The look it is drawn in: the look or variant's own. */
   readonly look?: string;
   readonly variant?: string;
@@ -37,6 +37,7 @@ function styles(catalogue: string): Style[] {
 /** Every preview the document references, in document order. */
 export function previewSlots(catalogue: string = catalogueFile()): PreviewSlot[] {
   return [
+    { path: "previews/realistic-default.webp", kind: "default" },
     ...styles(catalogue).flatMap(s => [
       { path: `previews/${s.slug}.webp`, kind: "look" as const, look: s.slug },
       ...(s.variants ?? []).map(v => ({ path: `previews/${s.slug}.${v.name}.webp`, kind: "variant" as const, look: s.slug, variant: v.name })),
@@ -68,7 +69,10 @@ export function creationCompat(catalogue: string = catalogueFile()): CreationCom
     genreViews: GENRE_VIEWS,
     genreDefaultView: Object.fromEntries(CREATION_CHOICES.genre.map(g => [g, Object.fromEntries(CREATION_CHOICES.form.map(f => [f, defaultView(g, f)]))])),
     fields: CREATION_FIELDS,
-    looks: Object.fromEntries(styles(catalogue).map(s => [s.slug, { forms: lookForms(s), views: s.look.views, ui: s.ui, variants: (s.variants ?? []).map(v => v.name) }])),
+    looks: Object.fromEntries([
+      ["none", { forms: [...CREATION_CHOICES.form], views: [...CREATION_CHOICES.view], ui: "default", variants: [] }],
+      ...styles(catalogue).map(s => [s.slug, { forms: lookForms(s), views: s.look.views, ui: s.ui, variants: (s.variants ?? []).map(v => v.name) }]),
+    ]),
   };
 }
 
@@ -97,7 +101,7 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
     Object.entries(CHOICE_LABELS[key]).map(([id, copy]) => ({ id, ...localized(copy), ...(slot ? { preview: preview(slot(id)) } : {}) }));
   const text = (en: string, zh: string | undefined) => (zh === undefined ? { en } : { en, "zh-CN": zh });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     /** The home page's questions, in order; `more` holds the rest behind "more settings". */
     order: ["form", "genre", "look", "variant", "ui"],
     more: ["view", "platform", "input", "players", "lang", "music"],
@@ -106,7 +110,13 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
       form: enumOptions("form"),
       genre: enumOptions("genre"),
       view: enumOptions("view").map(o => ({ ...o, form: formOf(o.id as View) })),
-      look: all.map(s => ({
+      look: [{
+        id: "none",
+        label: text("Realistic (engine default)", "写实（引擎默认）"),
+        description: text("The engine's realistic rendering, without a stylised look or art contract.", "引擎原生写实渲染，不附加风格化外观或美术约束。"),
+        preview: preview("previews/realistic-default.webp"),
+        variants: [],
+      }, ...all.map(s => ({
         id: s.slug,
         label: text(s.name, LOOK_ZH[s.slug]?.[0]),
         description: text(s.descriptor, LOOK_ZH[s.slug]?.[1]),
@@ -117,7 +127,7 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
           description: text(v.descriptor, VARIANT_ZH[`${s.slug}.${v.name}`]?.[1]),
           preview: preview(`previews/${s.slug}.${v.name}.webp`),
         })),
-      })),
+      }))],
       ui: enumOptions("ui", id => `previews/ui/${id}.webp`),
       platform: enumOptions("platform"),
       input: enumOptions("input"),

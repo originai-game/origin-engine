@@ -59,7 +59,7 @@ const names = args.filter((a) => !a.startsWith("--"));
 /** One preview to draw: create-game's PreviewSlot (bin/creation.ts). */
 interface Slot {
   path: string;
-  kind: "look" | "variant" | "ui";
+  kind: "default" | "look" | "variant" | "ui";
   look?: string;
   variant?: string;
   pack?: string;
@@ -79,7 +79,9 @@ const slots: Slot[] = slotsFile
   ? (JSON.parse(readFileSync(slotsFile, "utf8")) as Slot[])
   : (names.length ? names : catalogue.styles.map((s) => s.slug)).map((n) => {
       const [look, variant] = n.split(":") as [string, string | undefined];
-      return { path: `previews/${variant ? `${look}.${variant}` : look}.webp`, kind: variant ? "variant" : "look", look, variant };
+      return look === "realistic-default"
+        ? { path: "previews/realistic-default.webp", kind: "default" }
+        : { path: `previews/${variant ? `${look}.${variant}` : look}.webp`, kind: variant ? "variant" : "look", look, variant };
     });
 
 /** An image's width and height, from its PNG or JPEG header. */
@@ -136,7 +138,7 @@ function drawUi(slot: Slot, file: string): string | null {
 for (const slot of slots) {
   const slug = slot.look ?? "";
   const variant = slot.variant;
-  const name = slot.kind === "ui" ? `ui@${slot.pack}` : variant ? `${slug}:${variant}` : slug;
+  const name = slot.kind === "default" ? "realistic-default" : slot.kind === "ui" ? `ui@${slot.pack}` : variant ? `${slug}:${variant}` : slug;
   const preview = join(previews, slot.path.replace(/^previews\//, ""));
   if (slot.kind === "ui") {
     const file = `${name}.png`;
@@ -150,8 +152,18 @@ for (const slot of slots) {
   cpSync(join(import.meta.dir, scene.scene), dir, { recursive: true, filter: (from) => !/\/2d\/(tools|stage\.ts)/.test(from) });
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
-  mkdirSync(join(dir, "content/looks"), { recursive: true });
-  writeFileSync(join(dir, "content/looks/main.ts"), `import {file} from '@origingame/engine/author';\nexport default file.look(${JSON.stringify({name: `Preview: ${name}`, extends: [slug], ...(variant ? {variant} : {})})});\n`);
+  if (slot.kind === "default") {
+    const manifest = JSON.parse(readFileSync(join(dir, "og-project.json"), "utf8"));
+    delete manifest.look;
+    writeFileSync(join(dir, "og-project.json"), JSON.stringify(manifest, null, 2) + "\n");
+    const entry = join(dir, "src/main.ts");
+    writeFileSync(entry, readFileSync(entry, "utf8")
+      .replace('  look: "base/looks/main",\n', "")
+      .replace('    must(world.resource(og.RenderSettings)).sky = true;\n', ""));
+  } else {
+    mkdirSync(join(dir, "content/looks"), { recursive: true });
+    writeFileSync(join(dir, "content/looks/main.ts"), `import {file} from '@origingame/engine/author';\nexport default file.look(${JSON.stringify({name: `Preview: ${name}`, extends: [slug], ...(variant ? {variant} : {})})});\n`);
+  }
   if (scene.models) {
     cpSync(join(looks, scene.models), join(dir, "content/models"), { recursive: true, filter: (from) => !statSync(from).isFile() || from.endsWith(".ts") });
     cpSync(join(looks, scene.models), join(dir, "assets/models"), { recursive: true, filter: (from) => !statSync(from).isFile() || !from.endsWith(".ts") });

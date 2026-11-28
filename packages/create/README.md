@@ -14,11 +14,10 @@ og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 The agent chooses the form, genre, view, look and variant, UI style,
 platform, input, players, languages, and music. These choices are recorded in
 `project.ts`'s `create` object. `og-project.json` is the sole project marker
-and authority for name, engine pin and look. Creation also writes `content/looks/<id>.ts`
-with the chosen preset, variant and UI pack, named by the metadata's canonical
+and authority for name, engine pin and optional look. Without `--look` or explicit style words in the premise, every form and film uses realistic engine rendering and the default UI pack: no look reference, no `content/looks` file and no stylised art contract. Genres never select styles. `--look none` explicitly chooses this baseline, even when the premise names a style. When a look is selected, creation writes `content/looks/<id>.ts` with its preset, variant and UI pack, named by the metadata's canonical
 `base/looks/<id>` reference. It exports the checked `file.look` declaration;
 no author OGT parser remains. Dev, run, build and test prepare content incrementally.
-Platform tooling explicitly cooks after creation before reading `.og/cook/look.json`.
+Platform tooling cooks selected looks before reading `.og/cook/look.json`; `readLook` returns an empty contract for a lookless game without needing a cook report.
 It generates no gameplay or art, and changes no publish settings.
 The agent customizes shell copy and art, then builds gameplay inside its
 `session` / `playing` state. Phone/touch defaults keep touch scale; built-in
@@ -90,10 +89,10 @@ or use `og new` instead of serializing OGT.
 descriptions for enum choices. Look entries supply Chinese copy; English
 look names and descriptions remain in the catalogue.
 
-`creationLooks()` lists the looks a new game may pick: the catalogue's
-twelve, each with a preset. Pass it to `creationSchema`. A name that is no
+`creationLooks()` lists the optional looks a new game may pick: catalogue entries with presets. Pass it to `creationSchema`, which also offers `none`. A name that is no
 look fails with the list. A look's UI pack (default) is the default UI choice. `variant` names one of the look's variants
 (docs/art.md §2.11) and is written into the look file.
+Without a look, use `ui: "default"` and no variant; other values are refused rather than recorded without taking effect.
 
 The inference helpers suggest choices using English and Chinese keywords.
 They do not implement those choices. Languages default to Japanese for
@@ -110,7 +109,7 @@ without a breaking changelog entry.
 
 | Field | Contents |
 |---|---|
-| `schemaVersion` | 1 |
+| `schemaVersion` | 2 |
 | `order`, `more` | the home page's questions in order (`form`, `genre`, `look`, `variant`, `ui`), and those behind "more settings" |
 | `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a view is its form's; every genre but interactive-film names one) |
 | `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants`; looks, variants and `ui` options carry `preview` |
@@ -120,11 +119,13 @@ without a breaking changelog entry.
 A `preview` is `{ path }`, relative to the version root, and the release
 adds `url`, `sha256`, `size` and `engine` (the version that rendered it).
 `previewSlots(catalogue?)` lists every slot as `{ path, kind, look?,
-variant?, pack? }`: `previews/<look>.webp`,
+variant?, pack? }`: `previews/realistic-default.webp` (`kind: "default"`, no look), `previews/<look>.webp`,
 `previews/<look>.<variant>.webp` and `previews/ui/<pack>.webp`. Given previews, `creationDocument` throws on an
 unfilled slot or a path that is no slot. Both read `@origingame/engine`'s
 `knowledge/looks/catalogue.json` (or `packages/knowledge/looks/catalogue.json`
 in a checkout) by default without duplicating it under `create/`.
+
+The first look option is `none`, labelled Realistic (engine default) / 写实（引擎默认）. `compat.looks.none` supports every form and view, recommends the default UI and has no variants. `look` is optional in resolved choices and the schema; absence means `none` in the picker. Do not treat `none` as a preset slug or write it into project metadata. The default preview is an engine render without a look, not a generated illustration.
 
 ## Art and audio contracts
 

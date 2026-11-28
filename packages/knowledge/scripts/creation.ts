@@ -162,7 +162,8 @@ export function defaultView(genre: Genre, form: Form, views: readonly string[] =
 export type CreationChoices = { readonly [K in Exclude<ChoiceKey, "view">]: Choice<K> } & {
   /** Left out by an interactive film that names none: its segments frame themselves. */
   readonly view?: View;
-  readonly look: string;
+  /** Absent: realistic engine rendering, without an art contract. Input `none` clears a selection. */
+  readonly look?: string;
   /** One of the look's variants (docs/art.md §2.11); absent: the look as it is. */
   readonly variant?: string;
   readonly lang: readonly string[];
@@ -186,13 +187,13 @@ export function creationSchema(looks: readonly string[]) {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     type: "object",
     additionalProperties: false,
-    required: CREATION_FIELDS.filter(k => k !== "variant" && k !== "view"),
+    required: CREATION_FIELDS.filter(k => k !== "variant" && k !== "view" && k !== "look"),
     properties: {
       ...Object.fromEntries(Object.entries(CHOICE_LABELS).map(([key, labels]) => [key, {
         type: "string", enum: Object.keys(labels),
         "x-labels": Object.fromEntries(Object.entries(labels).map(([value, copy]) => [value, localized(copy)])),
       }])),
-      look: { type: "string", enum: looks, "x-labels": Object.fromEntries(looks.map(slug => {
+      look: { type: "string", enum: ["none", ...looks], default: "none", "x-labels": Object.fromEntries(looks.map(slug => {
         const copy = LOOK_ZH[slug];
         return [slug, copy ? { label: { "zh-CN": copy[0] }, description: { "zh-CN": copy[1] } } : {}];
       })) },
@@ -202,6 +203,7 @@ export function creationSchema(looks: readonly string[]) {
     // A game's view is one of its form's; every genre but interactive-film names one.
     allOf: [
       { if: { properties: { genre: { not: { const: FILM_GENRE } } } }, then: { required: ["view"] } },
+      { if: { properties: { look: { const: "none" } } }, then: { properties: { ui: { const: "default" } }, not: { required: ["variant"] } } },
       ...(["2d", "2.5d", "3d"] as const).map(form => ({ if: { properties: { form: { const: form } } }, then: { properties: { view: { enum: [...FORM_VIEWS[form]] } } } })),
     ],
   };
@@ -251,8 +253,9 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
   const view = validated.view ?? (film ? undefined : [suggestions.view, fallback.view].find(v => v && formOf(v) === form) ?? defaultView(genre, form)!);
   const pick = <K extends "look" | "ui" | "music" | "input">(k: K, base: CreationChoices[K]) => validated[k] ?? suggestions[k] ?? fallback[k] ?? base;
   const variant = validated.variant ?? fallback.variant;
+  const look = pick("look", undefined);
   return {
-    form, genre, ...(view === undefined ? {} : { view }), look: pick("look", "faceted-low-poly"), ...(variant === undefined ? {} : { variant }),
+    form, genre, ...(view === undefined ? {} : { view }), ...(look === undefined || look === "none" ? {} : { look }), ...(variant === undefined ? {} : { variant }),
     ui: pick("ui", "default"), platform,
     input: pick("input", platform.startsWith("phone-") ? "touch" : "keyboard-mouse"),
     players, lang, music: pick("music", "ambient"),

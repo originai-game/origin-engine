@@ -1,0 +1,20 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og create, CreationChoices, resolveCreationChoices and pickStyle",
+      "change": "Creation no longer chooses stylisation by genre, mood, audience or fallback. Every form and interactive film defaults to no look and the engine default UI. Only --look or explicit English/Chinese style words select a look. Input look none clears the choice; resolved choices omit look. A variant or nondefault UI pack without a look is refused rather than silently ignored. Lookless scaffolds write neither og-project.json.look nor content/looks/<id>.ts.",
+      "fix": "Allow optional look throughout the platform create pipeline and project.ts. Display its absence as Realistic (engine default), and pass none only as a creation input, never as a look ref or preset. Do not synthesize a stylised fallback or require a style bible for lookless projects. Explicit English/Chinese style words select today's catalogue slugs; a selected preset must support the game's form/view."
+    },
+    {
+      "member": "creation.json, previewSlots and release preview consumers",
+      "change": "creation.json schemaVersion is 2. The first/default look option is none, labelled Realistic (engine default) / 写实（引擎默认）, with no variants. compat.looks.none supports every form/view and ui default; defaults.byForm omits look. Its new slot previews/realistic-default.webp has kind default and no look field. The style catalogue remains optional stylisations only, not a fake realistic preset.",
+      "fix": "Accept schema 2, prepend the document's none card rather than requiring a catalogue style, allow omitted look, map it back to none in the picker, hide variants for it, and render its own preview. Fetch creation.json and its filled preview URL/hash with the release's catalogue/presets/previews. Slot consumers must accept kind default without dereferencing look. Do not add a realistic entry to knowledge/looks/catalogue.json or presets/."
+    },
+    {
+      "member": "knowledge/scripts/brief.ts readLook and artBrief; scaffold payload",
+      "change": "readLook checks project bootstrap first. A lookless project returns empty art, null extends/style/palette/mood and its actual profile without reading a look report. artBrief requests realistic assets with no imposed palette, polygon budget or outline. The scaffold AGENTS.md and art documentation describe optional stylisation rather than mandatory art contracts.",
+      "fix": "Handle the existing nullable BriefLook fields and do not require .og/cook/look.json, a catalogue entry or stylised critic checks for lookless games. Selected looks still require a current cook report. Remount game-scaffold/origin-engine-ts/AGENTS.md through payload(defaultRoots)/mount(installed(...).roots); payload/lib/mount signatures, scaffold/origin-engine.json, distribution.json, scaffold/template and wiki paths are unchanged. Consume the changed scripts/brief.ts and scripts/creation.ts from the pinned installed engine, not a platform copy."
+    }
+  ]
+}

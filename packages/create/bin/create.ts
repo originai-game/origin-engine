@@ -108,28 +108,22 @@ export function words(text: string): string[] {
     .filter((w) => w.length >= 3 && !STOP.has(w));
 }
 
-/** Suggest a compatible preset. Explicit look choices bypass ranking. */
+/** Only an explicitly named visual style suggests a preset; genre never chooses art direction. */
 export function pickStyle(premise: string, styles: readonly Style[], profile: Profile = "3d", view?: string): { style: Style; score: number } | null {
-  const asked = new Set(words(premise));
-  if (asked.size === 0) return null;
-  const weights: [(s: Style) => string, number][] = [
-    [(s) => s.premise.genre ?? "", 3], [(s) => s.premise.mood ?? "", 2],
-    [(s) => s.premise.era ?? "", 1], [(s) => s.premise.audience ?? "", 1],
-    [(s) => `${s.name} ${s.descriptor}`, 1],
+  const names: readonly [string, RegExp][] = [
+    ["pixel", /\bpixel(?:[- ]art)?\b|\b(?:8|16)[- ]?bit\b|像素/i],
+    ["cartoon-2d", /\bcartoon\b|\bcel[- ]shad(?:ing|ed)\b|卡通|赛璐璐/i],
+    ["inked-comic-3d", /\bcartoon\b|\bcel[- ]shad(?:ing|ed)\b|\boutlines?\b|\bcomic\b|卡通|漫画|墨线|赛璐璐/i],
+    ["faceted-low-poly", /\blow[- ]poly\b|\bfaceted\b|低多边形|低模|切面/i],
+    ["toy-3d", /\btoy\b|玩具/i],
+    ["neon-vector", /\bneon\b|\bvector\b|霓虹|矢量/i],
   ];
-  let best: { style: Style; score: number; full: boolean } | null = null;
-  for (const style of styles) {
-    if (!style.look.presetReady || !style.look.profiles.includes(profile)) continue;
-    if (view !== undefined && !style.look.views.includes(view)) continue;
-    let score = 0;
-    for (const [field, weight] of weights) {
-      const have = new Set(words(field(style)));
-      for (const w of asked) if (have.has(w)) score += weight;
-    }
-    const full = style.look.support === "full";
-    if (score > 0 && (!best || score > best.score || (score === best.score && full && !best.full))) best = { style, score, full };
+  for (const [slug, pattern] of names) {
+    if (!pattern.test(premise)) continue;
+    const style = styles.find(s => s.slug === slug && s.look.presetReady && s.look.profiles.includes(profile) && (view === undefined || s.look.views.includes(view)));
+    if (style) return { style, score: 1 };
   }
-  return best && { style: best.style, score: best.score };
+  return null;
 }
 
 export function slug(name: string): string {
@@ -172,12 +166,20 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   const styles = readCatalogue(catalogue);
   let asked = inferCreationChoices(premise, input);
   // A look chosen without a form or view gives the form, when the inferred one is not one it draws.
-  const chosen = input.look === undefined ? undefined : styles.find(s => s.slug === input.look);
+  const chosen = input.look === undefined
+    ? (pickStyle(premise, styles, profileOf(asked.form), asked.view)
+      ?? (input.form === undefined && input.view === undefined ? pickStyle(premise, styles, "2d") : null))?.style
+    : styles.find(s => s.slug === input.look);
   if (chosen && input.form === undefined && input.view === undefined && asked.view !== undefined && !chosen.look.views.includes(asked.view)) {
     asked = inferCreationChoices(premise, { ...input, form: formOf(chosen.look.views[0] as View) });
   }
   const view = asked.view;
-  const slug = input.look ?? (pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
+  const slug = input.look ?? chosen?.slug;
+  if (slug === undefined || slug === "none") {
+    if (input.variant !== undefined) throw new Error("a variant requires a look");
+    if (input.ui !== undefined && input.ui !== "default") throw new Error("a UI pack override requires a look; use ui default for realistic engine rendering");
+    return inferCreationChoices(premise, { ...input, look: "none", ui: input.ui ?? "default" });
+  }
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'; pick one of ${creationLooks(styles).join(", ")}`);
   if (view !== undefined && !style.look.views.includes(view)) {
@@ -186,7 +188,7 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   }
   const variants = (style.variants ?? []).map(v => v.name);
   if (input.variant !== undefined && !variants.includes(input.variant)) throw new Error(`look ${slug} has no variant '${input.variant}'; ${variants.length ? `pick one of ${variants.join(", ")}` : "it has none"}`);
-  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! });
+  return inferCreationChoices(premise, { ...asked, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! });
 }
 
 /** The font packs in `packs`: each directory with an extension.json, and its languages. */
@@ -293,13 +295,16 @@ export function create(options: CreateOptions): Created {
     if (locale !== "en") written.push(path);
   }
   writeFileSync(join(dir, "src/shell-locales.ts"), locales.map(l => `import "../content/strings/shell.${l}.ts";`).join("\n") + "\n");
-  const look = `content/looks/${id}.ts`;
-  mkdirSync(join(dir, "content/looks"), { recursive: true });
-  writeFileSync(join(dir, look), `import { file } from "@origingame/engine/author";\nexport default file.look(${JSON.stringify({ extends: [choices.look], ...(choices.variant === undefined ? {} : {variant: choices.variant}), ui: choices.ui === "default" ? "default" : `@themes/${choices.ui}` }, null, 2)});\n`);
-  written.push(look);
+  if (choices.look !== undefined) {
+    const look = `content/looks/${id}.ts`;
+    mkdirSync(join(dir, "content/looks"), { recursive: true });
+    writeFileSync(join(dir, look), `import { file } from "@origingame/engine/author";\nexport default file.look(${JSON.stringify({ extends: [choices.look], ...(choices.variant === undefined ? {} : {variant: choices.variant}), ui: choices.ui === "default" ? "default" : `@themes/${choices.ui}` }, null, 2)});\n`);
+    written.push(look);
+  }
   const manifest = join(dir, "og-project.json");
   const metadata = JSON.parse(readFileSync(manifest, "utf8"));
-  writeFileSync(manifest, `${JSON.stringify({ ...metadata, name, look: { $ogRef: `base/looks/${id}` } }, null, 2)}\n`);
+  delete metadata.look;
+  writeFileSync(manifest, `${JSON.stringify({ ...metadata, name, ...(choices.look === undefined ? {} : { look: { $ogRef: `base/looks/${id}` } }) }, null, 2)}\n`);
   writeFileSync(join(dir, "project.ts"), `import { defineProject } from "@origingame/engine/author";\n\nexport default defineProject(${JSON.stringify({
     id, entry: "src/main.ts", tick: 60, seed: 1,
     publish: { probe: "player", out: "dist" }, create: choices,
@@ -317,7 +322,9 @@ const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one l
 
 Writes an Origin Engine project with a connected menu shell (default: ./origin-game).
 The create block configures the shell's platform, input and languages.
-The look, variant and UI configure its look file; no gameplay is generated.
+Without a look, rendering and UI use the engine defaults, with no stylised art contract.
+Only --look or explicit style words select stylisation; genres never do. --look none clears it.
+The optional look, variant and UI configure its look file; no gameplay is generated.
   --form      2d, 2.5d or 3d: the world's form, the view one of the form's
   --genre     interactive-film adds a flow (og.flow): a Yarn story, two segments and a
               placeholder clip, run by project.ts's \`flow\` and drawn by the engine's
@@ -380,11 +387,11 @@ function main(argv: string[]): number {
         continue;
       }
       const suggested = now[key];
-      const values = key === "look" ? creationLooks().join(", ") : key === "variant" ? `${variants.join(", ")} (empty: none)` : key === "lang" ? "comma-separated language tags" : key === "view" ? FORM_VIEWS[now.form].join(", ") : CREATION_CHOICES[key].join(", ");
+      const values = key === "look" ? ["none (Realistic, engine default)", ...creationLooks()].join(", ") : key === "variant" ? `${variants.join(", ")} (empty: none)` : key === "lang" ? "comma-separated language tags" : key === "view" ? FORM_VIEWS[now.form].join(", ") : CREATION_CHOICES[key].join(", ");
       for (;;) {
         const answer = globalThis.prompt(`${key}: ${values}`, Array.isArray(suggested) ? suggested.join(",") : String(suggested ?? ""));
         if (answer === null) throw new Error("creation cancelled");
-        if (key === "variant" && answer === "") break;
+        if ((key === "variant" || key === "look") && answer === "") break;
         try {
           const next = { ...choices, ...parseCreationInput({ [key]: key === "lang" ? answer.split(",") : answer }) };
           resolveCreationChoices(premise, parseCreationInput(next));

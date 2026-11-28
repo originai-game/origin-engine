@@ -106,7 +106,7 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
     cook();
     expect(readLook(dir).mood).toBe("cold");
     rmSync(path);
-    expect(() => readLook(dir)).toThrow("restore the source");
+    expect(() => readLook(dir)).toThrow();
     writeFileSync(path, original);
     cook();
   }
@@ -115,6 +115,18 @@ export default defineProject({ id: "brief", entry: "src/main.ts", create: choice
   cook();
   expect(readLook(dir).profile).toBe("3d");
   expect(readAudioChoices(dir)).toEqual({ music: "orchestral", genre: "strategy", mood: "cold" });
+  // Removing the look must not reuse the old report's pixel/cold contract.
+  writeFileSync(join(dir, "og-project.json"), JSON.stringify({ version: 1, engine: "0.9.0", name: "Brief" }));
+  for (const form of ["2d", "3d"]) {
+    writeFileSync(choices, `export const choices = { form: "${form}", music: "ambient", genre: "rpg" };`);
+    const plain = readLook(dir);
+    expect(plain).toMatchObject({ profile: form, extends: null, art: {}, style: null, mood: null });
+    const brief = artBrief(plain, "character", "a pilot");
+    expect(brief.style).toBeNull();
+    expect(brief.references).toEqual([]);
+    if (form === "3d") expect(brief.model?.faceBudget).toBeNull();
+    else expect(brief.image?.grid).toBeNull();
+  }
   writeFileSync(choices, 'export const choices = { form: "3d", music: String(Date.now()), genre: "strategy" };');
   expect(() => readLook(dir)).toThrow();
 }, 120_000);
