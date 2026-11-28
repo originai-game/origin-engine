@@ -1507,11 +1507,14 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         ctx.set(e, p)?;
     }
 
-    // Sources to start: new ones, then replaced ones; a source whose
-    // startAt is after this tick waits.
+    // All starts share one slot-index order, including AudioEvent voices,
+    // retriggers and replacements. Archetype/query order and the path that
+    // requested a start must not change event order, voice ids or cap ties.
+    // A source whose startAt is after this tick waits.
     let mut fresh_entities: Vec<Entity> =
         ctx.query(1)?.flat_map(|a| a.entities().to_vec()).collect();
     fresh_entities.extend(to_start);
+    og_core::sort::sort_by_key(&mut fresh_entities, |e| e.index());
     let mut fresh: Vec<Fresh> = Vec::new();
     for e in fresh_entities {
         let mut s = ctx.get::<AudioSource>(e)?;

@@ -49,7 +49,7 @@ module audio {
 | [`og.ReverbZone`](audio/record-ReverbZone.md) | component |  | The shared reverb sounds like this room inside the og.Volume on its entity (none: everywhere). |
 | [`og.Music`](audio/record-Music.md) | component |  | A musical clock: tempo, metre and where bar 1 starts. |
 | [`og.MusicBeat`](audio/record-MusicBeat.md) | event |  | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
-| [`og.SoundStarted`](audio/record-SoundStarted.md) | event |  | A source started, sent in the tick it happens (systems read it the tick after). |
+| [`og.SoundStarted`](audio/record-SoundStarted.md) | event |  | A source started (systems read it the tick after). |
 | [`og.SoundEnded`](audio/record-SoundEnded.md) | event |  | A sound ended, sent in the tick it happens (systems read it the tick after). |
 | [`AudioFeedbackDesc`](audio/type-AudioFeedbackDesc.md) | desc struct |  | Presentation-only one-shot parameters. |
 | [`og.audio.playFeedback`](audio/fn-playFeedback.md) | function | `(world: World, sound: Sound, desc?: AudioFeedbackDesc): Result<void>` | Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). |

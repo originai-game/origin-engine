@@ -6,7 +6,7 @@ Module [`audio`](../audio.md) · [index](../index.md)
 
 ### `og.SoundStarted` (event)
 
-A source started, sent in the tick it happens (systems read it the tick after).
+A source started (systems read it the tick after). All starts in a tick use ascending entity slot-index order, ignoring generation, including AudioEvent voices, retriggers and replacements; not author call or archetype order. startAt still controls sample timing.
 
 Token `og.SoundStarted`, registered under the schema name `og.SoundStarted`; its value type is `SoundStarted`.
 
@@ -18,7 +18,7 @@ Token `og.SoundStarted`, registered under the schema name `og.SoundStarted`; its
 
 ```ogt
 event SoundStarted {
-  doc "A source started, sent in the tick it happens (systems read it the tick after)."
+  doc "A source started (systems read it the tick after). All starts in a tick use ascending entity slot-index order, ignoring generation, including AudioEvent voices, retriggers and replacements; not author call or archetype order. startAt still controls sample timing."
   field entity Entity "The entity whose AudioSource started."
   field sound Sound "The sound."
   field voice u32 "The voice id in the command stream."

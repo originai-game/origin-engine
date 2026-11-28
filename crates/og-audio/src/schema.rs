@@ -307,7 +307,9 @@ impl Audio {
     }
 }
 
-/// Emitted in the tick a source starts (readers see it the tick after).
+/// Emitted in the tick a source starts (readers see it the tick after), in
+/// ascending entity slot-index order for all starts in that tick, including
+/// AudioEvent voices, retriggers and replacements; generation is ignored.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.SoundStarted")]
 pub struct SoundStarted {

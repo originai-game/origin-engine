@@ -162,6 +162,77 @@ fn serde_like(fields: &[(&str, String)]) -> String {
 }
 
 #[test]
+fn source_start_order_does_not_depend_on_its_start_path() {
+    use og_audio::{AudioEvent, AudioPlayback, AudioSource, SoundStarted};
+    use og_core::List;
+
+    let bank = SoundBank::new();
+    let music = insert(&bank, "music", 1, &[0; 4800]);
+    let sfx = insert(&bank, "sfx", 1, &[0; 4800]);
+    for reuse_earlier_slot in [false, true] {
+        for mode in ["insert", "retrigger", "reinsert", "replace"] {
+            let (mut world, _) = world_with(&bank, |_| {});
+            let hole = world.spawn(()).unwrap();
+            let source = world.spawn(()).unwrap();
+            let event = world.spawn((AudioEvent::default(),)).unwrap();
+            if mode != "insert" {
+                world
+                    .insert(
+                        source,
+                        AudioSource::new(if mode == "replace" { sfx } else { music }),
+                    )
+                    .unwrap();
+                world.step().unwrap();
+            }
+            if reuse_earlier_slot {
+                world.despawn(hole).unwrap();
+            }
+            // Reverse the author writes too: neither they nor the source's
+            // archetype decide where its start lands among AudioEvent voices.
+            let trigger = AudioEvent {
+                sounds: List::from_slice(&[sfx]).unwrap(),
+                trigger: true,
+                ..AudioEvent::default()
+            };
+            if mode == "retrigger" {
+                world.insert(event, trigger).unwrap();
+            }
+            if mode == "reinsert" {
+                world.remove::<AudioSource>(source).unwrap();
+            }
+            world
+                .insert(
+                    source,
+                    AudioSource {
+                        retrigger: matches!(mode, "retrigger" | "reinsert"),
+                        ..AudioSource::new(music)
+                    },
+                )
+                .unwrap();
+            if mode != "retrigger" {
+                world.insert(event, trigger).unwrap();
+            }
+            world.step().unwrap();
+            let started = world.pending_events::<SoundStarted>().unwrap();
+            let expected = if reuse_earlier_slot {
+                vec![sfx, music]
+            } else {
+                vec![music, sfx]
+            };
+            assert_eq!(
+                started.iter().map(|s| s.sound).collect::<Vec<_>>(),
+                expected,
+                "{mode}, reused lower slot: {reuse_earlier_slot}"
+            );
+            let playback = world.get::<AudioPlayback>(source).unwrap();
+            assert_eq!(playback.cursor, 800.0, "{mode}: starts from the top once");
+            assert_eq!(started.len(), 2);
+            assert!(started[0].voice < started[1].voice);
+        }
+    }
+}
+
+#[test]
 fn chunked_opus_stream_encoder_matches_whole_decode() {
     use og_audio::opus;
     let channels = 2usize;

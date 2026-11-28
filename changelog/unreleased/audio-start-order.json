@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og.SoundStarted",
+      "change": "All source starts in a tick now share ascending entity slot-index order, ignoring generation, before voice allocation and voice-cap selection. New AudioSources, AudioEvent voices, retriggers and sound replacements no longer depend on archetype/query order or on whether a source was already playing. This changes SoundStarted order, voice ids, audio stream hashes and tied fresh-source cap selection where the old code-path order differed.",
+      "fix": "Consume SoundStarted in its documented slot-index order, not author call order or new-before-retrigger order. Removing and reinserting AudioSource on the same entity does not change its ordering key. startAt still controls sample-accurate timing; this does not impose chronological event order within the tick."
+    }
+  ]
+}

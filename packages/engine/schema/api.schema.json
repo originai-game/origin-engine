@@ -46892,7 +46892,7 @@
     "SoundStarted": {
       "x-og-kind": "event",
       "x-og-module": "audio",
-      "description": "A source started, sent in the tick it happens (systems read it the tick after).",
+      "description": "A source started (systems read it the tick after). All starts in a tick use ascending entity slot-index order, ignoring generation, including AudioEvent voices, retriggers and replacements; not author call or archetype order. startAt still controls sample timing.",
       "type": "object",
       "properties": {
         "entity": {

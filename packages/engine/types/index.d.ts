@@ -25356,7 +25356,7 @@ export interface MusicBeat {
 }
 
 /**
- * A source started, sent in the tick it happens (systems read it the tick after).
+ * A source started (systems read it the tick after). All starts in a tick use ascending entity slot-index order, ignoring generation, including AudioEvent voices, retriggers and replacements; not author call or archetype order. startAt still controls sample timing.
  *
  * The payload of the `SoundStarted` event (token `og.SoundStarted`).
  */
@@ -40585,7 +40585,9 @@ export declare namespace og {
    * A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after).
    */
   const MusicBeat: EventType<MusicBeat>;
-  /** A source started, sent in the tick it happens (systems read it the tick after). */
+  /**
+   * A source started (systems read it the tick after). All starts in a tick use ascending entity slot-index order, ignoring generation, including AudioEvent voices, retriggers and replacements; not author call or archetype order. startAt still controls sample timing.
+   */
   const SoundStarted: EventType<SoundStarted>;
   /** A sound ended, sent in the tick it happens (systems read it the tick after). */
   const SoundEnded: EventType<SoundEnded>;
