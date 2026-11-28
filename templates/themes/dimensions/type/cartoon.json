@@ -1,0 +1,31 @@
+{
+  "about": "Luckiest Guy display, Nunito text: chunky cartoon capitals over a round sans.",
+  "fonts": [
+    "@styles/shared/LuckiestGuy-Regular.ttf",
+    "@styles/shared/Nunito[wght].ttf",
+    "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Nunito",
+    "display": "Luckiest Guy",
+    "sans": "Nunito",
+    "mono": "Nunito"
+  },
+  "cjk": "ZCOOL KuaiLe",
+  "fontFamily": {
+    "display": "\"Luckiest Guy\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Nunito\", \"ZCOOL KuaiLe\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Nunito\", \"ZCOOL KuaiLe\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Nunito\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-sm": 0.02,
+    "display-md": 0.02,
+    "display-lg": 0.02,
+    "display-xl": 0.02,
+    "display-2xl": 0.02,
+    "display-3xl": 0.02,
+    "display-4xl": 0.02
+  }
+}

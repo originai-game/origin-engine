@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@styles/shared/ui/<pack>/, fonts",
+      "summary": "The look packs' drawn UI parts (templates/tools/ui-parts.ts) and the display faces Bangers, Luckiest Guy, Titan One, Jost, Orbitron and Nunito, with the type dimensions comic, geometric, techno, bubble and cartoon."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "about": "Jost throughout: a light geometric sans, set wide for titles.",
+  "fonts": [
+    "@styles/shared/Jost[wght].ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Jost",
+    "display": "Jost",
+    "sans": "Jost",
+    "mono": "Jost"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Jost\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Jost\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Jost\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Jost\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-sm": 0.12,
+    "display-md": 0.16,
+    "display-lg": 0.2,
+    "display-xl": 0.24,
+    "display-2xl": 0.28,
+    "display-3xl": 0.3,
+    "display-4xl": 0.32,
+    "label": 0.18,
+    "kicker": 0.24
+  }
+}

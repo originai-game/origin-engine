@@ -1,0 +1,31 @@
+{
+  "about": "Orbitron display, Rajdhani text: wide technical capitals over a squared sans.",
+  "fonts": [
+    "@styles/shared/Orbitron[wght].ttf",
+    "@styles/shared/Rajdhani-Bold.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Rajdhani",
+    "display": "Orbitron",
+    "sans": "Rajdhani",
+    "mono": "Rajdhani"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Orbitron\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Rajdhani\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Rajdhani\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Rajdhani\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-sm": 0.06,
+    "display-md": 0.08,
+    "display-lg": 0.1,
+    "display-xl": 0.12,
+    "display-2xl": 0.14,
+    "display-3xl": 0.16,
+    "display-4xl": 0.16,
+    "label": 0.12
+  }
+}

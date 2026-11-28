@@ -1,0 +1,31 @@
+{
+  "about": "Bangers display, Barlow Semi Condensed text: loud comic lettering over a condensed sans.",
+  "fonts": [
+    "@styles/shared/Bangers-Regular.ttf",
+    "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+    "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Barlow Semi Condensed",
+    "display": "Bangers",
+    "sans": "Barlow Semi Condensed",
+    "mono": "Barlow Semi Condensed"
+  },
+  "cjk": "ZCOOL KuaiLe",
+  "fontFamily": {
+    "display": "\"Bangers\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Barlow Semi Condensed\", \"ZCOOL KuaiLe\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Barlow Semi Condensed\", \"ZCOOL KuaiLe\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Barlow Semi Condensed\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-sm": 0.02,
+    "display-md": 0.02,
+    "display-lg": 0.02,
+    "display-xl": 0.02,
+    "display-2xl": 0.02,
+    "display-3xl": 0.02,
+    "display-4xl": 0.02
+  }
+}
