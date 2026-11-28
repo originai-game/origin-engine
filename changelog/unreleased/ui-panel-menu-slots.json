@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "MenuEntry",
+      "change": "A menu entry's words, line and chevron take the pack's `MenuList.label`, `MenuList.label.md`, `MenuList.line` and `MenuList.chevron` slots, and the current entry also draws the pack's `MenuList.cursor`, instead of fixed classes.",
+      "fix": "An ejected menu list writes `packClass(\"MenuList\", \"label\")` and the other slots in place of its own type classes."
+    }
+  ],
+  "added": [
+    {
+      "member": "Panel",
+      "summary": "A titled panel control (`@origingame/engine/ui/controls/panel`): the pack's frame, its inside room (`Panel.body`) and its heading (`Panel.title`, the words or the band they sit on)."
+    }
+  ]
+}

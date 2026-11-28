@@ -21,7 +21,8 @@ export interface MenuListProps {
  * `MenuEntry`s, one focus group, whose entries enter one after another
  * when it shows (`List.cascade`). One bar stands behind the current entry,
  * the one hovered or focused, and glides to the next one as the pointer or
- * the focus moves (`MenuList.indicator`). Every look and timing is the pack's.
+ * the focus moves (`MenuList.indicator`); the pack's cursor marks its
+ * leading edge (`MenuList.cursor`). Every look and timing is the pack's.
  */
 export function MenuList(props: MenuListProps) {
   const current = createSignal("");
@@ -78,15 +79,16 @@ export function MenuEntry(props: MenuEntryProps) {
     >
       <Show when={lit()}>
         <View class={packClass("MenuList", "indicator", props.danger ? "danger" : undefined)} />
+        <View class={`pointer-events-none ${packClass("MenuList", "cursor", props.danger ? "danger" : undefined)}`} />
       </Show>
       <View class="relative grow shrink">
-        <Text class={`text-start leading-tight font-semibold text-shadow-xs text-shadow-bg ${props.size === "md" ? "text-title compact:text-xl" : "text-3xl"}`}>{props.label}</Text>
+        <Text class={`${packClass("MenuList", "label")} ${props.size === "md" ? packClass("MenuList", "label", "md") : ""}`}>{props.label}</Text>
         <Show when={props.line}>
-          <Text class="text-start text-base font-medium opacity-quiet whitespace-nowrap overflow-hidden">{props.line}</Text>
+          <Text class={packClass("MenuList", "line")}>{props.line}</Text>
         </Show>
       </View>
       <Show when={!props.minor}>
-        <Icon class="relative opacity-0 size-4 transition-opacity duration-control group-data-current/entry:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+        <Icon class={packClass("MenuList", "chevron")} name="chevronRight" />
       </Show>
     </Button>
   );

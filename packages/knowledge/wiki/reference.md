@@ -253,6 +253,7 @@
 - [`MenuSeparator`](reference/component-MenuSeparator.md)
 - [`Meter`](reference/component-Meter.md)
 - [`NumberInput`](reference/component-NumberInput.md)
+- [`Panel`](reference/component-Panel.md)
 - [`Popover`](reference/component-Popover.md)
 - [`Progress`](reference/component-Progress.md)
 - [`Radio`](reference/component-Radio.md)

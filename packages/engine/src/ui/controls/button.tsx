@@ -75,7 +75,7 @@ export function Button(props: ButtonProps) {
       {...props}
       role={props.role ?? "button"}
       data-pressed={props.pressed}
-      class={`flex-row items-center justify-center font-semibold ${packClass("Button", "plate", variant())} ${SIZE[size()]} ${props.class ?? ""}`}
+      class={`flex-row items-center justify-center font-semibold ${SIZE[size()]} ${packClass("Button", "plate", variant())} ${props.class ?? ""}`}
     >
       <Show when={props.busy}>
         <View class={packClass("Button", "spinner")} />

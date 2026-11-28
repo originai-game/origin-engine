@@ -196,6 +196,7 @@ export { List } from "../controls/list";
 export { ContextMenu, Menu as DropdownMenu, MenuItem, MenuLabel, MenuSeparator } from "../controls/menu";
 export { Meter } from "../controls/meter";
 export { NumberInput } from "../controls/number-input";
+export { Panel, type PanelProps } from "../controls/panel";
 export { Popover } from "../controls/popover";
 export { Progress } from "../controls/progress";
 export { Radio, RadioGroup } from "../controls/radio";
