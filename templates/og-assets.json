@@ -602,6 +602,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/Bangers-Regular.ttf",
+      "sha256": "4160a7311de9342674cce9160cde9fcbb30f48190397d86ff1b70b455af65824",
+      "size": 93148,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/BarlowCondensed-SemiBold.ttf",
       "sha256": "a3f646bfd2913a538123236b3d9880f580711589186531a81fd34bd5fe219727",
       "size": 36816,
@@ -668,9 +674,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/Jost[wght].ttf",
+      "sha256": "6343b70971000b04c5d401c96ae08ce371086135e999d5e1e1413039c0213076",
+      "size": 134996,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/LilitaOne-Regular.ttf",
       "sha256": "f5b641c45c69d772ee4eda687bc9fda411d5cad6b0b45371491da4580cbc8d59",
       "size": 28092,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/LuckiestGuy-Regular.ttf",
+      "sha256": "d9afb6488fae611ea85c06c13f97f2f80e63ed32ebc6989e05827d8a91557d0f",
+      "size": 73276,
       "visibility": "public"
     },
     {
@@ -689,6 +707,18 @@
       "path": "styles/shared/Newsreader[opsz,wght].ttf",
       "sha256": "8a08d13f8a6c0d51be379a60af84f945f65369a67e509ee3c3bdcc421254d7c1",
       "size": 451664,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Nunito[wght].ttf",
+      "sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207",
+      "size": 276932,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Orbitron[wght].ttf",
+      "sha256": "f42db2dd16e642258e35782916eceb1dcdbea06fb958d77ad71dc5963587e8fd",
+      "size": 38576,
       "visibility": "public"
     },
     {
@@ -713,6 +743,12 @@
       "path": "styles/shared/SpectralSC-SemiBold.ttf",
       "sha256": "15ae19acaa4ac6b5f06d9b3bf70b37479235165626133bbde4b4395d8c03d0b6",
       "size": 30564,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/TitanOne-Regular.ttf",
+      "sha256": "563ff6de179bbd44bcd7d2a6c448d6dc3bf935834237cf1250e506e65cd86ff1",
+      "size": 55712,
       "visibility": "public"
     },
     {
