@@ -33,6 +33,9 @@ pub struct RenderQuality {
     /// Rect lights with `cast_shadows` cast them; false draws every rect
     /// light unshadowed (each keeps its flag for when it is true again).
     pub rect_shadows: bool,
+    /// Allow HDR bloom. Low skips its pyramid without changing the
+    /// scene's bloom settings; authored 2D glow remains independent.
+    pub bloom: bool,
     /// At most this many point, spot and rect lights cast shadows in a
     /// frame, the brightest at the camera kept; the renderer's
     /// [`crate::RenderInfo::shadowed_lights`] caps it (0: none).
@@ -113,6 +116,7 @@ impl Default for RenderQuality {
         RenderQuality {
             sky_capture_sliced: false,
             rect_shadows: true,
+            bloom: true,
             shadowed_lights: DEFAULT_SHADOWED_LIGHTS as u32,
             shadow_cascades: 3,
             shadow_map_scale: 1.0,
@@ -139,7 +143,7 @@ impl Default for RenderQuality {
 pub enum QualityPreset {
     /// The cheapest frame: no rect-light shadows, two shadowed lights,
     /// two cascades, half-size shadow maps, plain fog, hard particles at
-    /// half their emission, half the composed effects, no screen-space
+    /// half their emission, half the composed effects, no HDR bloom or screen-space
     /// reflections, ambient occlusion or global illumination, one sample per pixel; and, for a
     /// game that turns one of those back on, ambient occlusion at half
     /// resolution and half the reflection and fog steps.
@@ -162,6 +166,7 @@ impl RenderQuality {
             QualityPreset::Low => RenderQuality {
                 sky_capture_sliced: true,
                 rect_shadows: false,
+                bloom: false,
                 shadowed_lights: 2,
                 shadow_cascades: 2,
                 shadow_map_scale: 0.5,
@@ -209,6 +214,7 @@ impl RenderQuality {
         RenderQuality {
             sky_capture_sliced: self.sky_capture_sliced || row.sky_capture_sliced,
             rect_shadows: self.rect_shadows && row.rect_shadows,
+            bloom: self.bloom && row.bloom,
             shadowed_lights: self.shadowed_lights.min(row.shadowed_lights),
             shadow_cascades: self.shadow_cascades.min(row.shadow_cascades),
             shadow_map_scale: self.shadow_map_scale.min(row.shadow_map_scale),

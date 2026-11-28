@@ -1,0 +1,16 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.RenderSettings, og.PostEffects",
+      "change": "A 3D world starts with the sky, AgX, light bloom (0.3), auto exposure with adaptation (1 EV/s up, 3 down), and half-resolution ambient occlusion. A 2D project starts without sky, bloom, auto exposure, tone mapping or AO. The project profile, not the camera projection, chooses these initial values. Low graphics quality disables HDR bloom as well as AO; medium and high allow both. Initial resource values and therefore world hashes change.",
+      "fix": "Set RenderSettings and PostEffects explicitly for an authored look: use toneMapping aces, bloom false, autoExposure false and PostEffects.ao false to retain the former bare 3D pipeline (sky false retains Camera.background). Use bloomIntensity 0.6 and adaptSpeedUp/adaptSpeedDown 0 to retain those former parameter defaults when enabling the effects. Explicit look and game settings still win; no grain, chromatic aberration or colour grade is added."
+    }
+  ],
+  "added": [
+    {
+      "member": "og.RenderSettings.bloomEnabled",
+      "summary": "A quality switch for HDR bloom. Low disables its passes without changing the game's bloom settings; medium and high enable it again. Authored 2D glow is independent."
+    }
+  ]
+}

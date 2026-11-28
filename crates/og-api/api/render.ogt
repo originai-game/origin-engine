@@ -682,7 +682,7 @@ module render {
 
   enum ToneMapping {
     doc "The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen."
-    variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default."
+    variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping."
     variant agx "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES."
     variant none "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
     variant neutral "Khronos PBR Neutral, as three.js NeutralToneMapping: colours up to about 0.8 come out as authored (a white-lit base colour shows as the colour picked), only brighter ones roll off to white. For product shots and saturated stylised colour that ACES would darken and shift."
@@ -698,7 +698,7 @@ module render {
   enum GraphicsQuality {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page offers the three."
     variant medium "The full frame: every quality field at its default."
-    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps."
+    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no HDR bloom, SSR, ambient occlusion or GI, FXAA for MSAA; if re-enabled, half-resolution AO and half the reflection and fog steps."
     variant high "The full frame refined: FSR 3.1 at every render scale, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once."
   }
 
@@ -739,9 +739,13 @@ module render {
       min 0
       tunable true
     }
-    field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map)."
+    field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). Initially false in a 2D project." {
+      default true
+    }
     group "Bloom"
-    field bloom bool "Light above the threshold bleeds into its surroundings."
+    field bloom bool "Light above the threshold bleeds into its surroundings. Initially false in a 2D project." {
+      default true
+    }
     field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
       default 1
       min 0
@@ -752,7 +756,7 @@ module render {
       min 0
     }
     field bloomIntensity f32 "How much of the blurred light is added back." {
-      default 0.6
+      default 0.3
       min 0
       tunable true
     }
@@ -768,6 +772,7 @@ module render {
     }
     group "Exposure and tone mapping"
     field autoExposure bool "Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike." {
+      default true
     }
     field autoExposureMin f32 "The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further." {
       default -10
@@ -782,12 +787,14 @@ module render {
       tunable true
     }
     field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+      default 1
       min 0
       max 100
       unit evPerSecond
       tunable true
     }
     field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant." {
+      default 3
       min 0
       max 100
       unit evPerSecond
@@ -796,7 +803,9 @@ module render {
     field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
     }
-    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none."
+    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: agx (the default), aces, neutral or none. A 2D project initially uses none; an orthographic camera in a 3D project still uses agx." {
+      default agx
+    }
     field exposure f32 "A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are." {
       default 1
       min 0
@@ -822,6 +831,9 @@ module render {
     group "Quality" "The fields og.render.applyQuality writes from a graphics preset."
     field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
     field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off." {
+      default true
+    }
+    field bloomEnabled bool "Allow RenderSettings.bloom to draw. Low disables the HDR bloom chain; medium and high allow it. The scene's bloom switch and settings are kept, and authored 2D glow is independent." {
       default true
     }
     field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.maxShadowedLights caps it); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted." {

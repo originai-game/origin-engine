@@ -116,10 +116,16 @@ impl Renderer {
                 bytemuck::bytes_of(&u),
             );
         }
+        // The same quality gate as the pass list: a skipped bloom must not
+        // add a stale pyramid, while the authored 2D glow still can draw.
+        let post_fx = crate::PostEffects {
+            bloom: post_fx.bloom.filter(|_| scene.frame.quality.bloom),
+            ..*post_fx
+        };
         self.post.write_uniform(
             &self.queue,
             camera.exposure,
-            post_fx,
+            &post_fx,
             glow,
             god_rays.is_some(),
             sprite_frame.untonemapped

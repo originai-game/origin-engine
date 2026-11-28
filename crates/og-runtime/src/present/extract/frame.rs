@@ -266,6 +266,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
         // The counts go through f32 as the hand read took them.
         scene.frame.quality = og_render::RenderQuality {
             rect_shadows: s.rect_shadows,
+            bloom: s.bloom_enabled,
             shadowed_lights: s.shadowed_lights as f32 as u32,
             shadow_cascades: (s.shadow_cascades as f32).max(1.0) as u32,
             shadow_map_scale: s.shadow_map_scale,

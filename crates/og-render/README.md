@@ -1660,8 +1660,28 @@ map with no change; `Environment::intensity` still scales the light and
 **AgX** (`Tonemap::Agx`, `post.wgsl`'s `agx`): linear sRGB to Rec.2020,
 the inset matrix, log2 encoding over −12.47..+4.03 EV, the sixth-order
 contrast polynomial, the outset, 2.2 back to linear and Rec.2020 to sRGB:
-the base look of Blender 4, Filament and three.js `AgXToneMapping`. ACES
-is the default.
+the base look of Blender 4, Filament and three.js `AgXToneMapping`.
+
+**Lookless worlds.** The 3D API defaults use AgX, the procedural sky and
+its image-based light, bloom at intensity 0.3 (threshold 1, knee 0.5),
+auto exposure with 1 EV/s up and 3 EV/s down adaptation, and
+half-resolution GTAO. AgX's hue-preserving highlight roll-off, modest
+bloom and the adaptation rates carry forward the engine's former
+`cinematic-realism` tuning (`e1effb42f4^:templates/looks/cinematic-realism.ts`),
+without its vignette, film grain, chromatic aberration or a colour grade.
+AO uses the existing 0.6 m ambient-only search, so contact gains depth
+without dimming direct sunlight. The low quality row disables AO and the
+HDR bloom chain (`RenderSettings.bloomEnabled`); switching back restores
+the game's settings. 2D glow is independent of that HDR bloom switch.
+
+A 2D project's initial resources instead disable sky, bloom, auto exposure
+and AO and select no tone curve, preserving sprite colours. These are
+world values installed before a look or game startup, not camera-dependent
+render overrides: an orthographic 3D game still gets the 3D defaults, and
+explicit look or game values always win. No fog, colour grade, lens dirt,
+grain, aberration, motion blur or depth of field is imposed. Shadows retain
+the existing three cascades at medium and the antialiasing remains the
+device tier's temporal resolve in 3D and MSAA in 2D.
 
 **Khronos PBR Neutral** (`Tonemap::Neutral`, `post.wgsl`'s and
 `views.wgsl`'s `neutral`; ported from RedGPU's `khronosPbrNeutral`, the

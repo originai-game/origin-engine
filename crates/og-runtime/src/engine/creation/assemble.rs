@@ -182,7 +182,24 @@ pub(crate) fn assemble(
         }) {
             Ok(layout) => {
                 if layout.kind == RecordKind::Resource {
-                    let bytes = layout.encode(None, None)?;
+                    // Profile defaults are actual world values, before the
+                    // startup look and the game's start hook. Never infer 2D
+                    // from the camera: orthographic 3D still needs HDR light.
+                    let initial = if profile == og_physics::PROFILE_2D {
+                        match layout.schema.as_str() {
+                            "og.RenderSettings" => Some(json!({
+                                "sky": false,
+                                "bloom": false,
+                                "autoExposure": false,
+                                "toneMapping": "none",
+                            })),
+                            "og.PostEffects" => Some(json!({ "ao": false })),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
+                    let bytes = layout.encode(None, initial.as_ref())?;
                     let id = world.id_by_name(&layout.schema).map_err(err)?;
                     world.insert_resource_bytes(id, &bytes).map_err(err)?;
                     resources.push(layout.schema.clone());

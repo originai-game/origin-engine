@@ -11888,12 +11888,12 @@
         {
           "name": "sky",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "bloom",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "bloomThreshold",
@@ -11909,7 +11909,7 @@
         {
           "name": "bloomIntensity",
           "column": "f32",
-          "default": 0.6,
+          "default": 0.3,
           "tunable": true
         },
         {
@@ -11925,7 +11925,7 @@
         {
           "name": "autoExposure",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "autoExposureMin",
@@ -11942,13 +11942,13 @@
         {
           "name": "adaptSpeedUp",
           "column": "f32",
-          "default": 0,
+          "default": 1,
           "tunable": true
         },
         {
           "name": "adaptSpeedDown",
           "column": "f32",
-          "default": 0,
+          "default": 3,
           "tunable": true
         },
         {
@@ -11959,7 +11959,7 @@
         {
           "name": "toneMapping",
           "column": "ToneMapping",
-          "default": "aces"
+          "default": "agx"
         },
         {
           "name": "exposure",
@@ -11991,6 +11991,11 @@
         },
         {
           "name": "rectShadows",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "bloomEnabled",
           "column": "bool",
           "default": true
         },
@@ -12199,7 +12204,7 @@
         {
           "name": "ao",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "aoRadius",

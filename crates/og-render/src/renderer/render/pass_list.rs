@@ -66,7 +66,8 @@ impl Renderer {
         let post_fx = &scene.look.post;
         let st = &scene.look.stylise;
         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
-        let bloom = post_fx.bloom.is_some_and(|b| b.intensity > 0.0) || glow;
+        let bloom =
+            (scene.frame.quality.bloom && post_fx.bloom.is_some_and(|b| b.intensity > 0.0)) || glow;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         let passes = schedule::frame_passes(
             &schedule::PassDecisions {

@@ -134,6 +134,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> Result<(), String>
     let fields = json!({
         "quality": preset,
         "rectShadows": q.rect_shadows,
+        "bloomEnabled": q.bloom,
         "shadowedLights": q.shadowed_lights,
         "shadowCascades": q.shadow_cascades,
         "shadowMapScale": q.shadow_map_scale,

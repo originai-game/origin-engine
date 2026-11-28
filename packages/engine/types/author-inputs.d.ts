@@ -1894,7 +1894,7 @@ readonly "wireframeAngle"?: (number);
 readonly "wireframeColor"?: (((ReadonlyArray<(number)> & { readonly length: 3 })) | ((string)));
 });
 readonly "Reflected_og_cook::cook::source_schemas::procedural::PostEffects": ({
-/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. */
+/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project. */
 readonly "ao"?: (boolean);
 /** How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. */
 readonly "aoDirect"?: (number);
@@ -2074,10 +2074,12 @@ readonly "autoExposureMax"?: (number);
 readonly "autoExposureMin"?: (number);
 /** Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. */
 readonly "bakedLighting"?: (boolean);
-/** Light above the threshold bleeds into its surroundings. */
+/** Light above the threshold bleeds into its surroundings. Initially false in a 2D project. */
 readonly "bloom"?: (boolean);
 /** With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit. */
 readonly "bloomContrast"?: (number);
+/** Allow RenderSettings.bloom to draw. Low disables the HDR bloom chain; medium and high allow it. The scene's bloom switch and settings are kept, and authored 2D glow is independent. */
+readonly "bloomEnabled"?: (boolean);
 /** How much of the blurred light is added back. */
 readonly "bloomIntensity"?: (number);
 /** Softens the threshold over threshold plus or minus knee; 0 is a hard cut. */
@@ -2114,7 +2116,7 @@ readonly "shadowCascades"?: (number);
 readonly "shadowMapScale"?: (number);
 /** At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.maxShadowedLights caps it); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted. */
 readonly "shadowedLights"?: (number);
-/** Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). */
+/** Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). Initially false in a 2D project. */
 readonly "sky"?: (boolean);
 /** Spread live sky capture and filtering over 13 rendered frames instead of completing each frame. Low sets true; medium, high and the default keep false so terrain ambient and reflections follow the current sky. Slicing lowers peak GPU cost but retains older lighting during fast sky changes. */
 readonly "skyCaptureSliced"?: (boolean);
@@ -2128,7 +2130,7 @@ readonly "ssrStepScale"?: (number);
 readonly "staticLightReach"?: (number);
 /** Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. */
 readonly "toneMapped"?: (boolean);
-/** Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none. */
+/** Which curve tone maps the frame while toneMapped is true: agx (the default), aces, neutral or none. A 2D project initially uses none; an orthographic camera in a 3D project still uses agx. */
 readonly "toneMapping"?: ("aces" | "agx" | "none" | "neutral") & (string);
 /** Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. */
 readonly "upscaler"?: ("taau" | "fsr3" | "auto") & (string);
@@ -6570,7 +6572,7 @@ readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 readonly "radius"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::media::timeline::PostEffects": ({
-/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. */
+/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project. */
 readonly "ao"?: (boolean);
 /** How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. */
 readonly "aoDirect"?: (number);

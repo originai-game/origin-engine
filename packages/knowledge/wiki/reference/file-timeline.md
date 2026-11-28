@@ -367,7 +367,7 @@ readonly "mobility"?: ("movable" | "stationary" | "static") & (string);
 readonly "radius"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::media::timeline::PostEffects": ({
-/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. */
+/** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project. */
 readonly "ao"?: (boolean);
 /** How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. */
 readonly "aoDirect"?: (number);

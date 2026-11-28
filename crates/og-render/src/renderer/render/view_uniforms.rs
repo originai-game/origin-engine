@@ -68,7 +68,7 @@ impl Renderer {
                 .map(|g| {
                     post_fx
                         .bloom
-                        .filter(|b| b.intensity > 0.0)
+                        .filter(|b| scene.frame.quality.bloom && b.intensity > 0.0)
                         .map_or(g.intensity, |b| b.intensity)
                 }),
         );

@@ -27675,7 +27675,7 @@
         "neutral"
       ],
       "x-og-variants": {
-        "aces": "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default.",
+        "aces": "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping.",
         "agx": "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES.",
         "none": "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false).",
         "neutral": "Khronos PBR Neutral, as three.js NeutralToneMapping: colours up to about 0.8 come out as authored (a white-lit base colour shows as the colour picked), only brighter ones roll off to white. For product shots and saturated stylised colour that ACES would darken and shift."
@@ -27693,7 +27693,7 @@
       ],
       "x-og-variants": {
         "medium": "The full frame: every quality field at its default.",
-        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps.",
+        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no HDR bloom, SSR, ambient occlusion or GI, FXAA for MSAA; if re-enabled, half-resolution AO and half the reflection and fog steps.",
         "high": "The full frame refined: FSR 3.1 at every render scale, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once."
       }
     },
@@ -27746,13 +27746,13 @@
         },
         "sky": {
           "type": "boolean",
-          "description": "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map).",
-          "default": false
+          "description": "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map). Initially false in a 2D project.",
+          "default": true
         },
         "bloom": {
           "type": "boolean",
-          "description": "Light above the threshold bleeds into its surroundings.",
-          "default": false
+          "description": "Light above the threshold bleeds into its surroundings. Initially false in a 2D project.",
+          "default": true
         },
         "bloomThreshold": {
           "type": "number",
@@ -27770,7 +27770,7 @@
         "bloomIntensity": {
           "type": "number",
           "description": "How much of the blurred light is added back.",
-          "default": 0.6,
+          "default": 0.3,
           "minimum": 0,
           "x-og-tunable": true
         },
@@ -27791,7 +27791,7 @@
         "autoExposure": {
           "type": "boolean",
           "description": "Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike.",
-          "default": false
+          "default": true
         },
         "autoExposureMin": {
           "type": "number",
@@ -27812,7 +27812,7 @@
         "adaptSpeedUp": {
           "type": "number",
           "description": "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure.",
-          "default": 0,
+          "default": 1,
           "minimum": 0,
           "maximum": 100,
           "x-og-unit": "evPerSecond",
@@ -27821,7 +27821,7 @@
         "adaptSpeedDown": {
           "type": "number",
           "description": "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant.",
-          "default": 0,
+          "default": 3,
           "minimum": 0,
           "maximum": 100,
           "x-og-unit": "evPerSecond",
@@ -27834,8 +27834,8 @@
         },
         "toneMapping": {
           "$ref": "#/$defs/ToneMapping",
-          "description": "Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none.",
-          "default": "aces"
+          "description": "Which curve tone maps the frame while toneMapped is true: agx (the default), aces, neutral or none. A 2D project initially uses none; an orthographic camera in a 3D project still uses agx.",
+          "default": "agx"
         },
         "exposure": {
           "type": "number",
@@ -27874,6 +27874,11 @@
         "rectShadows": {
           "type": "boolean",
           "description": "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off.",
+          "default": true
+        },
+        "bloomEnabled": {
+          "type": "boolean",
+          "description": "Allow RenderSettings.bloom to draw. Low disables the HDR bloom chain; medium and high allow it. The scene's bloom switch and settings are kept, and authored 2D glow is independent.",
           "default": true
         },
         "shadowedLights": {
@@ -28255,13 +28260,13 @@
     "PostEffects": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.\nAO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.",
+      "description": "The post stack beyond RenderSettings, and camera shake. Half-resolution GTAO is on initially in 3D, off in 2D; low quality disables it. Other effects default off and record no pass. Read after each tick; never feeds back into simulation.\nAO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.",
       "type": "object",
       "properties": {
         "ao": {
           "type": "boolean",
-          "description": "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas.",
-          "default": false
+          "description": "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project.",
+          "default": true
         },
         "aoRadius": {
           "type": "number",

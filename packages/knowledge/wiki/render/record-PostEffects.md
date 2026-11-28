@@ -6,7 +6,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.PostEffects` (resource)
 
-The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.
+The post stack beyond RenderSettings, and camera shake. Half-resolution GTAO is on initially in 3D, off in 2D; low quality disables it. Other effects default off and record no pass. Read after each tick; never feeds back into simulation.
 
 AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.
 
@@ -16,7 +16,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `ao` | `boolean` | `false` | — | — | — | Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. |
+| `ao` | `boolean` | `true` | — | — | — | Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project. |
 | `aoRadius` | `number` | `0.6` | ≥ 0 | `m` | tunable | The world-space radius searched for occluders. |
 | `aoIntensity` | `number` | `1` | ≥ 0 | — | tunable | 0 none, 1 full; above 1 exaggerates. |
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
@@ -176,10 +176,12 @@ Applied in field order to the display colour after the tone curve and the LUT, e
 
 ```ogt
 resource PostEffects {
-  doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation."
+  doc "The post stack beyond RenderSettings, and camera shake. Half-resolution GTAO is on initially in 3D, off in 2D; low quality disables it. Other effects default off and record no pass. Read after each tick; never feeds back into simulation."
   doc "AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it."
   group "Ambient occlusion"
-  field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
+  field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project." {
+    default true
+  }
   field aoRadius f32 "The world-space radius searched for occluders." {
     default 0.6
     min 0
@@ -526,4 +528,4 @@ resource PostEffects {
 }
 ```
 
-<sub>Module `render` line 1120</sub>
+<sub>Module `render` line 1132</sub>

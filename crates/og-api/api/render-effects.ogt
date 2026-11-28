@@ -189,10 +189,12 @@
   }
 
   resource PostEffects {
-    doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation."
+    doc "The post stack beyond RenderSettings, and camera shake. Half-resolution GTAO is on initially in 3D, off in 2D; low quality disables it. Other effects default off and record no pass. Read after each tick; never feeds back into simulation."
     doc "AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it."
     group "Ambient occlusion"
-    field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
+    field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. Initially false in a 2D project." {
+      default true
+    }
     field aoRadius f32 "The world-space radius searched for occluders." {
       default 0.6
       min 0
