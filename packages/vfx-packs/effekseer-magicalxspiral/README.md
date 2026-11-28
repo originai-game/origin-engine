@@ -11,6 +11,29 @@ recompressed, pixels unchanged); what did not convert is listed as
 `// effekseer:` comments at the end of each effect's .ts. Each file's
 source in its contributor's zip is in `assets.json`.
 
+## Capturing short or small effects
+
+`foot_smoke4` is a sparse orange/yellow additive spray, not an opaque smoke
+cloud. Its source uses 0.3-sized particles, a 10-frame start delay, a
+30-frame particle life and 10-frame fades, at 60 Hz. At spawn scale 0.6 it
+can read as a faint shimmer in a distant third-person view. For a close-up,
+use scale 1, a 50-degree camera about 1.5 m from the spawn, and capture
+around 0.4 s after spawning. With a spawn at `(0, 0.6, 0)`, a camera at
+`(0, 0.405, 1.5)` looking at the spawn shows the individual glowing motes.
+
+`Magic2_earth` has a yellow sigil lasting 0.25 s; its particles finish
+before 0.5 s. Capture at 0.1–0.2 s after spawning, not after a one-second
+settle. At scale 1, a 50-degree camera at `(0, 1.404, 5.2)` looking at a
+spawn at `(0, 0.6, 0)` frames the whole sigil and surrounding sparks.
+Moving that camera to 1.5 m clips the sigil. A 2 fps contact sheet can miss
+this short flash; review full-resolution frames from a 30 fps recording.
+
+These views were checked on native Vulkan on an NVIDIA L4. Both effects
+use unlit additive particles: daylight is not needed to light them, and a
+bright background reduces their contrast. Keep their source timing,
+blending and textures; frame the effect rather than changing its content
+to make a gallery tile larger.
+
 | Effect | Category | Contributor | Source in the zip |
 | --- | --- | --- | --- |
 | `content/A_Gohlem1.ts` | magic-impact | MAGICALxSPIRAL | `MAGICALxSPIRAL/A_Gohlem1.efkproj` |
